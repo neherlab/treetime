@@ -32,3 +32,7 @@ Dense marginal operates on full probability vectors at every position, independe
 
 - [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md):
   same Fitch compression mechanism causes dense and sparse to produce different likelihoods on ~2.5% of random inputs (distinct issue, same root cause).
+
+## Related tickets
+
+- [kb/tickets/ancestral-sparse-root-invariance-violation.md](../tickets/ancestral-sparse-root-invariance-violation.md)

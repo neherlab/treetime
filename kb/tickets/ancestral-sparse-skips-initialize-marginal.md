@@ -24,4 +24,4 @@ Add `initialize_marginal` call before `update_marginal` in the sparse path, matc
 
 ## Related issues
 
-- Source: [M-ancestral-sparse-missing-initialize-marginal.md](../issues/M-ancestral-sparse-missing-initialize-marginal.md) -- delete after full resolution
+- Source: [kb/issues/M-ancestral-sparse-missing-initialize-marginal.md](../issues/M-ancestral-sparse-missing-initialize-marginal.md) -- delete after full resolution

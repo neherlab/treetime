@@ -17,3 +17,7 @@ Before the off-tree root sequence refactoring, internal node sequences were reta
 ## Fix direction
 
 `capture_ancestral_states` should reconstruct sequences from current marginal profiles (via `ancestral_reconstruction_marginal` or `node_state_at`) instead of reading stored `seq.sequence`. This makes convergence tracking reflect actual marginal state changes between iterations.
+
+## Related tickets
+
+- [kb/tickets/timetree-sparse-convergence-tracking-compares-empty-sequences.md](../tickets/timetree-sparse-convergence-tracking-compares-empty-sequences.md)

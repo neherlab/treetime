@@ -37,4 +37,4 @@ This is a candidate for alignment with v0's formula if parity is desired, or for
 
 ## Related issues
 
-- Source: [M-timetree-positional-likelihood-metric.md](../issues/M-timetree-positional-likelihood-metric.md) -- delete after full resolution
+- Source: [kb/issues/M-timetree-positional-likelihood-metric.md](../issues/M-timetree-positional-likelihood-metric.md) -- delete after full resolution

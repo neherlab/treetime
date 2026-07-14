@@ -27,3 +27,7 @@ Concatenate alignments before running optimize (loses per-partition model contro
 
 - [config-file-multi-partition](../proposals/config-file-multi-partition.md) -- configuration file format for multiple alignments
 - [unified-input-format-support](../proposals/unified-input-format-support.md) -- alternative input via formats with embedded sequences
+
+## Related tickets
+
+- [kb/tickets/optimize-single-alignment-input-only.md](../tickets/optimize-single-alignment-input-only.md)

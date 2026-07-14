@@ -168,5 +168,4 @@ Replaces v0's text-based `__str__`/`from_file` with a structured format that is 
 ## Related
 
 - [Auto-partitioning report](../reports/auto-partitioning.md) - design recommendation R5
-- [Site-specific GTR integration ticket](../tickets/gtr-integrate-site-specific-into-partition-system.md) - prerequisite
 - [Multi-partition config file proposal](config-file-multi-partition.md) - complementary I/O proposal

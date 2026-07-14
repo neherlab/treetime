@@ -26,4 +26,4 @@ Negligible when the initial guess is calibrated (the standard workflow). On data
 
 ## Related issues
 
-- Source: [N-optimize-reconcile-grid-extent-unverified.md](../issues/N-optimize-reconcile-grid-extent-unverified.md) -- delete after full resolution
+- Source: [kb/issues/N-optimize-reconcile-grid-extent-unverified.md](../issues/N-optimize-reconcile-grid-extent-unverified.md) -- delete after full resolution

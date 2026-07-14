@@ -16,6 +16,9 @@ Prevent shared graph readers from observing default payloads and commit indexed-
 
 - Concurrent reader/writer tests using the public guarded API, proving readers observe only a complete pre-pass or post-pass state and writers cannot deadlock when locking payloads in key order.
 - Inject worker error, panic, structural validation failure, and commit precondition failure; compare the complete graph with its pre-pass state.
+- Run the mutation-before-error case in one-, two-, and sixteen-thread Rayon pools and assert the same error and complete unchanged graph state.
+- Block a visitor with a barrier while another thread reads and attempts to write live payloads; no successful update may be overwritten.
+- Run two indexed passes concurrently and assert that neither extracts or publishes a mixed payload generation.
 - Deterministic successful result under one and multiple workers.
 - Full lint and test suite.
 

@@ -28,4 +28,4 @@ Only affects edges produced by topology cleanup (collapse) or reroot (merge). Ad
 
 ## Related issues
 
-- Source: [M-optimize-indel-event-count-after-composition.md](../issues/M-optimize-indel-event-count-after-composition.md) -- delete after full resolution
+- Source: [kb/issues/M-optimize-indel-event-count-after-composition.md](../issues/M-optimize-indel-event-count-after-composition.md) -- delete after full resolution

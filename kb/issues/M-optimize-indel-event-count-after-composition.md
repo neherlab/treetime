@@ -25,3 +25,7 @@ Only affects edges produced by topology cleanup (collapse) or reroot (merge). Ad
 - Track original event count separately from net annotation count during composition
 - Accept annotation count as the Poisson statistic (simpler model, minor bias)
 - Weight the Poisson count by the number of indel sub-regions in each annotation
+
+## Related tickets
+
+- [kb/tickets/optimize-indel-event-count-reduced-after-composition.md](../tickets/optimize-indel-event-count-reduced-after-composition.md)

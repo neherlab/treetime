@@ -1,4 +1,4 @@
-# Optimizer and marginal propagation use incompatible branch-length scales when GTR mu ≠ 1
+# Optimizer and marginal propagation use incompatible branch-length scales when the GTR rate scalar differs from one
 
 The branch-length optimizer and `update_marginal` disagree on the meaning of the branch-length variable `t`. The optimizer evaluates `exp(eigvals * t)` - treating `t` as subs/site in normalized eigenvalue units. `update_marginal` passes `t` to `expQt(t)`, which computes `exp(eigvals * mu * t)` - treating `t` as time and relying on `mu` to convert to subs/site. These are equivalent only when `mu = 1`. When the GTR is fitted from a timetree with year-scale branch lengths, `mu ≈ clock_rate` (e.g., `~0.0007 subs/site/year` for SARS-CoV-2), and the two computations diverge by a factor of roughly `1/mu ≈ 1400`. The mismatch shifts node profiles toward the equilibrium distribution after the first optimization step resets branch lengths from year-scale to subs-per-site scale, degrading or fully destroying the signal driving subsequent iterations.
 
@@ -10,14 +10,14 @@ The optimizer now rejects negative timetree branch lengths before likelihood eva
 
 | Location                                                                                                                                       | Role                                                                                             |
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| [packages/treetime/src/gtr/gtr.rs#L442](../../packages/treetime/src/gtr/gtr.rs#L442)                                                           | `expQt(t)` -- computes `exp(eigvals * mu * t)` using `exp_lt`                                    |
-| [packages/treetime/src/gtr/gtr.rs#L319](../../packages/treetime/src/gtr/gtr.rs#L319)                                                           | `expQt_with_rate(t, rate)` -- same convention with per-site rate                                 |
-| [packages/treetime/src/gtr/gtr.rs#L350](../../packages/treetime/src/gtr/gtr.rs#L350)                                                           | `evolve()` -- propagates profiles forward in time via `expQt`                                    |
-| [packages/treetime/src/gtr/gtr.rs#L399](../../packages/treetime/src/gtr/gtr.rs#L399)                                                           | `propagate_profile()` -- propagates likelihoods upward via `expQt`                               |
-| [packages/treetime/src/optimize/eval.rs#L29](../../packages/treetime/src/optimize/eval.rs#L29)             | `evaluate_site_contributions` -- computes `exp(eigvals * t)` without mu                          |
+| [packages/treetime/src/gtr/gtr.rs#L445](../../packages/treetime/src/gtr/gtr.rs#L445)                                                           | `expQt(t)` -- computes `exp(eigvals * mu * t)` using `exp_lt`                                    |
+| [packages/treetime/src/gtr/gtr.rs#L322](../../packages/treetime/src/gtr/gtr.rs#L322)                                                           | `expQt_with_rate(t, rate)` -- same convention with per-site rate                                 |
+| [packages/treetime/src/gtr/gtr.rs#L353](../../packages/treetime/src/gtr/gtr.rs#L353)                                                           | `evolve()` -- propagates profiles forward in time via `expQt`                                    |
+| [packages/treetime/src/gtr/gtr.rs#L402](../../packages/treetime/src/gtr/gtr.rs#L402)                                                           | `propagate_profile()` -- propagates likelihoods upward via `expQt`                               |
+| [packages/treetime/src/optimize/eval.rs#L34](../../packages/treetime/src/optimize/eval.rs#L34)             | `evaluate_site_contributions` -- computes `exp(eigvals * t)` without mu                          |
 | [packages/treetime/src/optimize/dense_eval.rs#L21](../../packages/treetime/src/optimize/dense_eval.rs#L21) | Dispatches `evaluate_site_contributions` with `gtr.eigvals` and raw `branch_length`              |
-| [packages/treetime/src/commands/optimize/run.rs#L314-L359](../../packages/treetime/src/commands/optimize/run.rs#L314-L359)                     | Main optimization loop -- calls `update_marginal` then `run_optimize_mixed` in sequence          |
-| [packages/treetime/src/optimize/dispatch.rs#L720](../../packages/treetime/src/optimize/dispatch.rs#L720)     | `initial_guess_mixed` -- sets BL = `subs_count / effective_length`, implicitly assuming `mu = 1` |
+| [packages/treetime/src/optimize/pipeline.rs#L188-L190](../../packages/treetime/src/optimize/pipeline.rs#L188-L190)                             | Main optimization pipeline dispatches `run_optimize_mixed`                                      |
+| [packages/treetime/src/optimize/dispatch.rs#L295](../../packages/treetime/src/optimize/dispatch.rs#L295)     | `initial_guess_mixed` -- sets BL from substitutions and effective length                         |
 
 ## Background: two incompatible conventions for `t`
 

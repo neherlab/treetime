@@ -18,3 +18,8 @@ The practical impact is negligible because `f64::MIN_POSITIVE` is ~2.2e-308, mak
 - Log-space division (subtraction) with explicit handling of -inf - -inf
 - Propagate structural zeros through the forward pass by skipping positions where msg_from_child is zero
 - v0 uses log-space arithmetic in the forward pass, avoiding the division entirely
+
+## Related tickets
+
+- [kb/tickets/marginal-forward-zero-divisor-floor-converts-structural-zeros.md](../tickets/marginal-forward-zero-divisor-floor-converts-structural-zeros.md)
+- [kb/tickets/numerical-min-positive-clamp-biases-near-zero-divisor.md](../tickets/numerical-min-positive-clamp-biases-near-zero-divisor.md)

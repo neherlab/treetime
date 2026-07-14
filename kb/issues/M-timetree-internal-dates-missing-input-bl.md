@@ -155,3 +155,7 @@ Sequence length: v0 requires either `--aln` or `--sequence-length` ([`wrappers.p
 This input-branch-length variant has a distinct root cause from the other timetree missing-date failures. Here the problem is Point-distribution multiplication tolerance, not branch-grid resolution or normalized product handling.
 
 That distinction matters because the symptom is similar - internal nodes lose dates - but the remedy is different. Fixes in the grid-based branches do not address the Point x Point failure in input branch length mode.
+
+## Related tickets
+
+- [kb/tickets/timetree-internal-dates-missing-nexus-input-branch-length-mode.md](../tickets/timetree-internal-dates-missing-nexus-input-branch-length-mode.md)

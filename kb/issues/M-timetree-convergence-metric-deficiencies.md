@@ -29,3 +29,7 @@ Compares per-partition sequence maps between iterations by zipping keys present 
 - Premature convergence declaration when dates stabilize but likelihood has not plateaued
 - After polytomy resolution, convergence check undercounts actual sequence changes
 - Likelihood-based convergence criteria are unreliable when coalescent is enabled mid-run
+
+## Related tickets
+
+- [kb/tickets/timetree-convergence-metric-deficiencies.md](../tickets/timetree-convergence-metric-deficiencies.md)

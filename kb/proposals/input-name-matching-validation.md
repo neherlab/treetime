@@ -582,10 +582,6 @@ Steps 1-2 are correctness fixes. Step 3 is a diagnostic improvement. Step 4 chan
 - [kb/issues/M-dates-column-auto-detection-gaps.md](../issues/M-dates-column-auto-detection-gaps.md) -- similar name reconciliation defects in CSV metadata readers
 - [kb/issues/N-io-large-dataset-memory-constraint.md](../issues/N-io-large-dataset-memory-constraint.md) -- large-dataset memory considerations; the name index adds negligible overhead relative to sequence data
 
-### Tickets
-
-- [kb/tickets/io-sequence-name-matching-unreliable.md](../tickets/io-sequence-name-matching-unreliable.md) -- implementation ticket derived from this proposal
-
 ### Proposals
 
 - [kb/proposals/config-file-multi-partition.md](config-file-multi-partition.md) -- configuration file format that could include explicit name mappings as an alternative to fuzzy matching

@@ -21,4 +21,4 @@ The practical impact is negligible because `f64::MIN_POSITIVE` is ~2.2e-308, mak
 
 ## Related issues
 
-- Source: [N-marginal-forward-zero-divisor-floor.md](../issues/N-marginal-forward-zero-divisor-floor.md) -- delete after full resolution
+- Source: [kb/issues/N-marginal-forward-zero-divisor-floor.md](../issues/N-marginal-forward-zero-divisor-floor.md) -- delete after full resolution

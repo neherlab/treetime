@@ -1,4 +1,4 @@
-# Multi-modal surface counterexample with $\ell'(0) < 0$ is not constructed
+# Construct a multi-modal surface counterexample with a negative likelihood derivative at zero
 
 ## Problem
 
@@ -36,4 +36,4 @@ v0 uses `scipy.optimize.minimize_scalar(method='brent')` in $\sqrt{t}$ space and
 
 ## Related issues
 
-- Source: [N-optimize-multimodal-counterexample-unreproduced.md](../issues/N-optimize-multimodal-counterexample-unreproduced.md) -- delete after full resolution
+- Source: [kb/issues/N-optimize-multimodal-counterexample-unreproduced.md](../issues/N-optimize-multimodal-counterexample-unreproduced.md) -- delete after full resolution

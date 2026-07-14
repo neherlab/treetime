@@ -18,12 +18,17 @@ use treetime_grid::piecewise_linear_fn::PiecewiseLinearFn;
 /// Returns map from node key to distribution that should be multiplied
 /// with node's time distribution during backward pass.
 ///
-/// Kingman coalescent contribution formula (NegLog space):
-/// - For leaves: -I(t) where I(t) = ∫₀ᵗ κ(t')dt' is cumulative merger rate.
-///   Probability P = exp(I(t)), so NegLog = -ln(P) = -I(t).
-/// - For internal nodes with k children: multiplicity · (I(t) - log(λ(t)))
-///   where λ(t) = k(t)·(k(t)-1)/(2·Tc(t)) is total merger rate
-///   and m = k - 1 is multiplicity.
+/// Ordinary Kingman coalescent contribution formula for bifurcating trees
+/// (NegLog space):
+/// - For leaves: -I(t) where I(t) = ∫₀ᵗ κ(t')dt' is the cumulative per-lineage
+///   merger rate.
+///   This is the leaf correction after branch-survival terms telescope across
+///   the complete tree; it is not a standalone survival neg-log probability.
+/// - For internal nodes: I(t) - log(λ(t)), where
+///   λ(t) = k(t)·(k(t)-1)/(2·Tc(t)) is the total merger rate.
+///
+/// v0 extends this to multifurcations with multiplicity m = children - 1.
+/// That rule is retained for parity; ordinary Kingman merger events are binary.
 ///
 /// `tc_dist` must be defined in TBP (time-before-present) coordinates or be
 /// coordinate-agnostic (e.g. `Distribution::constant`). Internal nodes
@@ -79,17 +84,12 @@ fn compute_leaf_contribution_single(
   integral_merger_rate: &PiecewiseLinearFn,
   present_time: CalendarTime,
 ) -> Result<DistributionNegLog, Report> {
-  // Leaf survival under the Kingman coalescent:
-  //   P(no coalescence before t) = exp(-I(t))
-  // where I(t) = ∫₀ᵗ κ(s)ds ≥ 0 is the cumulative merger rate (TBP coordinates).
-  //
-  // The formula returns -I(t), matching v0 (clock_tree.py:502) which stores
-  // -I(t) with is_log=True (log-probability convention: stored value = ln(P)).
-  //
-  // NOTE: the return type is DistributionNegLog, but the values follow v0's
-  // log-probability convention (stored = ln(P) = -I(t)), not neg-log convention
-  // (stored = -ln(P) = I(t)). This is consistent with v0 and validated by
-  // golden master tests on the raw formula values.
+  // A branch from child time tc to parent time tp has survival probability
+  // exp(-(I(tp) - I(tc))). Summing branch neg-log terms across the complete
+  // tree and grouping by node gives a leaf correction of -I(tc). The returned
+  // value is therefore a signed term in the telescoped objective, not the
+  // neg-log value of a standalone leaf survival probability. The complete
+  // decomposition also requires the internal-node terms and root correction.
   //
   // The integral_merger_rate is defined in TBP coordinates, but the backward
   // pass operates in calendar time. Convert the domain so that distribution
@@ -121,22 +121,25 @@ fn compute_internal_contribution_single(
   lineage_counts: &PiecewiseConstantFn,
   present_time: CalendarTime,
 ) -> Result<DistributionNegLog, Report> {
-  // Compute coalescent contribution for internal node using exact formula evaluation.
-  // An internal node with k children represents a merger event.
-  // The coalescent probability density at time t is:
+  // Compute the v0-parity telescoped contribution for an internal node.
+  // For a bifurcation, its node-wise factor is:
   //
-  //   P(merger at t | k children) ∝ λ(t)^(k-1) · exp(-I(t))
+  //   λ(t) · exp(-I(t))
   //
   // where:
   //   - λ(t) = k(t)·(k(t)-1)/(2·Tc(t)) is total merger rate
   //   - k(t) is number of concurrent lineages at time t
   //   - Tc(t) is effective population size
-  //   - multiplicity = k - 1 (number of mergers = children - 1)
+  // v0 extends this to a node with k children by using multiplicity k - 1.
+  // Ordinary Kingman merger events are binary, so the multifurcation rule is
+  // parity behavior rather than an exact Kingman event density. Because I(t)
+  // integrates the per-lineage rate, this factor is meaningful only within the
+  // complete telescoped tree objective, not as a standalone waiting-time density.
   //
   // In neg-log space, the formula becomes:
   //   neg_log: multiplicity · (I(t) - log(λ(t)))
-  //   probability: exp(-multiplicity · (I(t) - log(λ(t))))
-  //              = exp(-multiplicity · I(t)) · λ(t)^multiplicity
+  //   factor: exp(-multiplicity · (I(t) - log(λ(t))))
+  //         = exp(-multiplicity · I(t)) · λ(t)^multiplicity
   //
   // Node contribution is MULTIPLIED with the product of child messages
   // during message passing.

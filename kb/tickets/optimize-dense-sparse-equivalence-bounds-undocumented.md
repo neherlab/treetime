@@ -12,4 +12,4 @@ Add inline comments explaining why each bound is set to its current value and un
 
 ## Related issues
 
-- Source: [N-optimize-equivalence-bounds-undocumented.md](../issues/N-optimize-equivalence-bounds-undocumented.md) -- delete after full resolution
+- Source: [kb/issues/N-optimize-equivalence-bounds-undocumented.md](../issues/N-optimize-equivalence-bounds-undocumented.md) -- delete after full resolution

@@ -10,3 +10,7 @@ v0 has the same pattern: `MAX_BRANCH_LENGTH = 4.0` is fixed in subs/site space, 
 
 Pass gamma to `create_simple_grid` and compute `rate_max_bl = MAX_BRANCH_TIME * clock_rate * gamma`.
 Or document the `MAX_BRANCH_TIME / gamma` coverage in the `MAX_BRANCH_TIME` doc comment.
+
+## Related tickets
+
+- [kb/tickets/timetree-include-gamma-in-branch-grid-extent.md](../tickets/timetree-include-gamma-in-branch-grid-extent.md)

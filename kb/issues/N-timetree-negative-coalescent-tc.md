@@ -5,3 +5,7 @@
 The tip-only output is useful diagnostically. A negative Tc does not just represent an invalid parameter value. It also destabilizes the internal-node time inference path enough that only leaf dates remain materialized in the output.
 
 Tc must be positive (it represents effective population size scaled by generation time).
+
+## Related tickets
+
+- [kb/tickets/timetree-negative-coalescent-tc-accepted-without-validation.md](../tickets/timetree-negative-coalescent-tc-accepted-without-validation.md)

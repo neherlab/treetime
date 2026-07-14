@@ -40,4 +40,4 @@ All of these must be completed first:
 
 ## Related issues
 
-Source: [H-core-multi-client-architecture-library-purity](../issues/H-core-multi-client-architecture-library-purity.md)
+Source: [kb/issues/H-core-multi-client-architecture-library-purity.md](../issues/H-core-multi-client-architecture-library-purity.md)

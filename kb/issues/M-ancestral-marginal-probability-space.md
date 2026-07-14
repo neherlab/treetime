@@ -12,3 +12,9 @@ The backward pass uses log-space arithmetic in both dense (`normalize_from_log()
 Division by near-zero probabilities in the forward pass can amplify numerical errors for positions where a child contributes near-zero likelihood for some states. v0 avoids this by operating in log space (subtraction instead of division).
 
 Golden master tests currently compare v1 dense marginal against v0 with tolerance 1e-6 to 1e-7, absorbing differences from the representation change.
+
+A public Python report observed underflow while multiplying marginal subtree likelihoods for a large polytomy and state space [[issue](https://github.com/neherlab/treetime/issues/39)]. The maintainer identified log-space message accumulation as the remedy [[comment](https://github.com/neherlab/treetime/issues/39#issuecomment-383567696)]. The report is historical evidence for the numerical failure mode; the Rust forward-pass operations and reproduction conditions must be verified independently.
+
+## Related tickets
+
+- [kb/tickets/ancestral-convert-marginal-forward-pass-to-log-space.md](../tickets/ancestral-convert-marginal-forward-pass-to-log-space.md)

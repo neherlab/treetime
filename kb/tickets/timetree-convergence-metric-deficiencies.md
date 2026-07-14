@@ -32,4 +32,4 @@ Compares per-partition sequence maps between iterations by zipping keys present 
 
 ## Related issues
 
-- Source: [M-timetree-convergence-metric-deficiencies.md](../issues/M-timetree-convergence-metric-deficiencies.md) -- delete after full resolution
+- Source: [kb/issues/M-timetree-convergence-metric-deficiencies.md](../issues/M-timetree-convergence-metric-deficiencies.md) -- delete after full resolution

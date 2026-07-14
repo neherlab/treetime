@@ -5,7 +5,7 @@ Mutation coordinates, string rendering, and tree-format projection do not share 
 ## Problem
 
 - Core and sparse mutation structures mix zero-based and one-based positions.
-- TreeIR substitutions use a separate string parser that accepts position zero and duplicates parsing performed elsewhere.
+- TreeIR substitutions use a separate string parser that accepts position zero and duplicates parsing performed elsewhere. Its UShER reader casts signed protobuf positions directly to `usize`, while its writer narrows `usize` to `i32`; zero shifts reference lookup through `saturating_sub(1)` and negative or oversized positions can wrap.
 - Substitution strings are assembled at multiple output sites instead of by the mutation value itself.
 - Insertions and deletions reconstructed by ancestral inference do not reach every TreeIR-backed output.
 - UShER conversion narrows positions through unchecked `usize`/`i32` casts and reconstructs one-based format positions ad hoc.

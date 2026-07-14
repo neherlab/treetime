@@ -133,11 +133,10 @@ mod tests {
     Ok(())
   }
 
-  // Midpoint-rule discretization error: 1.6e-4 with 1000 segments on 1/(0.01+0.004t).
-  // O(h^2) convergence requires ~12500 segments for 1e-6.
-  // See kb/issues/N-timetree-coalescent-integration-grossly-loose-tolerance.md.
+  // Production midpoint quadrature is inaccurate when Tc varies inside a lineage interval.
+  // See kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md.
   #[test]
-  #[ignore = "midpoint-rule discretization error 1.6e-4 (kb/issues/N-timetree-coalescent-integration-grossly-loose-tolerance.md)"]
+  #[ignore = "varying-Tc midpoint quadrature error (kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md)"]
   fn test_compute_integral_merger_rate_varying_tc_many_segments() -> Result<(), Report> {
     // k=3 constant, 1000 segments for high-accuracy numerical integration.
     let n_segments = 1000;

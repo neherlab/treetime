@@ -28,3 +28,7 @@ The coalescent integral I(t) = integral from 0 to t of lambda(s) ds uses the TBP
 - If a sign flip is missed at any boundary, the coalescent integral is evaluated backward (present-to-past vs past-to-present)
 - Wrong integration direction produces wrong coalescent costs, biasing time estimates
 - The implicit convention makes the code fragile: any new caller must know the undocumented sign convention
+
+## Related tickets
+
+- [kb/tickets/coalescent-time-notation-conflict.md](../tickets/coalescent-time-notation-conflict.md)

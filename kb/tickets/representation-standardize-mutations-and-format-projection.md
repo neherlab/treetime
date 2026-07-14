@@ -16,6 +16,7 @@ For an internal position $p_0$, serialize the external position as $p_1=p_0+1$. 
 
 - Parameterized unit tests for all mutation variants and boundary positions.
 - Property tests for internal/string/format round trips.
+- Boundary rejection cases for external zero and negative coordinates, values above `i32::MAX` for MAT, and reference lookups beyond sequence length.
 - Independent fixtures for every verified lossless format mapping.
 - Regression tests proving unresolved UShER and PhyloXML variants cannot be silently omitted by code touched here.
 - Full lint and test suite.

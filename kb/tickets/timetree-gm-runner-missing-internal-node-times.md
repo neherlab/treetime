@@ -32,4 +32,4 @@ flu_h3n2_20 and ebola_20 pass in all test modes, suggesting the issue is data-de
 
 ## Related issues
 
-- Source: [M-timetree-gm-runner-missing-internal-times.md](../issues/M-timetree-gm-runner-missing-internal-times.md) -- delete after full resolution
+- Source: [kb/issues/M-timetree-gm-runner-missing-internal-times.md](../issues/M-timetree-gm-runner-missing-internal-times.md) -- delete after full resolution

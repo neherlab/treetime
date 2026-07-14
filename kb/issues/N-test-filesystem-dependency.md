@@ -1,6 +1,6 @@
-# Tests with unnecessary filesystem dependency
+# Unit tests depend on repository-level production datasets
 
-Four unit tests read `data/` files when the underlying logic could use inline fixtures. This adds filesystem coupling, slows test execution, and makes tests fragile to working-directory changes.
+Several unit tests read repository-level `data/` files at runtime when the underlying logic can use test-local fixtures. Their paths use `CARGO_MANIFEST_DIR`, so process working-directory changes do not break them; the defect is coupling unit tests to production dataset availability and layout.
 
 All paths relative to `packages/treetime/src/`.
 
@@ -15,3 +15,7 @@ Both tests read `data/dengue/100/{tree.nwk,metadata.tsv}`. The tree is 3.7 KB an
 ## `optimize/__tests__/test_convergence_sc2.rs` (1 test)
 
 `test_convergence_sc2_flu_h3n2_20_converges` reads `data/flu/h3n2/20/{tree.nwk,aln.fasta.xz}`. Same dataset as python parity; shares the conversion approach.
+
+## Related tickets
+
+- [kb/tickets/test-isolate-unit-fixtures-from-production-data.md](../tickets/test-isolate-unit-fixtures-from-production-data.md)

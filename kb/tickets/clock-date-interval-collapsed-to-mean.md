@@ -10,6 +10,8 @@ The clock regression treats interval midpoints as exact observations, ignoring t
 
 v0 `clock_filter_methods.py` uses `np.mean(node.raw_date_constraint)` in the same way, so this is a shared limitation rather than a v0/v1 divergence. The timetree pipeline in both v0 and v1 preserves the interval for `load_date_constraints`, but the clock pipeline itself does not use it.
 
+A public support thread documents mixed-granularity sampling dates and recommends encoding unknown month or day components as `XX` [[issue](https://github.com/neherlab/treetime/issues/59)] [[comment](https://github.com/neherlab/treetime/issues/59#issuecomment-414949406)]. It establishes the user workflow that produces date intervals; it does not report the clock-regression weighting defect directly.
+
 ## Affected code
 
 - Date collapse: [packages/treetime/src/clock/assign_dates.rs#L19-L23](../../packages/treetime/src/clock/assign_dates.rs#L19-L23)
@@ -21,4 +23,4 @@ Incorporate interval width into the variance model: add a date-uncertainty term 
 
 ## Related issues
 
-- Source: [M-clock-date-interval-collapsed-to-mean.md](../issues/M-clock-date-interval-collapsed-to-mean.md) -- delete after full resolution
+- Source: [kb/issues/M-clock-date-interval-collapsed-to-mean.md](../issues/M-clock-date-interval-collapsed-to-mean.md) -- delete after full resolution

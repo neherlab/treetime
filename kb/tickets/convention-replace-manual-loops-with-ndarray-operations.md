@@ -14,4 +14,4 @@ Seven locations use manual loops where ndarray operations would be clearer and m
 
 ## Related issues
 
-- Source: [N-code-quality-conventions.md](../issues/N-code-quality-conventions.md) -- delete after full resolution
+- Source: [kb/issues/N-code-quality-conventions.md](../issues/N-code-quality-conventions.md) -- delete after full resolution

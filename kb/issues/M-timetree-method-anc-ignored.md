@@ -8,7 +8,13 @@ The ancestral reconstruction method is always marginal in the timetree pipeline,
 
 The ancestral command implements method selection correctly.
 
+A related Python report found that a marginal-sequence option was translated correctly for the first ancestral reconstruction but omitted from a later reconstruction call, causing method selection to change during the run [[issue](https://github.com/neherlab/treetime/issues/601)]. The Rust defect has a different call path and always ignores `--method-anc`; the public report is regression context rather than a shared-root-cause claim.
+
 ## Related issues
 
 - [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md) lists other dead
   flags in the same pipeline
+
+## Related tickets
+
+- [kb/tickets/timetree-wire-method-anc-flag.md](../tickets/timetree-wire-method-anc-flag.md)

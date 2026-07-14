@@ -24,4 +24,4 @@ On synthetic fixtures designed to stress the optimizer, and on multi-modal surfa
 
 ## Related issues
 
-- Source: [N-optimize-grid-search-upper-bound-capped.md](../issues/N-optimize-grid-search-upper-bound-capped.md) -- delete after full resolution
+- Source: [kb/issues/N-optimize-grid-search-upper-bound-capped.md](../issues/N-optimize-grid-search-upper-bound-capped.md) -- delete after full resolution

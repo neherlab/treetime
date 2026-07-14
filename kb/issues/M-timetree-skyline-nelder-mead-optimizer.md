@@ -1,16 +1,18 @@
-# Skyline coalescent uses Nelder-Mead instead of SLSQP
+# Skyline objective and optimizer diverge from v0
 
-v1 uses Nelder-Mead (simplex) via `argmin` for skyline Tc optimization. v0 uses SLSQP via `scipy.optimize.minimize`. Both minimize the same objective: negative coalescent log-likelihood plus a stiffness penalty on `log(Tc)` differences.
+Let $T_c$ denote the coalescent population-size time scale. v1 uses Nelder-Mead via `argmin` for skyline $T_c$ optimization, while v0 uses SLSQP via `scipy.optimize.minimize`. Their objective functions, bounds, and initialization also differ, so changing only the optimizer does not establish parity.
 
 - v1: `optimize_skyline()` (`#optimize_skyline`) using `NelderMead` at
   [`packages/treetime/src/coalescent/skyline.rs#L68-L126`](../../packages/treetime/src/coalescent/skyline.rs#L68-L126)
 - v0: `optimize_skyline()` (`#optimize_skyline`) using `method='SLSQP'` at
   [`packages/legacy/treetime/treetime/merger_models.py#L281-L318`](../../packages/legacy/treetime/treetime/merger_models.py#L281-L318)
 
-SLSQP is a gradient-based constrained optimizer that can exploit cost function smoothness. Nelder-Mead is gradient-free and tolerates noisy or non-smooth landscapes but converges slower and can settle in different local optima.
+V1 clamps `log_tc` before evaluating both likelihood and stiffness. V0 evaluates stiffness on the raw vector and applies its lower-bound penalty separately. The lower penalty, initialization, and handling of the non-smooth bound also differ. Nelder-Mead and SLSQP can then converge to different local optima on already-different surfaces.
 
-The skyline cost function is smooth (piecewise-linear lineage counts, quadratic stiffness penalty), making SLSQP a natural fit. Nelder-Mead was chosen for v1 because `argmin` does not include an SLSQP implementation and the `argmin` ecosystem was preferred over binding to a C/Fortran optimizer.
+## Decision required
 
-For datasets where the cost surface has multiple local optima, the two optimizers can converge to different solutions. For well-separated optima (typical of real phylogenetic datasets with clear population size changes), both should find the same global minimum.
+- Decide whether exact v0 objective behavior is required for clamping, stiffness, lower-bound penalty, and initialization.
+- Once the objective contract is fixed, select an optimizer that reproduces v0 outputs within the numerical contract.
+- Define golden masters covering active bounds, multiple starting points, and non-smooth or locally multimodal surfaces.
 
-## Related
+No implementation ticket is ready until the objective and bound contracts are approved.

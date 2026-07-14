@@ -6,4 +6,4 @@ Note: the `#`-stripping itself is a v1 improvement over v0. v0 does not strip `#
 
 ## Related issues
 
-- Source: [M-timetree-date-header-hash.md](../issues/M-timetree-date-header-hash.md) -- delete after full resolution
+- Source: [kb/issues/M-timetree-date-header-hash.md](../issues/M-timetree-date-header-hash.md) -- delete after full resolution

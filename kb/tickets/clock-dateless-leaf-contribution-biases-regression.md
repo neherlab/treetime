@@ -23,5 +23,5 @@ For dateless leaves (`date == None`), return a zero `ClockSet` (equivalent to `o
 
 ## Related issues
 
-- Source: [H-clock-clockset-dateless-leaf-bias.md](../issues/H-clock-clockset-dateless-leaf-bias.md) -- delete after full resolution
+- Source: [kb/issues/H-clock-clockset-dateless-leaf-bias.md](../issues/H-clock-clockset-dateless-leaf-bias.md) -- delete after full resolution
 - [M-clock-filter-residual-parity.md](../issues/M-clock-filter-residual-parity.md) -- clock filter residual differences between v0 and v1

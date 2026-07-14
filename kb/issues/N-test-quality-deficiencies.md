@@ -32,3 +32,7 @@ Cross-mode validation: v0 has no sparse mode, so dense oracle is the only availa
 
 - No tests for `fn Sub::from_str`, `fn parse_pos`, validators at `seq/mutation.rs`
 - No tests for `enum AlphabetName::AaNoStop` at `alphabet.rs`
+
+## Related tickets
+
+- [kb/tickets/test-add-hky85-case-to-propagate-raw-per-site.md](../tickets/test-add-hky85-case-to-propagate-raw-per-site.md)

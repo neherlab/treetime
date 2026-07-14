@@ -16,4 +16,4 @@ Requires plumbing the tolerance through the Brent method implementation in `meth
 
 ## Related issues
 
-- Source: [N-optimize-pre-step-coarse-tolerance.md](../issues/N-optimize-pre-step-coarse-tolerance.md) -- delete after full resolution
+- Source: [kb/issues/N-optimize-pre-step-coarse-tolerance.md](../issues/N-optimize-pre-step-coarse-tolerance.md) -- delete after full resolution

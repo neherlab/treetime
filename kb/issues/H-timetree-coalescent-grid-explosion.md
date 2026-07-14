@@ -68,3 +68,7 @@ Cap the intermediate grid size in `convolution_function_function`. The result is
 
 - [Branch distribution grid uses uniform spacing](M-timetree-branch-grid-uniform-resolution.md) - same underlying grid architecture
 - [Marginal dense timetree inference disproportionately slow for mpox dataset](M-timetree-marginal-dense-mpox-slow.md) - same convolution resampling mechanism with slow-evolving organisms
+
+## Related tickets
+
+- [kb/tickets/timetree-coalescent-backward-pass-grid-explosion.md](../tickets/timetree-coalescent-backward-pass-grid-explosion.md)

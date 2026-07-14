@@ -18,4 +18,4 @@ v1: [`packages/treetime/src/partition/marginal_dense.rs#L122`](../../packages/tr
 
 ## Related issues
 
-- Source: [N-code-quality-conventions.md](../issues/N-code-quality-conventions.md) -- delete after full resolution
+- Source: [kb/issues/N-code-quality-conventions.md](../issues/N-code-quality-conventions.md) -- delete after full resolution

@@ -24,4 +24,4 @@ Different outlier sets lead to different final clock models. On dengue/100: v0 f
 
 ## Related issues
 
-- Source: [M-clock-filter-residual-parity.md](../issues/M-clock-filter-residual-parity.md) -- delete after full resolution
+- Source: [kb/issues/M-clock-filter-residual-parity.md](../issues/M-clock-filter-residual-parity.md) -- delete after full resolution

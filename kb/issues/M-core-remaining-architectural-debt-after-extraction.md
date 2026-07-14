@@ -47,3 +47,7 @@ Decision: keep `clap` as a direct dependency. Domain types derive `clap::ValueEn
 - ~~`PartitionMarginal` dead marker trait~~ Resolved
 - `hacks/` module contains one 14-line function (`fix_branch_length`). Module name normalizes technical debt. Relocate to `seq/` or inline at 3 call sites.
 - `discrete_states.rs` in `partition/` used exclusively by mugration. Move to `mugration/` or future `mugration/` domain module.
+
+## Related tickets
+
+- [kb/tickets/architecture-dissolve-hacks-module.md](../tickets/architecture-dissolve-hacks-module.md)

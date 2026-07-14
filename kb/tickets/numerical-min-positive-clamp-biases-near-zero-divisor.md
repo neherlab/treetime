@@ -10,5 +10,5 @@ Degenerate inputs silently clamped rather than rejected or surfaced to callers.
 
 ## Related issues
 
-- Source: [N-numerical-stability-magic-constants.md](../issues/N-numerical-stability-magic-constants.md)
-- Source: [N-marginal-forward-zero-divisor-floor.md](../issues/N-marginal-forward-zero-divisor-floor.md)
+- Source: [kb/issues/N-numerical-stability-magic-constants.md](../issues/N-numerical-stability-magic-constants.md)
+- Source: [kb/issues/N-marginal-forward-zero-divisor-floor.md](../issues/N-marginal-forward-zero-divisor-floor.md)

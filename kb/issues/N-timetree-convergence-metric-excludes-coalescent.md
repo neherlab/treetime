@@ -1,6 +1,6 @@
 # Convergence metric silently excludes failed coalescent likelihood
 
-`ConvergenceTracker::record()` at [packages/treetime/src/timetree/convergence/metrics.rs#L67](../../packages/treetime/src/timetree/convergence/metrics.rs#L67) computes `lh_total` by collecting `[lh_seq, lh_pos, lh_coal]` into an iterator, calling `.flatten()`, and reducing with addition. When `lh_coal` is `None` (coalescent computation failed or was skipped), `.flatten()` silently drops it from the sum.
+`TimetreeOptimizer::record()` at [packages/treetime/src/timetree/convergence/optimizer.rs#L64](../../packages/treetime/src/timetree/convergence/optimizer.rs#L64) computes `lh_total` by collecting `[lh_seq, lh_pos, lh_coal]` into an iterator, calling `.flatten()`, and reducing with addition. When `lh_coal` is `None` (coalescent computation failed or was skipped), `.flatten()` silently drops it from the sum.
 
 ## Impact
 
@@ -10,9 +10,13 @@ The per-component fields (`lh_seq`, `lh_pos`, `lh_coal`) are individually correc
 
 ## Affected code
 
-- Aggregate computation: [packages/treetime/src/timetree/convergence/metrics.rs#L67](../../packages/treetime/src/timetree/convergence/metrics.rs#L67)
+- Aggregate computation: [packages/treetime/src/timetree/convergence/optimizer.rs#L64](../../packages/treetime/src/timetree/convergence/optimizer.rs#L64)
 - Convergence check: `TimetreeOptimizer::next_iter()` uses `lh_total` delta for early stopping
 
 ## Fix
 
 Track which components contributed to `lh_total` and compare only matching-component rows, or warn when the component set changes between iterations.
+
+## Related tickets
+
+- [kb/tickets/timetree-fix-convergence-metric-coalescent-exclusion.md](../tickets/timetree-fix-convergence-metric-coalescent-exclusion.md)

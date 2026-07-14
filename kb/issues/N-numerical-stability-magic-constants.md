@@ -47,3 +47,11 @@ The assertion is stripped in release builds. When gamma <= 0 reaches this code p
 - Silent NaN/inf propagation in production builds for edge-case inputs
 - Column-stochastic property violated by additive perturbation
 - Degenerate inputs (zero branch length, non-positive Tc, zero gamma) not rejected at boundaries
+
+## Related tickets
+
+- [kb/tickets/numerical-guard-non-positive-tc-in-coalescent-contributions.md](../tickets/numerical-guard-non-positive-tc-in-coalescent-contributions.md)
+- [kb/tickets/numerical-min-positive-clamp-biases-near-zero-divisor.md](../tickets/numerical-min-positive-clamp-biases-near-zero-divisor.md)
+- [kb/tickets/numerical-name-and-document-magic-1e-10-thresholds.md](../tickets/numerical-name-and-document-magic-1e-10-thresholds.md)
+- [kb/tickets/numerical-promote-debug-assert-to-production-guards.md](../tickets/numerical-promote-debug-assert-to-production-guards.md)
+- [kb/tickets/numerical-supertiny-number-distorts-column-stochastic-normalization.md](../tickets/numerical-supertiny-number-distorts-column-stochastic-normalization.md)

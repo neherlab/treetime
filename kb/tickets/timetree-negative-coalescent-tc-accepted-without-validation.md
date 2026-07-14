@@ -8,4 +8,4 @@ Tc must be positive (it represents effective population size scaled by generatio
 
 ## Related issues
 
-- Source: [N-timetree-negative-coalescent-tc.md](../issues/N-timetree-negative-coalescent-tc.md) -- delete after full resolution
+- Source: [kb/issues/N-timetree-negative-coalescent-tc.md](../issues/N-timetree-negative-coalescent-tc.md) -- delete after full resolution

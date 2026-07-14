@@ -8,4 +8,4 @@ The `--n-branches-posterior` flag is accepted by clap but returns an error at ru
 
 ## Related issues
 
-- Source: [N-timetree-n-branches-posterior-unimplemented.md](../issues/N-timetree-n-branches-posterior-unimplemented.md) -- delete after full resolution
+- Source: [kb/issues/N-timetree-n-branches-posterior-unimplemented.md](../issues/N-timetree-n-branches-posterior-unimplemented.md) -- delete after full resolution

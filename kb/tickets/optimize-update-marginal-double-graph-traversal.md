@@ -14,4 +14,4 @@ A single-traversal version could accept both partition types via a trait object 
 
 ## Related issues
 
-- Source: [N-optimize-double-graph-traversal-update-marginal.md](../issues/N-optimize-double-graph-traversal-update-marginal.md) -- delete after full resolution
+- Source: [kb/issues/N-optimize-double-graph-traversal-update-marginal.md](../issues/N-optimize-double-graph-traversal-update-marginal.md) -- delete after full resolution

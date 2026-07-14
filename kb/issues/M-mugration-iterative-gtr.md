@@ -21,3 +21,7 @@ Per project rules, numerical error > 1e-6 against the v0 oracle is a defect. Thi
 ## Related
 
 - [Full forward-backward reconstruction proposal](../proposals/mugration-full-reconstruction-per-iteration.md)
+
+## Related tickets
+
+- [kb/tickets/mugration-iterative-gtr-golden-master-divergence.md](../tickets/mugration-iterative-gtr-golden-master-divergence.md)

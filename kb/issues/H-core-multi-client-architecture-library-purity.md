@@ -34,3 +34,10 @@ Decision: keep `clap` as a direct dependency of the `treetime` library crate. Do
 
 - [Command modules contain shared operations that belong in domain layers](H-core-command-module-shared-ops-entanglement.md)
 - [Remaining architectural debt after domain module extraction](M-core-remaining-architectural-debt-after-extraction.md)
+
+## Related tickets
+
+- [kb/tickets/architecture-add-treetime-python-crate.md](../tickets/architecture-add-treetime-python-crate.md)
+- [kb/tickets/architecture-migrate-command-tests-with-dissolution.md](../tickets/architecture-migrate-command-tests-with-dissolution.md)
+- [kb/tickets/architecture-move-commands-to-cli-crate.md](../tickets/architecture-move-commands-to-cli-crate.md)
+- [kb/tickets/architecture-restructure-packages-for-multi-client.md](../tickets/architecture-restructure-packages-for-multi-client.md)

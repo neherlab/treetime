@@ -18,3 +18,7 @@ Implement a heuristic based on branch lengths, sequence length, or both. Alterna
 
 - Stub: `packages/treetime/src/partition/algo/infer_dense.rs`
 - Consumers: `packages/treetime/src/commands/ancestral/run.rs`, `packages/treetime/src/commands/optimize/run.rs`, `packages/treetime/src/commands/timetree/initialization.rs`
+
+## Related tickets
+
+- [kb/tickets/representation-implement-infer-dense-heuristic.md](../tickets/representation-implement-infer-dense-heuristic.md)

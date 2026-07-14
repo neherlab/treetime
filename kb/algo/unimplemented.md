@@ -90,20 +90,22 @@ After finding optimal root position `x*`:
 
 ## Per-Site Rate Variation
 
-Per-site substitution rate vector `mu^a` where each alignment position evolves at its own rate while sharing the GTR eigendecomposition. Standard GTR uses scalar `mu`; per-site rate variation extends to `mu[seq_len]`. The eigenvalues and eigenvectors are shared - only the eigenvalue scaling changes per site, making this cheap to implement.
+The design document specifies a fixed rate vector $\mu^a$, where $a$ indexes alignment sites and each rate scales a shared GTR rate matrix. [`kb/_raw/sequence_evolution.md#L87-L89`](../_raw/sequence_evolution.md#L87-L89) This contract differs from two related models:
 
-This is the "+Γ" capability (Yang 1994) used as a standard feature in phylogenetic analysis. The design document (`../_raw/sequence_evolution.md:87-89`) specifies this as a distinct feature from full site-specific GTR.
+- Discrete-gamma among-site rate variation integrates over latent rate categories, $L_a = \sum_k w_k L_a(r_k)$, rather than assigning one known rate to each site.
+- Full site-specific GTR allows parameters such as equilibrium frequencies $\pi^a$ to vary by site, so the rate-matrix eigendecomposition can also vary by site.
 
-v0: per-site `mu` is part of `GTR_site_specific(GTR)` (`#GTR_site_specific`) in [`packages/legacy/treetime/treetime/gtr_site_specific.py`](../../packages/legacy/treetime/treetime/gtr_site_specific.py).
-v1: `GTR.mu` (`#mu`) is scalar `f64` at [`packages/treetime/src/gtr/gtr.rs#L173`](../../packages/treetime/src/gtr/gtr.rs#L173). No per-site rate support.
+v0 represents per-site rates and equilibrium frequencies in `GTR_site_specific`. Its implementation recomputes transition-matrix decompositions by site even when parameters happen to permit reuse. [`packages/legacy/treetime/treetime/gtr_site_specific.py`](../../packages/legacy/treetime/treetime/gtr_site_specific.py) Exact parity therefore concerns transition probabilities and inferred outputs; v1 may share a decomposition only if it produces the same numerical result under the approved contract.
 
-Known issue: [Per-site rate variation not implemented](../issues/M-gtr-per-site-rate-variation.md).
+v1 stores scalar `mu` and optional `site_rates`. Its core transition matrices, dense propagation, and sparse explicit-position propagation consume the vector. Rate construction or loading, compressed fixed-position behavior, optimizer coverage, validation, serialization, CLI wiring, and end-to-end parity remain unresolved. [`packages/treetime/src/gtr/gtr.rs#L184-L193`](../../packages/treetime/src/gtr/gtr.rs#L184-L193)
+
+Known issue: [kb/issues/M-gtr-per-site-rate-variation.md](../issues/M-gtr-per-site-rate-variation.md).
 
 ### Algorithm
 
-For each site `a`, the matrix exponential becomes `exp(Q * mu_a * t)`. With eigendecomposition `Q = V * diag(lambda) * V_inv`, this is `V * diag(exp(lambda * mu_a * t)) * V_inv`. The eigenvectors `V`, `V_inv` are computed once; only the `exp(lambda_k * mu_a * t)` terms change per site.
+For a fixed supplied rate $\mu_a$, the matrix exponential is $\exp(Q\mu_a t)$. When $Q$ is shared, an implementation may compute $Q = V\operatorname{diag}(\lambda)V^{-1}$ once and evaluate $V\operatorname{diag}(\exp(\lambda_k\mu_a t))V^{-1}$ per site. Discrete-gamma inference instead evaluates and weights multiple category-specific likelihoods for every site.
 
-Reference: <a id="cite-2"></a>[Yang 1994](https://doi.org/10.1007/BF00178256) [[2](#ref-2)]
+Reference: <a id="cite-2"></a>[Yang 1994](https://doi.org/10.1007/BF00160154) [[2](#ref-2)]
 
 ---
 
@@ -127,14 +129,14 @@ v1: `GTR.is_site_specific` (`#is_site_specific`) field exists (always false); no
 
 ## Stochastic Polytomy Resolution
 
-Coalescent-based stochastic resolution of polytomies as an alternative to the greedy deterministic method. Produces more realistic tree topologies by sampling from the Kingman coalescent process (<a id="cite-3"></a>[Kingman 1982](<https://doi.org/10.1016/0304-4149(82)90011-4>) [[3](#ref-3)]) rather than always merging the highest-gain pair.
+Mutation-conditioned stochastic topology refinement as an alternative to the greedy deterministic method. The v0 generator combines mutation-removal and branch-merger events; it is not an ordinary Kingman sampler and can leave a multifurcation unresolved.
 
 v0: `generate_subtree()` (`#generate_subtree`) in [`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011), dispatched by `resolve_polytomies()` (`#resolve_polytomies`).
-v1: not ported - v1 has greedy deterministic approach only. Known issue: [Stochastic polytomy resolution not implemented](../issues/N-timetree-stochastic-polytomy-unimplemented.md). CLI: `--stochastic-resolve` (v0), `--greedy-resolve` (v0 inverse). v0 prints a deprecation warning for greedy mode, intending to make stochastic the default ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
+v1: not ported - v1 has greedy deterministic approach only. Known issue: [kb/issues/N-timetree-stochastic-polytomy-unimplemented.md](../issues/N-timetree-stochastic-polytomy-unimplemented.md). CLI: `--stochastic-resolve` (v0), `--greedy-resolve` (v0 inverse). v0 prints a deprecation warning for greedy mode, intending to make stochastic the default ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
 
 ### Background
 
-The greedy method (`_poly()` in v0, `resolve_polytomies()` in v1) always merges the pair with the highest likelihood gain. This biases toward caterpillar-like (comb) topologies because after the first merge creates a new internal node, subsequent merges preferentially attach to it (<a id="cite-4"></a>[Sagulenko et al. 2018](https://doi.org/10.1093/ve/vex042) [[4](#ref-4)], Section 2.6). The stochastic method samples resolutions from the Kingman coalescent process, producing tree shapes consistent with population dynamics. v0 intended to make stochastic the default: "Stochastic resolution will become the default in future versions" ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
+The greedy method (`_poly()` in v0, `resolve_polytomies()` in v1) always merges the pair with the highest likelihood gain. This biases toward caterpillar-like (comb) topologies because after the first merge creates a new internal node, subsequent merges preferentially attach to it (<a id="cite-4"></a>[Sagulenko et al. 2018](https://doi.org/10.1093/ve/vex042) [[4](#ref-4)], Section 2.6). The stochastic method instead samples from v0's specialized event generator. v0 intended to make stochastic the default: "Stochastic resolution will become the default in future versions" ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
 
 ### Algorithm (`generate_subtree()`, [packages/legacy/treetime/treetime/treetime.py#L872-L1011](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011))
 
@@ -290,7 +292,7 @@ v1: functionality exists in the optimize command but not as a GTR method.
 Analysis pipeline that identifies recurrent mutations - sites where the same mutation occurred independently on multiple branches, indicating convergent evolution, recombination, or sequencing artifacts.
 
 v0: `scan_homoplasies()` (`#scan_homoplasies`) in [`packages/legacy/treetime/treetime/wrappers.py#L82-L139`](../../packages/legacy/treetime/treetime/wrappers.py#L82-L139).
-v1: `unimplemented!()` at [`packages/treetime/src/commands/homoplasy/run.rs#L5`](../../packages/treetime/src/commands/homoplasy/run.rs#L5).
+v1: returns an explicit not-implemented error at [`packages/treetime/src/commands/homoplasy/run.rs#L6-L8`](../../packages/treetime/src/commands/homoplasy/run.rs#L6-L8).
 
 ### Algorithm
 
@@ -349,14 +351,6 @@ v1: `todo!()` at [`packages/treetime/src/timetree/inference/branch_length_likeli
 
 ---
 
-## Nexus File Reading
-
-Parse Nexus tree format. The `convert` CLI command supports multiple tree formats but Nexus reading is not yet implemented.
-
-v1: `unimplemented!()` at [`packages/treetime-cli/src/convert/convert.rs#L90`](../../packages/treetime-cli/src/convert/convert.rs#L90).
-
----
-
 ## ~~Iterative GTR for Discrete Traits~~ (Ported)
 
 Iterative parameter estimation for discrete trait (mugration) GTR models following the Expectation-Maximization framework ([Dempster, Laird & Rubin 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x)). The E-step computes posterior joint parent-child state distributions via Felsenstein's pruning algorithm ([Felsenstein 1981](https://pubmed.ncbi.nlm.nih.gov/7288891/)), counting expected transitions and dwell times across all edges. The M-step re-estimates the symmetric exchangeability matrix W, equilibrium frequencies pi, and scalar rate mu from these sufficient statistics. Rate optimization uses Brent's method with bracket validation.
@@ -369,7 +363,7 @@ v1: `refine_gtr_iterative()` in [`packages/treetime/src/gtr/refinement.rs`](../.
 ## References
 
 - <a id="ref-1"></a>Pupko, Tal, Itsik Pe'er, Ron Shamir, and Dan Graur. 2000. "A Fast Algorithm for Joint Reconstruction of Ancestral Amino Acid Sequences." _Molecular Biology and Evolution_ 17(6):890-896. https://doi.org/10.1093/oxfordjournals.molbev.a026369 [↩](#cite-1)
-- <a id="ref-2"></a>Yang, Ziheng. 1994. "Maximum Likelihood Phylogenetic Estimation from DNA Sequences with Variable Rates over Sites: Approximate Methods." _Journal of Molecular Evolution_ 39(3):306-314. https://doi.org/10.1007/BF00178256 [↩](#cite-2)
+- <a id="ref-2"></a>Yang, Ziheng. 1994. "Maximum Likelihood Phylogenetic Estimation from DNA Sequences with Variable Rates over Sites: Approximate Methods." _Journal of Molecular Evolution_ 39(3):306-314. https://doi.org/10.1007/BF00160154 [↩](#cite-2)
 - <a id="ref-3"></a>Kingman, J. F. C. 1982. "The Coalescent." _Stochastic Processes and their Applications_ 13(3):235-248. https://doi.org/10.1016/0304-4149(82)90011-4 [↩](#cite-3)
 - <a id="ref-4"></a>Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-4)
 - <a id="ref-5"></a>Dempster, Arthur P., Nan M. Laird, and Donald B. Rubin. 1977. "Maximum Likelihood from Incomplete Data via the EM Algorithm." _Journal of the Royal Statistical Society: Series B_ 39(1):1-38. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x

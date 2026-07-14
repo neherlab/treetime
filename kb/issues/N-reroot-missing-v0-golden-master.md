@@ -17,7 +17,7 @@ Negligible. The objective is unit-tested against the clock-set propagation it mi
 
 ## Proposed test
 
-Capture the v0 min-dev root on a small dataset (e.g. flu/h3n2/20) by running v0 rerooting, then assert the v1 root edge and split fraction agree within tolerance. Cross-check against `clock --reroot=min-dev`, which shares the same objective.
+Capture the v0 min-dev root on a small dataset by running v0 rerooting, then assert that the v1 optimize path selects the same root edge and matches the split fraction and incident lengths within the project's $10^{-6}$ numerical contract. Compare the clock path separately as an expected detector for its known objective and split-optimizer divergences.
 
 ## Locations
 
@@ -26,3 +26,12 @@ Capture the v0 min-dev root on a small dataset (e.g. flu/h3n2/20) by running v0 
 - v0 reference [packages/legacy/treetime/treetime/treeregression.py](../../packages/legacy/treetime/treetime/treeregression.py)
 - [kb/proposals/reroot-generic-scoring-architecture.md](../proposals/reroot-generic-scoring-architecture.md)
 - [kb/proposals/optimize-reroot-support.md](../proposals/optimize-reroot-support.md)
+
+## Related tickets
+
+- [kb/tickets/test-reroot-min-dev-v0-golden-master.md](../tickets/test-reroot-min-dev-v0-golden-master.md)
+
+## Related issues
+
+- [M-clock-mindev-wrong-objective.md](M-clock-mindev-wrong-objective.md)
+- [N-reroot-split-optimizer-default-diverges-from-v0.md](N-reroot-split-optimizer-default-diverges-from-v0.md)

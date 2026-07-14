@@ -25,8 +25,9 @@ Extract the root search algorithm from `clock/find_best_root/` into a new `reroo
 - Proposal: [reroot-generic-scoring-architecture.md](reroot-generic-scoring-architecture.md)
 - Issues: [kb/issues/M-clock-mindev-wrong-objective.md](../issues/M-clock-mindev-wrong-objective.md) (fix during clock migration)
 - Status: implemented. The generic `reroot/` module (`RootStats` trait, `EdgeCostFn<S>`, generic search) and `DivStats` scoring live in `packages/treetime/src/reroot/`.
-- Remaining ticket:
-  - [reroot-migrate-clock-to-generic-search.md](../tickets/reroot-migrate-clock-to-generic-search.md) -- `ClockStats` wrapping `ClockSet`, update callers, fix MinDev objective, delete `clock/find_best_root/`
+- Remaining issues:
+  - [kb/issues/N-reroot-clock-search-duplicates-generic-module.md](../issues/N-reroot-clock-search-duplicates-generic-module.md) -- preserve the approved clock statistics boundary while migrating callers
+  - [kb/issues/N-reroot-split-optimizer-default-diverges-from-v0.md](../issues/N-reroot-split-optimizer-default-diverges-from-v0.md) -- decide split-position optimizer parity independently
 
 ### 2. Optimize reroot support
 

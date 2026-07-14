@@ -32,4 +32,4 @@ Tests check degree counts but not leaf reachability, edge count consistency, or 
 
 ## Related issues
 
-- Source: [N-timetree-polytomy-test-improvements.md](../issues/N-timetree-polytomy-test-improvements.md) -- delete after full resolution
+- Source: [kb/issues/N-timetree-polytomy-test-improvements.md](../issues/N-timetree-polytomy-test-improvements.md) -- delete after full resolution

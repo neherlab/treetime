@@ -2,7 +2,7 @@
 
 Generic, scoring-pluggable root search shared across commands. The search algorithm is decoupled from any particular objective through the `RootStats` trait, so the same machinery serves clock-based rerooting (variance-weighted regression, dated tips) and date-free rerooting (divergence variance).
 
-The clock command currently retains its own copy of the search in `clock/find_best_root/`; migrating it onto this generic module is tracked separately (see `kb/tickets/reroot-migrate-clock-to-generic-search.md`).
+The clock command currently retains its own copy of the search in `clock/find_best_root/`; its migration contract is tracked in [kb/issues/N-reroot-clock-search-duplicates-generic-module.md](../issues/N-reroot-clock-search-duplicates-generic-module.md).
 
 Design rationale and the full derivation live in the proposals:
 

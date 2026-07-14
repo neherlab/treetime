@@ -33,3 +33,7 @@ After computing confidence bounds, the code clamps the point estimate to lie wit
 - Confidence intervals are symmetric when they should be asymmetric for short branches
 - Graph state corruption if third rate-susceptibility pass diverges from original
 - Inconsistent point estimates hidden instead of flagged
+
+## Related tickets
+
+- [kb/tickets/timetree-confidence-interval-computation-deficiencies.md](../tickets/timetree-confidence-interval-computation-deficiencies.md)

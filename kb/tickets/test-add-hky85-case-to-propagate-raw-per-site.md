@@ -20,4 +20,4 @@ Add an HKY85 (or other non-symmetric model) test case where forward and backward
 
 ## Related issues
 
-- Source: `kb/issues/N-test-quality-deficiencies.md`
+- Source: [kb/issues/N-test-quality-deficiencies.md](../issues/N-test-quality-deficiencies.md)

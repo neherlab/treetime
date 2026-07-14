@@ -13,6 +13,8 @@ Division by near-zero probabilities in the forward pass can amplify numerical er
 
 Golden master tests currently compare v1 dense marginal against v0 with tolerance 1e-6 to 1e-7, absorbing differences from the representation change.
 
+A public Python report observed underflow while multiplying marginal subtree likelihoods for a large polytomy and state space [[issue](https://github.com/neherlab/treetime/issues/39)]. The maintainer identified log-space message accumulation as the remedy [[comment](https://github.com/neherlab/treetime/issues/39#issuecomment-383567696)]. The report is historical evidence for the numerical failure mode; the Rust forward-pass operations and reproduction conditions must be verified independently.
+
 ## Related issues
 
-- Source: [M-ancestral-marginal-probability-space.md](../issues/M-ancestral-marginal-probability-space.md) -- delete after full resolution
+- Source: [kb/issues/M-ancestral-marginal-probability-space.md](../issues/M-ancestral-marginal-probability-space.md) -- delete after full resolution

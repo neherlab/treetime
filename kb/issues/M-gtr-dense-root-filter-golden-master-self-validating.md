@@ -15,3 +15,7 @@ This is an oracle-integrity problem, independent of whether the filtering itself
 ## Fix direction
 
 Recapture from true v0 (`tt.infer_gtr()` with unfiltered `root_state`) and compare against v1 run with `filter_uninformative_root = false` for parity, keeping the filtered behavior under an explicit, separately validated path. Requires team decision on the nucleotide filtering policy (the mugration path already defaults to v0 and gates filtering behind `--filter-uninformative-root`).
+
+## Related tickets
+
+- [kb/tickets/test-recapture-dense-gtr-golden-master-from-true-v0.md](../tickets/test-recapture-dense-gtr-golden-master-from-true-v0.md)

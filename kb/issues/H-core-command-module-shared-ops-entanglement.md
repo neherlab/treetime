@@ -59,3 +59,7 @@ Traits and types moved to `partition/` and `payload/`: partition traits (`Partit
 - `homoplasy` -> `ancestral`: `TreetimeAncestralArgs` CLI struct embedding (minor)
 - Output helpers: `write_graph()` duplicated across `ancestral`, `optimize`, `prune` (tracked separately, not yet filed)
 - All commands delegate to `<module>/pipeline.rs` for pure computation. `commands/` (args + I/O handlers) remains in the library; planned move to consumer crates (`app-api`, `app-cli`) is not yet done
+
+## Related tickets
+
+- [kb/tickets/architecture-migrate-command-tests-with-dissolution.md](../tickets/architecture-migrate-command-tests-with-dissolution.md)

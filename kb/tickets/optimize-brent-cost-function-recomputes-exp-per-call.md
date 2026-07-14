@@ -6,4 +6,4 @@ v1: [`packages/treetime/src/optimize/method_brent.rs`](../../packages/treetime/s
 
 ## Related issues
 
-- Source: [N-code-quality-conventions.md](../issues/N-code-quality-conventions.md) -- delete after full resolution
+- Source: [kb/issues/N-code-quality-conventions.md](../issues/N-code-quality-conventions.md) -- delete after full resolution

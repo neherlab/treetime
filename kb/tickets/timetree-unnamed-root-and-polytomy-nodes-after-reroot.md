@@ -18,4 +18,4 @@ Call `assign_node_names` after rerooting and polytomy resolution, matching v0's 
 
 ## Related issues
 
-- Source: [N-timetree-unnamed-root-after-reroot.md](../issues/N-timetree-unnamed-root-after-reroot.md) -- delete after full resolution
+- Source: [kb/issues/N-timetree-unnamed-root-after-reroot.md](../issues/N-timetree-unnamed-root-after-reroot.md) -- delete after full resolution

@@ -10,4 +10,4 @@ Silent NaN/inf propagation in production builds for edge-case inputs. Degenerate
 
 ## Related issues
 
-- Source: [N-numerical-stability-magic-constants.md](../issues/N-numerical-stability-magic-constants.md) -- delete after full resolution
+- Source: [kb/issues/N-numerical-stability-magic-constants.md](../issues/N-numerical-stability-magic-constants.md) -- delete after full resolution

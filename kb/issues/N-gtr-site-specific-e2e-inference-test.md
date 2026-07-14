@@ -17,3 +17,7 @@ The site-specific GTR inference is validated against v0 using synthetic mutation
 ## Dependency
 
 Requires partition integration (`N-gtr-site-specific-partition-integration.md`). The mutation count extraction functions (`get_branch_mutation_matrix`, `accumulate_mutation_counts`) currently produce site-summed `MutationCounts`, not per-site `MutationCountsSiteSpecific`.
+
+## Related tickets
+
+- [kb/tickets/gtr-site-specific-lacks-end-to-end-inference-test.md](../tickets/gtr-site-specific-lacks-end-to-end-inference-test.md)

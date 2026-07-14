@@ -55,3 +55,8 @@ Iterates all graph nodes and collects (name, time) pairs via `filter_map`. Nodes
 - Branch length 0.0 defaults cause division-by-zero or exclusion from optimization
 - Non-converged GTR models used without caller awareness
 - Convergence tracking undercounts changes at unnamed or timeless nodes
+
+## Related tickets
+
+- [kb/tickets/safety-missing-convergence-failure-reporting.md](../tickets/safety-missing-convergence-failure-reporting.md)
+- [kb/tickets/safety-unwrap-or-default-and-silent-fallbacks-on-important-data.md](../tickets/safety-unwrap-or-default-and-silent-fallbacks-on-important-data.md)

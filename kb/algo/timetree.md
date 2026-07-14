@@ -39,15 +39,15 @@ v1: [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../
 
 The Kingman coalescent (<a id="cite-2"></a>[Kingman 1982](<https://doi.org/10.1016/0304-4149(82)90011-4>) [[2](#ref-2)]) provides a prior on internal node times based on population genetics. Under neutral evolution, k lineages in a population of effective size N_e merge backward in time at a pairwise rate, producing a total coalescence rate `lambda(t) = k(k-1) / (2*Tc(t))` where Tc is the coalescence time scale (proportional to N_e). The per-lineage merger rate is `kappa(t) = (k(t)-1) / (2*Tc(t))`, and the integral merger rate `I(t) = integral kappa(t') dt'` accumulates the probability of no coalescence up to time t.
 
-The full coalescent neg-log-likelihood decomposes into per-node contributions via algebraic telescoping of the branch survival integrals. Each branch from parent p to child c contributes survival factor `I(t_p) - I(t_c)`. Summing over all branches and grouping by node, the terms telescope into three pieces:
+For a bifurcating tree, the ordinary Kingman neg-log-likelihood decomposes into per-node contributions via algebraic telescoping of the branch survival integrals. Each branch from parent $p$ to child $c$ contributes neg-log survival term $I(t_p)-I(t_c)$. Summing over all branches and grouping by node, the terms telescope into three pieces:
 
 | Piece                           | Neg-log value           | Purpose                                                                        |
 | ------------------------------- | ----------------------- | ------------------------------------------------------------------------------ |
-| Internal node (all, incl. root) | `m * (I(t) - ln(λ(t)))` | Merger density (m factors of λ) + parent-side survival for m arriving branches |
+| Internal node (all, incl. root) | $I(t)-\ln\lambda(t)$     | Merger density and parent-side branch survival                                |
 | Leaf                            | `-I(t_leaf)`            | Child-side survival credit: removes overcounting from parent's `m*I(t)`        |
 | Root correction                 | `+I(t_root)`            | Root has no parent to provide its child-side subtraction                       |
 
-These three pieces sum to the exact Kingman neg-log-likelihood. This is not an approximation.
+These three pieces sum to the ordinary Kingman neg-log-likelihood for a bifurcating tree. v0 extends an internal node with $k$ children to multiplicity $m=k-1$. Ordinary Kingman merger events are binary, so the multifurcation rule is v0 parity behavior until a binary-resolution or multiple-merger model is approved. See [kb/issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md](../issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md).
 
 v1: [`packages/treetime/src/coalescent/`](../../packages/treetime/src/coalescent/) (9 files).
 v0: [`packages/legacy/treetime/treetime/merger_models.py`](../../packages/legacy/treetime/treetime/merger_models.py).

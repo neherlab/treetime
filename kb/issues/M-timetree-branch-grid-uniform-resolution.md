@@ -32,3 +32,7 @@ This concentrates ~40 of 125 points near the peak while covering up to MAX_BRANC
 ## Fix
 
 Implement a non-uniform grid matching v0's multi-segment design, or use a two-tier approach: fine uniform grid over the peak region concatenated with a coarser grid for the tail. Requires `DistributionFunction` to support non-uniform grids or a resample step.
+
+## Related tickets
+
+- [kb/tickets/timetree-switch-branch-grid-to-nonuniform-spacing.md](../tickets/timetree-switch-branch-grid-to-nonuniform-spacing.md)

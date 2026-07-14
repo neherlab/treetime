@@ -34,4 +34,4 @@ Options:
 
 ## Related issues
 
-- Source: [M-marginal-normalize-neg-infinity-masks-total.md](../issues/M-marginal-normalize-neg-infinity-masks-total.md) -- delete after full resolution
+- Source: [kb/issues/M-marginal-normalize-neg-infinity-masks-total.md](../issues/M-marginal-normalize-neg-infinity-masks-total.md) -- delete after full resolution

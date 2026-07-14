@@ -4,7 +4,7 @@ Both `--plot-rtt` and `--plot-tree` flags are accepted by clap but return an err
 
 ## Location
 
-[`run.rs#L503-L508`](../../packages/treetime/src/commands/timetree/run.rs#L503-L508)
+[`packages/treetime/src/commands/timetree/run.rs#L195-L201`](../../packages/treetime/src/commands/timetree/run.rs#L195-L201)
 
 ## Related issues
 

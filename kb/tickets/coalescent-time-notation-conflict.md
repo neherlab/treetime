@@ -31,4 +31,4 @@ The coalescent integral I(t) = integral from 0 to t of lambda(s) ds uses the TBP
 
 ## Related issues
 
-- Source: [M-coalescent-time-notation-conflict.md](../issues/M-coalescent-time-notation-conflict.md) -- delete after full resolution
+- Source: [kb/issues/M-coalescent-time-notation-conflict.md](../issues/M-coalescent-time-notation-conflict.md) -- delete after full resolution

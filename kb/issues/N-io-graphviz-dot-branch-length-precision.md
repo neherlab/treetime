@@ -23,3 +23,5 @@ format_weight(weight, &NwkWriteOptions {
 
 - Blocked by: [N-io-nwk-writer-3-sigfig-default-truncates-precision.md](N-io-nwk-writer-3-sigfig-default-truncates-precision.md)
 - Design: [kb/proposals/newick-branch-length-precision.md](../proposals/newick-branch-length-precision.md) (Follow-up section)
+
+No implementation ticket is ready until the display precision is approved independently from the exchange-format default.

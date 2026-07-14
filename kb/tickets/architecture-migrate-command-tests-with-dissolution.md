@@ -49,6 +49,6 @@ Stray tests outside commands/ that import `commands::shared::*`:
 
 ## Related issues
 
-- Source: [H-core-command-module-shared-ops-entanglement.md](../issues/H-core-command-module-shared-ops-entanglement.md)
-- Source: [H-core-multi-client-architecture-library-purity.md](../issues/H-core-multi-client-architecture-library-purity.md)
+- Source: [kb/issues/H-core-command-module-shared-ops-entanglement.md](../issues/H-core-command-module-shared-ops-entanglement.md)
+- Source: [kb/issues/H-core-multi-client-architecture-library-purity.md](../issues/H-core-multi-client-architecture-library-purity.md)
 - Prerequisite: `architecture-move-commands-to-cli-crate.md` (the dissolution itself)

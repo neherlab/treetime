@@ -6,19 +6,19 @@ After the branch-length optimization loop converges, prune internal branches too
 
 v0 prunes an internal edge when both conditions hold:
 
-- `bl < 0.1 * one_mutation`, where `one_mutation = 1.0 / sequence_length`
-- `P(zero) > 0.1`, where P(zero) is the probability that the true branch length is zero
+- $b < 0.1m$, where $L$ is the sequence length and $m=1/L$ is the one-mutation resolution
+- the zero-time sequence-transition likelihood for the reconstructed parent and child sequences is greater than $0.1$
 
-The first condition identifies branches shorter than 10% of a single substitution -- too small for the alignment to resolve. The second condition checks whether the optimizer's likelihood surface supports zero length at that edge.
+The first condition identifies branches shorter than 10% of a single substitution. The second evaluates `def GTR.prob_t()` at branch length zero with the reconstructed sequences and their pattern multiplicities, matching `def TreeAnc.prune_short_branches()`. [`packages/legacy/treetime/treetime/treeanc.py#L1475-L1495`](../../packages/legacy/treetime/treetime/treeanc.py#L1475-L1495)
 
-v1 already computes P(zero) via `is_zero_branch_optimal` in `optimize/zero_boundary.rs`, which evaluates the combined derivative at zero and checks whether the likelihood is concave there. The pruning criterion reuses this existing machinery.
+`fn is_zero_branch_optimal()` evaluates a derivative sign and is not equivalent to the v0 likelihood threshold. The pruning implementation must compute the v0 predicate directly.
 
 ## Pipeline insertion
 
 After `run_optimize_loop` completes and before the final `update_marginal` pass:
 
-1. Compute `one_mutation = 1.0 / sequence_length`
-2. For each internal edge: check `bl < 0.1 * one_mutation` AND P(zero) > 0.1
+1. Compute the one-mutation resolution from the sequence length.
+2. For each eligible internal edge, evaluate both v0 pruning conditions.
 3. Collapse marked edges (merge child into parent, creating polytomies)
 4. Reconcile partition topology (`reconcile_topology`, same pattern as `timetree/refinement.rs`)
 5. Run final `update_marginal` on the pruned tree
@@ -32,8 +32,8 @@ The optimization loop already calls `find_zero_optimal_internal_edges` per itera
 ## Locations
 
 - Pipeline insertion: `packages/treetime/src/optimize/pipeline.rs`
-- Zero-branch logic: `packages/treetime/src/optimize/zero_boundary.rs`
-- Topology collapse: reuse `remove_node_if_trivial` from `treetime-graph/src/reroot.rs` or the existing collapse path in `optimize/run_loop.rs`
+- Probability calculation: use the same reconstructed states and pattern multiplicities as v0.
+- Topology collapse: `fn collapse_edge()` [`packages/treetime/src/optimize/topology/collapse.rs#L34-L82`](../../packages/treetime/src/optimize/topology/collapse.rs#L34-L82)
 - Partition reconciliation: `PartitionRerootOps::reconcile_topology` in `partition/traits.rs`
 
 ## Validation
@@ -41,7 +41,7 @@ The optimization loop already calls `find_zero_optimal_internal_edges` per itera
 - flu/h3n2/20: count pruned branches, compare with v0 marginal-mode output
 - Synthetic tree with intentionally short branches: verify threshold matches `0.1 * one_mutation`
 - All branches above threshold: no pruning, output identical to current
-- Root children below threshold: root edge must not be pruned
+- The root has no incoming edge and is excluded; eligible internal children of the root use the ordinary predicate.
 
 ## Related
 

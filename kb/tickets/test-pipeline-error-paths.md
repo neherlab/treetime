@@ -25,4 +25,4 @@ Location: `packages/treetime/src/timetree/pipeline.rs`
 
 ## Related issues
 
-Source: `kb/issues/N-test-coverage-gaps.md`
+Source: [kb/issues/N-test-coverage-gaps.md](../issues/N-test-coverage-gaps.md)

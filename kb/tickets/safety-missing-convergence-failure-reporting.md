@@ -27,4 +27,4 @@ Fix: replace `debug_assert_eq!` with a proper error return or a runtime check th
 
 ## Related issues
 
-- Source: [N-error-suppression-unwrap-or-defaults.md](../issues/N-error-suppression-unwrap-or-defaults.md) -- delete after full resolution
+- Source: [kb/issues/N-error-suppression-unwrap-or-defaults.md](../issues/N-error-suppression-unwrap-or-defaults.md) -- delete after full resolution

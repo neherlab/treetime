@@ -4,6 +4,8 @@ Several defensive programming gaps in polytomy resolution code. None are active 
 
 v1: [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../packages/treetime/src/timetree/optimization/polytomy.rs)
 
+The public tracker discusses broader limitations in the efficiency and information sources used for polytomy resolution [[issue](https://github.com/neherlab/treetime/issues/109)] and the choice between stochastic and greedy resolution [[issue](https://github.com/neherlab/treetime/issues/313)]. These are related design and usage discussions; neither report establishes the Rust numerical defects listed below.
+
 ## Items
 
 ### `ln(0.0)` produces `-Inf` in cost function
@@ -38,4 +40,4 @@ The `unwrap_or(1e-10)` value is an arbitrary floor with no derivation from model
 
 ## Related issues
 
-- Source: [N-timetree-polytomy-numerical-robustness.md](../issues/N-timetree-polytomy-numerical-robustness.md) -- delete after full resolution
+- Source: [kb/issues/N-timetree-polytomy-numerical-robustness.md](../issues/N-timetree-polytomy-numerical-robustness.md) -- delete after full resolution

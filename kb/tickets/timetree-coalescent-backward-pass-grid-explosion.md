@@ -66,6 +66,6 @@ Cap the intermediate grid size in `convolution_function_function`. The result is
 
 ## Related issues
 
-- Source: [H-timetree-coalescent-grid-explosion.md](../issues/H-timetree-coalescent-grid-explosion.md) -- delete after full resolution
+- Source: [kb/issues/H-timetree-coalescent-grid-explosion.md](../issues/H-timetree-coalescent-grid-explosion.md) -- delete after full resolution
 - [M-timetree-branch-grid-uniform-resolution.md](../issues/M-timetree-branch-grid-uniform-resolution.md) -- same underlying grid architecture
 - [M-timetree-marginal-dense-mpox-slow.md](../issues/M-timetree-marginal-dense-mpox-slow.md) -- same convolution resampling mechanism with slow-evolving organisms

@@ -35,4 +35,4 @@ Implement a non-uniform grid matching v0's multi-segment design, or use a two-ti
 
 ## Related issues
 
-- Source: [M-timetree-branch-grid-uniform-resolution.md](../issues/M-timetree-branch-grid-uniform-resolution.md) -- delete after full resolution
+- Source: [kb/issues/M-timetree-branch-grid-uniform-resolution.md](../issues/M-timetree-branch-grid-uniform-resolution.md) -- delete after full resolution

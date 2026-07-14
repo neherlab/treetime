@@ -21,3 +21,7 @@ Different outlier sets lead to different final clock models. On dengue/100: v0 f
 ## v1 Location
 
 `packages/treetime/src/clock/clock_filter.rs:21-105` (`clock_filter_inplace`)
+
+## Related tickets
+
+- [kb/tickets/clock-align-filter-residual-with-v0.md](../tickets/clock-align-filter-residual-with-v0.md)

@@ -4,6 +4,8 @@ Several defensive programming gaps in polytomy resolution code. None are active 
 
 v1: [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../packages/treetime/src/timetree/optimization/polytomy.rs)
 
+The public tracker discusses broader limitations in the efficiency and information sources used for polytomy resolution [[issue](https://github.com/neherlab/treetime/issues/109)] and the choice between stochastic and greedy resolution [[issue](https://github.com/neherlab/treetime/issues/313)]. These are related design and usage discussions; neither report establishes the Rust numerical defects listed below.
+
 ## Items
 
 ### `ln(0.0)` produces `-Inf` in cost function
@@ -35,3 +37,7 @@ The `unwrap_or(1e-10)` value is an arbitrary floor with no derivation from model
 ### `unwrap_or(0.0)` on missing node times
 
 `collect_children_info()` and `resolve_single_polytomy()` use `time.unwrap_or(0.0)` for `None` node times. In calendar time, 0.0 is year 0 CE, producing extreme branch lengths. The current call sequence guarantees all nodes have times before polytomy resolution, but the fallback masks ordering bugs.
+
+## Related tickets
+
+- [kb/tickets/timetree-polytomy-resolution-numerical-robustness.md](../tickets/timetree-polytomy-resolution-numerical-robustness.md)

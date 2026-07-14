@@ -17,4 +17,4 @@ Golden master data in [gm_runner_outputs.json](../../packages/treetime/src/timet
 
 ## Related issues
 
-- Source: [M-timetree-dense-golden-master-node-mismatch.md](../issues/M-timetree-dense-golden-master-node-mismatch.md) -- delete after full resolution
+- Source: [kb/issues/M-timetree-dense-golden-master-node-mismatch.md](../issues/M-timetree-dense-golden-master-node-mismatch.md) -- delete after full resolution

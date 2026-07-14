@@ -16,4 +16,4 @@ The `force_positive_rate: false` path in the pre-filter step does not meaningful
 
 ## Related issues
 
-- Source: [N-clock-chisq-near-zero-determinant.md](../issues/N-clock-chisq-near-zero-determinant.md) -- delete after full resolution
+- Source: [kb/issues/N-clock-chisq-near-zero-determinant.md](../issues/N-clock-chisq-near-zero-determinant.md) -- delete after full resolution

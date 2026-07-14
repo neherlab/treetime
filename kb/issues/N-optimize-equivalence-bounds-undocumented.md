@@ -9,3 +9,7 @@ The bounds are appropriate for comparing two different algorithmic representatio
 ## Proposed solution
 
 Add inline comments explaining why each bound is set to its current value and under what conditions it could be tightened.
+
+## Related tickets
+
+- [kb/tickets/optimize-dense-sparse-equivalence-bounds-undocumented.md](../tickets/optimize-dense-sparse-equivalence-bounds-undocumented.md)

@@ -18,14 +18,22 @@ Several distribution multiplication and division paths do not preserve the analy
 
 `Function x Function` and `Formula x Function` multiplication already compute exact analytical endpoints before constructing a uniform result grid. They are not part of this boundary defect.
 
-## Required behavior
+## Endpoint-contact semantics are undecided
 
-For each affected operation, compute the strict intersection
-`[max(a_min, b_min), min(a_max, b_max)]` before evaluating either operand. An endpoint-only contact remains empty, matching the current multiplication semantics. The result grid must include both exact endpoints and use spacing no coarser than the finest relevant input.
+The current implementation treats exact endpoint contact as `Empty` because `multiplication_eval_range()` requires `eval_min < eval_max`. [`packages/treetime-distribution/src/distribution_ops/multiply.rs#L143-L162`](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L143-L162)
 
-## Related ticket
+Let $\varepsilon$ denote v0's numerical tolerance. V0 consolidates operand knots within an $\varepsilon$-expanded intersection and converts a single surviving knot into a delta distribution. [`packages/legacy/treetime/treetime/distribution.py#L82-L145`](../../packages/legacy/treetime/treetime/distribution.py#L82-L145) Exact endpoint contact therefore produces a point distribution in v0 rather than `Empty`.
 
-- [kb/tickets/distribution-preserve-analytic-overlap-boundaries.md](../tickets/distribution-preserve-analytic-overlap-boundaries.md)
+Discarding point contact is an unapproved parity divergence. Choose one contract before implementation:
+
+- match v0 by returning a point distribution evaluated at the shared endpoint; or
+- explicitly approve positive-measure support semantics, document why point contact is discarded, and define how explicit point distributions interact with that rule.
+
+## Required behavior for positive-width intersections
+
+Let $[a_{\min},a_{\max}]$ and $[b_{\min},b_{\max}]$ denote the operand supports. For each affected operation, compute the strict intersection $\left[\max(a_{\min},b_{\min}),\min(a_{\max},b_{\max})\right]$ before evaluating either operand. The result grid must include both exact endpoints and use spacing no coarser than the finest relevant input.
+
+No implementation ticket is ready until endpoint-contact semantics are approved.
 
 ## Related issue
 

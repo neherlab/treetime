@@ -14,3 +14,7 @@ Golden master data in [gm_runner_outputs.json](../../packages/treetime/src/timet
 
 - Recapture golden master data from v0 using the same rerooted tree that v1 produces
 - Compare only the intersection of node keys (leaf nodes match, internal node naming diverges)
+
+## Related tickets
+
+- [kb/tickets/timetree-marginal-dense-golden-master-node-key-mismatch-ebola-20.md](../tickets/timetree-marginal-dense-golden-master-node-key-mismatch-ebola-20.md)

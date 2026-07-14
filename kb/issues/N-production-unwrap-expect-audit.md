@@ -46,3 +46,8 @@ One CLI-reachable panic via `assert!` and approximately 75 production `unwrap()`
 ## Fix
 
 Replace `assert!` in `InDel::new` with `Result` return. For the ~75 production unwraps, prioritize by reachability: graph traversal unwraps and numeric conversion unwraps are highest priority since they are reachable from normal input paths.
+
+## Related tickets
+
+- [kb/tickets/safety-audit-production-unwrap-expect-assert-calls.md](../tickets/safety-audit-production-unwrap-expect-assert-calls.md)
+- [kb/tickets/safety-convert-indel-new-assert-to-result.md](../tickets/safety-convert-indel-new-assert-to-result.md)

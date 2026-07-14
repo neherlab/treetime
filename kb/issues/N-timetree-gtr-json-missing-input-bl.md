@@ -8,3 +8,7 @@ v0 always writes `sequence_evolution_model.txt` regardless of branch length mode
 
 - [Missing output files compared to v0](N-timetree-missing-output-files.md)
   umbrella issue
+
+## Related tickets
+
+- [kb/tickets/timetree-gtr-json-missing-for-input-branch-length-mode.md](../tickets/timetree-gtr-json-missing-for-input-branch-length-mode.md)

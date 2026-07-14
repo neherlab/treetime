@@ -20,4 +20,4 @@ Expected values from v0 `clock_tree.py:277-285` formula, not from running the SU
 
 ## Related issues
 
-Source: `kb/issues/N-test-coverage-gaps.md`
+Source: [kb/issues/N-test-coverage-gaps.md](../issues/N-test-coverage-gaps.md)

@@ -278,7 +278,7 @@ The mathematical core for site-specific GTR is complete and well-tested: 4 golde
 
 - [kb/decisions/partition-system-architecture.md](../decisions/partition-system-architecture.md) - multi-partition design
 - [kb/proposals/config-file-multi-partition.md](../proposals/config-file-multi-partition.md) - user-specified partition config
-- [kb/tickets/gtr-integrate-site-specific-into-partition-system.md](../tickets/gtr-integrate-site-specific-into-partition-system.md) - site-specific GTR integration
+- [kb/issues/N-gtr-site-specific-partition-integration.md](../issues/N-gtr-site-specific-partition-integration.md) - site-specific GTR integration
 - [kb/features/gtr.md](../features/gtr.md) - site-specific models listed as not implemented
 
 ---

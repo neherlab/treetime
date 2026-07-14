@@ -10,4 +10,4 @@ Column-stochastic property violated by additive perturbation.
 
 ## Related issues
 
-- Source: [N-numerical-stability-magic-constants.md](../issues/N-numerical-stability-magic-constants.md) -- delete after full resolution
+- Source: [kb/issues/N-numerical-stability-magic-constants.md](../issues/N-numerical-stability-magic-constants.md) -- delete after full resolution

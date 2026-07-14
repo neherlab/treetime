@@ -19,4 +19,4 @@ After restoring `old_mu`, re-run `run_backward` to recompute profiles consistent
 
 ## Related issues
 
-- Source: [M-mugration-gtr-rate-restore-inconsistency.md](../issues/M-mugration-gtr-rate-restore-inconsistency.md)
+- Source: [kb/issues/M-mugration-gtr-rate-restore-inconsistency.md](../issues/M-mugration-gtr-rate-restore-inconsistency.md)

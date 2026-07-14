@@ -10,5 +10,5 @@ Silent inf/NaN propagation in production builds for edge-case inputs.
 
 ## Related issues
 
-- Source: [N-numerical-stability-magic-constants.md](../issues/N-numerical-stability-magic-constants.md) -- delete after full resolution
+- Source: [kb/issues/N-numerical-stability-magic-constants.md](../issues/N-numerical-stability-magic-constants.md) -- delete after full resolution
 - See also: [N-error-suppression-unwrap-or-defaults.md](../issues/N-error-suppression-unwrap-or-defaults.md) (related debug_assert patterns)

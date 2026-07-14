@@ -41,4 +41,4 @@ Rebuilds the clock model even when nothing moved (`n_diff==0 && n_resolved==0`).
 
 ## Related issues
 
-- Source: [M-inference-forward-backward-asymmetry.md](../issues/M-inference-forward-backward-asymmetry.md) -- delete after full resolution
+- Source: [kb/issues/M-inference-forward-backward-asymmetry.md](../issues/M-inference-forward-backward-asymmetry.md) -- delete after full resolution

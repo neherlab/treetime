@@ -6,4 +6,4 @@ A count-only method (incrementing a counter instead of pushing `Sub` values) wou
 
 ## Related issues
 
-- Source: [N-optimize-initial-guess-alloc.md](../issues/N-optimize-initial-guess-alloc.md) -- delete after full resolution
+- Source: [kb/issues/N-optimize-initial-guess-alloc.md](../issues/N-optimize-initial-guess-alloc.md) -- delete after full resolution

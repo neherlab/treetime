@@ -16,3 +16,7 @@ v0 reproduces the same inconsistency (scipy Brent evaluates the cost function at
 ## Fix
 
 After restoring `old_mu`, re-run `run_backward` to recompute profiles consistent with the restored `mu`. The cost of one extra backward pass per no-bracket iteration is small relative to the correctness guarantee.
+
+## Related tickets
+
+- [kb/tickets/mugration-gtr-rate-restore-without-profile-restore.md](../tickets/mugration-gtr-rate-restore-without-profile-restore.md)

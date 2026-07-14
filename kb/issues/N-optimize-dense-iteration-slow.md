@@ -2,7 +2,7 @@
 
 The `optimize.md` design document notes: "the iteration is slow for dense (which comes down to ancestral being compute heavy)."
 
-Dense marginal reconstruction computes full probability profiles at every node for every alignment position. Each backward/forward pass costs $O(N \cdot s^2 \cdot L)$ where $N$ is the number of nodes, $s$ is the alphabet size, and $L$ is the alignment length -- the standard complexity of <a id="cite-1"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[1](#ref-1)] pruning. For a 30,000-site SARS-CoV-2 alignment with 500 taxa and $s = 5$, each pass processes $\sim 500 \times 25 \times 30{,}000 = 375{,}000{,}000$ operations. Sparse mode avoids this by operating only on variable sites (typically 1-5% of $L$).
+Dense marginal reconstruction computes full probability profiles at every node for every alignment position. Each backward/forward pass costs $O(N \cdot s^2 \cdot L)$ where $N$ is the number of nodes, $s$ is the alphabet size, and $L$ is the alignment length -- the standard complexity of <a id="gloss-use-1"></a>Felsenstein pruning <sup>[1](#gloss-1)</sup> <a id="cite-1"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[1](#ref-1)]. For a 30,000-site SARS-CoV-2 alignment with 500 taxa and $s = 5$, each pass processes $\sim 500 \times 25 \times 30{,}000 = 375{,}000{,}000$ operations. Sparse mode avoids this by operating only on variable sites (typically 1-5% of $L$).
 
 ## Current behavior
 
@@ -36,7 +36,11 @@ The $O(N \cdot s^2 \cdot L)$ complexity is inherent -- the question is constant 
 - [Command-relationships report](../reports/command-relationships/README.md)
 - [Iterative tree refinement: status and recommendations](../reports/iterative-tree-refinement/10-status-and-recommendations.md)
 
+## Glossary
+
+1. <a id="gloss-1"></a> **Felsenstein pruning.** Dynamic programming that computes phylogenetic likelihoods by combining conditional state-likelihood vectors from leaves toward the root. [↩](#gloss-use-1)
+
 ## References
 
-1. <a id="ref-1"></a> Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17:368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-1)
-2. <a id="ref-2"></a> Flouri, Tomas, Fernando Izquierdo-Carrasco, Diego Darriba, Andre J. Aberer, Lam-Tung Nguyen, Bui Quang Minh, Arndt Von Haeseler, and Alexandros Stamatakis. 2015. "The Phylogenetic Likelihood Library." _Systematic Biology_ 64(2):356-362. https://doi.org/10.1093/sysbio/syu084 [↩](#cite-2)
+1. <a id="ref-1"></a> Felsenstein, Joseph. 1981. "Evolutionary trees from DNA sequences: A maximum likelihood approach." _Journal of Molecular Evolution_ 17:368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-1)
+2. <a id="ref-2"></a> Flouri, Tomas, Fernando Izquierdo-Carrasco, Diego Darriba, et al. 2015. "The phylogenetic likelihood library." _Systematic Biology_ 64(2):356-362. https://doi.org/10.1093/sysbio/syu084 [↩](#cite-2)

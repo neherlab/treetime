@@ -20,5 +20,5 @@ Requires partition integration (`N-gtr-site-specific-partition-integration.md`).
 
 ## Related issues
 
-- Source: [N-gtr-site-specific-e2e-inference-test.md](../issues/N-gtr-site-specific-e2e-inference-test.md) -- delete after full resolution
+- Source: [kb/issues/N-gtr-site-specific-e2e-inference-test.md](../issues/N-gtr-site-specific-e2e-inference-test.md) -- delete after full resolution
 - [N-gtr-site-specific-partition-integration.md](../issues/N-gtr-site-specific-partition-integration.md) -- partition integration dependency

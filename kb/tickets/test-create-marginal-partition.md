@@ -18,4 +18,4 @@ Assert: partition variant, GTR alphabet, model name, root sequence consistency.
 
 ## Related issues
 
-Source: `kb/issues/N-test-coverage-gaps.md`
+Source: [kb/issues/N-test-coverage-gaps.md](../issues/N-test-coverage-gaps.md)

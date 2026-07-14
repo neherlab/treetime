@@ -29,3 +29,7 @@ The failure is in the inference output itself. The tests reach the value-compari
 ## Working datasets
 
 flu_h3n2_20 and ebola_20 pass in all test modes, suggesting the issue is data-dependent.
+
+## Related tickets
+
+- [kb/tickets/timetree-gm-runner-missing-internal-node-times.md](../tickets/timetree-gm-runner-missing-internal-node-times.md)

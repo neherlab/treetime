@@ -12,4 +12,4 @@ Score invariant under rerooting, state-set subset relation between parent and ch
 
 ## Related issues
 
-- Source: [N-test-coverage-gaps.md](../issues/N-test-coverage-gaps.md) -- delete after full resolution
+- Source: [kb/issues/N-test-coverage-gaps.md](../issues/N-test-coverage-gaps.md) -- delete after full resolution

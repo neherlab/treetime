@@ -1,4 +1,4 @@
-# Multi-modal surface counterexample with $\ell'(0) < 0$ is not constructed
+# Multi-modal surface counterexample with a negative likelihood derivative at zero is not constructed
 
 ## Problem
 
@@ -33,3 +33,7 @@ v0 uses `scipy.optimize.minimize_scalar(method='brent')` in $\sqrt{t}$ space and
 - Helper: [packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs) (`reconcile_zero_boundary`)
 - Counterexample fixture: [packages/treetime/src/optimize/**tests**/test_dispatch_zero_boundary.rs](../../packages/treetime/src/optimize/__tests__/test_dispatch_zero_boundary.rs) (`make_dinh_matsen_k80_contribution`)
 - Scientific basis: Dinh and Matsen 2017, "The Shape of the One-Dimensional Phylogenetic Likelihood Function", <https://doi.org/10.1214/16-aap1240>
+
+## Related tickets
+
+- [kb/tickets/optimize-multimodal-counterexample-all-three-conditions-unreproduced.md](../tickets/optimize-multimodal-counterexample-all-three-conditions-unreproduced.md)

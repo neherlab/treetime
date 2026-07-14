@@ -1,93 +1,52 @@
-# Stochastic polytomy resolution not implemented
+# Stochastic polytomy event generator not implemented
 
-v1 implements only greedy deterministic polytomy resolution. v0 supports stochastic resolution via coalescent simulation for uncertainty quantification.
+v1 implements greedy deterministic polytomy resolution. v0 also supports a mutation-conditioned stochastic event generator for topology refinement.
 
 ## Background
 
-### Polytomies in phylogenetics
+A <a id="gloss-use-1"></a>polytomy <sup>[1](#gloss-1)</sup> is a node with more than two children. Resolving polytomies is optional topology refinement: timetree inference can retain a multifurcation, while resolution introduces additional internal branches and divergence times.
 
-A polytomy (multifurcation) is a node with more than two children in a phylogenetic tree. Polytomies arise from:
+The v0 generator is not an ordinary Kingman sampler. In `generate_subtree()` at [`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011), it:
 
-- Soft polytomies: Insufficient data to resolve true bifurcating topology
-- Hard polytomies: Genuine simultaneous divergence events (rare)
+1. Sorts children by `time_before_present`.
+2. Marks only mutation-free branches as ready to coalesce.
+3. Samples competing mutation-removal and coalescence events using rates that depend on mutation counts and the ready subset.
+4. Coalesces a sampled pair from the ready subset.
+5. Stops when time is exhausted, potentially leaving a multifurcation.
 
-Most phylogenetic methods assume binary trees. Timetree inference requires resolving polytomies to estimate divergence times on internal branches.
-
-### Resolution approaches
-
-**Greedy deterministic** (implemented in v1):
-
-1. Sort children by estimated divergence time
-2. Iteratively merge closest pair using Brent optimization for branch lengths
-3. Produces single resolved topology
-
-**Stochastic coalescent** (v0 only):
-
-1. Model polytomy as simultaneous sampling from a coalescent process
-2. Sample binary resolution using Kingman coalescent
-3. Repeat to generate distribution of topologies
-4. Select best by likelihood or retain ensemble for uncertainty
-
-### Kingman coalescent
-
-The Kingman coalescent <a id="cite-1"></a>[Kingman 1982](<https://doi.org/10.1016/0304-4149(82)90011-4>) [[1](#ref-1)] describes the genealogical process of a sample
-from a population. For k lineages, coalescent events occur at rate:
-
-```
-λ_k = k(k-1) / (2 * N_e)
-```
-
-where N_e is effective population size. The waiting time to next coalescent is exponentially distributed with rate λ_k. At each event, two lineages merge uniformly at random.
-
-For polytomy resolution, the coalescent provides a principled model for how the unresolved lineages relate, given the time constraint from parent to children.
-
-## v0 implementation
-
-`generate_subtree()` (`#generate_subtree`) in [`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011):
-
-1. Sort polytomy children by `time_before_present`
-2. Initialize coalescent rate from `merger_model` (if available) or dummy rate
-3. Loop until binary or time exhausted:
-   - Branches without pending mutations are "ready to coalesce"
-   - Sample waiting time from exponential distribution
-   - Either remove a mutation from a branch or coalesce two ready branches
-   - Coalescence picks two lineages uniformly at random
-4. Remaining uncoalesced branches become direct children of parent
-
-Key parameters:
-
-- `merger_model.branch_merger_rate(t)`: Time-varying coalescent rate from skyline
-- `mutation_rate = gtr.mu * L`: Substitution rate affects event timing
-- Uses TreeTime's RNG (`self.rng.exponential`, `self.rng.choice`)
+The branch-merger rate can come from `merger_model`; mutation timing uses `gtr.mu * L`. Random draws use NumPy's `default_rng` through `self.rng.exponential`, `self.rng.random`, and `self.rng.choice` in event-dependent call order.
 
 ## v1 status
 
-v1 uses greedy pairwise merging with Brent optimization:
+v1 uses greedy pairwise merging with Brent optimization in [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../packages/treetime/src/timetree/optimization/polytomy.rs). It has no counterpart for v0's stochastic event generator.
 
-- [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../packages/treetime/src/timetree/optimization/polytomy.rs)
-- Deterministic output
-- No stochastic sampling
-- No topology uncertainty quantification
+The public tracker discusses information sources and efficiency for polytomy resolution [[issue](https://github.com/neherlab/treetime/issues/109)] and comparison of stochastic and greedy resolution [[issue](https://github.com/neherlab/treetime/issues/313)]. This issue tracks the narrower v0 parity gap.
 
 ## Impact
 
-- Users needing topology uncertainty from polytomy resolution must use v0
-- Greedy resolution produces a single "best" topology without confidence measure
-- For trees with many polytomies, the deterministic choice may bias downstream analysis
-- The star tree paradox <a id="cite-3"></a>[Lewis, Holder, and Holsinger 2005](https://doi.org/10.1080/10635150590924208) [[3](#ref-3)] shows that unresolved polytomies can bias inference toward the star topology in Bayesian analysis; stochastic resolution mitigates this by exploring the space of binary resolutions
+- v1 cannot reproduce v0's stochastic topology-generation behavior.
+- Greedy and stochastic resolution can produce different topology and timing inputs for downstream inference.
+- v0's specialized event generator is not a calibrated posterior over resolutions. The star tree paradox concerns posterior support for arbitrary resolved topologies when data arise from a star tree; proposed remedies give unresolved topologies explicit prior mass rather than randomly resolving them <a id="cite-1"></a>[Lewis et al. 2005](https://doi.org/10.1080/10635150590924208) [[1](#ref-1)]. A calibrated topology-uncertainty feature would require a separately approved target distribution and validation contract.
 
 ## Algorithm detail
 
-See [Stochastic Polytomy Resolution](../algo/unimplemented.md#stochastic-polytomy-resolution) for the full v0 algorithm walkthrough.
+See [kb/algo/unimplemented.md](../algo/unimplemented.md#stochastic-polytomy-resolution) for the v0 algorithm walkthrough.
 
-The TreeTime pipeline <a id="cite-2"></a>[Sagulenko, Puller, and Neher 2018](https://doi.org/10.1093/ve/vex042) [[2](#ref-2)] describes the coalescent-based polytomy resolution as part of the iterative timetree refinement.
+## Decisions required
+
+- Choose exact seeded parity, which requires the pinned NumPy reference version, NumPy `default_rng` PCG64, parity with NumPy's exponential, uniform-random, and choice transformations, and identical draw ordering; or choose a Rust RNG with distributional and invariant-based comparison.
+- Define whether the CLI exposes v0's specialized generator as parity behavior or adopts a separately approved stochastic topology model.
+
+No implementation ticket is ready until these contracts are approved.
 
 ## Cross-references
 
-- [Polytomy resolution design](../reports/iterative-tree-refinement/7-polytomy-resolution.md): Detailed design for polytomy resolution in the iteration loop.
+- [kb/reports/iterative-tree-refinement/7-polytomy-resolution.md](../reports/iterative-tree-refinement/7-polytomy-resolution.md)
+
+## Glossary
+
+1. <a id="gloss-1"></a> **Polytomy.** A tree node with more than two children. [↩](#gloss-use-1)
 
 ## References
 
-1. <a id="ref-1"></a> Kingman, John F. C. 1982. "The Coalescent." _Stochastic Processes and Their Applications_ 13(3):235-248. https://doi.org/10.1016/0304-4149(82)90011-4 [↩](#cite-1)
-2. <a id="ref-2"></a> Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-2)
-3. <a id="ref-3"></a> Lewis, Paul O., Mark T. Holder, and Kent E. Holsinger. 2005. "Polytomies and Bayesian Phylogenetic Inference." _Systematic Biology_ 54(2):241-253. https://doi.org/10.1080/10635150590924208 [↩](#cite-3)
+1. <a id="ref-1"></a> Lewis, Paul O., Mark T. Holder, and Kent E. Holsinger. 2005. "Polytomies and Bayesian phylogenetic inference." _Systematic Biology_ 54(2):241-253. https://doi.org/10.1080/10635150590924208 [↩](#cite-1)

@@ -29,4 +29,4 @@ Wire `--tip-slack` through to `ClockParams.variance_factor` and match v0's defau
 
 ## Related issues
 
-- Source: [M-clock-covariation-overdispersion.md](../issues/M-clock-covariation-overdispersion.md) -- delete after full resolution
+- Source: [kb/issues/M-clock-covariation-overdispersion.md](../issues/M-clock-covariation-overdispersion.md) -- delete after full resolution

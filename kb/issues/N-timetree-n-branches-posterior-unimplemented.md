@@ -5,3 +5,7 @@ The `--n-branches-posterior` flag is accepted by clap but returns an error at ru
 ## Location
 
 [`run.rs#L177`](../../packages/treetime/src/commands/timetree/run.rs#L177)
+
+## Related tickets
+
+- [kb/tickets/timetree-implement-n-branches-posterior.md](../tickets/timetree-implement-n-branches-posterior.md)

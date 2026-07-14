@@ -14,3 +14,7 @@ v0 records the optimized Tc in `molecular_clock.txt` and the coal_LH in `trace_r
   skyline results not written to any file
 - [Missing output files compared to v0](N-timetree-missing-output-files.md)
   umbrella issue
+
+## Related tickets
+
+- [kb/tickets/timetree-output-json-missing-coalescent-parameters.md](../tickets/timetree-output-json-missing-coalescent-parameters.md)

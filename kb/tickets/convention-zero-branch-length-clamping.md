@@ -6,4 +6,4 @@ This is a documented limitation matching v0 behavior. The consequence: [test ass
 
 ## Related issues
 
-- Source: [N-core-branch-length-clamping.md](../issues/N-core-branch-length-clamping.md) -- delete after full resolution
+- Source: [kb/issues/N-core-branch-length-clamping.md](../issues/N-core-branch-length-clamping.md) -- delete after full resolution

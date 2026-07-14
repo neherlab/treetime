@@ -14,4 +14,4 @@ Replace `assert!` calls in `InDel::new` with `Result` return type and proper err
 
 ## Related issues
 
-- Source: [N-production-unwrap-expect-audit.md](../issues/N-production-unwrap-expect-audit.md) -- delete after full resolution
+- Source: [kb/issues/N-production-unwrap-expect-audit.md](../issues/N-production-unwrap-expect-audit.md) -- delete after full resolution

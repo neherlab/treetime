@@ -21,3 +21,7 @@ The optimize command hoisted indel rate estimation before its loop (PR #619), bu
 ## Fix
 
 Hoist `estimate_indel_rate()` before the timetree refinement loop, matching the optimize command pattern. Compute once and hold fixed across iterations.
+
+## Related tickets
+
+- [kb/tickets/timetree-hoist-indel-rate-estimation-before-refinement-loop.md](../tickets/timetree-hoist-indel-rate-estimation-before-refinement-loop.md)

@@ -34,3 +34,7 @@ v1 sums `ln(dist.eval(child_time - parent_time))` over all edges with assigned t
 The metric drives convergence detection in the EM refinement loop. Different numerical values can cause the loop to terminate at a different iteration, producing different final timetree results.
 
 This is a candidate for alignment with v0's formula if parity is desired, or for explicit documentation as a v1-specific improvement if the new metric is scientifically preferable. Needs discussion.
+
+## Related tickets
+
+- [kb/tickets/timetree-align-positional-likelihood-with-v0.md](../tickets/timetree-align-positional-likelihood-with-v0.md)

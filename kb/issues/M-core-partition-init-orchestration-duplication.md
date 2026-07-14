@@ -33,3 +33,7 @@ Implement partition configuration: commands receive configured partitions rather
 - `kb/issues/N-representation-infer-dense-stub.md` -- dense/sparse auto-detection stub
 - `kb/proposals/config-file-multi-partition.md` -- config file proposal
 - `kb/reports/partition-configuration.md` -- full partition configuration report
+
+## Related tickets
+
+- [kb/tickets/architecture-extract-shared-partition-init-helper.md](../tickets/architecture-extract-shared-partition-init-helper.md)

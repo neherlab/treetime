@@ -1,32 +1,33 @@
-# Per-site rate variation not implemented
+# Per-site rate variation is not inferred or wired end to end
 
-v1 uses a scalar substitution rate `mu` shared across all alignment positions. The design document (`../_raw/sequence_evolution.md:87-89`) specifies per-site rate variation via a vector `mu^a`, where each site `a` evolves at its own rate while sharing the same eigendecomposition.
+v1 represents and propagates an optional per-site rate vector, but no command constructs that vector from input or inference and optimizer coverage is incomplete. The design document specifies a vector $\mu^a$, where $a$ indexes sites and each site evolves at its own supplied rate. [`kb/_raw/sequence_evolution.md#L87-L89`](../_raw/sequence_evolution.md#L87-L89)
 
 ## Background
 
-Among-site rate variation (ASRV) models the fact that different alignment positions evolve at different rates. Conserved positions (active sites, structural contacts) change slowly; variable positions (loops, surface residues) change fast. Without ASRV, branch length estimates are biased because the model assumes uniform rates across all sites.
+<a id="gloss-use-1"></a>Among-site rate variation (ASRV) <sup>[1](#gloss-1)</sup> models the fact that different alignment positions evolve at different rates. Conserved positions (active sites, structural contacts) change slowly; variable positions (loops, surface residues) change fast. Without ASRV, branch length estimates are biased because the model assumes uniform rates across all sites.
 
 The standard approach in phylogenetics is the discrete gamma model <a id="cite-1"></a>[Yang 1994](https://doi.org/10.1007/BF00160154) [[1](#ref-1)]: approximate the continuous gamma distribution of rates with K discrete categories (typically K=4), each with a rate multiplier. This is the "+Γ" suffix in model notation (e.g., "GTR+Γ4").
 
-The design document describes a simpler approach: store a rate vector `mu^a` per site. The eigendecomposition is shared across all sites because only the rate scaling changes, not the rate matrix structure. The matrix exponential becomes `exp(Q * mu_a * t)` where `Q` is decomposed once and eigenvalues are scaled by `mu_a` per site.
+The design document's fixed rate-vector contract is distinct from discrete-gamma ASRV. For site $a$, a discrete-gamma model evaluates likelihood $L_a=\sum_k w_kL_a(r_k)$ over rate categories $k$, with category weights $w_k$ and rate multipliers $r_k$; a supplied vector evaluates one rate $\mu_a$ per site. Full site-specific GTR is a third contract in which equilibrium frequencies $\pi^a$ or other rate-matrix parameters also vary by site.
 
 ## v1 current state
 
-`packages/treetime/src/gtr/gtr.rs:172:` defines `pub mu: f64` as a scalar. All sites share this single rate. The `is_site_specific: bool` field has been removed from `GTR`.
+`struct GTR` stores scalar `mu` together with optional `site_rates`. [`packages/treetime/src/gtr/gtr.rs#L184-L193`](../../packages/treetime/src/gtr/gtr.rs#L184-L193) Its transition-matrix paths apply the site-rate vector, and dense marginal propagation passes position-specific matrices. [`packages/treetime/src/gtr/gtr.rs#L303-L420`](../../packages/treetime/src/gtr/gtr.rs#L303-L420) [`packages/treetime/src/partition/marginal_passes.rs#L149-L158`](../../packages/treetime/src/partition/marginal_passes.rs#L149-L158)
+
+The remaining gaps are rate-vector construction or loading, command wiring, compressed fixed-position behavior, optimizer coverage, validation, serialization, and end-to-end comparison with v0. Sparse explicit positions already index `site_rates[pos]`; this does not define how compressed fixed positions contribute to likelihood or optimization.
 
 ## v0 implementation
 
-`GTR_site_specific` in `packages/legacy/treetime/treetime/gtr_site_specific.py` (495 lines) implements both per-site `mu` and per-site `pi`. The per-site `mu` path reuses the shared eigendecomposition, scaling eigenvalues per site.
+`GTR_site_specific` in `packages/legacy/treetime/treetime/gtr_site_specific.py` implements both per-site $\mu$ and per-site $\pi$. The reference loops over sites and recomputes the transition-matrix decomposition even when $\pi$ is shared. V1 can reuse a mathematically shared decomposition only when doing so preserves the approved output-parity contract.
 
-## Implementation pointers
+## Decisions required
 
-The core change is `mu: f64` to an enum or newtype that supports both scalar (all sites same rate) and per-site (vector) modes. A clean approach: keep `mu: f64` as the default scalar rate and add an optional `site_rates: Option<Array1<f64>>` field. When present, `expQt` multiplies eigenvalues by `site_rates[pos]` instead of scalar `mu`. The eigendecomposition stays shared.
+- Choose whether the target is a supplied fixed rate vector, discrete-gamma latent categories, v0 full site-specific inference, or separately exposed contracts, and define normalization for each approved contract.
+- Specify how compressed fixed sites contribute to propagation and optimization; explicit sparse positions already map by alignment position.
+- Define serialization, validation, and CLI behavior.
+- Establish dense, sparse, and optimizer golden masters against v0, with independent analytical tests for any implementation strategy that differs internally.
 
-v0's `GTR_site_specific` in `gtr_site_specific.py` stores per-site mu as a vector and overrides `expQt` to broadcast. Study that implementation for the scaling logic.
-
-The main propagation concern is the marginal backward/forward passes: they call `expQt` per edge. With per-site rates, the transition matrix varies by site. Dense passes already iterate over sites (matrix-vector multiply per site), so the per-site rate slots in naturally. Sparse passes operate on variable sites only and would need the rate at each variable position.
-
-The rate vector itself can be initialized from v0's approach: gamma-distributed rates with K=4 discrete categories, or empirical site rates from mutation counts. The estimation method is a separate concern from the `mu` representation change.
+No implementation ticket is ready until these contracts are decided.
 
 ## Site-specific equilibrium frequencies
 
@@ -50,7 +51,11 @@ These are two independent decisions:
 - [L-gtr-site-specific-partition-integration](N-gtr-site-specific-partition-integration.md) - full site-specific GTR (per-site $\pi$) not yet integrated into partition system
 - [../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) - design document specifying per-site rate variation (lines 81-89)
 
+## Glossary
+
+1. <a id="gloss-1"></a> **Among-site rate variation (ASRV).** Variation in the evolutionary rate among alignment positions. [↩](#gloss-use-1)
+
 ## References
 
-1. <a id="ref-1"></a> Yang, Ziheng. 1994. "Maximum Likelihood Phylogenetic Estimation from DNA Sequences with Variable Rates over Sites: Approximate Methods." _Journal of Molecular Evolution_ 39(3):306-314. https://doi.org/10.1007/BF00160154 [↩](#cite-1)
-2. <a id="ref-2"></a> Siepel, Adam, and David Haussler. 2004. "Phylogenetic Estimation of Context-Dependent Substitution Rates by Maximum Likelihood." _Molecular Biology and Evolution_ 21(3):468-488. https://doi.org/10.1093/molbev/msh039 [↩](#cite-2)
+1. <a id="ref-1"></a> Yang, Ziheng. 1994. "Maximum likelihood phylogenetic estimation from DNA sequences with variable rates over sites: Approximate methods." _Journal of Molecular Evolution_ 39(3):306-314. https://doi.org/10.1007/BF00160154 [↩](#cite-1)
+2. <a id="ref-2"></a> Siepel, Adam, and David Haussler. 2004. "Phylogenetic estimation of context-dependent substitution rates by maximum likelihood." _Molecular Biology and Evolution_ 21(3):468-488. https://doi.org/10.1093/molbev/msh039 [↩](#cite-2)

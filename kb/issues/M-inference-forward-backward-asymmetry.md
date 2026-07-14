@@ -38,3 +38,7 @@ Rebuilds the clock model even when nothing moved (`n_diff==0 && n_resolved==0`).
 - Hidden write side effects in nominally read-only functions
 - GTR inference biased by branch-length clamping
 - Unnecessary clock model rebuilds can prevent convergence detection
+
+## Related tickets
+
+- [kb/tickets/inference-forward-backward-pass-asymmetries.md](../tickets/inference-forward-backward-pass-asymmetries.md)

@@ -23,3 +23,7 @@ Negligible when the initial guess is calibrated (the standard workflow). On data
 ## Cross-references
 
 - [packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs) (`reconcile_zero_boundary`, `grid_search_branch_lengths`)
+
+## Related tickets
+
+- [kb/tickets/optimize-reconcile-grid-extent-argument-unverified.md](../tickets/optimize-reconcile-grid-extent-argument-unverified.md)

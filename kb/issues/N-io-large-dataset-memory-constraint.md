@@ -26,7 +26,7 @@ The entire `Vec<FastaRecord>` must fit in memory. After attachment, sequences ar
 
 True streaming (process each sequence once as it arrives) is blocked by:
 
-1. Length validation: `get_common_length()` at [packages/treetime/src/ancestral/fitch.rs#L520](../../packages/treetime/src/ancestral/fitch.rs#L520) verifies all sequences have uniform length before processing begins
+1. Length validation: `get_common_length()` at [packages/treetime/src/seq/alignment.rs#L6](../../packages/treetime/src/seq/alignment.rs#L6) verifies all sequences have uniform length before processing begins
 
 2. Tree-order access: algorithms traverse the tree in topological order (postorder, then preorder). Leaf data is accessed in tree-traversal order, not FASTA file order
 
@@ -43,6 +43,8 @@ True streaming (process each sequence once as it arrives) is blocked by:
 | 10,000    | 4.4 Mb (TB) | 44 GB    | 88 GB                |
 
 Pandemic-scale datasets (millions of SARS-CoV-2 genomes) or large bacterial genomes (tuberculosis at 4.4 Mb) can exceed typical workstation memory.
+
+Public reports ask about TreeTime operation with approximately 10 million tips [[issue](https://github.com/neherlab/treetime/issues/207)] and 12.68 million tips [[issue](https://github.com/neherlab/treetime/issues/343)]. A maintainer stated that the Python implementation would not work with more than a few thousand tips [[comment](https://github.com/neherlab/treetime/issues/207#issuecomment-1240512184)]. These reports establish the user-facing scale requirement; the Rust peak-memory mechanism described here is implementation-specific.
 
 ## Possible approaches
 
@@ -72,7 +74,7 @@ Adds external dependency and I/O overhead.
 
 ## Related issues
 
-- [Sequence attachment has O(n squared) complexity](M-io-sequence-attachment-quadratic.md) - attachment performance
+- [M-io-sequence-attachment-quadratic.md](M-io-sequence-attachment-quadratic.md) - attachment performance
 - [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md) - related input architecture
 
 ## Related documentation

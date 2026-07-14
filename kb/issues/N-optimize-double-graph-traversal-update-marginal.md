@@ -11,3 +11,7 @@
 Each traversal does a full backward + forward pass over the tree. The per-node partition work dominates, but the graph traversal overhead and synchronization barriers double.
 
 A single-traversal version could accept both partition types via a trait object (`dyn PartitionMarginalOps`) or an enum wrapper, processing all partitions at each node in one pass.
+
+## Related tickets
+
+- [kb/tickets/optimize-update-marginal-double-graph-traversal.md](../tickets/optimize-update-marginal-double-graph-traversal.md)

@@ -1,6 +1,6 @@
-# Sequence attachment has O(n squared) complexity
+# Sequence attachment has $O(n^2)$ complexity
 
-The sequence attachment loop performs a linear search through all sequences for each leaf node, resulting in O(n squared) complexity where n is the number of leaves/sequences.
+The sequence attachment loop performs a linear search through all sequences for each leaf node, resulting in $O(n^2)$ complexity where $n$ is the number of leaves or sequences.
 
 ## Root cause
 

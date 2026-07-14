@@ -24,4 +24,4 @@ Hoist `estimate_indel_rate()` before the timetree refinement loop, matching the 
 
 ## Related issues
 
-- Source: [N-timetree-indel-rate-recomputed-per-iteration.md](../issues/N-timetree-indel-rate-recomputed-per-iteration.md) -- delete after full resolution
+- Source: [kb/issues/N-timetree-indel-rate-recomputed-per-iteration.md](../issues/N-timetree-indel-rate-recomputed-per-iteration.md) -- delete after full resolution

@@ -21,3 +21,7 @@ On synthetic fixtures designed to stress the optimizer, and on multi-modal surfa
 ## Cross-references
 
 - [packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs) (`grid_search_branch_lengths`, `GRID_SEARCH_MIN_UPPER`)
+
+## Related tickets
+
+- [kb/tickets/optimize-grid-search-upper-bound-capped-at-half.md](../tickets/optimize-grid-search-upper-bound-capped-at-half.md)

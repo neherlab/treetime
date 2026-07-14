@@ -13,3 +13,7 @@ Low. The tighter tolerance may cause the Brent optimizer to take a few extra fun
 Add a `tolerance` parameter to `run_optimize_mixed()` or pass it through `BranchOptMethod`. The pre-step would use `tol=0.02` (matching v0 iteration 0), while the optimize command's loop would use the progressive schedule.
 
 Requires plumbing the tolerance through the Brent method implementation in `method_brent.rs`, which currently uses `argmin::BrentOpt` with hardcoded tolerance.
+
+## Related tickets
+
+- [kb/tickets/optimize-match-v0-coarse-tolerance-in-pre-step.md](../tickets/optimize-match-v0-coarse-tolerance-in-pre-step.md)

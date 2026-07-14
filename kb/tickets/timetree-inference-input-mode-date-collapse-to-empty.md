@@ -18,6 +18,6 @@ Use log-space arithmetic for distribution multiplication, or use a stabilized pr
 
 ## Related issues
 
-- Source: [M-timetree-inference-input-mode-date-collapse.md](../issues/M-timetree-inference-input-mode-date-collapse.md) -- delete after full resolution
+- Source: [kb/issues/M-timetree-inference-input-mode-date-collapse.md](../issues/M-timetree-inference-input-mode-date-collapse.md) -- delete after full resolution
 - [M-timetree-internal-dates-missing-input-bl.md](../issues/M-timetree-internal-dates-missing-input-bl.md): output symptom (missing internal dates in nexus)
 - [M-ancestral-marginal-probability-space.md](../issues/M-ancestral-marginal-probability-space.md): related probability-space issue in dense marginal

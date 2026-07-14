@@ -24,3 +24,7 @@ For dateless leaves (`date == None`), return a zero `ClockSet` (equivalent to `o
 ## Related
 
 - [M-clock-filter-residual-parity.md](M-clock-filter-residual-parity.md): clock filter residual differences between v0 and v1
+
+## Related tickets
+
+- [kb/tickets/clock-dateless-leaf-contribution-biases-regression.md](../tickets/clock-dateless-leaf-contribution-biases-regression.md)

@@ -21,7 +21,7 @@ A `PartitionSpec` type describes what partition to create (alignment path, model
 
 ## Related issues
 
-Source: `kb/issues/M-core-partition-init-orchestration-duplication.md`
+Source: [kb/issues/M-core-partition-init-orchestration-duplication.md](../issues/M-core-partition-init-orchestration-duplication.md)
 Design: `kb/reports/partition-configuration.md`
 Related: `kb/issues/H-core-command-module-shared-ops-entanglement.md`
 Related: `kb/proposals/config-file-multi-partition.md`

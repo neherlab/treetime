@@ -14,7 +14,7 @@ Extract the existing scalar merger-rate formula and make the array calculation d
 
 The broader single shared calendar-time coalescent model proposed in commit `542ac860c7cfa4bab6764aee1d1b3810a09eb54f` is not ready. It depends on unresolved time-coordinate sidedness at event breakpoints, skyline transformation semantics, multiplication ordering, and the missing leaf/root contribution design.
 
-## Related ticket
+## Related tickets
 
 - [kb/tickets/coalescent-extract-scalar-merger-rate-evaluation.md](../tickets/coalescent-extract-scalar-merger-rate-evaluation.md)
 

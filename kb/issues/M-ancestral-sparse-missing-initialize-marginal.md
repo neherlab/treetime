@@ -31,3 +31,7 @@ Calls `create_marginal_partition` then `attach_sequences` then `update_marginal`
 ## Fix
 
 Add `initialize_marginal` call before `update_marginal` in both the nuc sparse path and the AA multi-partition path, matching the nuc dense control flow.
+
+## Related tickets
+
+- [kb/tickets/ancestral-sparse-skips-initialize-marginal.md](../tickets/ancestral-sparse-skips-initialize-marginal.md)

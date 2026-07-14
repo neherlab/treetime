@@ -29,3 +29,7 @@ Tests check degree counts but not leaf reachability, edge count consistency, or 
 ### Tautological time assertion
 
 `test_resolve_polytomies_new_node_has_correct_time` asserts new node time is in `(parent_time, min_child_time)`, which is the exact domain enforced by Brent optimizer bounds. With point distributions (above), the assertion is trivially satisfied. With realistic distributions, the assertion tests a necessary but not sufficient postcondition.
+
+## Related tickets
+
+- [kb/tickets/timetree-polytomy-resolution-test-improvements.md](../tickets/timetree-polytomy-resolution-test-improvements.md)

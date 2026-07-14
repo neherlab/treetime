@@ -11,3 +11,7 @@ Users who invoke `treetime timetree` without `--tree` (expecting tree inference 
 ## Fix
 
 Either implement tree inference from alignment (a large feature tracked in [algo/unimplemented.md](../algo/unimplemented.md)) or replace the `todo!()` with a descriptive error: "Tree inference from alignment is not yet implemented. Provide a tree with --tree."
+
+## Related tickets
+
+- [kb/tickets/timetree-implement-tree-inference-from-alignment.md](../tickets/timetree-implement-tree-inference-from-alignment.md)

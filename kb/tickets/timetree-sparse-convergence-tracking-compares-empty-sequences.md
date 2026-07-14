@@ -20,4 +20,4 @@ Before the off-tree root sequence refactoring, internal node sequences were reta
 
 ## Related issues
 
-- Source: [M-timetree-sparse-convergence-empty-sequences.md](../issues/M-timetree-sparse-convergence-empty-sequences.md) -- delete after full resolution
+- Source: [kb/issues/M-timetree-sparse-convergence-empty-sequences.md](../issues/M-timetree-sparse-convergence-empty-sequences.md) -- delete after full resolution

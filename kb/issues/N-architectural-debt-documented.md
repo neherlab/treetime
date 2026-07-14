@@ -29,3 +29,7 @@ Relative tolerance of 0.001 for Newton's method convergence. Documented and test
 - Low: all three are documented, tested, and stable
 - Mixed stochastic convention increases onboarding cost for GTR contributors
 - Newton tolerance and damping floor values are not configurable but satisfy current use cases
+
+## Related tickets
+
+- [kb/tickets/architecture-documented-debt-gtr-newton-damping.md](../tickets/architecture-documented-debt-gtr-newton-damping.md)

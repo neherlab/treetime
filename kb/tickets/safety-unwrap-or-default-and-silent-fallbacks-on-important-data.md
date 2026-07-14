@@ -42,5 +42,5 @@ Iterates all graph nodes and collects (name, time) pairs via `filter_map`. Nodes
 
 ## Related issues
 
-- Source: [N-error-suppression-unwrap-or-defaults.md](../issues/N-error-suppression-unwrap-or-defaults.md) -- delete after full resolution
+- Source: [kb/issues/N-error-suppression-unwrap-or-defaults.md](../issues/N-error-suppression-unwrap-or-defaults.md) -- delete after full resolution
 - [N-production-unwrap-expect-audit.md](../issues/N-production-unwrap-expect-audit.md) -- related unwrap/expect audit

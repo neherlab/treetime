@@ -1,6 +1,6 @@
 # Homoplasy Analysis
 
-- [ ] **Entire command unimplemented in v1** (runtime path is `unimplemented!`)
+- [ ] **Entire command unimplemented in v1** (runtime path returns an explicit not-implemented error)
 - [x] CLI shape exists, inherits all `ancestral` arguments through flattening
 
 ## v0 Features (All Missing)

@@ -40,5 +40,5 @@ Prioritize by reachability: graph traversal unwraps and numeric conversion unwra
 
 ## Related issues
 
-- Source: [N-production-unwrap-expect-audit.md](../issues/N-production-unwrap-expect-audit.md) -- delete after full resolution
+- Source: [kb/issues/N-production-unwrap-expect-audit.md](../issues/N-production-unwrap-expect-audit.md) -- delete after full resolution
 - [N-error-suppression-unwrap-or-defaults.md](../issues/N-error-suppression-unwrap-or-defaults.md) -- related error suppression patterns

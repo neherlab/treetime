@@ -60,4 +60,4 @@ Initial implementation should expose a minimal API surface covering one command 
 
 ## Related issues
 
-Source: [H-core-multi-client-architecture-library-purity](../issues/H-core-multi-client-architecture-library-purity.md)
+Source: [kb/issues/H-core-multi-client-architecture-library-purity.md](../issues/H-core-multi-client-architecture-library-purity.md)

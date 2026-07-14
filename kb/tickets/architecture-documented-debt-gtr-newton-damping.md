@@ -32,4 +32,4 @@ Relative tolerance of 0.001 for Newton's method convergence. Documented and test
 
 ## Related issues
 
-- Source: [N-architectural-debt-documented.md](../issues/N-architectural-debt-documented.md) -- delete after full resolution
+- Source: [kb/issues/N-architectural-debt-documented.md](../issues/N-architectural-debt-documented.md) -- delete after full resolution

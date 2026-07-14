@@ -10,5 +10,5 @@ Move `fix_branch_length` to `seq/alignment.rs` or inline at the 3 call sites. De
 
 ## Related issues
 
-- Source: [M-core-remaining-architectural-debt-after-extraction](../issues/M-core-remaining-architectural-debt-after-extraction.md)
+- Source: [kb/issues/M-core-remaining-architectural-debt-after-extraction.md](../issues/M-core-remaining-architectural-debt-after-extraction.md)
 - Also tracked in: [C3 zero-branch-length-clamping](convention-zero-branch-length-clamping.md)

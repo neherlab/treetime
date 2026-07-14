@@ -37,11 +37,14 @@ This is a standalone visualization convenience for viewing ancestral reconstruct
 - `fn write_tree_for_partition()` [packages/treetime/src/commands/ancestral/run.rs#L235-L270](../../packages/treetime/src/commands/ancestral/run.rs#L235-L270)
 - `pub fn write_tree_outputs()` and `fn require_ir()` [packages/treetime-io/src/graph.rs#L61-L126](../../packages/treetime-io/src/graph.rs#L61-L126)
 - `fn CommandKind.available_tree_outputs()` [packages/treetime/src/commands/shared/output.rs#L297-L322](../../packages/treetime/src/commands/shared/output.rs#L297-L322)
+- `fn write_graph_file_with()` rejects TreeIR-dependent writers when no projection is available [packages/treetime-io/src/graph.rs#L88-L98](../../packages/treetime-io/src/graph.rs#L88-L98)
 
 ## Validation
 
 - Exercise Fitch, sparse marginal, and dense marginal ancestral runs for every advertised format.
 - Parse and schema-validate the Auspice artifact, then compare semantic fields with the v0 oracle.
+- Compare Fitch topology and branch mutations with v0, and compare its projected root sequence with v0's reconstructed root object.
+- Exercise a recurrent mutation whose parent allele differs from the global reference when validating UShER projection.
 - Inject a projection failure and assert that no requested output path has been created or modified.
 
 ## Ticket readiness
@@ -53,4 +56,5 @@ No implementation ticket is ready. O1 is the reference-parity recommendation, bu
 - [M-timetree-tree-output-inference-metadata-incomplete.md](M-timetree-tree-output-inference-metadata-incomplete.md) - shared mutation, confidence, and annotation contract
 - [M-io-tree-backed-output-order-inconsistent.md](M-io-tree-backed-output-order-inconsistent.md) - shared topology ordering
 - [M-core-mutation-representation-and-format-projection-inconsistent.md](M-core-mutation-representation-and-format-projection-inconsistent.md) - typed mutation projection
+- [H-io-usher-ref-nuc-uses-parent-allele.md](H-io-usher-ref-nuc-uses-parent-allele.md) - global root-reference preservation for UShER
 - [kb/reports/augur-node-data-json.md](../reports/augur-node-data-json.md) - node data JSON shares the same data sources (partition mutations, annotations)

@@ -152,7 +152,7 @@ Sequence length: v0 requires either `--aln` or `--sequence-length` ([`wrappers.p
 
 ## Related issues
 
-- Source: [M-timetree-internal-dates-missing-input-bl.md](../issues/M-timetree-internal-dates-missing-input-bl.md) -- delete after full resolution
+- Source: [kb/issues/M-timetree-internal-dates-missing-input-bl.md](../issues/M-timetree-internal-dates-missing-input-bl.md) -- delete after full resolution
 
 This input-branch-length variant has a distinct root cause from the other timetree missing-date failures. Here the problem is Point-distribution multiplication tolerance, not branch-grid resolution or normalized product handling.
 

@@ -2,6 +2,8 @@
 
 `fn compute_integral_merger_rate()` evaluates $T_c(t)$ once at each lineage-count interval midpoint [packages/treetime/src/coalescent/integration.rs#L44-L71](../../packages/treetime/src/coalescent/integration.rs#L44-L71). The approximation has no stated convergence order, refinement rule, or error bound for a varying skyline.
 
+The ignored analytical test integrates $1/(0.01+0.004t)$ on $[0,10]$ and observes an error of approximately $1.6\times10^{-4}$ [packages/treetime/src/coalescent/__tests__/test_integration.rs#L157-L164](../../packages/treetime/src/coalescent/__tests__/test_integration.rs#L157-L164). V0 uses a different numerical integration rule, so the selected algorithm also requires an explicit parity disposition.
+
 Let $\kappa(t)$ be the per-branch merger rate and let $I(t)$ be its cumulative integral:
 
 $$I(t) = \int_0^t \kappa(s)\,ds.$$

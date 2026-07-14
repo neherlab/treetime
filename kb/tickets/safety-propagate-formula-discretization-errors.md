@@ -14,4 +14,4 @@ These sentinel values are indistinguishable from legitimate states (`Empty` dist
 
 ## Related issues
 
-- Source: [N-distribution-formula-silent-discretization.md](../issues/N-distribution-formula-silent-discretization.md) -- delete after full resolution
+- Source: [kb/issues/N-distribution-formula-silent-discretization.md](../issues/N-distribution-formula-silent-discretization.md) -- delete after full resolution

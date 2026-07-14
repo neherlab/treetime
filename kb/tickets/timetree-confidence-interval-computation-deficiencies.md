@@ -32,4 +32,4 @@ After computing confidence bounds, the code clamps the point estimate to lie wit
 
 ## Related issues
 
-- Source: [M-timetree-confidence-interval-deficiencies.md](../issues/M-timetree-confidence-interval-deficiencies.md) -- delete after full resolution
+- Source: [kb/issues/M-timetree-confidence-interval-deficiencies.md](../issues/M-timetree-confidence-interval-deficiencies.md) -- delete after full resolution

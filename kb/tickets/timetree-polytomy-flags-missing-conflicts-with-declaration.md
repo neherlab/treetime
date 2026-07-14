@@ -4,4 +4,4 @@
 
 ## Related issues
 
-- Source: [N-timetree-polytomy-flags-no-conflict.md](../issues/N-timetree-polytomy-flags-no-conflict.md) -- delete after full resolution
+- Source: [kb/issues/N-timetree-polytomy-flags-no-conflict.md](../issues/N-timetree-polytomy-flags-no-conflict.md) -- delete after full resolution

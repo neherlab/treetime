@@ -15,3 +15,7 @@ After rerooting, the new root node (and any nodes created during polytomy resolu
 ## Fix
 
 Call `assign_node_names` after rerooting and polytomy resolution, matching v0's `prepare_tree()` pattern. This is a broader fix that affects all commands using reroot (timetree, clock).
+
+## Related tickets
+
+- [kb/tickets/timetree-unnamed-root-and-polytomy-nodes-after-reroot.md](../tickets/timetree-unnamed-root-and-polytomy-nodes-after-reroot.md)

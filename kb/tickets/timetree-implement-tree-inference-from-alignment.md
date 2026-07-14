@@ -14,5 +14,5 @@ Either implement tree inference from alignment (a large feature tracked in [unim
 
 ## Related issues
 
-- Source: [H-timetree-tree-inference-unimplemented.md](../issues/H-timetree-tree-inference-unimplemented.md) -- delete after full resolution
+- Source: [kb/issues/H-timetree-tree-inference-unimplemented.md](../issues/H-timetree-tree-inference-unimplemented.md) -- delete after full resolution
 - [unimplemented.md](../algo/unimplemented.md) -- tree inference algorithms listed as unimplemented

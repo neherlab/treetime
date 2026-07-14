@@ -31,3 +31,7 @@ Options:
 1. Return a finite penalty for degenerate rows (e.g., `ln(1/n_cols) * n_positions`) instead of `NEG_INFINITY`
 2. Track degenerate row count separately and exclude from convergence arithmetic
 3. Use a masked accumulator that skips degenerate contributions
+
+## Related tickets
+
+- [kb/tickets/marginal-fix-normalize-neg-infinity-masking-total.md](../tickets/marginal-fix-normalize-neg-infinity-masking-total.md)

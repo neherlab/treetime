@@ -13,4 +13,4 @@ Or document the `MAX_BRANCH_TIME / gamma` coverage in the `MAX_BRANCH_TIME` doc 
 
 ## Related issues
 
-- Source: [N-timetree-branch-grid-gamma-omitted.md](../issues/N-timetree-branch-grid-gamma-omitted.md) -- delete after full resolution
+- Source: [kb/issues/N-timetree-branch-grid-gamma-omitted.md](../issues/N-timetree-branch-grid-gamma-omitted.md) -- delete after full resolution

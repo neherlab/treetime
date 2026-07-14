@@ -21,4 +21,4 @@ Implement a heuristic based on branch lengths, sequence length, or both. Alterna
 
 ## Related issues
 
-- Source: [N-representation-infer-dense-stub.md](../issues/N-representation-infer-dense-stub.md) -- delete after full resolution
+- Source: [kb/issues/N-representation-infer-dense-stub.md](../issues/N-representation-infer-dense-stub.md) -- delete after full resolution

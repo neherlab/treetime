@@ -20,5 +20,9 @@ Add `root_branch_length: Option<f64>` to `NewickGraph`. Store the parsed root br
 
 ## Location
 
-- Parser: `packages/util-newick/src/parse.rs` `visit_root_branch()` line ~93
-- Data model: `packages/util-newick/src/types.rs` `NewickGraph`
+- Parser: `fn visit_root_branch()` [`packages/util-newick/src/parse.rs#L78-L107`](../../packages/util-newick/src/parse.rs#L78-L107)
+- Data model: `struct NewickGraph` [`packages/util-newick/src/types.rs#L7-L16`](../../packages/util-newick/src/types.rs#L7-L16)
+
+## Related tickets
+
+- [kb/tickets/io-preserve-newick-root-branch-length.md](../tickets/io-preserve-newick-root-branch-length.md)

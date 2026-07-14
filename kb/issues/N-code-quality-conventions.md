@@ -93,3 +93,9 @@ Two enums hand-write `Display`, duplicating their kebab-case CLI names:
 - O2. Retain manual implementations and add exhaustive tests tying every rendered value to the corresponding CLI name. This preserves bespoke control but duplicates the mapping.
 
 **Recommendation:** O1. One derive-based mapping keeps CLI parsing and rendering exhaustive when variants are added.
+
+## Related tickets
+
+- [kb/tickets/convention-replace-manual-loops-with-ndarray-operations.md](../tickets/convention-replace-manual-loops-with-ndarray-operations.md)
+- [kb/tickets/optimize-brent-cost-function-recomputes-exp-per-call.md](../tickets/optimize-brent-cost-function-recomputes-exp-per-call.md)
+- [kb/tickets/optimize-edge-effective-length-saturating-sub-and-gap-clones.md](../tickets/optimize-edge-effective-length-saturating-sub-and-gap-clones.md)

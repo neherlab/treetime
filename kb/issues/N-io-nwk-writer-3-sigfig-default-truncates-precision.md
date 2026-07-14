@@ -18,7 +18,11 @@ Major parsers write higher precision by default: Biopython uses 5 decimal places
 
 Branch lengths lose precision on every write cycle. Repeated read-write-read degrades values. Scientific reproducibility affected when trees are re-read after writing.
 
+A public mugration report describes small branch lengths being written as zero in annotated Nexus output [[issue](https://github.com/neherlab/treetime/issues/271)]. The maintainer response attributes the observed output to branch collapsing or output precision and reports increasing the precision [[comment](https://github.com/neherlab/treetime/issues/271#issuecomment-2282346277)]. That report concerns the Python Nexus path; it is related evidence for preserving branch-length precision, not evidence that both implementations share a formatter or root cause.
+
 ## Locations
 
 - `packages/treetime-io/src/nwk.rs#L268-L277`
 - `NwkWriteOptions.weight_significant_digits` defaults to `None` but `format_weight` overrides with `Some(3)`
+
+No implementation ticket is ready until the exchange-format default is approved.

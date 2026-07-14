@@ -11,3 +11,7 @@ These sentinel values are indistinguishable from legitimate states (`Empty` dist
 `Formula` distributions are created by coalescent code (`coalescent_contribution_node()`, `coalescent_contribution_merger()`, `skyline_coalescent_contribution()`). If a coalescent formula fails to discretize, downstream `ScaledDistribution` operations and coalescent Tc optimization silently treat the distribution as empty.
 
 `to_neglog()` has zero production callers and is not a practical concern.
+
+## Related tickets
+
+- [kb/tickets/safety-propagate-formula-discretization-errors.md](../tickets/safety-propagate-formula-discretization-errors.md)

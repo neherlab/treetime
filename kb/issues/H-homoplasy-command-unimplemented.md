@@ -1,27 +1,29 @@
 # Homoplasy command is unimplemented
 
-`run_homoplasy()` at [packages/treetime/src/commands/homoplasy/run.rs#L5](../../packages/treetime/src/commands/homoplasy/run.rs#L5) unconditionally panics with `unimplemented!()`. The CLI accepts `treetime homoplasy` and parses all flags via `TreetimeHomoplasyArgs` at [packages/treetime/src/commands/homoplasy/args.rs](../../packages/treetime/src/commands/homoplasy/args.rs), but the command produces a panic rather than output.
+`fn run_homoplasy()` [`packages/treetime/src/commands/homoplasy/run.rs#L6-L8`](../../packages/treetime/src/commands/homoplasy/run.rs#L6-L8) returns an explicit not-implemented error. The CLI accepts `treetime homoplasy` and parses all flags via `struct TreetimeHomoplasyArgs` [`packages/treetime/src/commands/homoplasy/args.rs#L12-L28`](../../packages/treetime/src/commands/homoplasy/args.rs#L12-L28), but the command cannot produce homoplasy results.
 
 ## Scope
 
 v0 homoplasy command computes and reports homoplasies (recurrent mutations) on a phylogenetic tree. The v0 implementation includes:
 
 - Identification of homoplastic mutations by comparing ancestral reconstruction to observed sequences
-- Detailed reporting of per-site homoplasy counts
+- Detailed reporting controlled by a flag
 - DRM (drug resistance mutation) annotation
-- Rescaling of branch lengths by homoplasy density
+- Uniform multiplication of branch lengths by the numeric `--rescale` factor
 
 None of these features are implemented in v1.
 
 ## Affected code
 
-- Panic site: [packages/treetime/src/commands/homoplasy/run.rs#L5](../../packages/treetime/src/commands/homoplasy/run.rs#L5)
-- CLI args (parsed but unused): [packages/treetime/src/commands/homoplasy/args.rs](../../packages/treetime/src/commands/homoplasy/args.rs)
-- CLI dispatch: [packages/treetime-cli/src/bin/treetime.rs](../../packages/treetime-cli/src/bin/treetime.rs)
+- Error site: [`packages/treetime/src/commands/homoplasy/run.rs#L6-L8`](../../packages/treetime/src/commands/homoplasy/run.rs#L6-L8)
+- CLI args (parsed but unused): [`packages/treetime/src/commands/homoplasy/args.rs#L12-L28`](../../packages/treetime/src/commands/homoplasy/args.rs#L12-L28)
+- CLI dispatch: [`packages/app-cli/src/bin/treetime.rs#L104-L105`](../../packages/app-cli/src/bin/treetime.rs#L104-L105)
 
-## Fix
+## Decisions required
 
-Replace `unimplemented!()` with a descriptive error message: "The homoplasy command is not yet implemented in v1." Implement the command or remove it from the CLI.
+The current v1 argument types do not match v0: v1 parses `--rescale` as a boolean and `--detailed` as an optional string, while v0 uses a numeric rescaling factor and a detail flag. [`packages/treetime/src/commands/homoplasy/args.rs#L20-L26`](../../packages/treetime/src/commands/homoplasy/args.rs#L20-L26) [`packages/legacy/treetime/treetime/argument_parser.py#L372-L376`](../../packages/legacy/treetime/treetime/argument_parser.py#L372-L376)
+
+Before creating an implementation ticket, specify exact CLI parity, output schemas, numerical and statistical oracles, VCF behavior, DRM validation, and the complete acceptance contract. The existing explicit error is the correct failure mode while the command is unavailable.
 
 ## Related
 

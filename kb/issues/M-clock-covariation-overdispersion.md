@@ -26,3 +26,7 @@ The `--tip-slack` CLI argument is not wired through in v1, so users cannot overr
 ## Fix
 
 Wire `--tip-slack` through to `ClockParams.variance_factor` and match v0's default `OVER_DISPERSION = 10`.
+
+## Related tickets
+
+- [kb/tickets/clock-wire-overdispersion-and-tip-slack-cli.md](../tickets/clock-wire-overdispersion-and-tip-slack-cli.md)
