@@ -8,21 +8,11 @@ This document describes the problems with the current implementation of coalesce
 
 ### One closure per node, all identical except for multiplicity
 
-`compute_node_contributions` allocates a `DistributionFormula` closure for every node in the tree. Each closure captures cloned `Arc` references to `integral_merger_rate`, `lineage_counts`, and `tc_dist` -- the same three objects for every node. The only per-node variation is `multiplicity = n_children - 1`, a single scalar. This produces O(N) heap allocations and O(N) Arc reference counts for data that could be shared as a single struct.
+`compute_node_contributions` allocates a `DistributionFormula` closure for every node in the tree. Each closure owns newly cloned copies of `integral_merger_rate`, `lineage_counts`, and `tc_dist` behind separate `Arc` values, although the three inputs are identical across nodes. The only per-node variation is `multiplicity = n_children - 1`, a single scalar. This copies the underlying interpolation arrays for every node in addition to the O(N) closure and reference-count allocations.
 
 ### TBP coordinate conversion on every evaluation
 
 The underlying functions (`integral_merger_rate`, `lineage_counts`) are expressed in time-before-present (TBP) coordinates, but the backward pass operates in calendar time. Every closure evaluation performs a `CalendarTime -> Tbp` conversion (`t_tbp = present_time - t_calendar`). This is a single subtraction that could be baked in once at construction time by re-expressing both piecewise functions in calendar time before storing them.
-
-### Per-evaluation heap allocations in `compute_merger_rates`
-
-The internal-node closure calls:
-
-```rust
-compute_merger_rates(&Array1::from_vec(vec![k_t]), &Array1::from_vec(vec![tc_t]))
-```
-
-This allocates two `Vec`s and two `Array1`s to compute what are scalar arithmetic operations. Multiplied across 1000 grid points per node and N nodes, this produces millions of unnecessary small allocations.
 
 ### Formula applied at the wrong point in the backward pass
 
@@ -155,7 +145,6 @@ Either way: **do not compute a `DistributionFormula` for leaf nodes**. The contr
 | -------------------------------------------------------- | ---------------------------------------------------------- |
 | N `DistributionFormula` closures, one per node           | One `CoalescentModel` struct                               |
 | TBP->calendar conversion on every eval call              | Calendar-time arrays built once at construction            |
-| `Array1::from_vec` allocations per scalar eval           | Scalar arithmetic only                                     |
 | Formula applied before child messages, grid guessed      | Applied after children, grid is known                      |
 | `multiply_formula_function` path (overlap + resample)    | Pointwise multiply on existing array                       |
 | `IndexMap<NodeKey, Arc<DistributionNegLog>>`             | Removed entirely                                           |

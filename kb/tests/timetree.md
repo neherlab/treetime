@@ -94,15 +94,19 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 **Impl:** [`packages/treetime/src/coalescent/integration.rs`](../../packages/treetime/src/coalescent/integration.rs)
 
-| Test                                                         | Purpose                                     |
-| ------------------------------------------------------------ | ------------------------------------------- |
-| `test_merger_rates`                                          | Basic merger rate computation               |
-| `test_merger_rates_edge_cases`                               | Non-integer lineage counts                  |
-| `test_merger_rates_large_k`                                  | Large lineage counts                        |
-| `test_compute_integral_merger_rate_constant_tc`              | Integration with constant Tc                |
-| `test_compute_integral_merger_rate_multiple_segments`        | Multiple segments                           |
-| `test_compute_integral_merger_rate_insufficient_points`      | Error handling                              |
-| `test_compute_integral_merger_rate_varying_tc`               | Varying Tc (linear)                         |
+| Test | Purpose |
+| --- | --- |
+| `test_integration_compute_merger_rates_scalar_representable` | Representable scalar rates around clamp boundary |
+| `test_integration_compute_merger_rates_scalar_ulps` | ULP scalar rates across the clamp boundary |
+| `test_integration_compute_merger_rates_scalar_preserves_v0_extreme_ordering` | v0 overflow and underflow behavior |
+| `test_integration_compute_merger_rates_scalar_propagates_nan_lineage_count` | v0 NaN propagation |
+| `test_integration_compute_merger_rates_array_cases` | Arrays, empty inputs, and length-one broadcasting |
+| `test_integration_compute_merger_rates_rejects_incompatible_shapes` | Incompatible ndarray shapes panic |
+| `test_prop_integration_compute_merger_rates_array_matches_scalar` | Array evaluation matches scalar evaluation |
+| `test_compute_integral_merger_rate_constant_tc` | Integration with constant Tc |
+| `test_compute_integral_merger_rate_multiple_segments` | Multiple segments |
+| `test_compute_integral_merger_rate_insufficient_points` | Error handling |
+| `test_compute_integral_merger_rate_varying_tc` | Varying Tc (linear) |
 | `test_compute_integral_merger_rate_varying_tc_many_segments` | Numerical accuracy with analytical solution |
 
 ---
@@ -158,7 +162,7 @@ Parameterized tests use `#[case]` expansions via rstest.
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `test_gm_coalescent` | `flu_h3n2_20` (tc 0.01, 0.1, 1.0, 10.0), `ebola_20` (tc 0.1, 1.0, 10.0), `dengue_20` (tc 1.0, 10.0, 100.0), `rsv_a_20` (tc 1.0, 10.0, 100.0), `mpox_clade_ii_20` (tc 0.1, 1.0, 10.0) |
 
-Tolerance: 1e-5 max absolute error. Fixtures: [`gm_coalescent_*.json`](../../packages/treetime/src/coalescent/__tests__/__fixtures__/).
+Tolerance: $10^{-6}$ maximum absolute error. Fixtures: [`gm_coalescent_*.json`](../../packages/treetime/src/coalescent/__tests__/__fixtures__/).
 
 ---
 

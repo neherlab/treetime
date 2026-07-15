@@ -147,7 +147,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Clock        | [Clock SVG output is nondeterministic for an untraced reason](N-clock-svg-output-nondeterministic-untraced.md)                                                 |
 | Negligible | Clock        | [ClockSet::chisq() numerically unstable for near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                                     |
 | Negligible | Clock        | [v1 clock regression produces all-negative rates where v0 finds positive](N-clock-regression-all-negative-rate.md)                                             |
-| Negligible | Coalescent   | [Coalescent contribution evaluation allocates for scalar merger rates](N-coalescent-contribution-evaluation-allocation-overhead.md)                            |
 | Negligible | Coalescent   | [Coalescent leaf contribution comments misstate the node-grouped sign](N-coalescent-leaf-contribution-comments-misstate-sign.md)                               |
 | Negligible | Coalescent   | [Skyline extrapolation policy is implicit](N-coalescent-skyline-extrapolation-policy-undecided.md)                                                             |
 | Negligible | Coalescent   | [Skyline grid construction accepts invalid endpoint arrays](N-coalescent-skyline-grid-validation-incomplete.md)                                                |
