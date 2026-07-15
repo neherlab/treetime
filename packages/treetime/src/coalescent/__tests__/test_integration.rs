@@ -2,60 +2,106 @@
 mod tests {
   use crate::coalescent::integration::compute_integral_merger_rate;
   use crate::coalescent::integration::compute_merger_rates;
+  use crate::coalescent::integration::compute_merger_rates_scalar;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
   use ndarray::array;
+  use rstest::rstest;
   use treetime_distribution::Distribution;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
-  use treetime_utils::pretty_assert_ulps_eq;
+  use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
-  #[test]
-  fn test_merger_rates() -> Result<(), Report> {
-    let k = array![2.0, 3.0, 4.0];
-    let tc = array![0.001, 0.002, 0.003];
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::below_clamp(1.0, 1.0, 0.25, 0.375)]
+  #[case::at_clamp(   1.5, 2.0, 0.125, 0.1875)]
+  #[case::above_clamp(3.0, 2.0, 0.5, 1.5)]
+  #[trace]
+  fn test_integration_compute_merger_rates_scalar_representable(
+    #[case] k: f64,
+    #[case] tc: f64,
+    #[case] expected_per_lineage: f64,
+    #[case] expected_total: f64,
+  ) {
+    // Oracle: n=max(0.5, k-1), κ=n/(2Tc), and λ=n(n+1)/(2Tc),
+    // matching TreeTime v0 merger_models.py:194-213.
+    let actual = compute_merger_rates_scalar(k, tc);
 
-    let (actual_branch_rate, actual_total_rate) = compute_merger_rates(&k, &tc);
+    pretty_assert_ulps_eq!(expected_per_lineage, actual.per_lineage, max_ulps = 0);
+    pretty_assert_ulps_eq!(expected_total, actual.total, max_ulps = 0);
+  }
 
-    let expected_branch_rate = array![500.0, 500.0, 500.0];
-    let expected_total_rate = array![1000.0, 1500.0, 2000.0];
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::below_clamp(1.0, 3.0, 1.0 / 12.0, 1.0 / 8.0)]
+  #[case::at_clamp(   1.5, 3.0, 1.0 / 12.0, 1.0 / 8.0)]
+  #[case::above_clamp(2.0, 3.0, 1.0 / 6.0,  1.0 / 3.0)]
+  #[trace]
+  fn test_integration_compute_merger_rates_scalar_ulps(
+    #[case] k: f64,
+    #[case] tc: f64,
+    #[case] expected_per_lineage: f64,
+    #[case] expected_total: f64,
+  ) {
+    // Oracle: the analytical v0 formulas cited in the representable scalar cases.
+    let actual = compute_merger_rates_scalar(k, tc);
 
-    pretty_assert_ulps_eq!(actual_branch_rate, expected_branch_rate);
-    pretty_assert_ulps_eq!(actual_total_rate, expected_total_rate);
+    pretty_assert_ulps_eq!(expected_per_lineage, actual.per_lineage);
+    pretty_assert_ulps_eq!(expected_total, actual.total);
+  }
 
-    Ok(())
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::empty(        array![],                          array![],                          array![],                                     array![])]
+  #[case::equal_lengths(array![1.0, 1.5, 2.0, 4.0, 50.0], array![1.0, 2.0, 3.0, 4.0, 10.0], array![0.25, 0.125, 1.0 / 6.0, 0.375, 2.45], array![0.375, 0.1875, 1.0 / 3.0, 1.5, 122.5])]
+  #[case::broadcast_tc( array![1.0, 1.5, 2.0],             array![2.0],                       array![0.125, 0.125, 0.25],                    array![0.1875, 0.1875, 0.5])]
+  #[case::broadcast_k(  array![2.0],                       array![1.0, 2.0, 4.0],             array![0.5, 0.25, 0.125],                    array![1.0, 0.5, 0.25])]
+  #[trace]
+  fn test_integration_compute_merger_rates_array_cases(
+    #[case] k: Array1<f64>,
+    #[case] tc: Array1<f64>,
+    #[case] expected_per_lineage: Array1<f64>,
+    #[case] expected_total: Array1<f64>,
+  ) {
+    let actual = compute_merger_rates(&k, &tc);
+
+    // Oracle: element-wise evaluation of the v0 formulas cited above.
+    pretty_assert_ulps_eq!(expected_per_lineage, actual.per_lineage);
+    pretty_assert_ulps_eq!(expected_total, actual.total);
   }
 
   #[test]
-  fn test_merger_rates_edge_cases() -> Result<(), Report> {
-    let k = array![1.0, 0.5, 2.0];
-    let tc = array![0.001, 0.002, 0.003];
+  #[should_panic(expected = "ndarray: could not broadcast array")]
+  fn test_integration_compute_merger_rates_rejects_incompatible_shapes() {
+    let k = array![1.0, 2.0];
+    let tc = array![1.0, 2.0, 3.0];
 
-    let (actual_branch_rate, actual_total_rate) = compute_merger_rates(&k, &tc);
-
-    let expected_branch_rate = array![250.0, 125.0, 166.66666666666666];
-    let expected_total_rate = array![375.0, 187.5, 333.3333333333333];
-
-    pretty_assert_ulps_eq!(actual_branch_rate, expected_branch_rate);
-    pretty_assert_ulps_eq!(actual_total_rate, expected_total_rate);
-
-    Ok(())
+    compute_merger_rates(&k, &tc);
   }
 
   #[test]
-  fn test_merger_rates_large_k() -> Result<(), Report> {
-    let k = array![10.0, 20.0, 50.0];
-    let tc = array![0.01, 0.01, 0.01];
+  fn test_integration_compute_merger_rates_scalar_preserves_v0_extreme_ordering() {
+    // Oracle: TreeTime v0 merger_models.py:194-213 evaluates 0.5 in the
+    // numerator before division, avoiding denominator overflow for large Tc.
+    let large_tc = compute_merger_rates_scalar(2.0, f64::MAX);
+    pretty_assert_ulps_eq!(2.781342323134e-309, large_tc.per_lineage, max_ulps = 0);
+    pretty_assert_ulps_eq!(5.562684646268003e-309, large_tc.total, max_ulps = 0);
 
-    let (actual_branch_rate, actual_total_rate) = compute_merger_rates(&k, &tc);
+    // The same ordering halves n before multiplying n(n+1), keeping this
+    // representable case finite where multiplying n(n+1) first overflows.
+    let large_k = compute_merger_rates_scalar(1.5e154, 1.0);
+    pretty_assert_ulps_eq!(1.1250000000000002e308, large_k.total, max_ulps = 0);
+  }
 
-    let expected_branch_rate = array![450.0, 950.0, 2450.0];
-    let expected_total_rate = array![4500.0, 19000.0, 122500.0];
+  #[test]
+  fn test_integration_compute_merger_rates_scalar_propagates_nan_lineage_count() {
+    // Oracle: numpy.maximum in TreeTime v0 merger_models.py:194-213
+    // propagates a NaN lineage count into both merger rates.
+    let actual = compute_merger_rates_scalar(f64::NAN, 1.0);
 
-    pretty_assert_ulps_eq!(actual_branch_rate, expected_branch_rate);
-    pretty_assert_ulps_eq!(actual_total_rate, expected_total_rate);
-
-    Ok(())
+    assert!(actual.per_lineage.is_nan());
+    assert!(actual.total.is_nan());
   }
 
   #[test]
@@ -106,8 +152,7 @@ mod tests {
 
     let result = compute_integral_merger_rate(&tc_dist, &lineage_counts);
 
-    assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("at least 2 breakpoints"));
+    assert_error!(result, "lineage count must have at least 2 breakpoints");
   }
 
   #[test]

@@ -100,8 +100,8 @@ mod tests {
     }
 
     assert!(
-      worst_err < 1e-5,
-      "Max absolute error {worst_err:.2e} at node '{worst_node}' exceeds threshold 1e-5"
+      worst_err <= 1e-6,
+      "Max absolute error {worst_err:.2e} at node '{worst_node}' exceeds threshold 1e-6"
     );
 
     Ok(())

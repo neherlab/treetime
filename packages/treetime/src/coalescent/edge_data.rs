@@ -1,3 +1,4 @@
+use crate::coalescent::integration::compute_merger_rate_total_scalar;
 use crate::coalescent::time_coordinate::{CalendarTime, Tbp};
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
@@ -131,8 +132,6 @@ pub fn sum_coalescent_cost(
     // Merger times fall exactly on PiecewiseConstantFn breakpoints (t_merger = parent_tbp).
     // The merger rate λ depends on lineages BEFORE the merger event.
     let k = lineage_counts.eval_left(t_merger.value());
-    let k_clamped = f64::max(0.5, k - 1.0);
-
     let tc_val = tc_dist.eval(t_merger.value())?;
     if tc_val <= 0.0 {
       return make_error!(
@@ -140,7 +139,7 @@ pub fn sum_coalescent_cost(
         t_merger.value()
       );
     }
-    let lambda = 0.5 * k_clamped * (k_clamped + 1.0) / tc_val;
+    let lambda = compute_merger_rate_total_scalar(k, tc_val);
 
     let cost = (i_merger - i_node) - lambda.ln() * (edge.multiplicity - 1.0) / edge.multiplicity;
     total_lh -= cost;

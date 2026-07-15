@@ -1,37 +1,66 @@
 use eyre::Report;
-use ndarray::Array1;
+use ndarray::{Array1, Zip};
 use treetime_distribution::Distribution;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_grid::piecewise_linear_fn::PiecewiseLinearFn;
 use treetime_utils::make_error;
 
-/// Computes branch merger rate κ(t) and total merger rate λ(t).
+/// Per-lineage and total coalescent merger rates.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MergerRates<T> {
+  /// Rate for one lineage to merge with any other lineage.
+  pub per_lineage: T,
+  /// Rate for any pair of lineages to merge.
+  pub total: T,
+}
+
+/// Computes scalar per-lineage merger rate κ(t) and total merger rate λ(t).
 ///
 /// κ(t) = (k(t)-1)/(2*Tc(t)) - rate for one branch to merge with any other
 /// λ(t) = k(t)*(k(t)-1)/(2*Tc(t)) - rate for any branch to merge with any other
 ///
 /// # Clamping Logic
 ///
-/// The lineage count is clamped: `k_clamped = max(0.5, k-1)` to ensure positive
-/// merger rates even in edge cases. This matches Python v0 behavior.
+/// The lineage count is clamped as `max(0.5, k - 1)`, matching TreeTime v0.
+/// At the present boundary, `k` can be zero before the first sample event; v0
+/// documents that this clamped region is evaluated only when the tree changes.
+/// NaN lineage counts propagate as they do through v0's `numpy.maximum` call.
+pub fn compute_merger_rates_scalar(k: f64, tc: f64) -> MergerRates<f64> {
+  let n_lineages = compute_merger_rate_lineage_count(k);
+  MergerRates {
+    per_lineage: compute_merger_rate_per_lineage(n_lineages, tc),
+    total: compute_merger_rate_total(n_lineages, tc),
+  }
+}
+
+pub(super) fn compute_merger_rate_per_lineage_scalar(k: f64, tc: f64) -> f64 {
+  compute_merger_rate_per_lineage(compute_merger_rate_lineage_count(k), tc)
+}
+
+pub(super) fn compute_merger_rate_total_scalar(k: f64, tc: f64) -> f64 {
+  compute_merger_rate_total(compute_merger_rate_lineage_count(k), tc)
+}
+
+/// Computes array-valued per-lineage merger rate κ(t) and total merger rate λ(t).
 ///
-/// Why 0.5? At tree boundaries:
-/// - At TBP=0 (present), k=0 before first sample event → k-1=-1 → clamped to 0.5
-/// - With k=1 (single lineage), k-1=0 → clamped to 0.5 (prevents zero rate)
-///
-/// The value 0.5 is somewhat arbitrary but ensures:
-/// - Rates are always positive (required for valid probability distributions)
-/// - The formulas remain numerically stable
-/// - Boundary regions contribute minimally to the overall likelihood
-///
-/// Note: The clamped regions should ideally never be evaluated if the tree is
-/// well-formed, as per Python v0 comment: "in these regions, the function
-/// should only be called if the tree changes."
-pub fn compute_merger_rates(k: &Array1<f64>, tc: &Array1<f64>) -> (Array1<f64>, Array1<f64>) {
-  let k_clamped = k.mapv(|x| f64::max(0.5, x - 1.0));
-  let branch_rate = 0.5 * &k_clamped / tc;
-  let total_rate = 0.5 * &k_clamped * (&k_clamped + 1.0) / tc;
-  (branch_rate, total_rate)
+/// Length-one inputs follow ndarray broadcasting semantics.
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn compute_merger_rates(k: &Array1<f64>, tc: &Array1<f64>) -> MergerRates<Array1<f64>> {
+  let output_len = if k.len() == 1 { tc.len() } else { k.len() };
+  let mut per_lineage = Array1::zeros(output_len);
+  let mut total = Array1::zeros(output_len);
+
+  Zip::from(&mut per_lineage)
+    .and(&mut total)
+    .and_broadcast(k)
+    .and_broadcast(tc)
+    .for_each(|per_lineage, total, &k, &tc| {
+      let rates = compute_merger_rates_scalar(k, tc);
+      *per_lineage = rates.per_lineage;
+      *total = rates.total;
+    });
+
+  MergerRates { per_lineage, total }
 }
 
 /// Computes I(t) = ∫₀ᵗ κ(t') dt' via piecewise integration.
@@ -64,8 +93,7 @@ pub fn compute_integral_merger_rate(
     let k = lineage_counts.eval(mid);
     let tc = tc_dist.eval(mid)?;
 
-    let k_clamped = f64::max(0.5, k - 1.0);
-    let rate = 0.5 * k_clamped / tc;
+    let rate = compute_merger_rate_per_lineage_scalar(k, tc);
 
     integral_values.push(integral_values[i - 1] + dt * rate);
   }
@@ -80,8 +108,7 @@ pub fn compute_integral_merger_rate(
     // Extrapolate backwards: I(0) = I(bp[0]) - rate_0 * bp[0]
     let k = lineage_counts.eval(breakpoints[0] / 2.0);
     let tc = tc_dist.eval(breakpoints[0] / 2.0)?;
-    let k_clamped = f64::max(0.5, k - 1.0);
-    let rate = 0.5 * k_clamped / tc;
+    let rate = compute_merger_rate_per_lineage_scalar(k, tc);
     -rate * breakpoints[0]
   };
 
@@ -91,4 +118,21 @@ pub fn compute_integral_merger_rate(
     Array1::from(breakpoints.to_vec()),
     Array1::from(integral_values),
   ))
+}
+
+fn compute_merger_rate_lineage_count(k: f64) -> f64 {
+  let n_lineages = k - 1.0;
+  if n_lineages.is_nan() {
+    n_lineages
+  } else {
+    f64::max(0.5, n_lineages)
+  }
+}
+
+fn compute_merger_rate_per_lineage(n_lineages: f64, tc: f64) -> f64 {
+  0.5 * n_lineages / tc
+}
+
+fn compute_merger_rate_total(n_lineages: f64, tc: f64) -> f64 {
+  0.5 * n_lineages * (n_lineages + 1.0) / tc
 }

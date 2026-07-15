@@ -1,4 +1,4 @@
-use crate::coalescent::integration::compute_merger_rates;
+use crate::coalescent::integration::compute_merger_rate_total_scalar;
 use crate::coalescent::time_coordinate::{CalendarTime, Tbp};
 use crate::payload::traits::TimetreeNode;
 use eyre::{Context, Report};
@@ -165,8 +165,7 @@ fn compute_internal_contribution_single(
     let k_t = lineage_counts.eval(t_tbp.value());
     let tc_t = tc_dist.eval(t_tbp.value())?;
 
-    let (_, lambda_t) = compute_merger_rates(&Array1::from_vec(vec![k_t]), &Array1::from_vec(vec![tc_t]));
-    let log_lambda_t = lambda_t[0].ln();
+    let log_lambda_t = compute_merger_rate_total_scalar(k_t, tc_t).ln();
 
     // neg-log contribution: multiplicity · (I(t) - log(λ(t)))
     let neg_log_contrib = multiplicity * (i_t - log_lambda_t);
