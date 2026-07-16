@@ -18,7 +18,7 @@
 - [x] Bad branch exclusion (outliers, dateless leaves)
 - [x] Build branch distributions from partitions when present
 - [x] Build point branch distributions from input lengths when partitions absent
-- [/] Optional coalescent contribution calculation ([kb/issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md](../issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md))
+- [x] Optional coalescent contribution calculation
 
 ## Branch-Length Modes
 
@@ -51,8 +51,8 @@
   - [x] Warning fallback to Tc = 1.0 on failure or non-convergence
   - [x] Final skyline re-optimization after refinement loop
   - [x] Extra final timetree pass unless `--time-marginal=only-final`
-- [/] Coalescent contribution per node (leaf/root terms are incomplete - [kb/issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md](../issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md))
-- [/] Different multiplication ordering ([kb/decisions/coalescent-multiplication-ordering.md](../decisions/coalescent-multiplication-ordering.md), [kb/issues/M-timetree-coalescent-multiplication-ordering-diverges-from-v0.md](../issues/M-timetree-coalescent-multiplication-ordering-diverges-from-v0.md))
+- [x] Coalescent leaf, internal-node, and root contributions
+- [x] Child-first contribution ordering matching v0
 - [x] Merger rate lambda(t) = k(k-1)/(2\*Tc)
 - [x] Branch counting k(t) from node times
 - [ ] `--n-branches-posterior` (parsed, returns explicit error - [kb/issues/N-timetree-n-branches-posterior-unimplemented.md](../issues/N-timetree-n-branches-posterior-unimplemented.md))

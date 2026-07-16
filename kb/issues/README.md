@@ -53,7 +53,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | High       | I/O          | [Auspice v2 output omits required updated metadata](H-io-auspice-v2-required-updated-missing.md)                                                               |
 | High       | I/O          | [UShER MAT export fabricates global reference nucleotides from branch-local alleles](H-io-usher-ref-nuc-uses-parent-allele.md)                                 |
 | High       | Marginal     | [Marginal cavity sentinel loses impossible-factor multiplicity](H-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md)                            |
-| High       | Timetree     | [Coalescent backward pass grid explosion](H-timetree-coalescent-grid-explosion.md)                                                                             |
 | High       | Timetree     | [Coalescent events are incomplete after topology changes](H-timetree-coalescent-events-incomplete-after-topology-change.md)                                    |
 | High       | Timetree     | [No tree inference from alignment](H-timetree-tree-inference-unimplemented.md)                                                                                 |
 | Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                                               |
@@ -73,7 +72,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Clock        | [Clock filter residual computation differs from v0](M-clock-filter-residual-parity.md)                                                                         |
 | Medium     | Clock        | [MinDev reroot uses wrong objective (EstimatedRate instead of FixedRate(0))](M-clock-mindev-wrong-objective.md)                                                |
 | Medium     | Clock        | [Parallel clock CSV row order is nondeterministic](M-clock-parallel-output-order-nondeterministic.md)                                                          |
-| Medium     | Coalescent   | [Coalescent subsystem time notation conflict](M-coalescent-time-notation-conflict.md)                                                                          |
 | Medium     | Core         | [Mutation representation and format projection are inconsistent](M-core-mutation-representation-and-format-projection-inconsistent.md)                         |
 | Medium     | Core         | [Partition creation is hardcoded per-command instead of configured](M-core-partition-init-orchestration-duplication.md)                                        |
 | Medium     | Core         | [Remaining architectural debt after domain module extraction](M-core-remaining-architectural-debt-after-extraction.md)                                         |
@@ -114,8 +112,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Sparse       | [Sparse marginal fixed_counts zero-multiplicity produces NaN](M-sparse-marginal-zero-multiplicity-nan.md)                                                      |
 | Medium     | Timetree     | [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md)                                                                                           |
 | Medium     | Timetree     | [Branch distribution grid uses uniform spacing](M-timetree-branch-grid-uniform-resolution.md)                                                                  |
-| Medium     | Timetree     | [Coalescent backward pass missing leaf and root contributions](M-timetree-coalescent-missing-leaf-and-root-contributions.md)                                   |
-| Medium     | Timetree     | [Coalescent multiplication ordering diverges from v0 without empirical validation](M-timetree-coalescent-multiplication-ordering-diverges-from-v0.md)          |
 | Medium     | Timetree     | [Constant-$T_c$ optimization can report success without a parameter](M-timetree-constant-tc-success-without-parameter.md)                                      |
 | Medium     | Timetree     | [Date column header matching breaks on hash](M-timetree-date-header-hash.md)                                                                                   |
 | Medium     | Timetree     | [Golden master runner tests missing internal node times for 5 datasets](M-timetree-gm-runner-missing-internal-times.md)                                        |
@@ -126,7 +122,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Timetree     | [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)                                                                     |
 | Medium     | Timetree     | [Skyline objective and optimizer diverge from v0](M-timetree-skyline-nelder-mead-optimizer.md)                                                                 |
 | Medium     | Timetree     | [Sparse timetree convergence tracking compares empty sequences](M-timetree-sparse-convergence-empty-sequences.md)                                              |
-| Medium     | Timetree     | [sum_coalescent_cost silently clamps negative branch lengths](M-timetree-coalescent-branch-length-clamp.md)                                                    |
 | Medium     | Timetree     | [Timetree confidence interval computation deficiencies](M-timetree-confidence-interval-deficiencies.md)                                                        |
 | Medium     | Timetree     | [Timetree convergence metric deficiencies](M-timetree-convergence-metric-deficiencies.md)                                                                      |
 | Medium     | Timetree     | [Timetree inference in input mode collapses internal-node dates to Empty](M-timetree-inference-input-mode-date-collapse.md)                                    |
@@ -147,7 +142,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Clock        | [Clock SVG output is nondeterministic for an untraced reason](N-clock-svg-output-nondeterministic-untraced.md)                                                 |
 | Negligible | Clock        | [ClockSet::chisq() numerically unstable for near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                                     |
 | Negligible | Clock        | [v1 clock regression produces all-negative rates where v0 finds positive](N-clock-regression-all-negative-rate.md)                                             |
-| Negligible | Coalescent   | [Coalescent leaf contribution comments misstate the node-grouped sign](N-coalescent-leaf-contribution-comments-misstate-sign.md)                               |
+| Negligible | Coalescent   | [Coalescent time-scale coordinate is not type-enforced](N-coalescent-time-scale-coordinate-not-type-enforced.md)                                              |
 | Negligible | Coalescent   | [Skyline extrapolation policy is implicit](N-coalescent-skyline-extrapolation-policy-undecided.md)                                                             |
 | Negligible | Coalescent   | [Skyline grid construction accepts invalid endpoint arrays](N-coalescent-skyline-grid-validation-incomplete.md)                                                |
 | Negligible | Coalescent   | [Skyline merger-rate quadrature lacks an accuracy contract](N-coalescent-skyline-quadrature-contract-undecided.md)                                             |

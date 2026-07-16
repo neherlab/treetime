@@ -19,7 +19,3 @@ Define complete node-time state as a precondition for event collection. After to
 - Assert the event multiset contains every required leaf, internal node, and root contribution.
 - Inject one missing internal time and require an error naming the node.
 - Compare the full coalescent likelihood against an independent direct calculation.
-
-## Related issues
-
-- [M-timetree-coalescent-missing-leaf-and-root-contributions.md](M-timetree-coalescent-missing-leaf-and-root-contributions.md)

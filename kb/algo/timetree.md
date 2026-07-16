@@ -37,37 +37,32 @@ v1: [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../
 
 ## Kingman Coalescent
 
-The Kingman coalescent (<a id="cite-2"></a>[Kingman 1982](<https://doi.org/10.1016/0304-4149(82)90011-4>) [[2](#ref-2)]) provides a prior on internal node times based on population genetics. Under neutral evolution, k lineages in a population of effective size N_e merge backward in time at a pairwise rate, producing a total coalescence rate `lambda(t) = k(k-1) / (2*Tc(t))` where Tc is the coalescence time scale (proportional to N_e). The per-lineage merger rate is `kappa(t) = (k(t)-1) / (2*Tc(t))`, and the integral merger rate `I(t) = integral kappa(t') dt'` accumulates the probability of no coalescence up to time t.
+The Kingman coalescent (<a id="cite-2"></a>[Kingman 1982](<https://doi.org/10.1016/0304-4149(82)90011-4>) [[2](#ref-2)]) provides a prior on node times. With $k(t)$ lineages and coalescent time scale $T_c(t)$, the total merger rate is $\lambda(t)=k(t)(k(t)-1)/(2T_c(t))$ and the per-lineage rate is $\kappa(t)=(k(t)-1)/(2T_c(t))$.
 
-For a bifurcating tree, the ordinary Kingman neg-log-likelihood decomposes into per-node contributions via algebraic telescoping of the branch survival integrals. Each branch from parent $p$ to child $c$ contributes neg-log survival term $I(t_p)-I(t_c)$. Summing over all branches and grouping by node, the terms telescope into three pieces:
+V1 expresses every quantity in decimal calendar years and stores the cumulative hazard $H(t)=\int_t^P\kappa(s)\,ds$, where $P$ is the most recent event. For a branch from parent $p$ to child $c$, the negative-log survival term is $H(t_p)-H(t_c)$. Grouping all branch terms by node gives:
 
 | Piece                           | Neg-log value           | Purpose                                                                        |
 | ------------------------------- | ----------------------- | ------------------------------------------------------------------------------ |
-| Internal node (all, incl. root) | $I(t)-\ln\lambda(t)$     | Merger density and parent-side branch survival                                |
-| Leaf                            | `-I(t_leaf)`            | Child-side survival credit: removes overcounting from parent's `m*I(t)`        |
-| Root correction                 | `+I(t_root)`            | Root has no parent to provide its child-side subtraction                       |
+| Internal node (all, incl. root) | $H(t)-\ln\lambda(t)$     | Merger density and parent-side branch survival                                |
+| Leaf                            | $-H(t_\mathrm{leaf})$     | Child-side survival credit                                                     |
+| Root correction                 | $+H(t_\mathrm{root})$     | Root has no parent to supply a child-side subtraction                          |
 
-These three pieces sum to the ordinary Kingman neg-log-likelihood for a bifurcating tree. v0 extends an internal node with $k$ children to multiplicity $m=k-1$. Ordinary Kingman merger events are binary, so the multifurcation rule is v0 parity behavior until a binary-resolution or multiple-merger model is approved. See [kb/issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md](../issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md).
+These pieces sum to the edge-derived Kingman objective. An internal node with $m$ children receives multiplicity $m-1$, matching v0. Edge scoring distributes that merger-density term over the parent's $m$ outgoing edges, preserving the actual parent multiplicity correction.
 
-v1: [`packages/treetime/src/coalescent/`](../../packages/treetime/src/coalescent/) (9 files).
+v1: [`packages/treetime/src/coalescent/`](../../packages/treetime/src/coalescent/).
 v0: [`packages/legacy/treetime/treetime/merger_models.py`](../../packages/legacy/treetime/treetime/merger_models.py).
 
-The coalescent contribution pipeline chains four steps:
+The shared pipeline is:
 
-- `collect_tree_events()` (`#collect_tree_events`) [packages/treetime/src/coalescent/events.rs#L13-L53](../../packages/treetime/src/coalescent/events.rs#L13-L53): traverses the graph breadth-first, collecting `(time, delta_branches)` tuples. Leaves get +1, internal nodes with k children get -(k-1).
-- `compute_lineage_count_distribution()` (`#compute_lineage_count_distribution`) [packages/treetime/src/coalescent/lineage_dynamics.rs#L14-L41](../../packages/treetime/src/coalescent/lineage_dynamics.rs#L14-L41): aggregates events into a `PiecewiseConstantFn` representing k(t).
-- `compute_integral_merger_rate()` (`#compute_integral_merger_rate`) [packages/treetime/src/coalescent/integration.rs#L44-L94](../../packages/treetime/src/coalescent/integration.rs#L44-L94): computes I(t) = integral of kappa(t). Clamping `k_clamped = max(0.5, k-1)` matches v0.
-- `compute_node_contributions()` (`#compute_node_contributions`) [packages/treetime/src/coalescent/contributions.rs#L31-L76](../../packages/treetime/src/coalescent/contributions.rs#L31-L76): computes all three pieces (leaf, internal, but not root correction).
+- `collect_tree_events()` [packages/treetime/src/coalescent/events.rs](../../packages/treetime/src/coalescent/events.rs) collects calendar-dated sample and merger events.
+- `compute_lineage_count_distribution()` [packages/treetime/src/coalescent/lineage_dynamics.rs](../../packages/treetime/src/coalescent/lineage_dynamics.rs) builds calendar-coordinate $k(t)$ with tested breakpoint sidedness.
+- `compute_integral_merger_rate()` [packages/treetime/src/coalescent/integration.rs](../../packages/treetime/src/coalescent/integration.rs) computes $H(t)$ using the existing midpoint quadrature.
+- `compute_coalescent_model()` [packages/treetime/src/coalescent/coalescent.rs](../../packages/treetime/src/coalescent/coalescent.rs) constructs one immutable model for inference and objective evaluation.
 
-`compute_coalescent_contributions()` (`#compute_coalescent_contributions`) [packages/treetime/src/coalescent/coalescent.rs#L61-L79](../../packages/treetime/src/coalescent/coalescent.rs#L61-L79) orchestrates the full pipeline.
-
-The backward pass preserves the [coalescent-first multiplication order](../decisions/coalescent-multiplication-ordering.md): it multiplies each internal-node contribution by the first child message in neg-log space. `Distribution<NegLog>::to_plain_normalized()` then subtracts the minimum neg-log value before exponentiation, `p_rel(t) = exp(-(ell(t) - min ell))`, so the largest relative likelihood is 1 and all likelihood ratios are preserved. Remaining child messages are multiplied in plain space with normalization after each multiplication. This prevents large absolute coalescent costs from underflowing every grid value to zero while leaving the approved multiplication order unchanged.
+The backward pass combines every child message before evaluating one leaf, internal, or root cost on the completed distribution's existing coordinates. It subtracts the minimum finite cost before exponentiation and normalizes the result. Leaf factors affect only outgoing messages, so observed date distributions are not overwritten or compounded by repeated passes.
 
 The first timetree pass runs without coalescent to establish node time distributions via backward+forward belief propagation. Coalescent contributions are computed from these established times on the second pass.
-
-**v1 applies only internal node contributions.** Leaf contributions are computed but not consumed by the backward pass (`backward_pass.rs:45` returns `None` for leaves). The root correction is not computed. See [known issue](../issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md).
-
-v0 applies all three pieces: leaf contributions at `clock_tree.py:499-503` (uncertain dates) and `clock_tree.py:474-480` (precise dates), internal node contributions at `clock_tree.py:505-506`, root correction at `clock_tree.py:518-530`.
+Detailed ownership and objective identities are documented in [kb/algo/coalescent-contribution-refactor.md](coalescent-contribution-refactor.md).
 
 ---
 
@@ -75,7 +70,7 @@ v0 applies all three pieces: leaf contributions at `clock_tree.py:499-503` (unce
 
 Optimizes the coalescent time scale Tc in log space over the bracket [-20, 2] using Brent's method (<a id="cite-4"></a>[Brent 1973](https://doi.org/10.1007/978-3-0348-5952-3) [[4](#ref-4)]). Brent's method is a hybrid of parabolic interpolation and golden section search, achieving superlinear convergence without requiring derivatives.
 
-`optimize_tc()` (`#optimize_tc`) [packages/treetime/src/coalescent/optimize_tc.rs#L44-L84](../../packages/treetime/src/coalescent/optimize_tc.rs#L44-L84) precomputes lineage counts and per-node branch data, then minimizes negative total coalescent likelihood. The cost function (`TcCostFunction`) builds a constant `Distribution` at each evaluation, computes `compute_integral_merger_rate()`, and sums per-branch costs. Nodes with undetermined branch length are skipped with a warning.
+`optimize_tc()` (`#optimize_tc`) [packages/treetime/src/coalescent/optimize_tc.rs](../../packages/treetime/src/coalescent/optimize_tc.rs) precomputes lineage state and inferred edge endpoints, then binds each constant candidate $T_c$ to `CoalescentModel` and minimizes the shared edge-derived objective. Nodes without inferred dates are skipped with a warning; reversed finite endpoints are errors.
 
 Tc is re-optimized each iteration (from iteration 2 onward) using constant Tc. In skyline mode, constant Tc is used during loop iterations; full skyline fit is deferred to post-convergence.
 
@@ -194,9 +189,9 @@ v1: [`packages/treetime/src/timetree/convergence/`](../../packages/treetime/src/
 - `compute_sequence_likelihood()` (`#compute_sequence_likelihood`) [packages/treetime/src/timetree/convergence/likelihood.rs#L11-L25](../../packages/treetime/src/timetree/convergence/likelihood.rs#L11-L25): sum of per-partition root log-likelihoods from marginal reconstruction
 - `compute_positional_likelihood()` (`#compute_positional_likelihood`) [packages/treetime/src/timetree/convergence/likelihood.rs#L35-L76](../../packages/treetime/src/timetree/convergence/likelihood.rs#L35-L76): sum of log-probabilities of branch length distributions evaluated at inferred time durations. **v1-specific metric** - v0's `positional_LH` sums node-level marginal log-likelihoods from the forward pass. Both trend in the same direction during convergence but produce different numerical values.
 - `compute_coalescent_likelihood()` (`#compute_coalescent_likelihood`) [packages/treetime/src/timetree/convergence/likelihood.rs#L80-L91](../../packages/treetime/src/timetree/convergence/likelihood.rs#L80-L91): total coalescent log-likelihood via `compute_coalescent_total_lh()`. Sums per-edge Kingman coalescent costs under the active Tc distribution.
-- `compute_coalescent_total_lh()` (`#compute_coalescent_total_lh`) [packages/treetime/src/coalescent/total_lh.rs](../../packages/treetime/src/coalescent/total_lh.rs): thin wrapper over shared `edge_data` module. Collects tree events, lineage counts, integral merger rate, and per-edge data, then calls `sum_coalescent_cost()`.
-- `collect_coalescent_edges()` (`#collect_coalescent_edges`) [packages/treetime/src/coalescent/edge_data.rs](../../packages/treetime/src/coalescent/edge_data.rs): collects per-edge TBP time, branch length, and multiplicity from graph traversal. Shared by `total_lh` and `optimize_tc`.
-- `sum_coalescent_cost()` (`#sum_coalescent_cost`) [packages/treetime/src/coalescent/edge_data.rs](../../packages/treetime/src/coalescent/edge_data.rs): per-edge cost = I(t_merger) - I(t_node) - log(λ(t_merger)) \* (m-1)/m. Uses `eval_left()` for pre-event lineage count at merger times. Accepts any Distribution for Tc.
+- `compute_coalescent_total_lh()` (`#compute_coalescent_total_lh`) [packages/treetime/src/coalescent/total_lh.rs](../../packages/treetime/src/coalescent/total_lh.rs): constructs `CoalescentModel`, collects inferred endpoint data, and calls `sum_coalescent_cost()`.
+- `collect_coalescent_edges()` (`#collect_coalescent_edges`) [packages/treetime/src/coalescent/edge_data.rs](../../packages/treetime/src/coalescent/edge_data.rs): collects inferred child and parent calendar dates plus actual parent multiplicity. Missing dates are skipped with a warning; reversed endpoints are rejected.
+- `sum_coalescent_cost()` (`#sum_coalescent_cost`) [packages/treetime/src/coalescent/edge_data.rs](../../packages/treetime/src/coalescent/edge_data.rs): sums the model's endpoint-derived edge costs. The grouped merger-density share across all child edges equals the corresponding node contribution.
 
 ---
 
@@ -284,11 +279,11 @@ v0: `combine_confidence()` (`clock_tree.py:1090-1101`). Same formula.
 
 ## Timetree Runner
 
-Single timetree inference pass: branch distributions, coalescent contributions, backward pass, forward pass. This is the inner loop called by the estimation pipeline and by rate susceptibility analysis.
+Single timetree inference pass: branch distributions, coalescent model construction, backward pass, forward pass. This is the inner loop called by the estimation pipeline and by rate susceptibility analysis.
 
 v1: [`packages/treetime/src/timetree/inference/runner.rs`](../../packages/treetime/src/timetree/inference/runner.rs).
 
-- `run_timetree()` (`#run_timetree`) [packages/treetime/src/timetree/inference/runner.rs#L23-L74](../../packages/treetime/src/timetree/inference/runner.rs#L23-L74): computes branch distributions (from partitions or input lengths), optional coalescent contributions, then backward+forward propagation. Validates clock rate is positive.
+- `run_timetree()` (`#run_timetree`) [packages/treetime/src/timetree/inference/runner.rs](../../packages/treetime/src/timetree/inference/runner.rs): computes branch distributions, constructs one optional calendar-coordinate coalescent model, then performs backward and forward propagation. Validates that the clock rate is positive.
 
 ---
 

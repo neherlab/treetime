@@ -28,4 +28,3 @@ Express each mathematical operation through ndarray and borrow message inputs; r
 ## Related issues
 
 - [N-array-owned-signatures-force-projection-copies.md](N-array-owned-signatures-force-projection-copies.md)
-- [N-coalescent-contribution-evaluation-allocation-overhead.md](N-coalescent-contribution-evaluation-allocation-overhead.md)

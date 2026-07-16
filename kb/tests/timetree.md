@@ -74,17 +74,12 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 **Impl:** [`packages/treetime/src/coalescent/lineage_dynamics.rs`](../../packages/treetime/src/coalescent/lineage_dynamics.rs)
 
-| Test                                            | Purpose                                                       |
-| ----------------------------------------------- | ------------------------------------------------------------- |
-| `test_piecewise_constant_eval`                  | Step function evaluation (duplicate of piecewise_constant_fn) |
-| `test_piecewise_constant_eval_many`             | Batch evaluation (duplicate of piecewise_constant_fn)         |
-| `test_lineage_count_simple_tree`                | Lineage count from simple tree events                         |
-| `test_lineage_count_single_event`               | Single event                                                  |
-| `test_lineage_count_empty_events`               | Error handling for empty input                                |
-| `test_lineage_count_aggregation`                | Multiple events at same time                                  |
-| `test_lineage_count_decreasing_then_increasing` | Complex event sequence                                        |
-| `test_lineage_count_breakpoints`                | Breakpoint extraction                                         |
-| `test_lineage_count_negative_deltas`            | Merger events                                                 |
+| Test                                                     | Purpose                                             |
+| -------------------------------------------------------- | --------------------------------------------------- |
+| `test_lineage_dynamics_binary_tree_calendar_direction`   | Calendar direction, breakpoint sidedness, and tails |
+| `test_lineage_dynamics_polytomy_uses_child_count_minus_one` | Multifurcation event multiplicity                 |
+| `test_lineage_dynamics_rejects_incomplete_event_balance` | Newest tail must contain zero lineages              |
+| `test_lineage_dynamics_rejects_empty_events`             | Empty event input is rejected                       |
 
 ---
 
@@ -103,11 +98,11 @@ Parameterized tests use `#[case]` expansions via rstest.
 | `test_integration_compute_merger_rates_array_cases` | Arrays, empty inputs, and length-one broadcasting |
 | `test_integration_compute_merger_rates_rejects_incompatible_shapes` | Incompatible ndarray shapes panic |
 | `test_prop_integration_compute_merger_rates_array_matches_scalar` | Array evaluation matches scalar evaluation |
-| `test_compute_integral_merger_rate_constant_tc` | Integration with constant Tc |
-| `test_compute_integral_merger_rate_multiple_segments` | Multiple segments |
-| `test_compute_integral_merger_rate_insufficient_points` | Error handling |
-| `test_compute_integral_merger_rate_varying_tc` | Varying Tc (linear) |
-| `test_compute_integral_merger_rate_varying_tc_many_segments` | Numerical accuracy with analytical solution |
+| `test_integration_constant_tc_accumulates_from_present_to_past` | Calendar hazard direction                       |
+| `test_integration_multiple_segments`                       | Reverse accumulation over lineage intervals         |
+| `test_integration_varying_tc_uses_calendar_midpoint`       | Calendar-domain skyline midpoint evaluation         |
+| `test_integration_rejects_insufficient_breakpoints`        | Breakpoint validation                               |
+| `test_integration_rejects_nonpositive_tc`                   | Finite positive $T_c$ hazard contract               |
 
 ---
 
@@ -158,11 +153,13 @@ Parameterized tests use `#[case]` expansions via rstest.
 
 **Impl:** [`packages/treetime/src/coalescent/coalescent.rs`](../../packages/treetime/src/coalescent/coalescent.rs)
 
-| Test                 | Datasets and Tc values                                                                                                                                                               |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `test_gm_coalescent` | `flu_h3n2_20` (tc 0.01, 0.1, 1.0, 10.0), `ebola_20` (tc 0.1, 1.0, 10.0), `dengue_20` (tc 1.0, 10.0, 100.0), `rsv_a_20` (tc 1.0, 10.0, 100.0), `mpox_clade_ii_20` (tc 0.1, 1.0, 10.0) |
+| Test                                                           | Datasets and Tc values                                                                                                                                                               |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `test_gm_coalescent_model_matches_v0_node_contributions`       | `flu_h3n2_20` (tc 0.01, 0.1, 1.0, 10.0), `ebola_20` (tc 0.1, 1.0, 10.0), `dengue_20` (tc 1.0, 10.0, 100.0), `rsv_a_20` (tc 1.0, 10.0, 100.0), `mpox_clade_ii_20` (tc 0.1, 1.0, 10.0) |
 
 Tolerance: $10^{-6}$ maximum absolute error. Fixtures: [`gm_coalescent_*.json`](../../packages/treetime/src/coalescent/__tests__/__fixtures__/).
+
+Analytical and property tests for node roles, distribution support, formula rejection, and node/edge telescoping are in [`packages/treetime/src/coalescent/__tests__/test_coalescent_model.rs`](../../packages/treetime/src/coalescent/__tests__/test_coalescent_model.rs).
 
 ---
 
@@ -181,6 +178,7 @@ Tolerance: $10^{-6}$ maximum absolute error. Fixtures: [`gm_coalescent_*.json`](
 | `test_total_lh_monotonic_near_optimum`         | LH peaks near optimal Tc                                     |
 | `test_total_lh_matches_optimize_tc_likelihood` | compute_coalescent_total_lh matches optimize_tc output       |
 | `test_total_lh_with_formula_distribution`      | Constant Formula distribution matches Distribution::constant |
+| `test_total_lh_rejects_child_older_than_parent` | Reversed inferred endpoints are rejected                    |
 
 **Test:** [`packages/treetime/src/coalescent/__tests__/test_gm_total_lh.rs`](../../packages/treetime/src/coalescent/__tests__/test_gm_total_lh.rs)
 
@@ -199,12 +197,9 @@ Tolerance: $10^{-6}$ maximum absolute error. Fixtures: [`gm_coalescent_*.json`](
 
 **Impl:** [`packages/treetime/src/coalescent/time_coordinate.rs`](../../packages/treetime/src/coalescent/time_coordinate.rs)
 
-| Test                             | Purpose                                                       |
-| -------------------------------- | ------------------------------------------------------------- |
-| `test_calendar_to_tbp_roundtrip` | CalendarTime -> Tbp -> CalendarTime roundtrip preserves value |
-| `test_tbp_at_present_is_zero`    | Present time converts to Tbp(0)                               |
-| `test_tbp_arithmetic`            | Tbp subtraction and addition produce correct values           |
-| `test_calendar_time_max`         | CalendarTime::max returns the later time                      |
+| Test                                     | Purpose                                  |
+| ---------------------------------------- | ---------------------------------------- |
+| `test_time_coordinate_calendar_time_max` | `CalendarTime::max` returns the later time |
 
 ---
 
@@ -221,7 +216,7 @@ Tolerance: $10^{-6}$ maximum absolute error. Fixtures: [`gm_coalescent_*.json`](
 | `test_backward_pass_computes_internal_node_time`                        | Parent time = child time - branch length         |
 | `test_backward_pass_multiplies_child_messages`                          | Message multiplication (constraint intersection) |
 | `test_backward_pass_preserves_leaf_time_distribution_with_coalescent`   | Coalescent does not overwrite leaf dates         |
-| `test_backward_pass_preserves_internal_time_with_large_coalescent_cost` | Large coalescent costs do not underflow to Empty  |
+| `test_backward_pass_preserves_internal_time_with_strong_coalescent`     | Large coalescent costs do not underflow to Empty  |
 | `test_backward_pass_sets_edge_messages`                                 | `msg_to_parent` storage                           |
 | `test_backward_pass_skips_bad_branch_children`                          | `bad_branch` flag handling                       |
 | `test_backward_pass_bad_branch_equivalent_to_removal`                   | `bad_branch` matches tree without that leaf       |
@@ -499,7 +494,7 @@ Each `__tests__/mod.rs` contains only `mod` declarations.
 
 | Directory                                                                                                                              | Module declarations                                                                                                                                                                                                            |
 | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`coalescent/__tests__/mod.rs`](../../packages/treetime/src/coalescent/__tests__/mod.rs)                             | `helpers`, `test_events`, `test_gm_coalescent`, `test_gm_total_lh`, `test_integration`, `test_lineage_dynamics`, `test_optimize_tc`, `test_piecewise_constant_fn`, `test_piecewise_linear_fn`, `test_skyline`, `test_total_lh` |
+| [`coalescent/__tests__/mod.rs`](../../packages/treetime/src/coalescent/__tests__/mod.rs)                             | `helpers`, `test_coalescent_model`, `test_events`, `test_gm_coalescent`, `test_gm_total_lh`, `test_integration`, `test_lineage_dynamics`, `test_optimize_tc`, `test_skyline`, `test_total_lh` |
 | [`inference/__tests__/mod.rs`](../../packages/treetime/src/timetree/inference/__tests__/mod.rs)                               | `test_backward_pass`, `test_branch_length_likelihood`, `test_gm_runner`, `test_runner`                                                                                                                                         |
 | [`inference/__tests__/test_gm_runner/mod.rs`](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/mod.rs) | `test_gm_runner_marginal_dense`, `test_gm_runner_marginal_sparse`, `test_gm_runner_poisson`, `test_gm_runner_pre_optimize`, `test_gm_runner_support`, `test_runner_coalescent`                                                 |
 | [`convergence/__tests__/mod.rs`](../../packages/treetime/src/timetree/convergence/__tests__/mod.rs)                           | `test_metrics`, `test_pipeline`                                                                                                                                                                                                |

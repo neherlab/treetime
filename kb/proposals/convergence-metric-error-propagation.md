@@ -51,5 +51,3 @@ The `warn!` upgrade (from `debug!`) in this branch makes failures visible at def
 In practice, coalescent evaluation either works for all iterations or fails for all (the tree structure is the same each iteration). The component-set instability is a theoretical concern, not an observed failure mode.
 
 ## Related
-
-- `../issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md` - backward pass gap that could cause metric/inference divergence

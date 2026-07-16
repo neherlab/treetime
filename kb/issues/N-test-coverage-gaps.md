@@ -40,9 +40,8 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 ### Coalescent
 
 - `fn collect_tree_events()` error paths untested (multiple roots, missing time distributions, non-finite present time)
-- `fn collect_coalescent_edges()` and `fn sum_coalescent_cost()`: no edge-case coverage
-- `fn compute_node_contributions()` and `fn compute_internal_contribution_single()`: no tests for `tc_dist.eval()` failure
-- `fn compute_total_neg_log_lh()` and `fn optimize_skyline()`: no analytical or golden-master tests
+- `fn collect_tree_events()`: error paths for multiple roots and missing time distributions remain untested
+- `fn optimize_skyline()`: no independent end-to-end numerical oracle
 
 ### Ancestral command
 

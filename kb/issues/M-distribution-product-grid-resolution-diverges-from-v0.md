@@ -1,6 +1,6 @@
 # Distribution product grid resolution diverges from v0
 
-V0 and v1 preserve different information when multiplying discretized distributions. The difference affects coalescent ordering comparisons and any operation whose operands have non-aligned knots.
+V0 and v1 preserve different information when multiplying discretized distributions. The difference affects operations whose operands have non-aligned knots.
 
 ## Reference behavior
 
@@ -20,6 +20,4 @@ No implementation ticket is ready until the project chooses one of these contrac
 
 ## Related issues
 
-- [H-timetree-coalescent-grid-explosion.md](H-timetree-coalescent-grid-explosion.md)
-- [M-timetree-coalescent-multiplication-ordering-diverges-from-v0.md](M-timetree-coalescent-multiplication-ordering-diverges-from-v0.md)
 - [M-distribution-mixed-support-operations-lose-exact-intersection-boundaries.md](M-distribution-mixed-support-operations-lose-exact-intersection-boundaries.md)

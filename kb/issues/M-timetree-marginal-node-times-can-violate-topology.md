@@ -29,4 +29,3 @@ No implementation ticket is ready until the project chooses the desired contract
 ## Related issues
 
 - [M-distribution-support-boundary-semantics-unresolved.md](M-distribution-support-boundary-semantics-unresolved.md) - tail semantics can change posterior peaks but do not guarantee topology
-- [M-timetree-coalescent-branch-length-clamp.md](M-timetree-coalescent-branch-length-clamp.md) - coalescent likelihood separately clamps negative edge lengths

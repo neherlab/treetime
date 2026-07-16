@@ -18,10 +18,6 @@ The public generic API returns the wrong result for a valid `DistributionNegLog`
 - Preserve existing `Empty`, `Point`, and `Range` behavior.
 - Test matching `Plain` and `NegLog` functions and formulas so that a plain-space peak and its neg-log trough identify the same time.
 
-## Related issues
-
-- [M-timetree-coalescent-missing-leaf-and-root-contributions.md](M-timetree-coalescent-missing-leaf-and-root-contributions.md) — coalescent objective terms use `DistributionNegLog`, so consumers must respect its ordinate semantics.
-
 ## Related tickets
 
 - [kb/tickets/distribution-make-likely-time-policy-aware.md](../tickets/distribution-make-likely-time-policy-aware.md)
