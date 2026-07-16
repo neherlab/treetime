@@ -1,5 +1,5 @@
+use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::edge_data::{CoalescentEdgeData, collect_coalescent_edges, sum_coalescent_cost};
-use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::optimize::observer::OptimizationObserver;
 use crate::payload::traits::TimetreeNode;
@@ -11,12 +11,11 @@ use eyre::Report;
 use log::info;
 use ndarray::Array1;
 use std::sync::Arc;
-use treetime_distribution::{Distribution, DistributionFormula};
-use treetime_graph::edge::{GraphEdge, TimeLength};
+use treetime_distribution::{Distribution, DistributionFunction};
+use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
-use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
-use treetime_grid::piecewise_linear_fn::PiecewiseLinearFn;
+use treetime_grid::grid::Grid;
 
 /// Parameters for skyline optimization.
 #[derive(Debug, Clone)]
@@ -70,7 +69,7 @@ pub struct SkylineResult {
 pub fn optimize_skyline<N, E, D>(graph: &Graph<N, E, D>, params: &SkylineParams) -> Result<SkylineResult, Report>
 where
   N: GraphNode + TimetreeNode + Named,
-  E: GraphEdge + TimeLength,
+  E: GraphEdge,
   D: Sync + Send,
 {
   debug_assert!(
@@ -87,7 +86,7 @@ where
   let pre = CoalescentPrecomputed::from_graph(graph)?;
 
   // Create time grid spanning the tree event range
-  let breakpoints = pre.lineage_counts.breakpoints();
+  let breakpoints = pre.lineage_counts().breakpoints();
   if breakpoints.len() < 2 {
     return make_error!(
       "Skyline optimization requires at least 2 breakpoints, got {}",
@@ -97,15 +96,15 @@ where
   let t_min = breakpoints[0];
   let t_max = breakpoints[breakpoints.len() - 1];
 
-  let time_grid = Array1::linspace(t_min, t_max, params.n_points);
+  let time_grid = Grid::from_range_n_points(t_min, t_max, params.n_points)?.to_array();
 
   // Initial guess: constant log(Tc) = 0 (Tc = 1)
   let initial_log_tc = Array1::zeros(params.n_points);
 
   // Create cost function
   let cost_fn = SkylineCostFunction {
-    edges: Arc::from(collect_coalescent_edges(graph, pre.present_time)?),
-    lineage_counts: Arc::new(pre.lineage_counts),
+    edges: Arc::from(collect_coalescent_edges(graph)?),
+    precomputed: Arc::new(pre),
     time_grid: time_grid.clone(),
     stiffness: params.stiffness,
     regularization: params.regularization,
@@ -135,14 +134,9 @@ where
   let opt_log_tc = Array1::from_vec(opt_log_tc);
 
   let opt_log_tc_clamped = Array1::from_iter(opt_log_tc.iter().map(|&x| x.clamp(-200.0, 100.0)));
-  let tc_distribution = build_tc_distribution(&time_grid, &opt_log_tc_clamped);
-  let integral_merger_rate = compute_integral_merger_rate(&tc_distribution, &cost_fn.lineage_counts)?;
-  let log_likelihood = sum_coalescent_cost(
-    &cost_fn.edges,
-    &integral_merger_rate,
-    &cost_fn.lineage_counts,
-    &tc_distribution,
-  )?;
+  let tc_distribution = build_tc_distribution(&time_grid, &opt_log_tc_clamped)?;
+  let model = CoalescentModel::new(&cost_fn.precomputed, &tc_distribution)?;
+  let log_likelihood = sum_coalescent_cost(&cost_fn.edges, &model)?;
 
   info!(
     "Skyline optimization completed: final_cost={:.4}, log_likelihood={log_likelihood:.4}",
@@ -160,7 +154,7 @@ where
 /// Cost function for skyline optimization.
 struct SkylineCostFunction {
   edges: Arc<[CoalescentEdgeData]>,
-  lineage_counts: Arc<PiecewiseConstantFn>,
+  precomputed: Arc<CoalescentPrecomputed>,
   time_grid: Array1<f64>,
   stiffness: f64,
   regularization: f64,
@@ -175,13 +169,12 @@ impl CostFunction for &SkylineCostFunction {
     let log_tc_clamped = Array1::from_iter(log_tc.iter().map(|&x| x.clamp(-200.0, 100.0)));
 
     // Build Tc distribution from log values
-    let tc_dist = build_tc_distribution(&self.time_grid, &log_tc_clamped);
+    let tc_dist = build_tc_distribution(&self.time_grid, &log_tc_clamped)
+      .map_err(|e| Error::msg(format!("Failed to build Tc distribution: {e}")))?;
 
-    // Compute integral merger rate and total coalescent likelihood
-    let integral_merger_rate = compute_integral_merger_rate(&tc_dist, &self.lineage_counts)
-      .map_err(|e| Error::msg(format!("Failed to compute integral merger rate: {e}")))?;
-
-    let neg_log_lh = -sum_coalescent_cost(&self.edges, &integral_merger_rate, &self.lineage_counts, &tc_dist)
+    let model = CoalescentModel::new(&self.precomputed, &tc_dist)
+      .map_err(|e| Error::msg(format!("Failed to construct coalescent model: {e}")))?;
+    let neg_log_lh = -sum_coalescent_cost(&self.edges, &model)
       .map_err(|e| Error::msg(format!("Failed to compute coalescent likelihood: {e}")))?;
 
     // Add smoothness penalty: stiffness * sum(diff(logTc)^2)
@@ -216,15 +209,10 @@ fn compute_boundary_penalty(log_tc: &[f64], regularization: f64) -> f64 {
 ///
 /// `Tc(t)` is `exp(log_tc)` interpolated linearly between grid points, with
 /// constant extrapolation outside the grid (clamped to the first/last value).
-pub(crate) fn build_tc_distribution(time_grid: &Array1<f64>, log_tc: &Array1<f64>) -> Distribution {
+pub(crate) fn build_tc_distribution(time_grid: &Array1<f64>, log_tc: &Array1<f64>) -> Result<Distribution, Report> {
   let tc_values = log_tc.mapv(f64::exp);
-
-  let t_min = time_grid[0];
-  let t_max = time_grid[time_grid.len() - 1];
-
-  let pwl = PiecewiseLinearFn::new(time_grid.clone(), tc_values);
-
-  Distribution::Formula(DistributionFormula::new(move |t| Ok(pwl.eval(t)), t_min, t_max))
+  let function = DistributionFunction::from_range_values((time_grid[0], time_grid[time_grid.len() - 1]), tc_values)?;
+  Ok(Distribution::Function(function))
 }
 
 /// Creates initial simplex for Nelder-Mead optimization.

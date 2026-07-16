@@ -1,5 +1,5 @@
 use crate::clock::clock_model::ClockModel;
-use crate::coalescent::coalescent::compute_coalescent_contributions;
+use crate::coalescent::coalescent::compute_coalescent_model;
 use crate::optimize::indel::estimate_indel_rate;
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::traits::PartitionTimetreeAll;
@@ -50,15 +50,15 @@ where
     create_branch_distributions_input_mode(graph, clock_rate)?;
   }
 
-  let coalescent_contributions = if let Some(tc) = coalescent_tc {
-    info!("## Computing coalescent contributions");
-    Some(compute_coalescent_contributions(graph, tc)?)
+  let coalescent_model = if let Some(tc) = coalescent_tc {
+    info!("## Computing coalescent model");
+    Some(compute_coalescent_model(graph, tc)?)
   } else {
     None
   };
 
   info!("## Propagating distributions backward");
-  propagate_distributions_backward(graph, coalescent_contributions.as_ref())?;
+  propagate_distributions_backward(graph, coalescent_model.as_ref())?;
 
   info!("## Propagating distributions forward");
   propagate_distributions_forward(graph)?;

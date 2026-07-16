@@ -1,5 +1,5 @@
+use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::edge_data::{CoalescentEdgeData, collect_coalescent_edges, sum_coalescent_cost};
-use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::make_report;
 use crate::optimize::observer::OptimizationObserver;
@@ -10,10 +10,9 @@ use argmin::solver::brent::BrentOpt;
 use eyre::Report;
 use log::{debug, info};
 use treetime_distribution::Distribution;
-use treetime_graph::edge::{GraphEdge, TimeLength};
+use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
-use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
 /// Result of Tc optimization.
 pub struct OptimizeTcResult {
@@ -45,7 +44,7 @@ pub struct OptimizeTcResult {
 pub fn optimize_tc<N, E, D>(graph: &Graph<N, E, D>, initial_tc: f64) -> Result<OptimizeTcResult, Report>
 where
   N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimeLength,
+  E: GraphEdge,
   D: Sync + Send,
 {
   info!("Optimizing coalescent time scale Tc (initial Tc = {initial_tc:.6e})");
@@ -96,7 +95,7 @@ where
 /// then evaluates the total coalescent likelihood for each candidate Tc
 /// during Brent's method iterations.
 struct TcCostFunction {
-  lineage_counts: PiecewiseConstantFn,
+  precomputed: CoalescentPrecomputed,
   edges: Vec<CoalescentEdgeData>,
 }
 
@@ -104,22 +103,22 @@ impl TcCostFunction {
   fn new<N, E, D>(graph: &Graph<N, E, D>) -> Result<Self, Report>
   where
     N: GraphNode + TimetreeNode,
-    E: GraphEdge + TimeLength,
+    E: GraphEdge,
     D: Sync + Send,
   {
     let pre = CoalescentPrecomputed::from_graph(graph)?;
-    let edges = collect_coalescent_edges(graph, pre.present_time)?;
+    let edges = collect_coalescent_edges(graph)?;
 
     Ok(Self {
-      lineage_counts: pre.lineage_counts,
+      precomputed: pre,
       edges,
     })
   }
 
   fn compute_total_lh(&self, tc: f64) -> Result<f64, Report> {
     let tc_dist = Distribution::constant(tc);
-    let integral_merger_rate = compute_integral_merger_rate(&tc_dist, &self.lineage_counts)?;
-    sum_coalescent_cost(&self.edges, &integral_merger_rate, &self.lineage_counts, &tc_dist)
+    let model = CoalescentModel::new(&self.precomputed, &tc_dist)?;
+    sum_coalescent_cost(&self.edges, &model)
   }
 }
 

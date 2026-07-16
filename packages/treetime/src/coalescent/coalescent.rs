@@ -1,72 +1,131 @@
-use crate::coalescent::contributions::compute_node_contributions;
-use crate::coalescent::integration::compute_integral_merger_rate;
+use crate::coalescent::edge_data::CoalescentEdgeData;
+use crate::coalescent::integration::{compute_integral_merger_rate, compute_merger_rate_total_scalar};
 use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::payload::traits::TimetreeNode;
-use eyre::Report;
-use indexmap::IndexMap;
-use std::sync::Arc;
-use treetime_distribution::{Distribution, DistributionNegLog};
+use eyre::{Context, Report};
+use ndarray::Array1;
+use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::GraphNode;
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+use treetime_grid::piecewise_linear_fn::PiecewiseLinearFn;
+use treetime_utils::make_error;
 
-/// Computes Kingman coalescent prior contributions for all nodes in the phylogenetic tree.
-///
-/// Returns distributions that encode coalescent likelihood contributions for each node,
-/// to be multiplied with node time distributions during backward pass optimization.
-///
-/// # Meaning
-///
-/// The Kingman coalescent model provides a probabilistic framework for assessing whether
-/// the timing and structure of a phylogenetic tree are consistent with a given population
-/// history. Not all tree topologies and divergence times are equally likely - trees with
-/// many lineages coalescing simultaneously are less probable than gradual coalescence,
-/// especially in large populations.
-///
-/// This function computes how likely each node's divergence time is under the coalescent
-/// model, given the population size history Tc(t) and the number of concurrent lineages k(t).
-/// These likelihood contributions act as priors that guide the time tree inference toward
-/// more biologically plausible configurations by penalizing unlikely coalescence patterns.
-///
-/// # Notation and Terms
-///
-/// - `t` - time (negative values for past, zero at present)
-/// - `k(t)` - number of concurrent lineages at time t
-/// - `Tc(t)` - coalescence time scale (effective population size) at time t, controls merger rate
-/// - `κ(t)` - branch merger rate: rate for one branch to merge with any other = (k(t)-1)/(2*Tc(t))
-/// - `λ(t)` - total merger rate: rate for any merger to occur = k(t)*(k(t)-1)/(2*Tc(t))
-/// - `I(t)` - cumulative merger rate: I(t) = ∫₀ᵗ κ(t') dt'
-///
-/// # Kingman Coalescent Probability Density
-///
-/// The coalescent contributions differ between leaf and internal nodes:
-///
-/// - Leaf nodes: exp(I(t))
-///   Represents survival probability that the lineage existed without coalescing
-///   from present to sampling time. Important for:
-///   - Uncertain/range dates: helps infer actual sampling time
-///   - Precise dates: encodes survival cost that propagates to ancestors
-///
-/// - Internal nodes with m children (m≥2): λ(t)^(m-1) · exp(-I(t))
-///   - λ(t)^(m-1): probability density of m-way merger at time t
-///   - exp(-I(t)): probability of no merger before time t
-///
-/// Note: The sign convention follows Python v0 which stores -I(t) in neg-log space.
-///
-/// # Returns
-///
-/// Map from node keys to distributions representing coalescent prior contributions (NegLog space).
-/// Each distribution should be multiplied with the node's time distribution.
-pub fn compute_coalescent_contributions<N, E, D>(
-  graph: &Graph<N, E, D>,
-  tc: &Distribution,
-) -> Result<IndexMap<GraphNodeKey, Arc<DistributionNegLog>>, Report>
+/// Builds one calendar-coordinate Kingman coalescent model for a tree and $T_c$.
+pub fn compute_coalescent_model<N, E, D>(graph: &Graph<N, E, D>, tc: &Distribution) -> Result<CoalescentModel, Report>
 where
-  N: GraphNode + TimetreeNode + Named,
+  N: GraphNode + TimetreeNode,
   E: GraphEdge,
   D: Sync + Send,
 {
-  let pre = CoalescentPrecomputed::from_graph(graph)?;
-  let integral_merger_rate = compute_integral_merger_rate(tc, &pre.lineage_counts)?;
-  compute_node_contributions(graph, &integral_merger_rate, tc, &pre.lineage_counts, pre.present_time)
+  let precomputed = CoalescentPrecomputed::from_graph(graph)?;
+  CoalescentModel::new(&precomputed, tc)
+}
+
+/// Calendar-coordinate Kingman coalescent rates and cumulative hazard.
+#[derive(Clone, Debug)]
+pub struct CoalescentModel {
+  lineage_counts: PiecewiseConstantFn,
+  tc: Distribution,
+  cumulative_branch_rate: PiecewiseLinearFn,
+}
+
+impl CoalescentModel {
+  pub(crate) fn new(precomputed: &CoalescentPrecomputed, tc: &Distribution) -> Result<Self, Report> {
+    let cumulative_branch_rate = compute_integral_merger_rate(tc, precomputed.lineage_counts())?;
+    Ok(Self {
+      lineage_counts: precomputed.lineage_counts().clone(),
+      tc: tc.clone(),
+      cumulative_branch_rate,
+    })
+  }
+
+  pub fn leaf_cost(&self, time: f64) -> f64 {
+    -self.cumulative_branch_rate.eval(time)
+  }
+
+  pub fn internal_cost(&self, time: f64, n_children: usize) -> Result<f64, Report> {
+    let multiplicity = n_children.saturating_sub(1) as f64;
+    let total_rate = self.total_rate(time)?;
+    Ok(multiplicity * (self.cumulative_branch_rate.eval(time) - total_rate.ln()))
+  }
+
+  pub fn root_cost(&self, time: f64, n_children: usize) -> Result<f64, Report> {
+    Ok(self.internal_cost(time, n_children)? + self.cumulative_branch_rate.eval(time))
+  }
+
+  pub(crate) fn edge_cost(&self, edge: &CoalescentEdgeData) -> Result<f64, Report> {
+    let parent_time = edge.parent_time().value();
+    let child_time = edge.child_time().value();
+    let survival_cost = self.cumulative_branch_rate.eval(parent_time) - self.cumulative_branch_rate.eval(child_time);
+    let merger_credit = self.total_rate(parent_time)?.ln() * (edge.multiplicity() - 1.0) / edge.multiplicity();
+    Ok(survival_cost - merger_credit)
+  }
+
+  pub(crate) fn apply_leaf_cost(&self, distribution: &Distribution) -> Result<Distribution, Report> {
+    self.apply_cost(distribution, |time| Ok(self.leaf_cost(time)))
+  }
+
+  pub(crate) fn apply_internal_cost(
+    &self,
+    distribution: &Distribution,
+    n_children: usize,
+  ) -> Result<Distribution, Report> {
+    self.apply_cost(distribution, |time| self.internal_cost(time, n_children))
+  }
+
+  pub(crate) fn apply_root_cost(&self, distribution: &Distribution, n_children: usize) -> Result<Distribution, Report> {
+    self.apply_cost(distribution, |time| self.root_cost(time, n_children))
+  }
+
+  fn total_rate(&self, time: f64) -> Result<f64, Report> {
+    // Calendar right-continuity gives the number of lineages immediately on
+    // the sampled-tree side of a merger, equivalent to TBP eval_left().
+    let k = self.lineage_counts.eval(time);
+    let tc = self
+      .tc
+      .eval(time)
+      .wrap_err_with(|| format!("When evaluating coalescent Tc at calendar time {time:.6e}"))?;
+    if !k.is_finite() {
+      return make_error!("Coalescent lineage count must be finite at calendar time {time:.6e}, got {k:.6e}");
+    }
+    if !tc.is_finite() || tc <= 0.0 {
+      return make_error!("Coalescent Tc must be finite and positive at calendar time {time:.6e}, got {tc:.6e}");
+    }
+    Ok(compute_merger_rate_total_scalar(k, tc))
+  }
+
+  fn apply_cost<F>(&self, distribution: &Distribution, cost: F) -> Result<Distribution, Report>
+  where
+    F: Fn(f64) -> Result<f64, Report>,
+  {
+    match distribution {
+      Distribution::Empty => Ok(Distribution::Empty),
+      Distribution::Formula(_) => {
+        make_error!("Coalescent contributions require a concrete Point, Range, or Function distribution")
+      },
+      Distribution::Point(_) | Distribution::Range(_) | Distribution::Function(_) => {
+        let times = distribution.t();
+        let costs = times
+          .iter()
+          .map(|&time| cost(time))
+          .collect::<Result<Vec<_>, Report>>()?;
+        let minimum = costs
+          .iter()
+          .copied()
+          .reduce(f64::min)
+          .filter(|minimum| minimum.is_finite())
+          .ok_or_else(|| eyre::eyre!("Coalescent contribution has no finite cost"))?;
+        let amplitudes = Array1::from_iter(
+          distribution
+            .y()
+            .iter()
+            .zip(costs)
+            .map(|(&amplitude, cost)| amplitude * (minimum - cost).exp()),
+        );
+        Ok(Distribution::function(times, amplitudes)?.normalize())
+      },
+    }
+  }
 }

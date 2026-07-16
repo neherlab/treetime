@@ -1,23 +1,23 @@
+use crate::coalescent::coalescent::CoalescentModel;
 use crate::partition::indexed_pass::{IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
-use indexmap::IndexMap;
 use rayon::prelude::*;
 use std::sync::Arc;
+use treetime_distribution::Distribution;
 use treetime_distribution::distribution_convolution;
 use treetime_distribution::distribution_multiplication;
-use treetime_distribution::{Distribution, DistributionNegLog};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNode;
 
 /// Propagates time distributions backward from leaves to root.
 ///
-/// If coalescent_contributions is provided, multiplies each node's distribution
-/// with its precalculated coalescent contribution.
+/// If a coalescent model is provided, applies one role-specific contribution
+/// after all child messages have been combined.
 pub fn propagate_distributions_backward<N, E, D>(
   graph: &Graph<N, E, D>,
-  coalescent_contributions: Option<&IndexMap<GraphNodeKey, Arc<DistributionNegLog>>>,
+  coalescent_model: Option<&CoalescentModel>,
 ) -> Result<(), Report>
 where
   N: GraphNode + TimetreeNode + Default,
@@ -27,7 +27,7 @@ where
   with_indexed_graph_payloads(graph, |pass| {
     pass.try_for_each_backward_frontier(|node_indices, _, _, completed, frontier| {
       frontier.par_iter_mut().try_for_each(|slot| {
-        propagate_distributions_backward_slot(graph, coalescent_contributions, node_indices, completed, slot)
+        propagate_distributions_backward_slot(graph, coalescent_model, node_indices, completed, slot)
       })
     })
   })
@@ -36,7 +36,7 @@ where
 /// Computes time distribution for a single internal node from its children.
 fn propagate_distributions_backward_slot<N, E, D>(
   graph: &Graph<N, E, D>,
-  coalescent_contribs: Option<&IndexMap<GraphNodeKey, Arc<DistributionNegLog>>>,
+  coalescent_model: Option<&CoalescentModel>,
   node_indices: &[Option<usize>],
   completed: &[IndexedPassSlot<N, E>],
   slot: &mut IndexedPassSlot<N, E>,
@@ -46,11 +46,14 @@ where
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  let coalescent_contribution = if graph.is_leaf(slot.key) {
-    None
-  } else {
-    coalescent_contribs.and_then(|contributions| contributions.get(&slot.key))
-  };
+  let is_leaf = graph.is_leaf(slot.key);
+  let is_root = slot.parent_edge.is_none();
+  let n_children = graph
+    .get_node(slot.key)
+    .expect("Indexed node must exist")
+    .read_arc()
+    .outbound()
+    .len();
   let mut result: Option<Distribution> = None;
 
   for (child, _) in graph.children_of(&graph.get_node(slot.key).expect("Indexed node must exist").read_arc()) {
@@ -73,30 +76,40 @@ where
       // consumers (likely_time, quantile, hpd_region) are scale-invariant.
       result = Some(if let Some(current) = result {
         distribution_multiplication(&current, parent_message)?.normalize()
-      } else if let Some(contribution) = coalescent_contribution {
-        let parent_message = parent_message.to_neglog();
-        distribution_multiplication(contribution, &parent_message)?.to_plain_normalized()
       } else {
         parent_message.as_ref().clone()
       });
     }
   }
 
-  if result.is_none()
-    && let Some(contribution) = coalescent_contribution
-  {
-    result = Some(contribution.to_plain_normalized());
+  if let (Some(model), Some(distribution)) = (coalescent_model, result.as_ref()) {
+    result = Some(if is_root {
+      model.apply_root_cost(distribution, n_children)?
+    } else {
+      model.apply_internal_cost(distribution, n_children)?
+    });
   }
 
-  // Store final distribution on node
-  if let Some(dist) = result {
-    slot.node.set_time_distribution(Some(Arc::new(dist)));
+  if let Some(dist) = result.as_ref() {
+    // Leaves retain their observed date distribution. Their coalescent factor
+    // belongs only to the temporary message convolved toward the parent.
+    debug_assert!(!is_leaf);
+    slot.node.set_time_distribution(Some(Arc::new(dist.clone())));
   }
+
+  let outgoing_distribution = if is_leaf {
+    let distribution = slot.node.time_distribution();
+    match (coalescent_model, distribution) {
+      (Some(model), Some(distribution)) => Some(Arc::new(model.apply_leaf_cost(distribution.as_ref())?)),
+      (_, distribution) => distribution.clone(),
+    }
+  } else {
+    slot.node.time_distribution().clone()
+  };
 
   if !slot.node.bad_branch()
     && let Some((_, edge)) = slot.parent_edge.as_mut()
-    && let (Some(branch_dist), Some(node_time_dist)) =
-      (edge.branch_length_distribution(), slot.node.time_distribution())
+    && let (Some(branch_dist), Some(node_time_dist)) = (edge.branch_length_distribution(), outgoing_distribution)
   {
     let negated_branch_dist = branch_dist.negate()?;
     let parent_message = distribution_convolution(node_time_dist.as_ref(), &negated_branch_dist)?;

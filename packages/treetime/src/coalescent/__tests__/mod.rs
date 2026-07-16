@@ -1,4 +1,5 @@
 pub mod helpers;
+mod test_coalescent_model;
 mod test_events;
 mod test_gm_coalescent;
 mod test_gm_total_lh;

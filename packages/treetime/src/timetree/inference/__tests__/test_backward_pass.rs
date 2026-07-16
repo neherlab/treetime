@@ -1,15 +1,18 @@
 #[cfg(test)]
 mod tests {
+  use crate::coalescent::coalescent::CoalescentModel;
+  use crate::coalescent::precomputed::CoalescentPrecomputed;
   use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use eyre::Report;
-  use indexmap::IndexMap;
+  use ndarray::array;
   use std::sync::Arc;
-  use treetime_distribution::{Distribution, DistributionFormula, DistributionNegLog};
+  use treetime_distribution::Distribution;
   use treetime_graph::edge::BranchDistribution;
   use treetime_graph::node::{GraphNodeKey, TimeConstraint};
+  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::nwk_read_str;
 
   /// Test backward pass on a simple 2-leaf tree:
@@ -157,16 +160,10 @@ mod tests {
       payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 1.0))));
     }
 
-    // Create coalescent contributions for all nodes (simulating --coalescent option)
-    let mut coalescent_contributions: IndexMap<_, Arc<DistributionNegLog>> = IndexMap::new();
-    for node in graph.get_nodes() {
-      let key = node.read_arc().key();
-      // Use a constant coalescent contribution
-      coalescent_contributions.insert(key, Arc::new(DistributionNegLog::constant(0.01)));
-    }
+    let coalescent_model = coalescent_model(0.01)?;
 
-    // Run backward pass WITH coalescent contributions
-    propagate_distributions_backward(&graph, Some(&coalescent_contributions))?;
+    propagate_distributions_backward(&graph, Some(&coalescent_model))?;
+    propagate_distributions_backward(&graph, Some(&coalescent_model))?;
 
     // Verify leaf A still has its original date
     {
@@ -176,10 +173,8 @@ mod tests {
         .time_distribution()
         .as_ref()
         .expect("leaf A should have time distribution");
-      let likely_time = time_dist
-        .likely_time()
-        .expect("leaf A time distribution should have likely_time");
-      pretty_assert_ulps_eq!(likely_time, date_a, max_ulps = 4);
+      let expected = Distribution::point(date_a, 1.0);
+      assert_eq!(&expected, time_dist.as_ref());
     }
 
     // Verify leaf B still has its original date
@@ -190,19 +185,18 @@ mod tests {
         .time_distribution()
         .as_ref()
         .expect("leaf B should have time distribution");
-      let likely_time = time_dist
-        .likely_time()
-        .expect("leaf B time distribution should have likely_time");
-      pretty_assert_ulps_eq!(likely_time, date_b, max_ulps = 4);
+      let expected = Distribution::point(date_b, 1.0);
+      assert_eq!(&expected, time_dist.as_ref());
     }
 
     Ok(())
   }
 
-  /// v0 normalizes negative-log likelihoods relative to their peak before
-  /// exponentiation (`treetime/distribution.py:210-213`).
+  /// V0 normalizes negative-log likelihoods relative to their peak before
+  /// exponentiation (`treetime/distribution.py:210-213`). A strong coalescent
+  /// factor must therefore preserve a point-supported internal date.
   #[test]
-  fn test_backward_pass_preserves_internal_time_with_large_coalescent_cost() -> Result<(), Report> {
+  fn test_backward_pass_preserves_internal_time_with_strong_coalescent() -> Result<(), Report> {
     let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
     let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
     let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
@@ -213,10 +207,9 @@ mod tests {
     set_edge_branch_dist(&graph, leaf_a_key, 3.0);
     set_edge_branch_dist(&graph, leaf_b_key, 2.0);
 
-    let contribution = DistributionFormula::new(|time| Ok(1000.0 + (time - 2012.0).powi(2)), 1900.0, 2100.0);
-    let contributions = IndexMap::from([(internal_key, Arc::new(DistributionNegLog::Formula(contribution)))]);
+    let coalescent_model = coalescent_model(1e-6)?;
 
-    propagate_distributions_backward(&graph, Some(&contributions))?;
+    propagate_distributions_backward(&graph, Some(&coalescent_model))?;
 
     let internal = graph.get_node(internal_key).expect("internal I exists");
     let payload = internal.read_arc().payload().read_arc();
@@ -403,6 +396,14 @@ mod tests {
             .set_branch_length_distribution(Some(Arc::new(Distribution::point(bl, 1.0))));
         }
       }
+    }
+
+    pub(super) fn coalescent_model(tc: f64) -> Result<CoalescentModel, Report> {
+      let precomputed = CoalescentPrecomputed::from_lineage_counts(PiecewiseConstantFn::new(
+        array![1900.0, 2100.0],
+        array![1.0, 2.0, 0.0],
+      ));
+      CoalescentModel::new(&precomputed, &Distribution::constant(tc))
     }
   }
 

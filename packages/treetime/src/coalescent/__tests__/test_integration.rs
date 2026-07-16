@@ -8,9 +8,9 @@ mod tests {
   use ndarray::Array1;
   use ndarray::array;
   use rstest::rstest;
-  use treetime_distribution::Distribution;
+  use treetime_distribution::{Distribution, DistributionFunction};
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
-  use treetime_utils::{assert_error, pretty_assert_ulps_eq};
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[rustfmt::skip]
   #[rstest]
@@ -105,76 +105,43 @@ mod tests {
   }
 
   #[test]
-  fn test_compute_integral_merger_rate_constant_tc() -> Result<(), Report> {
-    // Create PiecewiseConstantFn with k=2.0 from t=0 to t=10
-    // Breakpoints: [0.0, 10.0], values: [0.0, 2.0, 2.0]
-    let lineage_counts = PiecewiseConstantFn::new(array![0.0, 10.0], array![0.0, 2.0, 2.0]);
+  fn test_integration_constant_tc_accumulates_from_present_to_past() -> Result<(), Report> {
+    let lineage_counts = PiecewiseConstantFn::new(array![2000.0, 2010.0], array![1.0, 2.0, 0.0]);
 
-    let tc_dist = Distribution::constant(0.01);
+    let actual = compute_integral_merger_rate(&Distribution::constant(0.01), &lineage_counts)?;
 
-    let actual = compute_integral_merger_rate(&tc_dist, &lineage_counts)?;
-
-    let actual_y = actual.values();
-
-    // I(0) = 0, I(10) = integral of 0.5*(2-1)/0.01 = 50*10 = 500
-    pretty_assert_ulps_eq!(actual_y[0], 0.0);
-    pretty_assert_ulps_eq!(actual_y[actual_y.len() - 1], 500.0, max_ulps = 1000);
-
+    // κ=50/year over ten years, so H(2000)=500 and H(2010)=0.
+    pretty_assert_ulps_eq!(actual.values()[0], 500.0, max_ulps = 1000);
+    pretty_assert_ulps_eq!(actual.values()[1], 0.0);
     Ok(())
   }
 
   #[test]
-  fn test_compute_integral_merger_rate_multiple_segments() -> Result<(), Report> {
-    // Three segments: k=1 from 0-5, k=5 from 5-10
-    // Breakpoints: [0.0, 5.0, 10.0], values: [0.0, 1.0, 5.0, 5.0]
-    let lineage_counts = PiecewiseConstantFn::new(array![0.0, 5.0, 10.0], array![0.0, 1.0, 5.0, 5.0]);
+  fn test_integration_multiple_segments() -> Result<(), Report> {
+    let lineage_counts = PiecewiseConstantFn::new(array![2000.0, 2005.0, 2010.0], array![1.0, 1.0, 5.0, 0.0]);
 
-    let tc_dist = Distribution::constant(0.01);
+    let actual = compute_integral_merger_rate(&Distribution::constant(0.01), &lineage_counts)?;
 
-    let actual = compute_integral_merger_rate(&tc_dist, &lineage_counts)?;
-
-    let actual_y = actual.values();
-
-    // Segment 0-5: k=1, rate = 0.5*max(0.5, 1-1)/0.01 = 0.5*0.5/0.01 = 25, contribution = 25*5 = 125
-    // Segment 5-10: k=5, rate = 0.5*(5-1)/0.01 = 200, contribution = 200*5 = 1000
-    // Total = 125 + 1000 = 1125
-    pretty_assert_ulps_eq!(actual_y[0], 0.0);
-    pretty_assert_ulps_eq!(actual_y[actual_y.len() - 1], 1125.0, max_ulps = 1000);
-
+    // κ=25/year for five years plus κ=200/year for five years.
+    pretty_assert_ulps_eq!(actual.values()[0], 1125.0, max_ulps = 1000);
+    pretty_assert_ulps_eq!(actual.values()[1], 1000.0, max_ulps = 1000);
+    pretty_assert_ulps_eq!(actual.values()[2], 0.0);
     Ok(())
   }
 
   #[test]
-  fn test_compute_integral_merger_rate_insufficient_points() {
-    let lineage_counts = PiecewiseConstantFn::new(array![5.0], array![0.0, 2.0]);
+  fn test_integration_varying_tc_uses_calendar_midpoint() -> Result<(), Report> {
+    let lineage_counts = PiecewiseConstantFn::new(array![2000.0, 2010.0], array![1.0, 3.0, 0.0]);
+    let tc = Distribution::Function(DistributionFunction::from_range_values(
+      (2000.0, 2010.0),
+      Array1::linspace(0.01, 0.05, 100),
+    )?);
 
-    let tc_dist = Distribution::constant(0.01);
+    let actual = compute_integral_merger_rate(&tc, &lineage_counts)?;
 
-    let result = compute_integral_merger_rate(&tc_dist, &lineage_counts);
-
-    assert_error!(result, "lineage count must have at least 2 breakpoints");
-  }
-
-  #[test]
-  fn test_compute_integral_merger_rate_varying_tc() -> Result<(), Report> {
-    // k=3 constant from 0-10, single segment
-    let lineage_counts = PiecewiseConstantFn::new(array![0.0, 10.0], array![0.0, 3.0, 3.0]);
-
-    // Tc varies linearly from 0.01 to 0.05
-    let t_vals = Array1::linspace(0.0, 10.0, 100);
-    let tc_vals = Array1::linspace(0.01, 0.05, 100);
-    let tc_dist = Distribution::function(t_vals, tc_vals)?;
-
-    let actual = compute_integral_merger_rate(&tc_dist, &lineage_counts)?;
-    let actual_y = actual.values();
-
-    // Single segment evaluates at midpoint t=5 where Tc=0.03
-    // rate = 0.5 * (3-1) / 0.03 = 33.333...
-    // integral = 33.333 * 10 = 333.333...
-    let expected = 10.0 / 0.03; // 333.333...
-    pretty_assert_ulps_eq!(actual_y[0], 0.0);
-    pretty_assert_ulps_eq!(actual_y[actual_y.len() - 1], expected, max_ulps = 1000);
-
+    // Current skyline contract: one midpoint evaluation, Tc(2005)=0.03.
+    pretty_assert_ulps_eq!(actual.values()[0], 10.0 / 0.03, max_ulps = 1000);
+    pretty_assert_ulps_eq!(actual.values()[1], 0.0);
     Ok(())
   }
 
@@ -182,31 +149,38 @@ mod tests {
   // See kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md.
   #[test]
   #[ignore = "varying-Tc midpoint quadrature error (kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md)"]
-  fn test_compute_integral_merger_rate_varying_tc_many_segments() -> Result<(), Report> {
-    // k=3 constant, 1000 segments for high-accuracy numerical integration.
+  fn test_integration_varying_tc_converges_with_refined_lineage_grid() -> Result<(), Report> {
     let n_segments = 1000;
-    let breakpoints = Array1::linspace(0.0, 10.0, n_segments + 1);
-    let values = {
-      let mut v = vec![0.0];
-      v.extend(std::iter::repeat_n(3.0, n_segments + 1));
-      Array1::from(v)
-    };
+    let breakpoints = Array1::linspace(2000.0, 2010.0, n_segments + 1);
+    let values = Array1::from_iter(
+      std::iter::once(1.0)
+        .chain(std::iter::repeat_n(3.0, n_segments))
+        .chain(std::iter::once(0.0)),
+    );
     let lineage_counts = PiecewiseConstantFn::new(breakpoints, values);
+    let tc = Distribution::function(array![2000.0, 2010.0], array![0.01, 0.05])?;
 
-    // Tc varies linearly from 0.01 to 0.05
-    let t_vals = array![0.0, 10.0];
-    let tc_vals = array![0.01, 0.05];
-    let tc_dist = Distribution::function(t_vals, tc_vals)?;
+    let actual = compute_integral_merger_rate(&tc, &lineage_counts)?;
 
-    let actual = compute_integral_merger_rate(&tc_dist, &lineage_counts)?;
-    let actual_y = actual.values();
-
-    // Analytical: ∫₀¹⁰ (k-1)/(2*Tc(t)) dt = ∫₀¹⁰ 1/(0.01 + 0.004t) dt
-    //           = (1/0.004) * ln(0.05/0.01) = 250 * ln(5) ≈ 402.359
-    let expected_analytical = 250.0 * 5.0_f64.ln();
-    pretty_assert_ulps_eq!(actual_y[0], 0.0);
-    assert_abs_diff_eq!(actual_y[actual_y.len() - 1], expected_analytical, epsilon = 1e-6);
-
+    // Analytical oracle: ∫ 1/(0.01+0.004t) dt after shifting t to [0,10].
+    let expected = 250.0 * 5.0_f64.ln();
+    assert_abs_diff_eq!(expected, actual.values()[0], epsilon = 1e-6);
     Ok(())
+  }
+
+  #[test]
+  fn test_integration_rejects_insufficient_breakpoints() {
+    let lineage_counts = PiecewiseConstantFn::new(array![2000.0], array![1.0, 0.0]);
+    let error = compute_integral_merger_rate(&Distribution::constant(1.0), &lineage_counts).unwrap_err();
+    assert!(error.to_string().contains("at least 2 breakpoints"));
+  }
+
+  #[test]
+  fn test_integration_rejects_nonpositive_tc() {
+    let lineage_counts = PiecewiseConstantFn::new(array![2000.0, 2010.0], array![1.0, 2.0, 0.0]);
+
+    let error = compute_integral_merger_rate(&Distribution::constant(0.0), &lineage_counts).unwrap_err();
+
+    assert!(error.to_string().contains("finite and positive"));
   }
 }

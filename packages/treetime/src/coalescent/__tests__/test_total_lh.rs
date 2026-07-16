@@ -1,11 +1,14 @@
 #[cfg(test)]
 mod tests {
   use super::super::helpers::setup_graph;
+  use crate::coalescent::edge_data::collect_coalescent_edges;
   use crate::coalescent::optimize_tc::optimize_tc;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::pretty_assert_ulps_eq;
+  use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use rstest::rstest;
+  use std::sync::Arc;
   use treetime_distribution::Distribution;
 
   #[test]
@@ -120,6 +123,19 @@ mod tests {
 
     pretty_assert_ulps_eq!(lh_const, lh_formula, max_ulps = 10);
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_total_lh_rejects_child_older_than_parent() -> Result<(), Report> {
+    let graph = setup_graph()?;
+    let leaf_key = find_node_key_by_name(&graph, "leaf1").expect("leaf1 not found");
+    let leaf = graph.get_node(leaf_key).expect("leaf1 exists");
+    leaf.read_arc().payload().write_arc().time_distribution = Some(Arc::new(Distribution::point(1990.0, 1.0)));
+
+    let error = collect_coalescent_edges(&graph).unwrap_err();
+
+    assert!(error.to_string().contains("child older than parent"));
     Ok(())
   }
 }

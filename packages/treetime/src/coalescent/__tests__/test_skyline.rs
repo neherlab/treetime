@@ -192,7 +192,7 @@ mod tests {
     let time_grid = array![0.0, 1.0, 2.0];
     let log_tc = array![0.0, std::f64::consts::LN_2, 0.0];
 
-    let tc_dist = build_tc_distribution(&time_grid, &log_tc);
+    let tc_dist = build_tc_distribution(&time_grid, &log_tc)?;
     let actual = tc_dist.eval(t)?;
 
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);

@@ -13,11 +13,11 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::LazyLock;
 use treetime::clock::date_constraints::load_date_constraints;
-use treetime::coalescent::coalescent::compute_coalescent_contributions;
+use treetime::coalescent::coalescent::compute_coalescent_model;
 use treetime::o;
 use treetime::partition::timetree::GraphTimetree;
 use treetime_distribution::Distribution;
-use treetime_graph::node::{GraphNodeKey, Named};
+use treetime_graph::node::Named;
 use treetime_grid::grid::Grid;
 use treetime_io::dates_csv::read_dates;
 use treetime_io::nwk::nwk_read_file;
@@ -26,7 +26,6 @@ use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 use treetime_utils::init::clap_styles::styles;
 use treetime_utils::init::global::global_init;
 use treetime_utils::io::json::json_read_file;
-use treetime_utils::make_report;
 
 #[ctor]
 fn init() {
@@ -275,31 +274,6 @@ fn load_graph(snapshot: &Snapshot) -> Result<GraphTimetree, Report> {
   Ok(graph)
 }
 
-fn convert_map_keys_to_names<V>(
-  graph: &GraphTimetree,
-  map: &IndexMap<GraphNodeKey, V>,
-) -> Result<IndexMap<String, V>, Report>
-where
-  V: Clone,
-{
-  let mut out = IndexMap::with_capacity(map.len());
-  for (key, value) in map {
-    let node = graph
-      .get_node(*key)
-      .ok_or_else(|| make_report!("Node key not found in graph: {key:?}"))?;
-    let name = node
-      .read_arc()
-      .payload()
-      .read_arc()
-      .name()
-      .ok_or_else(|| make_report!("Node has no name: {key:?}"))?
-      .as_ref()
-      .to_owned();
-    out.insert(name, value.clone());
-  }
-  Ok(out)
-}
-
 fn format_sci(v: f64) -> String {
   if v == 0.0 {
     o!("0")
@@ -315,8 +289,7 @@ fn run_coalescent_test(_snapshot_filename: &str, snapshot: Snapshot) -> Result<T
   let tc_value = snapshot.inputs.tc;
   let tc = Distribution::constant(tc_value);
 
-  let actuals = compute_coalescent_contributions(&graph, &tc)?;
-  let actuals = convert_map_keys_to_names(&graph, &actuals).wrap_err("When mapping node keys to node names")?;
+  let model = compute_coalescent_model(&graph, &tc)?;
 
   let t_grid = Grid::from_range_n_points(
     snapshot.tbp_grid.start,
@@ -326,14 +299,27 @@ fn run_coalescent_test(_snapshot_filename: &str, snapshot: Snapshot) -> Result<T
 
   let t_grid_tbp = t_grid.to_array();
 
-  let actuals: IndexMap<String, Array1<f64>> = actuals
+  let calendar_grid = t_grid_tbp.mapv(|time| snapshot.inputs.present_time - time);
+  let actuals: IndexMap<String, Array1<f64>> = graph
+    .get_nodes()
     .iter()
-    .map(|(name, dist)| {
-      let y_resampled = dist
-        .eval_many(&t_grid_tbp)
-        .wrap_err_with(|| format!("When evaluating node contribution distribution for node '{name}'"))?;
-
-      Ok((name.clone(), y_resampled))
+    .filter_map(|node| {
+      let node = node.read_arc();
+      let name = node.payload().read_arc().name()?.as_ref().to_owned();
+      Some((name, node.outbound().len()))
+    })
+    .map(|(name, n_children)| {
+      let values = calendar_grid
+        .iter()
+        .map(|&time| {
+          if n_children == 0 {
+            Ok(model.leaf_cost(time))
+          } else {
+            model.internal_cost(time, n_children)
+          }
+        })
+        .collect::<Result<Vec<_>, Report>>()?;
+      Ok((name, Array1::from_vec(values)))
     })
     .collect::<Result<IndexMap<String, Array1<f64>>, Report>>()?;
 

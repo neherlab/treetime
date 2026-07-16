@@ -63,13 +63,12 @@ pub fn compute_merger_rates(k: &Array1<f64>, tc: &Array1<f64>) -> MergerRates<Ar
   MergerRates { per_lineage, total }
 }
 
-/// Computes I(t) = ∫₀ᵗ κ(t') dt' via piecewise integration.
+/// Computes H(t) = ∫ₜᴾ κ(t') dt' in decimal calendar years.
 ///
 /// This integral represents the expected number of merger events experienced by a branch.
 /// Uses the exact breakpoints from lineage_counts where the function has discontinuities.
 ///
-/// The integral is normalized so that I(0) = 0, meaning the integral starts at the present
-/// (TBP = 0) and increases going into the past.
+/// The integral is zero at the most recent event P and increases into the past.
 pub fn compute_integral_merger_rate(
   tc_dist: &Distribution,
   lineage_counts: &PiecewiseConstantFn,
@@ -80,12 +79,11 @@ pub fn compute_integral_merger_rate(
   }
 
   let n = breakpoints.len();
-  let mut integral_values = Vec::with_capacity(n);
-  integral_values.push(0.0); // I(breakpoints[0]) = 0
+  let mut integral_values = vec![0.0; n];
 
-  for i in 1..n {
-    let t0 = breakpoints[i - 1];
-    let t1 = breakpoints[i];
+  for i in (0..n - 1).rev() {
+    let t0 = breakpoints[i];
+    let t1 = breakpoints[i + 1];
     let dt = t1 - t0;
 
     // k is constant between breakpoints, use value at midpoint
@@ -93,30 +91,19 @@ pub fn compute_integral_merger_rate(
     let k = lineage_counts.eval(mid);
     let tc = tc_dist.eval(mid)?;
 
+    if !k.is_finite() {
+      return make_error!("Coalescent lineage count must be finite at calendar time {mid:.6e}, got {k:.6e}");
+    }
+    if !tc.is_finite() || tc <= 0.0 {
+      return make_error!("Coalescent Tc must be finite and positive at calendar time {mid:.6e}, got {tc:.6e}");
+    }
     let rate = compute_merger_rate_per_lineage_scalar(k, tc);
-
-    integral_values.push(integral_values[i - 1] + dt * rate);
+    integral_values[i] = integral_values[i + 1] + dt * rate;
   }
-
-  // First breakpoint is at earliest sample (TBP ~ 0)
-  // Normalize so I(0) = 0 by subtracting I(breakpoints[0])
-  // For typical trees, breakpoints[0] is very close to 0
-  // If breakpoints[0] > 0, we need to find I(0) by extrapolation
-  let i_at_zero = if breakpoints[0] <= 0.0 {
-    integral_values[0] // which is 0
-  } else {
-    // Extrapolate backwards: I(0) = I(bp[0]) - rate_0 * bp[0]
-    let k = lineage_counts.eval(breakpoints[0] / 2.0);
-    let tc = tc_dist.eval(breakpoints[0] / 2.0)?;
-    let rate = compute_merger_rate_per_lineage_scalar(k, tc);
-    -rate * breakpoints[0]
-  };
-
-  let integral_values: Vec<f64> = integral_values.iter().map(|v| v - i_at_zero).collect();
 
   Ok(PiecewiseLinearFn::new(
     Array1::from(breakpoints.to_vec()),
-    Array1::from(integral_values),
+    Array1::from_vec(integral_values),
   ))
 }
 

@@ -1,10 +1,10 @@
+use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::edge_data::{collect_coalescent_edges, sum_coalescent_cost};
-use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
 use treetime_distribution::Distribution;
-use treetime_graph::edge::{GraphEdge, TimeLength};
+use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 
@@ -15,28 +15,21 @@ use treetime_graph::node::GraphNode;
 ///
 /// and returns LH = -Σ cost.
 ///
-/// Multiplicity m is the number of children of the child node for internal nodes,
-/// or 2.0 for leaves (binary merger assumption). This corrects a v0 erratum where
+/// Multiplicity m is the number of children of the parent merger node. This corrects a v0 erratum where
 /// `total_LH()` uses fixed multiplicity=2 for all edges (see
 /// `docs/port-v0-errata/coalescent-total-lh-fixed-multiplicity.md`).
 ///
-/// This metric reports the full Kingman coalescent log-likelihood. The current
-/// backward pass applies only internal-node contributions (leaf and root terms
-/// are missing, see `docs/port-known-issues/M-timetree-coalescent-missing-leaf-and-root-contributions.md`).
-/// When those terms are added to inference, this metric will automatically align
-/// with the optimized objective.
-///
 /// Accepts any `Distribution` for Tc (constant, skyline, or formula-based).
-/// Piecewise functions are evaluated in TBP (time-before-present) coordinates.
+/// Nonconstant distributions are evaluated in decimal calendar years.
 pub fn compute_coalescent_total_lh<N, E, D>(graph: &Graph<N, E, D>, tc_dist: &Distribution) -> Result<f64, Report>
 where
   N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimeLength,
+  E: GraphEdge,
   D: Sync + Send,
 {
   let pre = CoalescentPrecomputed::from_graph(graph)?;
-  let integral_merger_rate = compute_integral_merger_rate(tc_dist, &pre.lineage_counts)?;
-  let edges = collect_coalescent_edges(graph, pre.present_time)?;
+  let model = CoalescentModel::new(&pre, tc_dist)?;
+  let edges = collect_coalescent_edges(graph)?;
 
-  sum_coalescent_cost(&edges, &integral_merger_rate, &pre.lineage_counts, tc_dist)
+  sum_coalescent_cost(&edges, &model)
 }

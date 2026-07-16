@@ -1,11 +1,4 @@
-use std::ops::{Add, Sub};
-
-/// Calendar time as decimal year fraction (e.g., 2013.5 = July 2013).
-///
-/// Primary time coordinate in v1. Date constraints, node times, and distribution
-/// domains all use calendar time. The coalescent module converts to [`Tbp`] for
-/// internal merger rate computations and back to `CalendarTime` for distribution
-/// domains consumed by the backward pass.
+/// Calendar time as a decimal year fraction (for example, 2013.5).
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct CalendarTime(f64);
@@ -15,12 +8,6 @@ impl CalendarTime {
     Self(value)
   }
 
-  /// Convert to time-before-present relative to `present`.
-  pub fn to_tbp(self, present: CalendarTime) -> Tbp {
-    Tbp(present.0 - self.0)
-  }
-
-  /// Raw f64 for coordinate-agnostic APIs (distributions, arrays).
   pub fn value(self) -> f64 {
     self.0
   }
@@ -34,83 +21,15 @@ impl CalendarTime {
   }
 }
 
-/// Time before present (TBP). Zero at the most recent sample, increases into the past.
-///
-/// Used internally by the coalescent module for lineage counts, merger rates,
-/// and integral computations. All piecewise functions operate in TBP.
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
-#[repr(transparent)]
-pub struct Tbp(f64);
-
-impl Tbp {
-  pub fn new(value: f64) -> Self {
-    Self(value)
-  }
-
-  /// Convert to calendar time relative to `present`.
-  pub fn to_calendar(self, present: CalendarTime) -> CalendarTime {
-    CalendarTime(present.0 - self.0)
-  }
-
-  /// Raw f64 for coordinate-agnostic APIs (piecewise functions, arrays).
-  pub fn value(self) -> f64 {
-    self.0
-  }
-}
-
-/// `Tbp - Tbp` yields a duration (plain f64).
-impl Sub for Tbp {
-  type Output = f64;
-
-  fn sub(self, rhs: Tbp) -> f64 {
-    self.0 - rhs.0
-  }
-}
-
-/// `Tbp + duration` yields a shifted `Tbp`.
-impl Add<f64> for Tbp {
-  type Output = Tbp;
-
-  fn add(self, duration: f64) -> Tbp {
-    Tbp(self.0 + duration)
-  }
-}
-
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::pretty_assert_ulps_eq;
 
   #[test]
-  fn test_calendar_to_tbp_roundtrip() {
-    let present = CalendarTime::new(2013.0);
-    let cal = CalendarTime::new(2005.0);
-    let tbp = cal.to_tbp(present);
-    pretty_assert_ulps_eq!(tbp.value(), 8.0, max_ulps = 4);
-    let back = tbp.to_calendar(present);
-    pretty_assert_ulps_eq!(back.value(), 2005.0, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_tbp_at_present_is_zero() {
-    let present = CalendarTime::new(2013.0);
-    let tbp = present.to_tbp(present);
-    pretty_assert_ulps_eq!(tbp.value(), 0.0, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_tbp_arithmetic() {
-    let a = Tbp::new(8.0);
-    let b = Tbp::new(3.0);
-    pretty_assert_ulps_eq!(a - b, 5.0, max_ulps = 4);
-    pretty_assert_ulps_eq!((b + 2.0).value(), 5.0, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_calendar_time_max() {
-    let a = CalendarTime::new(2005.0);
-    let b = CalendarTime::new(2013.0);
-    assert_eq!(a.max(b), b);
-    assert_eq!(b.max(a), b);
+  fn test_time_coordinate_calendar_time_max() {
+    let earlier = CalendarTime::new(2005.0);
+    let later = CalendarTime::new(2013.0);
+    assert_eq!(earlier.max(later), later);
+    assert_eq!(later.max(earlier), later);
   }
 }
