@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::coalescent::integration::compute_integral_merger_rate;
-  use crate::coalescent::integration::compute_merger_rates;
-  use crate::coalescent::integration::compute_merger_rates_scalar;
+  use crate::coalescent::integration::compute_merger_rate_per_lineage_scalar;
+  use crate::coalescent::integration::compute_merger_rate_total_scalar;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
@@ -26,10 +26,8 @@ mod tests {
   ) {
     // Oracle: n=max(0.5, k-1), κ=n/(2Tc), and λ=n(n+1)/(2Tc),
     // matching TreeTime v0 merger_models.py:194-213.
-    let actual = compute_merger_rates_scalar(k, tc);
-
-    pretty_assert_ulps_eq!(expected_per_lineage, actual.per_lineage, max_ulps = 0);
-    pretty_assert_ulps_eq!(expected_total, actual.total, max_ulps = 0);
+    pretty_assert_ulps_eq!(expected_per_lineage, compute_merger_rate_per_lineage_scalar(k, tc), max_ulps = 0);
+    pretty_assert_ulps_eq!(expected_total, compute_merger_rate_total_scalar(k, tc), max_ulps = 0);
   }
 
   #[rustfmt::skip]
@@ -45,63 +43,40 @@ mod tests {
     #[case] expected_total: f64,
   ) {
     // Oracle: the analytical v0 formulas cited in the representable scalar cases.
-    let actual = compute_merger_rates_scalar(k, tc);
-
-    pretty_assert_ulps_eq!(expected_per_lineage, actual.per_lineage);
-    pretty_assert_ulps_eq!(expected_total, actual.total);
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::empty(        array![],                          array![],                          array![],                                     array![])]
-  #[case::equal_lengths(array![1.0, 1.5, 2.0, 4.0, 50.0], array![1.0, 2.0, 3.0, 4.0, 10.0], array![0.25, 0.125, 1.0 / 6.0, 0.375, 2.45], array![0.375, 0.1875, 1.0 / 3.0, 1.5, 122.5])]
-  #[case::broadcast_tc( array![1.0, 1.5, 2.0],             array![2.0],                       array![0.125, 0.125, 0.25],                    array![0.1875, 0.1875, 0.5])]
-  #[case::broadcast_k(  array![2.0],                       array![1.0, 2.0, 4.0],             array![0.5, 0.25, 0.125],                    array![1.0, 0.5, 0.25])]
-  #[trace]
-  fn test_integration_compute_merger_rates_array_cases(
-    #[case] k: Array1<f64>,
-    #[case] tc: Array1<f64>,
-    #[case] expected_per_lineage: Array1<f64>,
-    #[case] expected_total: Array1<f64>,
-  ) {
-    let actual = compute_merger_rates(&k, &tc);
-
-    // Oracle: element-wise evaluation of the v0 formulas cited above.
-    pretty_assert_ulps_eq!(expected_per_lineage, actual.per_lineage);
-    pretty_assert_ulps_eq!(expected_total, actual.total);
-  }
-
-  #[test]
-  #[should_panic(expected = "ndarray: could not broadcast array")]
-  fn test_integration_compute_merger_rates_rejects_incompatible_shapes() {
-    let k = array![1.0, 2.0];
-    let tc = array![1.0, 2.0, 3.0];
-
-    compute_merger_rates(&k, &tc);
+    pretty_assert_ulps_eq!(expected_per_lineage, compute_merger_rate_per_lineage_scalar(k, tc));
+    pretty_assert_ulps_eq!(expected_total, compute_merger_rate_total_scalar(k, tc));
   }
 
   #[test]
   fn test_integration_compute_merger_rates_scalar_preserves_v0_extreme_ordering() {
     // Oracle: TreeTime v0 merger_models.py:194-213 evaluates 0.5 in the
     // numerator before division, avoiding denominator overflow for large Tc.
-    let large_tc = compute_merger_rates_scalar(2.0, f64::MAX);
-    pretty_assert_ulps_eq!(2.781342323134e-309, large_tc.per_lineage, max_ulps = 0);
-    pretty_assert_ulps_eq!(5.562684646268003e-309, large_tc.total, max_ulps = 0);
+    pretty_assert_ulps_eq!(
+      2.781342323134e-309,
+      compute_merger_rate_per_lineage_scalar(2.0, f64::MAX),
+      max_ulps = 0
+    );
+    pretty_assert_ulps_eq!(
+      5.562684646268003e-309,
+      compute_merger_rate_total_scalar(2.0, f64::MAX),
+      max_ulps = 0
+    );
 
     // The same ordering halves n before multiplying n(n+1), keeping this
     // representable case finite where multiplying n(n+1) first overflows.
-    let large_k = compute_merger_rates_scalar(1.5e154, 1.0);
-    pretty_assert_ulps_eq!(1.1250000000000002e308, large_k.total, max_ulps = 0);
+    pretty_assert_ulps_eq!(
+      1.1250000000000002e308,
+      compute_merger_rate_total_scalar(1.5e154, 1.0),
+      max_ulps = 0
+    );
   }
 
   #[test]
   fn test_integration_compute_merger_rates_scalar_propagates_nan_lineage_count() {
     // Oracle: numpy.maximum in TreeTime v0 merger_models.py:194-213
     // propagates a NaN lineage count into both merger rates.
-    let actual = compute_merger_rates_scalar(f64::NAN, 1.0);
-
-    assert!(actual.per_lineage.is_nan());
-    assert!(actual.total.is_nan());
+    assert!(compute_merger_rate_per_lineage_scalar(f64::NAN, 1.0).is_nan());
+    assert!(compute_merger_rate_total_scalar(f64::NAN, 1.0).is_nan());
   }
 
   #[test]
