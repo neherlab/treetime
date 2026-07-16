@@ -8,20 +8,20 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_utils::make_error;
 
-/// Per-edge inferred calendar dates and parent merger multiplicity.
+/// Per-edge inferred calendar dates and the parent node's child count.
 #[derive(Clone, Debug)]
 pub struct CoalescentEdgeData {
   child_time: CalendarTime,
   parent_time: CalendarTime,
-  multiplicity: f64,
+  n_children: f64,
 }
 
 impl CoalescentEdgeData {
-  pub fn new(child_time: CalendarTime, parent_time: CalendarTime, multiplicity: f64) -> Self {
+  pub fn new(child_time: CalendarTime, parent_time: CalendarTime, n_children: f64) -> Self {
     Self {
       child_time,
       parent_time,
-      multiplicity,
+      n_children,
     }
   }
 
@@ -33,8 +33,9 @@ impl CoalescentEdgeData {
     self.parent_time
   }
 
-  pub fn multiplicity(&self) -> f64 {
-    self.multiplicity
+  /// Number of children of the edge's parent node (merger events = `n_children - 1`).
+  pub fn n_children(&self) -> f64 {
+    self.n_children
   }
 }
 
@@ -88,13 +89,13 @@ where
       );
     }
 
-    let multiplicity = graph
+    let n_children = graph
       .get_node(parent_node_key)
       .map_or(2.0, |parent| parent.read_arc().outbound().len() as f64);
     edges.push(CoalescentEdgeData::new(
       CalendarTime::new(child_time),
       CalendarTime::new(parent_time),
-      multiplicity,
+      n_children,
     ));
     Ok(())
   })?;

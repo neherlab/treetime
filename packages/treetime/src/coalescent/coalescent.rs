@@ -46,9 +46,9 @@ impl CoalescentModel {
   }
 
   pub fn internal_cost(&self, time: f64, n_children: usize) -> Result<f64, Report> {
-    let multiplicity = n_children.saturating_sub(1) as f64;
+    let n_mergers = n_children.saturating_sub(1) as f64;
     let total_rate = self.total_rate(time)?;
-    Ok(multiplicity * (self.cumulative_branch_rate.eval(time) - total_rate.ln()))
+    Ok(n_mergers * (self.cumulative_branch_rate.eval(time) - total_rate.ln()))
   }
 
   pub fn root_cost(&self, time: f64, n_children: usize) -> Result<f64, Report> {
@@ -59,7 +59,8 @@ impl CoalescentModel {
     let parent_time = edge.parent_time().value();
     let child_time = edge.child_time().value();
     let survival_cost = self.cumulative_branch_rate.eval(parent_time) - self.cumulative_branch_rate.eval(child_time);
-    let merger_credit = self.total_rate(parent_time)?.ln() * (edge.multiplicity() - 1.0) / edge.multiplicity();
+    let n_children = edge.n_children();
+    let merger_credit = self.total_rate(parent_time)?.ln() * (n_children - 1.0) / n_children;
     Ok(survival_cost - merger_credit)
   }
 
