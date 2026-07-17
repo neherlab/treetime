@@ -23,44 +23,57 @@ where
   CoalescentModel::new(&precomputed, tc)
 }
 
-/// Calendar-coordinate Kingman coalescent rates and cumulative hazard.
+/// Calendar-coordinate Kingman coalescent rates and expected merger counts.
+///
+/// Correspondence to v0 (`packages/legacy/treetime/treetime/merger_models.py`):
+///
+/// | v1 (this struct)          | v0                     | Quantity                                                    |
+/// | ------------------------- | ---------------------- | ----------------------------------------------------------- |
+/// | `lineage_counts`          | `nlineages`            | number of extant lineages $k(t)$                            |
+/// | `tc`                      | `Tc`                   | coalescent time scale $T_c(t)$                              |
+/// | `expected_mergers`        | `integral_merger_rate` | $H(t)=\int_0^t \kappa(s)\,ds$, expected mergers on a branch |
+/// | `total_merger_rate(t)`    | `total_merger_rate`    | total pairwise merger rate $\lambda(t)$                     |
+/// | (`integration.rs`: $\kappa$) | `branch_merger_rate` | per-branch merger rate $\kappa(t)$                          |
 #[derive(Clone, Debug)]
 pub struct CoalescentModel {
   lineage_counts: PiecewiseConstantFn,
   tc: Distribution,
-  cumulative_branch_rate: PiecewiseLinearFn,
+  /// $H(t)=\int_0^t \kappa(s)\,ds$: the expected number of coalescent merger
+  /// events a branch experiences from the present to calendar time $t$. v0's
+  /// `integral_merger_rate`.
+  expected_mergers: PiecewiseLinearFn,
 }
 
 impl CoalescentModel {
   pub(crate) fn new(precomputed: &CoalescentPrecomputed, tc: &Distribution) -> Result<Self, Report> {
-    let cumulative_branch_rate = compute_integral_merger_rate(tc, precomputed.lineage_counts())?;
+    let expected_mergers = compute_integral_merger_rate(tc, precomputed.lineage_counts())?;
     Ok(Self {
       lineage_counts: precomputed.lineage_counts().clone(),
       tc: tc.clone(),
-      cumulative_branch_rate,
+      expected_mergers,
     })
   }
 
   pub fn leaf_cost(&self, time: f64) -> f64 {
-    -self.cumulative_branch_rate.eval(time)
+    -self.expected_mergers.eval(time)
   }
 
   pub fn internal_cost(&self, time: f64, n_children: usize) -> Result<f64, Report> {
     let n_mergers = n_children.saturating_sub(1) as f64;
-    let total_rate = self.total_rate(time)?;
-    Ok(n_mergers * (self.cumulative_branch_rate.eval(time) - total_rate.ln()))
+    let total_merger_rate = self.total_merger_rate(time)?;
+    Ok(n_mergers * (self.expected_mergers.eval(time) - total_merger_rate.ln()))
   }
 
   pub fn root_cost(&self, time: f64, n_children: usize) -> Result<f64, Report> {
-    Ok(self.internal_cost(time, n_children)? + self.cumulative_branch_rate.eval(time))
+    Ok(self.internal_cost(time, n_children)? + self.expected_mergers.eval(time))
   }
 
   pub(crate) fn edge_cost(&self, edge: &CoalescentEdgeData) -> Result<f64, Report> {
     let parent_time = edge.parent_time().value();
     let child_time = edge.child_time().value();
-    let survival_cost = self.cumulative_branch_rate.eval(parent_time) - self.cumulative_branch_rate.eval(child_time);
+    let survival_cost = self.expected_mergers.eval(parent_time) - self.expected_mergers.eval(child_time);
     let n_children = edge.n_children();
-    let merger_credit = self.total_rate(parent_time)?.ln() * (n_children - 1.0) / n_children;
+    let merger_credit = self.total_merger_rate(parent_time)?.ln() * (n_children - 1.0) / n_children;
     Ok(survival_cost - merger_credit)
   }
 
@@ -80,7 +93,7 @@ impl CoalescentModel {
     self.apply_cost(distribution, |time| self.root_cost(time, n_children))
   }
 
-  fn total_rate(&self, time: f64) -> Result<f64, Report> {
+  fn total_merger_rate(&self, time: f64) -> Result<f64, Report> {
     // Calendar right-continuity gives the number of lineages immediately on
     // the sampled-tree side of a merger, equivalent to TBP eval_left().
     let k = self.lineage_counts.eval(time);
