@@ -17,9 +17,13 @@ mod tests {
     let model = model(array![0.0, 5.0, 10.0], array![1.0, 2.0, 3.0, 0.0], 2.0)?;
 
     // Analytical oracle: κ=1/4 on [0,5], κ=1/2 on [5,10].
-    pretty_assert_ulps_eq!(-3.75, model.leaf_cost(0.0), max_ulps = 4);
-    pretty_assert_abs_diff_eq!(2.5 - 1.5_f64.ln(), model.internal_cost(5.0, 2)?, epsilon = 1e-10);
-    pretty_assert_abs_diff_eq!(7.5 - 0.5_f64.ln(), model.root_cost(0.0, 2)?, epsilon = 1e-10);
+    pretty_assert_ulps_eq!(-3.75, model.leaf_contribution(0.0), max_ulps = 4);
+    pretty_assert_abs_diff_eq!(
+      2.5 - 1.5_f64.ln(),
+      model.internal_contribution(5.0, 2)?,
+      epsilon = 1e-10
+    );
+    pretty_assert_abs_diff_eq!(7.5 - 0.5_f64.ln(), model.root_contribution(0.0, 2)?, epsilon = 1e-10);
     Ok(())
   }
 
@@ -104,9 +108,9 @@ mod tests {
         n_children as f64,
       );
 
-      let node_cost = model.root_cost(root_time, n_children).unwrap()
-        + n_children as f64 * model.leaf_cost(child_time);
-      let edge_cost = n_children as f64 * model.edge_cost(&edge).unwrap();
+      let node_cost = model.root_contribution(root_time, n_children).unwrap()
+        + n_children as f64 * model.leaf_contribution(child_time);
+      let edge_cost = n_children as f64 * model.edge_contribution(&edge).unwrap();
 
       // Algebraic oracle: telescoping branch survival leaves the grouped
       // leaf/internal/root objective exactly (Kingman 1982).

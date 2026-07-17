@@ -54,31 +54,36 @@ impl CoalescentModel {
     })
   }
 
-  pub fn leaf_cost(&self, time: f64) -> f64 {
+  // Per-node and per-edge additive terms of the Kingman coalescent objective,
+  // matching v0's signed `node_contribution`. Each is the term's contribution to
+  // the coalescent cost (negative log-likelihood); a value can be negative, as a
+  // leaf's branch-survival credit is. `coalescent_log_likelihood` sums the edge
+  // contributions and negates the total.
+  pub fn leaf_contribution(&self, time: f64) -> f64 {
     -self.expected_mergers.eval(time)
   }
 
-  pub fn internal_cost(&self, time: f64, n_children: usize) -> Result<f64, Report> {
+  pub fn internal_contribution(&self, time: f64, n_children: usize) -> Result<f64, Report> {
     let n_mergers = n_children.saturating_sub(1) as f64;
     let total_merger_rate = self.total_merger_rate(time)?;
     Ok(n_mergers * (self.expected_mergers.eval(time) - total_merger_rate.ln()))
   }
 
-  pub fn root_cost(&self, time: f64, n_children: usize) -> Result<f64, Report> {
-    Ok(self.internal_cost(time, n_children)? + self.expected_mergers.eval(time))
+  pub fn root_contribution(&self, time: f64, n_children: usize) -> Result<f64, Report> {
+    Ok(self.internal_contribution(time, n_children)? + self.expected_mergers.eval(time))
   }
 
-  pub(crate) fn edge_cost(&self, edge: &CoalescentEdgeData) -> Result<f64, Report> {
+  pub(crate) fn edge_contribution(&self, edge: &CoalescentEdgeData) -> Result<f64, Report> {
     let parent_time = edge.parent_time().value();
     let child_time = edge.child_time().value();
-    let survival_cost = self.expected_mergers.eval(parent_time) - self.expected_mergers.eval(child_time);
+    let survival_term = self.expected_mergers.eval(parent_time) - self.expected_mergers.eval(child_time);
     let n_children = edge.n_children();
     let merger_credit = self.total_merger_rate(parent_time)?.ln() * (n_children - 1.0) / n_children;
-    Ok(survival_cost - merger_credit)
+    Ok(survival_term - merger_credit)
   }
 
   pub(crate) fn apply_leaf_cost(&self, distribution: &Distribution) -> Result<Distribution, Report> {
-    self.apply_cost(distribution, |time| Ok(self.leaf_cost(time)))
+    self.apply_cost(distribution, |time| Ok(self.leaf_contribution(time)))
   }
 
   pub(crate) fn apply_internal_cost(
@@ -86,11 +91,11 @@ impl CoalescentModel {
     distribution: &Distribution,
     n_children: usize,
   ) -> Result<Distribution, Report> {
-    self.apply_cost(distribution, |time| self.internal_cost(time, n_children))
+    self.apply_cost(distribution, |time| self.internal_contribution(time, n_children))
   }
 
   pub(crate) fn apply_root_cost(&self, distribution: &Distribution, n_children: usize) -> Result<Distribution, Report> {
-    self.apply_cost(distribution, |time| self.root_cost(time, n_children))
+    self.apply_cost(distribution, |time| self.root_contribution(time, n_children))
   }
 
   fn total_merger_rate(&self, time: f64) -> Result<f64, Report> {

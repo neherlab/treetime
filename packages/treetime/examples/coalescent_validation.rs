@@ -313,9 +313,9 @@ fn run_coalescent_test(_snapshot_filename: &str, snapshot: Snapshot) -> Result<T
         .iter()
         .map(|&time| {
           if n_children == 0 {
-            Ok(model.leaf_cost(time))
+            Ok(model.leaf_contribution(time))
           } else {
-            model.internal_cost(time, n_children)
+            model.internal_contribution(time, n_children)
           }
         })
         .collect::<Result<Vec<_>, Report>>()?;

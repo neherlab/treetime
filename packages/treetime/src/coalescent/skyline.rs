@@ -1,5 +1,5 @@
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::coalescent::edge_data::{CoalescentEdgeData, collect_coalescent_edges, sum_coalescent_cost};
+use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood, collect_coalescent_edges};
 use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::optimize::observer::OptimizationObserver;
 use crate::payload::traits::TimetreeNode;
@@ -136,7 +136,7 @@ where
   let opt_log_tc_clamped = Array1::from_iter(opt_log_tc.iter().map(|&x| x.clamp(-200.0, 100.0)));
   let tc_distribution = build_tc_distribution(&time_grid, &opt_log_tc_clamped)?;
   let model = CoalescentModel::new(&cost_fn.precomputed, &tc_distribution)?;
-  let log_likelihood = sum_coalescent_cost(&cost_fn.edges, &model)?;
+  let log_likelihood = coalescent_log_likelihood(&cost_fn.edges, &model)?;
 
   info!(
     "Skyline optimization completed: final_cost={:.4}, log_likelihood={log_likelihood:.4}",
@@ -174,7 +174,7 @@ impl CostFunction for &SkylineCostFunction {
 
     let model = CoalescentModel::new(&self.precomputed, &tc_dist)
       .map_err(|e| Error::msg(format!("Failed to construct coalescent model: {e}")))?;
-    let neg_log_lh = -sum_coalescent_cost(&self.edges, &model)
+    let neg_log_lh = -coalescent_log_likelihood(&self.edges, &model)
       .map_err(|e| Error::msg(format!("Failed to compute coalescent likelihood: {e}")))?;
 
     // Add smoothness penalty: stiffness * sum(diff(logTc)^2)

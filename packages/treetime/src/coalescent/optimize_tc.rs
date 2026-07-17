@@ -1,5 +1,5 @@
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::coalescent::edge_data::{CoalescentEdgeData, collect_coalescent_edges, sum_coalescent_cost};
+use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood, collect_coalescent_edges};
 use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::make_report;
 use crate::optimize::observer::OptimizationObserver;
@@ -118,7 +118,7 @@ impl TcCostFunction {
   fn compute_total_lh(&self, tc: f64) -> Result<f64, Report> {
     let tc_dist = Distribution::constant(tc);
     let model = CoalescentModel::new(&self.precomputed, &tc_dist)?;
-    sum_coalescent_cost(&self.edges, &model)
+    coalescent_log_likelihood(&self.edges, &model)
   }
 }
 

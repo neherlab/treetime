@@ -93,7 +93,7 @@ mod tests {
 
   #[test]
   fn test_total_lh_matches_optimize_tc_likelihood() -> Result<(), Report> {
-    // Both code paths call sum_coalescent_cost() with identical inputs for
+    // Both code paths call coalescent_log_likelihood() with identical inputs for
     // constant Tc. Results should agree to machine precision.
     let graph = setup_graph()?;
     let opt = optimize_tc(&graph, 1.0)?;

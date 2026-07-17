@@ -1,5 +1,5 @@
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::coalescent::edge_data::{collect_coalescent_edges, sum_coalescent_cost};
+use crate::coalescent::edge_data::{coalescent_log_likelihood, collect_coalescent_edges};
 use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
@@ -31,5 +31,5 @@ where
   let model = CoalescentModel::new(&pre, tc_dist)?;
   let edges = collect_coalescent_edges(graph)?;
 
-  sum_coalescent_cost(&edges, &model)
+  coalescent_log_likelihood(&edges, &model)
 }

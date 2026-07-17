@@ -103,11 +103,12 @@ where
   Ok(edges)
 }
 
-/// Sums the shared model's endpoint-derived edge costs and returns log-likelihood.
-pub fn sum_coalescent_cost(edges: &[CoalescentEdgeData], model: &CoalescentModel) -> Result<f64, Report> {
-  let total_cost = edges
+/// Sums the shared model's endpoint-derived edge contributions and negates to
+/// return the coalescent log-likelihood (higher is more likely).
+pub fn coalescent_log_likelihood(edges: &[CoalescentEdgeData], model: &CoalescentModel) -> Result<f64, Report> {
+  let total_contribution = edges
     .iter()
-    .map(|edge| model.edge_cost(edge))
+    .map(|edge| model.edge_contribution(edge))
     .sum::<Result<f64, Report>>()?;
-  Ok(-total_cost)
+  Ok(-total_contribution)
 }
