@@ -9,6 +9,7 @@
 | [Distribution core](#distribution-core)                                 | treetime-distribution | Unit |
 | [Distribution ops - multiply](#distribution-operations---multiply)      | treetime-distribution | Unit |
 | [Distribution ops - divide](#distribution-operations---divide)          | treetime-distribution | Unit |
+| [Distribution ops - log cost](#distribution-operations---log-cost)      | treetime-distribution | Unit |
 | [Distribution ops - convolve](#distribution-operations---convolve)      | treetime-distribution | Unit |
 | [Distribution ops - negation](#distribution-operations---negation)      | treetime-distribution | Unit |
 | [Distribution ops - scalar](#distribution-operations---scalar-multiply) | treetime-distribution | Unit |
@@ -95,6 +96,21 @@
 | `test_divide_range_by_function_no_overlap`         | Range / Function no overlap        |
 | `test_divide_function_by_function_same_grid`       | Same grid elementwise division     |
 | `test_divide_function_by_function_different_grids` | Different grids with interpolation |
+
+---
+
+### Distribution Operations - Log Cost
+
+**Test:** [`packages/treetime-distribution/src/distribution_ops/__tests__/test_log_cost.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_log_cost.rs)
+
+**Impl:** [`packages/treetime-distribution/src/distribution_ops/log_cost.rs`](../../packages/treetime-distribution/src/distribution_ops/log_cost.rs)
+
+| Test                                                  | Purpose                                                 |
+| ----------------------------------------------------- | ------------------------------------------------------- |
+| `test_log_cost_empty_passthrough`                     | Empty passes through unchanged                          |
+| `test_log_cost_rejects_formula`                       | Formula operand returns an error, not a panic           |
+| `test_log_cost_preserves_peak_under_wide_weight_span` | Peak survives a >700 weight span the naive shift zeroes |
+| `test_log_cost_zero_amplitude_stays_zero`             | Zero-amplitude grid points contribute no mass           |
 
 ---
 
@@ -329,8 +345,8 @@
 
 **Impl:** [`packages/treetime-distribution/src/distribution_core/distribution.rs`](../../packages/treetime-distribution/src/distribution_core/distribution.rs)
 
-| Test                                                            | Purpose                                                        |
-| --------------------------------------------------------------- | -------------------------------------------------------------- |
+| Test                                                           | Purpose                                                        |
+| -------------------------------------------------------------- | -------------------------------------------------------------- |
 | `test_gm_neglog_normalization_matches_v0_coalescent_underflow` | Stable relative likelihoods match v0 for large coalescent cost |
 
 **Test:** [`packages/treetime-distribution/src/__tests__/test_gaussian_product.rs`](../../packages/treetime-distribution/src/__tests__/test_gaussian_product.rs)
