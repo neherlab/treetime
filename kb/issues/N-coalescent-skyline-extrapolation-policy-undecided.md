@@ -1,6 +1,8 @@
-# Skyline extrapolation policy is implicit
+# Skyline constant extrapolation policy is unapproved
 
-`fn build_tc_distribution()` constructs a piecewise-linear $T_c(t)$ distribution over the time grid [packages/treetime/src/coalescent/skyline.rs#L215-L228](../../packages/treetime/src/coalescent/skyline.rs#L215-L228). Evaluation outside that grid inherits boundary behavior from `PiecewiseLinearFn`, so the scientific assumption beyond observed lineage events is not declared at the skyline boundary.
+`fn build_tc_distribution()` constructs a piecewise-linear $T_c(t)$ distribution over the time grid [packages/treetime/src/coalescent/skyline.rs#L208-L216](../../packages/treetime/src/coalescent/skyline.rs#L208-L216). The underlying `GridFn` returns the first or last grid value outside that domain [packages/treetime-grid/src/grid_fn.rs#L267-L335](../../packages/treetime-grid/src/grid_fn.rs#L267-L335), and a production-level regression test verifies this constant extrapolation [packages/treetime/src/coalescent/__tests__/test_skyline.rs#L173-L200](../../packages/treetime/src/coalescent/__tests__/test_skyline.rs#L173-L200).
+
+The runtime behavior is therefore explicit. What remains unresolved is whether constant boundary extrapolation is the approved scientific policy and, if retained, how outputs record that values beyond observed lineage events are extrapolated rather than inferred.
 
 ## Design axis: out-of-domain evaluation
 

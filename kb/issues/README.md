@@ -102,6 +102,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Inference    | [Fallible parallel inference passes partially commit state](M-inference-fallible-parallel-passes-partially-commit.md)                                          |
 | Medium     | Inference    | [Inference forward/backward pass asymmetries](M-inference-forward-backward-asymmetry.md)                                                                       |
 | Medium     | Marginal     | [normalize_inplace NEG_INFINITY masks all contributions](M-marginal-normalize-neg-infinity-masks-total.md)                                                     |
+| Medium     | Mugration    | [Mugration rejects metadata entries not present in tree](M-mugration-extra-metadata-names-rejected.md)                                                         |
 | Medium     | Mugration    | [Mugration golden master parity with v0](M-mugration-iterative-gtr.md)                                                                                         |
 | Medium     | Mugration    | [Mugration optimize_gtr_rate restores mu without restoring profiles](M-mugration-gtr-rate-restore-inconsistency.md)                                            |
 | Medium     | Optimize     | [Bifurcating root optimization: independent per-edge vs joint arc optimization](M-optimize-root-bifurcating-independent-vs-joint.md)                           |
@@ -110,6 +111,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Optimize     | [Optimize per-branch lengths diverge from v0 fixture beyond 10% relative tolerance](M-optimize-gm-per-branch-divergence.md)                                    |
 | Medium     | Optimize     | [Optimizer and marginal propagation use incompatible branch-length scales when the GTR rate scalar differs from one](M-optimize-gtr-mu-coordinate-mismatch.md) |
 | Medium     | Sparse       | [Sparse marginal fixed_counts zero-multiplicity produces NaN](M-sparse-marginal-zero-multiplicity-nan.md)                                                      |
+| Medium     | Timetree     | [--keep-root rejects negative clock rate](M-timetree-keep-root-rejects-negative-clock-rate.md)                                                                 |
 | Medium     | Timetree     | [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md)                                                                                           |
 | Medium     | Timetree     | [Branch distribution grid uses uniform spacing](M-timetree-branch-grid-uniform-resolution.md)                                                                  |
 | Medium     | Timetree     | [Constant-$T_c$ optimization can report success without a parameter](M-timetree-constant-tc-success-without-parameter.md)                                      |
@@ -122,6 +124,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Timetree     | [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)                                                                     |
 | Medium     | Timetree     | [Skyline objective and optimizer diverge from v0](M-timetree-skyline-nelder-mead-optimizer.md)                                                                 |
 | Medium     | Timetree     | [Sparse timetree convergence tracking compares empty sequences](M-timetree-sparse-convergence-empty-sequences.md)                                              |
+| Medium     | Timetree     | [Timetree backward pass combines child time messages in plain probability space](M-timetree-backward-pass-plain-space-underflow.md)                            |
 | Medium     | Timetree     | [Timetree confidence interval computation deficiencies](M-timetree-confidence-interval-deficiencies.md)                                                        |
 | Medium     | Timetree     | [Timetree convergence metric deficiencies](M-timetree-convergence-metric-deficiencies.md)                                                                      |
 | Medium     | Timetree     | [Timetree inference in input mode collapses internal-node dates to Empty](M-timetree-inference-input-mode-date-collapse.md)                                    |
@@ -142,8 +145,8 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Clock        | [Clock SVG output is nondeterministic for an untraced reason](N-clock-svg-output-nondeterministic-untraced.md)                                                 |
 | Negligible | Clock        | [ClockSet::chisq() numerically unstable for near-zero determinant](N-clock-chisq-near-zero-determinant.md)                                                     |
 | Negligible | Clock        | [v1 clock regression produces all-negative rates where v0 finds positive](N-clock-regression-all-negative-rate.md)                                             |
-| Negligible | Coalescent   | [Coalescent time-scale coordinate is not type-enforced](N-coalescent-time-scale-coordinate-not-type-enforced.md)                                              |
-| Negligible | Coalescent   | [Skyline extrapolation policy is implicit](N-coalescent-skyline-extrapolation-policy-undecided.md)                                                             |
+| Negligible | Coalescent   | [Coalescent time-scale coordinate is not type-enforced](N-coalescent-time-scale-coordinate-not-type-enforced.md)                                               |
+| Negligible | Coalescent   | [Skyline constant extrapolation policy is unapproved](N-coalescent-skyline-extrapolation-policy-undecided.md)                                                  |
 | Negligible | Coalescent   | [Skyline grid construction accepts invalid endpoint arrays](N-coalescent-skyline-grid-validation-incomplete.md)                                                |
 | Negligible | Coalescent   | [Skyline merger-rate quadrature lacks an accuracy contract](N-coalescent-skyline-quadrature-contract-undecided.md)                                             |
 | Negligible | Coalescent   | [Skyline simplex initialization is scale-independent and one-sided](N-coalescent-skyline-simplex-initialization-undecided.md)                                  |
@@ -227,6 +230,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Timetree     | [Stochastic polytomy event generator not implemented](N-timetree-stochastic-polytomy-unimplemented.md)                                                         |
 | Negligible | Timetree     | [Timetree indel rate recomputed per refinement iteration](N-timetree-indel-rate-recomputed-per-iteration.md)                                                   |
 | Negligible | Timetree     | [timetree.json missing coalescent and skyline parameters](N-timetree-json-missing-coalescent.md)                                                               |
+| Negligible | Timetree     | [Timetree --vary-rate is unimplemented](N-timetree-vary-rate-unimplemented.md)                                                                                 |
 | Negligible | Timetree     | [write_node_dates() is a todo!() stub](N-timetree-node-dates-output-unimplemented.md)                                                                          |
 
 ## Cross-references
