@@ -1,5 +1,5 @@
-use crate::Distribution;
 use crate::policy::Plain;
+use crate::{Distribution, DistributionFunction};
 use eyre::Report;
 use ndarray::Array1;
 use treetime_utils::make_error;
@@ -30,24 +30,37 @@ where
     Distribution::Formula(_) => {
       make_error!("distribution_apply_neg_log_weight requires a concrete Point, Range, or Function distribution")
     },
-    Distribution::Point(_) | Distribution::Range(_) | Distribution::Function(_) => {
+    Distribution::Point(_) | Distribution::Range(_) => {
       let times = distribution.t();
       let amplitudes = distribution.y();
-      let neg_log = amplitudes
-        .iter()
-        .zip(times.iter())
-        .map(|(&amplitude, &time)| Ok::<f64, Report>(weight(time)? - amplitude.ln()))
-        .collect::<Result<Vec<_>, Report>>()?;
-      let Some(minimum) = neg_log
-        .iter()
-        .copied()
-        .reduce(f64::min)
-        .filter(|minimum| minimum.is_finite())
-      else {
-        return make_error!("distribution_apply_neg_log_weight found no finite weight over the distribution grid");
-      };
-      let scaled = Array1::from_iter(neg_log.iter().map(|&value| (minimum - value).exp()));
+      let scaled = apply_neg_log_weight(&times, &amplitudes, &weight)?;
       Ok(Distribution::function(times, scaled)?.normalize())
     },
+    Distribution::Function(function) => {
+      let times = function.t();
+      let scaled = apply_neg_log_weight(&times, function.y(), &weight)?;
+      let function = DistributionFunction::from_start_dx_values(function.x_min(), function.dx(), scaled)?;
+      Ok(Distribution::Function(function).normalize())
+    },
   }
+}
+
+fn apply_neg_log_weight<F>(times: &Array1<f64>, amplitudes: &Array1<f64>, weight: &F) -> Result<Array1<f64>, Report>
+where
+  F: Fn(f64) -> Result<f64, Report>,
+{
+  let neg_log = amplitudes
+    .iter()
+    .zip(times.iter())
+    .map(|(&amplitude, &time)| Ok::<f64, Report>(weight(time)? - amplitude.ln()))
+    .collect::<Result<Vec<_>, Report>>()?;
+  let Some(minimum) = neg_log
+    .iter()
+    .copied()
+    .reduce(f64::min)
+    .filter(|minimum| minimum.is_finite())
+  else {
+    return make_error!("distribution_apply_neg_log_weight found no finite weight over the distribution grid");
+  };
+  Ok(Array1::from_iter(neg_log.iter().map(|&value| (minimum - value).exp())))
 }

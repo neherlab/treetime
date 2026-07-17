@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod tests {
+  use crate::DistributionFunction;
   use crate::DistributionPlain as Distribution;
   use crate::distribution_ops::log_cost::distribution_apply_neg_log_weight;
   use approx::assert_abs_diff_eq;
-  use ndarray::array;
+  use ndarray::{Array1, array};
 
   /// Empty passes through unchanged.
   #[test]
@@ -79,5 +80,22 @@ mod tests {
 
     assert_eq!(0.0, actual.eval(0.0).unwrap());
     assert!(actual.eval(1.0).unwrap() > 0.0);
+  }
+
+  /// Applying a weight preserves exact grid metadata at calendar-time magnitudes.
+  #[test]
+  fn test_log_cost_preserves_calendar_grid_metadata() {
+    let x_min = 1813.11225188;
+    let dx = 0.19991935859615637;
+    let amplitudes = Array1::ones(1000);
+    let function = DistributionFunction::from_start_dx_values(x_min, dx, amplitudes).unwrap();
+    let distribution = Distribution::Function(function.clone());
+
+    let actual = distribution_apply_neg_log_weight(&distribution, |_| Ok(0.0)).unwrap();
+
+    // Analytical oracle: multiplying a unit-amplitude function by exp(0)
+    // leaves its normalized amplitudes and support unchanged.
+    let expected = Distribution::Function(function);
+    assert_eq!(expected, actual);
   }
 }

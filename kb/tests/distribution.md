@@ -111,6 +111,7 @@
 | `test_log_cost_rejects_formula`                       | Formula operand returns an error, not a panic           |
 | `test_log_cost_preserves_peak_under_wide_weight_span` | Peak survives a >700 weight span the naive shift zeroes |
 | `test_log_cost_zero_amplitude_stays_zero`             | Zero-amplitude grid points contribute no mass           |
+| `test_log_cost_preserves_calendar_grid_metadata`      | Calendar-scale Function grids retain exact metadata     |
 
 ---
 
