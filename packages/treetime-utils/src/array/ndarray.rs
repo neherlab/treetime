@@ -1,4 +1,3 @@
-use approx::{UlpsEq, ulps_eq};
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{
@@ -337,15 +336,37 @@ pub fn sorted<T: FloatCore + Clone>(arr: &Array1<T>) -> Array1<T> {
   result
 }
 
-/// Check if array spacing is uniform
-pub fn has_uniform_spacing<T: Float + UlpsEq>(grid: &Array1<T>) -> bool {
+/// Maximum tolerated spacing deviation, expressed in ULPs of the coordinate magnitude.
+///
+/// A uniform grid `x_i = x_0 + i*dx` stores each coordinate with a rounding error of
+/// about half a ULP of that coordinate's magnitude, so an adjacent difference carries
+/// error up to roughly one ULP of the largest coordinate magnitude. This constant
+/// counts how many such ULPs a spacing may deviate. It sits far above the ~1-2 ULP
+/// rounding bound yet far below any genuine non-uniformity, which differs by O(dx) and
+/// dwarfs a ULP of the coordinate for every representable grid.
+const MAX_SPACING_ULPS: f64 = 64.0;
+
+/// Check whether an array represents a uniformly spaced grid.
+///
+/// Tolerates the rounding incurred when regenerating grid coordinates
+/// `x_i = x_0 + i*dx`, whose adjacent differences deviate from the nominal spacing by
+/// up to about one ULP of the coordinate magnitude. The tolerance is therefore scaled
+/// to `max(|first|, |last|)`, not to the (much smaller) spacing: measuring it in ULPs
+/// of the spacing itself falsely rejects valid grids at large coordinate offsets (e.g.
+/// calendar time ~2014 with dx ~ 1e-3), where subtracting adjacent coordinates loses
+/// nearly all relative precision to cancellation. A global magnitude also handles grids
+/// that cross zero, where an interior near-zero coordinate still carries rounding error
+/// governed by the extreme magnitudes, not by its own value.
+pub fn has_uniform_spacing<T: Float>(grid: &Array1<T>) -> bool {
   if grid.len() < 2 {
     return true;
   }
 
   let spacing = grid[1] - grid[0];
+  let scale = grid[0].abs().max(grid[grid.len() - 1].abs());
+  let tolerance = T::from(MAX_SPACING_ULPS).unwrap() * scale * T::epsilon();
   grid
     .windows(2)
     .into_iter()
-    .all(|w| ulps_eq!(w[1] - w[0], spacing, max_ulps = 100))
+    .all(|w| (w[1] - w[0] - spacing).abs() <= tolerance)
 }
