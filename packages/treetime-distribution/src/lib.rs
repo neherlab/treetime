@@ -12,6 +12,7 @@ pub use distribution_core::point::DistributionPoint;
 pub use distribution_core::range::DistributionRange;
 pub use distribution_ops::convolve::distribution_convolution;
 pub use distribution_ops::divide::distribution_division;
+pub use distribution_ops::log_cost::distribution_apply_neg_log_weight;
 pub use distribution_ops::map::distribution_map;
 pub use distribution_ops::multiply::distribution_multiplication;
 pub use distribution_ops::negate::{distribution_negation, distribution_negation_inplace};

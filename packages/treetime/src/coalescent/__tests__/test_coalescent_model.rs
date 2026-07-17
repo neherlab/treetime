@@ -8,7 +8,7 @@ mod tests {
   use eyre::Report;
   use ndarray::array;
   use proptest::prelude::*;
-  use treetime_distribution::{Distribution, DistributionFormula};
+  use treetime_distribution::{Distribution, DistributionFormula, distribution_apply_neg_log_weight};
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_utils::prop_assert_abs_diff_eq;
 
@@ -32,7 +32,7 @@ mod tests {
     let model = model(array![0.0, 10.0], array![1.0, 2.0, 0.0], 2.0)?;
     let distribution = Distribution::range((0.0, 10.0), 1.0);
 
-    let actual = model.apply_leaf_cost(&distribution)?;
+    let actual = distribution_apply_neg_log_weight(&distribution, |time| Ok(model.leaf_contribution(time)))?;
 
     let expected_times = array![0.0, 10.0];
     assert_eq!(expected_times, actual.t());
@@ -46,7 +46,7 @@ mod tests {
     let model = model(array![0.0, 10.0], array![1.0, 2.0, 0.0], 2.0)?;
     let distribution = Distribution::point(5.0, 0.25);
 
-    let actual = model.apply_leaf_cost(&distribution)?;
+    let actual = distribution_apply_neg_log_weight(&distribution, |time| Ok(model.leaf_contribution(time)))?;
 
     // A one-point likelihood normalizes to unit peak without changing support.
     let expected = Distribution::point(5.0, 1.0);
@@ -58,7 +58,7 @@ mod tests {
   fn test_coalescent_model_leaf_application_preserves_empty() -> Result<(), Report> {
     let model = model(array![0.0, 10.0], array![1.0, 2.0, 0.0], 2.0)?;
 
-    let actual = model.apply_leaf_cost(&Distribution::Empty)?;
+    let actual = distribution_apply_neg_log_weight(&Distribution::Empty, |time| Ok(model.leaf_contribution(time)))?;
 
     assert_eq!(Distribution::Empty, actual);
     Ok(())
@@ -70,7 +70,7 @@ mod tests {
     let expected_times = array![0.0, 2.5, 5.0, 7.5, 10.0];
     let distribution = Distribution::function(expected_times.clone(), array![0.2, 0.5, 1.0, 0.5, 0.2])?;
 
-    let actual = model.apply_leaf_cost(&distribution)?;
+    let actual = distribution_apply_neg_log_weight(&distribution, |time| Ok(model.leaf_contribution(time)))?;
 
     assert_eq!(expected_times, actual.t());
     assert!(!matches!(actual, Distribution::Formula(_)));
@@ -82,7 +82,7 @@ mod tests {
     let model = model(array![0.0, 10.0], array![1.0, 2.0, 0.0], 2.0)?;
     let distribution = Distribution::Formula(DistributionFormula::new(|_| Ok(1.0), 0.0, 10.0));
 
-    let error = model.apply_leaf_cost(&distribution).unwrap_err();
+    let error = distribution_apply_neg_log_weight(&distribution, |time| Ok(model.leaf_contribution(time))).unwrap_err();
 
     assert!(error.to_string().contains("concrete Point, Range, or Function"));
     Ok(())

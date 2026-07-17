@@ -5,6 +5,7 @@ use eyre::Report;
 use rayon::prelude::*;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
+use treetime_distribution::distribution_apply_neg_log_weight;
 use treetime_distribution::distribution_convolution;
 use treetime_distribution::distribution_multiplication;
 use treetime_graph::edge::GraphEdge;
@@ -84,9 +85,9 @@ where
 
   if let (Some(model), Some(distribution)) = (coalescent_model, result.as_ref()) {
     result = Some(if is_root {
-      model.apply_root_cost(distribution, n_children)?
+      distribution_apply_neg_log_weight(distribution, |time| model.root_contribution(time, n_children))?
     } else {
-      model.apply_internal_cost(distribution, n_children)?
+      distribution_apply_neg_log_weight(distribution, |time| model.internal_contribution(time, n_children))?
     });
   }
 
@@ -100,7 +101,10 @@ where
   let outgoing_distribution = if is_leaf {
     let distribution = slot.node.time_distribution();
     match (coalescent_model, distribution) {
-      (Some(model), Some(distribution)) => Some(Arc::new(model.apply_leaf_cost(distribution.as_ref())?)),
+      (Some(model), Some(distribution)) => Some(Arc::new(distribution_apply_neg_log_weight(
+        distribution.as_ref(),
+        |time| Ok(model.leaf_contribution(time)),
+      )?)),
       (_, distribution) => distribution.clone(),
     }
   } else {

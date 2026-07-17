@@ -1,5 +1,6 @@
 pub mod convolve;
 pub mod divide;
+pub mod log_cost;
 pub mod map;
 pub mod multiply;
 pub mod negate;

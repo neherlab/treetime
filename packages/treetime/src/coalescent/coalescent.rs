@@ -3,7 +3,6 @@ use crate::coalescent::integration::{compute_integral_merger_rate, compute_merge
 use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::payload::traits::TimetreeNode;
 use eyre::{Context, Report};
-use ndarray::Array1;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
@@ -82,22 +81,6 @@ impl CoalescentModel {
     Ok(survival_term - merger_credit)
   }
 
-  pub(crate) fn apply_leaf_cost(&self, distribution: &Distribution) -> Result<Distribution, Report> {
-    self.apply_cost(distribution, |time| Ok(self.leaf_contribution(time)))
-  }
-
-  pub(crate) fn apply_internal_cost(
-    &self,
-    distribution: &Distribution,
-    n_children: usize,
-  ) -> Result<Distribution, Report> {
-    self.apply_cost(distribution, |time| self.internal_contribution(time, n_children))
-  }
-
-  pub(crate) fn apply_root_cost(&self, distribution: &Distribution, n_children: usize) -> Result<Distribution, Report> {
-    self.apply_cost(distribution, |time| self.root_contribution(time, n_children))
-  }
-
   fn total_merger_rate(&self, time: f64) -> Result<f64, Report> {
     // Calendar right-continuity gives the number of lineages immediately on
     // the sampled-tree side of a merger, equivalent to TBP eval_left().
@@ -113,38 +96,5 @@ impl CoalescentModel {
       return make_error!("Coalescent Tc must be finite and positive at calendar time {time:.6e}, got {tc:.6e}");
     }
     Ok(compute_merger_rate_total_scalar(k, tc))
-  }
-
-  fn apply_cost<F>(&self, distribution: &Distribution, cost: F) -> Result<Distribution, Report>
-  where
-    F: Fn(f64) -> Result<f64, Report>,
-  {
-    match distribution {
-      Distribution::Empty => Ok(Distribution::Empty),
-      Distribution::Formula(_) => {
-        make_error!("Coalescent contributions require a concrete Point, Range, or Function distribution")
-      },
-      Distribution::Point(_) | Distribution::Range(_) | Distribution::Function(_) => {
-        let times = distribution.t();
-        let costs = times
-          .iter()
-          .map(|&time| cost(time))
-          .collect::<Result<Vec<_>, Report>>()?;
-        let minimum = costs
-          .iter()
-          .copied()
-          .reduce(f64::min)
-          .filter(|minimum| minimum.is_finite())
-          .ok_or_else(|| eyre::eyre!("Coalescent contribution has no finite cost"))?;
-        let amplitudes = Array1::from_iter(
-          distribution
-            .y()
-            .iter()
-            .zip(costs)
-            .map(|(&amplitude, cost)| amplitude * (minimum - cost).exp()),
-        );
-        Ok(Distribution::function(times, amplitudes)?.normalize())
-      },
-    }
   }
 }
