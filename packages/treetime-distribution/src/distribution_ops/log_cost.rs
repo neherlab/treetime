@@ -39,11 +39,10 @@ where
   }
   let scaled = neg_log.mapv(|value| (minimum - value).exp());
 
-  let result = match distribution {
-    Distribution::Function(function) => {
-      Distribution::Function(DistributionFunction::from_start_dx_values(function.x_min(), function.dx(), scaled)?)
-    },
-    _ => Distribution::function(times, scaled)?,
+  let result = if let Distribution::Function(f) = distribution {
+    Distribution::Function(DistributionFunction::from_start_dx_values(f.x_min(), f.dx(), scaled)?)
+  } else {
+    Distribution::function(times, scaled)?
   };
 
   Ok(result.normalize())
