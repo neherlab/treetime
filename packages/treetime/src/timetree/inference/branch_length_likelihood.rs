@@ -33,7 +33,7 @@ pub fn compute_branch_length_distribution(
   debug_assert!(clock_rate > 0.0, "clock_rate must be positive, got {clock_rate:.6e}");
   debug_assert!(gamma > 0.0);
 
-  let grid = create_simple_grid(current_branch_length, one_mutation, n_grid_points, clock_rate);
+  let grid = create_simple_grid(current_branch_length, one_mutation, n_grid_points);
 
   // `create_simple_grid` always returns strictly positive branch lengths
   // (`min_bl = one_mutation * 0.1 > 0`), satisfying the `t > 0` precondition
@@ -57,30 +57,13 @@ pub fn compute_branch_length_distribution(
   Ok(Arc::new(Distribution::Function(distribution_fn)))
 }
 
-/// Maximum branch time in years for the distribution grid.
-///
-/// Controls how far the branch length grid extends by converting to subs/site
-/// via clock_rate: max_bl = MAX_BRANCH_TIME * clock_rate. This is clock-rate
-/// adaptive: fast-evolving datasets (flu, rate ~0.003) get max_bl ≈ 0.6;
-/// slow-evolving datasets (ebola, rate ~0.0006) get max_bl ≈ 0.125. Both
-/// produce the same ~200 year time range, ensuring backward pass messages
-/// overlap across any reasonable phylogenetic tree time span.
-///
-/// v0 uses MAX_BRANCH_LENGTH = 4.0 subs/site with non-uniform grids
-/// (branch_len_interpolator.py:59). v1 uses uniform grids, so a fixed
-/// subs/site limit either wastes resolution for slow rates or is too narrow
-/// for fast rates. The time-based limit avoids this.
-///
-/// At the grid boundary, true Poisson log-likelihood differences are large
-/// (~-90 for 23 years at flu rate) but exp(-90) ≈ 3.6e-39 is representable
-/// in f64. Values underflow only beyond ~250 years at flu rate, well past
-/// this limit.
-const MAX_BRANCH_TIME: f64 = 200.0;
+/// Maximum branch length (in substitutions/site) for the branch-length grid used in time inference.
+const MAX_BRANCH_LENGTH: f64 = 5.0;
 
-fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize, clock_rate: f64) -> Array1<f64> {
-  let min_bl = one_mutation * 0.1;
-  let peak_max_bl = f64::max(center * 3.0, one_mutation * 10.0);
-  let rate_max_bl = MAX_BRANCH_TIME * clock_rate;
-  let max_bl = peak_max_bl.max(rate_max_bl);
+fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize) -> Array1<f64> {
+  let min_bl = one_mutation * 0.01;
+  let peak_max_bl = f64::max(center * 5.0, one_mutation * 10.0);
+  let rate_max_bl = MAX_BRANCH_LENGTH;
+  let max_bl = peak_max_bl.min(rate_max_bl);
   Array1::linspace(min_bl, max_bl, n_points)
 }

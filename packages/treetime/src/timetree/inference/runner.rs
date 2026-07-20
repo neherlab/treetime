@@ -19,7 +19,7 @@ use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 
-pub const BRANCH_GRID_SIZE: usize = 1000;
+pub const BRANCH_GRID_SIZE: usize = 300;
 
 pub fn run_timetree<N, E, P>(
   graph: &mut Graph<N, E, ()>,
@@ -175,7 +175,8 @@ where
 {
   graph.get_edges().par_iter().for_each(|edge_ref| {
     let mut edge = edge_ref.write_arc().payload().write_arc();
-
+    // TODO: thjs is wrong. The branch length distribution should be a gamma distribution with branch_length/one_mutation
+    // as the shape parameter. n_mut =  branch_length/one_mutation --> P(dt) = (mu*dt)^n_mut * exp(-mu*dt) / n_mut!
     if let Some(branch_length) = edge.branch_length() {
       // Convert branch length (substitutions/site) to time duration (years)
       // gamma > 1 means faster evolution, so same substitutions correspond to shorter time
