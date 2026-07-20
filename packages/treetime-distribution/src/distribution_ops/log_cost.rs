@@ -11,6 +11,10 @@ use treetime_utils::make_error;
 /// stability, then peak-normalized.
 ///
 /// Concrete distributions only: `Formula` is rejected, `Empty` passes through.
+///
+/// Takes a closure rather than a pre-evaluated weight array because the grid is
+/// not known until variant dispatch. Could take `&Array1<f64>` instead and push
+/// dispatch to the caller.
 pub fn distribution_apply_neg_log_weight<F>(
   distribution: &Distribution<Plain>,
   weight: F,
