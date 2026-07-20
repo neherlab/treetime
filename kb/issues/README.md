@@ -53,7 +53,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | High       | I/O          | [Auspice v2 output omits required updated metadata](H-io-auspice-v2-required-updated-missing.md)                                                                   |
 | High       | I/O          | [UShER MAT export fabricates global reference nucleotides from branch-local alleles](H-io-usher-ref-nuc-uses-parent-allele.md)                                     |
 | High       | Marginal     | [Marginal cavity sentinel loses impossible-factor multiplicity](H-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md)                                |
-| High       | Timetree     | [Coalescent events are incomplete after topology changes](H-timetree-coalescent-events-incomplete-after-topology-change.md)                                        |
+| High       | Timetree     | [Coalescent model may be built before node times are recomputed after a topology change](H-timetree-coalescent-events-incomplete-after-topology-change.md)         |
 | High       | Timetree     | [No tree inference from alignment](H-timetree-tree-inference-unimplemented.md)                                                                                     |
 | Medium     | Ancestral    | [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md)                                                                                   |
 | Medium     | Ancestral    | [Fitch recurrence is not minimum parsimony on multifurcations](M-ancestral-fitch-polytomy-recurrence-not-minimum.md)                                               |
@@ -125,6 +125,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Timetree     | [Marginal dense timetree inference disproportionately slow for mpox dataset](M-timetree-marginal-dense-mpox-slow.md)                                               |
 | Medium     | Timetree     | [Marginal timetree node times can violate topology](M-timetree-marginal-node-times-can-violate-topology.md)                                                        |
 | Medium     | Timetree     | [Positional likelihood metric differs from v0](M-timetree-positional-likelihood-metric.md)                                                                         |
+| Medium     | Timetree     | [Skyline optimization aborts on node-time inversions instead of degrading gracefully](M-timetree-skyline-aborts-on-node-time-inversion.md)                         |
 | Medium     | Timetree     | [Skyline objective and optimizer diverge from v0](M-timetree-skyline-nelder-mead-optimizer.md)                                                                     |
 | Medium     | Timetree     | [Sparse timetree convergence tracking compares empty sequences](M-timetree-sparse-convergence-empty-sequences.md)                                                  |
 | Medium     | Timetree     | [Timetree backward pass combines child time messages in plain probability space](M-timetree-backward-pass-plain-space-underflow.md)                                |

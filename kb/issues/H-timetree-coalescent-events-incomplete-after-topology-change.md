@@ -1,21 +1,22 @@
-# Coalescent events are incomplete after topology changes
+# Coalescent model may be built before node times are recomputed after a topology change
 
-A topology-changing refinement pass clears internal time distributions. Coalescent event collection then silently filters nodes without `likely_time`, so the next inference step can omit internal events and continue with an incomplete prior.
+`run_timetree` builds the coalescent model before its own backward/forward passes recompute node times: `compute_coalescent_model` runs at [packages/treetime/src/timetree/inference/runner.rs#L53-L55](../../packages/treetime/src/timetree/inference/runner.rs#L53-L55), before `propagate_distributions_backward`/`propagate_distributions_forward` at [runner.rs#L60-L64](../../packages/treetime/src/timetree/inference/runner.rs#L60-L64). The coalescent model therefore relies on node times left over from a previous pass. Any topology mutation that clears internal `time_distribution`s and is not followed by a coalescent-free time pass leaves the model built from an incomplete tree.
 
-`fn collect_tree_events()` adds an event only when both `time_distribution` and `likely_time()` are present [packages/treetime/src/coalescent/events.rs#L14-L43](../../packages/treetime/src/coalescent/events.rs#L14-L43); it checks only that the final event vector is nonempty, not that every required node contributed.
+## Fixed
 
-## Potential solutions
+- The post-ancestral reroot instance is fixed: the pipeline now runs a coalescent-free `run_timetree` right after the reroot, before the optimization loop, so round 1's coalescent build sees a complete tree ([packages/treetime/src/timetree/pipeline.rs#L281-L293](../../packages/treetime/src/timetree/pipeline.rs#L281-L293)).
+- Event collection no longer silently drops nodes without an inferred time. `collect_tree_events` returns a contextual error naming the offending node ([packages/treetime/src/coalescent/events.rs#L27-L54](../../packages/treetime/src/coalescent/events.rs#L27-L54)), so any remaining instance fails loudly instead of producing a wrong coalescent prior.
 
-- O1. Rebuild complete time state immediately after topology mutation and make event collection reject missing state.
-- O2. Derive event times directly during collection from distributions. This couples event construction to inference and still requires an explicit missing-state policy.
+## Remaining
 
-## Recommendation
+The resolve-polytomies refinement branch clears internal `time_distribution`s via `prepare_tree_after_topology_change` ([packages/treetime/src/timetree/optimization/polytomy.rs#L560](../../packages/treetime/src/timetree/optimization/polytomy.rs#L560)) and then calls `run_timetree` directly ([packages/treetime/src/timetree/refinement.rs#L74-L81](../../packages/treetime/src/timetree/refinement.rs#L74-L81)). That `run_timetree` builds the coalescent model before recomputing node times, so a dataset that actually resolves polytomies while a coalescent prior is active can still fail. This has not been reproduced (the tested datasets did not resolve polytomies under the coalescent modes), and it now surfaces as the explicit error from `collect_tree_events` rather than silent incompleteness.
 
-Define complete node-time state as a precondition for event collection. After topology mutation, rebuild required time distributions and likely times before computing events. A missing required time returns a contextual error instead of removing the node from the event set.
+## Potential solution
+
+Recompute node times immediately after any topology mutation that clears them and before the coalescent model is consumed, or restructure `run_timetree` so the coalescent model is built from node times established for the current topology rather than a prior pass.
 
 ## Validation
 
-- Topology-changing and topology-preserving refinement cases.
-- Assert the event multiset contains every required leaf, internal node, and root contribution.
-- Inject one missing internal time and require an error naming the node.
-- Compare the full coalescent likelihood against an independent direct calculation.
+- Coalescent modes on inversion-prone datasets (zika/20, flu/h3n2/200) no longer abort with "Lineage count must end at zero".
+- Inject one missing internal time and require a contextual error naming the node ([packages/treetime/src/coalescent/**tests**/test_events.rs](../../packages/treetime/src/coalescent/__tests__/test_events.rs)).
+- Exercise a resolve-polytomies run that actually introduces nodes while a coalescent prior is active, and assert the coalescent model is built from complete node times.
