@@ -278,6 +278,19 @@ pub fn run(
       !params.allow_negative_rate,
     )
     .wrap_err("Failed to reroot tree (post-ancestral)")?;
+
+    // Re-establish node times on the rerooted topology before the optimization loop.
+    // The reroot can leave internal-node time distributions cleared for the new
+    // topology, and the loop's first refinement builds the coalescent model (which
+    // reads node times) before its own backward/forward passes recompute them. Run
+    // without the coalescent prior: this pass only restores node times, mirroring v0,
+    // which recomputes the time tree after rerooting and only adds the merger model
+    // inside the iteration loop.
+    // packages/legacy/treetime/treetime/treetime.py#L279-L285
+    if coalescent_tc.is_some() {
+      run_timetree(&mut input.graph, &partitions, &clock_model, None, params.no_indels)
+        .wrap_err("Post-reroot timetree inference failed")?;
+    }
   }
 
   progress.check_cancelled()?;
