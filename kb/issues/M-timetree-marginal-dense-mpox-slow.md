@@ -43,7 +43,7 @@ The performance bottleneck is in the backward pass (`propagate_distributions_bac
 
 ### Grid spacing ratio blow-up
 
-`compute_branch_length_distribution()` in [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs) creates a 200-point branch-length grid via `create_simple_grid()`, then converts to the time domain by dividing by `effective_clock_rate = clock_rate * gamma`. Different edges have different gamma values, producing time-domain grids with different spacings.
+`compute_branch_length_distribution()` in [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs) creates a 300-point branch-length grid via `create_simple_grid()` over `[one_mutation * 0.01, min(center * 5, 5.0)]`, then converts to the time domain by dividing by `effective_clock_rate = clock_rate * gamma`. Different edges have different gamma values, producing time-domain grids with different spacings.
 
 `convolution_function_function()` in [`packages/treetime-distribution/src/distribution_ops/convolve.rs`](../../packages/treetime-distribution/src/distribution_ops/convolve.rs) resamples both inputs to `dx = min(dx_a, dx_b)` before convolving. When one distribution has very fine spacing (long branch, high gamma) and another has coarse spacing (short branch, low gamma), the resampled arrays become large. The convolution output has `len_a + len_b - 1` points, then is resampled back to the coarser grid.
 
@@ -54,9 +54,9 @@ For mpox with its low clock rate, the time-domain grid spacings can differ by la
 Two properties of mpox compound the grid blow-up:
 
 - Long genome (197 kb). Dense marginal reconstruction processes every alignment column at every node. The per-iteration cost scales as O(nodes _ L _ n_states^2). With L = 197,000 vs 1,800 for flu, each marginal pass is ~110x more expensive before any grid effects.
-- Long genome + low rate = tiny `one_mutation`. `one_mutation = 1/L` is ~5e-6 for mpox vs ~5.5e-4 for flu. The grid minimum (`one_mutation * 0.1`) and grid density scale with this value, producing very fine grid spacing in subs/site that then maps to a very wide time-domain grid when divided by the low clock rate.
+- Long genome + low rate = tiny `one_mutation`. `one_mutation = 1/L` is ~5e-6 for mpox vs ~5.5e-4 for flu. The grid minimum (`one_mutation * 0.01`) and grid density scale with this value, producing very fine grid spacing in subs/site that then maps to a wide time-domain grid when divided by the low clock rate.
 
-The net effect: mpox edges produce time-domain distributions with both fine spacing (from the small `one_mutation`) and wide extent (from `MAX_BRANCH_TIME / clock_rate`). When convolved with a child distribution from a different edge with different gamma, the spacing ratio can exceed 100x, inflating resampled arrays to tens of thousands of points.
+The net effect: mpox edges produce time-domain distributions with fine spacing (from the small `one_mutation`). When convolved with a child distribution from a different edge with different gamma, the spacing ratio can be large, inflating resampled arrays.
 
 ### v1 convolution: O(n^2) with uniform grids
 
@@ -81,7 +81,7 @@ v0's `NodeInterpolator.convolve_fft` (`node_interpolator.py:161`) uses three str
    - Long branches: logarithmic near zero (5 points spanning 20 orders of magnitude), quadratic left of peak, quadratic right to 3\*sigma, quadratic far tail to MAX_BRANCH_LENGTH
    - The grid is non-uniform, placing resolution where the likelihood varies and using sparse coverage in the tails
 
-v1 uses uniform `Array1::linspace` grids throughout (`create_simple_grid` produces 200 uniform points from `one_mutation * 0.1` to `max(3 * center, MAX_BRANCH_TIME * clock_rate)`). This design is simpler but does not adapt to the branch length regime and forces the convolution to resample between grids with very different spacings.
+v1 uses uniform `Array1::linspace` grids throughout (`create_simple_grid` produces 300 uniform points from `one_mutation * 0.01` to `min(center * 5, 5.0)`). The grid is now branch-length-informed, but still does not adapt to the branch length regime and forces the convolution to resample between grids with different spacings.
 
 ## Paths to investigate
 
