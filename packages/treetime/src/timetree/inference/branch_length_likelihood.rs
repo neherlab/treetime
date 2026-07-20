@@ -57,12 +57,23 @@ pub fn compute_branch_length_distribution(
   Ok(Arc::new(Distribution::Function(distribution_fn)))
 }
 
-/// Maximum branch length (in substitutions/site) for the branch-length grid used in time inference.
-const MAX_BRANCH_LENGTH: f64 = 5.0;
-
 fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize) -> Array1<f64> {
-  let min_bl = one_mutation * 0.01;
-  let peak_max_bl = f64::max(center * 5.0, one_mutation * 10.0);
+  // Grid floor as a fraction of one mutation's branch length. Keeps `t > 0` for
+  // the Poisson indel term while sitting well below any resolvable branch length.
+  const MIN_BRANCH_LENGTH_MUTATION_FRACTION: f64 = 0.01;
+  // Grid upper bound as a multiple of the current ML branch length, so grid
+  // resolution concentrates around the likelihood peak.
+  const PEAK_BRANCH_LENGTH_MULTIPLE: f64 = 5.0;
+  // Minimum grid span as a multiple of one mutation, for near-zero branch lengths.
+  const MIN_GRID_SPAN_MUTATIONS: f64 = 10.0;
+  // Absolute cap on the grid upper bound (substitutions/site).
+  const MAX_BRANCH_LENGTH: f64 = 5.0;
+
+  let min_bl = one_mutation * MIN_BRANCH_LENGTH_MUTATION_FRACTION;
+  let peak_max_bl = f64::max(
+    center * PEAK_BRANCH_LENGTH_MULTIPLE,
+    one_mutation * MIN_GRID_SPAN_MUTATIONS,
+  );
   let max_bl = peak_max_bl.min(MAX_BRANCH_LENGTH);
   Array1::linspace(min_bl, max_bl, n_points)
 }
