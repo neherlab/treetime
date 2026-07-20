@@ -336,29 +336,34 @@ Unit and parameterized tests for all BitSet128 operations.
 
 **Impl:** [`packages/treetime-utils/src/array/ndarray.rs`](../../packages/treetime-utils/src/array/ndarray.rs)
 
-| Test                                         | Purpose                           |
-| -------------------------------------------- | --------------------------------- |
-| `computes_argmin_axis_0`                     | Argmin along axis 0               |
-| `computes_argmin_axis_1`                     | Argmin along axis 1               |
-| `computes_argmax_axis_0`                     | Argmax along axis 0               |
-| `computes_argmax_axis_1`                     | Argmax along axis 1               |
-| `computes_cumsum_axis_0`                     | Cumulative sum along axis 0       |
-| `computes_cumsum_axis_1`                     | Cumulative sum along axis 1       |
-| `computes_outer_product`                     | Basic outer product               |
-| `test_outer_product_case_1`                  | Outer product with uniform pi     |
-| `test_outer_product_case_2`                  | Outer product with non-uniform pi |
-| `chooses_1d_by_index`                        | Index-based 1D selection          |
-| `chooses_2d_by_index`                        | Index-based 2D selection          |
-| `generates_predictable_random_uniform`       | Seeded random matrix              |
-| `test_product_axis_empty_array1`             | Product of empty 1D array         |
-| `test_product_axis_empty_array2_axis0`       | Product of empty 2D along axis 0  |
-| `test_product_axis_empty_array2_axis1`       | Product of empty 2D along axis 1  |
-| `test_product_axis_empty_axis_0_prod_axis_0` | Single-row product axis 0         |
-| `test_product_axis_empty_axis_0_prod_axis_1` | Single-row product axis 1         |
-| `test_product_axis_empty_axis_1_prod_axis_0` | Single-column product axis 0      |
-| `test_product_axis_empty_axis_1_prod_axis_1` | Single-column product axis 1      |
-| `test_product_axis_general_case_axis_0`      | General product axis 0            |
-| `test_product_axis_general_case_axis_1`      | General product axis 1            |
+| Test                                                            | Purpose                                                                    |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `computes_argmin_axis_0`                                        | Argmin along axis 0                                                        |
+| `computes_argmin_axis_1`                                        | Argmin along axis 1                                                        |
+| `computes_argmax_axis_0`                                        | Argmax along axis 0                                                        |
+| `computes_argmax_axis_1`                                        | Argmax along axis 1                                                        |
+| `computes_cumsum_axis_0`                                        | Cumulative sum along axis 0                                                |
+| `computes_cumsum_axis_1`                                        | Cumulative sum along axis 1                                                |
+| `computes_outer_product`                                        | Basic outer product                                                        |
+| `test_outer_product_case_1`                                     | Outer product with uniform pi                                              |
+| `test_outer_product_case_2`                                     | Outer product with non-uniform pi                                          |
+| `chooses_1d_by_index`                                           | Index-based 1D selection                                                   |
+| `chooses_2d_by_index`                                           | Index-based 2D selection                                                   |
+| `generates_predictable_random_uniform`                          | Seeded random matrix                                                       |
+| `test_product_axis_empty_array1`                                | Product of empty 1D array                                                  |
+| `test_product_axis_empty_array2_axis0`                          | Product of empty 2D along axis 0                                           |
+| `test_product_axis_empty_array2_axis1`                          | Product of empty 2D along axis 1                                           |
+| `test_product_axis_empty_axis_0_prod_axis_0`                    | Single-row product axis 0                                                  |
+| `test_product_axis_empty_axis_0_prod_axis_1`                    | Single-row product axis 1                                                  |
+| `test_product_axis_empty_axis_1_prod_axis_0`                    | Single-column product axis 0                                               |
+| `test_product_axis_empty_axis_1_prod_axis_1`                    | Single-column product axis 1                                               |
+| `test_product_axis_general_case_axis_0`                         | General product axis 0                                                     |
+| `test_product_axis_general_case_axis_1`                         | General product axis 1                                                     |
+| `test_has_uniform_spacing_accepts_regenerated_grid`             | Uniform grids regenerated at large/negative/zero-crossing offsets accepted |
+| `test_has_uniform_spacing_accepts_degenerate`                   | Arrays with fewer than two intervals accepted                              |
+| `test_has_uniform_spacing_rejects_nonuniform`                   | Order-dx non-uniformity rejected                                           |
+| `test_has_uniform_spacing_rejects_perturbation_above_tolerance` | Displacement beyond the magnitude-scaled tolerance rejected                |
+| `test_has_uniform_spacing_accepts_perturbation_below_tolerance` | Displacement within the rounding budget accepted                           |
 
 ---
 
@@ -763,25 +768,25 @@ Unit and parameterized tests for all BitSet128 operations.
 
 **Helpers:** [`packages/treetime/src/test_utils/graph_lookup.rs`](../../packages/treetime/src/test_utils/graph_lookup.rs) (`find_node_key_by_name`, `find_edge_key`)
 
-| Test                                                        | Purpose                                |
-| ----------------------------------------------------------- | -------------------------------------- |
-| `test_graph_traversal_serial_depth_first_preorder_forward`  | DFS preorder visits root first         |
-| `test_graph_traversal_serial_depth_first_postorder_forward` | DFS postorder visits leaves first      |
-| `test_graph_traversal_serial_breadth_first_forward`         | BFS forward visits by level            |
-| `test_graph_traversal_serial_breadth_first_reverse`         | BFS reverse visits deepest first       |
-| `test_graph_traversal_parallel_breadth_first_forward`       | Parallel BFS forward order             |
-| `test_graph_traversal_parallel_breadth_first_backward`      | Parallel BFS backward order            |
+| Test                                                           | Purpose                                  |
+| -------------------------------------------------------------- | ---------------------------------------- |
+| `test_graph_traversal_serial_depth_first_preorder_forward`     | DFS preorder visits root first           |
+| `test_graph_traversal_serial_depth_first_postorder_forward`    | DFS postorder visits leaves first        |
+| `test_graph_traversal_serial_breadth_first_forward`            | BFS forward visits by level              |
+| `test_graph_traversal_serial_breadth_first_reverse`            | BFS reverse visits deepest first         |
+| `test_graph_traversal_parallel_breadth_first_forward`          | Parallel BFS forward order               |
+| `test_graph_traversal_parallel_breadth_first_backward`         | Parallel BFS backward order              |
 | `test_graph_traversal_forward_frontiers_complete_predecessors` | Every parent precedes its child frontier |
 | `test_graph_traversal_backward_frontiers_complete_successors`  | Every child precedes its parent frontier |
-| `test_graph_collapse_edge_simple_chain`                     | Collapse single edge in chain          |
-| `test_graph_collapse_edge_binary_tree`                      | Collapse internal node in binary tree  |
-| `test_graph_collapse_edge_complex_tree`                     | Collapse promotes children to parent   |
-| `test_graph_collapse_edge_invalid_edge`                     | Invalid edge key errors                |
-| `test_graph_collapse_edge_leaf_edge`                        | Collapse edge to leaf removes leaf     |
-| `test_graph_collapse_edge_no_duplicate_edges`               | No duplicate edges after collapse      |
-| `test_graph_collapse_edge_adjacency_lists_maintained`       | Adjacency lists correct after collapse |
-| `test_graph_collapse_edge_multiple_inbound_edges`           | Collapse with multiple inbound edges   |
-| `test_graph_collapse_edge_adjacency_consistency`            | Edge-node adjacency stays consistent   |
+| `test_graph_collapse_edge_simple_chain`                        | Collapse single edge in chain            |
+| `test_graph_collapse_edge_binary_tree`                         | Collapse internal node in binary tree    |
+| `test_graph_collapse_edge_complex_tree`                        | Collapse promotes children to parent     |
+| `test_graph_collapse_edge_invalid_edge`                        | Invalid edge key errors                  |
+| `test_graph_collapse_edge_leaf_edge`                           | Collapse edge to leaf removes leaf       |
+| `test_graph_collapse_edge_no_duplicate_edges`                  | No duplicate edges after collapse        |
+| `test_graph_collapse_edge_adjacency_lists_maintained`          | Adjacency lists correct after collapse   |
+| `test_graph_collapse_edge_multiple_inbound_edges`              | Collapse with multiple inbound edges     |
+| `test_graph_collapse_edge_adjacency_consistency`               | Edge-node adjacency stays consistent     |
 
 **Test:** [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-graph/src/topology_order.rs) (inline)
 

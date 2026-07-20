@@ -90,7 +90,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Medium     | Graph        | [Reroot edge splitting lacks validation and failure atomicity](M-graph-reroot-split-validation-and-atomicity.md)                                                   |
 | Medium     | Graph        | [Target topology order silently collapses duplicate labels](M-topology-order-duplicate-label-collapse.md)                                                          |
 | Medium     | Grid         | [Grid constructors accept non-finite and non-representable spacing](M-grid-invalid-numeric-domain.md)                                                              |
-| Medium     | Grid         | [Uniform-spacing validation rejects valid offset grids](M-grid-uniform-spacing-check-rejects-valid-offset-grids.md)                                                |
 | Medium     | GTR          | [Dense GTR golden master bakes v1 root-state filtering into the "v0" oracle](M-gtr-dense-root-filter-golden-master-self-validating.md)                             |
 | Medium     | GTR          | [Per-site rate variation is not inferred or wired end to end](M-gtr-per-site-rate-variation.md)                                                                    |
 | Medium     | I/O          | [Auspice entropy projection perturbs the Shannon definition](M-io-auspice-entropy-perturbs-shannon-definition.md)                                                  |
