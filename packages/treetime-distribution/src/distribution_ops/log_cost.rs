@@ -18,14 +18,13 @@ pub fn distribution_apply_neg_log_weight<F>(
 where
   F: Fn(f64) -> Result<f64, Report>,
 {
-  match distribution {
-    Distribution::Empty => return Ok(Distribution::Empty),
-    Distribution::Formula(_) => {
-      return make_error!(
-        "distribution_apply_neg_log_weight requires a concrete Point, Range, or Function distribution"
-      )
-    },
-    Distribution::Point(_) | Distribution::Range(_) | Distribution::Function(_) => {},
+  if matches!(distribution, Distribution::Empty) {
+    return Ok(Distribution::Empty);
+  }
+  if matches!(distribution, Distribution::Formula(_)) {
+    return make_error!(
+      "distribution_apply_neg_log_weight requires a concrete Point, Range, or Function distribution"
+    );
   }
 
   let times = distribution.t();
