@@ -82,6 +82,42 @@ mod tests {
     assert!(actual.eval(1.0).unwrap() > 0.0);
   }
 
+  /// A slightly negative amplitude (convolution/interpolation undershoot near a
+  /// grid tail, order `-1e-26`) carries no mass and must drop to zero, not
+  /// become `ln(negative) = NaN` and collapse the whole distribution to `Empty`.
+  ///
+  /// Analytical oracle: with weight `0`, treating the non-positive amplitude as
+  /// zero probability gives the peak-normalized amplitudes `[0.5, 1.0, 0.0]`.
+  /// The `-5.4e-26` value is the real amplitude observed at grid index 372 in an
+  /// ebola/20 `timetree --coalescent 1.0` run.
+  // Exact float equality is intentional: the peak is exactly 1.0 and the
+  // non-positive tail point is exactly 0.0 by construction.
+  #[allow(clippy::float_cmp)]
+  #[test]
+  fn test_log_cost_negative_amplitude_drops_without_nan() {
+    let amplitudes = array![0.5, 1.0, -5.427_352_212_149_163e-26];
+    let times = array![0.0, 1.0, 2.0];
+    let distribution = Distribution::function(times, amplitudes).unwrap();
+
+    let actual = distribution_apply_neg_log_weight(&distribution, |_| Ok(0.0)).unwrap();
+
+    assert!(
+      matches!(actual, Distribution::Function(_)),
+      "must not collapse to Empty"
+    );
+    assert!(
+      actual.y().iter().all(|value| value.is_finite()),
+      "no NaN or inf in result"
+    );
+    assert_eq!(
+      0.0,
+      actual.eval(2.0).unwrap(),
+      "non-positive tail point carries no mass"
+    );
+    assert_eq!(1.0, actual.eval(1.0).unwrap(), "normalized peak preserved at t=1");
+    assert_abs_diff_eq!(0.5, actual.eval(0.0).unwrap(), epsilon = 1e-15);
+  }
+
   /// Applying a weight preserves exact grid metadata at calendar-time magnitudes.
   #[test]
   fn test_log_cost_preserves_calendar_grid_metadata() {

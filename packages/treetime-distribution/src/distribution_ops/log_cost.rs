@@ -1,4 +1,4 @@
-use crate::policy::Plain;
+use crate::policy::{Plain, YAxisPolicy};
 use crate::{Distribution, DistributionFunction};
 use eyre::Report;
 use ndarray::Array1;
@@ -15,6 +15,15 @@ use treetime_utils::make_error;
 /// product peak at unit magnitude. A peak that sits at a high-weight grid point
 /// therefore survives, instead of underflowing `exp(min_weight - weight_i)` to
 /// zero when the weight spans more than ~700 across the grid.
+///
+/// A grid point whose amplitude is not a valid plain probability (`amplitude <=
+/// 0`, per `Plain::is_defined`) carries no mass: its combined value is treated
+/// as `+inf`, excluding it from the shift minimum and mapping it to `0` after
+/// exponentiation. This matches how `distribution_multiplication` already drops
+/// non-positive amplitudes, and guards `ln(amplitude)` against a slightly
+/// negative amplitude produced by convolution/interpolation undershoot near a
+/// grid tail (order `-1e-26`), which would otherwise be `NaN` and collapse the
+/// whole distribution to `Empty` when normalized.
 ///
 /// Concrete distributions only: a `Formula` has no grid to evaluate on and is
 /// rejected. `Empty` passes through unchanged.
@@ -52,7 +61,15 @@ where
   let neg_log = amplitudes
     .iter()
     .zip(times.iter())
-    .map(|(&amplitude, &time)| Ok::<f64, Report>(weight(time)? - amplitude.ln()))
+    .map(|(&amplitude, &time)| {
+      // Non-positive amplitude = no mass. Map to +inf cost instead of taking
+      // `ln` (negative -> NaN, zero -> -inf), so the point drops out cleanly.
+      if Plain::is_defined(amplitude) {
+        Ok::<f64, Report>(weight(time)? - amplitude.ln())
+      } else {
+        Ok(f64::INFINITY)
+      }
+    })
     .collect::<Result<Vec<_>, Report>>()?;
   let Some(minimum) = neg_log
     .iter()
