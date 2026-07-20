@@ -220,7 +220,6 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Timetree     | [--keep-polytomies and --resolve-polytomies no conflicts_with declaration](N-timetree-polytomy-flags-no-conflict.md)                                               |
 | Negligible | Timetree     | [--n-branches-posterior returns error](N-timetree-n-branches-posterior-unimplemented.md)                                                                           |
 | Negligible | Timetree     | [--plot-rtt and --plot-tree return error](N-timetree-plot-unimplemented.md)                                                                                        |
-| Negligible | Timetree     | [Branch grid extent uses base clock_rate, not effective rate](N-timetree-branch-grid-gamma-omitted.md)                                                             |
 | Negligible | Timetree     | [Convergence metric silently excludes failed coalescent likelihood](N-timetree-convergence-metric-excludes-coalescent.md)                                          |
 | Negligible | Timetree     | [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md)                                                                                                         |
 | Negligible | Timetree     | [gtr.json missing for --branch-length-mode=input](N-timetree-gtr-json-missing-input-bl.md)                                                                         |
