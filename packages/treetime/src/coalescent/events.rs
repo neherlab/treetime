@@ -25,19 +25,33 @@ where
   let mut events = Vec::new();
 
   graph.iter_breadth_first_forward(|node| {
-    if let Some(time_dist) = node.payload.time_distribution() {
-      if let Some(t) = time_dist.likely_time() {
-        let t = CalendarTime::new(t);
-        max_time = max_time.max(t);
+    // Every node must contribute an event: the lineage-count function relies on the
+    // per-node deltas summing to exactly 1 (one leaf `+1` per node, one merger `-(k-1)`
+    // per internal node). Silently dropping a node without an inferred time breaks that
+    // invariant and surfaces later as a nonsensical "count must end at zero" failure, so
+    // reject the missing state here and name the offending node instead.
+    let Some(t) = node
+      .payload
+      .time_distribution()
+      .as_ref()
+      .and_then(|time_dist| time_dist.likely_time())
+    else {
+      return make_error!(
+        "Coalescent lineage count requires an inferred time for every node, but node (key={:?}) has none. \
+         The coalescent model was likely built before node times were recomputed for the current tree topology.",
+        node.key
+      );
+    };
 
-        let num_children = node.child_edges.len();
+    let t = CalendarTime::new(t);
+    max_time = max_time.max(t);
 
-        if num_children == 0 {
-          events.push((t, 1));
-        } else {
-          events.push((t, -((num_children as i32) - 1)));
-        }
-      }
+    let num_children = node.child_edges.len();
+
+    if num_children == 0 {
+      events.push((t, 1));
+    } else {
+      events.push((t, -((num_children as i32) - 1)));
     }
     Ok(())
   })?;
