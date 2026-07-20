@@ -1,21 +1,14 @@
 # Branch distribution grid uses uniform spacing
 
-The branch distribution grid in `create_simple_grid()` uses `Array1::linspace` (uniform spacing) over the full range `[min_bl, max(peak_max_bl, MAX_BRANCH_TIME * clock_rate)]`. For short branches where `MAX_BRANCH_TIME * clock_rate` dominates, the peak region receives fewer grid points than needed for high-accuracy time estimates.
+The branch distribution grid in `create_simple_grid()` uses `Array1::linspace` (uniform spacing) over `[one_mutation * 0.01, min(center * 5, MAX_BRANCH_LENGTH)]`. The grid is now branch-length-informed (extent scales with the ML branch length, capped at 5.0 subs/site) and uses 300 points, a substantial improvement over the prior 1000-point grid that spread resolution across a 200-year time window.
 
-## Quantitative impact
+## Current status
 
-For a 1-mutation flu branch (center=3.3e-4, rate=0.003, L=3000):
+The branch-length-informed grid concentrates points near the peak for typical branches. The resolution improvement has not been empirically validated: the golden master tests (`test_gm_runner_marginal_dense`, `test_gm_runner_marginal_sparse`, `test_gm_runner_poisson`) remain `#[ignore]`d at target tolerance `epsilon = 1e-6`. Un-ignoring them is the acceptance criterion for closing this issue.
 
-- Current grid (1000 points, wide range): dx=6e-4, ~0.56 points per sigma
-- Previous grid (200 points, narrow range): dx=1.65e-5, ~20 points per sigma
+## Remaining concern
 
-The argmax error is bounded by dx/2 = 3e-4 subs/site = 0.1 years per branch. Errors accumulate through the tree: golden master tests comparing v1 against v0 require 1.0-year tolerance, with the worst-case node (root-adjacent) differing by 0.92 years. Validation RMSE across all nodes is 0.091 years.
-
-Peak shape is under-resolved for confidence interval estimation.
-
-## Affected tests
-
-Golden master tests `test_gm_runner_marginal_dense` and `test_gm_runner_marginal_sparse` set target tolerance `epsilon = 1e-6` and are `#[ignore]`d until this grid resolution issue is fixed. With a non-uniform grid restoring peak resolution, the tests should pass at that tolerance.
+For very short branches where `one_mutation * 10` governs the extent, the uniform grid may still under-resolve the peak relative to v0's non-uniform grid. A non-uniform grid concentrating points near the peak while maintaining broad tail coverage (as v0 does) would further improve resolution for these cases.
 
 ## v0 reference
 
@@ -28,10 +21,6 @@ v0 uses a 5-segment non-uniform grid (`branch_len_interpolator.py:50-62`):
 - Quadratic from 3\*sigma to MAX_BRANCH_LENGTH (n/3 points, sparse tail)
 
 This concentrates ~40 of 125 points near the peak while covering up to MAX_BRANCH_LENGTH = 4.0 subs/site.
-
-## Fix
-
-Implement a non-uniform grid matching v0's multi-segment design, or use a two-tier approach: fine uniform grid over the peak region concatenated with a coarser grid for the tail. Requires `DistributionFunction` to support non-uniform grids or a resample step.
 
 ## Related tickets
 
