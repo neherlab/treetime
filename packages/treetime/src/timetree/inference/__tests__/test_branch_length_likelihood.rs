@@ -2,19 +2,22 @@
 mod tests {
   use crate::partition::optimization_contribution::OptimizationContribution;
   use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
+  use crate::timetree::inference::runner::BRANCH_GRID_SIZE;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
   use treetime_distribution::Distribution;
+  use treetime_utils::array::ndarray::has_uniform_spacing;
 
-  const N_GRID: usize = 1000;
-
+  /// With `current_branch_length = 0.1` the grid spans `[1e-5, 0.5]`; the test
+  /// points stay inside that support so the assertion exercises grid values
+  /// rather than constant extrapolation beyond the last point.
   #[rustfmt::skip]
   #[rstest]
+  #[case::t_0_001( 0.001)]
   #[case::t_0_05(  0.05)]
-  #[case::t_1(     1.0)]
-  #[case::t_10(   10.0)]
-  #[case::t_100( 100.0)]
+  #[case::t_0_2(   0.2)]
+  #[case::t_0_49(  0.49)]
   #[trace]
   fn test_branch_length_likelihood_no_indels_flat_distribution(#[case] t: f64) -> Result<(), Report> {
     let contributions: Vec<OptimizationContribution> = vec![];
@@ -24,7 +27,7 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 0.1,
       /* one_mutation */ 1e-3,
-      N_GRID,
+      BRANCH_GRID_SIZE,
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
@@ -57,16 +60,17 @@ mod tests {
   ///
   /// With `clock_rate = gamma = 1.0`, branch-length and time axes coincide, so
   /// interpolated distribution values agree with the closed-form Poisson
-  /// expression up to linear interpolation error $\lesssim h^2 |f''| / 8$,
-  /// where `h` is the grid spacing (~0.2, giving error bound ~5e-3).
+  /// expression up to linear interpolation error $\lesssim h^2 |f''| / 8$. For
+  /// `current_branch_length = 1.0` the grid spans `[1e-5, 5]` with `h ≈ 0.017`,
+  /// and `|f''| = \exp(-(t - t_{\min})) \le 1`, giving an error bound ~4e-5.
   ///
-  /// t >= 0.5 only: the first grid cell [1e-4, 0.2] has O(1%) interpolation
-  /// error comparable to the tolerance.
+  /// The test points stay inside the support so the assertion exercises the
+  /// interpolated Poisson shape rather than constant extrapolation.
   #[rustfmt::skip]
   #[rstest]
   #[case::t_0_5(  0.5)]
   #[case::t_2(    2.0)]
-  #[case::t_10(  10.0)]
+  #[case::t_4(    4.0)]
   #[trace]
   fn test_branch_length_likelihood_indel_rate_only_matches_poisson_shape(#[case] t: f64) -> Result<(), Report> {
     let distribution = helpers::build_indel_rate_only_distribution()?;
@@ -74,7 +78,7 @@ mod tests {
     let indel_rate = 1.0;
     let t_min = 1e-3 * 0.01;
     let expected = (-indel_rate * (t - t_min)).exp();
-    assert_abs_diff_eq!(helpers::eval(&distribution, t), expected, epsilon = 1e-2);
+    assert_abs_diff_eq!(helpers::eval(&distribution, t), expected, epsilon = 1e-4);
 
     Ok(())
   }
@@ -98,7 +102,7 @@ mod tests {
       indel_rate,
       /* current_branch_length */ 5.0,
       one_mutation,
-      N_GRID,
+      BRANCH_GRID_SIZE,
       clock_rate,
       gamma,
     )?;
@@ -132,7 +136,7 @@ mod tests {
       indel_rate,
       /* current_branch_length */ 5.0,
       one_mutation,
-      N_GRID,
+      BRANCH_GRID_SIZE,
       clock_rate,
       gamma,
     )?;
@@ -146,12 +150,15 @@ mod tests {
     Ok(())
   }
 
+  /// With `current_branch_length = 0.01` the grid spans `[1e-5, 0.05]`; the
+  /// test points stay inside that support so the assertion exercises grid values
+  /// rather than constant extrapolation beyond the last point.
   #[rustfmt::skip]
   #[rstest]
   #[case::t_0_001( 0.001)]
+  #[case::t_0_01(  0.01)]
+  #[case::t_0_03(  0.03)]
   #[case::t_0_05(  0.05)]
-  #[case::t_5(     5.0)]
-  #[case::t_50(   50.0)]
   #[trace]
   fn test_branch_length_likelihood_zero_indels_matches_substitution_only(#[case] t: f64) -> Result<(), Report> {
     let contributions: Vec<OptimizationContribution> = vec![];
@@ -161,12 +168,102 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 0.01,
       /* one_mutation */ 1e-3,
-      N_GRID,
+      BRANCH_GRID_SIZE,
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
 
     assert_abs_diff_eq!(helpers::eval(&with_zero_indels, t), 1.0, epsilon = 1e-12);
+    Ok(())
+  }
+
+  /// The grid upper bound follows the ML branch length while the branch stays
+  /// below `MAX_BRANCH_LENGTH / 5`: the peak-scaled bound `center * 5` governs
+  /// the extent. With `clock_rate = gamma = 1` the time axis equals the
+  /// branch-length axis, so the upper time bound is `center * 5`.
+  #[test]
+  fn test_branch_length_likelihood_grid_extent_scales_with_branch_length() -> Result<(), Report> {
+    let contributions: Vec<OptimizationContribution> = vec![];
+    let distribution = compute_branch_length_distribution(
+      &contributions,
+      /* indel_count */ 0,
+      /* indel_rate */ 0.0,
+      /* current_branch_length */ 0.1,
+      /* one_mutation */ 1e-3,
+      BRANCH_GRID_SIZE,
+      /* clock_rate */ 1.0,
+      /* gamma */ 1.0,
+    )?;
+
+    // max_bl = min(max(0.1 * 5, 1e-3 * 10), 5.0) = min(0.5, 5.0) = 0.5
+    let (_t_min, t_max) = distribution.time_bounds();
+    assert_abs_diff_eq!(t_max, 0.5, epsilon = 1e-12);
+    Ok(())
+  }
+
+  /// The grid upper bound is capped at `MAX_BRANCH_LENGTH = 5.0` once the
+  /// peak-scaled bound `center * 5` would exceed it (branch above 1 sub/site).
+  #[test]
+  fn test_branch_length_likelihood_grid_extent_capped_at_max_branch_length() -> Result<(), Report> {
+    let contributions: Vec<OptimizationContribution> = vec![];
+    let distribution = compute_branch_length_distribution(
+      &contributions,
+      /* indel_count */ 0,
+      /* indel_rate */ 0.0,
+      /* current_branch_length */ 2.0,
+      /* one_mutation */ 1e-3,
+      BRANCH_GRID_SIZE,
+      /* clock_rate */ 1.0,
+      /* gamma */ 1.0,
+    )?;
+
+    // max_bl = min(max(2.0 * 5, 1e-3 * 10), 5.0) = min(10.0, 5.0) = 5.0
+    let (_t_min, t_max) = distribution.time_bounds();
+    assert_abs_diff_eq!(t_max, 5.0, epsilon = 1e-12);
+    Ok(())
+  }
+
+  /// The grid floor is `one_mutation * 0.01`, independent of branch length. With
+  /// `clock_rate = gamma = 1` the lower time bound equals that floor.
+  #[test]
+  fn test_branch_length_likelihood_grid_lower_bound_from_one_mutation() -> Result<(), Report> {
+    let contributions: Vec<OptimizationContribution> = vec![];
+    let one_mutation = 1e-3;
+    let distribution = compute_branch_length_distribution(
+      &contributions,
+      /* indel_count */ 0,
+      /* indel_rate */ 0.0,
+      /* current_branch_length */ 0.1,
+      one_mutation,
+      BRANCH_GRID_SIZE,
+      /* clock_rate */ 1.0,
+      /* gamma */ 1.0,
+    )?;
+
+    let (t_min, _t_max) = distribution.time_bounds();
+    assert_abs_diff_eq!(t_min, one_mutation * 0.01, epsilon = 1e-12);
+    Ok(())
+  }
+
+  /// The distribution carries exactly the requested number of grid points,
+  /// spaced uniformly across `[min_bl, max_bl]`.
+  #[test]
+  fn test_branch_length_likelihood_grid_has_uniform_requested_resolution() -> Result<(), Report> {
+    let contributions: Vec<OptimizationContribution> = vec![];
+    let distribution = compute_branch_length_distribution(
+      &contributions,
+      /* indel_count */ 0,
+      /* indel_rate */ 0.0,
+      /* current_branch_length */ 0.1,
+      /* one_mutation */ 1e-3,
+      BRANCH_GRID_SIZE,
+      /* clock_rate */ 1.0,
+      /* gamma */ 1.0,
+    )?;
+
+    let t = distribution.t();
+    assert_eq!(t.len(), BRANCH_GRID_SIZE);
+    assert!(has_uniform_spacing(&t));
     Ok(())
   }
 
@@ -187,7 +284,7 @@ mod tests {
         /* indel_rate */ 1.0,
         /* current_branch_length */ 1.0,
         /* one_mutation */ 1e-3,
-        N_GRID,
+        BRANCH_GRID_SIZE,
         /* clock_rate */ 1.0,
         /* gamma */ 1.0,
       )
