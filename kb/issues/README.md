@@ -162,6 +162,7 @@ Issue name in the summary table must match the H1 heading in the linked file exa
 | Negligible | Core         | [Zero branch length clamping](N-core-branch-length-clamping.md)                                                                                                    |
 | Negligible | Dates        | [Imprecise date upper bound not capped at present](N-dates-imprecise-upper-bound-not-capped.md)                                                                    |
 | Negligible | Distribution | [Formula discretization errors silently swallowed](N-distribution-formula-silent-discretization.md)                                                                |
+| Negligible | Distribution | [Function-function product yields tiny negative amplitudes from interpolation rounding](N-distribution-function-product-negative-roundoff.md)                      |
 | Negligible | Distribution | [Mixed-NaN distribution semantics are undefined](N-distribution-mixed-nan-policy-undecided.md)                                                                     |
 | Negligible | Docs         | [Auto-partitioning report has citation metadata and notation defects](N-kb-auto-partitioning-citation-metadata-and-notation.md)                                    |
 | Negligible | Docs         | [Documentation references and source claims are not verifiable](N-doc-reference-and-source-integrity.md)                                                           |
