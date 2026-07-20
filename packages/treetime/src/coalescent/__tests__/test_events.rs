@@ -10,6 +10,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::assert_error;
 
   fn create_graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<GraphTimetree, Report> {
     let graph = nwk_read_str(tree_nwk)?;
@@ -89,6 +90,29 @@ mod tests {
     for i in 1..events.len() {
       assert!(events[i - 1].0 <= events[i].0);
     }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collect_tree_events_rejects_node_without_time() -> Result<(), Report> {
+    // internal1 has no date constraint, so its time distribution stays unset and it
+    // cannot contribute its merger event. Event collection must reject this rather
+    // than silently drop the node (which would unbalance the lineage-count deltas).
+    const TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
+    let dates = btreemap! {
+      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
+      "leaf1".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "leaf2".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "leaf3".to_owned() => Some(DateConstraint::exact(2012.0)),
+    };
+
+    let graph = create_graph_with_dates(TREE_NWK, &dates)?;
+
+    assert_error!(
+      collect_tree_events(&graph),
+      "Coalescent lineage count requires an inferred time for every node, but node (key=GraphNodeKey(2)) has none. The coalescent model was likely built before node times were recomputed for the current tree topology."
+    );
 
     Ok(())
   }
