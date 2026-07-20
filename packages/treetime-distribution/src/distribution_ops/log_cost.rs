@@ -26,9 +26,7 @@ where
     return Ok(Distribution::Empty);
   }
   if matches!(distribution, Distribution::Formula(_)) {
-    return make_error!(
-      "distribution_apply_neg_log_weight requires a concrete Point, Range, or Function distribution"
-    );
+    return make_error!("distribution_apply_neg_log_weight requires a concrete Point, Range, or Function distribution");
   }
 
   let times = distribution.t();
@@ -36,7 +34,14 @@ where
 
   let weights: Array1<f64> = times.iter().map(|&t| weight(t)).collect::<Result<_, Report>>()?;
   // -inf for non-positive amplitudes: makes neg_log +inf, zeroing them after exp.
-  let neg_log = weights - amplitudes.mapv(|a| if Plain::is_defined(a) { a.ln() } else { f64::NEG_INFINITY });
+  let neg_log = weights
+    - amplitudes.mapv(|a| {
+      if Plain::is_defined(a) {
+        a.ln()
+      } else {
+        f64::NEG_INFINITY
+      }
+    });
   let minimum = min_or(&neg_log, f64::INFINITY);
   if !minimum.is_finite() {
     return make_error!("distribution_apply_neg_log_weight found no finite weight over the distribution grid");
