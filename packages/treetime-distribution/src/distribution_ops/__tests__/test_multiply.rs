@@ -76,8 +76,7 @@ mod tests {
   /// Non-overlapping Function × Function returns Empty.
   ///
   /// When two distributions have disjoint supports, their product is
-  /// identically zero. Wide branch distribution grids (MAX_BRANCH_TIME)
-  /// prevent this in practice by ensuring backward pass messages overlap.
+  /// identically zero, so the multiplication collapses to `Empty`.
   #[test]
   fn test_multiply_function_function_non_overlapping_returns_empty() {
     let a = make_gaussian(0.0, 1.0, 101);

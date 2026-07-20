@@ -136,10 +136,11 @@ fn multiply_range_function<Y: YAxisPolicy>(
 
 /// Compute evaluation range for multiplying two distributions.
 ///
-/// Returns the intersection of the two ranges. When distributions have no
-/// overlap, returns None (the product is zero everywhere). Wider branch
-/// distribution grids (see `MAX_BRANCH_TIME` in branch_length_likelihood)
-/// ensure messages overlap for any practical dataset.
+/// Returns the intersection of the two ranges, or `None` when the supports are
+/// disjoint (the product is zero everywhere). Branch-length distribution grids
+/// span the plausible branch-length range, so overlapping supports are the
+/// common case; disjoint supports can still arise for very short branches whose
+/// time support is narrow relative to the separation of date constraints.
 pub fn multiplication_eval_range(a: (f64, f64), b: (f64, f64)) -> Option<(f64, f64)> {
   let eval_min = a.0.max(b.0);
   let eval_max = a.1.min(b.1);
