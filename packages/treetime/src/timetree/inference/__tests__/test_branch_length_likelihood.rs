@@ -35,11 +35,15 @@ mod tests {
 
   /// With no substitution contributions and no observed indels but a positive
   /// indel rate, the Poisson log-likelihood peaks at $t_{\min}$.
+  ///
+  /// The grid floor is `min_bl = one_mutation * 0.01`. A pure indel-rate
+  /// likelihood decreases monotonically in branch length, so its peak sits at
+  /// that floor.
   #[test]
   fn test_branch_length_likelihood_indel_rate_only_peak_at_t_min() -> Result<(), Report> {
     let distribution = helpers::build_indel_rate_only_distribution()?;
 
-    let t_min = 1e-3 * 0.1;
+    let t_min = 1e-3 * 0.01;
     let expected_peak_time = t_min;
     let peak_time = distribution.likely_time().expect("distribution has a peak");
     assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = 1e-10);
@@ -68,7 +72,7 @@ mod tests {
     let distribution = helpers::build_indel_rate_only_distribution()?;
 
     let indel_rate = 1.0;
-    let t_min = 1e-3 * 0.1;
+    let t_min = 1e-3 * 0.01;
     let expected = (-indel_rate * (t - t_min)).exp();
     assert_abs_diff_eq!(helpers::eval(&distribution, t), expected, epsilon = 1e-2);
 
