@@ -36,7 +36,7 @@ pub fn compute_branch_length_distribution(
   let grid = create_simple_grid(current_branch_length, one_mutation, n_grid_points);
 
   // `create_simple_grid` always returns strictly positive branch lengths
-  // (`min_bl = one_mutation * 0.1 > 0`), satisfying the `t > 0` precondition
+  // (`min_bl = one_mutation * 0.01 > 0`), satisfying the `t > 0` precondition
   // of `poisson_indel_log_lh` when `indel_count > 0`.
   let log_lh: Array1<f64> = grid
     .iter()
@@ -63,7 +63,6 @@ const MAX_BRANCH_LENGTH: f64 = 5.0;
 fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize) -> Array1<f64> {
   let min_bl = one_mutation * 0.01;
   let peak_max_bl = f64::max(center * 5.0, one_mutation * 10.0);
-  let rate_max_bl = MAX_BRANCH_LENGTH;
-  let max_bl = peak_max_bl.min(rate_max_bl);
+  let max_bl = peak_max_bl.min(MAX_BRANCH_LENGTH);
   Array1::linspace(min_bl, max_bl, n_points)
 }
