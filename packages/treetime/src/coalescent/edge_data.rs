@@ -52,6 +52,13 @@ where
     if node.parent_keys.is_empty() {
       return Ok(());
     }
+    if node.payload.bad_branch() {
+      warn!(
+        "Coalescent edge data: skipping node (key={:?}) with a bad branch",
+        node.key
+      );
+      return Ok(());
+    }
 
     let Some(child_time) = node
       .payload

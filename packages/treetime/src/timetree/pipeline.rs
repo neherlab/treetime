@@ -41,7 +41,7 @@ use treetime_io::fasta::FastaRecord;
 use treetime_utils::make_report;
 
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
-const INITIAL_COALESCENT_TC: f64 = 0.001;
+const INITIAL_COALESCENT_TC: f64 = 5.0;
 
 pub struct TimetreeParams {
   pub model: GtrModelName,
