@@ -10,8 +10,8 @@ Bad branches are excluded from some coalescent computations but included in othe
 | Backward pass: outgoing message to parent | Excluded (guarded)                | `backward_pass.rs:114` |
 | Forward pass: leaf early return           | No check (returns for all leaves) | `forward_pass.rs:73`   |
 | Lineage event collection                  | **Included** (no filter)          | `events.rs:27-43`      |
-| Edge data collection                      | **Included** (no filter)          | `edge_data.rs:50-101`  |
-| Total log-likelihood                      | **Included** (via edge data)      | `total_lh.rs:24-35`    |
+| Edge data collection                      | Excluded (guarded, PR#851)        | `edge_data.rs:55-62`   |
+| Total log-likelihood                      | Excluded (via edge data, PR#851)  | `total_lh.rs:24-35`    |
 
 ## V0 behavior
 
@@ -25,9 +25,13 @@ When bad branches exist in the tree:
 - Bad-branch edges contribute to the total log-likelihood even though their time messages were excluded from the backward pass
 - The Tc optimizer sees an objective function that mixes filtered and unfiltered tree structure
 
-## Decision required
+## Partial fix
 
-Choose one of: (a) exclude bad branches from lineage events and edge collection, matching v0; (b) approve a coherent alternative contract and document the divergence.
+[PR#851](https://github.com/neherlab/treetime/pull/851) added a `bad_branch()` guard to `collect_coalescent_edges`, fixing edge data collection and total log-likelihood. Lineage event collection (`events.rs`) remains unguarded -- bad-branch nodes still inflate $k(t)$.
+
+## Remaining decision
+
+Exclude bad branches from lineage events (`collect_tree_events`), matching v0. The lineage-count invariant (deltas sum to zero) needs adjustment to account for skipped subtrees.
 
 ## Related issues
 
