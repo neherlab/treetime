@@ -8,6 +8,10 @@ Sampled distributions can contain both finite values and `NaN`, but the distribu
 - `fn neglog_function_to_plain_normalized()` [packages/treetime-distribution/src/distribution_core/distribution.rs#L437](../../packages/treetime-distribution/src/distribution_core/distribution.rs#L437) converts a failed minimum reduction into `Distribution::Empty`.
 - `Distribution<Plain>::normalize()` [packages/treetime-distribution/src/distribution_core/distribution.rs#L213](../../packages/treetime-distribution/src/distribution_core/distribution.rs#L213) treats a non-finite maximum as empty.
 
+### NaN propagation through combined negative-log values
+
+When combining negative-log amplitude arrays, `f64::min` ignores an isolated NaN operand (returns the non-NaN value). The surviving NaN propagates through exponentiation into the plain-space array. `ndarray-stats::QuantileExt::max()` then returns `Err(MinMaxError::UndefinedOrder)`, and the existing `.ok().unwrap_or(0.0)` path normalizes the result to `Distribution::Empty`. Invalid numeric input is swallowed without any error or warning.
+
 ## Decision axes
 
 ### Meaning of `NaN` in sampled values

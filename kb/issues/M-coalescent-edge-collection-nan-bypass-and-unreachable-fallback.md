@@ -1,6 +1,10 @@
 # Coalescent edge collection bypasses NaN dates and retains unreachable multiplicity fallback
 
-Three validation defects in `collect_coalescent_edges`:
+Four validation defects spanning `CalendarTime` construction and `collect_coalescent_edges`:
+
+## CalendarTime::new() accepts non-finite values
+
+`fn CalendarTime::new()` [`packages/treetime/src/coalescent/time_coordinate.rs#L7-L9`](../../packages/treetime/src/coalescent/time_coordinate.rs#L7-L9) accepts NaN and infinities without validation. Since `CalendarTime` derives `PartialOrd`, comparisons involving NaN return `None`, which can mask NaN in running-maximum computations (`fn CalendarTime::max()` returns the non-NaN operand when `self.0 >= other.0` is `false`) and bypass edge ordering checks before malformed values enter piecewise functions.
 
 ## NaN endpoint dates bypass the ordering guard
 

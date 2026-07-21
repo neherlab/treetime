@@ -10,9 +10,17 @@ Finite inputs can also violate the effective-spacing invariant. At sufficiently 
 
 Two public boundaries bypass constructor-only validation: derived `Deserialize` can materialize invalid fields directly, and `fn GridFn::from_arrays_nonuniform()` [`packages/treetime-grid/src/grid_fn.rs#L88-L118`](../../packages/treetime-grid/src/grid_fn.rs#L88-L118) performs a float-to-`usize` conversion before delegating to `Grid`.
 
+## Uniform-grid acceptance silently changes coordinates
+
+`fn Grid::from_array()` [`packages/treetime-grid/src/grid.rs#L75-L91`](../../packages/treetime-grid/src/grid.rs#L75-L91) uses `fn has_uniform_spacing()` [`packages/treetime-utils/src/array/ndarray.rs#L360-L372`](../../packages/treetime-utils/src/array/ndarray.rs#L360-L372) whose tolerance `MAX_SPACING_ULPS * endpoint_magnitude * epsilon` is independent of the nominal spacing. This means:
+
+- Arrays with materially unequal intervals pass the uniformity check when endpoint magnitudes are large relative to spacing.
+- On acceptance, `from_array()` discards all interior coordinates and reconstructs the grid from `x[0]` and `x[1] - x[0]`, producing coordinates that differ from the input array.
+- Non-finite, zero-spacing, and descending grids can also pass because the tolerance check uses ordered comparisons that return `false` for NaN.
+
 ## Required behavior
 
-Require finite endpoints and finite positive spacing, use checked point-count conversion, and verify that generated adjacent coordinates are strictly increasing in the represented floating-point type. Apply the invariant at constructors, deserialization, and every public grid-producing boundary. Failures must return contextual errors rather than panic.
+Require finite endpoints and finite positive spacing, use checked point-count conversion, and verify that generated adjacent coordinates are strictly increasing in the represented floating-point type. Validate that the uniform-spacing tolerance scales with the nominal spacing, not only with endpoint magnitude. Apply the invariant at constructors, deserialization, and every public grid-producing boundary. Failures must return contextual errors rather than panic.
 
 ## Related tickets
 
