@@ -52,32 +52,6 @@ v1's behavior (fail with clear error) is defensible. Silently picking `columns[0
 
 Keep v1 behavior for the name column (error on no match). For the attribute column, consider adding a positional fallback to `columns[1]` with a warning, matching v0 convenience for simple two-column files. This is lowest priority of the three gaps.
 
-## D4. Name column: candidate-list priority vs header-position priority
-
-v1 `get_col_name()` iterates the candidate list `["strain", "name", "accession"]` and returns the first candidate found in the headers. v0 `parse_dates()` at [`utils.py#L270-L298`](../../packages/legacy/treetime/treetime/utils.py#L270) collects all matching candidates as `(column_index, column_name)` tuples and calls `sorted()`, which sorts by column index -- the leftmost matching column in the CSV header wins.
-
-When a metadata file has both `accession` (column 0, matching tree leaf names) and `strain` (column 2, not matching), v0 picks `accession` (leftmost) and succeeds. v1 picks `strain` (first in candidate list) and the names don't match tree leaves, causing zero or near-zero date matches and downstream failures.
-
-### Affected commands
-
-All commands using `get_col_name()` with `default_name_candidates()`:
-
-- `clock` -- via `MetadataIdArgs` in [`clock/args.rs`](../../packages/treetime/src/commands/clock/args.rs)
-- `timetree` -- via `MetadataIdArgs` in [`timetree/args.rs`](../../packages/treetime/src/commands/timetree/args.rs)
-- `mugration` -- via `MetadataIdArgs` in [`mugration/args.rs`](../../packages/treetime/src/commands/mugration/args.rs)
-
-### Affected datasets
-
-Datasets where tree leaves use accession identifiers and metadata has both `accession` and `strain` columns:
-
-- `lassa/L/*` -- all sizes (20, 50, 200)
-- `rsv/a/*` -- all sizes (20, 100)
-- `mpox/clade-ii/*` -- size 20
-
-### Fix direction
-
-Change `get_col_name()` auto-detection to match v0 behavior: when no `provided_name` is given, find all candidates present in the headers and pick the one with the lowest column index (leftmost in header). The implementation at [`csv.rs#L144-L161`](../../packages/treetime-io/src/csv.rs#L144) currently uses `.find_map()` over candidates (candidate-list order). Replace with iteration over headers checking membership in candidates (header-position order).
-
 ## Related issues
 
 - [Date column header matching breaks on hash](M-timetree-date-header-hash.md) - related `#`-stripping interaction with `--name-column` argument
