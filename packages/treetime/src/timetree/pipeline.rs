@@ -515,16 +515,16 @@ fn optimize_branch_lengths_pre_step(
 
 #[cfg(test)]
 mod tests {
-  use super::{CoalescentInitialization, coalescent_initialization};
+  use super::{CoalescentInitialization, INITIAL_COALESCENT_TC, coalescent_initialization};
   use rstest::rstest;
 
   #[rustfmt::skip]
   #[rstest]
   #[case::disabled(       None,       false, false, CoalescentInitialization::None)]
   #[case::fixed(          Some(0.25), false, false, CoalescentInitialization::Fixed(0.25))]
-  #[case::opt_default(    None,       true,  false, CoalescentInitialization::Optimize(0.001))]
+  #[case::opt_default(    None,       true,  false, CoalescentInitialization::Optimize(INITIAL_COALESCENT_TC))]
   #[case::opt_configured( Some(0.25), true,  false, CoalescentInitialization::Optimize(0.25))]
-  #[case::skyline_default(None,       false, true,  CoalescentInitialization::Optimize(0.001))]
+  #[case::skyline_default(None,       false, true,  CoalescentInitialization::Optimize(INITIAL_COALESCENT_TC))]
   #[trace]
   fn test_pipeline_coalescent_initialization(
     #[case] coalescent: Option<f64>,
@@ -534,9 +534,6 @@ mod tests {
   ) {
     let actual = coalescent_initialization(coalescent, coalescent_opt, coalescent_skyline);
 
-    // v0 creates Coalescent with Tc=0.001 before optimizing it in the first iteration:
-    // packages/legacy/treetime/treetime/merger_models.py#L25
-    // packages/legacy/treetime/treetime/treetime.py#L307-L317
     assert_eq!(expected, actual);
   }
 }
