@@ -19,10 +19,39 @@
 set -euo pipefail
 trap "exit" INT
 
+# Resolve the source commit of the most recent published nightly, used as the
+# lower bound of the changelog. Always succeeds: on any lookup or resolution
+# failure it prints nothing so the caller falls back to notes without a
+# changelog rather than aborting the publication.
+find_last_nightly_sha() {
+  local repo="${1}"
+
+  local last_tag
+  last_tag=$(gh release list --repo "${repo}" --exclude-drafts --limit 100 --json tagName \
+    --jq '[.[] | select(.tagName | contains("-nightly."))][0].tagName // ""' 2>/dev/null) || return 0
+  [[ -n "${last_tag}" ]] || return 0
+
+  local abbreviated_sha="${last_tag##*+}"
+  [[ "${abbreviated_sha}" != "${last_tag}" ]] || return 0
+
+  local resolved
+  resolved=$(git rev-parse --verify --quiet "${abbreviated_sha}^{commit}" 2>/dev/null) || {
+    printf "Unable to resolve previous nightly source: %s\n" "${abbreviated_sha}" >&2
+    return 0
+  }
+  printf "%s\n" "${resolved}"
+}
+
+# Emit the release body. The base template is always produced; the changelog
+# (compare link, merged pull requests, and commits landed outside any pull
+# request) is appended only when the previous nightly source is known and its
+# history is available. Every changelog query degrades to an empty section on
+# failure so notes generation never gates publication of built artifacts.
 generate_release_notes() {
   local repo="${1}"
   local git_sha="${2}"
   local short_sha="${3}"
+  local last_sha="${4:-}"
 
   cat <<EOF
 Nightly build of [treetime](https://github.com/${repo}).
@@ -32,6 +61,44 @@ Nightly build of [treetime](https://github.com/${repo}).
 > [!WARNING]
 > Automated nightly build for early testing. May contain bugs and breaking changes.
 EOF
+
+  [[ -n "${last_sha}" ]] || return 0
+
+  printf "\n**Compare**: [\`%s...%s\`](https://github.com/%s/compare/%s...%s)\n" \
+    "${last_sha:0:7}" "${short_sha}" "${repo}" "${last_sha}" "${git_sha}"
+
+  local last_commit_date
+  last_commit_date=$(git show -s --format='%aI' "${last_sha}" 2>/dev/null) || return 0
+
+  local pr_json
+  pr_json=$(gh pr list --repo "${repo}" --state merged --base rust --limit 100 \
+    --json number,title,mergeCommit,mergedAt \
+    --jq "[.[] | select(.mergedAt > \"${last_commit_date}\")]" 2>/dev/null) || pr_json="[]"
+
+  if (( $(jq 'length' <<< "${pr_json}") > 0 )); then
+    printf "\n## Pull requests\n\n| PR | Title |\n|---|---|\n"
+    jq -r ".[] | \"| [#\\(.number)](https://github.com/${repo}/pull/\\(.number)) | \\(.title | gsub(\"[|]\"; \"\\\\|\")) |\"" <<< "${pr_json}"
+  fi
+
+  local pr_shas
+  pr_shas=$(jq -r '.[].mergeCommit.oid // empty' <<< "${pr_json}")
+  local all_commits
+  all_commits=$(git log --format='%H %s' "${last_sha}..${git_sha}" 2>/dev/null) || return 0
+
+  local orphan_table=""
+  local line commit_sha commit_msg
+  while IFS= read -r line; do
+    [[ -n "${line}" ]] || continue
+    commit_sha="${line%% *}"
+    commit_msg="${line#* }"
+    if [[ -z "${pr_shas}" ]] || ! grep -qF "${commit_sha}" <<< "${pr_shas}"; then
+      orphan_table+="| [\`${commit_sha:0:7}\`](https://github.com/${repo}/commit/${commit_sha}) | ${commit_msg//|/\\|} |"$'\n'
+    fi
+  done <<< "${all_commits}"
+
+  if [[ -n "${orphan_table}" ]]; then
+    printf "\n## Commits not in any PR\n\n| Commit | Message |\n|---|---|\n%s" "${orphan_table}"
+  fi
 }
 
 main() {
@@ -62,7 +129,7 @@ main() {
   # shfmt:on
 
   local dependency
-  for dependency in gh yq; do
+  for dependency in gh yq git jq; do
     command -v "${dependency}" >/dev/null || { printf "Required command not found: %s\n" "${dependency}" >&2; exit 1; }
   done
   : "${GITHUB_TOKEN:?GITHUB_TOKEN is required}"
@@ -87,8 +154,11 @@ main() {
   local version="${cargo_version}-${version_suffix}"
   local short_sha="${git_sha:0:7}"
 
+  local last_sha
+  last_sha=$(find_last_nightly_sha "${release_repo}")
+
   printf "Creating nightly release: %s\n" "${version}"
-  generate_release_notes "${source_repo}" "${git_sha}" "${short_sha}" |
+  generate_release_notes "${source_repo}" "${git_sha}" "${short_sha}" "${last_sha}" |
     gh release create "${version}" \
       --repo "${release_repo}" \
       --title "${version}" \
