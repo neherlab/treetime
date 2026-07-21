@@ -11,6 +11,7 @@ use crate::partition::traits::{HasGtr, HasLogLh, PartitionMarginalPasses, Transi
 use eyre::Report;
 use indexmap::IndexSet;
 use itertools::Itertools;
+use log::warn;
 use maplit::btreemap;
 use ndarray::{Array1, Array2};
 use std::collections::BTreeMap;
@@ -272,11 +273,16 @@ where
     );
   }
 
+  // Metadata naming samples absent from the tree is the common case: metadata files are shared
+  // across analyses and routinely list more samples than a pruned or subsampled tree. Warn for
+  // visibility (matching the dates subsystem) instead of rejecting the run.
   let missing_in_tree: IndexSet<String> = trait_names.difference(&leaf_names).cloned().collect();
   if !missing_in_tree.is_empty() {
-    return make_error!(
-      "Mugration: metadata names missing from tree leaves: {}",
-      missing_in_tree.iter().join(", ")
+    let sample = missing_in_tree.iter().take(10).join(", ");
+    let suffix = if missing_in_tree.len() > 10 { "..." } else { "" };
+    warn!(
+      "Mugration: {} metadata names not present in tree: {sample}{suffix}",
+      missing_in_tree.len()
     );
   }
 

@@ -52,7 +52,7 @@ mod tests {
   }
 
   #[test]
-  fn test_discrete_marginal_attach_traits_rejects_metadata_name_missing_from_tree() -> Result<(), Report> {
+  fn test_discrete_marginal_attach_traits_accepts_metadata_name_missing_from_tree() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let mut partition = helpers::make_partition(["usa", "germany"])?;
     let traits = btreemap! {
@@ -61,8 +61,16 @@ mod tests {
       o!("C") => o!("usa"),
     };
 
-    let result = partition.attach_traits(&graph, &traits);
-    assert_error!(result, "Mugration: metadata names missing from tree leaves: C");
+    // "C" has no matching tree leaf. Attachment warns and proceeds; matched leaves are unaffected.
+    partition.attach_traits(&graph, &traits)?;
+
+    let node_a_profile = helpers::get_node_profile(&graph, &partition, "A");
+    assert_abs_diff_eq!(node_a_profile[0], 0.0, epsilon = 1e-10);
+    assert_abs_diff_eq!(node_a_profile[1], 1.0, epsilon = 1e-10);
+
+    let node_b_profile = helpers::get_node_profile(&graph, &partition, "B");
+    assert_abs_diff_eq!(node_b_profile[0], 1.0, epsilon = 1e-10);
+    assert_abs_diff_eq!(node_b_profile[1], 0.0, epsilon = 1e-10);
 
     Ok(())
   }
