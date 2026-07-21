@@ -1,4 +1,5 @@
 mod test_concat;
+mod test_csv;
 mod test_dates_csv;
 mod test_discrete_states_csv;
 mod test_nex;

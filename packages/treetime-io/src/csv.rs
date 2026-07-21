@@ -142,14 +142,13 @@ pub fn get_col_name(
       ),
     }
   } else {
-    // Case-insensitive matching: lowercase both header and candidate before comparing.
-    // Priority follows the candidate list order (first candidate found wins).
-    let headers_lower: Vec<String> = headers.iter().map(|h| h.to_lowercase()).collect();
-    possible_names
+    let candidates_lower: Vec<String> = possible_names.iter().map(|c| c.to_lowercase()).collect();
+    headers
       .iter()
-      .find_map(|candidate| {
-        let candidate_lower = candidate.to_lowercase();
-        headers_lower.iter().position(|h| *h == candidate_lower)
+      .enumerate()
+      .find_map(|(idx, header)| {
+        let header_lower = header.to_lowercase();
+        candidates_lower.contains(&header_lower).then_some(idx)
       })
       .ok_or_else(|| {
         make_report!(
