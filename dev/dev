@@ -56,9 +56,9 @@ _BUILD_DIR="$(get_build_dir)"
 _TEST_DIR="$(get_test_dir)"
 _BUILD_RUSTFLAGS="-C linker-features=-lld ${RUSTFLAGS:-}"
 _TEST_RUSTFLAGS="${HOSTCC:+-C linker=${HOSTCC}} -C link-arg=-pthread -C link-arg=-lopenblas -C link-arg=-lgfortran -C link-arg=-static-libgfortran -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ ${RUSTFLAGS:-}"
-_BUILD_ENV=(env "CARGO_TARGET_DIR=${_BUILD_DIR}" "RUSTFLAGS=${_BUILD_RUSTFLAGS}")
-_TEST_ENV=(env "CARGO_TARGET_DIR=${_TEST_DIR}" "RUSTFLAGS=${_TEST_RUSTFLAGS}")
-_BENCH_ENV=(env "CARGO_TARGET_DIR=${_BUILD_DIR}" "RUSTFLAGS=${_TEST_RUSTFLAGS}")
+_BUILD_ENV=("CARGO_TARGET_DIR=${_BUILD_DIR}" "RUSTFLAGS=${_BUILD_RUSTFLAGS}")
+_TEST_ENV=("CARGO_TARGET_DIR=${_TEST_DIR}" "RUSTFLAGS=${_TEST_RUSTFLAGS}")
+_BENCH_ENV=("CARGO_TARGET_DIR=${_BUILD_DIR}" "RUSTFLAGS=${_TEST_RUSTFLAGS}")
 
 function is_known_command() {
   local token="${1:-}"
@@ -200,7 +200,7 @@ function run_one() {
       esac
     done
     cargo_args+=("$@")
-    "${_TEST_ENV[@]}" cargo -q nextest list "${_CI_ARGS[@]}" --workspace --cargo-quiet "${cargo_args[@]}" |
+    env "${_TEST_ENV[@]}" cargo -q nextest list "${_CI_ARGS[@]}" --workspace --cargo-quiet "${cargo_args[@]}" |
       "$(project_root)/dev/prettytestlist" "${pretty_args[@]}"
     ;;
   "coverage")

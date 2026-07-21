@@ -61,12 +61,41 @@ export -f run_with_signals
 
 # Run a command with lower (nicer) CPU and IO priority, time it and print the outcome
 function nicely() {
+  local -a env_vars=()
+  while (( $# > 0 )) && [[ "${1}" == *=* ]]; do
+    env_vars+=("${1}")
+    shift
+  done
+
   print_color 8 "+${*:-}"
+
+  local key
+  local -a saved_keys=()
+  local -A saved_vals=()
+  local -A saved_set=()
+  for pair in "${env_vars[@]}"; do
+    key="${pair%%=*}"
+    saved_keys+=("${key}")
+    if [[ -v "${key}" ]]; then
+      saved_set["${key}"]=1
+      saved_vals["${key}"]="${!key}"
+    fi
+    export "${pair}"
+  done
+
   local cmd_exit_code=0
   run_with_signals \
     nice -14 ionice -c2 -n3 \
     /usr/bin/time -qf 'Cmd : %C\nTime: %E\nMem : %M KB' \
     "$@" || cmd_exit_code=$?
+
+  for key in "${saved_keys[@]}"; do
+    if [[ "${saved_set["${key}"]:-}" == "1" ]]; then
+      export "${key}=${saved_vals["${key}"]}"
+    else
+      unset "${key}"
+    fi
+  done
   if [[ ${cmd_exit_code} -eq 0 ]]; then
     print_color 2 '🟩 Success'
   elif [[ ${cmd_exit_code} -gt 128 && ${cmd_exit_code} -le 159 ]]; then
