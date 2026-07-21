@@ -1,37 +1,14 @@
 # Design Decisions
 
-Deliberate behavioral differences between v1 (Rust) and v0 (Python), with rationale. One file per decision.
+Deliberate behavioral differences between v1 (Rust) and v0 (Python), with background, rationale, and options considered.
 
-Distinct from [known issues](../issues/README.md) (unintentional differences, missing features) and [proposals](../proposals/README.md) (new features pre-implementation).
+Distinct from:
 
-## Summary
-
-| Domain     | Deviation                                                                                                                                                                           | Impact                                                   |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Ancestral  | [Joint ML reconstruction removed](ancestral-joint-reconstruction-removed.md#joint-ml-ancestral-reconstruction-removed)                                                              | `--method-anc joint` panics                              |
-| Ancestral  | [Fitch root ambiguity: deterministic selection](ancestral-fitch-deterministic-root-state.md#fitch-root-ambiguity-deterministic-selection)                                           | Root sequence at tied positions                          |
-| Ancestral  | [SampleMode default: Argmax](ancestral-sample-mode-default-argmax.md#ancestral-samplemode-default-argmax)                                                                           | Deterministic default instead of v0's stochastic root    |
-| Ancestral  | [Root variable indel resolution: default to present](ancestral-root-variable-indel-resolution.md#root-variable-indel-resolution-default-to-present)                                 | Root indel state on polytomies                           |
-| GTR        | [Uninformative root_state filtering](gtr-uninformative-root-state-filtering.md#uninformative-root_state-filtering-in-gtr-inference)                                                 | pi, W, mu shift for gappy datasets                       |
-| Sequences  | [Dense and sparse sequence representation](sequence-representation-dense-sparse.md#dense-and-sparse-sequence-representation)                                                        | Memory usage, large alignments                           |
-| Structure  | [Graph-based phylogenetic representation](graph-based-phylogenetic-representation.md#graph-based-phylogenetic-representation)                                                       | Tree storage, traversal, data access                     |
-| Optimize   | [6-method branch optimization selection](optimize-newton-raphson-per-edge.md#per-edge-branch-length-optimization-6-method-selection)                                                | Per-branch convergence speed, method choice              |
-| Structure  | [Partition system architecture](partition-system-architecture.md#partition-system-architecture)                                                                                     | Code organization, extensibility                         |
-| Commands   | [Standalone branch length optimization command](command-optimize-standalone.md#standalone-branch-length-optimization-command)                                                       | New `optimize` subcommand                                |
-| Commands   | [Standalone tree pruning command](command-prune-standalone.md#standalone-tree-pruning-command)                                                                                      | New `prune` subcommand                                   |
-| I/O        | [Multi-format tree I/O](multi-format-tree-io.md#multi-format-tree-io)                                                                                                               | 8 formats, interop with UShER/Auspice/PhyloXML           |
-| Clock      | [Clock pre-filter allows negative rate during root finding](clock-prefilter-relaxed-positive-rate.md#clock-pre-filter-allows-negative-rate-during-root-finding)                     | Outlier detection proceeds on negative-rate datasets     |
-| Coalescent | [Actual multiplicity instead of fixed 2.0](coalescent-total-lh-actual-multiplicity.md#coalescent-total-lh-uses-actual-multiplicity-instead-of-fixed-2)                              | Correct merger rate for polytomies                       |
-| GTR        | [Sparse fixed-position scalar rate approximation](sparse-fixed-position-scalar-rate-approximation.md#sparse-fixed-position-scalar-rate-approximation)                               | Fixed positions use scalar mu, not per-site rate         |
-| Mugration  | [Pseudo-count smoothing on initial pi](mugration-pseudo-count-initial-pi.md#pseudo-count-smoothing-on-initial-mugration-pi)                                                         | Opt-in `--smooth-initial-pi`; default v0                 |
-| Mugration  | [Root state uniform-threshold filtering](mugration-root-state-filtering.md#root-state-uniform-threshold-filtering-in-mugration-gtr-inference)                                       | Opt-in `--filter-uninformative-root`; default v0         |
-| Optimize   | [Dense initial guess uses hard substitution count](optimize-dense-initial-guess-hard-count.md#dense-initial-branch-length-guess-uses-hard-substitution-count)                       | Initial branch length from argmax substitutions          |
-| Optimize   | [Indel contribution to branch length likelihood](optimize-indel-contribution-to-likelihood.md#indel-contribution-to-branch-length-likelihood)                                       | Positive branch length for indel-only edges              |
-| Timetree   | [CI output not gated on --confidence](timetree-ci-output-ungated.md#confidence-interval-output-not-gated-on---confidence)                                                           | Extra CI file when using marginal modes                  |
-| Optimize   | [Model-aware zero-branch shortcut](optimize-model-aware-zero-branch-shortcut.md#model-aware-zero-branch-shortcut)                                                                   | Non-unimodal models bypass derivative shortcut           |
-| Timetree   | [Timetree EM loop does not collapse zero-length branches](timetree-no-zero-branch-collapse-in-loop.md#timetree-em-loop-does-not-collapse-zero-length-branches)                      | Topology cleanup in optimize pre-step, not EM loop       |
-| Prune      | [Merged-sibling branch length uses Jukes-Cantor correction](prune-merge-jukes-cantor-branch-length.md#merged-sibling-branch-length-uses-jukes-cantor-correction-not-raw-p-distance) | Corrected evolutionary distance on shared-mutation edges |
-| GTR        | [Dense initial GTR inference uses Fitch parsimony counts](dense-fitch-gtr-inference.md#dense-initial-gtr-inference-uses-fitch-parsimony-counts)                                     | GTR mu/W differ up to ~11%/~10% from marginal-posterior  |
-| Timetree   | [Newick date annotation uses 2-decimal precision](timetree-nwk-date-two-decimal-precision.md#newick-date-annotation-uses-2-decimal-precision)                                       | ~3.65 day resolution in Newick date comments             |
-| Ancestral  | [Iterative outer GTR refinement](ancestral-iterative-gtr-refinement.md#iterative-outer-gtr-refinement-for-ancestral-reconstruction)                                                 | Optional `--gtr-iterations` for model co-estimation      |
-| Ancestral  | [AA empirical model maps out-of-alphabet to unknown](ancestral-aa-empirical-model-out-of-alphabet-to-unknown.md)                                                                    | Stop codons mapped to X under JTT92                      |
+- [_raw](../_raw/) - human-produced source material (specs, papers, notes), read-only for AI
+- [algo](../algo/README.md) - algorithm documentation, scientific background, implementation status
+- [features](../features/README.md) - feature parity checklist (done/partial/missing)
+- [issues](../issues/README.md) - v1 defects, missing features, unintentional v0 divergences
+- [proposals](../proposals/README.md) - undecided design documents with options and tradeoffs
+- [reports](../reports/README.md) - research reports on algorithms, optimization methods, and implementation analysis
+- [tickets](../tickets/README.md) - actionable implementation instructions derived from issues and proposals
+- [v0-errata](../v0-errata/README.md) - v0 defects that v1 correctly avoids

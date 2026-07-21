@@ -1,36 +1,14 @@
 # Proposals
 
-Design documents analyzing a problem space with options and tradeoffs. Each proposal records scientific motivation, expected impact, ecosystem survey, design axes with options, and a validation plan. Once implemented, the entry moves to [`decisions/`](../decisions/README.md).
+Design documents analyzing a problem space with options and tradeoffs. Each proposal records scientific motivation, expected impact, ecosystem survey, design axes with options, and a validation plan.
 
-Proposals are source material for issues, not self-executing plans. Every actionable item in a proposal must be extracted into a separate issue in [`issues/`](../issues/README.md) so it is tracked in the daily workflow. Items left only in proposals are effectively invisible to agents.
+Distinct from:
 
-v0 features not yet implemented belong in [`issues/`](../issues/README.md) (all types) and [`algo/unimplemented.md`](../algo/unimplemented.md) (algorithms only), not here.
-
-## Summary
-
-| Domain    | Proposal                                                                                                                                         | Motivation                                                                               |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| Ancestral | ~~Iterative outer GTR refinement~~ [implemented](../decisions/ancestral-iterative-gtr-refinement.md)                                             | Improve latent-state and model co-estimation when `--model infer`                        |
-| Ancestral | ~~Per-gene amino acid reconstruction for node data JSON~~ [implemented](../decisions/ancestral-aa-empirical-model-out-of-alphabet-to-unknown.md) | AA mutations, root sequences, gene annotations in node data JSON                         |
-| Mugration | [Full forward-backward reconstruction per iteration](mugration-full-reconstruction-per-iteration.md)                                             | Correct EM: refresh both message directions each iteration                               |
-| Optimize  | [Convergence and robustness](optimize-convergence-and-robustness.md)                                                                             | Sparse fix, damping, acceleration, per-edge safety, GTR inference                        |
-| Optimize  | [Pipeline timetree parity](optimize-pipeline-timetree-parity.md) (superproposal)                                                                 | Non-time pipeline steps: reroot, short branch pruning, two-phase BL optimization         |
-| Optimize  | [Reroot support](optimize-reroot-support.md)                                                                                                     | Wire MinDev and tip-based rerooting into optimize with two-phase BL optimization         |
-| Optimize  | [Short branch pruning](optimize-short-branch-pruning.md)                                                                                         | Prune unresolvable short branches after optimization converges                           |
-| Reroot    | [Generic scoring architecture](reroot-generic-scoring-architecture.md)                                                                           | Extract root search from clock, pluggable scoring via `RootStats` trait                  |
-| Timetree  | [Propagate convergence metric evaluation errors](convergence-metric-error-propagation.md)                                                        | Prevent silent exclusion of failed likelihood components                                 |
-| GTR       | [Configurable convergence norm for GTR inference](gtr-inference-convergence-norm.md)                                                             | Dimension-independent convergence for site-specific inference                            |
-| GTR       | [Max-rate interpolation grid for site-specific GTR](gtr-site-specific-interpolation-grid.md)                                                     | Better interpolation accuracy for heterogeneous rate sites                               |
-| I/O       | [Configuration file format for multi-partition analysis](config-file-multi-partition.md)                                                         | Multi-segment genomes, mixed data types, per-partition models                            |
-| I/O       | ~~Output format selection for tree-writing commands~~ [implemented](output-format-selection.md)                                                  | Three-tier output: format enum with NWK style variants, per-file flags, selection filter |
-| I/O       | [Unified input format support for analysis commands](unified-input-format-support.md)                                                            | Bypass name matching via Auspice/MAT/PhyloXML direct input                               |
-| I/O       | [Input name matching and validation](input-name-matching-validation.md)                                                                          | Index lookup, batch errors, duplicate detection, fuzzy suggestions, normalization        |
-| I/O       | [Newick branch length precision](newick-branch-length-precision.md)                                                                              | Full-precision default for branch lengths, replacing 3-sigfig truncation                 |
-| Optimize  | ~~Model-aware zero-branch shortcut~~ [implemented](../decisions/optimize-model-aware-zero-branch-shortcut.md)                                    | Restrict derivative shortcut to unimodal models                                          |
-| Optimize  | [Indel model alternatives](optimize-indel-model-alternatives.md)                                                                                 | Length-weighted, separate ins/del, affine-inspired indel models                          |
-| Optimize  | [Per-iteration indel rate re-estimation](optimize-indel-rate-per-iteration-reestimation.md)                                                      | Restore ECM coordinate-ascent re-estimation of indel rate                                |
-| Graph     | [Pure transform architecture for graph traversals](graph-pure-transform-architecture.md#pure-transform-architecture-for-graph-traversals)        | Explicit data flow, no locks, type-safe pipeline staging                                 |
-| I/O       | [Serialization format for scalar GTR model parameters](model-serialization-scalar.md)                                                            | Reuse inferred models, PAML/RAxML-NG interop                                             |
-| I/O       | [Serialization format for site-specific model parameters](model-serialization-site-specific.md)                                                  | Reuse inferred profiles across analyses, IQ-TREE interop                                 |
-| I/O       | [A dedicated PhyloXML property vocabulary for TreeTime data](phyloxml-treetime-property-namespace.md)                                            | Self-describing, interoperable encoding of TreeTime-specific PhyloXML properties         |
-| I/O       | [Embedding substitution and clock models in tree output formats](tree-format-model-embedding.md)                                                 | Self-contained tree outputs vs sidecar model files                                       |
+- [_raw](../_raw/) - human-produced source material (specs, papers, notes), read-only for AI
+- [algo](../algo/README.md) - algorithm documentation, scientific background, implementation status
+- [decisions](../decisions/README.md) - deliberate v1 divergences from v0
+- [features](../features/README.md) - feature parity checklist (done/partial/missing)
+- [issues](../issues/README.md) - v1 defects, missing features, unintentional v0 divergences
+- [reports](../reports/README.md) - research reports on algorithms, optimization methods, and implementation analysis
+- [tickets](../tickets/README.md) - actionable implementation instructions derived from issues and proposals
+- [v0-errata](../v0-errata/README.md) - v0 defects that v1 correctly avoids
