@@ -207,6 +207,8 @@ pub struct ServerTimetreeArgs {
   pub coalescent_skyline: bool,
   #[default = 10]
   pub n_skyline: usize,
+  #[default = 2.0]
+  pub skyline_stiffness: f64,
   pub n_branches_posterior: Option<usize>,
   pub tip_labels: bool,
   pub no_tip_labels: bool,
@@ -279,6 +281,7 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
       coalescent_opt: s.coalescent_opt,
       coalescent_skyline: s.coalescent_skyline,
       n_skyline: s.n_skyline,
+      skyline_stiffness: s.skyline_stiffness,
       n_branches_posterior: s.n_branches_posterior,
       plot_tree: None,
       plot_rtt: None,

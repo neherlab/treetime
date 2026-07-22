@@ -76,6 +76,7 @@ pub fn run_timetree_estimation(
     coalescent_opt: args.coalescent_opt,
     coalescent_skyline: args.coalescent_skyline,
     n_skyline: args.n_skyline,
+    skyline_stiffness: args.skyline_stiffness,
     n_branches_posterior: args.n_branches_posterior,
     time_marginal: args.time_marginal,
     confidence: args.confidence,

@@ -234,6 +234,10 @@ fn accumulate_segment_terms(
     m_seg[segment_index(boundaries, edge.parent_time().value())] += (n_siblings - 1.0) / n_siblings;
   }
 
+  for i in 0..n_seg {
+    info!("Skyline segment {i}: I = {:.6e}, M = {:.6e}", i_seg[i], m_seg[i]);
+  }
+
   (i_seg, m_seg)
 }
 

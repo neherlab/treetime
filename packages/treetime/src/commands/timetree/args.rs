@@ -114,18 +114,15 @@ pub struct TreetimeTimetreeArgs {
 
   /// Coalescent time scale in years.
   ///
-  /// Sensible values are on the order of the average hamming distance of contemporaneous sequences
-  /// divided by the clock rate. For example, if average pairwise distance is 0.01 substitutions/site
-  /// and clock rate is 0.001 subs/site/year, then Tc ~ 10 years.
+  /// Sensible values are on the order of the time from the root to the tips and are given in units of time.
   #[cfg_attr(feature = "clap", clap(long))]
   pub coalescent: Option<f64>,
 
   /// Optimize coalescent time scale Tc to maximize coalescent likelihood.
   ///
-  /// When set, TreeTime will find the optimal Tc using Brent's method. This is equivalent
-  /// to Python v0's `--coalescent=opt`. If --coalescent is also provided, that value is
-  /// used as the initial guess; otherwise defaults to 1.0.
-  #[cfg_attr(feature = "clap", clap(long))]
+  /// When set, TreeTime will find the optimal Tc using Brent's method. This is similar
+  /// to Python v0's `--coalescent=opt`, but uses a closed-form solution.
+  #[cfg_attr(feature = "clap", clap(long, conflicts_with = "coalescent", conflicts_with = "coalescent_skyline"))]
   pub coalescent_opt: bool,
 
   /// Use skyline coalescent model instead of constant Tc.
@@ -147,6 +144,16 @@ pub struct TreetimeTimetreeArgs {
   #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().n_skyline))]
   #[cfg_attr(feature = "clap", clap(value_parser = parse_n_skyline))]
   pub n_skyline: usize,
+
+  /// Smoothing stiffness for the skyline coalescent.
+  ///
+  /// Penalizes changes in the inverse coalescent time scale 1/Tc between adjacent
+  /// skyline segments: the objective adds `stiffness * Σ (1/Tc_{i+1} - 1/Tc_i)^2`.
+  /// Because 1/Tc has units of 1/time, the stiffness has units of time^2. Larger
+  /// values enforce a smoother Tc(t). Only used when --coalescent-skyline is set.
+  #[default = 2.0]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().skyline_stiffness))]
+  pub skyline_stiffness: f64,
 
   /// add posterior LH to coalescent model: use the posterior probability distributions of
   /// divergence times for estimating the number of branches when calculating the coalescent

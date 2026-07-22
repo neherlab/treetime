@@ -65,6 +65,8 @@ pub struct TimetreeParams {
   pub coalescent_opt: bool,
   pub coalescent_skyline: bool,
   pub n_skyline: usize,
+  /// Skyline smoothing stiffness (penalizes changes in 1/Tc; units of time^2).
+  pub skyline_stiffness: f64,
   pub n_branches_posterior: Option<usize>,
   pub time_marginal: TimeMarginalMode,
   pub confidence: bool,
@@ -216,6 +218,7 @@ pub fn run(
 
   let skyline_params = SkylineParams {
     n_points: params.n_skyline,
+    stiffness: params.skyline_stiffness,
     ..SkylineParams::default()
   };
 
