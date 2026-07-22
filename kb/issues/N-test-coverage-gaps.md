@@ -97,7 +97,7 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 ## Cross-cutting scientific coverage gaps
 
 - Scientific oracle and property tests remain ignored across distribution, rerooting, coalescent, and inference paths.
-- TreeIR semantic output tests cover `timetree` more thoroughly than ancestral, clock, mugration, optimize, and prune.
+- Graph-backed semantic output tests cover `timetree` more thoroughly than ancestral, clock, mugration, optimize, and prune.
 - Parallel coverage concentrates on one sparse success case and does not establish error atomicity for marginal, optimize, or timetree passes.
 - Skyline tests recompute the reported formula instead of invoking the optimizer objective.
 - Coalescent initialization tests establish enum selection without checking topology-change sequencing or event completeness.

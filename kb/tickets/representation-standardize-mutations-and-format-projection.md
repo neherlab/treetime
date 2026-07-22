@@ -2,6 +2,9 @@
 
 Make zero-based positions and typed mutation variants the single application contract, then perform checked conversion only at external format boundaries.
 
+> [!NOTE]
+> This ticket predates the tree-output refactor, which removed the `tree_ir` layer and now writes formats directly from the graph in `packages/treetime/src/commands/shared/tree_output.rs` (readers in `packages/treetime-io/src/auspice.rs` and `packages/treetime-io/src/phyloxml.rs`). Its parent issue's current status is unconfirmed; re-derive the steps and code locations against the current code before executing.
+
 ## Required changes
 
 1. Define one mutation representation covering substitutions, insertions, and deletions with zero-based positions.
@@ -24,5 +27,4 @@ For an internal position $p_0$, serialize the external position as $p_1=p_0+1$. 
 ## Related issues
 
 - Source: [kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md](../issues/M-core-mutation-representation-and-format-projection-inconsistent.md)
-- Blocked format policies: [kb/issues/M-io-usher-mat-mutation-loss-is-implicit.md](../issues/M-io-usher-mat-mutation-loss-is-implicit.md)
 - Blocked format policies: [kb/issues/N-io-phyloxml-mutation-property-contract-undecided.md](../issues/N-io-phyloxml-mutation-property-contract-undecided.md)

@@ -40,4 +40,3 @@ No aggregate ticket is ready. Create one focused ticket only after the dispositi
 ## Related issues
 
 - [--method-anc ignored in timetree](M-timetree-method-anc-ignored.md) `--method-anc` also dead
-- [M-core-mutation-representation-and-format-projection-inconsistent.md](M-core-mutation-representation-and-format-projection-inconsistent.md) tracks the shared mutation-string API and the `--zero-based` output contract

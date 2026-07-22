@@ -2,6 +2,9 @@
 
 Produce internally consistent TreeTime Auspice metadata and populate the already-defined non-mutation PhyloXML inference properties.
 
+> [!NOTE]
+> This ticket predates the tree-output refactor, which removed the `tree_ir` layer and now writes formats directly from the graph in `packages/treetime/src/commands/shared/tree_output.rs` (readers in `packages/treetime-io/src/auspice.rs` and `packages/treetime-io/src/phyloxml.rs`). Its parent issue's current status is unconfirmed; re-derive the steps and code locations against the current code before executing.
+
 ## Required changes
 
 1. Consume the canonical typed nucleotide mutation projection for Auspice output.

@@ -4,7 +4,7 @@
 
 PhyloXML does not define a native mutation element. Its generic `Property` type carries typed free text, a `prefix:value` reference key, an `applies_to` target, and an optional `id_ref` that attaches the property to a specific XML element [packages/util-phyloxml/schemas/phyloxml.xsd#L385-L418](../../packages/util-phyloxml/schemas/phyloxml.xsd#L385-L418).
 
-TreeTime currently writes substitutions as `gene:A123T` and indels as `gene:ins|del:start:SEQ` under ad hoc `treetime:mutation` and `treetime:indel` references [packages/treetime-io/src/tree_ir/phyloxml.rs#L217-L260](../../packages/treetime-io/src/tree_ir/phyloxml.rs#L217-L260). These values round-trip through TreeTime, but the reference vocabulary is undocumented and the two event kinds use unrelated grammars. External consumers have no published contract for interpreting them.
+TreeTime writes substitutions and indels under an ad hoc `treetime:*` reference vocabulary defined in [`packages/treetime/src/commands/shared/tree_output.rs#L60-L69`](../../packages/treetime/src/commands/shared/tree_output.rs#L60-L69). These values round-trip through TreeTime, but the reference vocabulary is undocumented and the event kinds use unrelated grammars. External consumers have no published contract for interpreting them. The tree-output refactor **implemented this vocabulary without a documented decision**, so the contract is now shipped-yet-unratified rather than merely undecided; it needs an explicit `kb/decisions/` entry or a redesign per the axes below.
 
 The design space was already identified in [kb/proposals/phyloxml-treetime-property-namespace.md](../proposals/phyloxml-treetime-property-namespace.md), but its actionable decisions were not represented by a known issue.
 
@@ -38,4 +38,3 @@ No implementation ticket is ready. Reference-vocabulary identity, atomic versus 
 
 - [kb/proposals/phyloxml-treetime-property-namespace.md](../proposals/phyloxml-treetime-property-namespace.md)
 - [M-core-mutation-representation-and-format-projection-inconsistent.md](M-core-mutation-representation-and-format-projection-inconsistent.md)
-- [N-io-tree-ir-architecture-unapproved.md](N-io-tree-ir-architecture-unapproved.md)

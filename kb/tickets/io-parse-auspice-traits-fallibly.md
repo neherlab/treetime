@@ -2,6 +2,9 @@
 
 Reject malformed present Auspice traits instead of dropping the trait or individual confidence entries.
 
+> [!NOTE]
+> This ticket predates the tree-output refactor, which removed the `tree_ir` layer and now writes formats directly from the graph in `packages/treetime/src/commands/shared/tree_output.rs` (readers in `packages/treetime-io/src/auspice.rs` and `packages/treetime-io/src/phyloxml.rs`). Its parent issue's current status is unconfirmed; re-derive the steps and code locations against the current code before executing.
+
 ## Required changes
 
 - Change `parse_trait()` [packages/treetime-io/src/tree_ir/auspice.rs#L324](../../packages/treetime-io/src/tree_ir/auspice.rs#L324) to return `Result<TreeIrTrait, Report>` for a present trait object.

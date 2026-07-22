@@ -1,6 +1,9 @@
 # Ancestral Auspice output is incomplete and method-dependent
 
-V0's `ancestral` command produces `auspice_tree.json` through `def export_sequences_and_tree()`. V1 marginal reconstruction constructs TreeIR and can produce Auspice output. Parsimony advertises TreeIR-backed formats without constructing the required projection, so a valid selection can fail after earlier outputs have been written.
+V0's `ancestral` command produces `auspice_tree.json` through `def export_sequences_and_tree()`. V1 now writes Auspice output directly from the graph via `fn ancestral_to_auspice()` [`packages/treetime/src/commands/shared/tree_output.rs#L240`](../../packages/treetime/src/commands/shared/tree_output.rs#L240).
+
+> [!NOTE]
+> The tree-output refactor removed the TreeIR projection and wired `ancestral_to_auspice` into the writer. Whether ancestral Auspice is now produced completely and for **every** method (Fitch parsimony as well as sparse/dense marginal), and whether its payload matches the v0 fields below, is **not yet confirmed** against the current writer.
 
 V0's ancestral Auspice JSON contains `node_attrs.div` (cumulative `mutation_length`), `branch_attrs.mutations.nuc` (per-branch mutations), `node_attrs.confidence` (pseudo-bootstrap), `meta.genome_annotations.nuc`, and `node_attrs.bad_branch`. It contains no dates because `timetree=false`.
 
@@ -54,7 +57,5 @@ No implementation ticket is ready. O1 is the reference-parity recommendation, bu
 ## Related
 
 - [M-timetree-tree-output-inference-metadata-incomplete.md](M-timetree-tree-output-inference-metadata-incomplete.md) - shared mutation, confidence, and annotation contract
-- [M-io-tree-backed-output-order-inconsistent.md](M-io-tree-backed-output-order-inconsistent.md) - shared topology ordering
 - [M-core-mutation-representation-and-format-projection-inconsistent.md](M-core-mutation-representation-and-format-projection-inconsistent.md) - typed mutation projection
-- [H-io-usher-ref-nuc-uses-parent-allele.md](H-io-usher-ref-nuc-uses-parent-allele.md) - global root-reference preservation for UShER
 - [kb/reports/augur-node-data-json.md](../reports/augur-node-data-json.md) - node data JSON shares the same data sources (partition mutations, annotations)

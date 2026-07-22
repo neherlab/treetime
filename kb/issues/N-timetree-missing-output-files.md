@@ -19,10 +19,6 @@ v1 produces fewer output files than v0. Several output types are not implemented
   (see [Missing skyline output files](N-timetree-missing-skyline-output.md))
 - `skyline.pdf` - skyline plot
 
-## Produced but incomplete
-
-- `auspice_tree.json` - v1 produces this file with substitutions. Its remaining mutation, confidence, annotation, and panel gaps are tracked together in [M-timetree-tree-output-inference-metadata-incomplete.md](M-timetree-tree-output-inference-metadata-incomplete.md).
-
 ## v1-only outputs
 
 - `timetree.json` - clock model in JSON format

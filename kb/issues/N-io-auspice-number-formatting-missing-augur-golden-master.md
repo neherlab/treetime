@@ -5,11 +5,11 @@
 
 ## Problem
 
-`pub fn format_number()` [packages/treetime-io/src/tree_ir/auspice.rs#L38](../../packages/treetime-io/src/tree_ir/auspice.rs#L38) reimplements Augur's significant-digit behavior for divergence and numeric dates. Its unit tests use manually written expected values attributed to `augur export_v2.format_number`; they do not capture outputs from a pinned Augur revision.
+`pub(crate) fn format_number()` [packages/treetime/src/commands/shared/tree_output.rs#L1726](../../packages/treetime/src/commands/shared/tree_output.rs#L1726) reimplements Augur's significant-digit behavior for divergence and numeric dates. Its unit tests use manually written expected values attributed to `augur export_v2.format_number`; they do not capture outputs from a pinned Augur revision.
 
-This leaves boundary behavior unverified for negative values, powers of ten, values crossing an integer-digit boundary after rounding, very small magnitudes, and ties affected by Python and Rust formatting differences. TreeIR round-trip tests cannot serve as an independent oracle because they read output produced by the same adapter.
+This leaves boundary behavior unverified for negative values, powers of ten, values crossing an integer-digit boundary after rounding, very small magnitudes, and ties affected by Python and Rust formatting differences. Output-generating tests cannot serve as an independent oracle because they read output produced by the same code.
 
-The public `i32` precision API also performs unchecked `significand + precision`. Extreme values can panic in debug, wrap in release, or request disproportionate formatting allocation. Equivalent significant-digit formatting already exists in `treetime-utils`.
+The `i32` precision API also performs unchecked `significand + precision` [packages/treetime/src/commands/shared/tree_output.rs#L1736](../../packages/treetime/src/commands/shared/tree_output.rs#L1736). Extreme values can panic in debug, wrap in release, or request disproportionate formatting allocation. Equivalent significant-digit formatting already exists in `treetime-utils`.
 
 ## Potential solutions
 
@@ -31,11 +31,10 @@ For finite nonzero $n$, let $d = \lfloor \log_{10}(\lfloor |n| \rfloor) \rfloor 
 
 ## Locations
 
-- `pub fn format_number()` [packages/treetime-io/src/tree_ir/auspice.rs#L38](../../packages/treetime-io/src/tree_ir/auspice.rs#L38)
-- Unit tests [packages/treetime-io/src/tree_ir/__tests__/test_auspice.rs](../../packages/treetime-io/src/tree_ir/__tests__/test_auspice.rs)
+- `pub(crate) fn format_number()` [packages/treetime/src/commands/shared/tree_output.rs#L1726](../../packages/treetime/src/commands/shared/tree_output.rs#L1726)
+- Unit tests [packages/treetime/src/commands/shared/**tests**/test_tree_output.rs](../../packages/treetime/src/commands/shared/__tests__/test_tree_output.rs)
 
 ## Related KB items
 
 - [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md)
 - [kb/proposals/output-format-selection.md](../proposals/output-format-selection.md)
-- [kb/issues/N-io-tree-ir-architecture-unapproved.md](N-io-tree-ir-architecture-unapproved.md)

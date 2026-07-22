@@ -4,11 +4,10 @@ All tree-writing commands (ancestral, clock, timetree, optimize, prune, mugratio
 
 ## Motivation
 
-Three independent problems converge:
+Two independent problems converge:
 
-1. The shared graph writer needs one format-neutral projection with explicit preservation and loss contracts. Current gaps include [kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md](../issues/M-core-mutation-representation-and-format-projection-inconsistent.md), [kb/issues/M-io-usher-mat-mutation-loss-is-implicit.md](../issues/M-io-usher-mat-mutation-loss-is-implicit.md), and [kb/issues/N-io-phyloxml-mutation-property-contract-undecided.md](../issues/N-io-phyloxml-mutation-property-contract-undecided.md).
-2. Newick annotation styles (plain, BEAST `[&...]`, NHX `[&&NHX:...]`) are a serialization choice that the user cannot control. Plain Newick and annotated Newick are both valid outputs users may need simultaneously.
-3. Some commands should produce multiple tree files with different semantics -- timetree should output both time-branch-length and divergence-branch-length trees ([kb/issues/N-io-time-based-branch-lengths-not-implemented.md](../issues/N-io-time-based-branch-lengths-not-implemented.md)), and v0 does this.
+1. Newick annotation styles (plain, BEAST `[&...]`, NHX `[&&NHX:...]`) are a serialization choice that the user cannot control. Plain Newick and annotated Newick are both valid outputs users may need simultaneously.
+2. Some commands should produce multiple tree files with different semantics -- timetree should output both time-branch-length and divergence-branch-length trees ([kb/issues/N-io-time-based-branch-lengths-not-implemented.md](../issues/N-io-time-based-branch-lengths-not-implemented.md)), and v0 does this.
 
 A single `--nwk-style` flag cannot address all three. The root problem is that the output system lacks format selection.
 
@@ -144,7 +143,7 @@ Both produce `BTreeMap<String, String>`. The format variant dispatch applies aft
 
 ## Validation
 
-- Each `TreeOutputFormat` variant round-trips every value in its declared vocabulary. Mutation round trips remain conditional on resolving the shared mutation vocabulary and each writer's explicit unsupported-state policy; schema-level serialization alone does not establish semantic round-trip correctness.
+- Each `TreeOutputFormat` variant round-trips every value in its declared vocabulary; schema-level serialization alone does not establish semantic round-trip correctness.
 - Tier 1/2/3 resolution logic: unit tests for flag precedence, format selection filtering, default path generation
 - Per-command: verify available format set matches command's adapter traits
 - v0 parity: timetree produces both `timetree.nwk` and `divergence_tree.nwk` (matching v0's `export_sequences_and_tree`)

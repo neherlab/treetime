@@ -24,9 +24,9 @@
 - [x] CSV (clock regression, confidence intervals)
 - [x] SVG/PNG charts (clock regression)
 - [x] Graphviz DOT
-- [/] Output topology ordering (direct formats honor the plan; TreeIR-backed formats can project the unordered graph: [kb/issues/M-io-tree-backed-output-order-inconsistent.md](../issues/M-io-tree-backed-output-order-inconsistent.md))
+- [x] Output topology ordering
 - [ ] VCF output (v0 writes .vcf for VCF inputs: [kb/issues/M-io-vcf-input-output-unimplemented.md](../issues/M-io-vcf-input-output-unimplemented.md))
-- [/] Auspice JSON (substitutions implemented; required `meta.updated` is absent and inference metadata remains incomplete: [kb/issues/H-io-auspice-v2-required-updated-missing.md](../issues/H-io-auspice-v2-required-updated-missing.md), [kb/issues/M-timetree-tree-output-inference-metadata-incomplete.md](../issues/M-timetree-tree-output-inference-metadata-incomplete.md))
+- [/] Auspice v2 JSON (schema-validated for all tree-writing commands; entropy perturbs the Shannon definition and inference metadata is incomplete: [kb/issues/M-io-auspice-entropy-perturbs-shannon-definition.md](../issues/M-io-auspice-entropy-perturbs-shannon-definition.md), [kb/issues/M-timetree-tree-output-inference-metadata-incomplete.md](../issues/M-timetree-tree-output-inference-metadata-incomplete.md))
 - [ ] Skyline TSV/plot
 - [ ] Substitution rates TSV
 - [ ] Outliers TSV
@@ -36,7 +36,7 @@
 ## v1-Only Formats
 
 - [x] PhyloXML
-- [/] UShER MAT (partial - reference nucleotides can use the parent allele, and ancestral parsimony cannot supply TreeIR; [kb/issues/H-io-usher-ref-nuc-uses-parent-allele.md](../issues/H-io-usher-ref-nuc-uses-parent-allele.md), [kb/issues/N-ancestral-auspice-json-not-produced.md](../issues/N-ancestral-auspice-json-not-produced.md))
+- [/] UShER MAT (output validates global reference nucleotides; input converts missing branch lengths to zero: [kb/issues/M-io-usher-missing-branch-length-becomes-zero.md](../issues/M-io-usher-missing-branch-length-becomes-zero.md))
 - [x] YAML serialization
 - [x] Compressed FASTA output
 - [x] Streaming readers/writers with automatic decompression

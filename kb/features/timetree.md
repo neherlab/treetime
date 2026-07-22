@@ -119,12 +119,12 @@
 
 - [x] Timetree Newick
 - [x] Timetree Nexus
-- [/] Tree-format topology ordering ([kb/issues/M-io-tree-backed-output-order-inconsistent.md](../issues/M-io-tree-backed-output-order-inconsistent.md))
+- [x] Tree-format topology ordering
 - [x] Clock model JSON with `timetree.*` basename
 - [x] Confidence TSV
 - [ ] Node dates TSV (`write_node_dates()` is `todo!()` - [kb/issues/N-timetree-node-dates-output-unimplemented.md](../issues/N-timetree-node-dates-output-unimplemented.md))
 - [ ] Substitution rates TSV (v0 writes `substitution_rates.tsv` when `--relax` is used)
-- [/] Auspice JSON (v1 writes substitutions, `num_date`, `div`, and `bad_branch`; required `meta.updated` and remaining inference metadata are incomplete: [kb/issues/H-io-auspice-v2-required-updated-missing.md](../issues/H-io-auspice-v2-required-updated-missing.md), [kb/issues/M-timetree-tree-output-inference-metadata-incomplete.md](../issues/M-timetree-tree-output-inference-metadata-incomplete.md))
+- [/] Auspice v2 JSON (schema-valid substitutions, dates, divergence, outlier state, sequences, and genome annotations; entropy perturbs the Shannon definition and inference metadata is incomplete: [kb/issues/M-io-auspice-entropy-perturbs-shannon-definition.md](../issues/M-io-auspice-entropy-perturbs-shannon-definition.md), [kb/issues/M-timetree-tree-output-inference-metadata-incomplete.md](../issues/M-timetree-tree-output-inference-metadata-incomplete.md))
 - [ ] Outliers TSV (v0 writes `outliers.tsv`)
 - [ ] Tracelog run (v0 `tracelog_run()` with detailed per-iteration state)
 - [ ] Plotting (`--plot-tree`, `--plot-rtt` - parsed, return explicit error - [kb/issues/N-timetree-plot-unimplemented.md](../issues/N-timetree-plot-unimplemented.md))

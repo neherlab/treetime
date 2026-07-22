@@ -10,7 +10,7 @@ The codebase already includes format adapters for unified formats where sequence
 - UShER MAT (protobuf): edge mutations in preorder traversal
 - PhyloXML: per-clade sequence elements
 
-Schema adapters exist in `treetime-io` and are used by the `convert` command. They do not yet define a lossless shared mutation vocabulary: UShER MAT preservation policy, PhyloXML mutation properties, and shared substitution/insertion/deletion projection remain unresolved in [kb/issues/M-io-usher-mat-mutation-loss-is-implicit.md](../issues/M-io-usher-mat-mutation-loss-is-implicit.md), [kb/issues/N-io-phyloxml-mutation-property-contract-undecided.md](../issues/N-io-phyloxml-mutation-property-contract-undecided.md), and [kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md](../issues/M-core-mutation-representation-and-format-projection-inconsistent.md). Integrating a reader therefore requires an explicit preservation contract in addition to schema parsing.
+Schema adapters exist in `treetime-io` and are used by the `convert` command. Integrating them into analysis commands still requires explicit preservation of embedded input data and construction of the command's partitions after parsing.
 
 ## Proposal
 
@@ -111,8 +111,6 @@ The graph payload question affects internal organization. This proposal affects 
 - [kb/issues/M-io-sequence-name-matching-unreliable.md](../issues/M-io-sequence-name-matching-unreliable.md)
 - [kb/issues/M-io-sequence-attachment-quadratic.md](../issues/M-io-sequence-attachment-quadratic.md)
 - [kb/issues/N-io-large-dataset-memory-constraint.md](../issues/N-io-large-dataset-memory-constraint.md)
-- [kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md](../issues/M-core-mutation-representation-and-format-projection-inconsistent.md)
-- [kb/issues/M-timetree-tree-output-inference-metadata-incomplete.md](../issues/M-timetree-tree-output-inference-metadata-incomplete.md)
 - [kb/issues/N-io-multi-segment-genome-input.md](../issues/N-io-multi-segment-genome-input.md)
 
 ## Related documentation

@@ -65,7 +65,7 @@
 - [x] `--reconstruct-tip-states` (overwrite ambiguous tips, controls leaf emission)
 - [x] `--model` relevant only on marginal paths (parsimony bypasses GTR)
 - [ ] `--keep-overhangs` (parsed but not wired; gap handling not implemented)
-- [ ] `--zero-based` indexing (parsed but not wired; [kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md](../issues/M-core-mutation-representation-and-format-projection-inconsistent.md))
+- [ ] `--zero-based` indexing (parsed but not wired: [kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md](../issues/M-core-mutation-representation-and-format-projection-inconsistent.md))
 - [ ] `--report-ambiguous` (parsed but not wired)
 - [x] `--seed` for reproducibility
 - [ ] `--gtr-params` custom GTR parameters (parsed but not wired)

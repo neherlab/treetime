@@ -2,15 +2,17 @@
 
 Mutation coordinates, string rendering, and tree-format projection do not share one application-wide contract. The same biological mutation can change position base, textual spelling, or representable variants depending on the code path.
 
+> [!NOTE]
+> The tree-output refactor removed the `tree_ir` layer and now writes each format directly from the graph in [`packages/treetime/src/commands/shared/tree_output.rs`](../../packages/treetime/src/commands/shared/tree_output.rs). This relocated the format-projection sites but did not, by itself, establish a single shared mutation contract. Which of the sub-points below the refactor already resolved is **not yet confirmed**; re-audit the writers in `tree_output.rs` against each point.
+
 ## Problem
 
 - Core and sparse mutation structures mix zero-based and one-based positions.
-- TreeIR substitutions use a separate string parser that accepts position zero and duplicates parsing performed elsewhere. Its UShER reader casts signed protobuf positions directly to `usize`, while its writer narrows `usize` to `i32`; zero shifts reference lookup through `saturating_sub(1)` and negative or oversized positions can wrap.
 - Substitution strings are assembled at multiple output sites instead of by the mutation value itself.
-- Insertions and deletions reconstructed by ancestral inference do not reach every TreeIR-backed output.
-- UShER conversion narrows positions through unchecked `usize`/`i32` casts and reconstructs one-based format positions ad hoc.
+- Insertions and deletions reconstructed by ancestral inference may not reach every format's output.
+- UShER conversion narrows positions through `usize`/`i32` casts and reconstructs one-based format positions ad hoc.
 
-Affected boundaries include `enum Mutation` and sparse mutation types in [`packages/treetime/src/partition`](../../packages/treetime/src/partition), TreeIR mutation types in [`packages/treetime-io/src/tree_ir/types.rs`](../../packages/treetime-io/src/tree_ir/types.rs), and the Auspice, PhyloXML, and UShER adapters in [`packages/treetime-io/src/tree_ir`](../../packages/treetime-io/src/tree_ir).
+Affected boundaries include `enum Mutation` and sparse mutation types in [`packages/treetime/src/partition`](../../packages/treetime/src/partition), and the Auspice, PhyloXML, and UShER writers in [`packages/treetime/src/commands/shared/tree_output.rs`](../../packages/treetime/src/commands/shared/tree_output.rs).
 
 ## Required invariant
 
@@ -45,7 +47,7 @@ Recommendation: O1 for the canonical application string, with checked format-spe
 - O1. Project substitutions, insertions, and deletions only where the external format has a verified lossless representation.
 - O2. Define a documented lossy projection for a specific format. This changes scientific output and requires explicit approval.
 
-Recommendation: O1 for verified mappings. Keep format-loss policy ticketless in [M-io-usher-mat-mutation-loss-is-implicit.md](M-io-usher-mat-mutation-loss-is-implicit.md) and [N-io-phyloxml-mutation-property-contract-undecided.md](N-io-phyloxml-mutation-property-contract-undecided.md) until each mapping is approved. Silent omission is invalid.
+Recommendation: O1 for verified mappings. The UShER writer now rejects unrepresentable (amino-acid, indel) mutations with an explicit error rather than dropping them silently. The PhyloXML mutation-property loss policy remains open in [N-io-phyloxml-mutation-property-contract-undecided.md](N-io-phyloxml-mutation-property-contract-undecided.md) until its mapping is approved. Silent omission is invalid.
 
 ## Recommendation
 
@@ -60,6 +62,4 @@ Use zero-based typed mutations throughout the application, put canonical renderi
 
 ## Related issues
 
-- [M-io-usher-mat-mutation-loss-is-implicit.md](M-io-usher-mat-mutation-loss-is-implicit.md)
 - [N-io-phyloxml-mutation-property-contract-undecided.md](N-io-phyloxml-mutation-property-contract-undecided.md)
-- [N-io-tree-ir-architecture-unapproved.md](N-io-tree-ir-architecture-unapproved.md)

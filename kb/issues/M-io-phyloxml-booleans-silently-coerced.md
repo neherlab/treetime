@@ -1,10 +1,13 @@
 # PhyloXML boolean properties are silently coerced
 
-The PhyloXML reader parses recognized boolean properties through equality with the string `"true"`. The valid XML Schema value `"1"` becomes false, while every invalid lexical value also becomes false without an error.
+The PhyloXML reader parses recognized boolean properties (`treetime:bad_branch`, `treetime:date_inferred`) through equality with the string `"true"`. The valid XML Schema value `"1"` becomes false, while every invalid lexical value also becomes false without an error.
+
+> [!NOTE]
+> The tree-output refactor removed the former `tree_ir` PhyloXML reader that assigned these booleans via `prop.value == "true"`. The current reader lives in [`packages/treetime-io/src/phyloxml.rs`](../../packages/treetime-io/src/phyloxml.rs). Whether recognized boolean properties are now parsed per the XSD lexical space (accepting `1`/`0`, rejecting other text) and whether `bad_branch`/`date_inferred` still round-trip is **not yet confirmed**; the required contract below stands regardless.
 
 ## Evidence
 
-The property loop in `fn PhyloXmlReader::clade_to_graph_components()` [packages/treetime-io/src/tree_ir/phyloxml.rs#L165](../../packages/treetime-io/src/tree_ir/phyloxml.rs#L165) assigns both `REF_BAD_BRANCH` and `REF_DATE_INFERRED` using `prop.value == "true"`.
+The former property loop assigned both `treetime:bad_branch` and `treetime:date_inferred` using `prop.value == "true"`, so `"1"` and every invalid value silently became false.
 
 XML Schema `boolean` permits exactly `true`, `false`, `1`, and `0`; its value space contains only true and false. [XML Schema Part 2: boolean](https://www.w3.org/TR/xmlschema-2/#boolean)
 
@@ -30,6 +33,3 @@ Use O1: one fallible XML Schema boolean parser for both recognized boolean prope
 - Representative invalid values, including case variants, surrounding whitespace, an empty value, and unrelated text.
 - Whole-document tests proving legal values round-trip and invalid values return contextual errors.
 
-## Related issues
-
-- [N-io-tree-ir-architecture-unapproved.md](N-io-tree-ir-architecture-unapproved.md)

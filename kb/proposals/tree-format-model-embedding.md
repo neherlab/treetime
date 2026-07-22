@@ -4,7 +4,7 @@
 
 TreeTime infers a GTR substitution model and a molecular-clock model alongside the tree. The analysis commands write these to sidecar files (`--output-gtr`, `--output-clock-model`). Some tree formats can carry model parameters inline, which would make a single output file self-contained for downstream tools.
 
-The TreeIR output path (PhyloXML, Auspice v2, UShER MAT) currently carries only per-node and per-branch data plus minimal graph-level metadata. It does not embed the GTR or clock model.
+The graph-backed output path (PhyloXML, Auspice v2, UShER MAT) currently carries only per-node and per-branch data plus minimal graph-level metadata. It does not embed the GTR or clock model.
 
 ## Options
 
@@ -18,4 +18,4 @@ Keep models in sidecar files (current behavior) until a concrete downstream need
 
 ## Non-goals
 
-This proposal does not change current sidecar output. It records that inline model embedding was deliberately left out of the TreeIR output path.
+This proposal does not change current sidecar output. It records that inline model embedding is absent from graph-backed tree output.

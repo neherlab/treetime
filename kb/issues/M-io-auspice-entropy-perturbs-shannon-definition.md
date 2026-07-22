@@ -1,8 +1,8 @@
-# Auspice entropy projection perturbs the Shannon definition
+# Auspice entropy output perturbs the Shannon definition
 
-The TreeIR projection computes entropy with an added `TINY` inside every logarithm. This changes every positive term and gives a deterministic distribution such as $(1,0)$ a nonzero entropy.
+Entropy is computed with an added `TINY` inside every logarithm. This changes every positive term and gives a deterministic distribution such as $(1,0)$ a nonzero entropy.
 
-`fn compute_entropy()` applies $p\ln(p+10^{-12})$ to every state [packages/treetime/src/commands/shared/ir_projection.rs#L207-L210](../../packages/treetime/src/commands/shared/ir_projection.rs#L207-L210). The mugration node-data path duplicates the same formula [packages/treetime/src/commands/mugration/augur_node_data.rs#L134-L138](../../packages/treetime/src/commands/mugration/augur_node_data.rs#L134-L138).
+`fn compute_entropy()` applies $p\ln(p+10^{-12})$ to every state [packages/treetime/src/commands/mugration/augur_node_data.rs#L135-L137](../../packages/treetime/src/commands/mugration/augur_node_data.rs#L135-L137). Both the mugration node-data JSON [packages/treetime/src/commands/mugration/augur_node_data.rs#L113](../../packages/treetime/src/commands/mugration/augur_node_data.rs#L113) and the Auspice tree-output entropy [packages/treetime/src/commands/shared/tree_output.rs#L1385](../../packages/treetime/src/commands/shared/tree_output.rs#L1385) consume this function.
 
 For state probabilities $p_i$, Shannon entropy is
 

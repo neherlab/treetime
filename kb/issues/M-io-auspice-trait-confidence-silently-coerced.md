@@ -2,10 +2,12 @@
 
 The Auspice reader treats malformed trait objects as absent and drops individual non-numeric confidence entries. A document can therefore return success with a partial probability map or without a trait that was present in the input.
 
+> [!NOTE]
+> The tree-output refactor removed the former `tree_ir` Auspice reader this issue originally cited. The current reader lives in [`packages/treetime-io/src/auspice.rs`](../../packages/treetime-io/src/auspice.rs). Whether it rejects or still silently drops malformed trait and confidence entries is **not yet confirmed**; the required contract below stands regardless.
+
 ## Evidence
 
-- `fn parse_trait()` [packages/treetime-io/src/tree_ir/auspice.rs#L324](../../packages/treetime-io/src/tree_ir/auspice.rs#L324) returns `Option<TreeIrTrait>`. A missing or non-string `value` returns `None`, and `filter_map()` silently removes confidence members whose values are not JSON numbers.
-- `fn AuspiceReader::auspice_node_to_graph_components()` [packages/treetime-io/src/tree_ir/auspice.rs#L218](../../packages/treetime-io/src/tree_ir/auspice.rs#L218) inserts a trait only when `parse_trait()` returns `Some`, so malformed present input becomes indistinguishable from absence.
+- The former reader returned `Option` from trait parsing: a missing or non-string `value` yielded `None`, and `filter_map()` silently removed confidence members whose values were not JSON numbers. A trait was inserted only when parsing returned `Some`, so malformed present input became indistinguishable from absence.
 
 ## Required contract
 
@@ -32,6 +34,3 @@ Reject malformed present traits. Presence is an explicit request to parse typed 
 - Non-object confidence and non-number entropy.
 - A whole-document test proving malformed present traits return an error rather than disappearing.
 
-## Related issues
-
-- [N-io-tree-ir-architecture-unapproved.md](N-io-tree-ir-architecture-unapproved.md)
