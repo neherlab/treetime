@@ -33,6 +33,8 @@ pub struct PruneOutput {
   pub graph: GraphAncestral,
   #[serde(skip)]
   pub gtr: Option<GTR>,
+  #[serde(skip)]
+  pub partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>>,
 }
 
 pub fn run(params: &PruneParams, mut input: PruneInput) -> Result<PruneOutput, Report> {
@@ -84,5 +86,6 @@ pub fn run(params: &PruneParams, mut input: PruneInput) -> Result<PruneOutput, R
   Ok(PruneOutput {
     graph: input.graph,
     gtr,
+    partitions,
   })
 }

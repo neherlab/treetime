@@ -515,7 +515,7 @@ where
 
   fn reconstruct_node_sequence(
     &mut self,
-    node: &GraphNodeForward<N, E, ()>,
+    node: &GraphNodeForward<N, E>,
     include_leaves: bool,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,

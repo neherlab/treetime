@@ -7,7 +7,7 @@ use treetime_graph::node::{Described, GraphNode, Named};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
-pub type GraphAncestral = Graph<NodeAncestral, EdgeAncestral, ()>;
+pub type GraphAncestral<D = ()> = Graph<NodeAncestral, EdgeAncestral, D>;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct NodeAncestral {

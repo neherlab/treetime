@@ -48,9 +48,9 @@ where
 
   fn leaf_profile(&self, node_key: GraphNodeKey) -> Result<DenseSeqDistribution, Report>;
 
-  fn backward_internal_pre(&mut self, _node: &GraphNodeBackward<N, E, ()>) {}
+  fn backward_internal_pre(&mut self, _node: &GraphNodeBackward<N, E>) {}
 
-  fn forward_post(&mut self, _graph: &Graph<N, E, ()>, _node: &GraphNodeForward<N, E, ()>) -> Result<(), Report> {
+  fn forward_post(&mut self, _graph: &Graph<N, E, ()>, _node: &GraphNodeForward<N, E>) -> Result<(), Report> {
     Ok(())
   }
 }
@@ -284,7 +284,7 @@ where
 
 pub fn marginal_process_node_backward<N, E>(
   partition: &mut impl MarginalPartition<N, E>,
-  node: &GraphNodeBackward<N, E, ()>,
+  node: &GraphNodeBackward<N, E>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,
@@ -357,7 +357,7 @@ where
 pub fn marginal_process_node_forward<N, E>(
   partition: &mut impl MarginalPartition<N, E>,
   graph: &Graph<N, E, ()>,
-  node: &GraphNodeForward<N, E, ()>,
+  node: &GraphNodeForward<N, E>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,

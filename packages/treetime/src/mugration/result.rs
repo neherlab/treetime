@@ -104,17 +104,33 @@ impl MugrationTraitsOutput {
   }
 }
 
+#[allow(clippy::manual_non_exhaustive, clippy::partial_pub_fields)] // The private unit field preserves Graph JSON's `data: null` shape.
 #[derive(Debug, serde::Serialize)]
-pub struct MugrationResult {
+#[serde(transparent)]
+pub struct MugrationGraphData {
+  marker: (),
   #[serde(skip)]
   pub traits: MugrationTraitsOutput,
   #[serde(skip)]
   pub confidence: MugrationConfidenceOutput,
+  #[serde(skip)]
   pub log_lh: f64,
   #[serde(skip)]
-  pub graph: GraphAncestral,
-  #[serde(skip)]
   pub partition: PartitionMarginalDiscrete,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct MugrationResult {
+  #[serde(skip)]
+  pub graph: GraphAncestral<MugrationGraphData>,
+}
+
+impl std::ops::Deref for MugrationResult {
+  type Target = MugrationGraphData;
+
+  fn deref(&self) -> &Self::Target {
+    self.graph.data()
+  }
 }
 
 impl MugrationResult {
@@ -123,17 +139,20 @@ impl MugrationResult {
     let traits = MugrationTraitsOutput::new(attribute, assignments);
     let confidence = MugrationConfidenceOutput::new(&graph, &partition);
 
-    Self {
+    let data = MugrationGraphData {
+      marker: (),
       traits,
       confidence,
       log_lh,
-      graph,
       partition,
+    };
+    Self {
+      graph: graph.map_data(data),
     }
   }
 
   pub fn trait_assignments(&self) -> &IndexMap<String, String> {
-    &self.traits.assignments
+    &self.graph.data().traits.assignments
   }
 }
 

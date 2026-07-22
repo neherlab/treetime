@@ -23,8 +23,8 @@ use util_augur_node_data_json::{
 /// the per-position `mask` string, and per-node `muts` (mask-filtered) and
 /// `sequence` (masked positions set to the ambiguous character, matching augur's
 /// `collect_sequences`).
-pub fn write_augur_node_data_json(
-  graph: &GraphAncestral,
+pub fn write_augur_node_data_json<D: Send + Sync>(
+  graph: &GraphAncestral<D>,
   partition: &dyn AugurNodeDataJsonAncestralPartition,
   mask: &[bool],
   path: &Path,
@@ -32,8 +32,8 @@ pub fn write_augur_node_data_json(
   write_augur_node_data_json_with_aa(graph, partition, mask, None, path)
 }
 
-pub fn build_augur_node_data_json(
-  graph: &GraphAncestral,
+pub fn build_augur_node_data_json<D: Send + Sync>(
+  graph: &GraphAncestral<D>,
   partition: &dyn AugurNodeDataJsonAncestralPartition,
   mask: &[bool],
   aa_node_data: Option<&AaNodeData>,
@@ -127,8 +127,8 @@ pub fn build_augur_node_data_json(
   })
 }
 
-pub fn write_augur_node_data_json_with_aa(
-  graph: &GraphAncestral,
+pub fn write_augur_node_data_json_with_aa<D: Send + Sync>(
+  graph: &GraphAncestral<D>,
   partition: &dyn AugurNodeDataJsonAncestralPartition,
   mask: &[bool],
   aa_node_data: Option<&AaNodeData>,

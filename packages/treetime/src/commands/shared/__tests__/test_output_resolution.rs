@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::shared::output::{CommandKind, NwkStyleArg, OutputCoreArgs, OutputSelection};
-  use maplit::btreemap;
+  use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::collections::BTreeMap;
   use std::path::PathBuf;
   use tempfile::TempDir;
@@ -81,6 +82,26 @@ mod tests {
   }
 
   #[test]
+  fn test_resolve_rejects_duplicate_output_destinations() {
+    let path = PathBuf::from("same-output");
+    let args = OutputCoreArgs {
+      output_tree_nwk: Some(path.clone()),
+      ..OutputCoreArgs::default()
+    };
+
+    let result = args.resolve(
+      CommandKind::Ancestral,
+      &[],
+      &[(OutputSelection::Gtr, Some(path.as_path()))],
+    );
+
+    assert_error!(
+      result,
+      "Output destination 'same-output' is selected more than once (Nwk(NwkWriteSpec { style: Plain }) and --output-gtr)"
+    );
+  }
+
+  #[test]
   fn test_resolve_non_tree_explicit_path() {
     let dir = TempDir::new().unwrap();
     let gtr_path = dir.path().join("my.gtr.json");
@@ -141,65 +162,62 @@ mod tests {
     assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::Auspice));
   }
 
-  // --- All-selection expansion and producibility gating ---
+  // --- All-selection expansion ---
 
-  #[test]
-  fn test_resolve_all_expands_to_producible_set() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::ancestral(CommandKind::Ancestral)]
+  #[case::timetree (CommandKind::Timetree)]
+  #[case::optimize (CommandKind::Optimize)]
+  #[case::mugration(CommandKind::Mugration)]
+  #[case::clock    (CommandKind::Clock)]
+  #[case::prune    (CommandKind::Prune)]
+  #[trace]
+  fn test_resolve_all_expands_to_complete_tree_set(#[case] command: CommandKind) {
     let dir = TempDir::new().unwrap();
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Ancestral,
-        &[OutputSelection::All],
-        &[
-          (OutputSelection::Gtr, None),
-          (OutputSelection::ReconstructedAaFasta, None),
-        ],
-      )
-      .unwrap();
-
-    // Every tree format available to ancestral is included.
-    assert!(resolved.tree_outputs.contains_key(&nwk(NwkStyle::Plain)));
-    assert!(resolved.tree_outputs.contains_key(&nexus(NwkStyle::Plain)));
-    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::Phyloxml));
-    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::GraphJson));
-    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::Dot));
-    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::MatPb));
-    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::Auspice));
-    // The non-default AA FASTA is part of `all`.
-    assert!(
-      resolved
-        .non_tree_outputs
-        .contains_key(&OutputSelection::ReconstructedAaFasta)
-    );
+    let resolved = args.resolve(command, &[OutputSelection::All], &[]).unwrap();
+    let actual = resolved.tree_outputs.keys().cloned().collect();
+    let expected = btreeset! {
+      nwk(NwkStyle::Plain),
+      nexus(NwkStyle::Plain),
+      TreeWriteKind::Auspice,
+      TreeWriteKind::Phyloxml,
+      TreeWriteKind::PhyloxmlJson,
+      TreeWriteKind::MatPb,
+      TreeWriteKind::MatJson,
+      TreeWriteKind::GraphJson,
+      TreeWriteKind::Dot,
+    };
+    assert_eq!(expected, actual);
   }
 
   #[test]
-  fn test_resolve_explicit_command_unavailable_errors() {
+  fn test_resolve_explicit_mat_available_on_clock() {
     let args = OutputCoreArgs {
       output_tree_mat_pb: Some(PathBuf::from("/tmp/out.pb")),
       ..Default::default()
     };
-    let result = args.resolve(CommandKind::Clock, &[], &[]);
-    assert_error!(
-      result,
-      "Output '--output-tree-mat-pb' is not available for the clock command"
+    let resolved = args.resolve(CommandKind::Clock, &[], &[]).unwrap();
+    assert_eq!(
+      &PathBuf::from("/tmp/out.pb"),
+      &resolved.tree_outputs[&TreeWriteKind::MatPb]
     );
   }
 
   #[test]
-  fn test_resolve_explicit_auspice_unavailable_on_clock_errors() {
+  fn test_resolve_explicit_auspice_available_on_clock() {
     let args = OutputCoreArgs {
       output_tree_auspice: Some(PathBuf::from("/tmp/out.auspice.json")),
       ..Default::default()
     };
-    let result = args.resolve(CommandKind::Clock, &[], &[]);
-    assert_error!(
-      result,
-      "Output '--output-tree-auspice' is not available for the clock command"
+    let resolved = args.resolve(CommandKind::Clock, &[], &[]).unwrap();
+    assert_eq!(
+      &PathBuf::from("/tmp/out.auspice.json"),
+      &resolved.tree_outputs[&TreeWriteKind::Auspice]
     );
   }
 

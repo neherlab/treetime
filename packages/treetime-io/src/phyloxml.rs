@@ -23,112 +23,113 @@ pub use util_phyloxml::{
   PhyloxmlTaxonomy, PhyloxmlUri, Polygon,
 };
 
-pub fn phyloxml_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
+pub fn phyloxml_read_file<C, N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode,
   E: GraphEdge,
   D: PhyloxmlDataToGraphData + Sync + Send,
-  (): PhyloxmlToGraph<N, E, D>,
+  C: PhyloxmlToGraph<N, E, D>,
 {
   let filepath = filepath.as_ref();
-  phyloxml_read(open_file_or_stdin(&Some(filepath))?)
+  phyloxml_read::<C, _, _, _>(open_file_or_stdin(&Some(filepath))?)
     .wrap_err_with(|| format!("When reading PhyloXML file '{}'", filepath.display()))
 }
 
-pub fn phyloxml_read_str<N, E, D>(s: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
+pub fn phyloxml_read_str<C, N, E, D>(s: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode,
   E: GraphEdge,
   D: PhyloxmlDataToGraphData + Sync + Send,
-  (): PhyloxmlToGraph<N, E, D>,
+  C: PhyloxmlToGraph<N, E, D>,
 {
-  phyloxml_read(Cursor::new(s.as_ref())).wrap_err("When reading PhyloXML string")
+  phyloxml_read::<C, _, _, _>(Cursor::new(s.as_ref())).wrap_err("When reading PhyloXML string")
 }
 
-pub fn phyloxml_read<N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
+pub fn phyloxml_read<C, N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode,
   E: GraphEdge,
   D: PhyloxmlDataToGraphData + Sync + Send,
-  (): PhyloxmlToGraph<N, E, D>,
+  C: PhyloxmlToGraph<N, E, D>,
 {
   let pxml = util_phyloxml::phyloxml_read(reader).wrap_err("When reading PhyloXML")?;
-  phyloxml_to_graph(&pxml)
+  phyloxml_to_graph::<C, _, _, _>(&pxml)
 }
 
-pub fn phyloxml_json_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
+pub fn phyloxml_json_read_file<C, N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode,
   E: GraphEdge,
   D: PhyloxmlDataToGraphData + Sync + Send,
-  (): PhyloxmlToGraph<N, E, D>,
+  C: PhyloxmlToGraph<N, E, D>,
 {
   let filepath = filepath.as_ref();
   let tree =
     json_read_file(filepath).wrap_err_with(|| format!("When reading PhyloXML JSON file '{}'", filepath.display()))?;
-  phyloxml_to_graph(&tree)
+  phyloxml_to_graph::<C, _, _, _>(&tree)
 }
 
-pub fn phyloxml_json_read_str<N, E, D>(s: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
+pub fn phyloxml_json_read_str<C, N, E, D>(s: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode,
   E: GraphEdge,
   D: PhyloxmlDataToGraphData + Sync + Send,
-  (): PhyloxmlToGraph<N, E, D>,
+  C: PhyloxmlToGraph<N, E, D>,
 {
   let pxml = json_read_str(s).wrap_err("When reading PhyloXML JSON string")?;
-  phyloxml_to_graph(&pxml)
+  phyloxml_to_graph::<C, _, _, _>(&pxml)
 }
 
-pub fn phyloxml_json_read<N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
+pub fn phyloxml_json_read<C, N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode,
   E: GraphEdge,
   D: PhyloxmlDataToGraphData + Sync + Send,
-  (): PhyloxmlToGraph<N, E, D>,
+  C: PhyloxmlToGraph<N, E, D>,
 {
   let pxml = json_read(reader).wrap_err("When reading PhyloXML JSON")?;
-  phyloxml_to_graph(&pxml)
+  phyloxml_to_graph::<C, _, _, _>(&pxml)
 }
 
-pub fn phyloxml_write_file<N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
+pub fn phyloxml_write_file<C, N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: PhyloxmlDataFromGraphData + Sync + Send,
-  (): PhyloxmlFromGraph<N, E, D>,
+  D: Sync + Send,
+  C: PhyloxmlFromGraph<N, E, D>,
 {
   let filepath = filepath.as_ref();
   let mut f = create_file_or_stdout(filepath)?;
-  phyloxml_write(&mut f, graph).wrap_err_with(|| format!("When writing PhyloXML file '{}'", filepath.display()))?;
+  phyloxml_write::<C, _, _, _>(&mut f, graph)
+    .wrap_err_with(|| format!("When writing PhyloXML file '{}'", filepath.display()))?;
   writeln!(f)?;
   Ok(())
 }
 
-pub fn phyloxml_write_str<N, E, D>(graph: &Graph<N, E, D>) -> Result<String, Report>
+pub fn phyloxml_write_str<C, N, E, D>(graph: &Graph<N, E, D>) -> Result<String, Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: PhyloxmlDataFromGraphData + Sync + Send,
-  (): PhyloxmlFromGraph<N, E, D>,
+  D: Sync + Send,
+  C: PhyloxmlFromGraph<N, E, D>,
 {
   let mut buf = Vec::new();
-  phyloxml_write(&mut buf, graph).wrap_err("When writing PhyloXML string")?;
+  phyloxml_write::<C, _, _, _>(&mut buf, graph).wrap_err("When writing PhyloXML string")?;
   String::from_utf8(buf).wrap_err("PhyloXML output is not valid UTF-8")
 }
 
-pub fn phyloxml_write<N, E, D>(writer: &mut impl Write, graph: &Graph<N, E, D>) -> Result<(), Report>
+pub fn phyloxml_write<C, N, E, D>(writer: &mut impl Write, graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: PhyloxmlDataFromGraphData + Sync + Send,
-  (): PhyloxmlFromGraph<N, E, D>,
+  D: Sync + Send,
+  C: PhyloxmlFromGraph<N, E, D>,
 {
-  let pxml = phyloxml_from_graph(graph)?;
+  let pxml = phyloxml_from_graph::<C, _, _, _>(graph)?;
   util_phyloxml::phyloxml_write(writer, &pxml).wrap_err("When writing PhyloXML")
 }
 
-pub fn phyloxml_json_write_file<N, E, D>(
+pub fn phyloxml_json_write_file<C, N, E, D>(
   filepath: impl AsRef<Path>,
   graph: &Graph<N, E, D>,
   options: &PhyloxmlJsonOptions,
@@ -136,28 +137,31 @@ pub fn phyloxml_json_write_file<N, E, D>(
 where
   N: GraphNode,
   E: GraphEdge,
-  D: PhyloxmlDataFromGraphData + Sync + Send,
-  (): PhyloxmlFromGraph<N, E, D>,
+  D: Sync + Send,
+  C: PhyloxmlFromGraph<N, E, D>,
 {
   let filepath = filepath.as_ref();
-  let pxml = phyloxml_from_graph(graph)?;
+  let pxml = phyloxml_from_graph::<C, _, _, _>(graph)?;
   json_write_file(filepath, &pxml, JsonPretty(options.pretty))
     .wrap_err_with(|| format!("When writing PhyloXML JSON file: '{}'", filepath.display()))?;
   Ok(())
 }
 
-pub fn phyloxml_json_write_str<N, E, D>(graph: &Graph<N, E, D>, options: &PhyloxmlJsonOptions) -> Result<String, Report>
+pub fn phyloxml_json_write_str<C, N, E, D>(
+  graph: &Graph<N, E, D>,
+  options: &PhyloxmlJsonOptions,
+) -> Result<String, Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: PhyloxmlDataFromGraphData + Sync + Send,
-  (): PhyloxmlFromGraph<N, E, D>,
+  D: Sync + Send,
+  C: PhyloxmlFromGraph<N, E, D>,
 {
-  let pxml = phyloxml_from_graph(graph)?;
+  let pxml = phyloxml_from_graph::<C, _, _, _>(graph)?;
   json_write_str(&pxml, JsonPretty(options.pretty)).wrap_err("When writing PhyloXML JSON string")
 }
 
-pub fn phyloxml_json_write<N, E, D>(
+pub fn phyloxml_json_write<C, N, E, D>(
   writer: &mut impl Write,
   graph: &Graph<N, E, D>,
   options: &PhyloxmlJsonOptions,
@@ -165,19 +169,15 @@ pub fn phyloxml_json_write<N, E, D>(
 where
   N: GraphNode,
   E: GraphEdge,
-  D: PhyloxmlDataFromGraphData + Sync + Send,
-  (): PhyloxmlFromGraph<N, E, D>,
+  D: Sync + Send,
+  C: PhyloxmlFromGraph<N, E, D>,
 {
-  let pxml = phyloxml_from_graph(graph)?;
+  let pxml = phyloxml_from_graph::<C, _, _, _>(graph)?;
   json_write(writer, &pxml, JsonPretty(options.pretty)).wrap_err("When writing PhyloXML JSON")
 }
 
 pub trait PhyloxmlDataToGraphData: Sized {
   fn phyloxml_data_to_graph_data(pxml: &Phyloxml) -> Result<Self, Report>;
-}
-
-pub trait PhyloxmlDataFromGraphData {
-  fn phyloxml_data_from_graph_data(&self) -> Result<Phyloxml, Report>;
 }
 
 #[derive(SmartDefault)]
@@ -207,12 +207,12 @@ pub struct PhyloxmlNodeImpl {
 }
 
 /// Convert PhyloXML to graph
-pub fn phyloxml_to_graph<N, E, D>(pxml: &Phyloxml) -> Result<Graph<N, E, D>, Report>
+pub fn phyloxml_to_graph<C, N, E, D>(pxml: &Phyloxml) -> Result<Graph<N, E, D>, Report>
 where
   N: GraphNode,
   E: GraphEdge,
   D: PhyloxmlDataToGraphData + Sync + Send,
-  (): PhyloxmlToGraph<N, E, D>,
+  C: PhyloxmlToGraph<N, E, D>,
 {
   let phylogeny = {
     let n_phylogeny = pxml.phylogeny.len();
@@ -226,8 +226,7 @@ where
   let mut graph = Graph::<N, E, D>::with_data(D::phyloxml_data_to_graph_data(pxml)?);
   let mut queue: VecDeque<_> = phylogeny.clade.iter().map(|clade| (None, clade)).collect();
   while let Some((parent_key, clade)) = queue.pop_front() {
-    let (graph_node, graph_edge) =
-      <() as PhyloxmlToGraph<N, E, D>>::phyloxml_node_to_graph_components(&PhyloxmlContext { clade, pxml })?;
+    let (graph_node, graph_edge) = C::phyloxml_node_to_graph_components(&PhyloxmlContext { clade, pxml })?;
     let node_key = graph.add_node(graph_node);
     if let Some(parent_key) = parent_key {
       graph.add_edge(parent_key, node_key, graph_edge)?;
@@ -245,10 +244,11 @@ pub struct PhyloxmlGraphContext<'a, N, E, D>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: PhyloxmlDataFromGraphData + Sync + Send,
-  (): PhyloxmlFromGraph<N, E, D>,
+  D: Sync + Send,
 {
+  pub node_key: treetime_graph::node::GraphNodeKey,
   pub node: &'a N,
+  pub edge_key: Option<treetime_graph::edge::GraphEdgeKey>,
   pub edge: Option<&'a E>,
   pub graph: &'a Graph<N, E, D>,
 }
@@ -258,19 +258,20 @@ pub trait PhyloxmlFromGraph<N, E, D>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: PhyloxmlDataFromGraphData + Sync + Send,
-  (): PhyloxmlFromGraph<N, E, D>,
+  D: Sync + Send,
 {
+  fn phyloxml_data_from_graph_data(graph: &Graph<N, E, D>) -> Result<Phyloxml, Report>;
+
   fn phyloxml_node_from_graph_components(context: &PhyloxmlGraphContext<N, E, D>) -> Result<PhyloxmlClade, Report>;
 }
 
 /// Convert graph to PhyloXML
-pub fn phyloxml_from_graph<N, E, D>(graph: &Graph<N, E, D>) -> Result<Phyloxml, Report>
+pub fn phyloxml_from_graph<C, N, E, D>(graph: &Graph<N, E, D>) -> Result<Phyloxml, Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: PhyloxmlDataFromGraphData + Sync + Send,
-  (): PhyloxmlFromGraph<N, E, D>,
+  D: Sync + Send,
+  C: PhyloxmlFromGraph<N, E, D>,
 {
   let root = graph.get_exactly_one_root()?;
 
@@ -282,16 +283,20 @@ where
       let current_node = current_node.read_arc();
 
       let node = &*current_node.payload().read_arc();
+      let edge_key = current_edge
+        .as_ref()
+        .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().key());
       let edge = current_edge
         .as_ref()
         .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().payload().read_arc());
       let edge = edge.as_deref();
-      let current_tree_node =
-        <() as PhyloxmlFromGraph<N, E, D>>::phyloxml_node_from_graph_components(&PhyloxmlGraphContext {
-          node,
-          edge,
-          graph,
-        })?;
+      let current_tree_node = C::phyloxml_node_from_graph_components(&PhyloxmlGraphContext {
+        node_key: current_node.key(),
+        node,
+        edge_key,
+        edge,
+        graph,
+      })?;
       for (child, edge) in graph.children_of(&current_node) {
         queue.push_back((child, Some(edge)));
       }
@@ -324,7 +329,7 @@ where
     }
   }
 
-  let mut data = graph.data().read_arc().phyloxml_data_from_graph_data()?;
+  let mut data = C::phyloxml_data_from_graph_data(graph)?;
   let root_key = root.read_arc().key();
   let clade = node_map
     .remove(&root_key)

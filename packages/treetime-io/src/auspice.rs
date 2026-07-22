@@ -7,7 +7,7 @@ use std::io::Cursor;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::Arc;
-use treetime_graph::edge::{Edge, GraphEdge};
+use treetime_graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Node};
 use treetime_utils::io::file::create_file_or_stdout;
@@ -155,6 +155,7 @@ where
   pub node: &'a N,
   pub parent_key: Option<GraphNodeKey>,
   pub parent: Option<&'a N>,
+  pub edge_key: Option<GraphEdgeKey>,
   pub edge: Option<&'a E>,
   pub graph: &'a Graph<N, E, D>,
 }
@@ -214,6 +215,9 @@ where
         .as_ref()
         .map(|parent: &Arc<RwLock<Node<N>>>| parent.read_arc().payload().read_arc());
       let parent = parent.as_deref();
+      let edge_key = current_edge
+        .as_ref()
+        .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().key());
       let edge = current_edge
         .as_ref()
         .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().payload().read_arc());
@@ -223,6 +227,7 @@ where
         node,
         parent_key,
         parent,
+        edge_key,
         edge,
         graph,
       };

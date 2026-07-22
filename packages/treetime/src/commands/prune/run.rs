@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::commands::prune::result::PruneResult;
-use crate::commands::shared::ir_projection::build_ir_topology_only;
+use crate::commands::prune::result::{PruneGraphData, PruneResult};
 use crate::commands::shared::output::{CommandKind, OutputSelection};
+use crate::commands::shared::tree_output::TreeOutputAdapter;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::prune::pipeline::{self, PruneInput, PruneParams};
@@ -20,7 +20,6 @@ use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
-use treetime_io::tree_ir::types::{TreeIrData, TreeIrNode};
 
 use crate::payload::ancestral::GraphAncestral;
 
@@ -79,11 +78,16 @@ pub fn run_prune(
   progress.check_cancelled()?;
   progress.report("Pruning", 0.4, "");
   let output = pipeline::run(&params, input)?;
+  let pipeline::PruneOutput { graph, gtr, partitions } = output;
+  let mut graph = graph.map_data(PruneGraphData::new(gtr, partitions));
+  let topology_order = args.topology_order.resolve_topology_order(&graph, Some(input_order))?;
+  topology_order.apply(&mut graph)?;
+  resolved.prepare()?;
 
   progress.report("Writing output", 0.8, "");
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    match output.gtr.as_ref() {
+    match graph.data().gtr.as_ref() {
       Some(gtr) => {
         let gtr_output = GtrOutput::new(gtr, GtrModelName::JC69);
         write_gtr_json(&gtr_output, path)?;
@@ -98,20 +102,11 @@ pub fn run_prune(
   }
 
   if !resolved.tree_outputs.is_empty() {
-    let topology_order = args
-      .topology_order
-      .resolve_topology_order(&output.graph, Some(input_order))?;
-    let plan = topology_order.plan(&output.graph)?;
-    let ordered = plan.ordered_graph(&output.graph)?;
-    let ir = build_ir_topology_only(&output.graph, TreeIrData::default(), |_key, node| TreeIrNode {
-      name: node.name().map(|n| n.as_ref().to_owned()),
-      ..TreeIrNode::default()
-    })?;
-    write_tree_outputs(&ordered, &resolved.tree_outputs, &CommentProviders::new(), Some(&ir))?;
+    write_tree_outputs::<TreeOutputAdapter, _, _, _>(&graph, &resolved.tree_outputs, &CommentProviders::new())?;
   }
 
   progress.report("Done", 1.0, "");
-  Ok(PruneResult { graph: output.graph })
+  Ok(PruneResult { graph })
 }
 
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {

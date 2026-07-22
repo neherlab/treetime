@@ -31,7 +31,7 @@ pub fn nex_write_file<N, E, D>(
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
   let mut f = create_file_or_stdout(filepath)?;
   nex_write(&mut f, graph, options)?;
@@ -48,7 +48,7 @@ pub fn nex_write_file_with<N, E, D>(
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
   let mut f = create_file_or_stdout(filepath)?;
   nex_write_with(&mut f, graph, options, providers)?;
@@ -60,7 +60,7 @@ pub fn nex_write_str<N, E, D>(graph: &Graph<N, E, D>, options: &NexWriteOptions)
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
   let providers = CommentProviders::new();
   nex_write_str_with(graph, options, &providers)
@@ -75,7 +75,7 @@ pub fn nex_write_str_with<N, E, D>(
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
   let mut buf = Vec::new();
   nex_write_with(&mut buf, graph, options, providers)?;
@@ -86,7 +86,7 @@ pub fn nex_write<N, E, D>(w: &mut impl Write, graph: &Graph<N, E, D>, options: &
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
   let providers = CommentProviders::new();
   nex_write_with(w, graph, options, &providers)
@@ -102,7 +102,7 @@ pub fn nex_write_with<N, E, D>(
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
   let n_leaves = graph.num_leaves();
   let leaf_names = graph

@@ -6,8 +6,8 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, Optimi
 use crate::clock::pipeline::{self, ClockInput, ClockPipelineParams};
 use crate::clock::rtt::{ClockRegressionResult, write_clock_regression_result_csv};
 use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
-use crate::commands::shared::ir_projection::build_ir_topology_only;
 use crate::commands::shared::output::{CommandKind, OutputSelection};
+use crate::commands::shared::tree_output::TreeOutputAdapter;
 use crate::make_error;
 use crate::make_report;
 use eyre::{Report, WrapErr};
@@ -17,14 +17,40 @@ use treetime_graph::node::{GraphNode, Named};
 use treetime_io::dates_csv::read_dates;
 use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::nwk_read_file;
-use treetime_io::tree_ir::types::{TreeIrData, TreeIrNode};
 
-#[derive(Debug, serde::Serialize)]
+#[allow(clippy::manual_non_exhaustive, clippy::partial_pub_fields)] // The private unit field preserves Graph JSON's `data: null` shape.
+#[derive(serde::Serialize)]
+#[serde(transparent)]
+pub struct ClockGraphData {
+  marker: (),
+  #[serde(skip)]
+  pub clock_model: ClockModel,
+  #[serde(skip)]
+  pub regression_results: Vec<ClockRegressionResult>,
+}
+
+impl ClockGraphData {
+  pub fn new(clock_model: ClockModel, regression_results: Vec<ClockRegressionResult>) -> Self {
+    Self {
+      marker: (),
+      clock_model,
+      regression_results,
+    }
+  }
+}
+
+#[derive(serde::Serialize)]
 pub struct ClockResult {
   #[serde(skip)]
-  pub graph: GraphClock,
-  pub clock_model: ClockModel,
-  pub regression_results: Vec<ClockRegressionResult>,
+  pub graph: GraphClock<ClockGraphData>,
+}
+
+impl std::ops::Deref for ClockResult {
+  type Target = ClockGraphData;
+
+  fn deref(&self) -> &Self::Target {
+    self.graph.data()
+  }
 }
 
 fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationParams {
@@ -100,49 +126,38 @@ pub fn run_clock(
   let input = ClockInput { graph, dates };
 
   let output = pipeline::run(&params, input, progress)?;
+  let pipeline::ClockOutput {
+    graph,
+    clock_model,
+    regression_results,
+  } = output;
+  let mut graph = graph.map_data(ClockGraphData::new(clock_model, regression_results));
+  let topology_order = clock_args
+    .topology_order
+    .resolve_topology_order(&graph, Some(input_order))?;
+  topology_order.apply(&mut graph)?;
+  resolved.prepare()?;
 
   progress.report("Writing output", 0.8, "");
 
   if !resolved.tree_outputs.is_empty() {
-    let topology_order = clock_args
-      .topology_order
-      .resolve_topology_order(&output.graph, Some(input_order))?;
-    let plan = topology_order.plan(&output.graph)?;
-    let ordered = plan.ordered_graph(&output.graph)?;
-    let data = TreeIrData {
-      has_dates: true,
-      has_bad_branch: true,
-      ..TreeIrData::default()
-    };
-    let ir = build_ir_topology_only(&output.graph, data, |_key, node| TreeIrNode {
-      name: node.name.clone(),
-      div: Some(node.div),
-      date: node.time,
-      bad_branch: node.bad_branch || node.is_outlier,
-      ..TreeIrNode::default()
-    })?;
-    write_tree_outputs(
-      &ordered,
+    write_tree_outputs::<TreeOutputAdapter, _, _, _>(
+      &graph,
       &resolved.tree_outputs,
       &treetime_io::nwk::CommentProviders::new(),
-      Some(&ir),
     )?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
-    write_clock_model(&output.clock_model, path)?;
+    write_clock_model(&graph.data().clock_model, path)?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockCsv) {
-    write_clock_regression_result_csv(&output.regression_results, path, b',')?;
+    write_clock_regression_result_csv(&graph.data().regression_results, path, b',')?;
   }
 
   progress.report("Done", 1.0, "");
-  Ok(ClockResult {
-    graph: output.graph,
-    clock_model: output.clock_model,
-    regression_results: output.regression_results,
-  })
+  Ok(ClockResult { graph })
 }
 
 fn leaf_order<N, E, D>(graph: &Graph<N, E, D>) -> Result<Vec<String>, Report>

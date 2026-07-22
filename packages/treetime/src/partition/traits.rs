@@ -176,7 +176,7 @@ where
 
   fn reconstruct_node_sequence(
     &mut self,
-    node: &GraphNodeForward<N, E, ()>,
+    node: &GraphNodeForward<N, E>,
     include_leaves: bool,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
@@ -292,7 +292,7 @@ where
 /// This allows trait objects to be used for both ancestral reconstruction and timetree inference.
 /// Includes `PartitionRerootOps` for reroot support with default no-op.
 pub trait PartitionTimetreeAll<N, E>:
-  PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh
+  PartitionBranchOps + PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
@@ -302,7 +302,7 @@ where
 /// Blanket implementation: any type implementing all required traits automatically implements the combined trait
 impl<T, N, E> PartitionTimetreeAll<N, E> for T
 where
-  T: PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh,
+  T: PartitionBranchOps + PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh,
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {

@@ -1,7 +1,6 @@
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::{Report, WrapErr};
-use log::warn;
 use maplit::btreeset;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
@@ -275,7 +274,7 @@ pub enum CommandKind {
 impl CommandKind {
   /// Full set selectable on this command.
   pub fn all_selectable(self) -> BTreeSet<OutputSelection> {
-    &self.available_tree_outputs() | &self.non_tree_outputs()
+    &Self::available_tree_outputs() | &self.non_tree_outputs()
   }
 
   /// Outputs produced by `--output-all` without an explicit `--output-selection`.
@@ -295,30 +294,19 @@ impl CommandKind {
   }
 
   #[allow(clippy::enum_glob_use)]
-  fn available_tree_outputs(self) -> BTreeSet<OutputSelection> {
+  fn available_tree_outputs() -> BTreeSet<OutputSelection> {
     use OutputSelection::*;
-    let mut tree = btreeset![Nwk, Nexus, Phyloxml, PhyloxmlJson, GraphJson, Dot];
-    match self {
-      Self::Ancestral => {
-        tree.insert(Auspice);
-        tree.insert(MatPb);
-        tree.insert(MatJson);
-      },
-      Self::Optimize => {
-        tree.insert(MatPb);
-        tree.insert(MatJson);
-      },
-      Self::Timetree => {
-        tree.insert(Auspice);
-        tree.insert(MatPb);
-        tree.insert(MatJson);
-      },
-      Self::Mugration => {
-        tree.insert(Auspice);
-      },
-      Self::Clock | Self::Prune => {},
-    }
-    tree
+    btreeset![
+      Nwk,
+      Nexus,
+      Auspice,
+      Phyloxml,
+      PhyloxmlJson,
+      MatPb,
+      MatJson,
+      GraphJson,
+      Dot
+    ]
   }
 
   #[allow(clippy::enum_glob_use)]
@@ -350,31 +338,6 @@ impl CommandKind {
   pub fn default_nwk_styles(self) -> Vec<NwkStyle> {
     vec![NwkStyle::Plain]
   }
-}
-
-/// Whether an output has a working writer for this command, ignoring runtime data prerequisites.
-fn is_producible(command: CommandKind, sel: OutputSelection) -> bool {
-  if sel.is_tree() {
-    return command.available_tree_outputs().contains(&sel);
-  }
-  true
-}
-
-fn unproducible_reason(command: CommandKind, _sel: OutputSelection) -> String {
-  format!("not available for the {} command", command.stem())
-}
-
-/// Per-file flags are explicit requests: a non-producible target is an error at startup rather than
-/// a silent skip.
-fn ensure_producible_explicit(command: CommandKind, sel: OutputSelection) -> Result<(), Report> {
-  if is_producible(command, sel) {
-    return Ok(());
-  }
-  make_error!(
-    "Output '{}' is not available for the {} command",
-    sel.flag_name(),
-    command.stem()
-  )
 }
 
 /// Insert a secondary filename extension before the final extension of a path.
@@ -579,15 +542,29 @@ pub struct ResolvedOutputs {
   pub non_tree_outputs: BTreeMap<OutputSelection, PathBuf>,
 }
 
+impl ResolvedOutputs {
+  /// Create parent directories immediately before the command starts publishing output.
+  pub fn prepare(&self) -> Result<(), Report> {
+    for path in self.tree_outputs.values().chain(self.non_tree_outputs.values()) {
+      if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+          std::fs::create_dir_all(parent)
+            .wrap_err_with(|| format!("Failed to create parent directory '{}'", parent.display()))?;
+        }
+      }
+    }
+    Ok(())
+  }
+}
+
 impl OutputCoreArgs {
   /// Resolve the three-tier output configuration into concrete file paths.
   ///
   /// `selection` is the command's `--output-selection` already converted to `OutputSelection`.
   /// `non_tree_fields` carries the command's per-file non-tree flag values keyed by selection.
   ///
-  /// Per-file flags are honored unconditionally and take precedence over `--output-all`; explicit
-  /// per-file flags targeting a non-producible output error early. Outputs requested via selection
-  /// (or `all`) that are not producible are warned and skipped. Runtime data prerequisites (e.g. a
+  /// Per-file flags are honored unconditionally and take precedence over `--output-all`. Every tree
+  /// format is available to every command; runtime data prerequisites for non-tree outputs (e.g. a
   /// fitted GTR model) are checked by each command at write time, not here.
   pub fn resolve(
     &self,
@@ -610,7 +587,6 @@ impl OutputCoreArgs {
       let Some(Some(path)) = variant.tree_field(self) else {
         continue;
       };
-      ensure_producible_explicit(command, variant)?;
       overridden_tree.insert(variant);
       if variant.is_styled_tree() {
         for (style, p) in expand_override_styles(path, &styles) {
@@ -625,7 +601,6 @@ impl OutputCoreArgs {
     // Tier 3b: per-file non-tree overrides.
     for &(sel, ref_path) in non_tree_fields {
       if let Some(path) = ref_path {
-        ensure_producible_explicit(command, sel)?;
         non_tree_outputs.insert(sel, path.to_path_buf());
       }
     }
@@ -642,14 +617,6 @@ impl OutputCoreArgs {
 
       for &variant in &effective {
         if variant.is_meta() {
-          continue;
-        }
-        if !is_producible(command, variant) {
-          warn!(
-            "Skipping output '{}': {}",
-            variant.flag_name(),
-            unproducible_reason(command, variant)
-          );
           continue;
         }
         if variant.is_tree() {
@@ -683,18 +650,7 @@ impl OutputCoreArgs {
       );
     }
 
-    if let Some(dir) = &self.output_all {
-      std::fs::create_dir_all(dir)
-        .wrap_err_with(|| format!("Failed to create output directory '{}'", dir.display()))?;
-    }
-    for path in tree_outputs.values().chain(non_tree_outputs.values()) {
-      if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-          std::fs::create_dir_all(parent)
-            .wrap_err_with(|| format!("Failed to create parent directory '{}'", parent.display()))?;
-        }
-      }
-    }
+    ensure_unique_output_paths(&tree_outputs, &non_tree_outputs)?;
 
     Ok(ResolvedOutputs {
       tree_outputs,
@@ -717,6 +673,31 @@ impl OutputCoreArgs {
     }
     styles
   }
+}
+
+fn ensure_unique_output_paths(
+  tree_outputs: &BTreeMap<TreeWriteKind, PathBuf>,
+  non_tree_outputs: &BTreeMap<OutputSelection, PathBuf>,
+) -> Result<(), Report> {
+  let mut destinations: BTreeMap<&Path, String> = BTreeMap::new();
+  for (kind, path) in tree_outputs {
+    if let Some(previous) = destinations.insert(path, format!("{kind:?}")) {
+      return make_error!(
+        "Output destination '{}' is selected more than once ({previous} and {kind:?})",
+        path.display()
+      );
+    }
+  }
+  for (selection, path) in non_tree_outputs {
+    if let Some(previous) = destinations.insert(path, selection.flag_name().to_owned()) {
+      return make_error!(
+        "Output destination '{}' is selected more than once ({previous} and {})",
+        path.display(),
+        selection.flag_name()
+      );
+    }
+  }
+  Ok(())
 }
 
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]

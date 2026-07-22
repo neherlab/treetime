@@ -128,7 +128,7 @@ pub fn nwk_write_file<N, E, D>(
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
   let mut f = create_file_or_stdout(filepath)?;
   nwk_write(&mut f, graph, options)?;
@@ -145,7 +145,7 @@ pub fn nwk_write_file_with<N, E, D>(
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
   let mut f = create_file_or_stdout(filepath)?;
   nwk_write_with(&mut f, graph, options, providers)?;
@@ -157,7 +157,7 @@ pub fn nwk_write_str<N, E, D>(graph: &Graph<N, E, D>, options: &NwkWriteOptions)
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
   let providers = CommentProviders::new();
   nwk_write_str_with(graph, options, &providers)
@@ -172,7 +172,7 @@ pub fn nwk_write_str_with<N, E, D>(
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
   let mut buf = Vec::new();
   nwk_write_with(&mut buf, graph, options, providers)?;
@@ -187,7 +187,7 @@ pub fn nwk_write<N, E, D>(
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
   let providers = CommentProviders::new();
   nwk_write_with(writer, graph, options, &providers)
@@ -205,7 +205,7 @@ pub fn nwk_write_with<N, E, D>(
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
   let roots = graph.get_roots();
   if roots.is_empty() {

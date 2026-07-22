@@ -354,7 +354,7 @@ pub fn ancestral_reconstruction_fitch(
   graph: &GraphAncestral,
   include_leaves: bool,
   partitions: &[Arc<RwLock<PartitionFitch>>],
-  mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral, ()>, &Seq) -> Result<(), Report>,
+  mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral>, &Seq) -> Result<(), Report>,
 ) -> Result<(), Report> {
   graph
     .iter_depth_first_preorder_forward(|node| run_fitch_reconstruction(include_leaves, partitions, &mut visitor, &node))
@@ -363,8 +363,8 @@ pub fn ancestral_reconstruction_fitch(
 fn run_fitch_reconstruction(
   include_leaves: bool,
   partitions: &[Arc<RwLock<PartitionFitch>>],
-  mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral, ()>, &Seq) -> Result<(), Report>,
-  node: &GraphNodeForward<NodeAncestral, EdgeAncestral, ()>,
+  mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral>, &Seq) -> Result<(), Report>,
+  node: &GraphNodeForward<NodeAncestral, EdgeAncestral>,
 ) -> Result<(), Report> {
   if !include_leaves && node.is_leaf {
     return Ok(());

@@ -9,7 +9,7 @@ use treetime_graph::node::{GraphNode, Named, Outlier};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
-pub type GraphClock = Graph<NodeClock, EdgeClock, ()>;
+pub type GraphClock<D = ()> = Graph<NodeClock, EdgeClock, D>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct NodeClock {

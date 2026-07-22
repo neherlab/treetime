@@ -39,7 +39,7 @@ where
   pub(crate) edges: Vec<Option<Arc<RwLock<Edge<E>>>>>,
   pub(crate) roots: Vec<GraphNodeKey>,
   pub(crate) leaves: Vec<GraphNodeKey>,
-  pub(crate) data: Arc<RwLock<D>>,
+  pub(crate) data: D,
 }
 
 impl<N, E, D> Graph<N, E, D>
@@ -57,7 +57,7 @@ where
       edges: Vec::new(),
       roots: vec![],
       leaves: vec![],
-      data: Arc::new(RwLock::new(D::default())),
+      data: D::default(),
     }
   }
 
@@ -67,16 +67,33 @@ where
       edges: Vec::new(),
       roots: vec![],
       leaves: vec![],
-      data: Arc::new(RwLock::new(data)),
+      data,
     }
   }
 
-  pub fn data(&self) -> Arc<RwLock<D>> {
-    Arc::clone(&self.data)
+  pub const fn data(&self) -> &D {
+    &self.data
+  }
+
+  pub fn data_mut(&mut self) -> &mut D {
+    &mut self.data
   }
 
   pub fn set_data(&mut self, data: D) {
-    self.data = Arc::new(RwLock::new(data));
+    self.data = data;
+  }
+
+  pub fn map_data<T>(self, data: T) -> Graph<N, E, T>
+  where
+    T: Sync + Send,
+  {
+    Graph {
+      nodes: self.nodes,
+      edges: self.edges,
+      roots: self.roots,
+      leaves: self.leaves,
+      data,
+    }
   }
 
   /// Retrieve parent nodes of a given node and the corresponding edges.
@@ -200,7 +217,7 @@ where
   }
 
   /// Iterates nodes synchronously and in unspecified order
-  pub fn for_each<T, F>(&self, f: &mut dyn FnMut(GraphNodeSafe<N, E, D>)) {
+  pub fn for_each<T, F>(&self, f: &mut dyn FnMut(GraphNodeSafe<N, E>)) {
     self
       .nodes
       .iter()
@@ -211,7 +228,7 @@ where
   /// Iterates nodes synchronously and in unspecified order
   pub fn map<T, F>(&self, mut f: F) -> Vec<T>
   where
-    F: FnMut(GraphNodeSafe<N, E, D>) -> T,
+    F: FnMut(GraphNodeSafe<N, E>) -> T,
   {
     self
       .nodes
@@ -224,7 +241,7 @@ where
   /// Iterates nodes synchronously and in unspecified order
   pub fn filter_map<T, F>(&self, mut f: F) -> Vec<T>
   where
-    F: FnMut(GraphNodeSafe<N, E, D>) -> Option<T>,
+    F: FnMut(GraphNodeSafe<N, E>) -> Option<T>,
   {
     self
       .nodes

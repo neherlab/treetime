@@ -1,10 +1,10 @@
 use crate::clock::clock_output::write_clock_model;
 use crate::commands::shared::output::{CommandKind, DivergenceUnits, OutputSelection};
+use crate::commands::shared::tree_output::TreeOutputAdapter;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::output::augur_node_data::write_augur_node_data_json;
-use crate::commands::timetree::output::ir::build_timetree_ir;
-use crate::commands::timetree::result::TimetreeResult;
+use crate::commands::timetree::result::{TimetreeGraphData, TimetreeResult};
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::partition::traits::MutationCommentProvider;
@@ -47,6 +47,7 @@ pub fn run_timetree_estimation(
       (OutputSelection::Tracelog, args.output_tracelog.as_deref()),
     ],
   )?;
+  resolved.prepare()?;
 
   let tracelog: Option<Box<dyn std::io::Write + Send>> = match resolved.non_tree_outputs.get(&OutputSelection::Tracelog)
   {
@@ -95,15 +96,49 @@ pub fn run_timetree_estimation(
 
   let output = pipeline::run(&params, input, tracelog, progress)?;
 
+  let mutation_counts = match args.divergence_units {
+    DivergenceUnits::Mutations => {
+      if output.partitions.is_empty() {
+        return make_error!(
+          "--divergence-units=mutations requires ancestral reconstruction; \
+           incompatible with --branch-length-mode=input"
+        );
+      }
+      let guard = output.partitions[0].read_arc();
+      Some(compute_edge_mutation_counts(&output.graph, &*guard)?)
+    },
+    DivergenceUnits::MutationsPerSite => None,
+  };
+
+  let pipeline::TimetreeOutput {
+    graph,
+    clock_model,
+    confidence_intervals,
+    partitions,
+    dates,
+    gtr,
+    model_name,
+  } = output;
+  let mut graph = graph.map_data(TimetreeGraphData::new(
+    clock_model,
+    confidence_intervals,
+    partitions,
+    dates,
+    gtr,
+    model_name,
+    mutation_counts,
+  ));
+
   progress.report("Writing output", 0.95, "");
   info!("### TreeTime: writing outputs");
 
   let topology_order = args
     .topology_order
-    .resolve_topology_order(&output.graph, Some(input_leaf_order))?;
+    .resolve_topology_order(&graph, Some(input_leaf_order))?;
+  topology_order.apply(&mut graph)?;
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
-    match output.confidence_intervals.as_ref() {
+    match graph.data().confidence_intervals.as_ref() {
       Some(intervals) => {
         write_confidence_intervals_file(intervals, path).wrap_err("Failed to write confidence intervals")?;
         info!("Wrote confidence intervals to {path}", path = path.display());
@@ -119,11 +154,11 @@ pub fn run_timetree_estimation(
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
-    write_clock_model(&output.clock_model, path)?;
+    write_clock_model(&graph.data().clock_model, path)?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    match (output.gtr.as_ref(), output.model_name) {
+    match (graph.data().gtr.as_ref(), graph.data().model_name) {
       (Some(gtr), Some(model_name)) => {
         let gtr_output = GtrOutput::new(gtr, model_name);
         write_gtr_json(&gtr_output, path)?;
@@ -135,58 +170,27 @@ pub fn run_timetree_estimation(
     }
   }
 
-  let mutation_counts = match args.divergence_units {
-    DivergenceUnits::Mutations => {
-      if output.partitions.is_empty() {
-        return make_error!(
-          "--divergence-units=mutations requires ancestral reconstruction; \
-           incompatible with --branch-length-mode=input"
-        );
-      }
-      let guard = output.partitions[0].read_arc();
-      Some(compute_edge_mutation_counts(&output.graph, &*guard)?)
-    },
-    DivergenceUnits::MutationsPerSite => None,
-  };
-
   if !resolved.tree_outputs.is_empty() {
-    let plan = topology_order.plan(&output.graph)?;
-    let ordered = plan.ordered_graph(&output.graph)?;
-    // Build the IR from the ordered clone. The clone preserves original node and edge
-    // keys, keeping confidence intervals and mutation counts aligned while applying
-    // the same topology order to Auspice and the other TreeIR-backed formats.
-    if !output.partitions.is_empty() {
-      let guard = output.partitions[0].read_arc();
-      let ir = build_timetree_ir(
-        &ordered,
-        output.confidence_intervals.as_deref(),
-        mutation_counts.as_ref(),
-        Some(&*guard),
-      )?;
-      let provider = MutationCommentProvider::new(&*guard, &output.graph);
+    if !graph.data().partitions.is_empty() {
+      let guard = graph.data().partitions[0].read_arc();
+      let provider = MutationCommentProvider::new(&*guard, &graph);
       let providers = CommentProviders::new().with(&provider);
-      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, Some(&ir))?;
+      write_tree_outputs::<TreeOutputAdapter, _, _, _>(&graph, &resolved.tree_outputs, &providers)?;
     } else {
-      let ir = build_timetree_ir(
-        &ordered,
-        output.confidence_intervals.as_deref(),
-        mutation_counts.as_ref(),
-        None,
-      )?;
-      write_tree_outputs(&ordered, &resolved.tree_outputs, &CommentProviders::new(), Some(&ir))?;
+      write_tree_outputs::<TreeOutputAdapter, _, _, _>(&graph, &resolved.tree_outputs, &CommentProviders::new())?;
     }
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     let alignment = args.alignment.alignment.first().map(PathBuf::as_path);
     write_augur_node_data_json(
-      &output.graph,
-      &output.clock_model,
-      output.confidence_intervals.as_deref(),
-      output.dates.as_ref(),
+      &graph,
+      &graph.data().clock_model,
+      graph.data().confidence_intervals.as_deref(),
+      graph.data().dates.as_ref(),
       alignment,
       args.tree.as_deref(),
-      mutation_counts.as_ref(),
+      graph.data().mutation_counts.as_ref(),
       path,
     )?;
     info!("Wrote augur node data JSON to {path}", path = path.display());
@@ -201,9 +205,5 @@ pub fn run_timetree_estimation(
   }
 
   progress.report("Done", 1.0, "");
-  Ok(TimetreeResult {
-    graph: output.graph,
-    clock_model: output.clock_model,
-    confidence_intervals: output.confidence_intervals,
-  })
+  Ok(TimetreeResult { graph })
 }

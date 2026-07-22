@@ -237,7 +237,7 @@ where
     })
   }
 
-  fn backward_internal_pre(&mut self, node: &GraphNodeBackward<N, E, ()>) {
+  fn backward_internal_pre(&mut self, node: &GraphNodeBackward<N, E>) {
     let child_non_chars: Vec<&Vec<(usize, usize)>> = node
       .child_keys
       .iter()
@@ -283,7 +283,7 @@ where
     );
   }
 
-  fn forward_post(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E, ()>) -> Result<(), Report> {
+  fn forward_post(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E>) -> Result<(), Report> {
     if node.is_root {
       let node_data = self.data.nodes.get_mut(&node.key).unwrap();
       node_data.seq.variable_indel.clear();
@@ -479,7 +479,7 @@ where
 
   fn reconstruct_node_sequence(
     &mut self,
-    node: &GraphNodeForward<N, E, ()>,
+    node: &GraphNodeForward<N, E>,
     include_leaves: bool,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,

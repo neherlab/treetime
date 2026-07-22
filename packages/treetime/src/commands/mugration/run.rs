@@ -1,7 +1,7 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::mugration::augur_node_data::write_augur_node_data_json;
-use crate::commands::shared::ir_projection::build_ir_mugration;
 use crate::commands::shared::output::{CommandKind, OutputSelection};
+use crate::commands::shared::tree_output::TreeOutputAdapter;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_report;
 use crate::mugration::mugration::execute_mugration;
@@ -77,7 +77,7 @@ pub fn run_mugration(
 
   progress.check_cancelled()?;
   progress.report("Mugration inference", 0.3, "");
-  let result = execute_mugration(
+  let mut result = execute_mugration(
     graph,
     &traits,
     &mugration_args.attribute,
@@ -91,34 +91,36 @@ pub fn run_mugration(
     mugration_args.filter_uninformative_root,
   )?;
 
+  let topology_order = mugration_args
+    .topology_order
+    .resolve_topology_order(&result.graph, None)?;
+  topology_order.apply(&mut result.graph)?;
+  resolved.prepare()?;
+
   progress.report("Writing output", 0.8, "");
 
   if !resolved.tree_outputs.is_empty() {
-    let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
+    let provider = DiscreteCommentProvider::new(&result.graph.data().partition, &result.graph.data().traits.attribute);
     let providers = CommentProviders::new().with(&provider);
-    let topology_order = mugration_args
-      .topology_order
-      .resolve_topology_order(&result.graph, None)?;
-    let plan = topology_order.plan(&result.graph)?;
-    let ordered = plan.ordered_graph(&result.graph)?;
-    let ir = build_ir_mugration(&result.graph, &result.partition, &result.traits.attribute)?;
-    write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, Some(&ir))?;
+    write_tree_outputs::<TreeOutputAdapter, _, _, _>(&result.graph, &resolved.tree_outputs, &providers)?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    let gtr_output = GtrOutput::new(result.partition.gtr(), GtrModelName::Infer)
-      .with_discrete_states(&result.traits.attribute, result.partition.states.iter());
+    let gtr_output = GtrOutput::new(result.graph.data().partition.gtr(), GtrModelName::Infer).with_discrete_states(
+      &result.graph.data().traits.attribute,
+      result.graph.data().partition.states.iter(),
+    );
     write_gtr_json(&gtr_output, path)?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::TraitsCsv) {
     let mut f = create_file_or_stdout(path)?;
-    std::io::Write::write_all(&mut f, result.traits.render_csv().as_bytes())?;
+    std::io::Write::write_all(&mut f, result.graph.data().traits.render_csv().as_bytes())?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceCsv) {
     let mut f = create_file_or_stdout(path)?;
-    std::io::Write::write_all(&mut f, result.confidence.render_csv().as_bytes())?;
+    std::io::Write::write_all(&mut f, result.graph.data().confidence.render_csv().as_bytes())?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {

@@ -8,9 +8,9 @@ use crate::commands::ancestral::aa_node_data::{
 };
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with_aa;
-use crate::commands::ancestral::result::AncestralResult;
-use crate::commands::shared::ir_projection::build_ir_with_mutations;
+use crate::commands::ancestral::result::{AncestralGraphData, AncestralResult};
 use crate::commands::shared::output::{CommandKind, OutputSelection};
+use crate::commands::shared::tree_output::TreeOutputAdapter;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::partition::traits::MutationCommentProvider;
@@ -20,12 +20,10 @@ use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
 use log::{info, warn};
 use treetime_graph::node::Named;
-use treetime_graph::topology_order::TopologyOrderSpec;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
-use treetime_io::tree_ir::types::TreeIrData;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 
 pub fn run_ancestral_reconstruction(
@@ -99,6 +97,7 @@ pub fn run_ancestral_reconstruction(
       ),
     ],
   )?;
+  resolved.prepare()?;
 
   let mut output_fasta = if resolved
     .non_tree_outputs
@@ -168,39 +167,30 @@ pub fn run_ancestral_reconstruction(
     None
   };
 
+  let pipeline::AncestralOutputFull { output, partition } = result;
+  let pipeline::AncestralOutput {
+    graph,
+    gtr,
+    model_name,
+    mask,
+  } = output;
+  let mut graph = graph.map_data(AncestralGraphData::new(partition, gtr, model_name, mask));
+  topology_order.apply(&mut graph)?;
   progress.report("Writing output", 0.9, "");
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
-    match &result.partition {
+    match &graph.data().partition {
       Some(AncestralPartition::Fitch(partition)) => {
         let guard = partition.read_arc();
-        write_augur_node_data_json_with_aa(
-          &result.output.graph,
-          &*guard,
-          &result.output.mask,
-          aa_node_data.as_ref(),
-          path,
-        )?;
+        write_augur_node_data_json_with_aa(&graph, &*guard, &graph.data().mask, aa_node_data.as_ref(), path)?;
       },
       Some(AncestralPartition::Sparse(partition)) => {
         let guard = partition.read_arc();
-        write_augur_node_data_json_with_aa(
-          &result.output.graph,
-          &*guard,
-          &result.output.mask,
-          aa_node_data.as_ref(),
-          path,
-        )?;
+        write_augur_node_data_json_with_aa(&graph, &*guard, &graph.data().mask, aa_node_data.as_ref(), path)?;
       },
       Some(AncestralPartition::Dense(partition)) => {
         let guard = partition.read_arc();
-        write_augur_node_data_json_with_aa(
-          &result.output.graph,
-          &*guard,
-          &result.output.mask,
-          aa_node_data.as_ref(),
-          path,
-        )?;
+        write_augur_node_data_json_with_aa(&graph, &*guard, &graph.data().mask, aa_node_data.as_ref(), path)?;
       },
       None => {},
     }
@@ -208,9 +198,9 @@ pub fn run_ancestral_reconstruction(
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    match result.output.gtr.as_ref() {
+    match graph.data().gtr.as_ref() {
       Some(gtr) => {
-        let gtr_output = GtrOutput::new(gtr, result.output.model_name);
+        let gtr_output = GtrOutput::new(gtr, graph.data().model_name);
         write_gtr_json(&gtr_output, path)?;
       },
       None if ancestral_args.output_gtr.is_some() => {
@@ -221,50 +211,32 @@ pub fn run_ancestral_reconstruction(
   }
 
   if !resolved.tree_outputs.is_empty() {
-    write_tree_for_partition(&result, &resolved, &topology_order)?;
+    write_tree_for_partition(&graph, &resolved)?;
   }
 
   progress.report("Done", 1.0, "");
-  Ok(AncestralResult {
-    graph: result.output.graph,
-    gtr: result.output.gtr,
-    model_name: result.output.model_name,
-  })
+  Ok(AncestralResult { graph })
 }
 
 fn write_tree_for_partition(
-  result: &pipeline::AncestralOutputFull,
+  graph: &GraphAncestral<AncestralGraphData>,
   resolved: &crate::commands::shared::output::ResolvedOutputs,
-  topology_order: &TopologyOrderSpec,
 ) -> Result<(), Report> {
-  let plan = topology_order.plan(&result.output.graph)?;
-  let ordered = plan.ordered_graph(&result.output.graph)?;
-
-  match &result.partition {
+  match &graph.data().partition {
     Some(AncestralPartition::Sparse(partition)) => {
       let guard = partition.read_arc();
-      let provider = MutationCommentProvider::new(&*guard, &result.output.graph);
+      let provider = MutationCommentProvider::new(&*guard, graph);
       let providers = CommentProviders::new().with(&provider);
-      let data = TreeIrData {
-        has_mutations: true,
-        ..TreeIrData::default()
-      };
-      let ir = build_ir_with_mutations(&result.output.graph, &*guard, data)?;
-      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, Some(&ir))?;
+      write_tree_outputs::<TreeOutputAdapter, _, _, _>(graph, &resolved.tree_outputs, &providers)?;
     },
     Some(AncestralPartition::Dense(partition)) => {
       let guard = partition.read_arc();
-      let provider = MutationCommentProvider::new(&*guard, &result.output.graph);
+      let provider = MutationCommentProvider::new(&*guard, graph);
       let providers = CommentProviders::new().with(&provider);
-      let data = TreeIrData {
-        has_mutations: true,
-        ..TreeIrData::default()
-      };
-      let ir = build_ir_with_mutations(&result.output.graph, &*guard, data)?;
-      write_tree_outputs(&ordered, &resolved.tree_outputs, &providers, Some(&ir))?;
+      write_tree_outputs::<TreeOutputAdapter, _, _, _>(graph, &resolved.tree_outputs, &providers)?;
     },
     Some(AncestralPartition::Fitch(_)) | None => {
-      write_tree_outputs(&ordered, &resolved.tree_outputs, &CommentProviders::new(), None)?;
+      write_tree_outputs::<TreeOutputAdapter, _, _, _>(graph, &resolved.tree_outputs, &CommentProviders::new())?;
     },
   }
   Ok(())

@@ -4,9 +4,9 @@ use eyre::{Report, WrapErr};
 use smart_default::SmartDefault;
 use std::io::{Read, Write};
 use std::path::Path;
-use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::io::json::{
@@ -89,7 +89,7 @@ pub fn usher_mat_pb_write_file<C, N, E, D>(filepath: impl AsRef<Path>, graph: &G
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
   C: UsherWrite<N, E, D>,
 {
   let filepath = filepath.as_ref();
@@ -104,7 +104,7 @@ pub fn usher_mat_pb_write_bytes<C, N, E, D>(graph: &Graph<N, E, D>) -> Result<()
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
   C: UsherWrite<N, E, D>,
 {
   let tree = usher_from_graph::<C, _, _, _>(graph)?;
@@ -116,7 +116,7 @@ pub fn usher_mat_pb_write<C, N, E, D>(writer: &mut impl Write, graph: &Graph<N, 
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
   C: UsherWrite<N, E, D>,
 {
   let tree = usher_from_graph::<C, _, _, _>(graph)?;
@@ -132,7 +132,7 @@ pub fn usher_mat_json_write_file<C, N, E, D>(
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
   C: UsherWrite<N, E, D>,
 {
   let filepath = filepath.as_ref();
@@ -150,7 +150,7 @@ pub fn usher_mat_json_write_str<C, N, E, D>(
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
   C: UsherWrite<N, E, D>,
 {
   let tree = usher_from_graph::<C, _, _, _>(graph)?;
@@ -166,7 +166,7 @@ pub fn usher_mat_json_write<C, N, E, D>(
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
   C: UsherWrite<N, E, D>,
 {
   let tree = usher_from_graph::<C, _, _, _>(graph)?;
@@ -265,9 +265,11 @@ pub struct UsherGraphContext<'a, N, E, D>
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
+  pub node_key: GraphNodeKey,
   pub node: &'a N,
+  pub edge_key: Option<GraphEdgeKey>,
   pub edge: Option<&'a E>,
   pub graph: &'a Graph<N, E, D>,
 }
@@ -276,7 +278,7 @@ pub trait UsherWrite<N, E, D>: Sized
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
 {
   fn new(graph: &Graph<N, E, D>) -> Result<Self, Report>;
 
@@ -291,7 +293,7 @@ pub fn usher_from_graph<C, N, E, D>(graph: &Graph<N, E, D>) -> Result<UsherTree,
 where
   N: GraphNode + NodeToNwk,
   E: GraphEdge + EdgeToNwk,
-  D: Sync + Send + Default,
+  D: Sync + Send,
   C: UsherWrite<N, E, D>,
 {
   let mut node_mutations = vec![];
@@ -300,12 +302,19 @@ where
 
   let mut converter = C::new(graph)?;
   graph.iter_depth_first_preorder_forward(|node| {
+    let node_key = node.key;
     let edge = node.parents.first().map(|(_, edge)| edge.read_arc());
+    let edge_key = node.parent_keys.first().map(|(_, edge_key)| *edge_key);
     let edge = edge.as_deref();
     let node = &node.payload;
 
-    let (node, mutations, meta) =
-      converter.usher_node_from_graph_components(&UsherGraphContext { node, edge, graph })?;
+    let (node, mutations, meta) = converter.usher_node_from_graph_components(&UsherGraphContext {
+      node_key,
+      node,
+      edge_key,
+      edge,
+      graph,
+    })?;
 
     node_mutations.push(mutations);
     condensed_nodes.push(node);

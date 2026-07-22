@@ -40,7 +40,7 @@ pub trait TimeLength {
   fn set_time_length(&mut self, length: Option<f64>);
 }
 
-pub trait GraphEdge: Clone + Debug + Sync + Send {}
+pub trait GraphEdge: Debug + Sync + Send {}
 
 /// Composite trait for edges that support ancestral reconstruction.
 /// Currently equivalent to `GraphEdge` for consistency with `NodeAncestralOps`.

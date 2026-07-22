@@ -49,8 +49,8 @@ use util_augur_node_data_json::{
 /// When `mutation_counts` is `Some`, `mutation_length` is set to the per-edge
 /// mutation count instead of the ML branch length (subs/site). `branch_length`
 /// and `clock_length` remain time-valued (years) regardless.
-pub fn build_augur_node_data_json(
-  graph: &GraphTimetree,
+pub fn build_augur_node_data_json<D: Send + Sync>(
+  graph: &GraphTimetree<D>,
   clock_model: &ClockModel,
   confidence_intervals: Option<&[NodeConfidenceInterval]>,
   dates: Option<&DatesMap>,
@@ -144,8 +144,8 @@ pub fn build_augur_node_data_json(
   })
 }
 
-pub fn write_augur_node_data_json(
-  graph: &GraphTimetree,
+pub fn write_augur_node_data_json<D: Send + Sync>(
+  graph: &GraphTimetree<D>,
   clock_model: &ClockModel,
   confidence_intervals: Option<&[NodeConfidenceInterval]>,
   dates: Option<&DatesMap>,
@@ -193,7 +193,7 @@ fn build_clock(clock_model: &ClockModel) -> AugurNodeDataJsonClock {
 
 /// Inferred numeric date (`numdate`) of a node by key, used for the parent endpoint
 /// of `clock_length = child.numdate - parent.numdate`.
-fn parent_time(graph: &GraphTimetree, parent_key: GraphNodeKey) -> Result<Option<f64>, Report> {
+fn parent_time<D: Send + Sync>(graph: &GraphTimetree<D>, parent_key: GraphNodeKey) -> Result<Option<f64>, Report> {
   let parent = graph
     .get_node(parent_key)
     .ok_or_else(|| make_internal_report!("Timetree node data: missing parent node {parent_key:?}"))?;

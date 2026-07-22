@@ -39,8 +39,8 @@ use util_augur_node_data_json::{
 ///
 /// When `mutation_counts` is `Some`, `branch_length` is set to the per-edge
 /// mutation count instead of the ML branch length (subs/site).
-pub fn build_augur_node_data_json(
-  graph: &GraphAncestral,
+pub fn build_augur_node_data_json<D: Send + Sync>(
+  graph: &GraphAncestral<D>,
   alignment: Option<&Path>,
   input_tree: Option<&Path>,
   mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
@@ -106,8 +106,8 @@ pub fn build_augur_node_data_json(
   })
 }
 
-pub fn write_augur_node_data_json(
-  graph: &GraphAncestral,
+pub fn write_augur_node_data_json<D: Send + Sync>(
+  graph: &GraphAncestral<D>,
   alignment: Option<&Path>,
   input_tree: Option<&Path>,
   mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,

@@ -48,7 +48,7 @@ pub trait TimeConstraint<T> {
   fn set_bad_branch(&mut self, bad: bool);
 }
 
-pub trait GraphNode: Clone + Debug + Sync + Send {}
+pub trait GraphNode: Debug + Sync + Send {}
 
 /// Composite trait for nodes that support ancestral reconstruction
 pub trait NodeAncestralOps: GraphNode + Named + Described {}

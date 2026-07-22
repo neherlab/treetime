@@ -15,7 +15,7 @@ use treetime_utils::collections::container::{get_exactly_one, get_exactly_one_mu
 /// Represents graph node during forward traversal
 #[must_use]
 #[derive(Debug)]
-pub struct GraphNodeForward<N, E, D>
+pub struct GraphNodeForward<N, E>
 where
   N: GraphNode,
   E: GraphEdge,
@@ -28,16 +28,17 @@ where
   pub parent_keys: Vec<(GraphNodeKey, GraphEdgeKey)>,
   pub child_edges: Vec<SafeEdgePayloadRefMut<E>>,
   pub child_edge_keys: Vec<GraphEdgeKey>,
-  pub data: Arc<RwLock<D>>,
 }
 
-impl<N, E, D> GraphNodeForward<N, E, D>
+impl<N, E> GraphNodeForward<N, E>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: Sync + Send,
 {
-  pub fn new(graph: &Graph<N, E, D>, node: &Node<N>) -> Self {
+  pub fn new<D>(graph: &Graph<N, E, D>, node: &Node<N>) -> Self
+  where
+    D: Sync + Send,
+  {
     let is_leaf = node.is_leaf();
     let is_root = node.is_root();
     let key = node.key();
@@ -68,8 +69,6 @@ where
       .map(|(_, edge)| edge.write_arc().payload().write_arc())
       .collect_vec();
 
-    let data = Arc::clone(&graph.data);
-
     Self {
       is_root,
       is_leaf,
@@ -79,7 +78,6 @@ where
       parent_keys,
       child_edges,
       child_edge_keys,
-      data,
     }
   }
 
@@ -93,11 +91,10 @@ where
 /// Represents graph node during backwards traversal
 #[must_use]
 #[derive(Debug)]
-pub struct GraphNodeBackward<N, E, D>
+pub struct GraphNodeBackward<N, E>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: Sync + Send,
 {
   pub is_root: bool,
   pub is_leaf: bool,
@@ -107,16 +104,17 @@ where
   pub child_keys: Vec<(GraphNodeKey, GraphEdgeKey)>,
   pub parent_edges: Vec<SafeEdgePayloadRefMut<E>>,
   pub parent_edge_keys: Vec<GraphEdgeKey>,
-  pub data: Arc<RwLock<D>>,
 }
 
-impl<N, E, D> GraphNodeBackward<N, E, D>
+impl<N, E> GraphNodeBackward<N, E>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: Sync + Send,
 {
-  pub fn new(graph: &Graph<N, E, D>, node: &Node<N>) -> Self {
+  pub fn new<D>(graph: &Graph<N, E, D>, node: &Node<N>) -> Self
+  where
+    D: Sync + Send,
+  {
     let is_leaf = node.is_leaf();
     let is_root = node.is_root();
     let key = node.key();
@@ -147,8 +145,6 @@ where
       .map(|(_, edge)| edge.write_arc().payload().write_arc())
       .collect_vec();
 
-    let data = Arc::clone(&graph.data);
-
     Self {
       is_root,
       is_leaf,
@@ -158,7 +154,6 @@ where
       child_keys,
       parent_edges,
       parent_edge_keys,
-      data,
     }
   }
 
@@ -169,11 +164,10 @@ where
 
 /// Represents graph node during safe traversal
 #[derive(Debug)]
-pub struct GraphNodeSafe<N, E, D>
+pub struct GraphNodeSafe<N, E>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: Sync + Send,
 {
   pub is_root: bool,
   pub is_leaf: bool,
@@ -181,16 +175,17 @@ where
   pub payload: Arc<RwLock<N>>,
   pub children: Vec<NodeEdgePair<N, E>>,
   pub parents: Vec<NodeEdgePair<N, E>>,
-  pub data: Arc<RwLock<D>>,
 }
 
-impl<N, E, D> GraphNodeSafe<N, E, D>
+impl<N, E> GraphNodeSafe<N, E>
 where
   N: GraphNode,
   E: GraphEdge,
-  D: Sync + Send,
 {
-  pub fn from_node(graph: &Graph<N, E, D>, node: &Arc<RwLock<Node<N>>>) -> Self {
+  pub fn from_node<D>(graph: &Graph<N, E, D>, node: &Arc<RwLock<Node<N>>>) -> Self
+  where
+    D: Sync + Send,
+  {
     let node = node.read();
     let is_leaf = node.is_leaf();
     let is_root = node.is_root();
@@ -198,8 +193,6 @@ where
     let payload = node.payload();
     let parents = graph.parents_of(&node);
     let children = graph.children_of(&node);
-    let data = Arc::clone(&graph.data);
-
     Self {
       is_root,
       is_leaf,
@@ -207,7 +200,6 @@ where
       payload,
       children,
       parents,
-      data,
     }
   }
 }
@@ -243,7 +235,7 @@ where
   /// before the traversal returns. Subsequent errors are discarded (first error wins).
   pub fn par_iter_breadth_first_forward<F>(&self, explorer: F) -> Result<(), Report>
   where
-    F: Fn(GraphNodeForward<N, E, D>) -> Result<GraphTraversalContinuation, Report> + Sync + Send,
+    F: Fn(GraphNodeForward<N, E>) -> Result<GraphTraversalContinuation, Report> + Sync + Send,
   {
     let roots = self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
 
@@ -260,7 +252,7 @@ where
   /// See [`Self::par_iter_breadth_first_forward`] for callback semantics.
   pub fn par_iter_breadth_first_backward<F>(&self, explorer: F) -> Result<(), Report>
   where
-    F: Fn(GraphNodeBackward<N, E, D>) -> Result<GraphTraversalContinuation, Report> + Sync + Send,
+    F: Fn(GraphNodeBackward<N, E>) -> Result<GraphTraversalContinuation, Report> + Sync + Send,
   {
     let leaves = self
       .leaves
@@ -280,7 +272,7 @@ where
   /// Serial depth-first preorder forward traversal (roots to leaves, parents before children).
   pub fn iter_depth_first_preorder_forward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
-    F: FnMut(GraphNodeForward<N, E, D>) -> Result<(), Report>,
+    F: FnMut(GraphNodeForward<N, E>) -> Result<(), Report>,
   {
     let root = self
       .get_exactly_one_root()
@@ -299,7 +291,7 @@ where
   /// Serial depth-first postorder forward traversal (children before parents).
   pub fn iter_depth_first_postorder_forward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
-    F: FnMut(GraphNodeBackward<N, E, D>) -> Result<(), Report>,
+    F: FnMut(GraphNodeBackward<N, E>) -> Result<(), Report>,
   {
     let root = self
       .get_exactly_one_root()
@@ -331,7 +323,7 @@ where
   /// per-node work must capture mutable outer state, which a parallel callback cannot.
   pub fn iter_breadth_first_forward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
-    F: FnMut(GraphNodeForward<N, E, D>) -> Result<(), Report>,
+    F: FnMut(GraphNodeForward<N, E>) -> Result<(), Report>,
   {
     let root = self
       .get_exactly_one_root()
@@ -352,7 +344,7 @@ where
   /// Serial breadth-first backward traversal (leaves to roots, against edge directions).
   pub fn iter_breadth_first_backward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
-    F: FnMut(GraphNodeBackward<N, E, D>) -> Result<(), Report>,
+    F: FnMut(GraphNodeBackward<N, E>) -> Result<(), Report>,
   {
     let root = self
       .get_exactly_one_root()
