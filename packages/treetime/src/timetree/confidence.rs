@@ -233,6 +233,9 @@ pub fn extract_confidence_intervals(graph: &GraphTimetree) -> Vec<NodeConfidence
 #[derive(Debug, Clone, Serialize)]
 pub struct NodeConfidenceInterval {
   /// Graph node key for stable lookup across naming schemes.
+  /// Internal only: never serialized into the confidence TSV, whose columns are
+  /// `name, date, lower, upper`.
+  #[serde(skip)]
   pub key: GraphNodeKey,
   pub name: String,
   pub date: f64,
