@@ -73,8 +73,10 @@ skyline case.
 - Constant-$T_c$ estimates are numerically indistinguishable from v0 on
   well-behaved trees, and better-behaved on degenerate/extreme-timescale trees
   where Brent's bracket bit.
-- The skyline path (piecewise-constant $T_c$) still uses numerical optimization
-  (Nelder–Mead) and is unaffected.
-- Fallback on a degenerate tree ($M \le 0$ or non-finite $I$) uses the initial
-  $T_c$; the hardcoded initial value remains tracked in
-  [issues/N-coalescent-initial-tc-hardcoded-fallback.md](../issues/N-coalescent-initial-tc-hardcoded-fallback.md).
+- The skyline path (piecewise-constant $T_c$) was subsequently given the same
+  analytic convex treatment; see
+  [coalescent-skyline-convex-inverse-tc.md](coalescent-skyline-convex-inverse-tc.md).
+- On a degenerate tree ($M \le 0$ or non-finite $I$) there is no hardcoded initial
+  $T_c$: the caller falls back to the previous round's $T_c$, then the user value,
+  then no prior (see
+  [issues/N-coalescent-initial-tc-hardcoded-fallback.md](../issues/N-coalescent-initial-tc-hardcoded-fallback.md)).

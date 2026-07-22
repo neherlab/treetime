@@ -19,7 +19,9 @@ per-edge contributions for the whole-tree likelihood and for $T_c$ optimization.
 - [x] Constant $T_c$
 - [x] **Optimal constant $T_c$ (analytic)** — see below
 - [x] **Skyline (piecewise-constant $T_c$, analytic convex solve)** — see below
-- [/] Data-derived initial/fallback $T_c$ (hardcoded constant, see [issues/N-coalescent-initial-tc-hardcoded-fallback.md](../issues/N-coalescent-initial-tc-hardcoded-fallback.md))
+- [x] No hardcoded initial/fallback $T_c$ — the analytic solve needs no seed; on
+  failure it falls back to the previous round's $T_c$, then the user value, then no
+  prior (see [issues/N-coalescent-initial-tc-hardcoded-fallback.md](../issues/N-coalescent-initial-tc-hardcoded-fallback.md))
 
 ## Optimal constant $T_c$
 
