@@ -1,6 +1,6 @@
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood, collect_coalescent_edges};
-use crate::coalescent::integration::compute_bare_integral_merger_rate;
+use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
@@ -63,16 +63,21 @@ where
   let precomputed = CoalescentPrecomputed::from_graph(graph)?;
   let edges = collect_coalescent_edges(graph)?;
 
-  let bare_integral = compute_bare_integral_merger_rate(precomputed.lineage_counts())?;
+  // Per-lineage merger integral H₀(t) = ∫ₜᴾ (k-1)/2 dt with Tc factored out, i.e.
+  // the survival integrand at Tc = 1. Within any edge span k ≥ 2, so the
+  // `max(0.5, k-1)` clamp inside `compute_integral_merger_rate` is inert here and
+  // H₀ equals the textbook ∫ (k-1)/2 dt.
+  let bare_integral = compute_integral_merger_rate(&Distribution::constant(1.0), precomputed.lineage_counts())?;
 
   let mut integral = 0.0;
   let mut n_mergers = 0.0;
   for edge in &edges {
     integral += bare_integral.eval(edge.parent_time().value()) - bare_integral.eval(edge.child_time().value());
     let n_children = edge.n_children();
-    n_mergers += (n_children - 1.0) / n_children;
+    // note that n_children is the number of children of the parent node. hence this gets added n_children times
+    n_mergers += (n_children - 1.0)/n_children;
   }
-
+  info!("Tc optimization: integral = {integral:.6e}, mergers = {n_mergers:.6e}");
   let tc = integral / n_mergers;
   let success = n_mergers > 0.0 && integral.is_finite() && tc.is_finite() && tc > 0.0;
 

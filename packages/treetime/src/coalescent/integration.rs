@@ -65,46 +65,6 @@ pub fn compute_integral_merger_rate(
   ))
 }
 
-/// Computes the textbook per-lineage merger integral H₀(t) = ∫ₜᴾ (k(t')-1)/2 dt'.
-///
-/// This is the coalescent survival integrand with the time scale Tc factored out
-/// (i.e. Tc = 1) and *without* the `max(0.5, k-1)` clamp applied in the likelihood
-/// path. It underlies the analytic Tc optimum: the exponent of the coalescent
-/// likelihood is `Σ_edges [H₀(parent) − H₀(child)] / Tc` (see
-/// [`crate::coalescent::optimize_tc`]).
-///
-/// Like [`compute_integral_merger_rate`], the integral is zero at the most recent
-/// event P and increases into the past, using the exact lineage-count breakpoints.
-pub fn compute_bare_integral_merger_rate(lineage_counts: &PiecewiseConstantFn) -> Result<PiecewiseLinearFn, Report> {
-  let breakpoints = lineage_counts.breakpoints();
-  if breakpoints.len() < 2 {
-    return make_error!("lineage count must have at least 2 breakpoints");
-  }
-
-  let n = breakpoints.len();
-  let mut integral_values = vec![0.0; n];
-
-  for i in (0..n - 1).rev() {
-    let t0 = breakpoints[i];
-    let t1 = breakpoints[i + 1];
-    let dt = t1 - t0;
-
-    // k is constant between breakpoints, use value at midpoint
-    let mid = f64::midpoint(t0, t1);
-    let k = lineage_counts.eval(mid);
-    if !k.is_finite() {
-      return make_error!("Coalescent lineage count must be finite at calendar time {mid:.6e}, got {k:.6e}");
-    }
-    let rate = 0.5 * (k - 1.0);
-    integral_values[i] = integral_values[i + 1] + dt * rate;
-  }
-
-  Ok(PiecewiseLinearFn::new(
-    Array1::from(breakpoints.to_vec()),
-    Array1::from_vec(integral_values),
-  ))
-}
-
 /// Clamped effective lineage count `max(0.5, k - 1)`, matching TreeTime v0.
 ///
 /// At the present boundary, `k` can be zero before the first sample event; v0
