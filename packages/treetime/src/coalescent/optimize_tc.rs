@@ -46,8 +46,8 @@ pub struct OptimizeTcResult {
 /// excludes, and generalizes cleanly to a piecewise-constant `Tc` (where per-interval
 /// mergers matter). Summed over the `k` edges spanning an interval, the per-edge
 /// per-lineage integral `∫ (k-1)/2 dt` reproduces `∫ k(k-1)/2 dt`; summed over a
-/// node's `n_children` edges, `(n_children - 1)/n_children` reproduces the node's
-/// merger count `n_children - 1`.
+/// node's `n_siblings` edges, `(n_siblings - 1)/n_siblings` reproduces the node's
+/// merger count `n_siblings - 1`.
 ///
 /// # Returns
 ///
@@ -73,9 +73,10 @@ where
   let mut n_mergers = 0.0;
   for edge in &edges {
     integral += bare_integral.eval(edge.parent_time().value()) - bare_integral.eval(edge.child_time().value());
-    let n_children = edge.n_children();
-    // note that n_children is the number of children of the parent node. hence this gets added n_children times
-    n_mergers += (n_children - 1.0)/n_children;
+    let n_siblings = edge.n_siblings();
+    // n_siblings is the number of children of the edge's parent node, so this term
+    // is added n_siblings times per parent and sums to (n_siblings - 1) there.
+    n_mergers += (n_siblings - 1.0) / n_siblings;
   }
   info!("Tc optimization: integral = {integral:.6e}, mergers = {n_mergers:.6e}");
   let tc = integral / n_mergers;

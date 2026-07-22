@@ -8,7 +8,7 @@ The coalescent module's public API has type inconsistencies and unused state tha
 
 ## Inconsistent child-count representations
 
-`struct CoalescentEdge` stores `n_children: f64` [`packages/treetime/src/coalescent/edge_data.rs#L16`](../../packages/treetime/src/coalescent/edge_data.rs#L16), while `fn CoalescentModel::internal_contribution()` and `fn root_contribution()` accept `n_children: usize` [`packages/treetime/src/coalescent/coalescent.rs#L65-L72`](../../packages/treetime/src/coalescent/coalescent.rs#L65-L72). The edge collector converts `outbound().len()` (usize) to `f64` via `as` at [`packages/treetime/src/coalescent/edge_data.rs#L99-L100`](../../packages/treetime/src/coalescent/edge_data.rs#L99-L100), while the model methods convert the other direction with `as f64` inside arithmetic. Neither direction is checked.
+`struct CoalescentEdge` stores `n_siblings: f64` [`packages/treetime/src/coalescent/edge_data.rs#L16`](../../packages/treetime/src/coalescent/edge_data.rs#L16), while `fn CoalescentModel::internal_contribution()` and `fn root_contribution()` accept `n_children: usize` [`packages/treetime/src/coalescent/coalescent.rs#L65-L72`](../../packages/treetime/src/coalescent/coalescent.rs#L65-L72) (the two also differ in name for the same parent-child-count quantity). The edge collector converts `outbound().len()` (usize) to `f64` via `as` at [`packages/treetime/src/coalescent/edge_data.rs#L99-L100`](../../packages/treetime/src/coalescent/edge_data.rs#L99-L100), while the model methods convert the other direction with `as f64` inside arithmetic. Neither direction is checked.
 
 ## Repeated parent lookup with unreachable fallback
 

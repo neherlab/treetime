@@ -67,9 +67,11 @@ per-interval merger counts matter):
   with a constant $T_c = 1$ rather than a dedicated function. Summed over the $k$
   edges spanning an interval, the per-lineage integrand $(k-1)/2$ reproduces the
   pairwise integrand $k(k-1)/2$.
-- $M = \sum_{\text{edges}} (n_\text{children}-1)/n_\text{children}$. Summed over a
-  node's $n_\text{children}$ edges this is the node's merger count
-  $n_\text{children}-1$; over a clean bifurcating tree, $M = N-1$.
+- $M = \sum_{\text{edges}} (n_\text{siblings}-1)/n_\text{siblings}$, where
+  $n_\text{siblings}$ is the number of children of the edge's parent node (this
+  child plus its siblings). Summed over a node's $n_\text{siblings}$ edges this is
+  the node's merger count $n_\text{siblings}-1$; over a clean bifurcating tree,
+  $M = N-1$.
 
 `compute_integral_merger_rate` applies the `max(0.5, k-1)` clamp used on the
 likelihood path, but within any edge's span the lineage count satisfies $k \ge 2$

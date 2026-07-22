@@ -71,18 +71,18 @@ pub fn compute_integral_merger_rate(
 /// documents that this clamped region is evaluated only when the tree changes.
 /// NaN lineage counts propagate as they do through v0's `numpy.maximum` call.
 fn compute_merger_rate_lineage_count(k: f64) -> f64 {
-  let n_lineages = k - 1.0;
-  if n_lineages.is_nan() {
-    n_lineages
+  let n_merge_candidates = k - 1.0;
+  if n_merge_candidates.is_nan() {
+    n_merge_candidates
   } else {
-    f64::max(0.5, n_lineages)
+    f64::max(0.5, n_merge_candidates)
   }
 }
 
-fn compute_merger_rate_per_lineage(n_lineages: f64, tc: f64) -> f64 {
-  0.5 * n_lineages / tc
+fn compute_merger_rate_per_lineage(n_merge_candidates: f64, tc: f64) -> f64 {
+  0.5 * n_merge_candidates / tc
 }
 
-fn compute_merger_rate_total(n_lineages: f64, tc: f64) -> f64 {
-  0.5 * n_lineages * (n_lineages + 1.0) / tc
+fn compute_merger_rate_total(n_merge_candidates: f64, tc: f64) -> f64 {
+  0.5 * n_merge_candidates * (n_merge_candidates + 1.0) / tc
 }

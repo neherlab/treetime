@@ -15,7 +15,7 @@ At [`packages/treetime/src/coalescent/edge_data.rs#L85-L89`](../../packages/tree
 At [`packages/treetime/src/coalescent/edge_data.rs#L92-L93`](../../packages/treetime/src/coalescent/edge_data.rs#L92-L93):
 
 ```rust
-let n_children = graph
+let n_siblings = graph
     .get_node(parent_node_key)
     .map_or(2.0, |parent| parent.read_arc().outbound().len() as f64);
 ```

@@ -13,15 +13,15 @@ use treetime_utils::make_error;
 pub struct CoalescentEdgeData {
   child_time: CalendarTime,
   parent_time: CalendarTime,
-  n_children: f64,
+  n_siblings: f64,
 }
 
 impl CoalescentEdgeData {
-  pub fn new(child_time: CalendarTime, parent_time: CalendarTime, n_children: f64) -> Self {
+  pub fn new(child_time: CalendarTime, parent_time: CalendarTime, n_siblings: f64) -> Self {
     Self {
       child_time,
       parent_time,
-      n_children,
+      n_siblings,
     }
   }
 
@@ -33,9 +33,10 @@ impl CoalescentEdgeData {
     self.parent_time
   }
 
-  /// Number of children of the edge's parent node (merger events = `n_children - 1`).
-  pub fn n_children(&self) -> f64 {
-    self.n_children
+  /// Number of children of the edge's parent node, i.e. this child and its
+  /// siblings (merger events = `n_siblings - 1`).
+  pub fn n_siblings(&self) -> f64 {
+    self.n_siblings
   }
 }
 
@@ -96,13 +97,13 @@ where
       );
     }
 
-    let n_children = graph
+    let n_siblings = graph
       .get_node(parent_node_key)
       .map_or(2.0, |parent| parent.read_arc().outbound().len() as f64);
     edges.push(CoalescentEdgeData::new(
       CalendarTime::new(child_time),
       CalendarTime::new(parent_time),
-      n_children,
+      n_siblings,
     ));
     Ok(())
   })?;

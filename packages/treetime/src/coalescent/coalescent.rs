@@ -76,8 +76,8 @@ impl CoalescentModel {
     let parent_time = edge.parent_time().value();
     let child_time = edge.child_time().value();
     let survival_term = self.expected_mergers.eval(parent_time) - self.expected_mergers.eval(child_time);
-    let n_children = edge.n_children();
-    let merger_credit = self.total_merger_rate(parent_time)?.ln() * (n_children - 1.0) / n_children;
+    let n_siblings = edge.n_siblings();
+    let merger_credit = self.total_merger_rate(parent_time)?.ln() * (n_siblings - 1.0) / n_siblings;
     Ok(survival_term - merger_credit)
   }
 
