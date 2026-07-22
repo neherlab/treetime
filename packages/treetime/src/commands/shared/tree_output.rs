@@ -1470,7 +1470,7 @@ fn timetree_date_is_inferred(
   )
 }
 
-fn group_mutations(mutations: Vec<Mutation>) -> Result<BTreeMap<String, Vec<String>>, Report> {
+pub(crate) fn group_mutations(mutations: Vec<Mutation>) -> Result<BTreeMap<String, Vec<String>>, Report> {
   let mut grouped = BTreeMap::new();
   for mutation in mutations {
     let track = match &mutation.track {

@@ -6,7 +6,8 @@ mod tests {
   use crate::commands::ancestral::result::AncestralGraphData;
   use crate::commands::shared::tree_output::{
     ancestral_to_auspice, ancestral_to_mat, ancestral_to_phyloxml, clock_to_auspice, clock_to_mat, clock_to_phyloxml,
-    format_number, mat_mutation, mugration_to_auspice, mugration_to_mat, mugration_to_phyloxml, optimize_to_auspice,
+    format_number, group_mutations, mat_mutation, mugration_to_auspice, mugration_to_mat, mugration_to_phyloxml,
+    optimize_to_auspice,
     optimize_to_mat, optimize_to_phyloxml, prune_to_auspice, prune_to_mat, prune_to_phyloxml, timetree_to_auspice,
     timetree_to_mat, timetree_to_phyloxml, write_ancestral_tree_outputs,
   };
@@ -352,6 +353,32 @@ mod tests {
     assert_ulps_eq!(123.456789, format_number(123.456789, 6), max_ulps = 0);
     assert_ulps_eq!(0.0, format_number(0.0, 6), max_ulps = 0);
     assert_ulps_eq!(2020.123, format_number(2020.1234567, 3), max_ulps = 0);
+  }
+
+  #[test]
+  fn test_tree_output_group_mutations_drops_nucleotide_indels_keeps_amino_acid_indels() -> Result<(), Report> {
+    // Auspice v2 mutation lists mirror the augur node-data `muts`: substitution-only for
+    // the nucleotide track (augur export copies node-data nuc muts verbatim), indels retained
+    // for amino-acid tracks (aa node-data emits them). Deletion of range (1, 3) over "CG"
+    // expands to per-position tokens "C2-", "G3-".
+    let mutations = vec![
+      Mutation::substitution(MutationTrack::Nucleotide, Sub::new(helpers::c(b'A'), 0_usize, helpers::c(b'T'))?),
+      Mutation::indel(MutationTrack::Nucleotide, &InDel::del((1, 3), Seq::try_from_str("CG")?)?)?,
+      Mutation::substitution(
+        MutationTrack::AminoAcid("GENE".to_owned()),
+        Sub::new(helpers::c(b'K'), 4_usize, helpers::c(b'R'))?,
+      ),
+      Mutation::indel(MutationTrack::AminoAcid("GENE".to_owned()), &InDel::del((1, 3), Seq::try_from_str("CG")?)?)?,
+    ];
+
+    let grouped = group_mutations(mutations)?;
+
+    let expected = btreemap! {
+      "GENE".to_owned() => vec!["K5R".to_owned(), "C2-".to_owned(), "G3-".to_owned()],
+      "nuc".to_owned() => vec!["A1T".to_owned()],
+    };
+    assert_eq!(expected, grouped);
+    Ok(())
   }
 
   mod helpers {
