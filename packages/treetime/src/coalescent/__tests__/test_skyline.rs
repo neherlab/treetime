@@ -170,7 +170,7 @@ mod tests {
 
     let result = optimize_skyline(&graph, &params)?;
 
-    let constant_tc = crate::coalescent::optimize_tc::optimize_tc(&graph, 1.0)?;
+    let constant_tc = crate::coalescent::optimize_tc::optimize_tc(&graph)?;
     assert!(
       result.log_likelihood >= constant_tc.likelihood - 1e-6,
       "skyline LL {} should be >= constant-Tc LL {}",

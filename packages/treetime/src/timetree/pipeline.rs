@@ -40,7 +40,6 @@ use treetime_io::fasta::FastaRecord;
 use treetime_utils::make_report;
 
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
-const INITIAL_COALESCENT_TC: f64 = 5.0;
 
 pub struct TimetreeParams {
   pub model: GtrModelName,
@@ -226,31 +225,13 @@ pub fn run(
 
   run_timetree(&mut input.graph, &partitions, &clock_model, None, params.no_indels)?;
 
-  let mut coalescent_tc: Option<Distribution> =
-    match coalescent_initialization(params.coalescent, params.coalescent_opt, params.coalescent_skyline) {
-      CoalescentInitialization::Optimize(initial_tc) => {
-        info!("### Optimizing constant coalescent Tc before refinement");
-        match optimize_tc(&input.graph, initial_tc) {
-          Ok(result) if result.success => {
-            info!(
-              "Pre-loop Tc = {:.6e} (likelihood = {:.4})",
-              result.tc, result.likelihood
-            );
-            Some(Distribution::constant(result.tc))
-          },
-          Ok(_) => {
-            warn!("Pre-loop Tc optimization did not converge, using Tc = {initial_tc:.6e}");
-            Some(Distribution::constant(initial_tc))
-          },
-          Err(e) => {
-            warn!("Pre-loop Tc optimization failed: {e}, using Tc = {initial_tc:.6e}");
-            Some(Distribution::constant(initial_tc))
-          },
-        }
-      },
-      CoalescentInitialization::Fixed(tc) => Some(Distribution::constant(tc)),
-      CoalescentInitialization::None => None,
-    };
+  let coalescent = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
+
+  // Estimate the desired coalescent Tc (constant or skyline) from the first
+  // timetree — the earliest point where node times give lineage counts — then
+  // re-infer node times under that prior. There is no need to start from a
+  // constant Tc and switch to the skyline later: both are cheap analytic solves.
+  let mut coalescent_tc = estimate_coalescent_tc(&coalescent, &input.graph, &skyline_params, None)?;
 
   if coalescent_tc.is_some() {
     run_timetree(
@@ -295,7 +276,7 @@ pub fn run(
   progress.check_cancelled()?;
   progress.report("Optimization", 0.3, "");
   info!("### TreeTime: Optimisation rounds");
-  let mut optimizer = TimetreeOptimizer::new(params.max_iter, params.coalescent_skyline);
+  let mut optimizer = TimetreeOptimizer::new(params.max_iter, false);
   if let Some(writer) = tracelog {
     optimizer = optimizer.with_tracelog(writer)?;
   }
@@ -309,24 +290,8 @@ pub fn run(
       &format!("iteration {}/{max_iter}", i + 1),
     );
 
-    if (params.coalescent_opt || params.coalescent_skyline) && i >= 2 {
-      let initial_tc = coalescent_tc.as_ref().map_or(1.0, |d| d.max_value());
-      match optimize_tc(&input.graph, initial_tc) {
-        Ok(result) => {
-          if result.success {
-            coalescent_tc = Some(Distribution::constant(result.tc));
-            info!(
-              "Optimized Tc = {:.6e} (likelihood = {:.4})",
-              result.tc, result.likelihood
-            );
-          } else {
-            warn!("Tc optimization did not converge, keeping Tc = {initial_tc:.6e}");
-          }
-        },
-        Err(e) => {
-          warn!("Tc optimization failed: {e}, keeping Tc = {initial_tc:.6e}");
-        },
-      }
+    if coalescent.is_optimized() && i >= 2 {
+      coalescent_tc = estimate_coalescent_tc(&coalescent, &input.graph, &skyline_params, coalescent_tc.as_ref())?;
     }
 
     let refinement_params = RefinementParams {
@@ -350,32 +315,6 @@ pub fn run(
       .record(n_diff, n_resolved, &input.graph, &partitions, coalescent_tc.as_ref())
       .wrap_err("Failed to record convergence metrics")
       .wrap_err_with(|| format!("When running round {i}"))?;
-  }
-
-  if params.coalescent_skyline {
-    info!("### Re-optimizing skyline coalescent with stabilized node times");
-    let skyline_result =
-      optimize_skyline(&input.graph, &skyline_params).wrap_err("Failed to re-optimize skyline coalescent model")?;
-    info!(
-      "Skyline re-optimization completed: log_likelihood={:.4}",
-      skyline_result.log_likelihood
-    );
-    coalescent_tc = Some(skyline_result.tc_distribution);
-
-    if time_marginal != TimeMarginalMode::OnlyFinal {
-      run_timetree(
-        &mut input.graph,
-        &partitions,
-        &clock_model,
-        coalescent_tc.as_ref(),
-        params.no_indels,
-      )
-      .wrap_err("Final timetree pass with optimized skyline failed")?;
-
-      if !partitions.is_empty() {
-        update_marginal(&input.graph, &partitions)?;
-      }
-    }
   }
 
   progress.check_cancelled()?;
@@ -433,24 +372,76 @@ pub fn run(
   })
 }
 
+/// The coalescent Tc behavior requested for a run.
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum CoalescentInitialization {
-  Optimize(f64),
+enum CoalescentMode {
+  /// No coalescent prior.
+  Disabled,
+  /// Fixed, user-supplied Tc.
   Fixed(f64),
-  None,
+  /// Optimize a constant Tc each round. `seed` is an optional user-supplied Tc
+  /// used only as the fallback if the (analytic) optimization ever fails.
+  Constant { seed: Option<f64> },
+  /// Optimize a piecewise-constant skyline Tc(t) each round.
+  Skyline,
 }
 
-fn coalescent_initialization(
-  coalescent: Option<f64>,
-  coalescent_opt: bool,
-  coalescent_skyline: bool,
-) -> CoalescentInitialization {
-  if coalescent_opt || coalescent_skyline {
-    CoalescentInitialization::Optimize(coalescent.unwrap_or(INITIAL_COALESCENT_TC))
+impl CoalescentMode {
+  /// Whether Tc is re-estimated from the tree, as opposed to fixed or disabled.
+  fn is_optimized(self) -> bool {
+    matches!(self, CoalescentMode::Constant { .. } | CoalescentMode::Skyline)
+  }
+}
+
+fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent_skyline: bool) -> CoalescentMode {
+  if coalescent_skyline {
+    CoalescentMode::Skyline
+  } else if coalescent_opt {
+    CoalescentMode::Constant { seed: coalescent }
   } else if let Some(tc) = coalescent {
-    CoalescentInitialization::Fixed(tc)
+    CoalescentMode::Fixed(tc)
   } else {
-    CoalescentInitialization::None
+    CoalescentMode::Disabled
+  }
+}
+
+/// Estimates the coalescent Tc prior for the current tree under `mode`.
+///
+/// `current` is the previous round's Tc, used as the constant-optimization
+/// seed/fallback and preserved when an optimization fails. Skyline and constant
+/// optimizations are both cheap analytic solves, so this runs every round rather
+/// than deferring the skyline to a final pass.
+fn estimate_coalescent_tc(
+  mode: &CoalescentMode,
+  graph: &GraphTimetree,
+  skyline_params: &SkylineParams,
+  current: Option<&Distribution>,
+) -> Result<Option<Distribution>, Report> {
+  match mode {
+    CoalescentMode::Disabled => Ok(None),
+    CoalescentMode::Fixed(tc) => Ok(Some(Distribution::constant(*tc))),
+    CoalescentMode::Constant { seed } => match optimize_tc(graph) {
+      Ok(result) => {
+        info!(
+          "Coalescent Tc = {:.6e} (likelihood = {:.4})",
+          result.tc, result.likelihood
+        );
+        Ok(Some(Distribution::constant(result.tc)))
+      },
+      // On a degenerate tree prefer the previous round's Tc, then the user seed,
+      // then no prior at all (rather than an invented timescale).
+      Err(e) => {
+        warn!("Tc optimization failed: {e}, keeping previous Tc");
+        Ok(current.cloned().or_else(|| (*seed).map(Distribution::constant)))
+      },
+    },
+    CoalescentMode::Skyline => match optimize_skyline(graph, skyline_params) {
+      Ok(result) => Ok(Some(result.tc_distribution)),
+      Err(e) => {
+        warn!("Skyline optimization failed: {e}, keeping previous Tc");
+        Ok(current.cloned())
+      },
+    },
   }
 }
 
@@ -514,24 +505,25 @@ fn optimize_branch_lengths_pre_step(
 
 #[cfg(test)]
 mod tests {
-  use super::{CoalescentInitialization, INITIAL_COALESCENT_TC, coalescent_initialization};
+  use super::{CoalescentMode, coalescent_mode};
   use rstest::rstest;
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::disabled(       None,       false, false, CoalescentInitialization::None)]
-  #[case::fixed(          Some(0.25), false, false, CoalescentInitialization::Fixed(0.25))]
-  #[case::opt_default(    None,       true,  false, CoalescentInitialization::Optimize(INITIAL_COALESCENT_TC))]
-  #[case::opt_configured( Some(0.25), true,  false, CoalescentInitialization::Optimize(0.25))]
-  #[case::skyline_default(None,       false, true,  CoalescentInitialization::Optimize(INITIAL_COALESCENT_TC))]
+  #[case::disabled(       None,       false, false, CoalescentMode::Disabled)]
+  #[case::fixed(          Some(0.25), false, false, CoalescentMode::Fixed(0.25))]
+  #[case::opt_default(    None,       true,  false, CoalescentMode::Constant { seed: None })]
+  #[case::opt_configured( Some(0.25), true,  false, CoalescentMode::Constant { seed: Some(0.25) })]
+  #[case::skyline_default(None,       false, true,  CoalescentMode::Skyline)]
+  #[case::skyline_over_opt(Some(0.25), true, true,  CoalescentMode::Skyline)]
   #[trace]
-  fn test_pipeline_coalescent_initialization(
+  fn test_pipeline_coalescent_mode(
     #[case] coalescent: Option<f64>,
     #[case] coalescent_opt: bool,
     #[case] coalescent_skyline: bool,
-    #[case] expected: CoalescentInitialization,
+    #[case] expected: CoalescentMode,
   ) {
-    let actual = coalescent_initialization(coalescent, coalescent_opt, coalescent_skyline);
+    let actual = coalescent_mode(coalescent, coalescent_opt, coalescent_skyline);
 
     assert_eq!(expected, actual);
   }

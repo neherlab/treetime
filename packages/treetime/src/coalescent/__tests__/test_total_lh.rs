@@ -71,8 +71,7 @@ mod tests {
   fn test_total_lh_monotonic_near_optimum() -> Result<(), Report> {
     // The coalescent LH should peak near the optimal Tc.
     let graph = setup_graph()?;
-    let opt = optimize_tc(&graph, 1.0)?;
-    assert!(opt.success);
+    let opt = optimize_tc(&graph)?;
 
     let tc_opt = opt.tc;
     let lh_opt = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt))?;
@@ -96,8 +95,7 @@ mod tests {
     // Both code paths call coalescent_log_likelihood() with identical inputs for
     // constant Tc. Results should agree to machine precision.
     let graph = setup_graph()?;
-    let opt = optimize_tc(&graph, 1.0)?;
-    assert!(opt.success);
+    let opt = optimize_tc(&graph)?;
 
     let lh = compute_coalescent_total_lh(&graph, &Distribution::constant(opt.tc))?;
 

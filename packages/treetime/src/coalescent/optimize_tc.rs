@@ -2,9 +2,10 @@ use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood, collect_coalescent_edges};
 use crate::coalescent::integration::compute_integral_merger_rate;
 use crate::coalescent::precomputed::CoalescentPrecomputed;
+use crate::make_error;
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
-use log::{info, warn};
+use log::info;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
@@ -16,8 +17,6 @@ pub struct OptimizeTcResult {
   pub tc: f64,
   /// Total coalescent likelihood at optimized Tc.
   pub likelihood: f64,
-  /// Whether optimization succeeded.
-  pub success: bool,
 }
 
 /// Computes the coalescence time scale Tc that maximizes the coalescent likelihood.
@@ -51,14 +50,16 @@ pub struct OptimizeTcResult {
 ///
 /// # Returns
 ///
-/// Returns the optimized Tc value, or falls back to the initial Tc on failure.
-pub fn optimize_tc<N, E, D>(graph: &Graph<N, E, D>, initial_tc: f64) -> Result<OptimizeTcResult, Report>
+/// Returns the optimized Tc value, or an error if the tree is too degenerate to
+/// admit a positive finite optimum (no mergers, or a non-finite integral). The
+/// closed form has no iteration, so there is no starting guess.
+pub fn optimize_tc<N, E, D>(graph: &Graph<N, E, D>) -> Result<OptimizeTcResult, Report>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge,
   D: Sync + Send,
 {
-  info!("Optimizing coalescent time scale Tc (initial Tc = {initial_tc:.6e})");
+  info!("Optimizing coalescent time scale Tc");
 
   let precomputed = CoalescentPrecomputed::from_graph(graph)?;
   let edges = collect_coalescent_edges(graph)?;
@@ -79,28 +80,21 @@ where
     n_mergers += (n_siblings - 1.0) / n_siblings;
   }
   info!("Tc optimization: integral = {integral:.6e}, mergers = {n_mergers:.6e}");
-  let tc = integral / n_mergers;
-  let success = n_mergers > 0.0 && integral.is_finite() && tc.is_finite() && tc > 0.0;
 
-  let tc = if success {
-    tc
-  } else {
-    warn!(
-      "Analytic Tc optimum unavailable (integral = {integral:.6e}, mergers = {n_mergers:.6e}); \
-       falling back to initial Tc {initial_tc:.6e}"
-    );
-    initial_tc
-  };
+  // `integral` is a sum of non-negative per-edge terms (children are never older
+  // than parents), and `n_mergers` a finite sum of terms in [0.5, 1). So a
+  // positive finite integral with at least one merger yields a positive finite
+  // Tc; the only degenerate case is a zero-time tree (integral = 0).
+  if !(n_mergers > 0.0 && integral.is_finite() && integral > 0.0) {
+    return make_error!("Analytic Tc optimum unavailable: integral = {integral:.6e}, mergers = {n_mergers:.6e}");
+  }
+  let tc = integral / n_mergers;
 
   let likelihood = compute_total_lh(&precomputed, &edges, tc)?;
 
   info!("Tc optimization completed: Tc = {tc:.6e}, LH = {likelihood:.4}");
 
-  Ok(OptimizeTcResult {
-    tc,
-    likelihood,
-    success,
-  })
+  Ok(OptimizeTcResult { tc, likelihood })
 }
 
 /// Evaluates the total coalescent log-likelihood for a constant Tc, reusing the

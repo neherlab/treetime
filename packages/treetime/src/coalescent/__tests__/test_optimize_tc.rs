@@ -3,14 +3,12 @@ mod tests {
   use super::super::helpers::setup_graph;
   use crate::coalescent::optimize_tc::optimize_tc;
   use eyre::Report;
-  use rstest::rstest;
 
   #[test]
-  fn test_optimize_tc_converges() -> Result<(), Report> {
+  fn test_optimize_tc_returns_positive_finite_optimum() -> Result<(), Report> {
     let graph = setup_graph()?;
-    let result = optimize_tc(&graph, 1.0)?;
+    let result = optimize_tc(&graph)?;
 
-    assert!(result.success, "Tc optimization should succeed");
     assert!(result.tc > 0.0, "Optimized Tc should be positive");
     assert!(result.tc.is_finite(), "Optimized Tc should be finite");
     assert!(result.likelihood.is_finite(), "Likelihood should be finite");
@@ -18,29 +16,16 @@ mod tests {
     Ok(())
   }
 
-  #[rstest]
-  #[case(0.1, 1.0)]
-  #[case(0.1, 10.0)]
-  #[case(1.0, 10.0)]
-  fn test_optimize_tc_convergence_from_different_starts(
-    #[case] initial_tc_a: f64,
-    #[case] initial_tc_b: f64,
-  ) -> Result<(), Report> {
+  #[test]
+  fn test_optimize_tc_is_deterministic() -> Result<(), Report> {
+    // The optimum is a closed form (Tc = I/M), so repeated calls are identical.
     let graph = setup_graph()?;
 
-    let result_a = optimize_tc(&graph, initial_tc_a)?;
-    let result_b = optimize_tc(&graph, initial_tc_b)?;
+    let a = optimize_tc(&graph)?;
+    let b = optimize_tc(&graph)?;
 
-    assert!(result_a.success, "optimization from {initial_tc_a} failed");
-    assert!(result_b.success, "optimization from {initial_tc_b} failed");
-
-    let ratio = result_b.tc / result_a.tc;
-    assert!(
-      ratio > 0.5 && ratio < 2.0,
-      "Optimized Tc values should be similar regardless of initial value: {:.4e} vs {:.4e}",
-      result_a.tc,
-      result_b.tc
-    );
+    assert_eq!(a.tc, b.tc);
+    assert_eq!(a.likelihood, b.likelihood);
 
     Ok(())
   }
