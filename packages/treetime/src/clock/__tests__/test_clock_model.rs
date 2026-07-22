@@ -85,6 +85,40 @@ mod tests {
     assert!(msg.contains("non-positive"), "expected 'non-positive' in: {msg}");
   }
 
+  // --- ClockModel::from_regression_allow_negative ---
+  // The clock command reports the regression without time inference, so a non-positive
+  // rate is a valid result: the lenient constructor builds a model (warning) instead of
+  // erroring. See kb/decisions/timetree-rejects-negative-clock-rate.md.
+
+  #[test]
+  fn test_clock_model_from_regression_allow_negative_builds_negative() -> Result<(), Report> {
+    let cs = clock_set_with_rate(-0.005);
+    let reg = ClockRegression::from_clock_set(&cs)?;
+    let model = ClockModel::from_regression_allow_negative(&reg);
+    assert!((model.clock_rate() - reg.clock_rate()).abs() < 1e-15);
+    assert!(model.clock_rate() < 0.0);
+    Ok(())
+  }
+
+  #[test]
+  fn test_clock_model_from_regression_allow_negative_builds_zero() -> Result<(), Report> {
+    let cs = clock_set_with_rate(0.0);
+    let reg = ClockRegression::from_clock_set(&cs)?;
+    let model = ClockModel::from_regression_allow_negative(&reg);
+    assert!(model.clock_rate().abs() < 1e-15);
+    Ok(())
+  }
+
+  #[test]
+  fn test_clock_model_from_regression_allow_negative_builds_positive() -> Result<(), Report> {
+    let cs = clock_set_with_rate(0.003);
+    let reg = ClockRegression::from_clock_set(&cs)?;
+    let model = ClockModel::from_regression_allow_negative(&reg);
+    assert!((model.clock_rate() - reg.clock_rate()).abs() < 1e-15);
+    assert!(model.clock_rate() > 0.0);
+    Ok(())
+  }
+
   // --- ClockModel::with_fixed_rate ---
 
   #[test]

@@ -211,4 +211,40 @@ mod tests {
     assert_eq!(expected_outliers, actual_outliers);
     Ok(())
   }
+
+  /// The clock command continues on a non-positive inferred rate.
+  ///
+  /// dengue/100 has a negative estimated rate at every root position, so with
+  /// `--keep-root` (no rerooting) the regression at the input root is negative.
+  /// The clock command only reports the root-to-tip regression, so it warns and
+  /// produces a clock model instead of erroring (v0 parity). Timetree, which needs
+  /// `time = div / rate`, errors on the same input; the strict boundary is covered
+  /// by `test_clock_model_from_regression_rejects_negative`.
+  /// See kb/decisions/timetree-rejects-negative-clock-rate.md.
+  #[test]
+  fn test_dengue100_clock_pipeline_keep_root_allows_negative_rate() -> Result<(), Report> {
+    let data_dir = Path::new(DATA_DIR);
+    let graph: GraphClock = nwk_read_file(data_dir.join("tree.nwk"))?;
+    let dates = read_dates(
+      data_dir.join("metadata.tsv"),
+      &[],
+      &Some(o!("genbank_accession")),
+      &Some(o!("date")),
+    )?;
+    let params = ClockPipelineParams {
+      clock_params: ClockParams::default(),
+      clock_filter: 0.0,
+      keep_root: true,
+      allow_negative_rate: false,
+      branch_params: BranchPointOptimizationParams::default(),
+      reroot_spec: RerootSpec::default(),
+    };
+    let output = pipeline::run(&params, ClockInput { graph, dates }, &NoopProgress)?;
+    assert!(
+      output.clock_model.clock_rate() < 0.0,
+      "keep-root on dengue/100 should yield a negative rate, got {:.6e}",
+      output.clock_model.clock_rate()
+    );
+    Ok(())
+  }
 }
