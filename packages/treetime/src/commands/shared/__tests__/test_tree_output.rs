@@ -104,6 +104,25 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_tree_output_usher_missing_reference_uses_documented_fallback() -> Result<(), Report> {
+    let graph = helpers::semantic_graph_missing_root_reference()?;
+
+    let usher = usher_from_graph::<TreeOutputAdapter, _, _, _>(&graph)?;
+    let mutations = usher
+      .node_mutations
+      .iter()
+      .flat_map(|mutations| &mutations.mutation)
+      .collect_vec();
+    assert_eq!(1, mutations.len());
+    let mutation = mutations[0];
+
+    assert_eq!(1, mutation.ref_nuc);
+    assert_eq!(1, mutation.par_nuc);
+
+    Ok(())
+  }
+
   // Oracle: augur export_v2.format_number keeps `precision` significant figures in the
   // fractional part while preserving integer digits.
   #[test]
@@ -213,6 +232,7 @@ mod tests {
     pub struct TestData {
       date_confidence: BTreeMap<GraphNodeKey, [f64; 2]>,
       mutations: BTreeMap<GraphEdgeKey, Vec<TreeOutputMutation>>,
+      root_sequences: BTreeMap<String, String>,
       traits: BTreeMap<GraphNodeKey, BTreeMap<String, TreeOutputTrait>>,
     }
 
@@ -234,7 +254,7 @@ mod tests {
       }
 
       fn root_sequences(&self, _graph: &Graph<TestNode, TestEdge, Self>) -> Result<BTreeMap<String, String>, Report> {
-        Ok(BTreeMap::from([("nuc".to_owned(), "A".to_owned())]))
+        Ok(self.root_sequences.clone())
       }
 
       fn date_confidence(&self, key: GraphNodeKey) -> Option<[f64; 2]> {
@@ -254,6 +274,22 @@ mod tests {
       }
     }
 
+    pub fn semantic_graph_missing_root_reference() -> Result<Graph<TestNode, TestEdge, TestData>, Report> {
+      let mut graph = semantic_graph()?;
+      graph.data_mut().root_sequences.clear();
+      let mutations = graph
+        .data_mut()
+        .mutations
+        .values_mut()
+        .next()
+        .expect("semantic graph must contain mutation data for one edge");
+      mutations
+        .first_mut()
+        .expect("semantic graph must contain one mutation")
+        .parent = AsciiChar::from_byte_unchecked(b'C');
+      Ok(graph)
+    }
+
     pub fn semantic_graph() -> Result<Graph<TestNode, TestEdge, TestData>, Report> {
       let mut graph = Graph::with_data(TestData::default());
       let root = graph.add_node(node("root", 0.0, Some(2020.0), false));
@@ -264,6 +300,7 @@ mod tests {
       graph.build()?;
 
       graph.data_mut().date_confidence.insert(a, [2020.2, 2020.8]);
+      graph.data_mut().root_sequences.insert("nuc".to_owned(), "A".to_owned());
       graph.data_mut().mutations.insert(
         edge_a,
         vec![TreeOutputMutation {

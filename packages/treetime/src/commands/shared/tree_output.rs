@@ -54,6 +54,7 @@ pub struct TreeOutputAdapter {
   has_bad_branch: bool,
   warned_ambiguous: bool,
   warned_non_nuc: bool,
+  warned_reference_fallback: bool,
 }
 
 pub trait TreeOutputNode: GraphNode + Named {
@@ -386,6 +387,7 @@ where
       has_bad_branch: graph.data().has_bad_branch(),
       warned_ambiguous: false,
       warned_non_nuc: false,
+      warned_reference_fallback: false,
     })
   }
 
@@ -609,6 +611,7 @@ where
       has_bad_branch: graph.data().has_bad_branch(),
       warned_ambiguous: false,
       warned_non_nuc: false,
+      warned_reference_fallback: false,
     })
   }
 
@@ -647,8 +650,20 @@ where
         .get(mutation.position)
         .copied()
         .and_then(|nucleotide| AsciiChar::try_new(nucleotide).ok())
-        .and_then(|nucleotide| nuc_to_int(nucleotide).ok())
-        .unwrap_or(par_nuc);
+        .and_then(|nucleotide| nuc_to_int(nucleotide).ok());
+      let ref_nuc = ref_nuc.unwrap_or_else(|| {
+        // This fallback can fabricate a global reference allele from a branch-local parent allele.
+        // Keep the current output behavior visible until the graph supplies a validated root sequence.
+        // See kb/issues/H-io-usher-ref-nuc-uses-parent-allele.md.
+        if !self.warned_reference_fallback {
+          warn!(
+            "UShER MAT global reference nucleotide is unavailable at zero-based position {}; using the branch-local parent allele for ref_nuc, which can produce incorrect MAT reference alleles",
+            mutation.position
+          );
+          self.warned_reference_fallback = true;
+        }
+        par_nuc
+      });
       encoded.push(UsherMutation {
         position: i32::try_from(mutation.position + 1)?,
         ref_nuc,
