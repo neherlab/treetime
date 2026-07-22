@@ -1473,7 +1473,7 @@ fn timetree_date_is_inferred(
 fn group_mutations(mutations: Vec<Mutation>) -> Result<BTreeMap<String, Vec<String>>, Report> {
   let mut grouped = BTreeMap::new();
   for mutation in mutations {
-    let track = match mutation.track {
+    let track = match &mutation.track {
       MutationTrack::Nucleotide => NUC_TRACK.to_owned(),
       MutationTrack::AminoAcid(track) => {
         if track.is_empty()
@@ -1483,9 +1483,17 @@ fn group_mutations(mutations: Vec<Mutation>) -> Result<BTreeMap<String, Vec<Stri
         {
           return make_error!("Auspice v2 cannot represent amino-acid mutation track '{track}'");
         }
-        track
+        track.clone()
       },
     };
+    // The nucleotide auspice mutation list mirrors the augur node-data `muts`,
+    // which are substitution-only: augur export copies node-data muts verbatim
+    // into `branch_attrs.mutations.nuc`, so indels (a separate track) must not
+    // appear there. Amino-acid tracks keep indels to match their own node-data.
+    if matches!(mutation.track, MutationTrack::Nucleotide) && !matches!(mutation.event, MutationEvent::Substitution(_))
+    {
+      continue;
+    }
     grouped
       .entry(track)
       .or_insert_with(Vec::new)
