@@ -7,9 +7,8 @@ mod tests {
   use crate::commands::shared::tree_output::{
     ancestral_to_auspice, ancestral_to_mat, ancestral_to_phyloxml, clock_to_auspice, clock_to_mat, clock_to_phyloxml,
     format_number, group_mutations, mat_mutation, mugration_to_auspice, mugration_to_mat, mugration_to_phyloxml,
-    optimize_to_auspice,
-    optimize_to_mat, optimize_to_phyloxml, prune_to_auspice, prune_to_mat, prune_to_phyloxml, timetree_to_auspice,
-    timetree_to_mat, timetree_to_phyloxml, write_ancestral_tree_outputs,
+    optimize_to_auspice, optimize_to_mat, optimize_to_phyloxml, prune_to_auspice, prune_to_mat, prune_to_phyloxml,
+    timetree_to_auspice, timetree_to_mat, timetree_to_phyloxml, write_ancestral_tree_outputs,
   };
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::fitch::PartitionFitch;
@@ -93,13 +92,13 @@ mod tests {
     assert!(properties.contains(&"nuc:del:2-3:CG"));
     assert!(properties.contains(&"aa:S%2F1%3Aweird:sub:A2T"));
 
+    // Nucleotide indels are dropped from the Auspice nuc mutation list, which mirrors the
+    // substitution-only augur node-data muts. A branch whose only nucleotide change is a
+    // deletion therefore has no `nuc` entry (phyloxml above still encodes it as `nuc:del:2-3:CG`).
     let graph = helpers::ancestral_graph(helpers::Mutations::Indel)?;
     let auspice = ancestral_to_auspice(&graph, "2026-07-19")?;
     let child = helpers::auspice_child(&auspice, "A");
-    assert_eq!(
-      vec!["C2-".to_owned(), "G3-".to_owned()],
-      child.branch_attrs.mutations["nuc"]
-    );
+    assert!(!child.branch_attrs.mutations.contains_key("nuc"));
 
     let graph = helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
     let auspice = ancestral_to_auspice(&graph, "2026-07-19")?;
@@ -362,13 +361,22 @@ mod tests {
     // for amino-acid tracks (aa node-data emits them). Deletion of range (1, 3) over "CG"
     // expands to per-position tokens "C2-", "G3-".
     let mutations = vec![
-      Mutation::substitution(MutationTrack::Nucleotide, Sub::new(helpers::c(b'A'), 0_usize, helpers::c(b'T'))?),
-      Mutation::indel(MutationTrack::Nucleotide, &InDel::del((1, 3), Seq::try_from_str("CG")?)?)?,
+      Mutation::substitution(
+        MutationTrack::Nucleotide,
+        Sub::new(helpers::c(b'A'), 0_usize, helpers::c(b'T'))?,
+      ),
+      Mutation::indel(
+        MutationTrack::Nucleotide,
+        &InDel::del((1, 3), Seq::try_from_str("CG")?)?,
+      )?,
       Mutation::substitution(
         MutationTrack::AminoAcid("GENE".to_owned()),
         Sub::new(helpers::c(b'K'), 4_usize, helpers::c(b'R'))?,
       ),
-      Mutation::indel(MutationTrack::AminoAcid("GENE".to_owned()), &InDel::del((1, 3), Seq::try_from_str("CG")?)?)?,
+      Mutation::indel(
+        MutationTrack::AminoAcid("GENE".to_owned()),
+        &InDel::del((1, 3), Seq::try_from_str("CG")?)?,
+      )?,
     ];
 
     let grouped = group_mutations(mutations)?;
