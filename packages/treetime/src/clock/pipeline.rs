@@ -117,5 +117,10 @@ fn estimate_clock_model_with_prefilter(
         "Clock model estimation failed".to_owned()
       }
     })?;
-  Ok((result.into_clock_model()?, delta))
+  // The clock command reports the root-to-tip regression without performing time
+  // inference, so a non-positive rate is a valid (if temporally uninformative) result:
+  // warn and continue rather than error. This matches v0 and makes `--allow-negative-rate`
+  // and `--keep-root` usable. Timetree, which needs `time = div / rate`, still errors on a
+  // non-positive rate (kb/decisions/timetree-rejects-negative-clock-rate.md).
+  Ok((result.into_clock_model_allow_negative(), delta))
 }

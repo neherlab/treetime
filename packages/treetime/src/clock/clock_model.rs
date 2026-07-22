@@ -2,7 +2,7 @@ use crate::make_error;
 use crate::payload::clock_set::ClockSet;
 use eyre::Report;
 use getset::Getters;
-use log::debug;
+use log::{debug, warn};
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use treetime_utils::fmt::float::float_to_significant_digits;
@@ -109,8 +109,16 @@ pub enum ClockModelStats {
   Fixed,
 }
 
-/// Validated clock model with guaranteed positive rate. Used for time-scaled
-/// phylogenetic analysis where `time = divergence / rate` must be well-defined.
+/// Fitted clock model: a root-to-tip line `div = rate * date + intercept`.
+///
+/// The rate sign depends on how the model is constructed:
+/// - `from_regression` / `with_fixed_rate` guarantee a positive rate. Time-scaled
+///   analysis (timetree) requires this because `time = divergence / rate` is only
+///   well-defined for a positive rate; a non-positive rate is rejected as an error.
+/// - `from_regression_allow_negative` permits a non-positive rate (with a warning)
+///   for the clock command, which only reports the root-to-tip regression and does
+///   not perform time inference. This matches v0, which continues with negative
+///   rates (e.g. under `--keep-root` or `--allow-negative-rate`).
 #[must_use]
 #[derive(Debug, Clone, Serialize, Deserialize, Getters)]
 pub struct ClockModel {
@@ -146,7 +154,32 @@ impl ClockModel {
       );
     }
 
-    Ok(Self {
+    Ok(Self::from_regression_unchecked(regression))
+  }
+
+  /// Builds a clock model from regression, permitting a non-positive rate.
+  ///
+  /// Emits a warning when the rate is non-positive but proceeds, unlike
+  /// `from_regression` which errors. Used by the clock command, which reports the
+  /// root-to-tip regression without performing time inference. A negative slope is
+  /// a legitimate (if temporally uninformative) regression result; rejecting it
+  /// would defeat `--allow-negative-rate` and `--keep-root`. See
+  /// `kb/decisions/timetree-rejects-negative-clock-rate.md`.
+  pub fn from_regression_allow_negative(regression: &ClockRegression) -> Self {
+    if regression.clock_rate <= 0.0 {
+      warn!(
+        "Estimated clock rate is non-positive ({:.6e}). The root-to-tip regression found no positive \
+         correlation between sampling dates and genetic divergence. Continuing, but the dates lack a \
+         reliable temporal signal; interpret the clock results with caution or specify a known rate with \
+         --clock-rate.",
+        regression.clock_rate
+      );
+    }
+    Self::from_regression_unchecked(regression)
+  }
+
+  fn from_regression_unchecked(regression: &ClockRegression) -> Self {
+    Self {
       clock_rate: regression.clock_rate,
       intercept: regression.intercept,
       stats: ClockModelStats::Estimated(RegressionStats {
@@ -155,7 +188,7 @@ impl ClockModel {
         hessian: regression.hessian.clone(),
         cov: regression.cov.clone(),
       }),
-    })
+    }
   }
 
   pub fn with_fixed_rate(clock_set: &ClockSet, clock_rate: f64) -> Result<Self, Report> {

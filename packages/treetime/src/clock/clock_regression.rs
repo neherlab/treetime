@@ -38,8 +38,10 @@ pub struct ClockParams {
 /// Result of clock estimation with optional rerooting.
 ///
 /// Contains either a raw regression result (estimated rate, any sign) or a
-/// validated `ClockModel` (fixed rate, positive). Callers that need a validated
-/// model call `into_clock_model()` at their boundary.
+/// validated `ClockModel` (fixed rate, positive). Callers that require a positive
+/// rate for time inference (timetree) call `into_clock_model()`, which errors on a
+/// non-positive rate. The clock command, which only reports the regression, calls
+/// `into_clock_model_allow_negative()`, which warns and continues.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClockRerootResult {
   regression: Option<ClockRegression>,
@@ -56,6 +58,18 @@ impl ClockRerootResult {
       .regression
       .expect("ClockRerootResult has neither regression nor clock_model");
     ClockModel::from_regression(&regression)
+  }
+
+  /// Like `into_clock_model`, but permits a non-positive estimated rate (warning
+  /// instead of error). Used by the clock command; see `from_regression_allow_negative`.
+  pub fn into_clock_model_allow_negative(self) -> ClockModel {
+    if let Some(model) = self.clock_model {
+      return model;
+    }
+    let regression = self
+      .regression
+      .expect("ClockRerootResult has neither regression nor clock_model");
+    ClockModel::from_regression_allow_negative(&regression)
   }
 
   pub fn regression(&self) -> &ClockRegression {
