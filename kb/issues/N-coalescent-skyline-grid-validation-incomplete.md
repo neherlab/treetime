@@ -1,6 +1,14 @@
 # Skyline grid construction accepts invalid endpoint arrays
 
-Skyline construction indexes the first and last time-grid values before a typed boundary proves that the time and log-$T_c$ arrays are nonempty, equal in length, finite, and strictly ordered [packages/treetime/src/coalescent/skyline.rs#L215-L227](../../packages/treetime/src/coalescent/skyline.rs#L215-L227). Objective tests also exercise reconstructed formula fragments instead of the production `impl CostFunction for &SkylineCostFunction` [packages/treetime/src/coalescent/skyline.rs#L160-L200](../../packages/treetime/src/coalescent/skyline.rs#L160-L200).
+> **Partially obsolete.** The `SkylineCostFunction` and the externally supplied
+> `log_tc` array are gone: the segment grid is now derived internally from merger
+> quantiles and the tree's time span (`merger_quantile_boundaries()`), and the
+> optimizer is a convex Newton solve. The remaining validation gap is narrower —
+> internal `boundaries` indexing still lacks a typed nonempty/ordering guard. See
+> [decisions/coalescent-skyline-convex-inverse-tc.md](../decisions/coalescent-skyline-convex-inverse-tc.md).
+> The original text below predates the rewrite.
+
+Skyline construction indexes the first and last time-grid values before a typed boundary proves that the time and log-$T_c$ arrays are nonempty, equal in length, finite, and strictly ordered. Objective tests also exercise reconstructed formula fragments instead of the production cost function.
 
 ## Potential solutions
 
