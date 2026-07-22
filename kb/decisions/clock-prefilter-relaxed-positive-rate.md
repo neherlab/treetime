@@ -10,7 +10,7 @@ v1's clock regression produces negative estimated rates at all root positions fo
 
 Without this relaxation, v1 crashes with "Clock rate is negative for all root positions" before outlier filtering runs. The pre-filter clock model only needs to be good enough for IQD-based outlier detection, which uses absolute deviations and is slope-sign-invariant for extreme outliers.
 
-After filtering, the final clock model estimation still requires positive rate (unless `--allow-negative-rate` is specified).
+After filtering, the final clock model estimation warns on a non-positive rate but continues, matching v0. The `--allow-negative-rate` flag relaxes the root search to accept negative-slope roots. See [timetree-rejects-negative-clock-rate.md](timetree-rejects-negative-clock-rate.md) for the contrasting timetree behavior.
 
 ## Impact
 

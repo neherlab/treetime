@@ -106,6 +106,8 @@ Scans all nodes to find the root position that maximizes temporal signal (positi
 
 After finding the best node, the algorithm refines the root position along the parent and child branches via `find_best_split()`, which uses Brent's method or golden section search to optimize the exact split point along the edge.
 
+The positive-rate restriction is controlled by `force_positive_rate`. `--allow-negative-rate` relaxes it so negative-slope roots are accepted (approaching midpoint rooting). When a non-positive rate survives to model construction (via `--keep-root`, `--allow-negative-rate`, or all-negative root positions), the boundary policy differs by command: timetree errors (time inference needs `time = div / rate`), while the clock command warns and continues (it only reports the regression). See [decisions/timetree-rejects-negative-clock-rate.md](../decisions/timetree-rejects-negative-clock-rate.md).
+
 v1: [`packages/treetime/src/clock/find_best_root/find_best_root.rs#L19-L135`](../../packages/treetime/src/clock/find_best_root/find_best_root.rs#L19-L135).
 
 Key functions: `find_best_root()` (`#find_best_root`), `has_positive_clock_rate()` (`#has_positive_clock_rate`).
@@ -135,16 +137,16 @@ See [unimplemented](unimplemented.md) for full details:
 
 ## File Index
 
-| File                                                                                                                                                   | Algorithms                                               |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| [`packages/treetime/src/payload/clock_set.rs`](../../packages/treetime/src/payload/clock_set.rs)                                         | Sufficient statistics WLS                                |
+| File                                                                                                                                 | Algorithms                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| [`packages/treetime/src/payload/clock_set.rs`](../../packages/treetime/src/payload/clock_set.rs)                                     | Sufficient statistics WLS                                |
 | [`packages/treetime/src/clock/clock_regression.rs`](../../packages/treetime/src/clock/clock_regression.rs)                           | Tree message passing, edge divergence, reroot estimation |
 | [`packages/treetime/src/clock/clock_model.rs`](../../packages/treetime/src/clock/clock_model.rs)                                     | Clock model estimation                                   |
-| [`packages/treetime/src/clock/clock_model.rs`](../../packages/treetime/src/clock/clock_model.rs)                                   | ClockNode, ClockEdge traits                              |
+| [`packages/treetime/src/clock/clock_model.rs`](../../packages/treetime/src/clock/clock_model.rs)                                     | ClockNode, ClockEdge traits                              |
 | [`packages/treetime/src/clock/find_best_root/`](../../packages/treetime/src/clock/find_best_root/)                                   | Best root search, Brent, golden section, grid search     |
 | [`packages/treetime/src/clock/find_best_root/find_best_root.rs`](../../packages/treetime/src/clock/find_best_root/find_best_root.rs) | Best root node selection                                 |
 | [`packages/treetime/src/clock/clock_filter.rs`](../../packages/treetime/src/clock/clock_filter.rs)                                   | IQD outlier detection                                    |
 | [`packages/treetime/src/clock/reroot.rs`](../../packages/treetime/src/clock/reroot.rs)                                               | Tree rerooting                                           |
 | [`packages/treetime/src/clock/date_constraints.rs`](../../packages/treetime/src/clock/date_constraints.rs)                           | Date constraint loading and validation                   |
 | [`packages/treetime/src/clock/rtt.rs`](../../packages/treetime/src/clock/rtt.rs)                                                     | Root-to-tip distance computation                         |
-| [`packages/treetime/src/commands/clock/run.rs`](../../packages/treetime/src/commands/clock/run.rs)                                                     | Clock command orchestration                              |
+| [`packages/treetime/src/commands/clock/run.rs`](../../packages/treetime/src/commands/clock/run.rs)                                   | Clock command orchestration                              |
