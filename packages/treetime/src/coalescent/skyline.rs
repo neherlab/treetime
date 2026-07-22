@@ -1,34 +1,28 @@
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood, collect_coalescent_edges};
 use crate::coalescent::precomputed::CoalescentPrecomputed;
-use crate::optimize::observer::OptimizationObserver;
+use crate::make_error;
 use crate::payload::traits::TimetreeNode;
-use crate::{make_error, make_report};
-use argmin::core::observers::ObserverMode;
-use argmin::core::{CostFunction, Error, Executor};
-use argmin::solver::neldermead::NelderMead;
 use eyre::Report;
 use log::info;
 use ndarray::Array1;
-use std::sync::Arc;
-use treetime_distribution::{Distribution, DistributionFunction};
+use treetime_distribution::{Distribution, DistributionFormula};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
-use treetime_grid::grid::Grid;
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
-/// Parameters for skyline optimization.
+/// Parameters for skyline (piecewise-constant Tc) optimization.
 #[derive(Debug, Clone)]
 pub struct SkylineParams {
-  /// Number of grid points for the piecewise linear Tc(t).
+  /// Number of piecewise-constant Tc segments over the tree's time span.
   pub n_points: usize,
-  /// Penalty for rapid changes in log(Tc).
+  /// Smoothing penalty on adjacent inverse time scales: `stiffness * Σ (xᵢ₊₁ - xᵢ)²`
+  /// where `xᵢ = 1/Tc_i`. Must be positive for more than one segment.
   pub stiffness: f64,
-  /// Penalty for log(Tc) outside [-100, 0].
-  pub regularization: f64,
-  /// Optimization tolerance.
+  /// Newton convergence tolerance on the gradient infinity-norm.
   pub tolerance: f64,
-  /// Maximum iterations.
+  /// Maximum Newton iterations.
   pub max_iter: u64,
 }
 
@@ -37,9 +31,8 @@ impl Default for SkylineParams {
     Self {
       n_points: 10,
       stiffness: 2.0,
-      regularization: 10.0,
-      tolerance: 0.03,
-      max_iter: 1000,
+      tolerance: 1e-8,
+      max_iter: 100,
     }
   }
 }
@@ -47,46 +40,64 @@ impl Default for SkylineParams {
 /// Result of skyline optimization.
 #[derive(Debug, Clone)]
 pub struct SkylineResult {
-  /// Optimized Tc distribution (piecewise linear).
+  /// Optimized piecewise-constant Tc(t).
   pub tc_distribution: Distribution,
-  /// Time grid points.
-  pub time_grid: Array1<f64>,
-  /// Optimized log(Tc) values at grid points.
-  pub log_tc_values: Array1<f64>,
-  /// Final coalescent log-likelihood.
+  /// Segment boundaries in calendar time (length `n_points + 1`, ascending).
+  pub segment_boundaries: Array1<f64>,
+  /// Optimized Tc value per segment (length `n_points`).
+  pub tc_values: Array1<f64>,
+  /// Coalescent log-likelihood at the optimized Tc(t).
   pub log_likelihood: f64,
 }
 
-/// Optimizes the skyline coalescent model to find the best Tc(t) trajectory.
+/// Optimizes a piecewise-constant Tc(t) trajectory that maximizes the coalescent
+/// likelihood with a smoothness penalty.
 ///
-/// This estimates a piecewise linear Tc(t) history that maximizes coalescent
-/// likelihood with smoothness regularization.
+/// # Algorithm
 ///
-/// The cost function minimizes:
-/// - `-total_coalescent_LH` (negative log likelihood)
-/// - `+ stiffness * sum(diff(logTc)^2)` (smoothness penalty)
-/// - `+ regularization * boundary_penalty` (keep logTc in [-100, 0])
+/// The tree's time span is split into `n_points` segments whose boundaries are the
+/// quantiles of the merger (coalescence) times, so every segment — including the
+/// two boundary segments spanning to the root and the tips — contains mergers.
+/// Within segment `i`, Tc is constant; writing the coalescent rate `xᵢ = 1/Tc_i`,
+/// the negative log-likelihood plus penalty is
+///
+/// ```text
+///   C(x) = Σ_i (Iᵢ xᵢ - Mᵢ ln xᵢ) + (stiffness/2) Σ_i (xᵢ₊₁ - xᵢ)²
+/// ```
+///
+/// where `Iᵢ = ∫_seg_i k(k-1)/2 dt` (Tc-independent pairwise-rate integral) and
+/// `Mᵢ` is the merger count in segment `i`. In the `x` parametrization every term
+/// is convex, so `C` has a unique positive minimizer. It is found with Newton's
+/// method on the symmetric tridiagonal Hessian, warm-started from the decoupled
+/// per-segment optimum `xᵢ = Mᵢ / Iᵢ` and damped to keep every `xᵢ > 0`. Because
+/// each segment owns at least one merger, `Mᵢ > 0` keeps the `-Mᵢ ln xᵢ` barrier
+/// active, so no segment collapses to `Tc → ∞`.
+///
+/// `Iᵢ` and `Mᵢ` are attributed to segments using the same interval-midpoint and
+/// node-time conventions as [`CoalescentModel`], so the analytic optimum coincides
+/// with the maximizer of the model-evaluated likelihood.
 pub fn optimize_skyline<N, E, D>(graph: &Graph<N, E, D>, params: &SkylineParams) -> Result<SkylineResult, Report>
 where
   N: GraphNode + TimetreeNode + Named,
   E: GraphEdge,
   D: Sync + Send,
 {
-  debug_assert!(
-    params.n_points >= 2,
-    "skyline requires at least 2 grid points, got {}",
-    params.n_points
-  );
+  if params.n_points < 1 {
+    return make_error!(
+      "Skyline optimization requires at least 1 segment, got {}",
+      params.n_points
+    );
+  }
 
   info!(
-    "Starting skyline optimization with {} grid points, stiffness={}, regularization={}",
-    params.n_points, params.stiffness, params.regularization
+    "Starting skyline optimization with {} segments, stiffness={}",
+    params.n_points, params.stiffness
   );
 
-  let pre = CoalescentPrecomputed::from_graph(graph)?;
+  let precomputed = CoalescentPrecomputed::from_graph(graph)?;
+  let edges = collect_coalescent_edges(graph)?;
 
-  // Create time grid spanning the tree event range
-  let breakpoints = pre.lineage_counts().breakpoints();
+  let breakpoints = precomputed.lineage_counts().breakpoints();
   if breakpoints.len() < 2 {
     return make_error!(
       "Skyline optimization requires at least 2 breakpoints, got {}",
@@ -96,141 +107,264 @@ where
   let t_min = breakpoints[0];
   let t_max = breakpoints[breakpoints.len() - 1];
 
-  let time_grid = Grid::from_range_n_points(t_min, t_max, params.n_points)?.to_array();
+  let boundaries = merger_quantile_boundaries(&edges, t_min, t_max, params.n_points);
 
-  // Initial guess: constant log(Tc) = 0 (Tc = 1)
-  let initial_log_tc = Array1::zeros(params.n_points);
+  let (i_seg, m_seg) = accumulate_segment_terms(precomputed.lineage_counts(), &edges, &boundaries);
+  let x = solve_inverse_tc(&i_seg, &m_seg, params.stiffness, params.tolerance, params.max_iter)?;
 
-  // Create cost function
-  let cost_fn = SkylineCostFunction {
-    edges: Arc::from(collect_coalescent_edges(graph)?),
-    precomputed: Arc::new(pre),
-    time_grid: time_grid.clone(),
-    stiffness: params.stiffness,
-    regularization: params.regularization,
-  };
+  let tc_values = Array1::from_iter(x.iter().map(|&xi| 1.0 / xi));
+  let tc_distribution = build_tc_distribution(&boundaries, &tc_values);
 
-  // Set up Nelder-Mead solver with initial simplex
-  let simplex = create_initial_simplex(&initial_log_tc);
-  let solver = NelderMead::new(simplex);
+  // Report the likelihood via the shared model so it matches `compute_coalescent_total_lh`.
+  let model = CoalescentModel::new(&precomputed, &tc_distribution)?;
+  let log_likelihood = coalescent_log_likelihood(&edges, &model)?;
 
-  // Run optimization
-  let result = Executor::new(&cost_fn, solver)
-    .configure(|cfg| cfg.max_iters(params.max_iter).target_cost(params.tolerance))
-    .add_observer(
-      OptimizationObserver {
-        label: "Skyline",
-        early_threshold: 5,
-      },
-      ObserverMode::Always,
-    )
-    .run()
-    .map_err(|e| make_report!("Skyline optimization failed: {e}"))?;
-
-  let opt_log_tc = result
-    .state
-    .best_param
-    .ok_or_else(|| make_report!("Skyline optimization returned no result"))?;
-  let opt_log_tc = Array1::from_vec(opt_log_tc);
-
-  let opt_log_tc_clamped = Array1::from_iter(opt_log_tc.iter().map(|&x| x.clamp(-200.0, 100.0)));
-  let tc_distribution = build_tc_distribution(&time_grid, &opt_log_tc_clamped)?;
-  let model = CoalescentModel::new(&cost_fn.precomputed, &tc_distribution)?;
-  let log_likelihood = coalescent_log_likelihood(&cost_fn.edges, &model)?;
-
-  info!(
-    "Skyline optimization completed: final_cost={:.4}, log_likelihood={log_likelihood:.4}",
-    result.state.best_cost
-  );
+  info!("Skyline optimization completed: log_likelihood={log_likelihood:.4}");
+  info!("Skyline Tc(t) trajectory ({} segments):", tc_values.len());
+  for (i, &tc) in tc_values.iter().enumerate() {
+    info!(
+      "  segment {i}: [{:.4}, {:.4}]  Tc = {tc:.6e}",
+      boundaries[i],
+      boundaries[i + 1]
+    );
+  }
 
   Ok(SkylineResult {
     tc_distribution,
-    time_grid,
-    log_tc_values: opt_log_tc_clamped,
+    segment_boundaries: Array1::from(boundaries),
+    tc_values,
     log_likelihood,
   })
 }
 
-/// Cost function for skyline optimization.
-struct SkylineCostFunction {
-  edges: Arc<[CoalescentEdgeData]>,
-  precomputed: Arc<CoalescentPrecomputed>,
-  time_grid: Array1<f64>,
-  stiffness: f64,
-  regularization: f64,
-}
-
-impl CostFunction for &SkylineCostFunction {
-  type Param = Vec<f64>;
-  type Output = f64;
-
-  fn cost(&self, log_tc: &Self::Param) -> Result<Self::Output, Error> {
-    // Clamp log_tc to avoid overflow/underflow
-    let log_tc_clamped = Array1::from_iter(log_tc.iter().map(|&x| x.clamp(-200.0, 100.0)));
-
-    // Build Tc distribution from log values
-    let tc_dist = build_tc_distribution(&self.time_grid, &log_tc_clamped)
-      .map_err(|e| Error::msg(format!("Failed to build Tc distribution: {e}")))?;
-
-    let model = CoalescentModel::new(&self.precomputed, &tc_dist)
-      .map_err(|e| Error::msg(format!("Failed to construct coalescent model: {e}")))?;
-    let neg_log_lh = -coalescent_log_likelihood(&self.edges, &model)
-      .map_err(|e| Error::msg(format!("Failed to compute coalescent likelihood: {e}")))?;
-
-    // Add smoothness penalty: stiffness * sum(diff(logTc)^2)
-    // Use clamped values so optimizer gradients match the cost surface
-    let smoothness_penalty: f64 = log_tc_clamped
-      .windows(2)
-      .into_iter()
-      .map(|w| (w[1] - w[0]).powi(2))
-      .sum::<f64>()
-      * self.stiffness;
-
-    // Add boundary penalty for log_tc outside [-100, 0]
-    let boundary_penalty = compute_boundary_penalty(log_tc, self.regularization);
-
-    Ok(neg_log_lh + smoothness_penalty + boundary_penalty)
-  }
-}
-
-/// Computes boundary penalty for log_tc values outside [-100, 0].
-fn compute_boundary_penalty(log_tc: &[f64], regularization: f64) -> f64 {
-  log_tc
-    .iter()
-    .map(|&x| {
-      let upper_penalty = if x > 0.0 { x } else { 0.0 };
-      let lower_penalty = if x < -100.0 { -x - 100.0 } else { 0.0 };
-      (upper_penalty + lower_penalty) * regularization
-    })
-    .sum()
-}
-
-/// Builds a piecewise linear Tc distribution from time grid and log values.
+/// Segment index containing calendar time `t`, clamped to `[0, n_seg - 1]`.
 ///
-/// `Tc(t)` is `exp(log_tc)` interpolated linearly between grid points, with
-/// constant extrapolation outside the grid (clamped to the first/last value).
-pub(crate) fn build_tc_distribution(time_grid: &Array1<f64>, log_tc: &Array1<f64>) -> Result<Distribution, Report> {
-  let tc_values = log_tc.mapv(f64::exp);
-  let function = DistributionFunction::from_range_values((time_grid[0], time_grid[time_grid.len() - 1]), tc_values)?;
-  Ok(Distribution::Function(function))
+/// `boundaries` is ascending with length `n_seg + 1`; segment `i` covers
+/// `[boundaries[i], boundaries[i + 1])`.
+fn segment_index(boundaries: &[f64], t: f64) -> usize {
+  let n_seg = boundaries.len() - 1;
+  let above = boundaries.partition_point(|&b| b <= t);
+  above.saturating_sub(1).min(n_seg - 1)
 }
 
-/// Creates initial simplex for Nelder-Mead optimization.
-fn create_initial_simplex(initial: &Array1<f64>) -> Vec<Vec<f64>> {
-  let n = initial.len();
-  let mut simplex = Vec::with_capacity(n + 1);
-
-  // First vertex is the initial point
-  simplex.push(initial.to_vec());
-
-  // Other vertices are perturbations along each dimension.
-  // Perturbation of 0.5 in log-space corresponds to ~1.65x multiplicative factor in Tc,
-  // providing reasonable exploration without extreme values.
-  for i in 0..n {
-    let mut vertex = initial.to_vec();
-    vertex[i] += 0.5;
-    simplex.push(vertex);
+/// Computes `n_seg + 1` ascending segment boundaries at quantiles of the merger
+/// times, with the outer boundaries pinned to `t_min` and `t_max`.
+///
+/// Interior boundaries fall between merger events so that each segment owns roughly
+/// the same number of mergers; the first and last segments therefore contain the
+/// oldest and youngest mergers rather than an empty sampling tail.
+fn merger_quantile_boundaries(edges: &[CoalescentEdgeData], t_min: f64, t_max: f64, n_seg: usize) -> Vec<f64> {
+  if n_seg <= 1 {
+    return vec![t_min, t_max];
   }
 
-  simplex
+  let mut times: Vec<f64> = edges.iter().map(|e| e.parent_time().value()).collect();
+  times.sort_by(|a, b| a.partial_cmp(b).expect("merger times must be comparable"));
+
+  let n = times.len();
+  let mut boundaries = Vec::with_capacity(n_seg + 1);
+  boundaries.push(t_min);
+  for k in 1..n_seg {
+    // Split between the (k·n/n_seg)-th sorted merger and its predecessor.
+    let pos = (k * n) / n_seg;
+    let candidate = if n == 0 {
+      t_min + (t_max - t_min) * (k as f64 / n_seg as f64)
+    } else {
+      let lo = times[pos.saturating_sub(1).min(n - 1)];
+      let hi = times[pos.min(n - 1)];
+      if hi > lo { f64::midpoint(lo, hi) } else { lo }
+    };
+    // Keep boundaries strictly inside (t_min, t_max) and non-decreasing.
+    let prev = *boundaries.last().unwrap();
+    boundaries.push(candidate.clamp(prev, t_max));
+  }
+  boundaries.push(t_max);
+  boundaries
+}
+
+/// Accumulates the per-segment pairwise-rate integral `Iᵢ` and merger count `Mᵢ`.
+///
+/// `Iᵢ` sums, over lineage-count intervals whose midpoint falls in segment `i`, the
+/// interval's per-lineage merger integral (at Tc = 1) times the number of collected
+/// edges covering it — matching the model's per-edge survival term. `Mᵢ` sums
+/// `(n_siblings - 1)/n_siblings` over edges whose parent (merger) time lies in
+/// segment `i`.
+fn accumulate_segment_terms(
+  lineage_counts: &PiecewiseConstantFn,
+  edges: &[CoalescentEdgeData],
+  boundaries: &[f64],
+) -> (Vec<f64>, Vec<f64>) {
+  let n_seg = boundaries.len() - 1;
+  let breakpoints = lineage_counts.breakpoints();
+  let n_int = breakpoints.len() - 1;
+
+  // Per-interval midpoint and per-lineage integral (Tc = 1).
+  let mids: Vec<f64> = (0..n_int)
+    .map(|j| f64::midpoint(breakpoints[j], breakpoints[j + 1]))
+    .collect();
+  let rate: Vec<f64> = (0..n_int)
+    .map(|j| {
+      let dt = breakpoints[j + 1] - breakpoints[j];
+      let k = lineage_counts.eval(mids[j]);
+      dt * 0.5 * f64::max(0.5, k - 1.0)
+    })
+    .collect();
+
+  // Number of collected edges covering each interval, via a difference array.
+  let mut coverage = vec![0_i64; n_int + 1];
+  for edge in edges {
+    let parent_time = edge.parent_time().value();
+    let child_time = edge.child_time().value();
+    // Intervals covered are those whose midpoint lies within the edge's span.
+    let lo = mids.partition_point(|&m| m < parent_time);
+    let hi = mids.partition_point(|&m| m < child_time);
+    coverage[lo] += 1;
+    coverage[hi] -= 1;
+  }
+  let mut running = 0_i64;
+  let mut i_seg = vec![0.0; n_seg];
+  for j in 0..n_int {
+    running += coverage[j];
+    i_seg[segment_index(boundaries, mids[j])] += running as f64 * rate[j];
+  }
+
+  let mut m_seg = vec![0.0; n_seg];
+  for edge in edges {
+    let n_siblings = edge.n_siblings();
+    m_seg[segment_index(boundaries, edge.parent_time().value())] += (n_siblings - 1.0) / n_siblings;
+  }
+
+  (i_seg, m_seg)
+}
+
+/// Minimizes `C(x) = Σ (Iᵢ xᵢ - Mᵢ ln xᵢ) + (γ/2) Σ (xᵢ₊₁ - xᵢ)²` over `xᵢ > 0`.
+///
+/// Convex in `x`, solved by damped Newton on the symmetric tridiagonal Hessian.
+fn solve_inverse_tc(
+  i_seg: &[f64],
+  m_seg: &[f64],
+  stiffness: f64,
+  tolerance: f64,
+  max_iter: u64,
+) -> Result<Vec<f64>, Report> {
+  let n = i_seg.len();
+
+  // Decoupled per-segment optimum, with a pooled fallback for empty segments.
+  let i_tot: f64 = i_seg.iter().sum();
+  let m_tot: f64 = m_seg.iter().sum();
+  let x_pooled = if i_tot > 0.0 && m_tot > 0.0 { m_tot / i_tot } else { 1.0 };
+  let mut x: Vec<f64> = (0..n)
+    .map(|k| {
+      let xk = m_seg[k] / i_seg[k];
+      if xk.is_finite() && xk > 0.0 { xk } else { x_pooled }
+    })
+    .collect();
+
+  // Single segment or no smoothing: the decoupled solution is already optimal.
+  if n == 1 || stiffness <= 0.0 {
+    return Ok(x);
+  }
+
+  for _ in 0..max_iter {
+    // Gradient and tridiagonal Hessian (diagonal `diag`, off-diagonal `off = -γ`).
+    let mut g = vec![0.0; n];
+    let mut diag = vec![0.0; n];
+    for i in 0..n {
+      g[i] = i_seg[i] - m_seg[i] / x[i];
+      diag[i] = m_seg[i] / (x[i] * x[i]);
+    }
+    let mut off = vec![0.0; n - 1];
+    for i in 0..n - 1 {
+      let d = x[i] - x[i + 1];
+      g[i] += stiffness * d;
+      g[i + 1] -= stiffness * d;
+      diag[i] += stiffness;
+      diag[i + 1] += stiffness;
+      off[i] = -stiffness;
+    }
+
+    let g_norm = g.iter().fold(0.0_f64, |acc, &v| acc.max(v.abs()));
+    if g_norm < tolerance {
+      break;
+    }
+
+    let neg_g: Vec<f64> = g.iter().map(|&v| -v).collect();
+    let dx = solve_symmetric_tridiagonal(&diag, &off, &neg_g);
+
+    // Cap the step so every xᵢ stays positive, then backtrack for cost decrease.
+    let mut alpha: f64 = 1.0;
+    for i in 0..n {
+      if dx[i] < 0.0 {
+        alpha = alpha.min(-0.99 * x[i] / dx[i]);
+      }
+    }
+    let c0 = skyline_cost(&x, i_seg, m_seg, stiffness);
+    let slope: f64 = g.iter().zip(&dx).map(|(&gi, &di)| gi * di).sum();
+    loop {
+      let x_new: Vec<f64> = (0..n).map(|i| x[i] + alpha * dx[i]).collect();
+      if x_new.iter().all(|&xi| xi > 0.0) && skyline_cost(&x_new, i_seg, m_seg, stiffness) <= c0 + 1e-4 * alpha * slope
+      {
+        x = x_new;
+        break;
+      }
+      alpha *= 0.5;
+      if alpha < 1e-12 {
+        break;
+      }
+    }
+  }
+
+  Ok(x)
+}
+
+/// Value of the skyline objective `C(x)` (constants dropped).
+fn skyline_cost(x: &[f64], i_seg: &[f64], m_seg: &[f64], stiffness: f64) -> f64 {
+  let data: f64 = (0..x.len()).map(|i| i_seg[i] * x[i] - m_seg[i] * x[i].ln()).sum();
+  let penalty: f64 = x.windows(2).map(|w| (w[1] - w[0]).powi(2)).sum::<f64>() * 0.5 * stiffness;
+  data + penalty
+}
+
+/// Solves a symmetric tridiagonal system `A x = rhs` via the Thomas algorithm.
+///
+/// `diag` is the main diagonal (length `n`); `off` holds the shared sub/super
+/// diagonal (length `n - 1`). `A` is positive-definite here, so no pivoting.
+fn solve_symmetric_tridiagonal(diag: &[f64], off: &[f64], rhs: &[f64]) -> Vec<f64> {
+  let n = diag.len();
+  if n == 1 {
+    return vec![rhs[0] / diag[0]];
+  }
+  let mut c = vec![0.0; n];
+  let mut d = vec![0.0; n];
+  c[0] = off[0] / diag[0];
+  d[0] = rhs[0] / diag[0];
+  for i in 1..n {
+    let denom = diag[i] - off[i - 1] * c[i - 1];
+    if i < n - 1 {
+      c[i] = off[i] / denom;
+    }
+    d[i] = (rhs[i] - off[i - 1] * d[i - 1]) / denom;
+  }
+  let mut x = vec![0.0; n];
+  x[n - 1] = d[n - 1];
+  for i in (0..n - 1).rev() {
+    x[i] = d[i] - c[i] * x[i + 1];
+  }
+  x
+}
+
+/// Builds a piecewise-constant Tc(t) distribution from per-segment Tc values.
+///
+/// Uses the same segment lookup as the optimizer, so model evaluation reproduces
+/// the optimized per-segment rates. Times outside the grid clamp to the first/last
+/// segment.
+fn build_tc_distribution(boundaries: &[f64], tc_values: &Array1<f64>) -> Distribution {
+  let t_min = boundaries[0];
+  let t_max = boundaries[boundaries.len() - 1];
+  let boundaries = boundaries.to_vec();
+  let values = tc_values.to_vec();
+  Distribution::Formula(DistributionFormula::new(
+    move |t| Ok(values[segment_index(&boundaries, t)]),
+    t_min,
+    t_max,
+  ))
 }

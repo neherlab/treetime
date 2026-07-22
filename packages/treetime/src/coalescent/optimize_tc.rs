@@ -107,11 +107,7 @@ where
 /// shared per-edge model so the reported likelihood matches [`compute_coalescent_total_lh`].
 ///
 /// [`compute_coalescent_total_lh`]: crate::coalescent::total_lh::compute_coalescent_total_lh
-fn compute_total_lh(
-  precomputed: &CoalescentPrecomputed,
-  edges: &[CoalescentEdgeData],
-  tc: f64,
-) -> Result<f64, Report> {
+fn compute_total_lh(precomputed: &CoalescentPrecomputed, edges: &[CoalescentEdgeData], tc: f64) -> Result<f64, Report> {
   let tc_dist = Distribution::constant(tc);
   let model = CoalescentModel::new(precomputed, &tc_dist)?;
   coalescent_log_likelihood(edges, &model)

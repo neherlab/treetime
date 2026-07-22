@@ -1,59 +1,47 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::load_date_constraints;
-  use crate::coalescent::skyline::{SkylineParams, build_tc_distribution, optimize_skyline};
+  use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::partition::timetree::GraphTimetree;
   use crate::pretty_assert_ulps_eq;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
-  use ndarray::array;
-  use rstest::rstest;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::nwk_read_str;
 
-  #[test]
-  fn test_optimize_skyline_returns_result() -> Result<(), Report> {
-    const TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
-    let dates = btreemap! {
+  const SMALL_TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
+
+  fn small_tree_dates() -> DatesMap {
+    btreemap! {
       "root".to_owned() => Some(DateConstraint::exact(2000.0)),
       "internal1".to_owned() => Some(DateConstraint::exact(2005.0)),
       "leaf1".to_owned() => Some(DateConstraint::exact(2010.0)),
       "leaf2".to_owned() => Some(DateConstraint::exact(2010.0)),
       "leaf3".to_owned() => Some(DateConstraint::exact(2012.0)),
-    };
+    }
+  }
 
-    let graph = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
+  #[test]
+  fn test_optimize_skyline_returns_result() -> Result<(), Report> {
+    let graph = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
     let params = SkylineParams {
       n_points: 5,
-      stiffness: 2.0,
-      regularization: 10.0,
-      tolerance: 0.1,
-      max_iter: 100,
+      ..SkylineParams::default()
     };
 
     let result = optimize_skyline(&graph, &params)?;
 
-    assert_eq!(result.time_grid.len(), 5);
-    assert_eq!(result.log_tc_values.len(), 5);
+    assert_eq!(result.segment_boundaries.len(), 6);
+    assert_eq!(result.tc_values.len(), 5);
     assert!(result.log_likelihood.is_finite());
 
     Ok(())
   }
 
   #[test]
-  fn test_optimize_skyline_tc_distribution_evaluates() -> Result<(), Report> {
-    const TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
-    let dates = btreemap! {
-      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
-      "internal1".to_owned() => Some(DateConstraint::exact(2005.0)),
-      "leaf1".to_owned() => Some(DateConstraint::exact(2010.0)),
-      "leaf2".to_owned() => Some(DateConstraint::exact(2010.0)),
-      "leaf3".to_owned() => Some(DateConstraint::exact(2012.0)),
-    };
-
-    let graph = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
+  fn test_optimize_skyline_tc_values_positive() -> Result<(), Report> {
+    let graph = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
     let params = SkylineParams {
       n_points: 5,
       ..SkylineParams::default()
@@ -61,49 +49,33 @@ mod tests {
 
     let result = optimize_skyline(&graph, &params)?;
 
-    // Tc distribution should be evaluable within the time grid
-    let t_min = result.time_grid[0];
-    let t_max = result.time_grid[result.time_grid.len() - 1];
-    let t_mid = f64::midpoint(t_min, t_max);
-
-    let tc_min = result.tc_distribution.eval(t_min)?;
-    let tc_mid = result.tc_distribution.eval(t_mid)?;
-    let tc_max = result.tc_distribution.eval(t_max)?;
-
-    assert!(tc_min > 0.0);
-    assert!(tc_mid > 0.0);
-    assert!(tc_max > 0.0);
+    for &tc in &result.tc_values {
+      assert!(
+        tc > 0.0 && tc.is_finite(),
+        "Tc segment value must be positive and finite, got {tc}"
+      );
+    }
 
     Ok(())
   }
 
   #[test]
-  fn test_optimize_skyline_log_tc_in_reasonable_range() -> Result<(), Report> {
-    const TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
-    let dates = btreemap! {
-      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
-      "internal1".to_owned() => Some(DateConstraint::exact(2005.0)),
-      "leaf1".to_owned() => Some(DateConstraint::exact(2010.0)),
-      "leaf2".to_owned() => Some(DateConstraint::exact(2010.0)),
-      "leaf3".to_owned() => Some(DateConstraint::exact(2012.0)),
-    };
-
-    let graph = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
+  fn test_optimize_skyline_tc_distribution_evaluates() -> Result<(), Report> {
+    let graph = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
     let params = SkylineParams {
       n_points: 5,
-      regularization: 10.0,
       ..SkylineParams::default()
     };
 
     let result = optimize_skyline(&graph, &params)?;
 
-    // With regularization, log_tc values should stay in reasonable range [-100, 0]
-    for &log_tc in &result.log_tc_values {
-      assert!(
-        (-100.0..=10.0).contains(&log_tc),
-        "log_tc={log_tc} outside reasonable range"
-      );
-    }
+    let t_min = result.segment_boundaries[0];
+    let t_max = result.segment_boundaries[result.segment_boundaries.len() - 1];
+    let t_mid = f64::midpoint(t_min, t_max);
+
+    assert!(result.tc_distribution.eval(t_min)? > 0.0);
+    assert!(result.tc_distribution.eval(t_mid)? > 0.0);
+    assert!(result.tc_distribution.eval(t_max)? > 0.0);
 
     Ok(())
   }
@@ -137,9 +109,26 @@ mod tests {
 
     let result = optimize_skyline(&graph, &params)?;
 
-    assert_eq!(result.time_grid.len(), 10);
+    assert_eq!(result.tc_values.len(), 10);
     assert!(result.log_likelihood.is_finite());
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_skyline_reported_likelihood_matches_model_evaluation() -> Result<(), Report> {
+    // The reported log-likelihood must equal the shared per-edge model cost
+    // evaluated on the returned piecewise-constant Tc(t).
+    let graph = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
+    let params = SkylineParams {
+      n_points: 4,
+      ..SkylineParams::default()
+    };
+
+    let result = optimize_skyline(&graph, &params)?;
+    let expected = compute_coalescent_total_lh(&graph, &result.tc_distribution)?;
+
+    pretty_assert_ulps_eq!(expected, result.log_likelihood, max_ulps = 10);
     Ok(())
   }
 
@@ -156,8 +145,6 @@ mod tests {
     let graph = helpers::create_graph_with_dates(TREE_NWK, &dates)?;
     let params = SkylineParams {
       n_points: 2,
-      tolerance: 0.1,
-      max_iter: 100,
       ..SkylineParams::default()
     };
 
@@ -170,32 +157,27 @@ mod tests {
     Ok(())
   }
 
-  /// `build_tc_distribution` must interpolate `exp(log_tc)` linearly between grid
-  /// points and clamp to the boundary values outside the grid range. With
-  /// `time_grid = [0, 1, 2]` and `log_tc = [0, ln 2, 0]` the values are
-  /// `tc = [1, 2, 1]`, so the function rises linearly 1 -> 2 on `[0, 1]`,
-  /// falls linearly 2 -> 1 on `[1, 2]`, and is flat (= 1) outside `[0, 2]`.
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::below_range_clamps_to_first(-1.0, 1.0)]
-  #[case::first_grid_point(           0.0, 1.0)]
-  #[case::interior_rising(            0.5, 1.5)]
-  #[case::peak_grid_point(            1.0, 2.0)]
-  #[case::interior_falling(           1.5, 1.5)]
-  #[case::last_grid_point(            2.0, 1.0)]
-  #[case::above_range_clamps_to_last( 3.0, 1.0)]
-  #[trace]
-  fn test_skyline_build_tc_distribution_interpolates_and_clamps(
-    #[case] t: f64,
-    #[case] expected: f64,
-  ) -> Result<(), Report> {
-    let time_grid = array![0.0, 1.0, 2.0];
-    let log_tc = array![0.0, std::f64::consts::LN_2, 0.0];
+  #[test]
+  fn test_skyline_beats_or_matches_constant_tc() -> Result<(), Report> {
+    // The regularized skyline optimum should not have lower likelihood than the
+    // best constant Tc (a skyline with all segments equal is a feasible point).
+    let graph = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
+    let params = SkylineParams {
+      n_points: 4,
+      stiffness: 1e-6, // near-zero smoothing: skyline free to fit each segment
+      ..SkylineParams::default()
+    };
 
-    let tc_dist = build_tc_distribution(&time_grid, &log_tc)?;
-    let actual = tc_dist.eval(t)?;
+    let result = optimize_skyline(&graph, &params)?;
 
-    assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);
+    let constant_tc = crate::coalescent::optimize_tc::optimize_tc(&graph, 1.0)?;
+    assert!(
+      result.log_likelihood >= constant_tc.likelihood - 1e-6,
+      "skyline LL {} should be >= constant-Tc LL {}",
+      result.log_likelihood,
+      constant_tc.likelihood
+    );
+
     Ok(())
   }
 
