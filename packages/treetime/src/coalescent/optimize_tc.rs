@@ -1,14 +1,10 @@
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood, collect_coalescent_edges};
+use crate::coalescent::integration::compute_bare_integral_merger_rate;
 use crate::coalescent::precomputed::CoalescentPrecomputed;
-use crate::make_report;
-use crate::optimize::observer::OptimizationObserver;
 use crate::payload::traits::TimetreeNode;
-use argmin::core::observers::ObserverMode;
-use argmin::core::{CostFunction, Error, Executor};
-use argmin::solver::brent::BrentOpt;
 use eyre::Report;
-use log::{debug, info};
+use log::{info, warn};
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
@@ -24,19 +20,34 @@ pub struct OptimizeTcResult {
   pub success: bool,
 }
 
-/// Optimizes the coalescence time scale Tc to maximize coalescent likelihood.
-///
-/// Uses Brent's method in log space to find the Tc that maximizes the total
-/// coalescent likelihood of the tree. The bracket [-20.0, 2.0] in log space
-/// corresponds to roughly [2e-9, 7.4] in linear space.
+/// Computes the coalescence time scale Tc that maximizes the coalescent likelihood.
 ///
 /// # Algorithm
 ///
-/// The total coalescent likelihood is:
-///   LH = -Σ cost(t_node, branch_length)
+/// The Kingman coalescent likelihood factorizes over intervals of constant lineage
+/// count `k`. Each merger event contributes a factor `(k(k-1)/2 / Tc)` and each
+/// interval of duration `Δt` a survival factor `exp(-Δt · k(k-1)/2 / Tc)`. Taking
+/// the product over the whole tree collapses to
 ///
-/// where cost is the negative log probability of the coalescent process
-/// for each branch in the tree.
+/// ```text
+///   L(Tc) ∝ Tc^(-M) · exp(-I / Tc)
+/// ```
+///
+/// where `I = ∫ k(k-1)/2 dt` is the pairwise-merger-rate integral over the tree
+/// (with `Tc` factored out) and `M` is the total number of merger events.
+/// Maximizing `log L = -M·ln(Tc) - I/Tc` yields the closed form
+///
+/// ```text
+///   Tc* = I / M.
+/// ```
+///
+/// Both `I` and `M` are accumulated per edge rather than as global quantities: this
+/// keeps them consistent with the bad branches that [`collect_coalescent_edges`]
+/// excludes, and generalizes cleanly to a piecewise-constant `Tc` (where per-interval
+/// mergers matter). Summed over the `k` edges spanning an interval, the per-edge
+/// per-lineage integral `∫ (k-1)/2 dt` reproduces `∫ k(k-1)/2 dt`; summed over a
+/// node's `n_children` edges, `(n_children - 1)/n_children` reproduces the node's
+/// merger count `n_children - 1`.
 ///
 /// # Returns
 ///
@@ -49,91 +60,53 @@ where
 {
   info!("Optimizing coalescent time scale Tc (initial Tc = {initial_tc:.6e})");
 
-  let cost_fn = TcCostFunction::new(graph)?;
+  let precomputed = CoalescentPrecomputed::from_graph(graph)?;
+  let edges = collect_coalescent_edges(graph)?;
 
-  let initial_log_tc = initial_tc.ln();
-  debug!("Initial log(Tc) = {initial_log_tc:.4}");
+  let bare_integral = compute_bare_integral_merger_rate(precomputed.lineage_counts())?;
 
-  // Brent's method with bracket in log space
-  // Python v0 uses bracket=[-20.0, 2.0]
-  let solver = BrentOpt::new(-20.0, 2.0);
+  let mut integral = 0.0;
+  let mut n_mergers = 0.0;
+  for edge in &edges {
+    integral += bare_integral.eval(edge.parent_time().value()) - bare_integral.eval(edge.child_time().value());
+    let n_children = edge.n_children();
+    n_mergers += (n_children - 1.0) / n_children;
+  }
 
-  let result = Executor::new(&cost_fn, solver)
-    .configure(|cfg| cfg.max_iters(100).target_cost(1e-10))
-    .add_observer(
-      OptimizationObserver {
-        label: "Tc optimization",
-        early_threshold: 3,
-      },
-      ObserverMode::Always,
-    )
-    .run()
-    .map_err(|e| make_report!("Tc optimization failed: {e}"))?;
+  let tc = integral / n_mergers;
+  let success = n_mergers > 0.0 && integral.is_finite() && tc.is_finite() && tc > 0.0;
 
-  let best_log_tc = result.state.best_param.unwrap_or(initial_log_tc);
-  let best_cost = result.state.best_cost;
-  let optimized_tc = best_log_tc.exp();
+  let tc = if success {
+    tc
+  } else {
+    warn!(
+      "Analytic Tc optimum unavailable (integral = {integral:.6e}, mergers = {n_mergers:.6e}); \
+       falling back to initial Tc {initial_tc:.6e}"
+    );
+    initial_tc
+  };
 
-  // Check if we got a valid result
-  let success = optimized_tc.is_finite() && best_cost.is_finite();
+  let likelihood = compute_total_lh(&precomputed, &edges, tc)?;
 
-  info!(
-    "Tc optimization completed after {} iterations: Tc = {optimized_tc:.6e} (log(Tc) = {best_log_tc:.4}), LH = {:.4}",
-    result.state.iter, -best_cost
-  );
+  info!("Tc optimization completed: Tc = {tc:.6e}, LH = {likelihood:.4}");
 
   Ok(OptimizeTcResult {
-    tc: optimized_tc,
-    likelihood: -best_cost,
+    tc,
+    likelihood,
     success,
   })
 }
 
-/// Cost function for Tc optimization.
+/// Evaluates the total coalescent log-likelihood for a constant Tc, reusing the
+/// shared per-edge model so the reported likelihood matches [`compute_coalescent_total_lh`].
 ///
-/// Precomputes lineage counts and per-edge data from the tree once,
-/// then evaluates the total coalescent likelihood for each candidate Tc
-/// during Brent's method iterations.
-struct TcCostFunction {
-  precomputed: CoalescentPrecomputed,
-  edges: Vec<CoalescentEdgeData>,
-}
-
-impl TcCostFunction {
-  fn new<N, E, D>(graph: &Graph<N, E, D>) -> Result<Self, Report>
-  where
-    N: GraphNode + TimetreeNode,
-    E: GraphEdge,
-    D: Sync + Send,
-  {
-    let pre = CoalescentPrecomputed::from_graph(graph)?;
-    let edges = collect_coalescent_edges(graph)?;
-
-    Ok(Self {
-      precomputed: pre,
-      edges,
-    })
-  }
-
-  fn compute_total_lh(&self, tc: f64) -> Result<f64, Report> {
-    let tc_dist = Distribution::constant(tc);
-    let model = CoalescentModel::new(&self.precomputed, &tc_dist)?;
-    coalescent_log_likelihood(&self.edges, &model)
-  }
-}
-
-impl CostFunction for &TcCostFunction {
-  type Param = f64;
-  type Output = f64;
-
-  fn cost(&self, log_tc: &Self::Param) -> Result<Self::Output, Error> {
-    let tc = log_tc.exp();
-
-    // Return negative likelihood (minimization problem)
-    let lh = self
-      .compute_total_lh(tc)
-      .map_err(|e| Error::msg(format!("Failed to compute likelihood: {e}")))?;
-
-    Ok(-lh)
-  }
+/// [`compute_coalescent_total_lh`]: crate::coalescent::total_lh::compute_coalescent_total_lh
+fn compute_total_lh(
+  precomputed: &CoalescentPrecomputed,
+  edges: &[CoalescentEdgeData],
+  tc: f64,
+) -> Result<f64, Report> {
+  let tc_dist = Distribution::constant(tc);
+  let model = CoalescentModel::new(precomputed, &tc_dist)?;
+  coalescent_log_likelihood(edges, &model)
 }
