@@ -316,8 +316,9 @@ TIMETREE_BATCH_RUNS = [
 
   # CRASH-grid: marginal dense backward pass crash
   ("flu/h3n2/20",                 "flu/h3n2/20/dense",                 "--dense=true --gtr=jc69"),
-  ("flu/h3n2/20",                 "flu/h3n2/20/keep-root",             "--keep-root"),
-  ("flu/h3n2/200",                "flu/h3n2/200/keep-root",            "--keep-root"),
+  # NOTE: timetree with --keep-root on datasets whose input root has a non-positive
+  # clock rate (e.g. flu/h3n2/20, flu/h3n2/200) errors by design: time inference needs
+  # `time = div / rate`. See kb/decisions/timetree-rejects-negative-clock-rate.md.
   ("rsv/a/20",                    "rsv/a/20/basic",                    ""),
   ("tb/20",                       "tb/20/basic",                       ""),
   ("lassa/L/20",                  "lassa/L/20/basic",                  ""),
