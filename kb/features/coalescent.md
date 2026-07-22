@@ -62,18 +62,20 @@ per-interval merger counts matter):
 
 - $I = \sum_{\text{edges}} \big[H_0(t_\text{parent}) - H_0(t_\text{child})\big]$,
   where $H_0(t)=\int_t^P (k-1)/2\,dt$ is the $T_c$-independent per-lineage
-  integral ([`compute_bare_integral_merger_rate`](../../packages/treetime/src/coalescent/integration.rs)).
-  Summed over the $k$ edges spanning an interval, the per-lineage integrand
-  $(k-1)/2$ reproduces the pairwise integrand $k(k-1)/2$.
+  integral. It is obtained by reusing
+  [`compute_integral_merger_rate`](../../packages/treetime/src/coalescent/integration.rs)
+  with a constant $T_c = 1$ rather than a dedicated function. Summed over the $k$
+  edges spanning an interval, the per-lineage integrand $(k-1)/2$ reproduces the
+  pairwise integrand $k(k-1)/2$.
 - $M = \sum_{\text{edges}} (n_\text{children}-1)/n_\text{children}$. Summed over a
   node's $n_\text{children}$ edges this is the node's merger count
   $n_\text{children}-1$; over a clean bifurcating tree, $M = N-1$.
 
-`compute_bare_integral_merger_rate` uses the **textbook** per-lineage rate
-$(k-1)/2$ without the `max(0.5, k-1)` clamp used on the likelihood path. Within
-any edge's span the lineage count satisfies $k \ge 2$ (the clamp only activates
-where $k<1.5$, i.e. above the root, where no edge exists), so the textbook and
-clamped integrals agree on real trees.
+`compute_integral_merger_rate` applies the `max(0.5, k-1)` clamp used on the
+likelihood path, but within any edge's span the lineage count satisfies $k \ge 2$
+(the clamp only activates where $k<1.5$, i.e. above the root, where no edge
+exists). So evaluating it at $T_c = 1$ over edge endpoints yields exactly the
+textbook $\int (k-1)/2\,dt$, and no separate unclamped integrator is needed.
 
 ### Reported likelihood and fallback
 

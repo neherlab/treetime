@@ -13,9 +13,10 @@ log-likelihood with Brent's method.
 candidate $T_c$.
 
 **v1 location**: `optimize_tc()` at
-[`packages/treetime/src/coalescent/optimize_tc.rs`](../../packages/treetime/src/coalescent/optimize_tc.rs), with the
-$T_c$-independent integral in `compute_bare_integral_merger_rate()` at
-[`packages/treetime/src/coalescent/integration.rs`](../../packages/treetime/src/coalescent/integration.rs).
+[`packages/treetime/src/coalescent/optimize_tc.rs`](../../packages/treetime/src/coalescent/optimize_tc.rs). The
+$T_c$-independent integral $I$ reuses `compute_integral_merger_rate()` at
+[`packages/treetime/src/coalescent/integration.rs`](../../packages/treetime/src/coalescent/integration.rs)
+with a constant $T_c = 1$, rather than a dedicated integrator.
 
 ## Background
 
@@ -51,9 +52,10 @@ skyline case.
   path.
 - **Result unchanged on real trees.** Within any edge's span $k \ge 2$, so the
   `max(0.5, k-1)` clamp that the likelihood path applies is never active there.
-  The analytic $I$ therefore uses the unclamped textbook integrand $(k-1)/2$ and
-  still matches what the numerical optimizer converged to. The clamp in v0 was a
-  guard for numerical integration, not a modeling choice.
+  Reusing `compute_integral_merger_rate` at $T_c = 1$ therefore yields exactly the
+  textbook $\int (k-1)/2\,dt$ over edge endpoints and matches what the numerical
+  optimizer converged to. The clamp in v0 was a guard for numerical integration,
+  not a modeling choice.
 
 ## Options considered
 
