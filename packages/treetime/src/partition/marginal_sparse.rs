@@ -15,6 +15,7 @@ use crate::seq::mutation::Sub;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
 use ndarray::{Array1, Array2};
+use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
@@ -27,7 +28,7 @@ use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalSparse {
   pub index: usize,
   pub gtr: GTR,
@@ -74,7 +75,7 @@ pub(crate) fn reconstruct_map_seq_sampled(
       seq[m.pos()] = m.qry();
     }
     for indel in &edge.indels {
-      if indel.deletion {
+      if indel.is_deletion() {
         seq[indel.range.0..indel.range.1].fill(alphabet.gap());
       } else {
         seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
@@ -373,7 +374,7 @@ impl PartitionMarginalSparse {
     }
     for indel in &edge.indels {
       if indel.range.0 < seq.len() && indel.range.1 <= seq.len() {
-        if indel.deletion {
+        if indel.is_deletion() {
           seq[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);
         } else {
           seq[indel.range.0..indel.range.1].fill(alphabet.gap());
@@ -416,6 +417,18 @@ impl PartitionBranchOps for PartitionMarginalSparse {
       Some(subs) => Ok(subs.to_vec()),
       None => make_error!("edge_subs() called before marginal inference populated subs_ml for edge {edge_key:?}"),
     }
+  }
+
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
+    self.edges[&edge_key].indels.clone()
+  }
+
+  fn root_sequence(&self, _graph: &dyn BranchTopology) -> Result<Seq, Report> {
+    Ok(self.root_sequence.clone())
+  }
+
+  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+    self.nodes[&node_key].seq.sequence.clone()
   }
 
   fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {

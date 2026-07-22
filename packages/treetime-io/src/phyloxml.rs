@@ -1,12 +1,9 @@
 use eyre::{Report, WrapErr};
-use maplit::{btreemap, btreeset};
-use parking_lot::RwLock;
 use smart_default::SmartDefault;
 use std::collections::VecDeque;
 use std::io::{Cursor, Read, Write};
 use std::path::Path;
-use std::sync::Arc;
-use treetime_graph::edge::{Edge, GraphEdge};
+use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_utils::io::file::create_file_or_stdout;
@@ -14,7 +11,7 @@ use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::io::json::{
   JsonPretty, json_read, json_read_file, json_read_str, json_write, json_write_file, json_write_str,
 };
-use treetime_utils::{make_internal_error, make_internal_report};
+use treetime_utils::make_internal_error;
 pub use util_phyloxml::{
   Phyloxml, PhyloxmlAccession, PhyloxmlAnnotation, PhyloxmlBinaryCharacterList, PhyloxmlBinaryCharacters,
   PhyloxmlBranchColor, PhyloxmlClade, PhyloxmlCladeRelation, PhyloxmlConfidence, PhyloxmlDate, PhyloxmlDistribution,
@@ -91,89 +88,45 @@ where
   phyloxml_to_graph::<C, _, _, _>(&pxml)
 }
 
-pub fn phyloxml_write_file<C, N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-  D: Sync + Send,
-  C: PhyloxmlFromGraph<N, E, D>,
-{
+pub fn phyloxml_write_file(filepath: impl AsRef<Path>, phyloxml: &Phyloxml) -> Result<(), Report> {
   let filepath = filepath.as_ref();
   let mut f = create_file_or_stdout(filepath)?;
-  phyloxml_write::<C, _, _, _>(&mut f, graph)
-    .wrap_err_with(|| format!("When writing PhyloXML file '{}'", filepath.display()))?;
+  phyloxml_write(&mut f, phyloxml).wrap_err_with(|| format!("When writing PhyloXML file '{}'", filepath.display()))?;
   writeln!(f)?;
   Ok(())
 }
 
-pub fn phyloxml_write_str<C, N, E, D>(graph: &Graph<N, E, D>) -> Result<String, Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-  D: Sync + Send,
-  C: PhyloxmlFromGraph<N, E, D>,
-{
+pub fn phyloxml_write_str(phyloxml: &Phyloxml) -> Result<String, Report> {
   let mut buf = Vec::new();
-  phyloxml_write::<C, _, _, _>(&mut buf, graph).wrap_err("When writing PhyloXML string")?;
+  phyloxml_write(&mut buf, phyloxml).wrap_err("When writing PhyloXML string")?;
   String::from_utf8(buf).wrap_err("PhyloXML output is not valid UTF-8")
 }
 
-pub fn phyloxml_write<C, N, E, D>(writer: &mut impl Write, graph: &Graph<N, E, D>) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-  D: Sync + Send,
-  C: PhyloxmlFromGraph<N, E, D>,
-{
-  let pxml = phyloxml_from_graph::<C, _, _, _>(graph)?;
-  util_phyloxml::phyloxml_write(writer, &pxml).wrap_err("When writing PhyloXML")
+pub fn phyloxml_write(writer: &mut impl Write, phyloxml: &Phyloxml) -> Result<(), Report> {
+  util_phyloxml::phyloxml_write(writer, phyloxml).wrap_err("When writing PhyloXML")
 }
 
-pub fn phyloxml_json_write_file<C, N, E, D>(
+pub fn phyloxml_json_write_file(
   filepath: impl AsRef<Path>,
-  graph: &Graph<N, E, D>,
+  phyloxml: &Phyloxml,
   options: &PhyloxmlJsonOptions,
-) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-  D: Sync + Send,
-  C: PhyloxmlFromGraph<N, E, D>,
-{
+) -> Result<(), Report> {
   let filepath = filepath.as_ref();
-  let pxml = phyloxml_from_graph::<C, _, _, _>(graph)?;
-  json_write_file(filepath, &pxml, JsonPretty(options.pretty))
+  json_write_file(filepath, phyloxml, JsonPretty(options.pretty))
     .wrap_err_with(|| format!("When writing PhyloXML JSON file: '{}'", filepath.display()))?;
   Ok(())
 }
 
-pub fn phyloxml_json_write_str<C, N, E, D>(
-  graph: &Graph<N, E, D>,
-  options: &PhyloxmlJsonOptions,
-) -> Result<String, Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-  D: Sync + Send,
-  C: PhyloxmlFromGraph<N, E, D>,
-{
-  let pxml = phyloxml_from_graph::<C, _, _, _>(graph)?;
-  json_write_str(&pxml, JsonPretty(options.pretty)).wrap_err("When writing PhyloXML JSON string")
+pub fn phyloxml_json_write_str(phyloxml: &Phyloxml, options: &PhyloxmlJsonOptions) -> Result<String, Report> {
+  json_write_str(phyloxml, JsonPretty(options.pretty)).wrap_err("When writing PhyloXML JSON string")
 }
 
-pub fn phyloxml_json_write<C, N, E, D>(
+pub fn phyloxml_json_write(
   writer: &mut impl Write,
-  graph: &Graph<N, E, D>,
+  phyloxml: &Phyloxml,
   options: &PhyloxmlJsonOptions,
-) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-  D: Sync + Send,
-  C: PhyloxmlFromGraph<N, E, D>,
-{
-  let pxml = phyloxml_from_graph::<C, _, _, _>(graph)?;
-  json_write(writer, &pxml, JsonPretty(options.pretty)).wrap_err("When writing PhyloXML JSON")
+) -> Result<(), Report> {
+  json_write(writer, phyloxml, JsonPretty(options.pretty)).wrap_err("When writing PhyloXML JSON")
 }
 
 pub trait PhyloxmlDataToGraphData: Sized {
@@ -238,102 +191,4 @@ where
   graph.build()?;
 
   Ok(graph)
-}
-
-pub struct PhyloxmlGraphContext<'a, N, E, D>
-where
-  N: GraphNode,
-  E: GraphEdge,
-  D: Sync + Send,
-{
-  pub node_key: treetime_graph::node::GraphNodeKey,
-  pub node: &'a N,
-  pub edge_key: Option<treetime_graph::edge::GraphEdgeKey>,
-  pub edge: Option<&'a E>,
-  pub graph: &'a Graph<N, E, D>,
-}
-
-/// Describes conversion to Phyloxml tree node data when writing to PhyloXML
-pub trait PhyloxmlFromGraph<N, E, D>
-where
-  N: GraphNode,
-  E: GraphEdge,
-  D: Sync + Send,
-{
-  fn phyloxml_data_from_graph_data(graph: &Graph<N, E, D>) -> Result<Phyloxml, Report>;
-
-  fn phyloxml_node_from_graph_components(context: &PhyloxmlGraphContext<N, E, D>) -> Result<PhyloxmlClade, Report>;
-}
-
-/// Convert graph to PhyloXML
-pub fn phyloxml_from_graph<C, N, E, D>(graph: &Graph<N, E, D>) -> Result<Phyloxml, Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-  D: Sync + Send,
-  C: PhyloxmlFromGraph<N, E, D>,
-{
-  let root = graph.get_exactly_one_root()?;
-
-  // Pre-order iteration to construct the nodes from graph nodes and edges
-  let mut node_map = {
-    let mut node_map = btreemap! {};
-    let mut queue = VecDeque::from([(Arc::clone(&root), None)]);
-    while let Some((current_node, current_edge)) = queue.pop_front() {
-      let current_node = current_node.read_arc();
-
-      let node = &*current_node.payload().read_arc();
-      let edge_key = current_edge
-        .as_ref()
-        .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().key());
-      let edge = current_edge
-        .as_ref()
-        .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().payload().read_arc());
-      let edge = edge.as_deref();
-      let current_tree_node = C::phyloxml_node_from_graph_components(&PhyloxmlGraphContext {
-        node_key: current_node.key(),
-        node,
-        edge_key,
-        edge,
-        graph,
-      })?;
-      for (child, edge) in graph.children_of(&current_node) {
-        queue.push_back((child, Some(edge)));
-      }
-      node_map.insert(current_node.key(), current_tree_node);
-    }
-    node_map
-  };
-
-  // Post-order traversal to populate .children array
-  let mut visited = btreeset! {};
-  let mut stack = vec![Arc::clone(&root)];
-  while let Some(node) = stack.pop() {
-    if visited.contains(&node.read_arc().key()) {
-      let mut children_to_add = vec![];
-      for (child, _) in graph.children_of(&node.read_arc()) {
-        let child_key = child.read_arc().key();
-        if let Some(child_node) = node_map.remove(&child_key) {
-          children_to_add.push(child_node);
-        }
-      }
-      if let Some(node) = node_map.get_mut(&node.read_arc().key()) {
-        node.clade.extend(children_to_add);
-      }
-    } else {
-      visited.insert(node.read_arc().key());
-      stack.push(Arc::clone(&node));
-      for (child, _) in graph.children_of(&node.read_arc()) {
-        stack.push(child);
-      }
-    }
-  }
-
-  let mut data = C::phyloxml_data_from_graph_data(graph)?;
-  let root_key = root.read_arc().key();
-  let clade = node_map
-    .remove(&root_key)
-    .ok_or_else(|| make_internal_report!("Root node not found in node_map during PhyloXML export"))?;
-  data.phylogeny[0].clade = Some(clade);
-  Ok(data)
 }

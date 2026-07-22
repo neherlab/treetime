@@ -9,10 +9,7 @@ use crate::make_report;
 use crate::optimize::params::BranchLengthMode;
 use crate::partition::algo::infer_dense::infer_dense;
 use crate::partition::marginal_dense::PartitionMarginalDense;
-use crate::partition::timetree::{GraphTimetree, PartitionTimetreeAllVec};
-use crate::partition::traits::PartitionTimetreeAll;
-use crate::payload::timetree::EdgeTimetree;
-use crate::payload::timetree::NodeTimetree;
+use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
 use crate::seq::alignment::get_common_length;
 use crate::seq::gap_fill::apply_gap_fill;
 use crate::timetree::utils::initialize_node_divergences;
@@ -126,8 +123,7 @@ pub fn initialize_partitions(
     log_gtr(&gtr, model_name);
     let partition = fitch.into_marginal_sparse(gtr, graph)?;
 
-    let sparse_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
-      Arc::new(RwLock::new(partition));
+    let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(partition)));
     Ok(vec![sparse_partition])
   } else if model_name == GtrModelName::Infer {
     let aln_data = aln.ok_or_else(|| make_report!("Alignment required for dense GTR inference"))?;
@@ -136,8 +132,7 @@ pub fn initialize_partitions(
     log_gtr(&gtr, model_name);
     let partition = fitch.into_marginal_dense(gtr);
 
-    let dense_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
-      Arc::new(RwLock::new(partition));
+    let dense_partition = Arc::new(RwLock::new(PartitionTimetree::Dense(partition)));
     Ok(vec![dense_partition])
   } else {
     info!("GTR model: {model_name}");
@@ -145,8 +140,7 @@ pub fn initialize_partitions(
     log_gtr(&gtr, model_name);
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
 
-    let dense_partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> =
-      Arc::new(RwLock::new(partition));
+    let dense_partition = Arc::new(RwLock::new(PartitionTimetree::Dense(partition)));
     Ok(vec![dense_partition])
   }
 }

@@ -4,9 +4,10 @@ use crate::make_error;
 use crate::partition::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::traits::BranchTopology;
 use crate::payload::ancestral::GraphAncestral;
-use crate::seq::mutation::Sub;
+use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
 use eyre::Report;
 use itertools::Itertools;
+use serde::Serialize;
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -16,7 +17,7 @@ use treetime_io::gff::{GffCdsFeature, read_gff3_cds_features_filtered};
 use treetime_primitives::{AsciiChar, Seq};
 use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct AaNodeData {
   pub annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   pub reference: BTreeMap<String, String>,
@@ -24,6 +25,7 @@ pub struct AaNodeData {
   // shared tree as the nucleotide partition, so per-node results join by node identity (key) rather
   // than by reconstructing identity from a synthesized node name across independent graphs.
   pub node_aa_muts: BTreeMap<GraphNodeKey, BTreeMap<String, Vec<String>>>,
+  pub node_aa_mutations: BTreeMap<GraphNodeKey, BTreeMap<String, Vec<MutationEvent>>>,
   pub root_aa_sequences: BTreeMap<String, String>,
 }
 
@@ -41,14 +43,22 @@ impl AaNodeData {
         .or_default()
         .insert(cds.to_owned(), muts);
     }
+    for (node_key, mutations) in cds_data.node_mutations {
+      self
+        .node_aa_mutations
+        .entry(node_key)
+        .or_default()
+        .insert(cds.to_owned(), mutations);
+    }
   }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct AaCdsNodeData {
   pub reference: String,
   pub root_sequence: String,
   pub node_muts: BTreeMap<GraphNodeKey, Vec<String>>,
+  pub node_mutations: BTreeMap<GraphNodeKey, Vec<MutationEvent>>,
 }
 
 pub fn validate_aa_args(
@@ -233,6 +243,7 @@ pub fn collect_aa_cds_node_data(
   }
 
   let mut node_muts = BTreeMap::new();
+  let mut node_mutations = BTreeMap::new();
   for node in graph.get_nodes() {
     let node_guard = node.read_arc();
     let node_key = node_guard.key();
@@ -241,31 +252,42 @@ pub fn collect_aa_cds_node_data(
       .name()
       .map_or_else(|| format!("node_{}", node_key.0), |n| n.as_ref().to_owned());
 
-    let muts = if node_key == root_key {
+    let mutations = if node_key == root_key {
       diff_sequences(&reference, &inferred_root, partition.ambiguous_char())?
+        .into_iter()
+        .map(MutationEvent::Substitution)
+        .collect()
     } else {
       let (_parent_key, edge_key) = graph
         .node_parent(node_key)?
         .ok_or_else(|| eyre::eyre!("Non-root node '{node_name}' has no parent while collecting AA node data"))?;
-      partition
+      let substitutions = partition
         .edge_subs(graph, edge_key)?
         .into_iter()
         .sorted_by_key(Sub::pos)
-        .map(|sub| sub.to_string())
-        .collect()
+        .map(MutationEvent::Substitution)
+        .map(Ok);
+      let indels = partition
+        .edge_indels(edge_key)
+        .into_iter()
+        .map(|indel| Mutation::indel(MutationTrack::AminoAcid(cds.to_owned()), &indel).map(|mutation| mutation.event));
+      substitutions.chain(indels).collect::<Result<Vec<_>, Report>>()?
     };
+    let muts = mutations.iter().flat_map(mutation_event_strings).collect();
 
     node_muts.insert(node_key, muts);
+    node_mutations.insert(node_key, mutations);
   }
 
   Ok(AaCdsNodeData {
     reference: reference.as_str().to_owned(),
     root_sequence: inferred_root.as_str().to_owned(),
     node_muts,
+    node_mutations,
   })
 }
 
-fn diff_sequences(reference: &Seq, query: &Seq, unknown: AsciiChar) -> Result<Vec<String>, Report> {
+fn diff_sequences(reference: &Seq, query: &Seq, unknown: AsciiChar) -> Result<Vec<Sub>, Report> {
   if reference.len() != query.len() {
     return make_error!(
       "Cannot diff sequences with lengths {} and {}",
@@ -274,15 +296,31 @@ fn diff_sequences(reference: &Seq, query: &Seq, unknown: AsciiChar) -> Result<Ve
     );
   }
 
-  Ok(
-    reference
+  reference
+    .iter()
+    .zip(query.iter())
+    .enumerate()
+    .filter(|(_pos, (reff, qry))| reff != qry && is_reportable_sub(**reff, **qry, unknown))
+    .map(|(pos, (reff, qry))| Sub::new(*reff, pos, *qry))
+    .collect()
+}
+
+fn mutation_event_strings(event: &MutationEvent) -> Vec<String> {
+  match event {
+    MutationEvent::Substitution(substitution) => vec![substitution.to_string()],
+    MutationEvent::Insertion(segment) => segment
+      .sequence
       .iter()
-      .zip(query.iter())
       .enumerate()
-      .filter(|(_pos, (reff, qry))| reff != qry && is_reportable_sub(**reff, **qry, unknown))
-      .map(|(pos, (reff, qry))| format!("{}{}{}", char::from(*reff), pos + 1, char::from(*qry)))
+      .map(|(offset, state)| format!("-{}{state}", segment.range.0 + offset + 1))
       .collect(),
-  )
+    MutationEvent::Deletion(segment) => segment
+      .sequence
+      .iter()
+      .enumerate()
+      .map(|(offset, state)| format!("{state}{}-", segment.range.0 + offset + 1))
+      .collect(),
+  }
 }
 
 fn is_reportable_sub(reff: AsciiChar, qry: AsciiChar, unknown: AsciiChar) -> bool {
@@ -410,7 +448,20 @@ mod tests {
 
     let actual = diff_sequences(&reference, &query, AsciiChar::from_byte_unchecked(b'X')).unwrap();
 
-    let expected = vec![o!("C2D"), o!("D3Q")];
+    let expected = vec![
+      Sub::new(
+        AsciiChar::from_byte_unchecked(b'C'),
+        1_usize,
+        AsciiChar::from_byte_unchecked(b'D'),
+      )
+      .unwrap(),
+      Sub::new(
+        AsciiChar::from_byte_unchecked(b'D'),
+        2_usize,
+        AsciiChar::from_byte_unchecked(b'Q'),
+      )
+      .unwrap(),
+    ];
     assert_eq!(expected, actual);
   }
 
@@ -437,6 +488,13 @@ mod tests {
         name_to_key["A"] => vec![],
         name_to_key["B"] => vec![],
         name_to_key["root"] => vec![o!("A2C")],
+      },
+      node_mutations: btreemap! {
+        name_to_key["A"] => vec![],
+        name_to_key["B"] => vec![],
+        name_to_key["root"] => vec![MutationEvent::Substitution(
+          Sub::new(AsciiChar::from_byte_unchecked(b'A'), 1_usize, AsciiChar::from_byte_unchecked(b'C')).unwrap()
+        )],
       },
     };
     assert_eq!(expected, actual);
@@ -502,6 +560,10 @@ mod tests {
 
       fn edge_subs(&self, _graph: &dyn BranchTopology, _edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
         Ok(vec![])
+      }
+
+      fn edge_indels(&self, _edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
+        vec![]
       }
 
       fn ambiguous_char(&self) -> AsciiChar {

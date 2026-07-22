@@ -227,8 +227,8 @@ mod tests {
     let mut partition = make_sparse_partition(100)?;
     populate_test_nodes(&mut partition, &graph);
 
-    let collapsed_indel = InDel::ins((0, 3), [c(b'A'), c(b'C'), c(b'G')].as_slice());
-    let child_a_indel = InDel::del((10, 12), [c(b'T'), c(b'T')].as_slice());
+    let collapsed_indel = InDel::ins((0, 3), [c(b'A'), c(b'C'), c(b'G')].as_slice()).unwrap();
+    let child_a_indel = InDel::del((10, 12), [c(b'T'), c(b'T')].as_slice()).unwrap();
 
     partition.edges.insert(
       ri_key,

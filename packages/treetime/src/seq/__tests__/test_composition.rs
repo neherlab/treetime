@@ -110,7 +110,7 @@ mod tests {
   #[test]
   fn test_composition_add_deletion() -> Result<(), Report> {
     let mut actual = Composition::with_seq_str("AAAGCTTACGGGGTCAAGTCC", chars("ACGT-"), c(b'-'))?;
-    let indel = InDel::del((1, 5), Seq::try_from_str("AAGC")?);
+    let indel = InDel::del((1, 5), Seq::try_from_str("AAGC")?)?;
     actual.add_indel(&indel);
     let expected = Composition::from_counts(
       btreemap! { c(b'-') => 4, c(b'A') => 4, c(b'C') => 4, c(b'G') => 5, c(b'T') => 4},
@@ -123,7 +123,7 @@ mod tests {
   #[test]
   fn test_composition_add_insertion() -> Result<(), Report> {
     let mut actual = Composition::with_seq_str("AAAGCTTACGGGGTCAAGTCC", chars("ACGT-"), c(b'-'))?;
-    let indel = InDel::ins((3, 6), Seq::try_from_str("ATC")?);
+    let indel = InDel::ins((3, 6), Seq::try_from_str("ATC")?)?;
     actual.add_indel(&indel);
     let expected = Composition::from_counts(
       btreemap! { c(b'-') => 0, c(b'A') => 7, c(b'C') => 6, c(b'G') => 6, c(b'T') => 5},

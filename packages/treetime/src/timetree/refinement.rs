@@ -2,18 +2,14 @@ use crate::ancestral::marginal::update_marginal;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
-use crate::partition::timetree::GraphTimetree;
-use crate::partition::traits::PartitionTimetreeAll;
-use crate::payload::timetree::EdgeTimetree;
-use crate::payload::timetree::NodeTimetree;
+use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::traits::{PartitionMarginalPasses, PartitionTimetreeOps};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
 use crate::timetree::inference::runner::run_timetree;
 use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
 use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
 use eyre::{Report, WrapErr};
 use log::info;
-use parking_lot::RwLock;
-use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::assign_node_names::assign_node_names;
 
@@ -27,7 +23,7 @@ pub struct RefinementParams {
 pub fn run_refinement_iteration(
   params: &RefinementParams,
   graph: &mut GraphTimetree,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+  partitions: &[PartitionTimetreeRef],
   clock_model: &mut ClockModel,
   clock_params: &ClockParams,
   branch_params: &BranchPointOptimizationParams,

@@ -1,19 +1,11 @@
 use crate::coalescent::total_lh::compute_coalescent_total_lh;
-use crate::partition::timetree::GraphTimetree;
-use crate::partition::traits::PartitionTimetreeAll;
+use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::graph_log_lh;
-use crate::payload::timetree::EdgeTimetree;
-use crate::payload::timetree::NodeTimetree;
 use log::{debug, warn};
-use parking_lot::RwLock;
-use std::sync::Arc;
 use treetime_distribution::Distribution;
 
 /// Sum of per-partition root log-likelihoods from marginal reconstruction.
-pub fn compute_sequence_likelihood(
-  graph: &GraphTimetree,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
-) -> Option<f64> {
+pub fn compute_sequence_likelihood(graph: &GraphTimetree, partitions: &[PartitionTimetreeRef]) -> Option<f64> {
   if partitions.is_empty() {
     return None;
   }

@@ -138,7 +138,7 @@ mod tests {
     let (indels, new_gaps) = resolve_indels_forward(&variable_indel, &node_gaps, &[], &[], &parent_seq, &node_seq);
 
     assert_eq!(indels.len(), 1);
-    assert!(indels[0].deletion);
+    assert!(indels[0].is_deletion());
     assert_eq!(indels[0].range, (2, 5));
     assert_eq!(indels[0].seq, Seq::try_from_str("GTA").unwrap());
     assert_eq!(new_gaps, vec![(2, 5)]);
@@ -154,7 +154,7 @@ mod tests {
     let (indels, new_gaps) = resolve_indels_forward(&variable_indel, &[], &[], &parent_gaps, &parent_seq, &node_seq);
 
     assert_eq!(indels.len(), 1);
-    assert!(!indels[0].deletion);
+    assert!(!indels[0].is_deletion());
     assert_eq!(indels[0].range, (2, 5));
     assert_eq!(indels[0].seq, Seq::try_from_str("GTA").unwrap());
     assert!(new_gaps.is_empty());

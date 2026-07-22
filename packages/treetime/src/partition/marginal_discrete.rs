@@ -14,6 +14,7 @@ use itertools::Itertools;
 use log::warn;
 use maplit::btreemap;
 use ndarray::{Array1, Array2};
+use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
@@ -21,7 +22,7 @@ use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::nwk::NodeCommentProvider;
 use treetime_utils::array::ndarray::argmax_first;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalDiscrete {
   pub data: MarginalData,
   pub states: DiscreteStates,

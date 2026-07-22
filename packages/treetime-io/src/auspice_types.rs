@@ -235,7 +235,8 @@ pub struct AuspiceGenomeAnnotationCds {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AuspiceGenomeAnnotations {
-  pub nuc: AuspiceGenomeAnnotationNuc,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub nuc: Option<AuspiceGenomeAnnotationNuc>,
 
   #[serde(flatten)]
   pub cdses: BTreeMap<String, AuspiceGenomeAnnotationCds>,

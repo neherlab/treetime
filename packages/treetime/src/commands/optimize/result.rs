@@ -7,18 +7,11 @@ use parking_lot::RwLock;
 use serde::Serialize;
 use std::sync::Arc;
 
-#[allow(clippy::manual_non_exhaustive, clippy::partial_pub_fields)] // The private unit field preserves Graph JSON's `data: null` shape.
 #[derive(Serialize)]
-#[serde(transparent)]
 pub struct OptimizeGraphData {
-  marker: (),
-  #[serde(skip)]
   pub gtr: GTR,
-  #[serde(skip)]
   pub model_name: GtrModelName,
-  #[serde(skip)]
   pub sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>>,
-  #[serde(skip)]
   pub dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>>,
 }
 
@@ -30,7 +23,6 @@ impl OptimizeGraphData {
     dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>>,
   ) -> Self {
     Self {
-      marker: (),
       gtr,
       model_name,
       sparse_partitions,

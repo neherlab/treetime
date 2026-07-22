@@ -10,6 +10,7 @@ mod tests {
   use crate::partition::traits::PartitionOptimizeOps;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
+  use crate::seq::indel::InDel;
   use eyre::Report;
 
   use parking_lot::RwLock;
@@ -188,7 +189,7 @@ ACGTACGTAC
     );
 
     // Verify indel directions exist (at least one deletion)
-    let has_deletion = p.data.edges.values().any(|e| e.indels.iter().any(|i| i.deletion));
+    let has_deletion = p.data.edges.values().any(|e| e.indels.iter().any(InDel::is_deletion));
     assert!(
       has_deletion,
       "At least one deletion should be detected from gap-bearing leaves"

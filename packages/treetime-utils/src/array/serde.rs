@@ -29,7 +29,7 @@ where
   T: Serialize,
   S: Serializer,
 {
-  array.as_slice().unwrap().serialize(serializer)
+  serializer.collect_seq(array.iter())
 }
 
 /// Deserialize Array1<T> from a simple JSON array
@@ -56,7 +56,11 @@ where
   T: Serialize,
   S: Serializer,
 {
-  let rows: Vec<&[T]> = array.rows().into_iter().map(|row| row.to_slice().unwrap()).collect();
+  let rows = array
+    .rows()
+    .into_iter()
+    .map(|row| row.into_iter().collect::<Vec<_>>())
+    .collect::<Vec<_>>();
   rows.serialize(serializer)
 }
 
@@ -88,7 +92,7 @@ where
   S: Serializer,
 {
   match array {
-    Some(arr) => arr.as_slice().unwrap().serialize(serializer),
+    Some(arr) => serializer.collect_seq(arr.iter()),
     None => serializer.serialize_none(),
   }
 }

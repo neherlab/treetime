@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod tests {
-  use crate::seq::mutation::{Sub, compose_substitutions};
+  use crate::seq::mutation::{AlignedMutation, MutationEvent, Sub, compose_substitutions, mutation_event_strings};
   use eyre::Report;
   use pretty_assertions::assert_eq;
+  use proptest::prelude::*;
   use treetime_primitives::AsciiChar;
+  use treetime_primitives::seq;
 
   #[test]
   fn test_mutation_compose_substitutions_both_empty() -> Result<(), Report> {
@@ -131,6 +133,29 @@ mod tests {
     let result = compose_substitutions(&parent, &child)?;
     assert_eq!(result, vec![]);
     Ok(())
+  }
+
+  #[test]
+  fn test_mutation_event_strings_expand_aligned_deletion() -> Result<(), Report> {
+    // Oracle: TreeTime v0 spells gap transitions as one-based per-position substitutions.
+    let event = MutationEvent::Deletion(AlignedMutation::new((1, 3), seq![helpers::c(b'C'), helpers::c(b'G')])?);
+    let actual = mutation_event_strings(&event)?;
+    let expected = vec!["C2-".to_owned(), "G3-".to_owned()];
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  proptest! {
+    #[test]
+    fn test_prop_mutation_event_strings_preserve_range(start in 0_usize..10_000, length in 1_usize..32) {
+      let sequence = seq![helpers::c(b'A'); length];
+      let event = MutationEvent::Insertion(AlignedMutation::new((start, start + length), sequence).unwrap());
+      let actual = mutation_event_strings(&event).unwrap();
+      let expected = (start + 1..=start + length)
+        .map(|position| format!("-{position}A"))
+        .collect::<Vec<_>>();
+      prop_assert_eq!(expected, actual);
+    }
   }
 
   mod helpers {

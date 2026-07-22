@@ -3,19 +3,21 @@ use crate::payload::ancestral::GraphAncestral;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use ndarray::Array1;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Write;
 use treetime_graph::node::Named;
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ConfidenceRow {
   /// Node name.
   pub node: String,
   /// Probability for each state (in state order).
+  #[serde(serialize_with = "treetime_utils::array::serde::array1_as_vec")]
   pub profile: Array1<f64>,
 }
 
 /// Structured confidence output for all nodes.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct MugrationConfidenceOutput {
   /// State names in order (column headers).
   pub states: Vec<String>,
@@ -75,7 +77,7 @@ impl MugrationConfidenceOutput {
 }
 
 /// Structured trait output for all nodes.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct MugrationTraitsOutput {
   /// Attribute name (column header).
   pub attribute: String,
@@ -104,18 +106,11 @@ impl MugrationTraitsOutput {
   }
 }
 
-#[allow(clippy::manual_non_exhaustive, clippy::partial_pub_fields)] // The private unit field preserves Graph JSON's `data: null` shape.
-#[derive(Debug, serde::Serialize)]
-#[serde(transparent)]
+#[derive(Debug, Serialize)]
 pub struct MugrationGraphData {
-  marker: (),
-  #[serde(skip)]
   pub traits: MugrationTraitsOutput,
-  #[serde(skip)]
   pub confidence: MugrationConfidenceOutput,
-  #[serde(skip)]
   pub log_lh: f64,
-  #[serde(skip)]
   pub partition: PartitionMarginalDiscrete,
 }
 
@@ -140,7 +135,6 @@ impl MugrationResult {
     let confidence = MugrationConfidenceOutput::new(&graph, &partition);
 
     let data = MugrationGraphData {
-      marker: (),
       traits,
       confidence,
       log_lh,

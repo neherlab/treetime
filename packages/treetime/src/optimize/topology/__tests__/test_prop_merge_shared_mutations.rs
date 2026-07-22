@@ -326,7 +326,7 @@ mod tests {
       ],
     )?;
 
-    let shared_indel = InDel::del((10, 13), Seq::try_from_str("GTA").unwrap());
+    let shared_indel = InDel::del((10, 13), Seq::try_from_str("GTA").unwrap()).unwrap();
     {
       let mut p = partition.write_arc();
       let edge_c = find_edge_key(&graph, "root", "C").expect("edge root->C");

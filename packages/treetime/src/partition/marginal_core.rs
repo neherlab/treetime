@@ -9,6 +9,7 @@ use eyre::Report;
 use itertools::{Itertools, izip};
 use ndarray::prelude::*;
 use rayon::prelude::*;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
@@ -18,7 +19,7 @@ use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
 use treetime_utils::collections::container::get_exactly_one;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct MarginalData {
   pub gtr: GTR,
   pub nodes: BTreeMap<GraphNodeKey, DenseNodePartition>,

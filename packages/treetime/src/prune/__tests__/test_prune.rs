@@ -1282,8 +1282,8 @@ mod tests {
       root_sequence: seq![],
     };
 
-    let parent_indel = InDel::del((10, 15), [c(b'A'), c(b'C'), c(b'G'), c(b'T'), c(b'A')].as_slice());
-    let child_indel = InDel::ins((20, 23), [c(b'G'), c(b'G'), c(b'C')].as_slice());
+    let parent_indel = InDel::del((10, 15), [c(b'A'), c(b'C'), c(b'G'), c(b'T'), c(b'A')].as_slice())?;
+    let child_indel = InDel::ins((20, 23), [c(b'G'), c(b'G'), c(b'C')].as_slice())?;
 
     partition.edges.insert(
       root_internal_edge_key,
@@ -1320,9 +1320,9 @@ mod tests {
         // Parent indel first, then child indel
         assert_eq!(edge_partition.indels.len(), 2);
         assert_eq!(edge_partition.indels[0].range, (10, 15));
-        assert!(edge_partition.indels[0].deletion);
+        assert!(edge_partition.indels[0].is_deletion());
         assert_eq!(edge_partition.indels[1].range, (20, 23));
-        assert!(!edge_partition.indels[1].deletion);
+        assert!(!edge_partition.indels[1].is_deletion());
       } else if target_name.as_deref() == Some("B") {
         let edge_partition = &partition.edges[&edge_key];
         // Only parent indel (child had none)

@@ -6,7 +6,8 @@ use crate::make_internal_error;
 use crate::make_internal_report;
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
-use crate::seq::mutation::Sub;
+use crate::seq::indel::InDel;
+use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub, mutation_event_strings};
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
@@ -121,6 +122,34 @@ pub trait PartitionBranchOps: Send + Sync {
   /// and gap positions are excluded in both cases.
   fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report>;
 
+  /// Return grouped aligned insertions and deletions for one edge.
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel>;
+
+  /// Return the reconstructed root sequence represented by this partition.
+  fn root_sequence(&self, graph: &dyn BranchTopology) -> Result<Seq, Report>;
+
+  /// Return the reconstructed sequence for one node.
+  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq;
+
+  fn edge_mutations(
+    &self,
+    graph: &dyn BranchTopology,
+    edge_key: GraphEdgeKey,
+    track: MutationTrack,
+  ) -> Result<Vec<Mutation>, Report> {
+    self
+      .edge_subs(graph, edge_key)?
+      .into_iter()
+      .map(|substitution| Ok(Mutation::substitution(track.clone(), substitution)))
+      .chain(
+        self
+          .edge_indels(edge_key)
+          .iter()
+          .map(|indel| Mutation::indel(track.clone(), indel)),
+      )
+      .collect()
+  }
+
   /// Return the number of alignment positions where both parent and child
   /// have canonical (non-gap, non-ambiguous) states for one edge.
   fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report>;
@@ -142,13 +171,25 @@ impl NodeCommentProvider for MutationCommentProvider<'_> {
     let Some((_parent_key, edge_key)) = self.graph.node_parent(key)? else {
       return Ok(BTreeMap::new());
     };
-    let mut subs = self.partition.edge_subs(self.graph, edge_key)?;
-    if subs.is_empty() {
+    let mut mutations = self
+      .partition
+      .edge_mutations(self.graph, edge_key, MutationTrack::Nucleotide)?;
+    if mutations.is_empty() {
       return Ok(BTreeMap::new());
     }
-    subs.sort_by_key(|s| s.pos());
+    mutations.sort_by_key(|mutation| match &mutation.event {
+      MutationEvent::Substitution(substitution) => substitution.pos(),
+      MutationEvent::Insertion(segment) | MutationEvent::Deletion(segment) => segment.range.0,
+    });
+    let mutations = mutations
+      .iter()
+      .map(|mutation| mutation_event_strings(&mutation.event))
+      .collect::<Result<Vec<_>, _>>()?
+      .into_iter()
+      .flatten()
+      .join(",");
     Ok(btreemap! {
-      "mutations".to_owned() => subs.iter().join(","),
+      "mutations".to_owned() => mutations,
     })
   }
 }

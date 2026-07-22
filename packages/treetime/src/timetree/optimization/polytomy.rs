@@ -1,14 +1,11 @@
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
-use crate::partition::timetree::GraphTimetree;
-use crate::partition::traits::PartitionTimetreeAll;
+use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
 use crate::payload::clock_set::ClockSet;
-use crate::payload::timetree::EdgeTimetree;
-use crate::payload::timetree::NodeTimetree;
+use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use argmin::core::{CostFunction, Executor};
 use argmin::solver::brent::BrentOpt;
 use eyre::Report;
 use log::debug;
-use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
@@ -32,7 +29,7 @@ pub const DEFAULT_RESOLUTION_THRESHOLD: f64 = 0.05;
 /// `clock_rate` = substitutions per site per time unit.
 pub fn resolve_polytomies(
   graph: &mut GraphTimetree,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+  partitions: &[PartitionTimetreeRef],
   zero_branch_slope: f64,
   clock_rate: f64,
 ) -> Result<usize, Report> {
@@ -55,7 +52,7 @@ pub fn resolve_polytomies(
 /// - `merge_compressed`: if true, also merge compressed children after stretched
 pub fn resolve_polytomies_with_options(
   graph: &mut GraphTimetree,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+  partitions: &[PartitionTimetreeRef],
   resolution_threshold: f64,
   zero_branch_slope: f64,
   clock_rate: f64,

@@ -1,22 +1,17 @@
 use crate::ancestral::pipeline::AncestralPartition;
+use crate::commands::ancestral::aa_node_data::AaNodeData;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::payload::ancestral::GraphAncestral;
 use serde::Serialize;
 
-#[allow(clippy::manual_non_exhaustive, clippy::partial_pub_fields)] // The private unit field preserves Graph JSON's `data: null` shape.
 #[derive(Serialize)]
-#[serde(transparent)]
 pub struct AncestralGraphData {
-  marker: (),
-  #[serde(skip)]
   pub partition: Option<AncestralPartition>,
-  #[serde(skip)]
   pub gtr: Option<GTR>,
-  #[serde(skip)]
   pub model_name: GtrModelName,
-  #[serde(skip)]
   pub mask: Vec<bool>,
+  pub aa_node_data: Option<AaNodeData>,
 }
 
 impl AncestralGraphData {
@@ -25,13 +20,14 @@ impl AncestralGraphData {
     gtr: Option<GTR>,
     model_name: GtrModelName,
     mask: Vec<bool>,
+    aa_node_data: Option<AaNodeData>,
   ) -> Self {
     Self {
-      marker: (),
       partition,
       gtr,
       model_name,
       mask,
+      aa_node_data,
     }
   }
 }

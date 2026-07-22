@@ -9,9 +9,7 @@ mod tests {
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal_dense::PartitionMarginalDense;
-  use crate::partition::timetree::GraphTimetree;
-  use crate::partition::traits::PartitionTimetreeAll;
-  use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
+  use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::utils::{
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
@@ -50,14 +48,14 @@ mod tests {
     load_date_constraints(&dates, &graph)?;
 
     let aln = load_alignment_for_dataset(dataset)?;
-    let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
+    let dense_partition = Arc::new(RwLock::new(PartitionTimetree::Dense(PartitionMarginalDense::new(
       0,
       jc69(JC69Params::default())?,
       ALPHABET.clone(),
       case.sequence_length(),
-    )));
+    ))));
 
-    let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![dense_partition];
+    let partitions: PartitionTimetreeAllVec = vec![dense_partition];
     initialize_marginal(&graph, &partitions, &aln)?;
     initialize_node_divergences(&graph)?;
 

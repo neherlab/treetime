@@ -979,7 +979,7 @@ mod tests {
 
       let first_edge_key = graph.get_edges()[0].read_arc().key();
       let indels: Vec<InDel> = (0..n_indels)
-        .map(|i| InDel::del((i * 3, i * 3 + 3), Seq::try_from_str("ACG").unwrap()))
+        .map(|i| InDel::del((i * 3, i * 3 + 3), Seq::try_from_str("ACG").unwrap()).unwrap())
         .collect();
 
       for p in &dense_partitions {

@@ -356,7 +356,7 @@ pub mod tests {
       let edge_key = graph.get_edges()[0].read_arc().key();
       for partition in partitions {
         let mut partition = partition.write_arc();
-        partition.data.edges.get_mut(&edge_key).unwrap().indels = vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)];
+        partition.data.edges.get_mut(&edge_key).unwrap().indels = vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)?];
       }
       Ok(())
     }

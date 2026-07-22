@@ -1,7 +1,7 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::mugration::augur_node_data::write_augur_node_data_json;
 use crate::commands::shared::output::{CommandKind, OutputSelection};
-use crate::commands::shared::tree_output::TreeOutputAdapter;
+use crate::commands::shared::tree_output::write_mugration_tree_outputs;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_report;
 use crate::mugration::mugration::execute_mugration;
@@ -13,7 +13,6 @@ use eyre::Report;
 use log::info;
 use std::collections::BTreeMap;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
-use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::file::create_file_or_stdout;
@@ -95,14 +94,12 @@ pub fn run_mugration(
     .topology_order
     .resolve_topology_order(&result.graph, None)?;
   topology_order.apply(&mut result.graph)?;
-  resolved.prepare()?;
-
   progress.report("Writing output", 0.8, "");
 
   if !resolved.tree_outputs.is_empty() {
     let provider = DiscreteCommentProvider::new(&result.graph.data().partition, &result.graph.data().traits.attribute);
     let providers = CommentProviders::new().with(&provider);
-    write_tree_outputs::<TreeOutputAdapter, _, _, _>(&result.graph, &resolved.tree_outputs, &providers)?;
+    write_mugration_tree_outputs(&result.graph, &resolved.tree_outputs, &providers)?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {

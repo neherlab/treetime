@@ -44,6 +44,7 @@ pub struct AncestralInput {
   pub sequences: Vec<FastaRecord>,
 }
 
+#[derive(Serialize)]
 pub enum AncestralPartition {
   Fitch(Arc<RwLock<PartitionFitch>>),
   Sparse(Arc<RwLock<crate::partition::marginal_sparse::PartitionMarginalSparse>>),

@@ -108,13 +108,14 @@ mod tests {
   use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::partition::traits::MutationCommentProvider;
   use crate::payload::ancestral::GraphAncestral;
+  use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NodeCommentProvider, nwk_read_str};
-  use treetime_primitives::AsciiChar;
+  use treetime_primitives::{AsciiChar, Seq};
 
   fn c(b: u8) -> AsciiChar {
     AsciiChar::from_byte_unchecked(b)
@@ -126,7 +127,7 @@ mod tests {
     edge_subs: &[(usize, Vec<Sub>)],
   ) -> Result<PartitionMarginalSparse, Report> {
     let alphabet = Alphabet::default();
-    let mut ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
+    let mut ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
     for (_, subs) in edge_subs {
       for s in subs {
         if s.pos() < length {
@@ -170,9 +171,9 @@ mod tests {
   }
 
   #[test]
-  fn test_mutation_comment_provider_formats_1_based_positions() -> Result<(), Report> {
+  fn test_mutation_comment_provider_formats_1_based_substitutions_and_indels() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str("(A:0.1)root;")?;
-    let partition = make_test_partition(
+    let mut partition = make_test_partition(
       &graph,
       100,
       &[(
@@ -183,9 +184,15 @@ mod tests {
         ],
       )],
     )?;
+    let edge_key = graph.get_edges()[0].read_arc().key();
+    partition
+      .edges
+      .get_mut(&edge_key)
+      .expect("fixture edge partition must exist")
+      .indels = vec![InDel::del((1, 3), Seq::try_from_str("CG")?)?];
     let provider = MutationCommentProvider::new(&partition, &graph);
     let comments = provider.node_comments(leaf_key(&graph))?;
-    assert_eq!(comments.get("mutations").map(String::as_str), Some("A1T,G6C"));
+    assert_eq!(comments.get("mutations").map(String::as_str), Some("A1T,C2-,G3-,G6C"));
     Ok(())
   }
 

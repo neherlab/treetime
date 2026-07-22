@@ -44,7 +44,7 @@ mod tests {
       .edges
       .get_mut(&first_edge_key)
       .unwrap()
-      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     let first_edge_key_without = graph_without.get_edges()[0].read_arc().key();
     graph_without.get_edges()[0]
@@ -57,7 +57,7 @@ mod tests {
       .edges
       .get_mut(&first_edge_key_without)
       .unwrap()
-      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     let result_with = run_optimize_loop(
       &mut graph_with,
@@ -109,7 +109,7 @@ mod tests {
       .edges
       .get_mut(&first_edge_key)
       .unwrap()
-      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     update_marginal(&graph, &sparse_partitions)?;
 
@@ -203,7 +203,7 @@ mod tests {
     let graph_with_indel: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (dense_with_indel, sparse_with_indel, partitions_with_indel) =
       setup_identical_partitions(&graph_with_indel)?;
-    let indels = vec![InDel::del((0, 2), Seq::try_from_str("AC")?)];
+    let indels = vec![InDel::del((0, 2), Seq::try_from_str("AC")?)?];
     inject_indels_on_first_edge(
       &graph_with_indel,
       &dense_with_indel,

@@ -128,7 +128,7 @@ mod tests {
       .edges
       .get_mut(&first_edge_key)
       .unwrap()
-      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     let sparse_lh = update_marginal(&graph, &sparse_partitions)?;
     let dense_lh = update_marginal(&graph, &dense_partitions)?;
@@ -256,7 +256,7 @@ mod tests {
       .edges
       .get_mut(&first_edge_key)
       .unwrap()
-      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     let initial_sparse_lh = update_marginal(&graph, &sparse_partitions)?;
     let initial_dense_lh = update_marginal(&graph, &dense_partitions)?;

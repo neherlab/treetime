@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::seq::indel::{InDel, InDelKind};
 use crate::{make_error, make_internal_error};
 use eyre::{Report, WrapErr};
 use getset::CopyGetters;
@@ -9,11 +10,114 @@ use std::fmt;
 use std::str::FromStr;
 use std::sync::LazyLock;
 use treetime_primitives::AsciiChar;
+use treetime_primitives::Seq;
 use treetime_utils::error::to_eyre_error;
 
 static NUC_MUT_RE: LazyLock<Regex> = LazyLock::new(|| {
   Regex::new(r"^(?P<ref>[A-Z])(?P<pos>\d{1,10})(?P<qry>[A-Z])$").expect("NUC_MUT_RE regex compilation")
 });
+
+#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+pub struct Mutation {
+  pub track: MutationTrack,
+  pub event: MutationEvent,
+}
+
+impl Mutation {
+  pub fn substitution(track: MutationTrack, substitution: Sub) -> Self {
+    Self {
+      track,
+      event: MutationEvent::Substitution(substitution),
+    }
+  }
+
+  pub fn indel(track: MutationTrack, indel: &InDel) -> Result<Self, Report> {
+    let segment = AlignedMutation::new(indel.range, indel.seq.clone())?;
+    let event = match indel.kind {
+      InDelKind::Insertion => MutationEvent::Insertion(segment),
+      InDelKind::Deletion => MutationEvent::Deletion(segment),
+    };
+    Ok(Self { track, event })
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+pub enum MutationTrack {
+  Nucleotide,
+  AminoAcid(String),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+pub enum MutationEvent {
+  Substitution(Sub),
+  Insertion(AlignedMutation),
+  Deletion(AlignedMutation),
+}
+
+pub fn mutation_event_strings(event: &MutationEvent) -> Result<Vec<String>, Report> {
+  match event {
+    MutationEvent::Substitution(substitution) => Ok(vec![substitution.to_string()]),
+    MutationEvent::Insertion(segment) => segment
+      .sequence
+      .iter()
+      .enumerate()
+      .map(|(offset, state)| mutation_position(segment.range.0, offset).map(|position| format!("-{position}{state}")))
+      .collect(),
+    MutationEvent::Deletion(segment) => segment
+      .sequence
+      .iter()
+      .enumerate()
+      .map(|(offset, state)| mutation_position(segment.range.0, offset).map(|position| format!("{state}{position}-")))
+      .collect(),
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+pub struct AlignedMutation {
+  pub range: (usize, usize),
+  pub sequence: Seq,
+}
+
+impl AlignedMutation {
+  pub fn new(range: (usize, usize), sequence: Seq) -> Result<Self, Report> {
+    if range.0 >= range.1 {
+      return make_error!(
+        "Aligned mutation range must be non-empty and ordered, but found {}..{}",
+        range.0,
+        range.1
+      );
+    }
+    let range_length = range
+      .1
+      .checked_sub(range.0)
+      .ok_or_else(|| eyre::eyre!("Aligned mutation range underflow for {}..{}", range.0, range.1))?;
+    if sequence.len() != range_length {
+      return make_error!(
+        "Aligned mutation range {}..{} has length {range_length}, but its sequence has length {}",
+        range.0,
+        range.1,
+        sequence.len()
+      );
+    }
+    Ok(Self { range, sequence })
+  }
+
+  pub fn one_based_inclusive_range(&self) -> Result<(usize, usize), Report> {
+    let start = self
+      .range
+      .0
+      .checked_add(1)
+      .ok_or_else(|| eyre::eyre!("Mutation start coordinate overflow at {}", self.range.0))?;
+    Ok((start, self.range.1))
+  }
+}
+
+fn mutation_position(start: usize, offset: usize) -> Result<usize, Report> {
+  start
+    .checked_add(offset)
+    .and_then(|position| position.checked_add(1))
+    .ok_or_else(|| eyre::eyre!("Mutation coordinate overflow at start {start} and offset {offset}"))
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, CopyGetters)]
 #[getset(get_copy = "pub")]

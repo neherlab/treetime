@@ -10,14 +10,12 @@ mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::traits::PartitionTimetreeAll;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::utils::{
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
   };
 
-  use crate::partition::timetree::GraphTimetree;
-  use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
+  use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use eyre::Report;
 
   use parking_lot::RwLock;
@@ -57,9 +55,11 @@ mod tests {
 
     let aln = load_alignment_for_dataset(dataset)?;
     let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln)?;
-    let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?));
+    let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
+      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
+    )));
 
-    let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![sparse_partition];
+    let partitions: PartitionTimetreeAllVec = vec![sparse_partition];
     initialize_marginal(&graph, &partitions, &aln)?;
     initialize_node_divergences(&graph)?;
 

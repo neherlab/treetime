@@ -1,0 +1,364 @@
+{
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "$id": "https://nextstrain.org/schemas/dataset/v2",
+    "type": "object",
+    "title": "Nextstrain dataset v2",
+    "description": "A file representing an Auspice dataset. Typically produced by Augur (`augur export v2`) and consumed by Auspice.",
+    "additionalProperties": false,
+    "required": ["version", "meta", "tree"],
+    "properties": {
+        "version" : {
+            "description": "Major schema version",
+            "const": "v2"
+        },
+        "meta": {
+            "type": "object",
+            "$comment": "Metadata associated with phylogeny",
+            "additionalProperties": false,
+            "required": ["updated", "panels"],
+            "properties" : {
+                "title" : {
+                    "description": "Auspice displays this at the top of the page",
+                    "type" : "string"
+                },
+                "updated" : {
+                    "description": "Auspice displays this in the byline and footer.",
+                    "type" : "string",
+                    "pattern": "^[0-9X]{4}-[0-9X]{2}-[0-9X]{2}$"
+                },
+                "build_url" : {
+                    "$ref": "https://nextstrain.org/schemas/auspice/config/v2#/properties/build_url"
+                },
+                "build_avatar" : {
+                    "$ref": "https://nextstrain.org/schemas/auspice/config/v2#/properties/build_avatar"
+                },
+                "description" : {
+                    "description": "Auspice displays this currently in the footer.",
+                    "$comment": "Generally a description of the phylogeny and/or acknowledgements in Markdown format.",
+                    "type": "string"
+                },
+                "warning" : {
+                    "description": "Text in Markdown format to be displayed by Auspice as a warning banner under the byline.",
+                    "type": "string"
+                },
+                "maintainers": {
+                    "$ref": "https://nextstrain.org/schemas/auspice/config/v2#/properties/maintainers"
+                },
+                "genome_annotations": {
+                    "$ref": "https://nextstrain.org/schemas/augur/annotations"
+                },
+                "filters": {
+                    "$ref": "https://nextstrain.org/schemas/auspice/config/v2#/properties/filters"
+                },
+                "panels": {
+                    "$ref": "https://nextstrain.org/schemas/auspice/config/v2#/properties/panels"
+                },
+                "extensions": {
+                    "$ref": "https://nextstrain.org/schemas/auspice/config/v2#/properties/extensions"
+                },
+                "geo_resolutions": {
+                    "description": "The available options for the geographic resolution dropdown, and their lat/long information",
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "description": "Each object here is an individual geo resolution",
+                        "additionalProperties": false,
+                        "required": ["key", "demes"],
+                        "properties": {
+                            "key": {
+                                "type": "string",
+                                "description": "Trait key - must be specified on nodes (e.g. 'country')"
+                            },
+                            "title": {
+                              "type": "string",
+                              "description": "The title to display in the geo resolution dropdown. Optional -- if not provided then `key` will be used."
+                            },
+                            "demes": {
+                                "type": "object",
+                                "description": "Mapping from deme (trait values) to lat/long",
+                                "$comment": "Each value defined across the tree needs to be present here, else Auspice cannot display the deme appropriately",
+                                "patternProperties": {
+                                    "^[a-z_]+$": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "latitude": {
+                                                "type": "number",
+                                                "minimum": -90,
+                                                "maximum": 90
+                                            },
+                                            "longitude": {
+                                                "type": "number",
+                                                "minimum": -180,
+                                                "maximum": 180
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "colorings": {
+                    "type": "array",
+                    "items": {
+                        "allOf": [
+                            {"$ref": "https://nextstrain.org/schemas/auspice/config/v2#/properties/colorings/items"}
+                        ],
+                        "required": ["key", "type"]
+                    }
+                },
+                "display_defaults": {
+                    "$ref": "https://nextstrain.org/schemas/auspice/config/v2#/properties/display_defaults"
+                },
+                "stream_labels": {
+                    "$ref": "https://nextstrain.org/schemas/auspice/config/v2#/properties/stream_labels"
+                },
+                "data_provenance": {
+                    "$ref": "https://nextstrain.org/schemas/auspice/config/v2#/properties/data_provenance"
+                },
+                "sharing": {
+                    "$ref": "https://nextstrain.org/schemas/auspice/config/v2#/properties/sharing"
+                }
+            }
+        },
+        "tree": {
+            "description": "One or more phylogenies using a nested JSON structure",
+            "oneOf": [
+                {"$ref": "#/$defs/tree"},
+                {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {"$ref": "#/$defs/tree"}
+                }
+            ]
+        },
+        "root_sequence": {
+            "$ref": "https://nextstrain.org/schemas/dataset/root-sequence"
+        }
+    },
+    "$defs": {
+        "tree": {
+            "type" : "object",
+            "$comment": "The phylogeny in a nested JSON structure",
+            "additionalProperties": false,
+            "required": ["name", "node_attrs"],
+            "properties": {
+                "name": {
+                    "description": "Strain name. Must be unique. No spaces",
+                    "type": "string"
+                },
+                "node_attrs": {
+                    "description": "attributes associated with the node (sequence, date, location) as opposed to changes from one node to another.",
+                    "type": "object",
+                    "anyOf": [
+                      {"required": ["div"]},
+                      {"required": ["num_date"]}
+                    ],
+                    "properties": {
+                        "div": {
+                            "description": "Node (phylogenetic) divergence",
+                            "$comment": "Cumulative (root = 0)",
+                            "type": "number"
+                        },
+                        "num_date": {
+                            "$comment": "Sample date in decimal format (e.g. 2012.1234)",
+                            "$comment": "This is the only date information. We no longer have string dates.",
+                            "type": "object",
+                            "required": ["value"],
+                            "properties": {
+                                "value": {"type": "number"},
+                                "confidence": {
+                                    "description": "Confidence of the node date",
+                                    "type": "array",
+                                    "items": [
+                                        {"type": "number"},
+                                        {"type": "number"}
+                                    ]
+                                },
+                                "inferred": {
+                                    "type": "boolean",
+                                    "description": "[terminal nodes only] was the 'value' inferred or known?"
+                                },
+                                "raw_value": {
+                                    "type": "string",
+                                    "description": "[terminal nodes only, and only if inferred=true] the known (ambiguous) date string"
+                                }
+                            }
+                        },
+                        "vaccine": {
+                            "description": "Vaccine information",
+                            "properties": {
+                                "serum": {
+                                    "description": "strain used to raise sera (for ???)",
+                                    "$comment": "Currently in the flu & dengue trees",
+                                    "type": "boolean"
+                                },
+                                "selection_date": {
+                                    "description": "Vaccine selection date",
+                                    "$comment": "this is currently in the metadata JSON",
+                                    "type": "string",
+                                    "pattern": "^[0-9X]{4}-[0-9X]{2}-[0-9X]{2}$"
+                                },
+                                "start_date": {
+                                    "description": "Vaccine usage start date",
+                                    "type": "string",
+                                    "pattern": "^[0-9X]{4}-[0-9X]{2}-[0-9X]{2}$"
+                                },
+                                "end_date": {
+                                    "description": "When the vaccine was stopped",
+                                    "$comment": "if vaccine still in use, don't include this property",
+                                    "type": "string",
+                                    "pattern": "^[0-9X]{4}-[0-9X]{2}-[0-9X]{2}$"
+                                }
+                            }
+                        },
+                        "hidden": {
+                            "$comment": "Instruct auspice to hide the branches from this node to it's children",
+                            "type": "string",
+                            "enum": ["always", "timetree", "divtree"]
+                        },
+                        "url": {
+                            "description": "URL of the sequence (usually https://www.ncbi.nlm.nih.gov/nuccore/...)",
+                            "$comment": "terminal nodes only",
+                            "type": "string",
+                            "pattern": "^https?://.+$"
+                        },
+                        "author": {
+                            "description": "Author information (terminal nodes only)",
+                            "type": "object",
+                            "required": ["value"],
+                            "properties": {
+                                "value": {
+                                    "description": "unique value for this publication. Displayed as-is by auspice.",
+                                    "type": "string"
+                                },
+                                "title": {
+                                  "description": "Publication title",
+                                  "type": "string"
+                                },
+                                "journal": {
+                                    "description": "Journal title (including year, if applicable)",
+                                    "type": "string"
+                                },
+                                "paper_url": {
+                                    "description": "URL link to paper (if available)",
+                                    "type": "string",
+                                    "pattern": "^https?://.+$"
+                                }
+                            }
+                        },
+                        "accession": {
+                            "description": "Sequence accession number",
+                            "$comment": "terminal nodes only",
+                            "type": "string",
+                            "pattern": "^[0-9A-Za-z-_.]+$"
+                        }
+                    },
+                    "patternProperties": {
+                        "(?!div|num_date|vaccine|hidden|url|author|accession)(^.+$)": {
+                            "description": "coloring / geo resolution information attached to this node",
+                            "$comment": "property name must match the `key` property provided as a coloring / geo_resolution",
+                            "$comment": "JSON schema defined properties must also validate agaisnt patternProperties if they match. Hence the complex regex.",
+                            "type": "object",
+                            "required": ["value"],
+                            "properties": {
+                                "value": {
+                                    "type": ["string", "number", "boolean"]
+                                },
+                                "url": {
+                                    "description": "URL for the property value.",
+                                    "$comment": "If a url is specified, then the value is rendered as a link in the on-click panel.",
+                                    "type": "string",
+                                    "pattern": "^https?://.+$"
+                                },
+                                "confidence": {
+                                    "description": "Confidence of the trait date",
+                                    "$comment": "Should we use different keys for the two structures here?",
+                                    "oneOf": [
+                                        {
+                                            "type": "array",
+                                            "$comment": "Only used if the value is numeric",
+                                            "items": [
+                                                {"type": "number"},
+                                                {"type": "number"}
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "$comment": "Only used if the value is a string",
+                                            "$comment": "alternative possibilities & their confidence values",
+                                            "patternProperties": {
+                                                "^.+$": {
+                                                    "type": "number",
+                                                    "minimum": 0.0,
+                                                    "maximum": 1.0
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                "entropy": {
+                                    "$comment": "Auspice uses this to control opacity of the color-by",
+                                    "type": "number"
+                                }
+                            }
+                        },
+                        "^none$": false
+                    }
+                },
+                "branch_attrs": {
+                    "description": "attributes associated with the branch from the parent node to this node, such as branch lengths, mutations, support values",
+                    "type": "object",
+                    "properties": {
+                        "labels": {
+                            "description": "Node labels",
+                            "$comment": "Auspice scans this to generate the branch labels dropdown",
+                            "patternProperties": {
+                                "^[a-zA-Z0-9]+$": {
+                                    "$comment": "e.g. clade->3c3a",
+                                    "$comment": "string is parsed unchanged by Auspice",
+                                    "type": "string"
+                                },
+                                "^none$": false
+                            }
+                        },
+                        "mutations": {
+                            "description": "Mutations on the branch leading to this node. 1-based numbering (same as genome_annotations)",
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties":  {
+                                "nuc": {
+                                    "description": "nucleotide mutations",
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "pattern": "^[ATCGNYRWSKMDVHB-][0-9]+[ATCGNYRWSKMDVHB-]$"
+                                    }
+                                }
+                            },
+                            "patternProperties": {
+                                "^(?!nuc$)[a-zA-Z0-9*_.()-]+$": {
+                                    "description": "Amino acid mutations for this CDS",
+                                    "$comment": "properties must exist in the meta.JSON -> annotation object",
+                                    "type": "array",
+                                    "items": {
+                                      "pattern": "^[A-Z*-][0-9]+[A-Z*-]$"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "children": {
+                    "description": "Child nodes. Recursive structure. Terminal nodes do not have this property.",
+                    "$comment": "Polytomies (more than 2 items) allowed, as are nodes with a single child.",
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {"$ref": "#/$defs/tree"}
+                }
+            }
+        }
+    }
+}

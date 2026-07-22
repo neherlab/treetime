@@ -542,21 +542,6 @@ pub struct ResolvedOutputs {
   pub non_tree_outputs: BTreeMap<OutputSelection, PathBuf>,
 }
 
-impl ResolvedOutputs {
-  /// Create parent directories immediately before the command starts publishing output.
-  pub fn prepare(&self) -> Result<(), Report> {
-    for path in self.tree_outputs.values().chain(self.non_tree_outputs.values()) {
-      if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-          std::fs::create_dir_all(parent)
-            .wrap_err_with(|| format!("Failed to create parent directory '{}'", parent.display()))?;
-        }
-      }
-    }
-    Ok(())
-  }
-}
-
 impl OutputCoreArgs {
   /// Resolve the three-tier output configuration into concrete file paths.
   ///

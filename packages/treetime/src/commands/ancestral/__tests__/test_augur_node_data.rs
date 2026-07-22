@@ -310,6 +310,7 @@ mod tests {
             name_to_key["B"] => vec![],
             name_to_key["root"] => vec![],
           },
+          node_mutations: btreemap! {},
         },
         Some(AugurNodeDataJsonAnnotationEntry {
           start: Some(1),

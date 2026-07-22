@@ -1,3 +1,4 @@
+use eyre::Report;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -6,39 +7,65 @@ use treetime_primitives::Seq;
 use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
 use treetime_utils::interval::range_union::range_union_iter;
+use treetime_utils::make_error;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct InDel {
   pub range: (usize, usize),
   pub seq: Seq,
-  pub deletion: bool, // deletion if True, insertion if False
+  pub kind: InDelKind,
 }
 
 impl InDel {
-  pub fn del(range: (usize, usize), seq: impl Into<Seq>) -> Self {
-    Self::new(range, seq, true)
+  pub fn del(range: (usize, usize), seq: impl Into<Seq>) -> Result<Self, Report> {
+    Self::new(range, seq, InDelKind::Deletion)
   }
 
-  pub fn ins(range: (usize, usize), seq: impl Into<Seq>) -> Self {
-    Self::new(range, seq, false)
+  pub fn ins(range: (usize, usize), seq: impl Into<Seq>) -> Result<Self, Report> {
+    Self::new(range, seq, InDelKind::Insertion)
   }
 
-  pub fn new(range: (usize, usize), seq: impl Into<Seq>, deletion: bool) -> Self {
+  pub fn new(range: (usize, usize), seq: impl Into<Seq>, kind: InDelKind) -> Result<Self, Report> {
     let seq = seq.into();
-    assert!(range.0 <= range.1);
-    assert_eq!(seq.len(), range.1 - range.0);
-    Self { range, seq, deletion }
+    let Some(length) = range.1.checked_sub(range.0).filter(|length| *length > 0) else {
+      return make_error!(
+        "Indel range must be non-empty and ordered, got {}..{}",
+        range.0,
+        range.1
+      );
+    };
+    if seq.len() != length {
+      return make_error!(
+        "Indel range {}..{} has length {length}, but its sequence has length {}",
+        range.0,
+        range.1,
+        seq.len()
+      );
+    }
+    Ok(Self { range, seq, kind })
   }
 
-  /// Invert the indel direction by toggling deletion flag
   pub fn invert(&mut self) {
-    self.deletion = !self.deletion;
+    self.kind = match self.kind {
+      InDelKind::Insertion => InDelKind::Deletion,
+      InDelKind::Deletion => InDelKind::Insertion,
+    };
   }
+
+  pub fn is_deletion(&self) -> bool {
+    self.kind == InDelKind::Deletion
+  }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+pub enum InDelKind {
+  Insertion,
+  Deletion,
 }
 
 impl fmt::Display for InDel {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    let delta_str = if self.deletion {
+    let delta_str = if self.is_deletion() {
       format!("{} -> {}", &self.seq.as_str(), "-".repeat(self.seq.len()))
     } else {
       format!("{} -> {}", "-".repeat(self.seq.len()), &self.seq.as_str())
@@ -95,7 +122,7 @@ pub fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<In
     let overlap_start = p.range.0.max(c.range.0);
     let overlap_end = p.range.1.min(c.range.1);
     let overlaps = overlap_start < overlap_end;
-    let adjacent = !overlaps && p.range.1 == c.range.0 && p.deletion && c.deletion;
+    let adjacent = !overlaps && p.range.1 == c.range.0 && p.is_deletion() && c.is_deletion();
 
     if !overlaps && !adjacent {
       // Case 7: no interaction
@@ -115,13 +142,17 @@ pub fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<In
         .chain(c.seq.as_slice().iter())
         .copied()
         .collect();
-      result.push(InDel::del((p.range.0, c.range.1), merged_seq));
+      result.push(InDel {
+        range: (p.range.0, c.range.1),
+        seq: merged_seq,
+        kind: InDelKind::Deletion,
+      });
       pi += 1;
       ci += 1;
     } else {
       // Overlapping cases - both pointers always advance
-      match (p.deletion, c.deletion) {
-        (true, true) => {
+      match (p.kind, c.kind) {
+        (InDelKind::Deletion, InDelKind::Deletion) => {
           // Cases 1, 6: overlapping deletions - use parent's seq for overlap region
           let merged_start = p.range.0.min(c.range.0);
           let merged_end = p.range.1.max(c.range.1);
@@ -153,13 +184,17 @@ pub fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<In
             merged_seq.extend(c.seq.as_slice()[suffix_offset..].iter().copied());
           }
 
-          result.push(InDel::del((merged_start, merged_end), merged_seq));
+          result.push(InDel {
+            range: (merged_start, merged_end),
+            seq: merged_seq,
+            kind: InDelKind::Deletion,
+          });
         },
-        (false, false) => {
+        (InDelKind::Insertion, InDelKind::Insertion) => {
           // Case 3: overlapping insertions - child's seq wins
           result.push(c.clone());
         },
-        (true, false) | (false, true) => {
+        (InDelKind::Deletion, InDelKind::Insertion) | (InDelKind::Insertion, InDelKind::Deletion) => {
           if !(p.range == c.range && p.seq == c.seq) {
             // Emit in sorted order by range.0 to maintain output sortedness
             if p.range.0 <= c.range.0 {
@@ -194,7 +229,7 @@ fn merge_adjacent_deletions(indels: Vec<InDel>) -> Vec<InDel> {
     #[allow(clippy::suspicious_operation_groupings)]
     let should_merge = merged
       .last()
-      .is_some_and(|prev: &InDel| prev.deletion && indel.deletion && prev.range.1 == indel.range.0);
+      .is_some_and(|prev: &InDel| prev.is_deletion() && indel.is_deletion() && prev.range.1 == indel.range.0);
     if should_merge {
       let prev = merged.last_mut().unwrap();
       prev.range.1 = indel.range.1;
@@ -349,7 +384,11 @@ pub fn resolve_indels_forward(
         last.range.1 = hi;
         last.seq.extend(parent_sequence[lo..hi].iter().copied());
       } else {
-        deletions.push(InDel::del((lo, hi), &parent_sequence[lo..hi]));
+        deletions.push(InDel {
+          range: (lo, hi),
+          seq: (&parent_sequence[lo..hi]).into(),
+          kind: InDelKind::Deletion,
+        });
       }
       if let Some(last) = new_node_gaps.last_mut().filter(|l| l.1 == lo) {
         last.1 = hi;
@@ -362,7 +401,11 @@ pub fn resolve_indels_forward(
         last.range.1 = hi;
         last.seq.extend(node_sequence[lo..hi].iter().copied());
       } else {
-        insertions.push(InDel::ins((lo, hi), &node_sequence[lo..hi]));
+        insertions.push(InDel {
+          range: (lo, hi),
+          seq: (&node_sequence[lo..hi]).into(),
+          kind: InDelKind::Insertion,
+        });
       }
     } else if in_parent {
       // Parent has gap; node is gapped, non_char, or variable: inherit parent gap.

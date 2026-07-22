@@ -1,11 +1,7 @@
-use crate::partition::timetree::GraphTimetree;
-use crate::partition::traits::PartitionTimetreeAll;
-use crate::payload::timetree::EdgeTimetree;
-use crate::payload::timetree::NodeTimetree;
+use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::traits::PartitionMarginalOps;
 use log::debug;
-use parking_lot::RwLock;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 
@@ -47,10 +43,7 @@ pub fn count_sequence_changes(previous: &AncestralStateSnapshot, current: &Ances
 }
 
 /// Snapshot current ancestral sequences for all internal nodes across partitions.
-pub fn capture_ancestral_states(
-  graph: &GraphTimetree,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
-) -> AncestralStateSnapshot {
+pub fn capture_ancestral_states(graph: &GraphTimetree, partitions: &[PartitionTimetreeRef]) -> AncestralStateSnapshot {
   if partitions.is_empty() {
     return vec![];
   }

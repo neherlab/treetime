@@ -115,7 +115,7 @@ pub mod tests {
     let aln = simple_alignment()?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
     let rate = estimate_indel_rate(&graph, &mixed_partitions);
@@ -137,7 +137,7 @@ pub mod tests {
     let aln = simple_alignment()?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     let first_edge_key = inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
     graph.get_edges()[0]
       .write_arc()
@@ -171,7 +171,7 @@ pub mod tests {
     let aln = simple_alignment()?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
     graph.get_edges()[0]
       .write_arc()
@@ -213,7 +213,7 @@ pub mod tests {
     let (dense_partitions_high, sparse_partitions_high, mixed_partitions_high) =
       setup_identical_partitions(&graph_high)?;
 
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph_low, &dense_partitions_low, &sparse_partitions_low, &indels);
     inject_indels_on_first_edge(&graph_high, &dense_partitions_high, &sparse_partitions_high, &indels);
 
@@ -254,7 +254,7 @@ pub mod tests {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph)?;
 
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
     initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
@@ -286,7 +286,7 @@ pub mod tests {
     }
 
     // Inject indels on the first edge (after zeroing, so indel_rate starts at 0)
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
     // indel_rate is 0 at this point (all BL = 0), but initial_guess should bootstrap
@@ -324,8 +324,8 @@ pub mod tests {
     // Inject indels AFTER setup (which includes update_marginal) to avoid being wiped
     // by the backward pass that recreates DenseEdgePartition from scratch.
     let indels = vec![
-      InDel::del((0, 3), Seq::try_from_str("ACG")?),
-      InDel::del((5, 8), Seq::try_from_str("ACG")?),
+      InDel::del((0, 3), Seq::try_from_str("ACG")?)?,
+      InDel::del((5, 8), Seq::try_from_str("ACG")?)?,
     ];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
@@ -361,7 +361,7 @@ pub mod tests {
       .write_arc()
       .set_branch_length(Some(-0.1));
     if has_indels {
-      let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+      let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
       inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
     }
 
@@ -400,7 +400,7 @@ pub mod tests {
       .edges
       .get_mut(&first_edge_key)
       .unwrap()
-      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
 
@@ -646,7 +646,7 @@ pub mod tests {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph)?;
 
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)];
+    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     let _first_edge_key = inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
     // Set a very small initial branch length to test clamping

@@ -64,6 +64,7 @@ bio = { workspace = true }
 criterion = { workspace = true }
 ctor = { workspace = true }
 indoc = { workspace = true }
+jsonschema = { workspace = true }
 lazy_static = { workspace = true }
 petgraph = { workspace = true }
 pretty_assertions = { workspace = true }

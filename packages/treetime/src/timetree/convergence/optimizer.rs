@@ -1,16 +1,11 @@
-use crate::partition::timetree::GraphTimetree;
-use crate::partition::traits::PartitionTimetreeAll;
-use crate::payload::timetree::EdgeTimetree;
-use crate::payload::timetree::NodeTimetree;
+use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
 use crate::timetree::convergence::likelihood::{
   compute_coalescent_likelihood, compute_positional_likelihood, compute_sequence_likelihood,
 };
 use crate::timetree::convergence::metrics::ConvergenceMetrics;
 use eyre::Report;
 use log::info;
-use parking_lot::RwLock;
 use std::io::Write;
-use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_io::csv::CsvStructWriter;
 
@@ -55,7 +50,7 @@ impl TimetreeOptimizer {
     n_diff: usize,
     n_resolved: usize,
     graph: &GraphTimetree,
-    partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+    partitions: &[PartitionTimetreeRef],
     coalescent_tc: Option<&Distribution>,
   ) -> Result<(), Report> {
     let lh_seq = compute_sequence_likelihood(graph, partitions);

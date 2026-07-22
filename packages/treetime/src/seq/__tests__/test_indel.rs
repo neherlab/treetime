@@ -6,11 +6,11 @@ mod tests {
   use treetime_primitives::Seq;
 
   fn del(start: usize, end: usize, seq: &str) -> InDel {
-    InDel::del((start, end), Seq::try_from_str(seq).unwrap())
+    InDel::del((start, end), Seq::try_from_str(seq).unwrap()).unwrap()
   }
 
   fn ins(start: usize, end: usize, seq: &str) -> InDel {
-    InDel::ins((start, end), Seq::try_from_str(seq).unwrap())
+    InDel::ins((start, end), Seq::try_from_str(seq).unwrap()).unwrap()
   }
 
   #[test]
@@ -229,5 +229,21 @@ mod tests {
     let mut indels = vec![del(5, 7, "AC"), del(1, 3, "CG"), del(3, 5, "GT")];
     sort_indels(&mut indels);
     assert_eq!(indels, vec![del(1, 3, "CG"), del(3, 5, "GT"), del(5, 7, "AC")]);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::reversed((3, 2), "A", "non-empty and ordered")]
+  #[case::empty(   (2, 2), "",  "non-empty and ordered")]
+  #[case::short(   (2, 4), "A", "sequence has length 1")]
+  #[trace]
+  fn test_indel_constructor_rejects_invalid_event(
+    #[case] range: (usize, usize),
+    #[case] sequence: &str,
+    #[case] message: &str,
+  ) {
+    let sequence = Seq::try_from_str(sequence).unwrap();
+    let error = InDel::del(range, sequence).expect_err("invalid indel must be rejected");
+    assert!(error.to_string().contains(message));
   }
 }

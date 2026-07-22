@@ -55,8 +55,8 @@ mod tests {
       let edge_entry = partition.data.edges.entry(edge_key).or_insert(edge_data);
       edge_entry.indels.push(InDel {
         range: (4, 7),
-        seq: Seq::default(),
-        deletion: true,
+        seq: Seq::try_from_str("ACG")?,
+        kind: crate::seq::indel::InDelKind::Deletion,
       });
     }
 

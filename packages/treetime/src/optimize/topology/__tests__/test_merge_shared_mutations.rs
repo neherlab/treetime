@@ -667,7 +667,7 @@ mod tests {
       let mut p = partition.write_arc();
       let edge_a = find_edge_key(&graph, "root", "A").expect("edge root->A");
       p.edges.get_mut(&edge_a).expect("partition edge A").indels =
-        vec![InDel::del((10, 13), Seq::try_from_str("GTA").unwrap())];
+        vec![InDel::del((10, 13), Seq::try_from_str("GTA").unwrap()).unwrap()];
     }
 
     let partitions = vec![partition];
@@ -770,7 +770,7 @@ mod tests {
       ],
     )?;
 
-    let shared_indel = InDel::del((5, 8), Seq::try_from_str("GTA").unwrap());
+    let shared_indel = InDel::del((5, 8), Seq::try_from_str("GTA").unwrap()).unwrap();
     {
       let mut p = partition.write_arc();
       let edge_a = find_edge_key(&graph, "root", "A").expect("edge root->A");
@@ -800,7 +800,7 @@ mod tests {
       ],
     )?;
 
-    let shared_indel = InDel::del((5, 8), Seq::try_from_str("GTA").unwrap());
+    let shared_indel = InDel::del((5, 8), Seq::try_from_str("GTA").unwrap()).unwrap();
     {
       let mut p = partition.write_arc();
       let edge_a = find_edge_key(&graph, "root", "A").expect("edge root->A");

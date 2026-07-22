@@ -7,7 +7,7 @@ use crate::clock::pipeline::{self, ClockInput, ClockPipelineParams};
 use crate::clock::rtt::{ClockRegressionResult, write_clock_regression_result_csv};
 use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
 use crate::commands::shared::output::{CommandKind, OutputSelection};
-use crate::commands::shared::tree_output::TreeOutputAdapter;
+use crate::commands::shared::tree_output::write_clock_tree_outputs;
 use crate::make_error;
 use crate::make_report;
 use eyre::{Report, WrapErr};
@@ -15,24 +15,17 @@ use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_io::dates_csv::read_dates;
-use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::nwk_read_file;
 
-#[allow(clippy::manual_non_exhaustive, clippy::partial_pub_fields)] // The private unit field preserves Graph JSON's `data: null` shape.
 #[derive(serde::Serialize)]
-#[serde(transparent)]
 pub struct ClockGraphData {
-  marker: (),
-  #[serde(skip)]
   pub clock_model: ClockModel,
-  #[serde(skip)]
   pub regression_results: Vec<ClockRegressionResult>,
 }
 
 impl ClockGraphData {
   pub fn new(clock_model: ClockModel, regression_results: Vec<ClockRegressionResult>) -> Self {
     Self {
-      marker: (),
       clock_model,
       regression_results,
     }
@@ -136,12 +129,10 @@ pub fn run_clock(
     .topology_order
     .resolve_topology_order(&graph, Some(input_order))?;
   topology_order.apply(&mut graph)?;
-  resolved.prepare()?;
-
   progress.report("Writing output", 0.8, "");
 
   if !resolved.tree_outputs.is_empty() {
-    write_tree_outputs::<TreeOutputAdapter, _, _, _>(
+    write_clock_tree_outputs(
       &graph,
       &resolved.tree_outputs,
       &treetime_io::nwk::CommentProviders::new(),

@@ -10,7 +10,7 @@ use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with_aa;
 use crate::commands::ancestral::result::{AncestralGraphData, AncestralResult};
 use crate::commands::shared::output::{CommandKind, OutputSelection};
-use crate::commands::shared::tree_output::TreeOutputAdapter;
+use crate::commands::shared::tree_output::write_ancestral_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::partition::traits::MutationCommentProvider;
@@ -21,7 +21,6 @@ use eyre::Report;
 use log::{info, warn};
 use treetime_graph::node::Named;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
-use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
@@ -97,8 +96,6 @@ pub fn run_ancestral_reconstruction(
       ),
     ],
   )?;
-  resolved.prepare()?;
-
   let mut output_fasta = if resolved
     .non_tree_outputs
     .contains_key(&OutputSelection::ReconstructedNucFasta)
@@ -174,7 +171,7 @@ pub fn run_ancestral_reconstruction(
     model_name,
     mask,
   } = output;
-  let mut graph = graph.map_data(AncestralGraphData::new(partition, gtr, model_name, mask));
+  let mut graph = graph.map_data(AncestralGraphData::new(partition, gtr, model_name, mask, aa_node_data));
   topology_order.apply(&mut graph)?;
   progress.report("Writing output", 0.9, "");
 
@@ -182,15 +179,33 @@ pub fn run_ancestral_reconstruction(
     match &graph.data().partition {
       Some(AncestralPartition::Fitch(partition)) => {
         let guard = partition.read_arc();
-        write_augur_node_data_json_with_aa(&graph, &*guard, &graph.data().mask, aa_node_data.as_ref(), path)?;
+        write_augur_node_data_json_with_aa(
+          &graph,
+          &*guard,
+          &graph.data().mask,
+          graph.data().aa_node_data.as_ref(),
+          path,
+        )?;
       },
       Some(AncestralPartition::Sparse(partition)) => {
         let guard = partition.read_arc();
-        write_augur_node_data_json_with_aa(&graph, &*guard, &graph.data().mask, aa_node_data.as_ref(), path)?;
+        write_augur_node_data_json_with_aa(
+          &graph,
+          &*guard,
+          &graph.data().mask,
+          graph.data().aa_node_data.as_ref(),
+          path,
+        )?;
       },
       Some(AncestralPartition::Dense(partition)) => {
         let guard = partition.read_arc();
-        write_augur_node_data_json_with_aa(&graph, &*guard, &graph.data().mask, aa_node_data.as_ref(), path)?;
+        write_augur_node_data_json_with_aa(
+          &graph,
+          &*guard,
+          &graph.data().mask,
+          graph.data().aa_node_data.as_ref(),
+          path,
+        )?;
       },
       None => {},
     }
@@ -227,16 +242,16 @@ fn write_tree_for_partition(
       let guard = partition.read_arc();
       let provider = MutationCommentProvider::new(&*guard, graph);
       let providers = CommentProviders::new().with(&provider);
-      write_tree_outputs::<TreeOutputAdapter, _, _, _>(graph, &resolved.tree_outputs, &providers)?;
+      write_ancestral_tree_outputs(graph, &resolved.tree_outputs, &providers)?;
     },
     Some(AncestralPartition::Dense(partition)) => {
       let guard = partition.read_arc();
       let provider = MutationCommentProvider::new(&*guard, graph);
       let providers = CommentProviders::new().with(&provider);
-      write_tree_outputs::<TreeOutputAdapter, _, _, _>(graph, &resolved.tree_outputs, &providers)?;
+      write_ancestral_tree_outputs(graph, &resolved.tree_outputs, &providers)?;
     },
     Some(AncestralPartition::Fitch(_)) | None => {
-      write_tree_outputs::<TreeOutputAdapter, _, _, _>(graph, &resolved.tree_outputs, &CommentProviders::new())?;
+      write_ancestral_tree_outputs(graph, &resolved.tree_outputs, &CommentProviders::new())?;
     },
   }
   Ok(())

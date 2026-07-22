@@ -10,10 +10,8 @@ mod tests {
   use crate::o;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
   use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution};
-  use crate::partition::timetree::GraphTimetree;
-  use crate::partition::traits::{PartitionRerootOps, PartitionTimetreeAll};
-  use crate::payload::timetree::EdgeTimetree;
-  use crate::payload::timetree::NodeTimetree;
+  use crate::partition::timetree::{GraphTimetree, PartitionTimetree};
+  use crate::partition::traits::PartitionRerootOps;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
@@ -88,14 +86,15 @@ mod tests {
     })?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
-    let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
+    let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
+      fitch.into_marginal_sparse(gtr, &graph)?,
+    )));
 
     let clock_params = ClockParams::default();
     clock_regression_backward(&graph, &clock_params, None)?;
     clock_regression_forward(&graph, &clock_params, None)?;
 
-    let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
-    let partitions = vec![partition];
+    let partitions = vec![sparse_partition];
 
     // Record initial state
     let initial_leaf_count = graph.get_leaves().len();
@@ -192,7 +191,7 @@ mod tests {
         AsciiChar::from_byte_unchecked(b'A'),
         AsciiChar::from_byte_unchecked(b'C')
       ],
-    ); // deletion=true
+    )?; // deletion=true
 
     let mut sparse_partition = PartitionMarginalSparse {
       index: 0,
@@ -233,7 +232,7 @@ mod tests {
 
     // Verify indel is inverted
     let indel_after = &edge_data.indels[0];
-    assert_eq!(indel_after.deletion, false, "Indel deletion flag should be toggled");
+    assert!(!indel_after.is_deletion(), "Indel direction should be toggled");
 
     // Verify msg_from_child is cleared
     pretty_assert_ulps_eq!(edge_data.msg_from_child.log_lh, 0.0, max_ulps = 5);
@@ -359,7 +358,7 @@ mod tests {
       .ok_or_else(|| make_report!("Edge to A not found"))?;
 
     let root_seq = Seq::try_from_slice(b"ACGTACGT")?;
-    let indel = InDel::del((2, 4), seq![c(b'G'), c(b'T')]);
+    let indel = InDel::del((2, 4), seq![c(b'G'), c(b'T')])?;
 
     let mut sparse_partition = PartitionMarginalSparse {
       index: 0,
@@ -484,14 +483,15 @@ mod tests {
     })?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
-    let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
+    let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
+      fitch.into_marginal_sparse(gtr, &graph)?,
+    )));
 
     let clock_params = ClockParams::default();
     clock_regression_backward(&graph, &clock_params, None)?;
     clock_regression_forward(&graph, &clock_params, None)?;
 
-    let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = sparse_partition;
-    let partitions = vec![partition];
+    let partitions = vec![sparse_partition];
 
     // Record initial state
     let initial_leaf_count = graph.get_leaves().len();

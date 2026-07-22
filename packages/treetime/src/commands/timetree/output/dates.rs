@@ -1,11 +1,6 @@
-use crate::partition::timetree::GraphTimetree;
-use crate::partition::traits::PartitionTimetreeAll;
-use crate::payload::timetree::EdgeTimetree;
-use crate::payload::timetree::NodeTimetree;
+use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
 use eyre::Report;
-use parking_lot::RwLock;
 use std::path::Path;
-use std::sync::Arc;
 
 /// Write inferred node dates to file.
 ///
@@ -14,7 +9,7 @@ use std::sync::Arc;
 /// How: TSV file with node_name, numdate, time_before_present.
 pub fn write_node_dates(
   _graph: &GraphTimetree,
-  _partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+  _partitions: &[PartitionTimetreeRef],
   _out_base: &Path,
 ) -> Result<(), Report> {
   todo!("Write node dates to TSV file")

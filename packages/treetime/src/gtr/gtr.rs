@@ -4,7 +4,9 @@ use ndarray::prelude::*;
 use ndarray_linalg::Eigh;
 use ndarray_linalg::UPLO::Lower;
 use num_traits::abs;
+use serde::Serialize;
 use treetime_utils::array::ndarray::{clamp_min, outer};
+use treetime_utils::array::serde::{array1_as_vec, array2_as_vec, option_array1_as_vec};
 
 /// Compute the average substitution rate for normalization.
 ///
@@ -164,7 +166,7 @@ pub struct GTRParams {
 ///
 /// See `eig_single_site()` for details on the symmetrization trick that ensures
 /// numerical stability.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct GTR {
   pub debug: bool,
   /// Average substitution rate before normalization, used for scaling.
@@ -172,14 +174,19 @@ pub struct GTR {
   /// Overall substitution rate (incorporates average_rate after normalization).
   pub mu: f64,
   /// Symmetric exchangeability matrix (zero diagonal, normalized by average_rate).
+  #[serde(serialize_with = "array2_as_vec")]
   pub W: Array2<f64>,
   /// Equilibrium frequencies (sum to 1).
+  #[serde(serialize_with = "array1_as_vec")]
   pub pi: Array1<f64>,
   /// Eigenvalues of the rate matrix (all <= 0, exactly one zero).
+  #[serde(serialize_with = "array1_as_vec")]
   pub eigvals: Array1<f64>,
   /// Right transformation matrix for P(t) = v * exp(Lambda * t) * v_inv.
+  #[serde(serialize_with = "array2_as_vec")]
   pub v: Array2<f64>,
   /// Left transformation matrix (inverse of v, adjusted for non-symmetric Q).
+  #[serde(serialize_with = "array2_as_vec")]
   pub v_inv: Array2<f64>,
   /// Per-site rate multipliers for among-site rate variation.
   ///
@@ -190,6 +197,7 @@ pub struct GTR {
   ///
   /// The effective rate at site `a` is `mu * site_rates[a]`. The matrix exponential
   /// becomes `P_a(t) = V * diag(exp(eigvals * mu * site_rates[a] * t)) * V_inv`.
+  #[serde(serialize_with = "option_array1_as_vec")]
   pub site_rates: Option<Array1<f64>>,
   /// Whether the one-dimensional branch-length likelihood $L(t)$ is guaranteed
   /// unimodal on $(0, \infty)$ for this model.

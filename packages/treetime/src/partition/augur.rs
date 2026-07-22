@@ -3,6 +3,7 @@ use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::partition::traits::{BranchTopology, PartitionBranchOps, PartitionMarginalOps};
 use crate::payload::ancestral::{EdgeAncestral, NodeAncestral};
+use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use treetime_graph::edge::GraphEdgeKey;
@@ -30,6 +31,8 @@ pub trait AugurNodeDataJsonAncestralPartition {
   /// Substitutions on the parent edge of one node (parent -> child).
   fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report>;
 
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel>;
+
   /// Ambiguous (unknown) character of the partition alphabet, used to fill
   /// masked positions in per-node output sequences.
   fn ambiguous_char(&self) -> AsciiChar;
@@ -53,6 +56,10 @@ impl AugurNodeDataJsonAncestralPartition for PartitionFitch {
     Ok(self.edges[&edge_key].fitch_subs().to_vec())
   }
 
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+    self.edges[&edge_key].indels.clone()
+  }
+
   fn ambiguous_char(&self) -> AsciiChar {
     self.alphabet.unknown()
   }
@@ -69,6 +76,10 @@ impl AugurNodeDataJsonAncestralPartition for PartitionMarginalSparse {
 
   fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     PartitionBranchOps::edge_subs(self, graph, edge_key)
+  }
+
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+    PartitionBranchOps::edge_indels(self, edge_key)
   }
 
   fn ambiguous_char(&self) -> AsciiChar {
@@ -89,6 +100,10 @@ impl AugurNodeDataJsonAncestralPartition for PartitionMarginalDense {
 
   fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     PartitionBranchOps::edge_subs(self, graph, edge_key)
+  }
+
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+    PartitionBranchOps::edge_indels(self, edge_key)
   }
 
   fn ambiguous_char(&self) -> AsciiChar {

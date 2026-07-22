@@ -384,7 +384,7 @@ fn run_fitch_reconstruction(
       }
 
       for indel in &edge_part.indels {
-        if indel.deletion {
+        if indel.is_deletion() {
           sequence[indel.range.0..indel.range.1].fill(alphabet.gap());
         } else {
           sequence[indel.range.0..indel.range.1].copy_from_slice(&indel.seq);

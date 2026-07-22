@@ -84,7 +84,7 @@ impl Composition {
 
   /// Reflect sequence indel in the composition counts
   pub fn add_indel(&mut self, indel: &InDel) {
-    let adjust_by = if indel.deletion { -1 } else { 1 };
+    let adjust_by = if indel.is_deletion() { -1 } else { 1 };
     for nuc in &indel.seq {
       self.adjust_count(*nuc, adjust_by);
       self.adjust_count(self.gap, -adjust_by);

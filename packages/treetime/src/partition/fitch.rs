@@ -3,15 +3,16 @@ use crate::gtr::gtr::GTR;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
-use crate::partition::traits::PartitionCompressed;
+use crate::partition::traits::{BranchTopology, PartitionBranchOps, PartitionCompressed};
 use eyre::Report;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
-use treetime_primitives::seq;
+use treetime_primitives::{Seq, seq};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct PartitionFitch {
   pub index: usize,
   pub alphabet: Alphabet,
@@ -86,5 +87,44 @@ impl PartitionCompressed for PartitionFitch {
     &mut BTreeMap<GraphEdgeKey, SparseEdgePartition>,
   ) {
     (&mut self.nodes, &mut self.edges)
+  }
+}
+
+impl PartitionBranchOps for PartitionFitch {
+  fn sequence_length(&self) -> usize {
+    self.length
+  }
+
+  fn edge_subs(
+    &self,
+    _graph: &dyn BranchTopology,
+    edge_key: GraphEdgeKey,
+  ) -> Result<Vec<crate::seq::mutation::Sub>, Report> {
+    Ok(self.edges[&edge_key].fitch_subs().to_vec())
+  }
+
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
+    self.edges[&edge_key].indels.clone()
+  }
+
+  fn root_sequence(&self, graph: &dyn BranchTopology) -> Result<Seq, Report> {
+    Ok(self.nodes[&graph.root_key()?].seq.sequence.clone())
+  }
+
+  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+    self.nodes[&node_key].seq.sequence.clone()
+  }
+
+  fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+    let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
+    Ok(
+      self.nodes[&parent_key]
+        .seq
+        .sequence
+        .iter()
+        .zip(&self.nodes[&child_key].seq.sequence)
+        .filter(|(parent, child)| self.alphabet.is_canonical(**parent) && self.alphabet.is_canonical(**child))
+        .count(),
+    )
   }
 }

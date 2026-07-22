@@ -1,23 +1,18 @@
 use crate::clock::clock_model::{ClockModel, ClockModelStats};
 use crate::make_error;
-use crate::partition::timetree::GraphTimetree;
-use crate::partition::traits::PartitionTimetreeAll;
-use crate::payload::timetree::EdgeTimetree;
-use crate::payload::timetree::NodeTimetree;
+use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
 use crate::payload::traits::TimetreeNode;
 use crate::timetree::inference::runner::run_timetree;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::{info, warn};
 use ordered_float::OrderedFloat;
-use parking_lot::RwLock;
 use serde::Serialize;
 use statrs::function::erf::erf_inv;
 use std::collections::BTreeMap;
 use std::f64::consts::SQRT_2;
 use std::io::Write;
 use std::path::Path;
-use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::{GraphNodeKey, Named, TimeConstraint};
@@ -57,7 +52,7 @@ const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5; // 0.95
 /// caller can proceed with further passes (e.g., final marginal reconstruction).
 pub fn compute_rate_susceptibility(
   graph: &mut GraphTimetree,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+  partitions: &[PartitionTimetreeRef],
   clock_model: &ClockModel,
   coalescent_tc: Option<&Distribution>,
   rate_std: f64,
@@ -238,7 +233,6 @@ pub fn extract_confidence_intervals(graph: &GraphTimetree) -> Vec<NodeConfidence
 #[derive(Debug, Clone, Serialize)]
 pub struct NodeConfidenceInterval {
   /// Graph node key for stable lookup across naming schemes.
-  #[serde(skip)]
   pub key: GraphNodeKey,
   pub name: String,
   pub date: f64,

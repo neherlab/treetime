@@ -15,9 +15,8 @@ use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::iteration::{apply_damping, save_branch_lengths};
 use crate::optimize::params::{BranchLengthMode, BranchOptMethod};
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
-use crate::partition::timetree::{GraphTimetree, PartitionTimetreeAllVec};
-use crate::partition::traits::{HasGtr, PartitionTimetreeAll};
-use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
+use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec, PartitionTimetreeRef};
+use crate::partition::traits::HasGtr;
 use crate::progress::ProgressSink;
 use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
@@ -481,9 +480,9 @@ fn initialize_partitions_from_params(
     MarginalPartition::Dense(p) => p.gtr().clone(),
   };
 
-  let partition: Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>> = match created.partition {
-    MarginalPartition::Sparse(p) => Arc::new(RwLock::new(p)),
-    MarginalPartition::Dense(p) => Arc::new(RwLock::new(p)),
+  let partition = match created.partition {
+    MarginalPartition::Sparse(p) => Arc::new(RwLock::new(PartitionTimetree::Sparse(p))),
+    MarginalPartition::Dense(p) => Arc::new(RwLock::new(PartitionTimetree::Dense(p))),
   };
 
   Ok(PartitionInitResult {
@@ -495,7 +494,7 @@ fn initialize_partitions_from_params(
 
 fn optimize_branch_lengths_pre_step(
   graph: &GraphTimetree,
-  partitions: &[Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>],
+  partitions: &[PartitionTimetreeRef],
   no_indels: bool,
 ) -> Result<(), Report> {
   let old_branch_lengths = save_branch_lengths(graph);

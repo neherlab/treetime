@@ -1,6 +1,6 @@
 use crate::clock::clock_output::write_clock_model;
 use crate::commands::shared::output::{CommandKind, DivergenceUnits, OutputSelection};
-use crate::commands::shared::tree_output::TreeOutputAdapter;
+use crate::commands::shared::tree_output::write_timetree_tree_outputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::output::augur_node_data::write_augur_node_data_json;
@@ -14,7 +14,6 @@ use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use eyre::{Report, WrapErr};
 use log::{info, warn};
 use std::path::PathBuf;
-use treetime_io::graph::write_tree_outputs;
 use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
 
@@ -47,8 +46,6 @@ pub fn run_timetree_estimation(
       (OutputSelection::Tracelog, args.output_tracelog.as_deref()),
     ],
   )?;
-  resolved.prepare()?;
-
   let tracelog: Option<Box<dyn std::io::Write + Send>> = match resolved.non_tree_outputs.get(&OutputSelection::Tracelog)
   {
     Some(path) => Some(Box::new(create_file_or_stdout(path)?)),
@@ -175,9 +172,9 @@ pub fn run_timetree_estimation(
       let guard = graph.data().partitions[0].read_arc();
       let provider = MutationCommentProvider::new(&*guard, &graph);
       let providers = CommentProviders::new().with(&provider);
-      write_tree_outputs::<TreeOutputAdapter, _, _, _>(&graph, &resolved.tree_outputs, &providers)?;
+      write_timetree_tree_outputs(&graph, &resolved.tree_outputs, &providers)?;
     } else {
-      write_tree_outputs::<TreeOutputAdapter, _, _, _>(&graph, &resolved.tree_outputs, &CommentProviders::new())?;
+      write_timetree_tree_outputs(&graph, &resolved.tree_outputs, &CommentProviders::new())?;
     }
   }
 

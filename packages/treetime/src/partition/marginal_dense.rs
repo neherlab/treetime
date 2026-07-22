@@ -19,6 +19,7 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use maplit::btreemap;
+use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
@@ -31,7 +32,7 @@ use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_union::range_union;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalDense {
   pub data: MarginalData,
   pub index: usize,
@@ -156,6 +157,18 @@ impl PartitionBranchOps for PartitionMarginalDense {
     }
 
     Ok(subs)
+  }
+
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
+    self.data.edges[&edge_key].indels.clone()
+  }
+
+  fn root_sequence(&self, graph: &dyn BranchTopology) -> Result<Seq, Report> {
+    Ok(assign_sequence(&self.data.nodes[&graph.root_key()?], &self.alphabet))
+  }
+
+  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+    assign_sequence(&self.data.nodes[&node_key], &self.alphabet)
   }
 
   fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
