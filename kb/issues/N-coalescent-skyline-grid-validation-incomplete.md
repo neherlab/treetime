@@ -5,7 +5,7 @@
 > quantiles and the tree's time span (`merger_quantile_boundaries()`), and the
 > optimizer is a convex Newton solve. The remaining validation gap is narrower —
 > internal `boundaries` indexing still lacks a typed nonempty/ordering guard. See
-> [decisions/coalescent-skyline-convex-inverse-tc.md](../decisions/coalescent-skyline-convex-inverse-tc.md).
+> [decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md).
 > The original text below predates the rewrite.
 
 Skyline construction indexes the first and last time-grid values before a typed boundary proves that the time and log-$T_c$ arrays are nonempty, equal in length, finite, and strictly ordered. Objective tests also exercise reconstructed formula fragments instead of the production cost function.

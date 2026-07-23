@@ -94,33 +94,36 @@ and reports `success = false`.
 Implemented in [`packages/treetime/src/coalescent/skyline.rs`](../../packages/treetime/src/coalescent/skyline.rs).
 
 The time span is split into `n_points` segments; $T_c$ is constant within each.
-Writing the coalescence rate $x_i = 1/T_{c,i}$, the negative log-likelihood plus a
-smoothness penalty is
+Writing $z_i = \ln T_{c,i}$ (so the coalescence rate is $1/T_{c,i} = e^{-z_i}$), the
+negative log-likelihood plus a smoothness penalty is
 
 $$
-C(x) = \sum_i \big(I_i x_i - M_i \ln x_i\big) + \frac{\gamma}{2}\sum_i (x_{i+1}-x_i)^2,
+C(z) = \sum_i \big(I_i\,e^{-z_i} + M_i z_i\big) + \frac{\gamma}{2}\sum_i (z_{i+1}-z_i)^2,
 $$
 
 with per-segment $I_i = \int_{\text{seg }i} k(k-1)/2\,dt$, merger count $M_i$, and
-stiffness $\gamma$. In the $x$ parametrization every term is convex, so $C$ has a
-**unique positive minimizer** (a Poisson-likelihood / Gaussian-smoothing MAP
-problem — the frequentist analog of the Bayesian skygrid). It is found by **Newton's
-method on the symmetric tridiagonal Hessian** ($O(n)$ Thomas solves), warm-started
-from the decoupled per-segment optimum $x_i = M_i/I_i$ and damped with a
-backtracking line search to keep every $x_i > 0$.
+stiffness $\gamma$. Modeling $z = \ln T_c$ makes the penalty **scale-independent** —
+it charges squared *log-fold-changes* $z_{i+1}-z_i = \ln(T_{c,i+1}/T_{c,i})$ — and
+guarantees $T_c = e^z > 0$ with no constraint. Every term is convex in $z$, so $C$
+has a **unique minimizer** (a Poisson-likelihood / Gaussian-smoothing MAP problem —
+the frequentist analog of the Bayesian skygrid). It is found by **Newton's method on
+the symmetric tridiagonal Hessian** ($O(n)$ Thomas solves), warm-started from the
+decoupled per-segment optimum $z_i = \ln(I_i/M_i)$ and globalized with an Armijo
+backtracking line search.
 
-- [x] Change of variable to $x = 1/T_c$ (convex objective, unique optimum)
+- [x] Change of variable to $z = \ln T_c$ (convex objective, unique optimum,
+  scale-independent smoothing, positivity for free)
 - [x] Analytic per-segment $I_i$, $M_i$ (same interval-midpoint / node-time
   conventions as `CoalescentModel`, so the optimum maximizes the model-evaluated
   likelihood and the reported LH matches `compute_coalescent_total_lh`)
-- [x] Newton solve with positivity-preserving damped steps
+- [x] Newton solve with Armijo line search (no positivity constraint needed)
 - [x] **Merger-quantile segment boundaries** — boundaries fall at quantiles of the
   merger times so every segment (including the root and tip boundary segments)
-  owns mergers; $M_i>0$ keeps the $-M_i\ln x_i$ barrier active, preventing empty
-  boundary segments from collapsing to $T_c\to\infty$ (see
-  [decisions/coalescent-skyline-convex-inverse-tc.md](../decisions/coalescent-skyline-convex-inverse-tc.md))
+  owns mergers; $M_i>0$ keeps the linear $M_i z_i$ term active, bounding $z_i$ from
+  above and preventing empty boundary segments from collapsing to $T_c\to\infty$
+  (see [decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md))
 - [x] Piecewise-constant $T_c(t)$ output; times outside the grid clamp to the
   first/last segment
 
 This replaces the previous Nelder–Mead search over piecewise-linear $\log T_c$
-knots; see [decisions/coalescent-skyline-convex-inverse-tc.md](../decisions/coalescent-skyline-convex-inverse-tc.md).
+knots; see [decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md).

@@ -4,7 +4,7 @@
 > piecewise-*constant* $T_c(t)$ (a step function via `Distribution::Formula`), not
 > a piecewise-linear `GridFn`. Out-of-domain times still clamp to the first/last
 > segment (constant extrapolation), so the policy question below remains. See
-> [decisions/coalescent-skyline-convex-inverse-tc.md](../decisions/coalescent-skyline-convex-inverse-tc.md).
+> [decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md).
 
 `build_tc_distribution()` constructs a piecewise-constant $T_c(t)$ distribution and clamps to the first/last segment value outside the segment grid.
 

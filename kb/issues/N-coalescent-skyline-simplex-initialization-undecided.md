@@ -1,9 +1,9 @@
 # Skyline simplex initialization is scale-independent and one-sided
 
 > **Resolved / obsolete.** `create_initial_simplex()` no longer exists. The skyline
-> is now a convex solve in $x=1/T_c$ by Newton's method, warm-started from the
-> decoupled optimum $x_i=M_i/I_i$ (no simplex). See
-> [decisions/coalescent-skyline-convex-inverse-tc.md](../decisions/coalescent-skyline-convex-inverse-tc.md).
+> is now a convex solve in $z=\ln T_c$ by Newton's method, warm-started from the
+> decoupled optimum $z_i=\ln(I_i/M_i)$ (no simplex). See
+> [decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md).
 
 `fn create_initial_simplex()` adds $0.5$ to one log-$T_c$ coordinate per vertex regardless of grid spacing, parameter scale, or dimension, and never probes the negative direction [packages/treetime/src/coalescent/skyline.rs#L230-L248](../../packages/treetime/src/coalescent/skyline.rs#L230-L248). The value corresponds to multiplying one $T_c$ coordinate by $e^{0.5}$, but no convergence or conditioning contract justifies it.
 

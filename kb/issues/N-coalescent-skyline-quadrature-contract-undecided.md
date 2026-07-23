@@ -5,7 +5,7 @@
 > the same midpoint convention the model uses — so the midpoint rule is *exact* for
 > the piecewise-constant skyline (no quadrature error, and the analytic optimum
 > matches the model-evaluated likelihood). See
-> [decisions/coalescent-skyline-convex-inverse-tc.md](../decisions/coalescent-skyline-convex-inverse-tc.md).
+> [decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md).
 > The contract below still applies to genuinely continuous $T_c(t)$ (e.g. a
 > `Formula` distribution), which the ignored smooth-$T_c$ test exercises.
 

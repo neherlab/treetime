@@ -75,7 +75,7 @@ skyline case.
   where Brent's bracket bit.
 - The skyline path (piecewise-constant $T_c$) was subsequently given the same
   analytic convex treatment; see
-  [coalescent-skyline-convex-inverse-tc.md](coalescent-skyline-convex-inverse-tc.md).
+  [coalescent-skyline-convex-log-tc.md](coalescent-skyline-convex-log-tc.md).
 - On a degenerate tree ($M \le 0$ or non-finite $I$) there is no hardcoded initial
   $T_c$: the caller falls back to the previous round's $T_c$, then the user value,
   then no prior (see

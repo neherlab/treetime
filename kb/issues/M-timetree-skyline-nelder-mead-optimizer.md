@@ -1,10 +1,10 @@
 # Skyline objective and optimizer diverge from v0
 
 > **Resolved / superseded.** v1 no longer uses Nelder-Mead. The skyline is now
-> solved exactly as a convex problem in $x=1/T_c$ (analytic per-segment terms +
+> solved exactly as a convex problem in $z=\ln T_c$ (analytic per-segment terms +
 > Newton on a tridiagonal Hessian), deliberately diverging from v0's SLSQP rather
 > than seeking parity. See
-> [decisions/coalescent-skyline-convex-inverse-tc.md](../decisions/coalescent-skyline-convex-inverse-tc.md).
+> [decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md).
 > The historical analysis below is retained for context.
 
 Let $T_c$ denote the coalescent population-size time scale. v1 uses Nelder-Mead via `argmin` for skyline $T_c$ optimization, while v0 uses SLSQP via `scipy.optimize.minimize`. Their objective functions, bounds, and initialization also differ, so changing only the optimizer does not establish parity.
