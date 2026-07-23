@@ -434,17 +434,32 @@ fn estimate_coalescent_tc(
       // On a degenerate tree prefer the previous round's Tc, then the user seed,
       // then no prior at all (rather than an invented timescale).
       Err(e) => {
-        warn!("Tc optimization failed: {e}, keeping previous Tc");
-        Ok(current.cloned().or_else(|| (*seed).map(Distribution::constant)))
+        let fallback = current.cloned().or_else(|| (*seed).map(Distribution::constant));
+        report_coalescent_failure("Coalescent Tc optimization", &e, fallback.is_some());
+        Ok(fallback)
       },
     },
     CoalescentMode::Skyline => match optimize_skyline(graph, skyline_params) {
       Ok(result) => Ok(Some(result.tc_distribution)),
       Err(e) => {
-        warn!("Skyline optimization failed: {e}, keeping previous Tc");
+        report_coalescent_failure("Skyline coalescent optimization", &e, current.is_some());
         Ok(current.cloned())
       },
     },
+  }
+}
+
+/// Reports a coalescent optimization failure and states the resulting prior.
+///
+/// When no previous value or seed is available the fallback is empty, so the run
+/// proceeds without a coalescent prior. Make that downgrade explicit instead of the
+/// misleading "keeping previous Tc" the previous message logged even when there was
+/// no previous value to keep.
+fn report_coalescent_failure(what: &str, error: &Report, has_fallback: bool) {
+  if has_fallback {
+    warn!("{what} failed: {error}; retaining the previous coalescent prior for this round");
+  } else {
+    warn!("{what} failed: {error}; proceeding with no coalescent prior this run");
   }
 }
 
