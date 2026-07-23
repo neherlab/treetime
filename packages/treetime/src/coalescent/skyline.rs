@@ -17,8 +17,9 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 pub struct SkylineParams {
   /// Number of piecewise-constant Tc segments over the tree's time span.
   pub n_points: usize,
-  /// Smoothing penalty on adjacent inverse time scales: `stiffness * Σ (xᵢ₊₁ - xᵢ)²`
-  /// where `xᵢ = 1/Tc_i`. Must be positive for more than one segment.
+  /// Smoothing penalty on adjacent log time scales: `(stiffness/2) * Σ (zᵢ₊₁ - zᵢ)²`
+  /// where `zᵢ = ln Tc_i`, i.e. it penalizes squared log-fold-changes of Tc and is
+  /// therefore scale-independent. Must be positive for more than one segment.
   pub stiffness: f64,
   /// Newton convergence tolerance on the gradient infinity-norm.
   pub tolerance: f64,
@@ -58,20 +59,22 @@ pub struct SkylineResult {
 /// The tree's time span is split into `n_points` segments whose boundaries are the
 /// quantiles of the merger (coalescence) times, so every segment — including the
 /// two boundary segments spanning to the root and the tips — contains mergers.
-/// Within segment `i`, Tc is constant; writing the coalescent rate `xᵢ = 1/Tc_i`,
-/// the negative log-likelihood plus penalty is
+/// Within segment `i`, Tc is constant; writing `zᵢ = ln Tc_i` (so the coalescent
+/// rate is `1/Tc_i = e^{-zᵢ}`), the negative log-likelihood plus penalty is
 ///
 /// ```text
-///   C(x) = Σ_i (Iᵢ xᵢ - Mᵢ ln xᵢ) + (stiffness/2) Σ_i (xᵢ₊₁ - xᵢ)²
+///   C(z) = Σ_i (Iᵢ e^{-zᵢ} + Mᵢ zᵢ) + (stiffness/2) Σ_i (zᵢ₊₁ - zᵢ)²
 /// ```
 ///
 /// where `Iᵢ = ∫_seg_i k(k-1)/2 dt` (Tc-independent pairwise-rate integral) and
-/// `Mᵢ` is the merger count in segment `i`. In the `x` parametrization every term
-/// is convex, so `C` has a unique positive minimizer. It is found with Newton's
-/// method on the symmetric tridiagonal Hessian, warm-started from the decoupled
-/// per-segment optimum `xᵢ = Mᵢ / Iᵢ` and damped to keep every `xᵢ > 0`. Because
-/// each segment owns at least one merger, `Mᵢ > 0` keeps the `-Mᵢ ln xᵢ` barrier
-/// active, so no segment collapses to `Tc → ∞`.
+/// `Mᵢ` is the merger count in segment `i`. Modeling `z = ln Tc` makes the penalty
+/// scale-independent — it charges squared *log-fold-changes* `zᵢ₊₁ - zᵢ =
+/// ln(Tc_{i+1}/Tc_i)` — and guarantees `Tc = e^z > 0` with no constraint. Every
+/// term is convex in `z`, so `C` has a unique minimizer, found with Newton's method
+/// on the symmetric tridiagonal Hessian, warm-started from the decoupled per-segment
+/// optimum `zᵢ = ln(Iᵢ / Mᵢ)` and globalized with an Armijo line search. Because
+/// each segment owns at least one merger, `Mᵢ > 0` keeps the linear `Mᵢ zᵢ` term
+/// active, bounding `zᵢ` from above so no segment collapses to `Tc → ∞`.
 ///
 /// `Iᵢ` and `Mᵢ` are attributed to segments using the same interval-midpoint and
 /// node-time conventions as [`CoalescentModel`], so the analytic optimum coincides
@@ -110,9 +113,9 @@ where
   let boundaries = merger_quantile_boundaries(&edges, t_min, t_max, params.n_points);
 
   let (i_seg, m_seg) = accumulate_segment_terms(precomputed.lineage_counts(), &edges, &boundaries);
-  let x = solve_inverse_tc(&i_seg, &m_seg, params.stiffness, params.tolerance, params.max_iter)?;
+  let z = solve_log_tc(&i_seg, &m_seg, params.stiffness, params.tolerance, params.max_iter)?;
 
-  let tc_values = Array1::from_iter(x.iter().map(|&xi| 1.0 / xi));
+  let tc_values = Array1::from_iter(z.iter().map(|&zi| zi.exp()));
   let tc_distribution = build_tc_distribution(&boundaries, &tc_values);
 
   // Report the likelihood via the shared model so it matches `compute_coalescent_total_lh`.
@@ -241,10 +244,11 @@ fn accumulate_segment_terms(
   (i_seg, m_seg)
 }
 
-/// Minimizes `C(x) = Σ (Iᵢ xᵢ - Mᵢ ln xᵢ) + (γ/2) Σ (xᵢ₊₁ - xᵢ)²` over `xᵢ > 0`.
+/// Minimizes `C(z) = Σ (Iᵢ e^{-zᵢ} + Mᵢ zᵢ) + (γ/2) Σ (zᵢ₊₁ - zᵢ)²` over `zᵢ = ln Tc_i`.
 ///
-/// Convex in `x`, solved by damped Newton on the symmetric tridiagonal Hessian.
-fn solve_inverse_tc(
+/// Convex in `z`, solved by Newton on the symmetric tridiagonal Hessian with an
+/// Armijo line search. `Tc = e^z` is positive by construction, so no step capping.
+fn solve_log_tc(
   i_seg: &[f64],
   m_seg: &[f64],
   stiffness: f64,
@@ -253,33 +257,38 @@ fn solve_inverse_tc(
 ) -> Result<Vec<f64>, Report> {
   let n = i_seg.len();
 
-  // Decoupled per-segment optimum, with a pooled fallback for empty segments.
+  // Decoupled per-segment optimum zᵢ = ln(Iᵢ / Mᵢ), with a pooled fallback for
+  // empty/degenerate segments (where Iᵢ or Mᵢ is zero and the ratio's log is
+  // non-finite).
   let i_tot: f64 = i_seg.iter().sum();
   let m_tot: f64 = m_seg.iter().sum();
-  let x_pooled = if i_tot > 0.0 && m_tot > 0.0 { m_tot / i_tot } else { 1.0 };
-  let mut x: Vec<f64> = (0..n)
+  let z_pooled = if i_tot > 0.0 && m_tot > 0.0 { (i_tot / m_tot).ln() } else { 0.0 };
+  let mut z: Vec<f64> = (0..n)
     .map(|k| {
-      let xk = m_seg[k] / i_seg[k];
-      if xk.is_finite() && xk > 0.0 { xk } else { x_pooled }
+      let zk = (i_seg[k] / m_seg[k]).ln();
+      if zk.is_finite() { zk } else { z_pooled }
     })
     .collect();
 
   // Single segment or no smoothing: the decoupled solution is already optimal.
-  if n == 1 || stiffness <= 0.0 {
-    return Ok(x);
+  if n == 1 {
+    return Ok(z);
   }
 
   for _ in 0..max_iter {
     // Gradient and tridiagonal Hessian (diagonal `diag`, off-diagonal `off = -γ`).
+    // For the data term, ∂/∂zᵢ (Iᵢ e^{-zᵢ} + Mᵢ zᵢ) = -Iᵢ e^{-zᵢ} + Mᵢ and its
+    // second derivative is Iᵢ e^{-zᵢ}.
     let mut g = vec![0.0; n];
     let mut diag = vec![0.0; n];
     for i in 0..n {
-      g[i] = i_seg[i] - m_seg[i] / x[i];
-      diag[i] = m_seg[i] / (x[i] * x[i]);
+      let rate = i_seg[i] * (-z[i]).exp(); // Iᵢ e^{-zᵢ}
+      g[i] = -rate + m_seg[i];
+      diag[i] = rate;
     }
     let mut off = vec![0.0; n - 1];
     for i in 0..n - 1 {
-      let d = x[i] - x[i + 1];
+      let d = z[i] - z[i + 1];
       g[i] += stiffness * d;
       g[i + 1] -= stiffness * d;
       diag[i] += stiffness;
@@ -292,23 +301,19 @@ fn solve_inverse_tc(
       break;
     }
 
-    let neg_g: Vec<f64> = g.iter().map(|&v| -v).collect();
-    let dx = solve_symmetric_tridiagonal(&diag, &off, &neg_g);
+    // Solve the Hessian system with the gradient, then negate in place: the
+    // Newton step is dz = -H⁻¹g.
+    let mut dz = solve_symmetric_tridiagonal(&diag, &off, &g);
+    dz.iter_mut().for_each(|d| *d = -*d);
 
-    // Cap the step so every xᵢ stays positive, then backtrack for cost decrease.
+    // Armijo backtracking line search; Tc = e^z stays positive for any step.
     let mut alpha: f64 = 1.0;
-    for i in 0..n {
-      if dx[i] < 0.0 {
-        alpha = alpha.min(-0.99 * x[i] / dx[i]);
-      }
-    }
-    let c0 = skyline_cost(&x, i_seg, m_seg, stiffness);
-    let slope: f64 = g.iter().zip(&dx).map(|(&gi, &di)| gi * di).sum();
+    let c0 = skyline_cost(&z, i_seg, m_seg, stiffness);
+    let slope: f64 = g.iter().zip(&dz).map(|(&gi, &di)| gi * di).sum();
     loop {
-      let x_new: Vec<f64> = (0..n).map(|i| x[i] + alpha * dx[i]).collect();
-      if x_new.iter().all(|&xi| xi > 0.0) && skyline_cost(&x_new, i_seg, m_seg, stiffness) <= c0 + 1e-4 * alpha * slope
-      {
-        x = x_new;
+      let z_new: Vec<f64> = (0..n).map(|i| z[i] + alpha * dz[i]).collect();
+      if skyline_cost(&z_new, i_seg, m_seg, stiffness) <= c0 + 1e-4 * alpha * slope {
+        z = z_new;
         break;
       }
       alpha *= 0.5;
@@ -318,13 +323,13 @@ fn solve_inverse_tc(
     }
   }
 
-  Ok(x)
+  Ok(z)
 }
 
-/// Value of the skyline objective `C(x)` (constants dropped).
-fn skyline_cost(x: &[f64], i_seg: &[f64], m_seg: &[f64], stiffness: f64) -> f64 {
-  let data: f64 = (0..x.len()).map(|i| i_seg[i] * x[i] - m_seg[i] * x[i].ln()).sum();
-  let penalty: f64 = x.windows(2).map(|w| (w[1] - w[0]).powi(2)).sum::<f64>() * 0.5 * stiffness;
+/// Value of the skyline objective `C(z)` (constants dropped).
+fn skyline_cost(z: &[f64], i_seg: &[f64], m_seg: &[f64], stiffness: f64) -> f64 {
+  let data: f64 = (0..z.len()).map(|i| i_seg[i] * (-z[i]).exp() + m_seg[i] * z[i]).sum();
+  let penalty: f64 = z.windows(2).map(|w| (w[1] - w[0]).powi(2)).sum::<f64>() * 0.5 * stiffness;
   data + penalty
 }
 

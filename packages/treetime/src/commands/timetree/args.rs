@@ -147,10 +147,11 @@ pub struct TreetimeTimetreeArgs {
 
   /// Smoothing stiffness for the skyline coalescent.
   ///
-  /// Penalizes changes in the inverse coalescent time scale 1/Tc between adjacent
-  /// skyline segments: the objective adds `stiffness * Σ (1/Tc_{i+1} - 1/Tc_i)^2`.
-  /// Because 1/Tc has units of 1/time, the stiffness has units of time^2. Larger
-  /// values enforce a smoother Tc(t). Only used when --coalescent-skyline is set.
+  /// Penalizes log-fold-changes of the coalescent time scale Tc between adjacent
+  /// skyline segments: with z = ln Tc, the objective adds
+  /// `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the
+  /// stiffness is dimensionless and scale-independent. Larger values enforce a
+  /// smoother Tc(t). Only used when --coalescent-skyline is set.
   #[default = 2.0]
   #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().skyline_stiffness))]
   pub skyline_stiffness: f64,
