@@ -2,6 +2,7 @@
 mod tests {
   use super::super::helpers::setup_graph;
   use crate::coalescent::optimize_tc::optimize_tc;
+  use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use eyre::Report;
 
   #[test]
@@ -26,6 +27,21 @@ mod tests {
 
     assert_eq!(a.tc, b.tc);
     assert_eq!(a.likelihood, b.likelihood);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_tc_matches_single_segment_skyline() -> Result<(), Report> {
+    // A constant Tc is defined as the one-segment skyline, and `optimize_tc` is a
+    // facade over it. Lock that contract so the two cannot silently diverge.
+    let graph = setup_graph()?;
+
+    let constant = optimize_tc(&graph)?;
+    let skyline = optimize_skyline(&graph, &SkylineParams { n_points: 1, ..SkylineParams::default() })?;
+
+    assert_eq!(constant.tc, skyline.tc_values[0]);
+    assert_eq!(constant.likelihood, skyline.log_likelihood);
 
     Ok(())
   }

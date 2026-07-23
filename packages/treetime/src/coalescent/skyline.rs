@@ -113,6 +113,24 @@ where
   let boundaries = merger_quantile_boundaries(&edges, t_min, t_max, params.n_points);
 
   let (i_seg, m_seg) = accumulate_segment_terms(precomputed.lineage_counts(), &edges, &boundaries);
+
+  // The whole-tree pairwise-rate integral and merger count must be positive and
+  // finite for a coalescent Tc to exist. A tree with no time span or no internal
+  // mergers is degenerate for the coalescent; fail loudly rather than letting the
+  // per-segment pooled fallback silently substitute Tc = 1. (Per-segment emptiness
+  // is still handled inside `solve_log_tc`, and merger-quantile boundaries keep
+  // every segment non-empty in practice.)
+  let i_tot: f64 = i_seg.iter().sum();
+  let m_tot: f64 = m_seg.iter().sum();
+  if !(m_tot > 0.0 && i_tot > 0.0 && i_tot.is_finite()) {
+    return make_error!(
+      "Cannot estimate a coalescent Tc: the tree is degenerate for the coalescent \
+       (pairwise-rate integral = {i_tot:.6e}, mergers = {m_tot:.6e}). This means the \
+       tree has effectively no time span or no internal mergers. Provide a fixed Tc via \
+       --coalescent, or run without a coalescent prior."
+    );
+  }
+
   let z = solve_log_tc(&i_seg, &m_seg, params.stiffness, params.tolerance, params.max_iter)?;
 
   let tc_values = Array1::from_iter(z.iter().map(|&zi| zi.exp()));

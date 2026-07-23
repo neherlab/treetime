@@ -6,7 +6,6 @@ use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_rero
 use crate::clock::date_constraints::load_date_constraints;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
-use crate::coalescent::optimize_tc::optimize_tc;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
@@ -418,22 +417,16 @@ fn estimate_coalescent_tc(
   graph: &GraphTimetree,
   skyline_params: &SkylineParams,
 ) -> Result<Option<Distribution>, Report> {
-  match mode {
-    CoalescentMode::Disabled => Ok(None),
-    CoalescentMode::Fixed(tc) => Ok(Some(Distribution::constant(*tc))),
-    CoalescentMode::Constant => {
-      let result = optimize_tc(graph)?;
-      info!(
-        "Coalescent Tc = {:.6e} (likelihood = {:.4})",
-        result.tc, result.likelihood
-      );
-      Ok(Some(Distribution::constant(result.tc)))
-    },
-    CoalescentMode::Skyline => {
-      let result = optimize_skyline(graph, skyline_params)?;
-      Ok(Some(result.tc_distribution))
-    },
-  }
+  // Both optimizing modes are the same solve: a constant Tc is just a one-segment
+  // skyline. They differ only in the number of segments.
+  let n_points = match mode {
+    CoalescentMode::Disabled => return Ok(None),
+    CoalescentMode::Fixed(tc) => return Ok(Some(Distribution::constant(*tc))),
+    CoalescentMode::Constant => 1,
+    CoalescentMode::Skyline => skyline_params.n_points,
+  };
+  let result = optimize_skyline(graph, &SkylineParams { n_points, ..skyline_params.clone() })?;
+  Ok(Some(result.tc_distribution))
 }
 
 struct PartitionInitResult {
