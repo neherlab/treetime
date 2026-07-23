@@ -1,8 +1,8 @@
 # Rerooting Algorithms
 
-Generic, scoring-pluggable root search shared across commands. The search algorithm is decoupled from any particular objective through the `RootStats` trait, so the same machinery serves clock-based rerooting (variance-weighted regression, dated tips) and date-free rerooting (divergence variance).
+Generic, scoring-pluggable root search currently used for date-free divergence rooting. The search algorithm is decoupled from a particular objective through the `RootStats` trait and is designed to accept clock sufficient statistics as well.
 
-The clock command currently retains its own copy of the search in `clock/find_best_root/`; its migration contract is tracked in [kb/issues/N-reroot-clock-search-duplicates-generic-module.md](../issues/N-reroot-clock-search-duplicates-generic-module.md).
+Clock rerooting still uses a parallel search in `clock/find_best_root/`; it does not yet share the generic engine. Its migration contract is tracked in [kb/issues/N-reroot-clock-search-duplicates-generic-module.md](../issues/N-reroot-clock-search-duplicates-generic-module.md).
 
 Design rationale and the full derivation live in the proposals:
 

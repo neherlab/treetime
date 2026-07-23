@@ -2,13 +2,13 @@
 
 ## Description
 
-`hacks/` contains one 14-line function `fix_branch_length` that clamps branch lengths to a minimum. Used by 3 callers: `partition/marginal_passes.rs`, `partition/marginal_dense.rs`, `gtr/infer_gtr/common.rs`. Module name normalizes technical debt.
+`hacks/` contains `fix_branch_length`, which applies the marginal-inference branch-length floor. The current callers are the dense and sparse marginal passes.
 
 ## Fix
 
-Move `fix_branch_length` to `seq/alignment.rs` or inline at the 3 call sites. Delete the `hacks/` module entirely.
+Move the helper beside the marginal passes, give it a name that states the floor policy, and delete the `hacks/` module. Preserve the existing numerical behavior; changing the floor or its call sites requires a separate scientific decision.
 
 ## Related issues
 
-- Source: [kb/issues/M-core-remaining-architectural-debt-after-extraction.md](../issues/M-core-remaining-architectural-debt-after-extraction.md)
-- Also tracked in: [C3 zero-branch-length-clamping](convention-zero-branch-length-clamping.md)
+- Source: [kb/issues/N-core-branch-length-clamping.md](../issues/N-core-branch-length-clamping.md)
+- Related: [kb/tickets/convention-zero-branch-length-clamping.md](convention-zero-branch-length-clamping.md)

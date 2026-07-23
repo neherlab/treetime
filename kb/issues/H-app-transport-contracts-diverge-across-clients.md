@@ -1,28 +1,32 @@
 # Application transport contracts diverge across clients
 
-Web, desktop, Rust, OpenAPI, and generated TypeScript do not share one request/result contract.
+Web, desktop, Rust, OpenAPI, and generated TypeScript do not share one request, event, and result contract.
 
 ## Evidence
 
-- `struct ServerOptimizeArgs` contains reroot fields that are absent from the OpenAPI `OptimizeArgs` schema [packages/app-server/src/args.rs#L397-L456](../../packages/app-server/src/args.rs#L397-L456) [packages/app-contracts/openapi.yaml#L380-L409](../../packages/app-contracts/openapi.yaml#L380-L409).
-- `fn command_sse()` emits command failures as `result` events [packages/app-server/src/sse.rs#L96-L120](../../packages/app-server/src/sse.rs#L96-L120), while `function createWebBridge()` resolves every result event [packages/app-web/src/bridge-web.ts#L40-L57](../../packages/app-web/src/bridge-web.ts#L40-L57).
-- Desktop forwards JSON strings directly to command-specific N-API deserialization [packages/app-desktop/src/preload.ts#L29-L35](../../packages/app-desktop/src/preload.ts#L29-L35) [packages/app-napi/src/commands.rs#L76-L85](../../packages/app-napi/src/commands.rs#L76-L85).
+- `struct ServerOptimizeArgs` contains reroot fields that are absent from the OpenAPI `OptimizeArgs` schema [`packages/app-server/src/args.rs#L397`](../../packages/app-server/src/args.rs#L397) [`packages/app-contracts/openapi.yaml#L380`](../../packages/app-contracts/openapi.yaml#L380).
+- `fn command_sse()` emits command failures as `result` events, while `function createWebBridge()` resolves every result event as the promised result type [`packages/app-server/src/sse.rs#L93`](../../packages/app-server/src/sse.rs#L93) [`packages/app-web/src/bridge-web.ts#L40`](../../packages/app-web/src/bridge-web.ts#L40).
+- Desktop forwards JSON strings directly to command-specific N-API deserialization [`packages/app-desktop/src/preload.ts#L29`](../../packages/app-desktop/src/preload.ts#L29) [`packages/app-napi/src/commands.rs#L76`](../../packages/app-napi/src/commands.rs#L76).
+- Six server DTOs manually reconstruct nested command argument structs, duplicating fields and defaults from core and OpenAPI [`packages/app-server/src/args.rs#L21`](../../packages/app-server/src/args.rs#L21).
+- Schema generation failure is reduced to a Cargo warning, allowing a successful build to retain stale contracts [`packages/app-cli/build.rs#L11`](../../packages/app-cli/build.rs#L11).
+- Command defaults and option sets are repeated in core arguments, server arguments, and UI metadata, including timetree `max_iter` [`packages/treetime/src/commands/timetree/args.rs#L111`](../../packages/treetime/src/commands/timetree/args.rs#L111) [`packages/app-server/src/args.rs#L203`](../../packages/app-server/src/args.rs#L203) [`packages/app-ui/src/components/ParamForm.tsx#L15`](../../packages/app-ui/src/components/ParamForm.tsx#L15).
 
 ## Failures
 
-- Optimize reroot fields exist in `ServerOptimizeArgs` but not in OpenAPI or generated `OptimizeArgs`.
-- Web SSE sends command failures as `result` events; the TypeScript bridge resolves them as successful typed values.
-- Desktop serializes flat transport DTOs directly into nested core command structs. `#[serde(default)]` can hide unknown/dropped fields.
+- Optimize reroot fields exist in the server DTO but not in OpenAPI or generated TypeScript.
+- Web SSE sends command failures through the success event name.
+- Core serde defaults can accept absent fields while transport owners silently drift.
+- A schema-generation error does not fail the build that consumes generated contracts.
 
-## Potential solutions
+## Required contract
 
-- O1. One transport DTO/schema and one explicit conversion shared by web and desktop.
-- O2. Separate client DTOs with independent converters and cross-client contract tests. This permits intentional differences but multiplies schema ownership.
-
-## Recommendation
-
-Define one canonical transport DTO and discriminated result envelope. Generate TypeScript from the same schema, deserialize the same DTO for web and desktop, and share one explicit conversion into core command arguments. Core structs are not wire formats.
+One canonical transport model must own command names, request DTOs, result DTOs, progress/log events, cancellation, and a discriminated success/error/cancelled terminal envelope. HTTP/SSE and Electron/N-API remain transport adapters. Conversion from transport requests to application requests occurs once and rejects unknown or unrepresented fields.
 
 ## Related issues
 
 - [H-core-multi-client-architecture-library-purity.md](H-core-multi-client-architecture-library-purity.md)
+- [H-app-napi-cancellation-is-process-global.md](H-app-napi-cancellation-is-process-global.md)
+
+## Related tickets
+
+- [kb/tickets/app-unify-web-desktop-and-typescript-transport-contracts.md](../tickets/app-unify-web-desktop-and-typescript-transport-contracts.md)

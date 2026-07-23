@@ -1,65 +1,28 @@
-# Command modules contain shared operations that belong in domain layers
+# Command orchestration mixes application policy, domain workflow, and I/O
 
-Command modules (`ancestral/`, `clock/`, `optimize/`, `commands/timetree/`, `prune/`) accumulated domain logic that multiple commands and core layers depend on. This creates a reverse dependency: core modules (`representation/`, `gtr/`, `cli/`, `test_utils`) import from `commands/`, violating the expected layering where commands compose domain logic, not define it.
+The command boundary is not a thin adapter. Command runners combine argument translation, input loading, pipeline invocation, output policy, serialization, and filesystem writes, while the timetree pipeline concentrates most of the scientific workflow in one function.
 
-This initial sweep is not exhaustive. More investigation and more reorganization will be needed as the codebase evolves.
+## Evidence
 
-## Cross-command production imports
+- `fn run_ancestral_reconstruction()` reads FASTA, maps CLI arguments, runs inference, builds output projections, and writes several formats [`packages/treetime/src/commands/ancestral/run.rs#L31`](../../packages/treetime/src/commands/ancestral/run.rs#L31).
+- The same application-level shape appears in clock, mugration, optimize, prune, and timetree runners under [`packages/treetime/src/commands`](../../packages/treetime/src/commands).
+- `fn timetree::pipeline::run()` spans the complete scientific sequence from date loading and clock estimation through coalescent initialization, refinement, rerooting, confidence intervals, and result assembly [`packages/treetime/src/timetree/pipeline.rs#L102`](../../packages/treetime/src/timetree/pipeline.rs#L102).
+- `fn run_refinement_iteration()` combines relaxed-clock application, topology resolution, partition reconciliation, ancestral-state comparison, and clock re-estimation [`packages/treetime/src/timetree/refinement.rs#L27`](../../packages/treetime/src/timetree/refinement.rs#L27).
 
-Five cross-command dependency edges exist in production code (excluding tests):
+Domain modules do not import `commands/`, but the remaining application orchestration has no explicit owner and the timetree workflow does not expose its scientifically meaningful state transitions.
 
-- ~~`clock` -> `ancestral`: `MethodAncestral`~~ **Resolved**: extracted to `commands/shared/args`
-- ~~`clock` -> `timetree`: `BranchLengthMode`, `RerootMethod`~~ **Resolved**: extracted to domain and shared command modules
-- ~~`timetree` -> `ancestral` (6 sites)~~ **Resolved**: ancestral algorithms extracted to top-level `src/ancestral/`; `get_common_length` moved to `src/seq/alignment`
-- ~~`timetree` -> `clock` (20 sites)~~ **Resolved**: clock model domain extracted to top-level `src/clock/`
-- ~~`timetree` -> `optimize` (8 sites)~~ **Resolved**: optimization machinery extracted to top-level `src/optimize/`; iteration helpers to `packages/treetime/src/optimize/iteration.rs`
-- ~~`optimize` -> `ancestral` (2 sites)~~ **Resolved**: ancestral algorithms extracted to top-level `src/ancestral/`; `get_common_length` moved to `src/seq/alignment`
-- ~~`optimize` -> `prune` (1 site): `merge_shared_mutation_branches()`~~ **Resolved**: extracted to `optimize/topology/merge_shared_mutations`
-- `homoplasy` -> `ancestral`: `TreetimeAncestralArgs` - remaining cross-command arg dependency (minor: CLI struct embedding)
+## Open design question
 
-## Reverse dependencies (core importing from commands)
+The application operation boundary must serve CLI, HTTP, N-API, desktop, and future Python clients. Moving all orchestration into the CLI crate would leave the other clients without an owner. The unresolved choice is whether a shared application crate owns validated operations and in-memory results, or each adapter invokes domain pipelines directly through transport-neutral request types.
 
-- ~~`partition/fitch_config.rs`, `partition/likelihood.rs` -> `get_common_length()` from `ancestral/fitch`~~ **Resolved**: moved to `seq/alignment`
-- ~~`PartitionOptimizeOps` from `optimize/partition_ops`~~ **Resolved**: moved to `partition/traits.rs`
-- ~~`PartitionRerootOps`, `PartitionTimetreeOps`, `PartitionTimetreeAll` from `commands/timetree/partition_ops`~~ **Resolved**: moved to `partition/traits.rs`
-- ~~`RerootChanges` from `clock/reroot`~~ **Resolved**: extracted to `optimize/topology/reroot`
-- ~~`ClockSet`, `ClockEdge`, `ClockNode`, `DateConstraintNode`, `TimetreeEdge`, `TimetreeNode` from `clock/` and `commands/timetree/`~~ **Resolved**: `ClockSet` moved to `payload/clock_set.rs`; traits moved to `payload/traits.rs`
-- ~~`OptimizationContribution` from `optimize/optimize_unified`~~ **Resolved**: `OptimizationContribution` type + constructors moved to `partition/optimization_contribution.rs`; evaluation methods in `partition/optimization_contribution.rs` via split impl block
-- ~~`ClockModel`, `ClockRegressionResult` from `clock/`~~ **Resolved**: clock model domain extracted to top-level `src/clock/`
-- ~~`compress_sequences()`, `get_common_length()`, `initialize_marginal()`, `update_marginal()` from `ancestral/`~~ **Resolved**: ancestral algorithms extracted to top-level `src/ancestral/`; `get_common_length` moved to `src/seq/alignment`
+No ticket should move `commands/` until this boundary is decided. Scientific stage ordering and fallback behavior must remain unchanged unless separately approved.
 
-## Resolved categories
+## Related issues
 
-### ~~Ancestral reconstruction~~ **Resolved**
-
-Extracted to top-level `src/ancestral/` module: `fitch.rs`, `fitch_indel.rs`, `marginal.rs`. `get_common_length` moved to `packages/treetime/src/seq/alignment.rs`. `ancestral/` retains only `args.rs` and `run.rs`.
-
-### ~~Clock model domain~~ **Resolved**
-
-Extracted to top-level `src/clock/` module: `clock_model.rs`, `clock_regression.rs`, `clock_filter.rs`, `clock_output.rs`, `clock_graph.rs`, `date_constraints.rs`, `reroot.rs`, `rtt.rs`, `assign_dates.rs`, `find_best_root/`. `clock/` retains only `args.rs` and `run.rs`.
-
-### ~~Branch length optimization~~ **Resolved**
-
-Extracted to top-level `src/optimize/` module: `dispatch.rs`, `optimize_indel.rs`, `method_brent.rs`, `method_newton.rs`, `optimize_eval.rs`, `optimize_dense_eval.rs`, `optimize_sparse_eval.rs`. Coefficient extraction types (`optimize_dense.rs`, `optimize_sparse.rs`, `optimization_contribution.rs`) moved to `partition/`. Iteration helpers (`save_branch_lengths`, `apply_damping`, topology cleanup) to `optimize/iteration.rs`. Domain arg types (`BranchOptMethod`, `InitialGuessMode`) to `optimize/args.rs`. `optimize/` retains only `args.rs` and `run.rs`.
-
-### ~~Partition and payload traits~~ **Resolved**
-
-Traits and types moved to `partition/` and `payload/`: partition traits (`PartitionOptimizeOps`, `PartitionRerootOps`, `PartitionTimetreeOps`, `PartitionTimetreeAll`) to `partition/traits.rs`; payload traits (`ClockNode`, `ClockEdge`, `DateConstraintNode`, `TimetreeNode`, `TimetreeEdge`) to `payload/traits.rs`; `ClockSet` data type to `payload/clock_set.rs`.
-
-### ~~Topology operations~~ **Resolved**
-
-`merge_shared_mutation_branches()` extracted to `optimize/topology/merge_shared_mutations`.
-
-### ~~CLI args shared across commands~~ **Resolved**
-
-`BranchLengthMode`, `RerootMethod`, `RerootSpec`, and `MethodAncestral` extracted to domain and shared command modules. `BranchOptMethod` and `InitialGuessMode` extracted to `optimize/args.rs`.
-
-## Remaining items
-
-- `homoplasy` -> `ancestral`: `TreetimeAncestralArgs` CLI struct embedding (minor)
-- Output helpers: `write_graph()` duplicated across `ancestral`, `optimize`, `prune` (tracked separately, not yet filed)
-- All commands delegate to `<module>/pipeline.rs` for pure computation. `commands/` (args + I/O handlers) remains in the library; planned move to consumer crates (`app-api`, `app-cli`) is not yet done
-
-## Related tickets
-
-- [kb/tickets/architecture-migrate-command-tests-with-dissolution.md](../tickets/architecture-migrate-command-tests-with-dissolution.md)
+- [H-core-multi-client-architecture-library-purity.md](H-core-multi-client-architecture-library-purity.md)
+- [H-app-transport-contracts-diverge-across-clients.md](H-app-transport-contracts-diverge-across-clients.md)
+- [M-core-partition-init-orchestration-duplication.md](M-core-partition-init-orchestration-duplication.md)
+- [M-command-output-ownership-is-scattered.md](M-command-output-ownership-is-scattered.md)
+- [M-mugration-analysis-interface-exposes-policy-wiring.md](M-mugration-analysis-interface-exposes-policy-wiring.md)
+- [M-timetree-refinement-iteration-mixes-state-transitions.md](M-timetree-refinement-iteration-mixes-state-transitions.md)
+- [M-output-module-mixes-topology-ordering.md](M-output-module-mixes-topology-ordering.md)

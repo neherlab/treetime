@@ -2,6 +2,8 @@
 
 The reusable generic root-search module implements pluggable `RootStats`, edge cost evaluation, split optimization, and topology orchestration under [`packages/treetime/src/reroot`](../../packages/treetime/src/reroot). Clock rerooting still maintains a parallel implementation under [`packages/treetime/src/clock/find_best_root`](../../packages/treetime/src/clock/find_best_root), so fixes and invariants can drift between two implementations of the same search mechanics.
 
+Both modules also export `FindRootResult`, `find_best_root()`, and `find_best_split()` names for different result contracts. Imports and diagnostics therefore conceal whether a value carries clock regression statistics or generic objective statistics.
+
 The migration must preserve payload statistics across the module boundary and use a mechanical-equivalence oracle for every clock and timetree caller. Optimizer defaults remain outside that oracle because changing them alters numerical behavior.
 
 ## Potential solutions

@@ -33,3 +33,7 @@ Compares per-partition sequence maps between iterations by zipping keys present 
 ## Related tickets
 
 - [kb/tickets/timetree-convergence-metric-deficiencies.md](../tickets/timetree-convergence-metric-deficiencies.md)
+
+## Related issues
+
+- [H-timetree-likelihood-api-hides-log-domain.md](H-timetree-likelihood-api-hides-log-domain.md)

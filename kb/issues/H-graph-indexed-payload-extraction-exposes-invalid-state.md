@@ -22,4 +22,4 @@ Use O2 for `with_indexed_graph_payloads()` and every current caller: snapshot va
 ## Related issues
 
 - [M-inference-fallible-parallel-passes-partially-commit.md](M-inference-fallible-parallel-passes-partially-commit.md)
-- [N-graph-dependency-frontier-schedulers-duplicated.md](N-graph-dependency-frontier-schedulers-duplicated.md)
+- [N-inference-indexed-pass-exposes-execution-internals.md](N-inference-indexed-pass-exposes-execution-internals.md)

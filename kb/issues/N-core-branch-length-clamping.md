@@ -1,9 +1,15 @@
-# Zero branch length clamping
+# Marginal branch-length clamping has unresolved numerical policy and ownership
 
-[`fix_branch_length()`](../../packages/treetime/src/hacks/fix_branch_length.rs#L6) (`#fix_branch_length`) clamps branch lengths to `MIN_BRANCH_LENGTH_FRACTION * (1/L)` to avoid NaN in the marginal backward pass, which computes `log(expQt)` - divergent at `t=0`. Mathematically, `expQt(0) = I` is correct (identity matrix), but the log-space computation path requires `t > 0`.
+`fn fix_branch_length()` raises every branch below `MIN_BRANCH_LENGTH_FRACTION / sequence_length` to that threshold before marginal message propagation [`packages/treetime/src/hacks/fix_branch_length.rs#L4`](../../packages/treetime/src/hacks/fix_branch_length.rs#L4). The name does not reveal that it clamps, the public `hacks` namespace does not identify the owning algorithm, and the helper is used only by marginal passes [`packages/treetime/src/partition/marginal_passes.rs#L148`](../../packages/treetime/src/partition/marginal_passes.rs#L148) [`packages/treetime/src/partition/marginal_passes.rs#L398`](../../packages/treetime/src/partition/marginal_passes.rs#L398).
 
-This is a documented limitation matching v0 behavior. The consequence: [test assertions for zero-branch-length cases](../../packages/treetime/src/ancestral/__tests__/test_marginal_dense.rs) were weakened from exact mathematical properties (`Ti == 0` with epsilon 1e-15, `off_diagonal < 0.1`) to `is_finite()` checks.
+The clamp avoids non-finite values in the current log-space path at zero branch length. Mathematically, $e^{Q0}=I$ is valid, so changing the clamp is a numerical and scientific decision rather than architecture cleanup.
+
+## Separable work
+
+- Preserve behavior while moving the helper beside marginal inference as a private, policy-revealing operation.
+- Decide clamping, exact-zero handling, or rejection only with parity and numerical validation.
 
 ## Related tickets
 
+- [kb/tickets/architecture-dissolve-hacks-module.md](../tickets/architecture-dissolve-hacks-module.md)
 - [kb/tickets/convention-zero-branch-length-clamping.md](../tickets/convention-zero-branch-length-clamping.md)

@@ -1,43 +1,35 @@
-# Library crate is not consumable by non-CLI clients
+# Application command boundary does not isolate clients
 
-The `treetime` library crate cannot be used by Python bindings, desktop apps, or web frontends. The library depends on `clap` (CLI framework), contains CLI argument structs in domain modules, and has domain logic trapped inside `commands/` (a CLI-layer concept). Any non-CLI consumer inherits the full CLI dependency graph and must construct clap-derived argument structs to call domain functions.
-
-This is a structural blocker for multi-client architecture: `treetime-python` (PyO3 bindings), `treetime-desktop` (Electron/Tauri wrapper), or any future consumer.
+TreeTime has CLI, HTTP, N-API, desktop, and web clients, but no application boundary owns command requests, operation execution, cancellation, and in-memory results for all of them.
 
 ## Evidence
 
-`commands/` in the library crate contains approximately 15,000 lines that mix domain algorithms with CLI orchestration, and domain types derive `clap::Args` or `clap::ValueEnum`. The boundary therefore makes CLI-layer types and dependencies prerequisites for non-CLI consumers.
-
-## Scope
-
-### ~~clap contamination in library domain types~~ Closed
-
-Decision: keep `clap` as a direct dependency of the `treetime` library crate. Domain types derive `clap::ValueEnum`/`clap::Args` directly. Non-CLI clients accept the transitive dependency.
-
-### Domain logic in commands/
-
-`commands/timetree/` (~10k lines) and `mugration/` (~2.2k lines) contain domain algorithms that should be top-level modules. Tracked in detail by:
-
-- `H-core-command-module-shared-ops-entanglement.md` (remaining items)
-- `M-core-remaining-architectural-debt-after-extraction.md` (timetree, mugration, representation)
-
-### Missing client crates
-
-- `treetime-python`: PyO3 bindings + Python CLI wrapping Rust library (not started)
-- ~~`treetime-desktop`: thin wrapper with minimal desktop frontend~~ (scaffolded: napi-rs async wrappers for all commands, Electron frontend placeholder)
+- `app-api` forwards six command functions directly to `treetime::commands` and re-exports concrete pipeline and progress types [`packages/app-api/src/commands.rs#L14`](../../packages/app-api/src/commands.rs#L14) [`packages/app-api/src/pipelines.rs#L1`](../../packages/app-api/src/pipelines.rs#L1).
+- `app-cli` calls `treetime::commands` directly, while `app-server` and `app-napi` call through `app-api`; the purported boundary is therefore optional rather than authoritative [`packages/app-cli/src/bin/treetime.rs#L23`](../../packages/app-cli/src/bin/treetime.rs#L23) [`packages/app-server/src/routes.rs#L42`](../../packages/app-server/src/routes.rs#L42) [`packages/app-napi/src/commands.rs#L27`](../../packages/app-napi/src/commands.rs#L27).
+- `app-server` still imports concrete model, reroot, optimization, and command types from `treetime` to construct command arguments [`packages/app-server/src/args.rs#L4`](../../packages/app-server/src/args.rs#L4).
+- The command runners are filesystem-oriented and return concrete core types, so callers inherit CLI-era input and output decisions instead of consuming a stable application request/result contract.
 
 ## Impact
 
-- Encourages contributors and automation clients to treat `treetime-cli` as the primary crate, moving domain logic out of the library
+- Adding or changing one command requires coordinated edits in core commands, `app-api`, server routes, N-API tasks, transport schemas, and client dispatch.
+- Cancellation, progress, validation, and error semantics vary by adapter.
+- Moving command orchestration into the CLI crate would deepen the mismatch because non-CLI clients also need the same operations.
+
+## Design axes
+
+### Application ownership
+
+- O1. Make a shared application crate own transport-neutral requests, operation execution, progress/cancellation, and in-memory results. CLI, HTTP, and N-API become adapters.
+- O2. Remove the pass-through `app-api` surface and let every adapter call domain pipelines directly. Shared transport contracts remain separate, and cross-adapter parity must be enforced by tests.
+
+### Core `clap` dependency
+
+Keeping `clap` derives in core types is an existing project decision. This issue does not reopen that choice; it concerns operation ownership and client isolation.
+
+No implementation ticket is ready until application ownership is selected.
 
 ## Related issues
 
-- [Command modules contain shared operations that belong in domain layers](H-core-command-module-shared-ops-entanglement.md)
-- [Remaining architectural debt after domain module extraction](M-core-remaining-architectural-debt-after-extraction.md)
-
-## Related tickets
-
-- [kb/tickets/architecture-add-treetime-python-crate.md](../tickets/architecture-add-treetime-python-crate.md)
-- [kb/tickets/architecture-migrate-command-tests-with-dissolution.md](../tickets/architecture-migrate-command-tests-with-dissolution.md)
-- [kb/tickets/architecture-move-commands-to-cli-crate.md](../tickets/architecture-move-commands-to-cli-crate.md)
-- [kb/tickets/architecture-restructure-packages-for-multi-client.md](../tickets/architecture-restructure-packages-for-multi-client.md)
+- [H-core-command-module-shared-ops-entanglement.md](H-core-command-module-shared-ops-entanglement.md)
+- [H-app-transport-contracts-diverge-across-clients.md](H-app-transport-contracts-diverge-across-clients.md)
+- [H-app-napi-cancellation-is-process-global.md](H-app-napi-cancellation-is-process-global.md)
