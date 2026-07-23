@@ -6,6 +6,8 @@ use crate::payload::traits::TimetreeNode;
 use eyre::Report;
 use log::info;
 use ndarray::Array1;
+use ordered_float::OrderedFloat;
+use std::collections::BTreeSet;
 use treetime_distribution::{Distribution, DistributionFormula};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
@@ -107,9 +109,25 @@ where
   let t_min = breakpoints[0];
   let t_max = breakpoints[breakpoints.len() - 1];
 
+  // Every segment must own at least one merger for the `-Mᵢ ln xᵢ` barrier to keep
+  // its `Tc` finite, so the requested segment count cannot exceed the number of
+  // distinct merger times. Reject an over-segmented grid up front with a clear,
+  // actionable message rather than emitting duplicate boundaries or zero-exposure
+  // segments (which the structural guards below would otherwise reject).
+  let n_distinct_mergers = count_distinct_merger_times(&edges);
+  if params.n_points > n_distinct_mergers {
+    return make_error!(
+      "Skyline requested {} segments but the tree has only {n_distinct_mergers} distinct merger times; \
+       each segment must own at least one merger. Reduce --n-skyline to at most {n_distinct_mergers}.",
+      params.n_points
+    );
+  }
+
   let boundaries = merger_quantile_boundaries(&edges, t_min, t_max, params.n_points);
+  validate_segment_boundaries(&boundaries, params.n_points)?;
 
   let (i_seg, m_seg) = accumulate_segment_terms(precomputed.lineage_counts(), &edges, &boundaries);
+  validate_segment_exposure(&i_seg, params.n_points)?;
   let x = solve_inverse_tc(&i_seg, &m_seg, params.stiffness, params.tolerance, params.max_iter)?;
 
   let tc_values = Array1::from_iter(x.iter().map(|&xi| 1.0 / xi));
@@ -180,6 +198,59 @@ fn merger_quantile_boundaries(edges: &[CoalescentEdgeData], t_min: f64, t_max: f
   }
   boundaries.push(t_max);
   boundaries
+}
+
+/// Counts the number of distinct merger (parent) times among the collected edges.
+///
+/// Coincident mergers (a polytomy, or ties) count once: boundaries cannot separate
+/// events at the same time, so they cap the number of data-supported segments.
+fn count_distinct_merger_times(edges: &[CoalescentEdgeData]) -> usize {
+  edges
+    .iter()
+    .map(|edge| OrderedFloat(edge.parent_time().value()))
+    .collect::<BTreeSet<_>>()
+    .len()
+}
+
+/// Rejects a degenerate segmentation whose boundaries are not strictly increasing.
+///
+/// `merger_quantile_boundaries` clamps interior candidates to be non-decreasing, so
+/// when the requested segment count exceeds the number of distinct merger times it
+/// emits duplicate (zero-width) boundaries. A zero-width segment carries no data, so
+/// its `Tc` would be set only by the smoothing prior. Non-finite boundaries (e.g. a
+/// NaN merger time) also fail the `>` comparison and are rejected here.
+fn validate_segment_boundaries(boundaries: &[f64], n_points: usize) -> Result<(), Report> {
+  for pair in boundaries.windows(2) {
+    if !(pair[1] > pair[0]) {
+      return make_error!(
+        "Skyline produced a degenerate segmentation: boundary {:.6e} is not strictly less than the next \
+         boundary {:.6e}. The requested {n_points} segments exceed the tree's distinct merger times; \
+         reduce --n-skyline.",
+        pair[0],
+        pair[1]
+      );
+    }
+  }
+  Ok(())
+}
+
+/// Rejects a segmentation with a zero-exposure segment.
+///
+/// A segment with a merger but no coalescent exposure has `M_i > 0` and `I_i = 0`,
+/// for which `I_i x - M_i ln x` is unbounded below. The guarantee that every segment
+/// owns mergers holds only when the requested segment count does not exceed the
+/// tree's distinct merger times, so a non-positive `I_i` signals an over-segmented
+/// grid the data cannot support.
+fn validate_segment_exposure(i_seg: &[f64], n_points: usize) -> Result<(), Report> {
+  for (i, &exposure) in i_seg.iter().enumerate() {
+    if !(exposure > 0.0) {
+      return make_error!(
+        "Skyline segment {i} has non-positive coalescent exposure (I = {exposure:.6e}); the requested \
+         {n_points} segments exceed what the tree's merger structure supports. Reduce --n-skyline.",
+      );
+    }
+  }
+  Ok(())
 }
 
 /// Accumulates the per-segment pairwise-rate integral `Iᵢ` and merger count `Mᵢ`.

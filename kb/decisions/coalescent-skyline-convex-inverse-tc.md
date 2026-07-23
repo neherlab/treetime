@@ -9,7 +9,7 @@ over $\log T_c$ knots.
 from v0's optimizer, extending the constant-$T_c$ decision to the skyline).
 
 **Previous v1**: `optimize_skyline()` used `argmin`'s `NelderMead` over a
-piecewise-*linear* $\log T_c$ grid with a stiffness penalty on adjacent $\log T_c$
+piecewise-_linear_ $\log T_c$ grid with a stiffness penalty on adjacent $\log T_c$
 and a boundary penalty, plus a hand-built initial simplex.
 
 **v0**: `MergerModel.optimize_skyline()` at
@@ -59,10 +59,18 @@ to the tree's time span). This is deliberate: with equal-time boundaries the
 boundary segment between the youngest coalescence and the tips has lineages
 ($I_i>0$) but no mergers ($M_i=0$). With $M_i=0$ the $-M_i\ln x_i$ barrier
 vanishes and the segment's optimum sits at $x_i\to 0$, i.e. $T_c\to\infty$ (only
-weakly restrained by smoothing). Quantile boundaries guarantee every segment —
-including both boundary segments — owns mergers, so $M_i>0$ keeps every $x_i$
-bounded away from zero. On ebola/20 this changed a divergent most-recent segment
-($T_c\approx 3\times10^{150}$) into a finite, smoothly varying trajectory.
+weakly restrained by smoothing). Quantile boundaries let every segment own mergers
+so $M_i>0$ keeps every $x_i$ bounded away from zero. On ebola/20 this changed a
+divergent most-recent segment ($T_c\approx 3\times10^{150}$) into a finite, smoothly
+varying trajectory.
+
+This holds only when the requested segment count does not exceed the number of
+distinct merger times. When it does, the clamped quantile construction emits
+duplicate (zero-width) or zero-exposure segments, for which $I_i x - M_i \ln x$ is
+unbounded below. `optimize_skyline` now rejects such an over-segmented grid up front
+(and validates strictly increasing boundaries and positive per-segment exposure as
+backstops) rather than masking the degeneracy with the pooled warm-start fallback,
+so the guarantee is enforced instead of assumed.
 
 ## Options considered
 
