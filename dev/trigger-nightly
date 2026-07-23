@@ -9,6 +9,7 @@
 #
 # Options:
 #   -h, --help    Show this help
+#   -f, --force   Build even when source has not changed since the latest nightly
 #
 # Environment:
 #   GH_TOKEN or GITHUB_TOKEN must be set for gh authentication.
@@ -26,7 +27,19 @@ main() {
     sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
   }
 
-  [[ "${1:-}" =~ ^(-h|--help)$ ]] && { show_help; exit 0; }
+  local force="false"
+
+  # shfmt:off
+  while (( $# > 0 )); do
+    case "${1}" in
+      -h|--help) show_help; exit 0 ;;
+      -f|--force) force="true"; shift ;;
+      --) shift; break ;;
+      -*) printf "Unknown option: %s\n" "${1}" >&2; exit 1 ;;
+      *) break ;;
+    esac
+  done
+  # shfmt:on
 
   local source_repo
   source_repo=$(git -C "${THIS_DIR}" remote get-url origin | sed 's|.*github\.com[:/]||; s|\.git$||')
@@ -34,8 +47,15 @@ main() {
   command -v gh >/dev/null || { printf "Required command not found: gh\n" >&2; exit 1; }
   command -v git >/dev/null || { printf "Required command not found: git\n" >&2; exit 1; }
 
-  printf "Triggering nightly workflow in %s\n" "${source_repo}"
-  gh workflow run schedule-nightly.yml --repo "${source_repo}"
+  local force_args=()
+  local force_label=""
+  if [[ "${force}" == "true" ]]; then
+    force_args=(-f "force=true")
+    force_label=" (force)"
+  fi
+
+  printf "Triggering nightly workflow in %s%s\n" "${source_repo}" "${force_label}"
+  gh workflow run schedule-nightly.yml --repo "${source_repo}" "${force_args[@]}"
   printf "Workflow dispatched. Monitor at: https://github.com/%s/actions/workflows/schedule-nightly.yml\n" "${source_repo}"
 }
 
