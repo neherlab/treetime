@@ -13,10 +13,13 @@ log-likelihood with Brent's method.
 candidate $T_c$.
 
 **v1 location**: `optimize_tc()` at
-[`packages/treetime/src/coalescent/optimize_tc.rs`](../../packages/treetime/src/coalescent/optimize_tc.rs). The
-$T_c$-independent integral $I$ reuses `compute_integral_merger_rate()` at
-[`packages/treetime/src/coalescent/integration.rs`](../../packages/treetime/src/coalescent/integration.rs)
-with a constant $T_c = 1$, rather than a dedicated integrator.
+[`packages/treetime/src/coalescent/optimize_tc.rs`](../../packages/treetime/src/coalescent/optimize_tc.rs).
+It is now a thin facade over the one-segment skyline — a constant $T_c$ is exactly
+an `n_points = 1` skyline — so the $I$/$M$ accumulation and likelihood reporting are
+the shared skyline machinery (see
+[coalescent-skyline-convex-log-tc.md](coalescent-skyline-convex-log-tc.md)), not a
+separate integrator. For one segment the skyline's decoupled optimum is precisely
+$T_c^{*}=I/M$.
 
 ## Background
 
@@ -75,8 +78,11 @@ skyline case.
   where Brent's bracket bit.
 - The skyline path (piecewise-constant $T_c$) was subsequently given the same
   analytic convex treatment; see
-  [coalescent-skyline-convex-log-tc.md](coalescent-skyline-convex-log-tc.md).
-- On a degenerate tree ($M \le 0$ or non-finite $I$) there is no hardcoded initial
-  $T_c$: the caller falls back to the previous round's $T_c$, then the user value,
-  then no prior (see
+  [coalescent-skyline-convex-log-tc.md](coalescent-skyline-convex-log-tc.md). The
+  two were then unified: constant $T_c$ is implemented as the one-segment skyline,
+  leaving a single optimizer.
+- On a degenerate tree ($M \le 0$ or non-finite/non-positive $I$) there is no
+  hardcoded initial $T_c$ and no fallback: the shared solve returns an error, which
+  the pipeline propagates to stop the run rather than substituting an invented
+  timescale (see
   [issues/N-coalescent-initial-tc-hardcoded-fallback.md](../issues/N-coalescent-initial-tc-hardcoded-fallback.md)).

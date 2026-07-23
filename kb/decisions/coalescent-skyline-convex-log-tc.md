@@ -97,6 +97,13 @@ ebola/20 quantile boundaries changed a divergent most-recent segment
 
 ## Impact
 
+- **Constant $T_c$ is unified as the one-segment case of this solve.** `optimize_tc`
+  is a facade calling `optimize_skyline` with `n_points = 1`, where the smoothing is
+  inert and the decoupled optimum is the closed form $T_c^{*}=I/M$. There is now a
+  single coalescent optimizer. A whole-tree degeneracy guard (`m_tot > 0` and
+  positive finite `i_tot`) lives in `optimize_skyline` and is shared by both cases:
+  it errors on a tree with no time span or no mergers rather than letting the
+  per-segment pooled fallback silently return $T_c = 1$.
 - Skyline estimates no longer match v0 numerically; they are the exact optimum of
   the (regularized) piecewise-constant Kingman likelihood.
 - The stiffness parameter penalizes adjacent $\ln T_c$ differences

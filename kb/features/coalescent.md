@@ -27,7 +27,13 @@ per-edge contributions for the whole-tree likelihood and for $T_c$ optimization.
 
 ## Optimal constant $T_c$
 
-Implemented in [`packages/treetime/src/coalescent/optimize_tc.rs`](../../packages/treetime/src/coalescent/optimize_tc.rs).
+[`packages/treetime/src/coalescent/optimize_tc.rs`](../../packages/treetime/src/coalescent/optimize_tc.rs)
+is a thin facade: a constant $T_c$ is exactly the one-segment skyline, so
+`optimize_tc` calls `optimize_skyline` with `n_points = 1` and returns its single
+segment's $T_c$ and likelihood. The derivation below explains why that one-segment
+solve is the closed form $T_c^{*}=I/M$; the I/M accumulation, likelihood reporting,
+and degenerate-tree error are the shared skyline machinery (see
+[Skyline](#skyline-piecewise-constant-t_c)).
 
 The constant-$T_c$ Kingman likelihood factorizes over intervals of constant
 lineage count $k$. Each merger event contributes a factor $k(k-1)/(2T_c)$ and each
@@ -57,40 +63,39 @@ $$
 No iterative search is needed. This replaces v0's Brent minimization of
 `-total_LH()` over $\log T_c$; see [decisions/coalescent-analytic-tc-optimization.md](../decisions/coalescent-analytic-tc-optimization.md).
 
-### Per-edge accumulation
+### Per-segment accumulation (shared with the skyline)
 
-Both $I$ and $M$ are accumulated per edge rather than as global quantities, so
-they stay consistent with the bad branches that `collect_coalescent_edges`
-excludes, and so the expressions generalize to piecewise-constant $T_c$ (where
-per-interval merger counts matter):
+The sufficient statistics $I$ and $M$ are accumulated per segment by the skyline's
+`accumulate_segment_terms`; the constant case is the single segment spanning the
+whole tree. They are built from per-edge / per-node terms rather than global
+quantities, so they stay consistent with the bad branches that
+`collect_coalescent_edges` excludes:
 
 - $I = \sum_{\text{edges}} \big[H_0(t_\text{parent}) - H_0(t_\text{child})\big]$,
-  where $H_0(t)=\int_t^P (k-1)/2\,dt$ is the $T_c$-independent per-lineage
-  integral. It is obtained by reusing
-  [`compute_integral_merger_rate`](../../packages/treetime/src/coalescent/integration.rs)
-  with a constant $T_c = 1$ rather than a dedicated function. Summed over the $k$
-  edges spanning an interval, the per-lineage integrand $(k-1)/2$ reproduces the
-  pairwise integrand $k(k-1)/2$.
+  where $H_0(t)=\int_t^P (k-1)/2\,dt$ is the $T_c$-independent per-lineage integral.
+  Summed over the $k$ edges spanning an interval, the per-lineage integrand
+  $(k-1)/2$ reproduces the pairwise integrand $k(k-1)/2$. Within any edge's span
+  $k \ge 2$, so the `max(0.5, k-1)` clamp used on the likelihood path is inert and
+  $I$ equals the textbook $\int k(k-1)/2\,dt$.
 - $M = \sum_{\text{edges}} (n_\text{siblings}-1)/n_\text{siblings}$, where
   $n_\text{siblings}$ is the number of children of the edge's parent node (this
   child plus its siblings). Summed over a node's $n_\text{siblings}$ edges this is
   the node's merger count $n_\text{siblings}-1$; over a clean bifurcating tree,
   $M = N-1$.
 
-`compute_integral_merger_rate` applies the `max(0.5, k-1)` clamp used on the
-likelihood path, but within any edge's span the lineage count satisfies $k \ge 2$
-(the clamp only activates where $k<1.5$, i.e. above the root, where no edge
-exists). So evaluating it at $T_c = 1$ over edge endpoints yields exactly the
-textbook $\int (k-1)/2\,dt$, and no separate unclamped integrator is needed.
+For a single segment the skyline's midpoint-bucketed interval sum equals this exact
+per-edge integral, because edge endpoints are node times (= lineage-count
+breakpoints), so edges align to whole intervals with no partial-interval remainder.
 
 ### Reported likelihood and degenerate-tree error
 
-`optimize_tc` reports the total coalescent log-likelihood at $T_c^{*}$ by
-evaluating the shared `CoalescentModel`, so the value matches
+The reported total coalescent log-likelihood at $T_c^{*}$ comes from the shared
+skyline solve evaluating `CoalescentModel`, so it matches
 `compute_coalescent_total_lh` bit-for-bit. The closed form $T_c^{*}=I/M$ has no
 numerical failure mode; the only way it errors is a tree that is degenerate for the
 coalescent — $M \le 0$ (no mergers) or $I \le 0$ / non-finite (no time span). In
-that case it returns an error (no fallback timescale), which the pipeline
+that case the shared skyline path returns an error (no fallback timescale), which
+the pipeline
 propagates to stop the run.
 
 ## Skyline (piecewise-constant $T_c$)
