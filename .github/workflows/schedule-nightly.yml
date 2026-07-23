@@ -5,6 +5,12 @@ on:
     - cron: "0 4 * * *"
 
   workflow_dispatch:
+    inputs:
+      force:
+        description: "Build even when source has not changed since the latest nightly"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -13,5 +19,5 @@ jobs:
   nightly:
     uses: neherlab/treetime/.github/workflows/nightly.yml@rust
     with:
-      force: ${{ github.event_name == 'workflow_dispatch' }}
+      force: ${{ inputs.force || false }}
     secrets: inherit
