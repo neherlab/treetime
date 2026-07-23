@@ -86,7 +86,12 @@ where
   // positive finite integral with at least one merger yields a positive finite
   // Tc; the only degenerate case is a zero-time tree (integral = 0).
   if !(n_mergers > 0.0 && integral.is_finite() && integral > 0.0) {
-    return make_error!("Analytic Tc optimum unavailable: integral = {integral:.6e}, mergers = {n_mergers:.6e}");
+    return make_error!(
+      "Cannot estimate a constant coalescent Tc: the tree is degenerate for the coalescent \
+       (pairwise-rate integral = {integral:.6e}, mergers = {n_mergers:.6e}). This means the \
+       tree has effectively no time span or no internal mergers. Provide a fixed Tc via \
+       --coalescent, or run without a coalescent prior."
+    );
   }
   let tc = integral / n_mergers;
 

@@ -120,8 +120,9 @@ pub struct TreetimeTimetreeArgs {
 
   /// Optimize coalescent time scale Tc to maximize coalescent likelihood.
   ///
-  /// When set, TreeTime will find the optimal Tc using Brent's method. This is similar
-  /// to Python v0's `--coalescent=opt`, but uses a closed-form solution.
+  /// When set, TreeTime finds the optimal constant Tc analytically (closed-form maximum
+  /// of the coalescent likelihood). This is similar to Python v0's `--coalescent=opt`,
+  /// which used a numerical search.
   #[cfg_attr(feature = "clap", clap(long, conflicts_with = "coalescent", conflicts_with = "coalescent_skyline"))]
   pub coalescent_opt: bool,
 

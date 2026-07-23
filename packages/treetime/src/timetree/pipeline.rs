@@ -29,7 +29,7 @@ use crate::timetree::params::{TimeMarginalMode, build_covariation_clock_params, 
 use crate::timetree::refinement::{RefinementParams, run_refinement_iteration};
 use crate::timetree::utils::{initialize_clock_totals_from_time_distributions, initialize_node_divergences};
 use eyre::{Report, WrapErr};
-use log::{debug, info, warn};
+use log::{debug, info};
 use parking_lot::RwLock;
 use serde::Serialize;
 use std::io::Write;
@@ -234,7 +234,7 @@ pub fn run(
   // timetree — the earliest point where node times give lineage counts — then
   // re-infer node times under that prior. There is no need to start from a
   // constant Tc and switch to the skyline later: both are cheap analytic solves.
-  let mut coalescent_tc = estimate_coalescent_tc(&coalescent, &input.graph, &skyline_params, None)?;
+  let mut coalescent_tc = estimate_coalescent_tc(&coalescent, &input.graph, &skyline_params)?;
 
   if coalescent_tc.is_some() {
     run_timetree(
@@ -294,7 +294,7 @@ pub fn run(
     );
 
     if coalescent.is_optimized() && i >= 2 {
-      coalescent_tc = estimate_coalescent_tc(&coalescent, &input.graph, &skyline_params, coalescent_tc.as_ref())?;
+      coalescent_tc = estimate_coalescent_tc(&coalescent, &input.graph, &skyline_params)?;
     }
 
     let refinement_params = RefinementParams {
@@ -382,9 +382,8 @@ enum CoalescentMode {
   Disabled,
   /// Fixed, user-supplied Tc.
   Fixed(f64),
-  /// Optimize a constant Tc each round. `seed` is an optional user-supplied Tc
-  /// used only as the fallback if the (analytic) optimization ever fails.
-  Constant { seed: Option<f64> },
+  /// Optimize a constant Tc each round via the exact analytic solve.
+  Constant,
   /// Optimize a piecewise-constant skyline Tc(t) each round.
   Skyline,
 }
@@ -392,7 +391,7 @@ enum CoalescentMode {
 impl CoalescentMode {
   /// Whether Tc is re-estimated from the tree, as opposed to fixed or disabled.
   fn is_optimized(self) -> bool {
-    matches!(self, CoalescentMode::Constant { .. } | CoalescentMode::Skyline)
+    matches!(self, CoalescentMode::Constant | CoalescentMode::Skyline)
   }
 }
 
@@ -400,7 +399,7 @@ fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent_sky
   if coalescent_skyline {
     CoalescentMode::Skyline
   } else if coalescent_opt {
-    CoalescentMode::Constant { seed: coalescent }
+    CoalescentMode::Constant
   } else if let Some(tc) = coalescent {
     CoalescentMode::Fixed(tc)
   } else {
@@ -410,40 +409,29 @@ fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent_sky
 
 /// Estimates the coalescent Tc prior for the current tree under `mode`.
 ///
-/// `current` is the previous round's Tc, used as the constant-optimization
-/// seed/fallback and preserved when an optimization fails. Skyline and constant
-/// optimizations are both cheap analytic solves, so this runs every round rather
-/// than deferring the skyline to a final pass.
+/// Both the constant and skyline solves are exact and cheap, so this runs every
+/// round. They fail only on a tree that is degenerate for the coalescent (no time
+/// span or no mergers); such a failure is propagated so the run stops with a clear
+/// message rather than silently substituting an invented timescale.
 fn estimate_coalescent_tc(
   mode: &CoalescentMode,
   graph: &GraphTimetree,
   skyline_params: &SkylineParams,
-  current: Option<&Distribution>,
 ) -> Result<Option<Distribution>, Report> {
   match mode {
     CoalescentMode::Disabled => Ok(None),
     CoalescentMode::Fixed(tc) => Ok(Some(Distribution::constant(*tc))),
-    CoalescentMode::Constant { seed } => match optimize_tc(graph) {
-      Ok(result) => {
-        info!(
-          "Coalescent Tc = {:.6e} (likelihood = {:.4})",
-          result.tc, result.likelihood
-        );
-        Ok(Some(Distribution::constant(result.tc)))
-      },
-      // On a degenerate tree prefer the previous round's Tc, then the user seed,
-      // then no prior at all (rather than an invented timescale).
-      Err(e) => {
-        warn!("Tc optimization failed: {e}, keeping previous Tc");
-        Ok(current.cloned().or_else(|| (*seed).map(Distribution::constant)))
-      },
+    CoalescentMode::Constant => {
+      let result = optimize_tc(graph)?;
+      info!(
+        "Coalescent Tc = {:.6e} (likelihood = {:.4})",
+        result.tc, result.likelihood
+      );
+      Ok(Some(Distribution::constant(result.tc)))
     },
-    CoalescentMode::Skyline => match optimize_skyline(graph, skyline_params) {
-      Ok(result) => Ok(Some(result.tc_distribution)),
-      Err(e) => {
-        warn!("Skyline optimization failed: {e}, keeping previous Tc");
-        Ok(current.cloned())
-      },
+    CoalescentMode::Skyline => {
+      let result = optimize_skyline(graph, skyline_params)?;
+      Ok(Some(result.tc_distribution))
     },
   }
 }
@@ -515,8 +503,8 @@ mod tests {
   #[rstest]
   #[case::disabled(       None,       false, false, CoalescentMode::Disabled)]
   #[case::fixed(          Some(0.25), false, false, CoalescentMode::Fixed(0.25))]
-  #[case::opt_default(    None,       true,  false, CoalescentMode::Constant { seed: None })]
-  #[case::opt_configured( Some(0.25), true,  false, CoalescentMode::Constant { seed: Some(0.25) })]
+  #[case::opt_default(    None,       true,  false, CoalescentMode::Constant)]
+  #[case::opt_value_ignored(Some(0.25), true, false, CoalescentMode::Constant)]
   #[case::skyline_default(None,       false, true,  CoalescentMode::Skyline)]
   #[case::skyline_over_opt(Some(0.25), true, true,  CoalescentMode::Skyline)]
   #[trace]
