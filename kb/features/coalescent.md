@@ -19,9 +19,11 @@ per-edge contributions for the whole-tree likelihood and for $T_c$ optimization.
 - [x] Constant $T_c$
 - [x] **Optimal constant $T_c$ (analytic)** — see below
 - [x] **Skyline (piecewise-constant $T_c$, analytic convex solve)** — see below
-- [x] No hardcoded initial/fallback $T_c$ — the analytic solve needs no seed; on
-  failure it falls back to the previous round's $T_c$, then the user value, then no
-  prior (see [issues/N-coalescent-initial-tc-hardcoded-fallback.md](../issues/N-coalescent-initial-tc-hardcoded-fallback.md))
+- [x] No hardcoded initial/fallback $T_c$ — the analytic solve needs no seed and
+  cannot fail numerically; it errors only on a tree that is degenerate for the
+  coalescent (no time span or no mergers), which the pipeline propagates so the run
+  stops with a clear message rather than substituting an invented timescale (see
+  [issues/N-coalescent-initial-tc-hardcoded-fallback.md](../issues/N-coalescent-initial-tc-hardcoded-fallback.md))
 
 ## Optimal constant $T_c$
 
@@ -81,13 +83,15 @@ likelihood path, but within any edge's span the lineage count satisfies $k \ge 2
 exists). So evaluating it at $T_c = 1$ over edge endpoints yields exactly the
 textbook $\int (k-1)/2\,dt$, and no separate unclamped integrator is needed.
 
-### Reported likelihood and fallback
+### Reported likelihood and degenerate-tree error
 
-`optimize_tc` still reports the total coalescent log-likelihood at $T_c^{*}$ by
+`optimize_tc` reports the total coalescent log-likelihood at $T_c^{*}$ by
 evaluating the shared `CoalescentModel`, so the value matches
-`compute_coalescent_total_lh` bit-for-bit. If $M \le 0$ or $I$/$T_c^{*}$ are
-non-finite (degenerate tree), it falls back to the caller-supplied initial $T_c$
-and reports `success = false`.
+`compute_coalescent_total_lh` bit-for-bit. The closed form $T_c^{*}=I/M$ has no
+numerical failure mode; the only way it errors is a tree that is degenerate for the
+coalescent — $M \le 0$ (no mergers) or $I \le 0$ / non-finite (no time span). In
+that case it returns an error (no fallback timescale), which the pipeline
+propagates to stop the run.
 
 ## Skyline (piecewise-constant $T_c$)
 

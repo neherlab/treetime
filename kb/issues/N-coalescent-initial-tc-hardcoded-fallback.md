@@ -3,10 +3,11 @@
 > **Resolved.** `INITIAL_COALESCENT_TC` has been removed. The constant-Tc optimizer
 > is now a closed-form analytic solve ($T_c = I/M$, see
 > [decisions/coalescent-analytic-tc-optimization.md](../decisions/coalescent-analytic-tc-optimization.md)),
-> so it needs no starting guess. If it ever fails (a degenerate tree with no
-> mergers), `estimate_coalescent_tc` falls back to the previous round's $T_c$, then
-> to the user-supplied `--coalescent` value, and otherwise applies no coalescent
-> prior that round rather than an invented timescale. No hardcoded default remains.
+> so it needs no starting guess and has no numerical failure mode. It errors only on
+> a tree that is degenerate for the coalescent (no mergers or no time span);
+> `estimate_coalescent_tc` propagates that error so the run stops with a clear
+> message rather than substituting any fallback timescale. No hardcoded default, and
+> no silent fallback, remains.
 
 `INITIAL_COALESCENT_TC` is a fixed constant (`5.0` after [PR#851](https://github.com/neherlab/treetime/pull/851), previously `0.001`) used as the fallback coalescent timescale when Brent optimization fails. The value only affects the error-recovery path -- the optimizer searches its full bracket `[-20, 2]` in log space regardless of starting point.
 
