@@ -9,7 +9,7 @@ over $\log T_c$ knots.
 from v0's optimizer, extending the constant-$T_c$ decision to the skyline).
 
 **Previous v1**: `optimize_skyline()` used `argmin`'s `NelderMead` over a
-piecewise-*linear* $\log T_c$ grid with a stiffness penalty on adjacent $\log T_c$
+piecewise-_linear_ $\log T_c$ grid with a stiffness penalty on adjacent $\log T_c$
 and a boundary penalty, plus a hand-built initial simplex.
 
 **v0**: `MergerModel.optimize_skyline()` at
@@ -34,8 +34,22 @@ with $I_i = \int_{\text{seg }i} k(k-1)/2\,dt$ and merger count $M_i$. Each term 
 convex on $x_i>0$, so $C$ has a unique positive minimizer, found by Newton's method
 on the symmetric tridiagonal Hessian (Thomas algorithm, $O(n)$ per step),
 warm-started from the decoupled optimum $x_i = M_i/I_i$ and damped to keep
-$x_i>0$. This is a Poisson-likelihood / Gaussian-smoothing MAP estimate — the
-frequentist analog of the Bayesian GMRF skygrid.
+$x_i>0$. This is a Poisson-likelihood / Gaussian-smoothing MAP estimate with a
+quadratic smoothness prior on the inverse time scale $1/T_c$.
+
+The smoothness prior here is _not_ the analog of the Bayesian GMRF skyride /
+skygrid. The standard skyride and skygrid GMRFs penalize squared first
+differences of $\log N_e$ (Minin et al. 2008, doi:10.1093/molbev/msn090; Gill et
+al. 2013, doi:10.1093/molbev/mss265), a log-scale field. Penalizing $1/T_c$
+instead is a distinct regularizer with three consequences worth stating: it is
+dimensional -- the stiffness carries units of time$^2$, so a value does not
+transfer across datasets or time units; it smooths non-uniformly -- large-$N_e$
+epochs where $1/T_c \to 0$ are barely constrained while recent small-$N_e$ epochs
+are penalized hardest; and, as a Gaussian field on $1/T_c$, it places prior mass
+on negative rates, kept out only by the $-M_i\ln x_i$ barrier (which requires
+$M_i>0$ per segment). A log-scale field ($\log T_c$ first differences) would be
+scale-invariant and positivity-preserving; that alignment with the cited standard
+is deferred, not implemented here.
 
 ## Rationale
 
