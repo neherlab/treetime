@@ -122,7 +122,10 @@ pub struct TreetimeTimetreeArgs {
   ///
   /// When set, TreeTime will find the optimal Tc using Brent's method. This is similar
   /// to Python v0's `--coalescent=opt`, but uses a closed-form solution.
-  #[cfg_attr(feature = "clap", clap(long, conflicts_with = "coalescent", conflicts_with = "coalescent_skyline"))]
+  // `--coalescent` is not a conflict: when both are given, its value seeds the
+  // `CoalescentMode::Constant { seed }` fallback used if the analytic optimization
+  // fails on a degenerate tree.
+  #[cfg_attr(feature = "clap", clap(long, conflicts_with = "coalescent_skyline"))]
   pub coalescent_opt: bool,
 
   /// Use skyline coalescent model instead of constant Tc.
