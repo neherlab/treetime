@@ -4,8 +4,9 @@ use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::make_error;
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
-use log::info;
+use log::{info, warn};
 use ndarray::Array1;
+use ordered_float::OrderedFloat;
 use treetime_distribution::{Distribution, DistributionFormula};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
@@ -107,6 +108,16 @@ where
   let t_min = breakpoints[0];
   let t_max = breakpoints[breakpoints.len() - 1];
 
+  // Merger times drive the boundary quantiles; a non-finite time would make the
+  // grid meaningless and is rejected here rather than propagated into the sort.
+  if let Some(bad) = edges
+    .iter()
+    .map(|edge| edge.parent_time().value())
+    .find(|t| !t.is_finite())
+  {
+    return make_error!("Coalescent merger time must be finite, got {bad}");
+  }
+
   let boundaries = merger_quantile_boundaries(&edges, t_min, t_max, params.n_points);
 
   let (i_seg, m_seg) = accumulate_segment_terms(precomputed.lineage_counts(), &edges, &boundaries);
@@ -159,7 +170,7 @@ fn merger_quantile_boundaries(edges: &[CoalescentEdgeData], t_min: f64, t_max: f
   }
 
   let mut times: Vec<f64> = edges.iter().map(|e| e.parent_time().value()).collect();
-  times.sort_by(|a, b| a.partial_cmp(b).expect("merger times must be comparable"));
+  times.sort_by_key(|&t| OrderedFloat(t));
 
   let n = times.len();
   let mut boundaries = Vec::with_capacity(n_seg + 1);
@@ -264,11 +275,28 @@ fn solve_inverse_tc(
     })
     .collect();
 
-  // Single segment or no smoothing: the decoupled solution is already optimal.
-  if n == 1 || stiffness <= 0.0 {
+  // Single segment: the decoupled solution is already optimal, no smoothing applies.
+  if n == 1 {
     return Ok(x);
   }
 
+  // Multi-segment smoothing requires well-formed control parameters. A non-positive
+  // or non-finite stiffness was previously treated as "no smoothing" silently,
+  // masking misconfiguration; the parameter is documented as positive.
+  if !(stiffness.is_finite() && stiffness > 0.0) {
+    return make_error!(
+      "Skyline smoothing stiffness must be finite and positive for a multi-segment fit, got {stiffness}"
+    );
+  }
+  if !(tolerance.is_finite() && tolerance > 0.0) {
+    return make_error!("Skyline Newton tolerance must be finite and positive, got {tolerance}");
+  }
+  if max_iter == 0 {
+    return make_error!("Skyline Newton max_iter must be at least 1");
+  }
+
+  let mut converged = false;
+  let mut last_g_norm = f64::INFINITY;
   for _ in 0..max_iter {
     // Gradient and tridiagonal Hessian (diagonal `diag`, off-diagonal `off = -γ`).
     let mut g = vec![0.0; n];
@@ -288,7 +316,9 @@ fn solve_inverse_tc(
     }
 
     let g_norm = g.iter().fold(0.0_f64, |acc, &v| acc.max(v.abs()));
+    last_g_norm = g_norm;
     if g_norm < tolerance {
+      converged = true;
       break;
     }
 
@@ -316,6 +346,15 @@ fn solve_inverse_tc(
         break;
       }
     }
+  }
+
+  // A non-converged fit was previously indistinguishable from a converged one.
+  // Surface it so a returned iterate that failed the gradient tolerance is visible.
+  if !converged {
+    warn!(
+      "Skyline Newton did not reach gradient tolerance {tolerance:.3e} within {max_iter} iterations \
+       (final gradient infinity-norm {last_g_norm:.3e}); returning the last iterate"
+    );
   }
 
   Ok(x)

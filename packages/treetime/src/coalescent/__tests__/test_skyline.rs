@@ -9,6 +9,7 @@ mod tests {
   use maplit::btreemap;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::assert_error;
 
   const SMALL_TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
 
@@ -176,6 +177,42 @@ mod tests {
       "skyline LL {} should be >= constant-Tc LL {}",
       result.log_likelihood,
       constant_tc.likelihood
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_skyline_rejects_nonpositive_stiffness() -> Result<(), Report> {
+    // A non-positive stiffness was previously treated as "no smoothing" silently;
+    // the parameter is documented positive, so a multi-segment fit now rejects it.
+    let graph = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
+    let params = SkylineParams {
+      n_points: 2,
+      stiffness: -1.0,
+      ..SkylineParams::default()
+    };
+
+    assert_error!(
+      optimize_skyline(&graph, &params),
+      "Skyline smoothing stiffness must be finite and positive for a multi-segment fit, got -1"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_skyline_rejects_nonfinite_stiffness() -> Result<(), Report> {
+    let graph = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
+    let params = SkylineParams {
+      n_points: 2,
+      stiffness: f64::NAN,
+      ..SkylineParams::default()
+    };
+
+    assert_error!(
+      optimize_skyline(&graph, &params),
+      "Skyline smoothing stiffness must be finite and positive for a multi-segment fit, got NaN"
     );
 
     Ok(())
