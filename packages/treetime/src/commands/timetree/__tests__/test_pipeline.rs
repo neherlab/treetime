@@ -1,13 +1,17 @@
 #[cfg(test)]
 mod tests {
+  use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::output::{LadderizeArg, OutputCoreArgs, TimetreeOutputSelection, TopologyOrderArgs};
   use crate::commands::timetree::args::TreetimeTimetreeArgs;
-  use crate::commands::timetree::run::run_timetree_estimation;
+  use crate::commands::timetree::initialization::load_input_data;
+  use crate::commands::timetree::run::{run_timetree_estimation, timetree_params_from_args};
   use crate::progress::NoopProgress;
+  use crate::timetree::pipeline::{self, TimetreeInput};
   use eyre::Report;
   use std::fs::read_to_string;
   use std::path::PathBuf;
+  use treetime_distribution::Distribution;
   use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
   use treetime_utils::io::json::json_read_file;
 
@@ -111,6 +115,58 @@ mod tests {
     let mut expected = actual.clone();
     expected.sort_unstable_by(|left, right| right.cmp(left));
     assert_eq!(expected, actual);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_coalescent_opt_prior_maximizes_output_tree() -> Result<(), Report> {
+    // B1 regression: the reported coalescent prior must be fit on the final output
+    // node times, so it must maximize the output tree's coalescent likelihood. A
+    // prior fit on the first, least-refined tree (the pre-fix behavior) would not.
+    let root = project_root();
+    let args = TreetimeTimetreeArgs {
+      alignment: AlignmentArgs {
+        alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
+      },
+      tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+      metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+      max_iter: 2,
+      coalescent_opt: true,
+      ..TreetimeTimetreeArgs::default()
+    };
+
+    let input_data = load_input_data(&args)?;
+    let params = timetree_params_from_args(&args);
+    let input = TimetreeInput {
+      graph: input_data.graph,
+      alphabet: input_data.alphabet,
+      sequences: input_data.aln,
+      dates: input_data.dates,
+    };
+
+    let output = pipeline::run(&params, input, None, &NoopProgress)?;
+
+    let tc_dist = output.coalescent_tc.expect("coalescent-opt must report a fitted Tc");
+    // A constant prior evaluates to the same Tc across its domain.
+    let tc = tc_dist.eval(2005.0)?;
+    assert!(
+      tc.is_finite() && tc > 0.0,
+      "reported Tc must be finite and positive, got {tc}"
+    );
+
+    // Optimality oracle (independent of optimize_tc): the coalescent log-likelihood
+    // L(Tc) = -M ln Tc - I/Tc is strictly unimodal, so the MLE of the output tree
+    // beats any perturbed Tc. This fails if the prior was fit on a different tree.
+    let lh_at = |scale: f64| compute_coalescent_total_lh(&output.graph, &Distribution::constant(tc * scale));
+    let lh_opt = lh_at(1.0)?;
+    let lh_lo = lh_at(0.8)?;
+    let lh_hi = lh_at(1.25)?;
+    assert!(
+      lh_opt >= lh_lo && lh_opt >= lh_hi,
+      "reported Tc={tc} must maximize the output-tree coalescent likelihood: \
+       L(Tc)={lh_opt}, L(0.8·Tc)={lh_lo}, L(1.25·Tc)={lh_hi}"
+    );
 
     Ok(())
   }

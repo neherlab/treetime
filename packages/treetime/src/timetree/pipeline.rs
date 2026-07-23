@@ -98,6 +98,11 @@ pub struct TimetreeOutput {
   pub gtr: Option<GTR>,
   #[serde(skip)]
   pub model_name: Option<GtrModelName>,
+  /// Coalescent prior Tc(t) fit on the final output node times, or `None` when the
+  /// coalescent model is disabled or fixed. This is the maximum-likelihood prior of
+  /// the tree that is written out, so it stays consistent with the reported node times.
+  #[serde(skip)]
+  pub coalescent_tc: Option<Distribution>,
 }
 
 pub fn run(
@@ -293,7 +298,12 @@ pub fn run(
       &format!("iteration {}/{max_iter}", i + 1),
     );
 
-    if coalescent.is_optimized() && i >= 2 {
+    // Re-fit the coalescent prior every round on the current node times. The
+    // previous `i >= 2` guard, combined with early convergence, could leave the
+    // whole run using the pre-loop prior (fit on the first, least-refined tree),
+    // so the reported prior disagreed with the output node times. v0 likewise
+    // re-fits inside the loop (constant Tc each round, skyline on the last).
+    if coalescent.is_optimized() {
       coalescent_tc = estimate_coalescent_tc(&coalescent, &input.graph, &skyline_params, coalescent_tc.as_ref())?;
     }
 
@@ -363,6 +373,15 @@ pub fn run(
     || rate_std.is_some())
   .then(|| extract_confidence_intervals(&input.graph));
 
+  // Report the coalescent prior as the maximum-likelihood fit on the final output
+  // node times. The optimization loop already conditioned the node times on a
+  // per-round prior; this last fit, after any final marginal pass, makes the
+  // *reported* prior consistent with the tree that is written out instead of the
+  // first, least-refined tree the pre-loop estimate saw.
+  if coalescent.is_optimized() {
+    coalescent_tc = estimate_coalescent_tc(&coalescent, &input.graph, &skyline_params, coalescent_tc.as_ref())?;
+  }
+
   progress.report("Done", 1.0, "");
   Ok(TimetreeOutput {
     graph: input.graph,
@@ -372,6 +391,7 @@ pub fn run(
     dates: input.dates,
     gtr: partition_gtr,
     model_name: partition_model_name,
+    coalescent_tc,
   })
 }
 

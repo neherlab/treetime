@@ -17,6 +17,42 @@ use std::path::PathBuf;
 use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
 
+/// Maps parsed CLI arguments onto the pipeline's [`TimetreeParams`].
+pub(crate) fn timetree_params_from_args(args: &TreetimeTimetreeArgs) -> TimetreeParams {
+  TimetreeParams {
+    model: args.model_args.model,
+    alphabet_name: args.alphabet_args.alphabet.unwrap_or_default(),
+    dense: args.dense,
+    gap_fill: args.gap_fill_args.effective_gap_fill(),
+    branch_length_mode: args.branch_length_mode,
+    no_indels: args.no_indels,
+    sequence_length: args.sequence_length,
+    clock_rate: args.clock_rate,
+    clock_std_dev: args.clock_std_dev,
+    keep_root: args.keep_root,
+    reroot_spec: args.reroot.spec(),
+    allow_negative_rate: args.allow_negative_rate,
+    clock_filter: args.clock_filter,
+    covariation: args.covariation,
+    tip_slack: args.tip_slack,
+    max_iter: args.max_iter,
+    resolve_polytomies: args.resolve_polytomies,
+    keep_polytomies: args.keep_polytomies,
+    relax: args.relax.clone(),
+    coalescent: args.coalescent,
+    coalescent_opt: args.coalescent_opt,
+    coalescent_skyline: args.coalescent_skyline,
+    n_skyline: args.n_skyline,
+    skyline_stiffness: args.skyline_stiffness,
+    n_branches_posterior: args.n_branches_posterior,
+    time_marginal: args.time_marginal,
+    confidence: args.confidence,
+    reconstruct_tip_states: args.reconstruct_tip_states,
+    report_ambiguous: args.report_ambiguous,
+    zero_based: args.zero_based,
+  }
+}
+
 pub fn run_timetree_estimation(
   args: &TreetimeTimetreeArgs,
   progress: &dyn crate::progress::ProgressSink,
@@ -52,38 +88,7 @@ pub fn run_timetree_estimation(
     None => None,
   };
 
-  let params = TimetreeParams {
-    model: args.model_args.model,
-    alphabet_name: args.alphabet_args.alphabet.unwrap_or_default(),
-    dense: args.dense,
-    gap_fill: args.gap_fill_args.effective_gap_fill(),
-    branch_length_mode: args.branch_length_mode,
-    no_indels: args.no_indels,
-    sequence_length: args.sequence_length,
-    clock_rate: args.clock_rate,
-    clock_std_dev: args.clock_std_dev,
-    keep_root: args.keep_root,
-    reroot_spec: args.reroot.spec(),
-    allow_negative_rate: args.allow_negative_rate,
-    clock_filter: args.clock_filter,
-    covariation: args.covariation,
-    tip_slack: args.tip_slack,
-    max_iter: args.max_iter,
-    resolve_polytomies: args.resolve_polytomies,
-    keep_polytomies: args.keep_polytomies,
-    relax: args.relax.clone(),
-    coalescent: args.coalescent,
-    coalescent_opt: args.coalescent_opt,
-    coalescent_skyline: args.coalescent_skyline,
-    n_skyline: args.n_skyline,
-    skyline_stiffness: args.skyline_stiffness,
-    n_branches_posterior: args.n_branches_posterior,
-    time_marginal: args.time_marginal,
-    confidence: args.confidence,
-    reconstruct_tip_states: args.reconstruct_tip_states,
-    report_ambiguous: args.report_ambiguous,
-    zero_based: args.zero_based,
-  };
+  let params = timetree_params_from_args(args);
 
   let input = TimetreeInput {
     graph: input_data.graph,
@@ -116,6 +121,7 @@ pub fn run_timetree_estimation(
     dates,
     gtr,
     model_name,
+    coalescent_tc: _,
   } = output;
   let mut graph = graph.map_data(TimetreeGraphData::new(
     clock_model,

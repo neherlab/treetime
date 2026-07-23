@@ -1,10 +1,10 @@
 # Timetree skyline coalescent timing may diverge from v0
 
-v1 runs skyline coalescent optimization after the iteration loop exits, then re-runs timetree with the fitted skyline prior. v0 activates skyline on the last iteration within the loop, so the timetree inference runs once with the skyline prior during the loop itself.
+v1 re-fits the coalescent prior (constant or skyline) once per optimization round on that round's node times, so the output node times are conditioned on a prior fit on refined times. After the loop and any final marginal pass, it re-fits the prior once more on the final node times and reports that value, so the reported prior is the maximum-likelihood fit of the tree actually written out. v0 activates the skyline on the last iteration within the loop (constant Tc on earlier iterations), so its final node times are conditioned on the skyline prior during the loop itself.
 
-The v1 code at `packages/treetime/src/timetree/pipeline.rs` (skyline block after the optimizer loop) has a comment claiming "matching v0 behavior where skyline optimization happens only on the final iteration after times have converged." The v0 code (`packages/legacy/treetime/treetime/treetime.py` line 312) uses `if Tc == 'skyline' and niter < max_iter - 1: tmpTc = 'const'`, which means the last iteration (when `niter == max_iter - 1`) runs with `Tc = 'skyline'` inside the loop, not after it. The comment may be inaccurate.
+The v0 code (`packages/legacy/treetime/treetime/treetime.py` line 312) uses `if Tc == 'skyline' and niter < max_iter - 1: tmpTc = 'const'`, so the last iteration (`niter == max_iter - 1`) runs with `Tc = 'skyline'` inside the loop. v1 instead re-fits every round rather than switching from constant to skyline only on the last iteration.
 
-Both approaches produce self-consistent results. The difference is whether the final node times are conditioned on the skyline prior during the optimization iteration or via a separate post-loop pass. For datasets where the skyline shape deviates from constant Tc, final node time estimates may differ.
+Both approaches produce self-consistent results. The remaining difference is the constant-Tc-until-last-iteration schedule: v1 uses the skyline (or constant optimum) from round 1, v0 uses a constant Tc until the final iteration. For datasets where the skyline shape deviates from constant Tc, final node time estimates may differ.
 
 ## Investigation needed
 
