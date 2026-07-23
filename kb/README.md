@@ -33,6 +33,8 @@ Shared knowledge base (KB). AI agents and humans collaborate here: documenting p
 
 [`_raw/`](_raw/) contains source material. All other directories contain AI-maintained derived knowledge. Source code is ground truth. KB entries are guides, not substitutes for code verification.
 
+The knowledge base holds prose and data only -- no executable code. Scripts, notebooks, and helper programs belong in [`scripts/`](../scripts/) at the project root.
+
 When new material is added to [`_raw/`](_raw/), dependent articles in other directories should be reviewed and updated.
 
 ## Taxonomy
