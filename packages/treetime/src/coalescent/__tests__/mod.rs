@@ -7,4 +7,5 @@ mod test_integration;
 mod test_lineage_dynamics;
 mod test_optimize_tc;
 mod test_skyline;
+mod test_skyline_repro_stiffness_validation;
 mod test_total_lh;
