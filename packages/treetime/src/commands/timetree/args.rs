@@ -120,15 +120,20 @@ pub struct TreetimeTimetreeArgs {
 
   /// Optimize coalescent time scale Tc to maximize coalescent likelihood.
   ///
-  /// When set, TreeTime will find the optimal Tc using Brent's method. This is similar
-  /// to Python v0's `--coalescent=opt`, but uses a closed-form solution.
-  #[cfg_attr(feature = "clap", clap(long, conflicts_with = "coalescent", conflicts_with = "coalescent_skyline"))]
+  /// When set, TreeTime computes the closed-form maximum-likelihood estimate
+  /// Tc = I / M directly, where I is the pairwise-merger-rate integral over the
+  /// tree and M is the number of mergers. There is no iterative search and no
+  /// initial guess. This corresponds to Python v0's `--coalescent=opt`.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, conflicts_with = "coalescent", conflicts_with = "coalescent_skyline")
+  )]
   pub coalescent_opt: bool,
 
   /// Use skyline coalescent model instead of constant Tc.
   ///
-  /// Estimates a piecewise linear coalescent rate history. Requires --n-skyline to specify
-  /// the number of grid points.
+  /// Estimates a piecewise-constant coalescent time scale Tc(t). Requires --n-skyline to specify
+  /// the number of segments.
   #[cfg_attr(feature = "clap", clap(long))]
   #[cfg_attr(
     feature = "clap",
@@ -138,7 +143,7 @@ pub struct TreetimeTimetreeArgs {
 
   /// Number of grid points in skyline coalescent model.
   ///
-  /// Only used when --coalescent-skyline is set. Defines how many piecewise linear segments
+  /// Only used when --coalescent-skyline is set. Defines how many piecewise-constant segments
   /// are used to model Tc(t) over time. Must be at least 2.
   #[default = 10]
   #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().n_skyline))]
