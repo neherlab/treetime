@@ -38,17 +38,49 @@ where
   D: Send + Sync,
 {
   refine_distribution_from_parent(graph, node_indices, completed_start, completed, slot)?;
-  set_likely_time(&mut slot.node);
+
+  // The forward pass fixes each parent's time before its children. Clamp an internal
+  // child's committed time up to its parent's so the point estimates respect
+  // ancestor-before-descendant ordering, which the coalescent and other consumers
+  // rely on. The marginals themselves already respect the physics (strictly positive
+  // branch lengths keep each parent's support below its descendant tips), but they
+  // integrate out other node times, so their independent modes can invert. Leaves
+  // keep their observed date and are never clamped; the same positive-branch bound
+  // keeps a parent's mode below its descendant tips, so clamping cannot push a child
+  // past its own tips.
+  let parent_time = (!graph.is_leaf(slot.key))
+    .then(|| parent_time(node_indices, completed_start, completed, slot))
+    .flatten();
+  set_likely_time(&mut slot.node, parent_time);
   Ok(())
 }
 
-fn set_likely_time(node: &mut impl TimetreeNode) {
+/// Committed time of the slot's parent, if it has one and it is set.
+fn parent_time<N, E>(
+  node_indices: &[Option<usize>],
+  completed_start: usize,
+  completed: &[IndexedPassSlot<N, E>],
+  slot: &IndexedPassSlot<N, E>,
+) -> Option<f64>
+where
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + TimetreeEdge,
+{
+  let parent_key = slot.parent_key?;
+  let parent_index = node_indices[parent_key.as_usize()].expect("Indexed parent must have a slot");
+  completed[parent_index - completed_start].node.time()
+}
+
+fn set_likely_time(node: &mut impl TimetreeNode, parent_time: Option<f64>) {
   let time = node
     .time_distribution()
     .as_ref()
     .and_then(|time_dist| time_dist.likely_time());
 
-  if let Some(time) = time {
+  if let Some(mut time) = time {
+    if let Some(parent_time) = parent_time {
+      time = time.max(parent_time);
+    }
     node.set_time(Some(time));
   }
 }

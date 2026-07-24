@@ -40,6 +40,18 @@ impl CoalescentEdgeData {
   }
 }
 
+/// Inferred time of a node for coalescent edge collection.
+///
+/// Prefers the committed `time()`, which the forward pass sets from the marginal
+/// mode and clamps to respect parent≤child ordering. Falls back to the raw marginal
+/// mode for graphs carrying only date constraints without a full inference pass
+/// (e.g. unit tests), where the modes are already ordered.
+fn node_time(payload: &impl TimetreeNode) -> Option<f64> {
+  payload
+    .time()
+    .or_else(|| payload.time_distribution().as_ref().and_then(|dist| dist.likely_time()))
+}
+
 /// Collects inferred child and parent dates for all non-root edges.
 pub fn collect_coalescent_edges<N, E, D>(graph: &Graph<N, E, D>) -> Result<Vec<CoalescentEdgeData>, Report>
 where
@@ -61,12 +73,7 @@ where
       return Ok(());
     }
 
-    let Some(child_time) = node
-      .payload
-      .time_distribution()
-      .as_ref()
-      .and_then(|distribution| distribution.likely_time())
-    else {
+    let Some(child_time) = node_time(&*node.payload) else {
       warn!(
         "Coalescent edge data: skipping node (key={:?}) without an inferred date",
         node.key
@@ -75,13 +82,9 @@ where
     };
     let parent_node_key = node.parent_keys[0].0;
     let Some(parent_time) = graph.get_node(parent_node_key).and_then(|parent| {
-      parent
-        .read_arc()
-        .payload()
-        .read_arc()
-        .time_distribution()
-        .as_ref()
-        .and_then(|distribution| distribution.likely_time())
+      let node_guard = parent.read_arc();
+      let payload_guard = node_guard.payload().read_arc();
+      node_time(&*payload_guard)
     }) else {
       warn!(
         "Coalescent edge data: skipping node (key={:?}) whose parent has no inferred date",
