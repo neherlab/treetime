@@ -56,10 +56,8 @@ pub struct SkylineResult {
 ///
 /// # Algorithm
 ///
-/// The tree's time span is split into `n_points` segments whose boundaries are the
-/// quantiles of the merger (coalescence) times, so every segment — including the
-/// two boundary segments spanning to the root and the tips — contains mergers.
-/// Within segment `i`, Tc is constant; writing `zᵢ = ln Tc_i` (so the coalescent
+/// The tree's time span is split into `n_points` equal-width segments. Within
+/// segment `i`, Tc is constant; writing `zᵢ = ln Tc_i` (so the coalescent
 /// rate is `1/Tc_i = e^{-zᵢ}`), the negative log-likelihood plus penalty is
 ///
 /// ```text
@@ -72,9 +70,11 @@ pub struct SkylineResult {
 /// ln(Tc_{i+1}/Tc_i)` — and guarantees `Tc = e^z > 0` with no constraint. Every
 /// term is convex in `z`, so `C` has a unique minimizer, found with Newton's method
 /// on the symmetric tridiagonal Hessian, warm-started from the decoupled per-segment
-/// optimum `zᵢ = ln(Iᵢ / Mᵢ)` and globalized with an Armijo line search. Because
-/// each segment owns at least one merger, `Mᵢ > 0` keeps the linear `Mᵢ zᵢ` term
-/// active, bounding `zᵢ` from above so no segment collapses to `Tc → ∞`.
+/// optimum `zᵢ = ln(Iᵢ / Mᵢ)` and globalized with an Armijo line search. A segment in
+/// a merger-sparse region may own no mergers (`Mᵢ = 0`); then the linear `Mᵢ zᵢ` term
+/// vanishes and `zᵢ` is pinned by the smoothing prior alone, so `stiffness > 0` is
+/// required for more than one segment to keep the Hessian positive-definite and every
+/// `zᵢ` finite (a lone data term `Iᵢ e^{-zᵢ}` would otherwise drive `Tc → ∞`).
 ///
 /// `Iᵢ` and `Mᵢ` are attributed to segments using the same interval-midpoint and
 /// node-time conventions as [`CoalescentModel`], so the analytic optimum coincides
@@ -110,7 +110,7 @@ where
   let t_min = breakpoints[0];
   let t_max = breakpoints[breakpoints.len() - 1];
 
-  let boundaries = merger_quantile_boundaries(&edges, t_min, t_max, params.n_points);
+  let boundaries = equal_width_boundaries(t_min, t_max, params.n_points);
 
   let (i_seg, m_seg) = accumulate_segment_terms(precomputed.lineage_counts(), &edges, &boundaries);
 
@@ -168,38 +168,23 @@ fn segment_index(boundaries: &[f64], t: f64) -> usize {
   above.saturating_sub(1).min(n_seg - 1)
 }
 
-/// Computes `n_seg + 1` ascending segment boundaries at quantiles of the merger
-/// times, with the outer boundaries pinned to `t_min` and `t_max`.
+/// Computes `n_seg + 1` equally spaced ascending segment boundaries spanning
+/// `[t_min, t_max]`.
 ///
-/// Interior boundaries fall between merger events so that each segment owns roughly
-/// the same number of mergers; the first and last segments therefore contain the
-/// oldest and youngest mergers rather than an empty sampling tail.
-fn merger_quantile_boundaries(edges: &[CoalescentEdgeData], t_min: f64, t_max: f64, n_seg: usize) -> Vec<f64> {
-  if n_seg <= 1 {
-    return vec![t_min, t_max];
-  }
-
-  let mut times: Vec<f64> = edges.iter().map(|e| e.parent_time().value()).collect();
-  times.sort_by(|a, b| a.partial_cmp(b).expect("merger times must be comparable"));
-
-  let n = times.len();
-  let mut boundaries = Vec::with_capacity(n_seg + 1);
-  boundaries.push(t_min);
-  for k in 1..n_seg {
-    // Split between the (k·n/n_seg)-th sorted merger and its predecessor.
-    let pos = (k * n) / n_seg;
-    let candidate = if n == 0 {
-      t_min + (t_max - t_min) * (k as f64 / n_seg as f64)
-    } else {
-      let lo = times[pos.saturating_sub(1).min(n - 1)];
-      let hi = times[pos.min(n - 1)];
-      if hi > lo { f64::midpoint(lo, hi) } else { lo }
-    };
-    // Keep boundaries strictly inside (t_min, t_max) and non-decreasing.
-    let prev = *boundaries.last().unwrap();
-    boundaries.push(candidate.clamp(prev, t_max));
-  }
-  boundaries.push(t_max);
+/// Uniform widths give the smoothing penalty `Σ (zᵢ₊₁ - zᵢ)²` a clean, grid-
+/// independent meaning — a consistent discretization of the squared log-Tc gradient
+/// in time — so the stiffness has a well-defined scale. Unlike merger-quantile
+/// boundaries this does not guarantee every segment owns a merger: segments in
+/// merger-sparse regions can be empty (`Mᵢ = 0`) and are then pinned by the
+/// smoothing prior, which is why `stiffness > 0` is required for `n_seg > 1`.
+fn equal_width_boundaries(t_min: f64, t_max: f64, n_seg: usize) -> Vec<f64> {
+  let n_seg = n_seg.max(1);
+  let mut boundaries: Vec<f64> = (0..=n_seg)
+    .map(|k| t_min + (t_max - t_min) * (k as f64 / n_seg as f64))
+    .collect();
+  // Pin the endpoints exactly, guarding against floating-point drift at the edges.
+  boundaries[0] = t_min;
+  boundaries[n_seg] = t_max;
   boundaries
 }
 
