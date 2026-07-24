@@ -1,8 +1,8 @@
 # Skyline grid construction accepts invalid endpoint arrays
 
 > **Partially obsolete.** The `SkylineCostFunction` and the externally supplied
-> `log_tc` array are gone: the segment grid is now derived internally from merger
-> quantiles and the tree's time span (`merger_quantile_boundaries()`), and the
+> `log_tc` array are gone: the segment grid is now derived internally as equal-width
+> boundaries over the tree's time span (`equal_width_boundaries()`), and the
 > optimizer is a convex Newton solve. The remaining validation gap is narrower —
 > internal `boundaries` indexing still lacks a typed nonempty/ordering guard. See
 > [decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md).

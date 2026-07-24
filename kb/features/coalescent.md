@@ -102,9 +102,9 @@ propagates to stop the run.
 
 Implemented in [`packages/treetime/src/coalescent/skyline.rs`](../../packages/treetime/src/coalescent/skyline.rs).
 
-The time span is split into `n_points` segments; $T_c$ is constant within each.
-Writing $z_i = \ln T_{c,i}$ (so the coalescence rate is $1/T_{c,i} = e^{-z_i}$), the
-negative log-likelihood plus a smoothness penalty is
+The time span is split into `n_points` equal-width segments; $T_c$ is constant
+within each. Writing $z_i = \ln T_{c,i}$ (so the coalescence rate is
+$1/T_{c,i} = e^{-z_i}$), the negative log-likelihood plus a smoothness penalty is
 
 $$
 C(z) = \sum_i \big(I_i\,e^{-z_i} + M_i z_i\big) + \frac{\gamma}{2}\sum_i (z_{i+1}-z_i)^2,
@@ -126,11 +126,12 @@ backtracking line search.
   conventions as `CoalescentModel`, so the optimum maximizes the model-evaluated
   likelihood and the reported LH matches `compute_coalescent_total_lh`)
 - [x] Newton solve with Armijo line search (no positivity constraint needed)
-- [x] **Merger-quantile segment boundaries** — boundaries fall at quantiles of the
-  merger times so every segment (including the root and tip boundary segments)
-  owns mergers; $M_i>0$ keeps the linear $M_i z_i$ term active, bounding $z_i$ from
-  above and preventing empty boundary segments from collapsing to $T_c\to\infty$
-  (see [decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md))
+- [x] **Equal-width segment boundaries** — uniform spacing gives the stiffness a
+  clean, grid-independent meaning and is robust to tied merger times. Merger-sparse
+  regions may leave empty segments ($M_i=0$) whose $z_i$ is pinned by the smoothing
+  prior, so `stiffness > 0` is required (and enforced) for `n_points > 1` to keep the
+  Hessian positive-definite and every $z_i$ finite (see
+  [decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md))
 - [x] Piecewise-constant $T_c(t)$ output; times outside the grid clamp to the
   first/last segment
 

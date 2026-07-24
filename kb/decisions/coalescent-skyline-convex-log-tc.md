@@ -67,20 +67,39 @@ size.
 - **Simpler.** Removes the Nelder-Mead executor, the initial-simplex construction,
   the boundary penalty, and the piecewise-linear knot interpolation.
 
-## Merger-quantile segment boundaries
+## Equal-width segment boundaries
 
-Segment boundaries are the quantiles of the merger times (outer boundaries pinned
-to the tree's time span). This is deliberate: with equal-time boundaries the
-boundary segment between the youngest coalescence and the tips has lineages
-($I_i>0$) but no mergers ($M_i=0$). With $M_i=0$ the data term reduces to
-$I_i e^{-z_i}$, whose gradient $-I_i e^{-z_i}$ is negative everywhere, so the
-segment's optimum runs to $z_i\to+\infty$, i.e. $T_c\to\infty$ (only weakly
-restrained by smoothing). Quantile boundaries guarantee every segment — including
-both boundary segments — owns mergers, so $M_i>0$ keeps the linear $M_i z_i$ term
-active and bounds $z_i$ from above. (In the earlier $x = 1/T_c$ parametrization the
-analogous guard was the $-M_i\ln x_i$ log-barrier keeping $x_i$ away from zero.) On
-ebola/20 quantile boundaries changed a divergent most-recent segment
-($T_c\approx 3\times10^{150}$) into a finite, smoothly varying trajectory.
+Segments are equally spaced over the tree's time span (`equal_width_boundaries`, a
+`linspace`). An earlier design placed boundaries at merger-time quantiles so every
+segment would own mergers ($M_i>0$), keeping the linear $M_i z_i$ term active and
+each per-segment optimum finite even without smoothing. That guarantee turned out to
+be illusory and costly:
+
+- **It is conditional and unenforced.** By pigeonhole, quantile bins can give every
+  segment a merger only when `n_points` does not exceed the number of merger times —
+  which depends on topology (polytomies) and bad-branch exclusion, is unknown when
+  the user picks `n_points`, and is already violated in the test suite (5 segments on
+  a tree with 2 mergers). Outside that regime quantile bins also leave empty
+  segments, so well-posedness rests on `stiffness > 0` regardless.
+- **Ties produce zero-width segments.** Coincident merger times (polytomies) collapse
+  adjacent quantile boundaries into degenerate zero-width segments.
+- **Variable widths make the stiffness scale-ambiguous.** On a non-uniform grid
+  $\sum (z_{i+1}-z_i)^2$ penalizes fold-change per segment *index*, ignoring the time
+  gap. On a uniform grid it is a consistent discretization of
+  $\int (d\ln T_c/dt)^2\,dt$, so the stiffness has a clean, grid-independent meaning.
+
+Equal width wins on tie-robustness, on a well-defined stiffness, and on simplicity
+(the sort/quantile/clamp/tie logic is gone), and it matches the skygrid we emulate,
+which uses a regular grid and lets the smoothing carry low-data cells. The cost is
+that merger-sparse regions (typically near the root and the tips) can yield empty
+segments ($M_i=0$); their $z_i$ is then pinned by the smoothing prior rather than the
+data, so **`stiffness > 0` is required for `n_points > 1`** (enforced in
+`solve_log_tc`) to keep the Hessian positive-definite and every $z_i$ finite — a lone
+data term $I_i e^{-z_i}$ would otherwise drive $T_c\to\infty$. With positive stiffness
+the PD tridiagonal Hessian keeps the solve well-posed and an empty segment's $T_c$
+interpolates its neighbours instead of diverging. (The historical ebola/20 blow-up,
+$T_c\approx 3\times10^{150}$, occurred with equal-*time* boundaries under the earlier
+$x=1/T_c$ parametrization before reliable smoothing, and does not recur.)
 
 ## Options considered
 
@@ -90,10 +109,12 @@ ebola/20 quantile boundaries changed a divergent most-recent segment
 2. **Newton in $x=1/T_c$ (intermediate v1).** Convex and exact with a tridiagonal
    Hessian, but the smoothing penalty $(x_{i+1}-x_i)^2$ is scale-dependent and the
    step needs a positivity cap to keep $x_i>0$.
-3. **Newton in $z=\ln T_c$, merger-quantile boundaries (chosen).** Convex and exact
-   with the same tridiagonal Hessian, plus scale-independent smoothing and
-   unconstrained positivity. The data term becomes non-quadratic (exponential), so
-   Newton iterates under an Armijo line search rather than converging in one step.
+3. **Newton in $z=\ln T_c$, equal-width boundaries (chosen).** Convex and exact with
+   the same tridiagonal Hessian, plus scale-independent smoothing and unconstrained
+   positivity. The data term becomes non-quadratic (exponential), so Newton iterates
+   under an Armijo line search rather than converging in one step. Boundaries are
+   uniform rather than merger-quantile (see [above](#equal-width-segment-boundaries));
+   empty segments are handled by requiring `stiffness > 0`.
 
 ## Impact
 
