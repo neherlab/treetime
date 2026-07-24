@@ -2,7 +2,9 @@
 
 ## Motivation
 
-TreeTime v1 infers GTR substitution model parameters ($W$, $\pi$, $\mu$) from sequence data but has no structured format to save them. Users who want to reuse an inferred model across analyses, inspect estimated parameters, or transfer models between tools must re-run inference each time. TreeTime v0 has a text-based `GTR.__str__()`/`GTR.from_file()` round-trip, but the format is fragile (line-by-line string matching, no metadata, no version info) and has no cross-tool compatibility.
+TreeTime v1 already writes inferred scalar GTR parameters as JSON through `--output-gtr`. The missing contract is invariant-safe input and reuse: schema versioning, alphabet identity, normalization, validation, and construction of a usable `GTR` value. TreeTime v0's text output is rounded and therefore lossy; it is not a reliable round-trip format.
+
+> **Status:** This proposal is not ready for implementation. The normalization of $W$ versus $\mu$, invariant-safe deserialization, and external-format contracts remain unapproved decisions.
 
 A structured serialization format for scalar GTR enables:
 
@@ -17,7 +19,7 @@ Surveyed in the [substitution model serialization formats report](../reports/sub
 
 ### PAML triangular format
 
-De facto cross-tool standard for amino acid exchangeability matrices. Lower-triangular $W$ (190 values for 20 amino acids, or 6 values for 4 nucleotides) followed by equilibrium frequencies. Accepted by IQ-TREE, PhyML, RAxML-NG, and MEGA. Does not store $\mu$ (overall rate).
+Common format for empirical amino-acid exchangeability matrices: lower-triangular $W$ followed by equilibrium frequencies. Nucleotide support and exact parser contracts vary by tool and must be verified independently. The format does not store $\mu$.
 
 Example (nucleotide GTR, 4 states):
 
@@ -33,12 +35,12 @@ Example (nucleotide GTR, 4 states):
 
 ### RAxML-NG model string
 
-Single-line format with inline parameter values. Stores $W$, $\pi$, $\mu$ (via rate heterogeneity parameters). Round-trip: RAxML-NG writes `.raxml.bestModel`, reads it back via `--model`.
+Single-line format with inline parameter values. `+FO` requests maximum-likelihood frequency optimization and takes no values; user-supplied frequencies use `+FU{...}`. Gamma-shape or FreeRate parameters describe among-site rate heterogeneity and are not TreeTime's scalar $\mu$.
 
 Example:
 
 ```
-GTR{0.200/1.000/2.000/4.000/7.000/1.000}+FO{0.280/0.220/0.230/0.270}+G4m{0.500}
+GTR{0.200/1.000/2.000/4.000/7.000/1.000}+FU{0.280/0.220/0.230/0.270}
 ```
 
 ### TreeTime v0 text
@@ -74,15 +76,14 @@ Stores the full scalar GTR model with metadata. Consistent with the [site-specif
 {
   "format": "treetime-gtr",
   "version": 1,
-  "alphabet": ["A", "C", "G", "T", "-"],
+  "alphabet": ["A", "C", "G", "T"],
   "W": [
-    [0.0, 1.2, 2.5, 0.8, 0.1],
-    [1.2, 0.0, 0.9, 3.1, 0.1],
-    [2.5, 0.9, 0.0, 0.7, 0.1],
-    [0.8, 3.1, 0.7, 0.0, 0.1],
-    [0.1, 0.1, 0.1, 0.1, 0.0]
+    [0.0, 1.2, 2.5, 0.8],
+    [1.2, 0.0, 0.9, 3.1],
+    [2.5, 0.9, 0.0, 0.7],
+    [0.8, 3.1, 0.7, 0.0]
   ],
-  "pi": [0.2983, 0.1836, 0.1963, 0.3218, 0.0],
+  "pi": [0.2983, 0.1836, 0.1963, 0.3218],
   "mu": 0.003421,
   "metadata": {
     "model_name": "GTR",
@@ -100,7 +101,7 @@ Fields:
 - `alphabet`: state labels in array index order
 - `W`: symmetric exchangeability matrix (`n_states x n_states`, zero diagonal)
 - `pi`: equilibrium frequencies (`n_states`, sums to 1.0)
-- `mu`: overall substitution rate (scalar)
+- `mu`: overall substitution-rate coordinate (scalar); the schema must define its normalization relative to $W$ before this field can be a portable contract
 - `metadata`: provenance and inference settings (optional fields, tool-specific)
 
 ### Secondary: PAML-compatible export
@@ -117,17 +118,6 @@ For nucleotides (4 states, 6 exchangeability values + 4 frequencies):
 0.298300 0.183600 0.196300 0.321800
 ```
 
-For nucleotides with gap state (5 states, 10 exchangeability values + 5 frequencies):
-
-```
-1.200000
-2.500000 0.900000
-0.800000 3.100000 0.700000
-0.100000 0.100000 0.100000 0.100000
-
-0.298300 0.183600 0.196300 0.321800 0.000000
-```
-
 PAML format does not store $\mu$. The rate scalar is absorbed into branch lengths in tools that consume this format.
 
 ### Secondary: RAxML-NG-compatible model string
@@ -135,7 +125,7 @@ PAML format does not store $\mu$. The rate scalar is absorbed into branch length
 For interoperability with RAxML-NG, export as a single-line model string:
 
 ```
-GTR{1.200/2.500/0.800/0.900/3.100/0.700}+FO{0.298/0.184/0.196/0.322}
+GTR{1.200/2.500/0.800/0.900/3.100/0.700}+FU{0.298/0.184/0.196/0.322}
 ```
 
 Rate order: AC/AG/AT/CG/CT/GT (upper triangle, row-major). This can be passed directly as `--model` input to RAxML-NG.
@@ -151,17 +141,15 @@ Rate order: AC/AG/AT/CG/CT/GT (upper triangle, row-major). This can be passed di
 
 - Enables `--model-file` CLI flag for loading pre-inferred models
 - Enables `--export-model` for saving inferred models after ancestral reconstruction or timetree
-- Replaces v0's fragile text parser with structured JSON
+- Defines a new v1 input contract; no v0 compatibility loader is appropriate because v1 has not shipped
 - Provides PAML and RAxML-NG interoperability for scalar models
 - Pairs with the [site-specific serialization proposal](model-serialization-site-specific.md) to cover both model variants
 
 ## Validation plan
 
-- Round-trip test: write GTR to JSON, read back, compare all fields at 1e-15 tolerance
-- PAML export test: write PAML triangular, verify manually in IQ-TREE with `-m <file>`
-- RAxML-NG string test: write model string, verify RAxML-NG accepts it via `--model`
+- Round-trip test: write a normalized GTR to JSON, reconstruct through the same invariant-safe constructor used by production, and compare transition probabilities as well as fields
+- External-format tests: validate each claimed format against pinned versions of the consuming tool and compare the resulting normalized rate matrices, rather than relying on manual parser acceptance
 - Schema validation: reject files with wrong `format`, wrong `version`, negative frequencies, non-symmetric $W$
-- v0 compatibility test: read v0's `GTR.from_file()` text format as a legacy import path
 
 ## Related
 

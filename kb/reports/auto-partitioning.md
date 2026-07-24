@@ -1,12 +1,14 @@
 # Site-Specific Models and Automatic Partitioning for TreeTime v1
 
+> **Status:** Research report with unapproved design options. Current commands do not construct site-specific GTR models, and automatic partitioning, parameter linkage, branch-length sharing, model-selection criteria, and serialization remain open decisions.
+
 ## 1. Problem and motivation
 
-A single <a id="gloss-use-1"></a>GTR <sup>[1](#gloss-1)</sup> substitution model applied uniformly across an alignment ignores the fact that different positions evolve under different selective constraints. This is not just a rate problem. <a id="cite-1a"></a>[Halpern and Bruno 1998](https://doi.org/10.1093/oxfordjournals.molbev.a025995) [[1](#ref-1)] showed that site-to-site differences in amino acid frequencies are the root cause: rate heterogeneity is a consequence of preference heterogeneity, not an independent phenomenon. A model capturing per-site preferences automatically captures much of the rate variation.
+A single <a id="gloss-use-1"></a>GTR <sup>[1](#gloss-1)</sup> substitution model applied uniformly across an alignment ignores the fact that different positions can evolve under different selective constraints. Site-specific equilibrium preferences are one important source of apparent among-site rate heterogeneity, especially over long evolutionary distances (<a id="cite-1a"></a>[Halpern and Bruno 1998](https://doi.org/10.1093/oxfordjournals.molbev.a025995) [[1](#ref-1)]; <a id="cite-2a"></a>[Puller et al. 2020](https://doi.org/10.1093/ve/veaa066) [[2](#ref-2)]). Position-specific preferences capture compositional constraints that rate-only models cannot represent; mutation rate, context dependence, and other processes can still create independent rate variation.
 
-When site-specific preferences are ignored, branch lengths are systematically underestimated. The probability of observing the same state at both ends of a branch by chance is $\sum_i (\pi_i^a)^2$, which increases sharply at constrained sites. A model using uniform frequencies misinterprets high identity as close relatedness (<a id="cite-2a"></a>[Puller, Sagulenko, and Neher 2020](https://doi.org/10.1093/ve/veaa066) [[2](#ref-2)], Figs 3-4). <a id="gloss-use-2"></a>Gamma rate variation <sup>[2](#gloss-2)</sup> alone does not fix this because it models rate, not preference (<a id="cite-3"></a>[Yang 1994](https://doi.org/10.1007/BF00178256) [[3](#ref-3)]).
+At long divergence times, let $\pi_i^a$ denote the equilibrium probability of state $i$ at alignment site $a$. The probability that two independently equilibrated states agree approaches $\sum_i (\pi_i^a)^2$, which is larger at compositionally constrained sites. Homogeneous-frequency models can therefore predict too little long-term identity and underestimate branch lengths in such settings (<a id="cite-2b"></a>[Puller et al. 2020](https://doi.org/10.1093/ve/veaa066) [[2](#ref-2)], Figs 3-4). This expression is a stationary long-time limit, not the finite-branch transition probability. <a id="gloss-use-2"></a>Gamma rate variation <sup>[2](#gloss-2)</sup> represents rate heterogeneity rather than site-specific equilibrium preferences (<a id="cite-3"></a>[Yang 1994](https://doi.org/10.1007/BF00160154) [[3](#ref-3)]).
 
-In molecular clock analyses, branch length underestimation creates an apparent time-dependent rate: short branches near the tips appear to evolve faster than long branches near the root, biasing the clock rate downward (<a id="cite-2b"></a>[Puller, Sagulenko, and Neher 2020](https://doi.org/10.1093/ve/veaa066) [[2](#ref-2)]; <a id="cite-4"></a>[Hilton and Bloom 2018](https://doi.org/10.1093/ve/vey033) [[4](#ref-4)]). For HIV, branches longer than ~100 years become inaccurate, and signal disappears beyond ~300 years.
+In molecular clock analyses, branch-length underestimation can create an apparent time-dependent rate: short branches near the tips appear to evolve faster than longer, deeper branches (<a id="cite-2c"></a>[Puller et al. 2020](https://doi.org/10.1093/ve/veaa066) [[2](#ref-2)]; <a id="cite-4"></a>[Hilton and Bloom 2018](https://doi.org/10.1093/ve/vey033) [[4](#ref-4)]). The divergence ranges reported for HIV by Puller et al. are dataset- and model-specific examples, not general operational thresholds.
 
 TreeTime v1 currently uses a single GTR model per sequence partition. The goal is to support both site-specific models and automatic partitioning with families of linked GTR models.
 
@@ -24,7 +26,7 @@ The rate matrix at site $a$ is:
 
 $$Q_{ij}^a = \mu^a \, \pi_i^a \, W_{ij} \quad \text{for } i \neq j$$
 
-where $W_{ij}$ is a shared symmetric <a id="gloss-use-4"></a>exchangeability matrix <sup>[4](#gloss-4)</sup>, $\pi_i^a$ is the <a id="gloss-use-5"></a>equilibrium frequency <sup>[5](#gloss-5)</sup> of state $i$ at site $a$, and $\mu^a$ is the overall substitution rate at site $a$. Normalization: $\sum_i \pi_i^a = 1$ and $L^{-1} \sum_a \sum_{i \neq j} W_{ij} \pi_i^a \pi_j^a = 1$.
+where $W_{ij}$ is a shared symmetric <a id="gloss-use-4"></a>exchangeability matrix <sup>[4](#gloss-4)</sup>, $\pi_i^a$ is the <a id="gloss-use-5"></a>equilibrium frequency <sup>[5](#gloss-5)</sup> of state $i$ at site $a$, $\mu^a$ is the overall substitution rate at site $a$, and $L$ is the number of alignment sites. Normalization requires $\sum_i \pi_i^a = 1$ and $L^{-1} \sum_a \sum_{i \neq j} W_{ij} \pi_i^a \pi_j^a = 1$.
 
 Sharing $W_{ij}$ across all sites is the key regularizer. Full per-site $W_{ij}^a$ would be unidentifiable for pathogen datasets and computationally prohibitive.
 
@@ -32,28 +34,28 @@ Sharing $W_{ij}$ across all sites is the key regularizer. Full per-site $W_{ij}^
 
 The site-specific model has three kinds of parameters, each with a different physical meaning and a different answer to the question "should this be shared across alignment columns or estimated separately?"
 
-$W_{ij}$ (exchangeability) encodes how easily one nucleotide converts into another. A-to-G transitions are common because purines share a similar molecular structure; A-to-C transversions are rare because the molecules differ more. This reflects nucleotide chemistry, which does not change from one alignment column to the next. Sharing $W$ across all sites is physically motivated and is the key regularizer that keeps the model identifiable with limited data (<a id="cite-2e"></a>[Puller, Sagulenko, and Neher 2020](https://doi.org/10.1093/ve/veaa066) [[2](#ref-2)]).
+$W_{ij}$ (exchangeability) is a fitted reversible-model parameter that summarizes relative state-change tendencies after equilibrium frequencies are represented. Transition/transversion chemistry can motivate shared structure, while mutation, selection, context, and model misspecification can make fitted exchangeabilities differ among biological groups. Sharing $W$ across sites is therefore a regularizing assumption in the site-specific formulation, rather than a universally valid physical identity (<a id="cite-2d"></a>[Puller et al. 2020](https://doi.org/10.1093/ve/veaa066) [[2](#ref-2)]).
 
 $\pi_i^a$ (equilibrium frequencies) describes the preferred distribution of nucleotides at a specific position. A structurally constrained position in a protein might strongly prefer adenine, while a position in a hypervariable loop might accept any nucleotide roughly equally. These preferences arise from site-specific fitness landscapes shaped by natural selection (<a id="cite-1c"></a>[Halpern and Bruno 1998](https://doi.org/10.1093/oxfordjournals.molbev.a025995) [[1](#ref-1)]). Different positions have different constraints, so $\pi$ must vary per site or per partition.
 
-$\mu^a$ (overall rate) is a scalar multiplier controlling how fast a position evolves. Third codon positions, where most substitutions are synonymous, evolve faster than first and second positions, where substitutions often change the amino acid. Rate variation across sites was the first form of heterogeneity modeled in phylogenetics (<a id="cite-3c"></a>[Yang 1994](https://doi.org/10.1007/BF00178256) [[3](#ref-3)]).
+$\mu^a$ (overall rate) is a scalar multiplier controlling how fast a position evolves. Third codon positions often evolve faster than first and second positions because a larger fraction of their substitutions are synonymous, although codon usage, RNA structure, overlapping reading frames, and other constraints can reverse that tendency. Discrete among-site rate variation is treated by <a id="cite-3b"></a>[Yang 1994](https://doi.org/10.1007/BF00160154) [[3](#ref-3)].
 
-"Sharing" a parameter across partitions means pooling data from all those partitions to estimate it. Pooling increases the effective sample size and reduces estimation variance, but produces a wrong average if the parameter genuinely differs between partitions. $W$ is safe to pool (chemistry is universal). $\pi$ is risky to pool (different positions have different preferences). $\mu$ should not be pooled (positions evolve at different speeds by definition). This is why the default configuration is: share $W$ broadly, share $\pi$ within groups of functionally similar sites, estimate $\mu$ separately per partition. The [grouping specification](#gtr-family-inference) makes this configurable.
+"Sharing" a parameter across partitions means estimating one value from data pooled across those partitions. Pooling can reduce estimation variance, but it imposes equality and can be misspecified when groups differ. Linkage of $W$, $\pi$, and $\mu$ are independent modeling decisions: each can be global, grouped, or partition-specific. No default linkage policy has been approved. The [grouping specification](#gtr-family-inference) records candidate semantics.
 
-One more sharing axis: branch lengths. Each edge in the tree represents evolutionary distance. With scaled (edge-proportional) branch lengths, all partitions share the same relative branch lengths but each gets a rate multiplier $\mu$. With edge-unlinked branch lengths, each partition gets fully independent branch lengths. Scaled is the standard default (RAxML-NG, IQ-TREE) because partitions on the same tree share the same phylogenetic history; only the pace differs.
+One more sharing axis is branch lengths. With scaled (edge-proportional) branch lengths, all partitions share relative edge lengths and each receives a rate multiplier. With edge-unlinked branch lengths, each partition receives independent edge lengths. These alternatives encode different biological assumptions; TreeTime has not approved a default.
 
-### 2.4 Hierarchy of heterogeneity approaches
+### 2.4 Independent dimensions of site heterogeneity
 
-The following models form a spectrum of increasing complexity:
+The following models vary along several dimensions: latent versus fixed site assignments, rate versus equilibrium-frequency heterogeneity, and shared versus partition-specific parameters. Their likelihoods are therefore not a single nested hierarchy:
 
-- Gamma (+G): $k$ rate categories from discretized Gamma($\alpha$), same frequencies for all sites (<a id="cite-3b"></a>[Yang 1994](https://doi.org/10.1007/BF00178256) [[3](#ref-3)])
+- Gamma (+G): $k$ rate categories from discretized Gamma($\alpha$), same frequencies for all sites (<a id="cite-3c"></a>[Yang 1994](https://doi.org/10.1007/BF00160154) [[3](#ref-3)])
 - <a id="gloss-use-6"></a>FreeRate <sup>[6](#gloss-6)</sup> (+R): $k$ rate categories with freely estimated rates and weights, same frequencies
 - Empirical profile mixtures (C10-C60, LG+C60): $k$ fixed frequency profiles from training data, class weights estimated
-- CAT (<a id="cite-6"></a>[Lartillot and Philippe 2004](https://doi.org/10.1093/molbev/msh112) [[6](#ref-6)]): infinite mixture via <a id="gloss-use-7"></a>Dirichlet process <sup>[7](#gloss-7)</sup> prior, number of classes adapts to data. Bayesian only. Suppresses long-branch attraction artifacts (<a id="cite-7"></a>[Lartillot, Brinkmann, and Philippe 2007](https://doi.org/10.1186/1471-2148-7-S1-S4) [[7](#ref-7)])
+- <a id="gloss-use-11"></a>CAT <sup>[11](#gloss-11)</sup> (<a id="cite-6"></a>[Lartillot and Philippe 2004](https://doi.org/10.1093/molbev/msh112) [[6](#ref-6)]): infinite mixture via <a id="gloss-use-7"></a>Dirichlet process <sup>[7](#gloss-7)</sup> prior, number of classes adapts to data. Bayesian only. Suppresses long-branch attraction artifacts (<a id="cite-7"></a>[Lartillot et al. 2007](https://doi.org/10.1186/1471-2148-7-S1-S4) [[7](#ref-7)])
 - <a id="gloss-use-8"></a>PMSF <sup>[8](#gloss-8)</sup> (<a id="cite-8a"></a>[Wang et al. 2018](https://doi.org/10.1093/sysbio/syx068) [[8](#ref-8)]): per-site profiles from mixture model posterior means. ML-compatible, fixed during tree search
-- Full site-specific (<a id="cite-2c"></a>[Puller, Sagulenko, and Neher 2020](https://doi.org/10.1093/ve/veaa066) [[2](#ref-2)]): per-site $\pi_i^a$ and $\mu^a$, shared $W_{ij}$, estimated from data via EM
+- Full site-specific (<a id="cite-2f"></a>[Puller et al. 2020](https://doi.org/10.1093/ve/veaa066) [[2](#ref-2)]): per-site $\pi_i^a$ and $\mu^a$, shared $W_{ij}$, estimated from data via iterative approximate maximum-likelihood updates
 
-Rate-only models are strict subsets: setting $\pi_i^a = \pi_i$ for all $a$ recovers Gamma/FreeRate. Mixture models approximate the site-specific model by clustering sites into groups. PMSF bridges the two: it starts from a finite mixture but produces per-site profiles.
+A site-specific model with shared $\pi$ and fixed $\mu^a$ represents supplied per-site rates. Gamma and FreeRate instead integrate each site's likelihood over latent rate categories, so they require separate likelihood machinery and are not strict subsets of that fixed-rate model. Frequency-profile mixtures likewise integrate over latent or assigned profiles. PMSF starts from a finite mixture and then fixes each site's posterior-mean profile for a subsequent analysis.
 
 ---
 
@@ -61,23 +63,29 @@ Rate-only models are strict subsets: setting $\pi_i^a = \pi_i$ for all $a$ recov
 
 ### 3.1 Iterative update rules
 
-<a id="cite-2d"></a>[Puller, Sagulenko, and Neher 2020](https://doi.org/10.1093/ve/veaa066) [[2](#ref-2)] derive multiplicative update rules (Equation 2):
+<a id="cite-2e"></a>[Puller et al. 2020](https://doi.org/10.1093/ve/veaa066) [[2](#ref-2)] present approximate maximum-likelihood updates. The implementation uses the following equivalent count-and-exposure form. Let $N_{ij}^a$ be the expected number of $i\to j$ substitutions at site $a$, $T_j^a$ the total branch exposure in state $j$, $R_i^a$ the root-state weight, $c$ the pseudocount, and $q$ the alphabet size:
 
-$$\mu^a \leftarrow \mu^a \frac{c + \sum_{ij} n_{ij}^a}{\sum_{ij} \mu^a \pi_i W_{ij} \tau_j^a}$$
+$$n_a = c + \sum_{i,j} N_{ij}^a,$$
 
-$$\pi_i^a \leftarrow \pi_i^a \frac{c + \delta_{is^a} + \sum_{j \neq i} n_{ij}^a}{\pi_i^a (qc + 1) + \mu^a \pi_i^a \sum_j W_{ij} \tau_j^a}$$
+$$\mu^a \leftarrow \frac{n_a}{c + \sum_{i,j}\pi_i^a W_{ij}T_j^a},$$
 
-$$W_{ij} \leftarrow W_{ij} \frac{\sum_a (n_{ij}^a + n_{ji}^a)}{\sum_a \mu^a W_{ij} (\pi_i^a \tau_j^a + \pi_j^a \tau_i^a)}$$
+$$m_i^a = c + R_i^a + \sum_j N_{ij}^a, \qquad \Lambda_a = qc + \sum_i R_i^a,$$
 
-where $\tau_j^a$ is the time site $a$ spends in state $j$ across the tree, $n_{ij}^a$ is the number of $j \to i$ transitions at site $a$, $s^a$ is the root state, $q$ is the alphabet size, and $c$ is a pseudocount (Dirichlet prior).
+$$\pi_i^a \leftarrow \frac{m_i^a}{\mu^a\sum_j W_{ij}T_j^a + \Lambda_a}, \qquad \pi^a \leftarrow \frac{\pi^a}{\sum_i\pi_i^a},$$
+
+and, for $i\ne j$,
+
+$$W_{ij}\leftarrow \frac{c + \sum_a\left(N_{ij}^a+N_{ji}^a\right)}{c + \sum_a\mu^a\left(\pi_i^aT_j^a+\pi_j^aT_i^a\right)}, \qquad W_{ii}=0.$$
+
+The final normalization resolves the common scale shared by $W$ and $\mu$.
 
 ### 3.2 Relationship to non-negative matrix factorization
 
-These updates are instances of <a id="gloss-use-9"></a>NMF <sup>[9](#gloss-9)</sup> algorithms (referencing <a id="cite-9"></a>[Lee and Seung 2001](https://proceedings.neurips.cc/paper/2000/hash/f9d1152547c0bde01830b7e8bd60024c-Abstract.html) [[9](#ref-9)]). Each rule is the ratio of observed to expected counts, multiplied by the current estimate. This guarantees positivity, monotone likelihood increase, and convergence to a local maximum.
+The ratio form resembles multiplicative <a id="gloss-use-9"></a>NMF <sup>[9](#gloss-9)</sup> updates (<a id="cite-9"></a>[Lee and Seung 2001](https://proceedings.neurips.cc/paper/2000/hash/f9d1152547c0bde01830b7e8bd60024c-Abstract.html) [[9](#ref-9)]). Positive initialization and positive pseudocounts preserve non-negativity. Puller et al. describe the procedure as approximate maximum likelihood; neither that analogy nor the current implementation establishes monotone improvement of the full phylogenetic likelihood or convergence to a local maximum.
 
 ### 3.3 Accuracy scaling and practical thresholds
 
-Estimation accuracy scales as $\chi^2 \sim (\text{tree length})^{-1}$, limited by Poisson statistics of observable mutations. Practical thresholds:
+Estimation accuracy is limited by the number of informative substitutions. Puller et al.'s simulations illustrate the following dataset- and model-specific regimes; they are not universal operational thresholds:
 
 - Tree length $> 10$: site-specific preferences estimated accurately (most sites mutate multiple times)
 - Root-to-tip distance $< 0.3$: naive ancestral reconstruction with a simple model suffices
@@ -98,9 +106,7 @@ Estimation accuracy scales as $\chi^2 \sim (\text{tree length})^{-1}$, limited b
 
 ### 4.1 The Darwinian uncertainty principle
 
-<a id="cite-10"></a>[Gascuel and Steel 2020](https://doi.org/10.1093/sysbio/syz054) [[10](#ref-10)] prove that root state and rates of state change can each be estimated with high accuracy individually, but not simultaneously from tip data. The optimal global rates for the two tasks have opposite trends.
-
-For TreeTime's use case (tip-dated pathogen sequences), external time calibration partially mitigates this: the molecular clock provides an independent constraint on rates that breaks the rate-pattern trade-off. The risk concentrates on deep branches connecting subtypes or viral lineages.
+<a id="cite-10"></a>[Gascuel and Steel 2020](https://doi.org/10.1093/sysbio/syz054) [[10](#ref-10)] establish a tradeoff for estimating the root state and state-change rates of discrete characters on trees. This result motivates caution about joint inference, but it does not by itself prove how much tip dates or a molecular clock mitigate identifiability for TreeTime's continuous-time substitution models.
 
 ### 4.2 Practical identifiability problems
 
@@ -123,7 +129,7 @@ From Puller et al. 2020 simulations:
 | $\pi$ sharing             | Per-class (C10-C60) or per-site (PMSF)         | Per-partition                            | Per-site via Dirichlet process          | Per-partition               |
 | $\mu$ sharing             | Per-partition rate scalar                      | Per-partition rate scalar                | Per-site (gamma)                        | Per-partition relative rate |
 | Branch length model       | Equal / proportional / unlinked                | Linked / scaled (default) / unlinked     | Single tree (Bayesian)                  | Linked or unlinked          |
-| Partition count selection | ModelFinder greedy merge (BIC)                 | User-specified                           | Not applicable (infinite mixture)       | User-specified              |
+| Partition count selection | ModelFinder greedy merge (<a id="gloss-use-13"></a>BIC <sup>[13](#gloss-13)</sup>) | User-specified                           | Not applicable (infinite mixture)       | User-specified              |
 | Convergence criterion     | BIC for model selection; ML for optimization   | Log-likelihood epsilon                   | bpcomp `maxdiff` + tracecomp `effsize`  | ESS in Tracer               |
 | Memory layout             | Per-site x classes (C60: 112 GB); PMSF: 2.2 GB | Compressed patterns + per-partition CLVs | MCMC state: site allocations + profiles | XML model graph + BEAGLE    |
 | Cost vs single-model      | C60: ~60x RAM; PMSF: ~1.2x                     | Scaled: ~1x per partition                | 10K-30K MCMC cycles                     | Scales with chain length    |
@@ -159,7 +165,7 @@ Independent link/unlink controls for substitution model, clock model, and tree m
 
 ### 6.1 Information criteria
 
-<a id="cite-11"></a>[Posada and Buckley 2004](https://doi.org/10.1080/10635150490522304) [[11](#ref-11)] established AIC and Bayesian methods as preferred over hierarchical likelihood ratio tests. <a id="cite-12"></a>[Liu 2022](https://doi.org/10.1093/sysbio/syac081) [[12](#ref-12)] compared AIC and BIC on partition vs mixture models: AIC prefers complex mixture models and estimates branch lengths better; BIC prefers simpler models and estimates substitution parameters better. Cross-validation recommended as alternative.
+<a id="cite-11"></a>[Posada and Buckley 2004](https://doi.org/10.1080/10635150490522304) [[11](#ref-11)] compared <a id="gloss-use-12"></a>AIC <sup>[12](#gloss-12)</sup>, Bayesian approaches, and hierarchical likelihood-ratio tests. <a id="cite-12"></a>[Liu et al. 2023](https://doi.org/10.1093/sysbio/syac081) [[12](#ref-12)] found criterion- and model-class-dependent failures under nonstandard conditions: AIC favored more complex mixtures, BIC favored simpler mixtures, and both could select overly simple partition models. Their results support caution and evaluation with cross-validation or bootstrap procedures rather than a universal criterion.
 
 ### 6.2 Partition scheme selection
 
@@ -167,7 +173,7 @@ Independent link/unlink controls for substitution model, clock model, and tree m
 
 ### 6.3 Implications for TreeTime
 
-BIC is the safer default for partition count selection (penalizes overfitting, important for data-limited pathogen datasets). Cross-validation provides a model-free alternative but is computationally expensive.
+No default criterion has been approved. AIC, AICc, BIC, cross-validation, and bootstrap-based stability checks make different assumptions and should be evaluated for TreeTime's intended datasets before selecting one.
 
 ---
 
@@ -177,14 +183,14 @@ BIC is the safer default for partition count selection (penalizes overfitting, i
 
 Two complementary methods for assigning positions to partitions:
 
-- Rate-based: run <a id="gloss-use-10"></a>Fitch <sup>[10](#gloss-10)</sup> parsimony reconstruction on the full alignment, count mutations per site, sort by mutation count, split into $q$ quantile bins. Related to the k-means site-rate clustering of <a id="cite-15b"></a>[Frandsen et al. 2015](https://doi.org/10.1186/s12862-015-0283-7) [[15](#ref-15)]
+- Rate-based: run <a id="gloss-use-10"></a>Fitch <sup>[10](#gloss-10)</sup> parsimony reconstruction on the full alignment, count mutations per site, sort by mutation count, and split the sites into $b$ quantile bins. This is a new heuristic inspired by rate-based partitioning; it is distinct from the iterative k-means method of <a id="cite-15b"></a>[Frandsen et al. 2015](https://doi.org/10.1186/s12862-015-0283-7) [[15](#ref-15)].
 - Codon-position: parse GFF annotations to identify CDS regions, split protein-coding positions by 1st, 2nd, 3rd codon position, non-coding as 4th partition
 
 <a id="gtr-family-inference"></a>
 
 ### 7.2 GTR family inference
 
-A grouping specification controls which partitions share which parameters. The three tiers ($W$, $\pi$, $\mu$) form nested groups:
+A grouping specification would independently control which partitions share $W$, $\pi$, and $\mu$. These maps need not be nested:
 
 - $W$ groups: pool $n_{ij}$ and $\tau_j$ across partitions, update shared exchangeability
 - $\pi$ groups: pool row-summed counts and root state frequencies, update shared equilibrium frequencies
@@ -214,7 +220,7 @@ Following IQ-TREE's PMSF pattern: estimate per-site preferences once from a good
 
 ---
 
-## 8. Design recommendations
+## 8. Candidate design options (unapproved)
 
 Informed by the software comparison and Puller et al. 2020 findings:
 
@@ -225,8 +231,8 @@ Informed by the software comparison and Puller et al. 2020 findings:
 - R5: Export inferred $\pi^a$, $\mu^a$, and shared $W$ in a serialized format for reuse as fixed profiles in later analyses. Primary format: JSON with ndarray serde (stores full model with metadata). Secondary: IQ-TREE-compatible `.sitefreq` text export for cross-tool interoperability (stores $\pi$ only). See [serialization format proposal](../proposals/model-serialization-site-specific.md)
 - R6: Normalize average rate before clock use. Keep site model rate scale separate from molecular clock rate
 - R7: Report diagnostics: mean $\delta\pi$, likelihood improvement, mean/max $\mu^a$, low-information site count, branch length change after model update. Add refusal thresholds for datasets with insufficient data
-- R8: BIC as default criterion for partition count selection
-- R9: Adopt RAxML-NG's scaled partition default (shared topology + per-partition rate scalers) rather than fully unlinked branch lengths
+- R8: Evaluate AIC, AICc, BIC, cross-validation, and bootstrap stability before selecting a partition-count criterion
+- R9: Decide whether partitions share, scale, or unlink edge lengths; each choice encodes a different evolutionary model
 
 ### 8.1 Approaches to avoid
 
@@ -254,7 +260,7 @@ Informed by the software comparison and Puller et al. 2020 findings:
 | `fn Sub.pos()` for per-site mutation position                   | [packages/treetime/src/seq/mutation.rs#L21](../../packages/treetime/src/seq/mutation.rs#L21)                                               |
 | `ExpQtInterpolator` (61-point non-uniform grid)                 | [packages/treetime/src/gtr/gtr_site_specific.rs#L433-L468](../../packages/treetime/src/gtr/gtr_site_specific.rs#L433-L468)                 |
 
-The mathematical core for site-specific GTR is complete and well-tested: 4 golden master tests (1e-10 tolerance vs v0), 15 property tests (column stochastic, semigroup, equilibrium convergence, stationary distribution, interpolation accuracy). No production callers exist.
+The mathematical core for site-specific GTR has four golden-master test functions, with tolerances that depend on the tested operation: exponentiation and properties use `1e-10`, inference uses `1e-3`, and interpolation approximation uses `1e-8`. It also has 18 property tests and five deterministic tests. These tests cover the mathematical component; they do not provide an end-to-end tree-inference test, and no production command currently constructs a site-specific model.
 
 ### 9.2 New code needed
 
@@ -292,32 +298,35 @@ The mathematical core for site-specific GTR is complete and well-tested: 4 golde
 
 ## Glossary
 
-1. <a id="gloss-1"></a> **GTR (General Time Reversible).** The most general time-reversible nucleotide substitution model, parameterized by 6 exchangeability parameters ($W_{ij}$) and 4 stationary frequencies ($\pi_i$), scaled by an overall rate $\mu$ (<a id="cite-16"></a>[Tavare 1986](https://archive.org/details/someprobabilisticandstatisticalproblemsintheanalysisofdnasequences) [[16](#ref-16)]). [↩](#gloss-use-1)
-2. <a id="gloss-2"></a> **Gamma rate variation.** Among-site rate heterogeneity modeled as a discretized Gamma distribution with shape parameter $\alpha$. Smaller $\alpha$ implies greater rate variation ([Yang 1994](https://doi.org/10.1007/BF00178256) [[3](#ref-3)]). [↩](#gloss-use-2)
-3. <a id="gloss-3"></a> **Mutation-selection balance.** Equilibrium between diversifying mutation and purifying selection at a genomic site, determining the site's stationary distribution of allowed states. The theoretical basis for site-specific equilibrium frequencies ([Halpern and Bruno 1998](https://doi.org/10.1093/oxfordjournals.molbev.a025995) [[1](#ref-1)]). [↩](#gloss-use-3)
+1. <a id="gloss-1"></a> **GTR (General Time Reversible).** The most general time-reversible nucleotide substitution model, parameterized by 6 exchangeability parameters ($W_{ij}$) and 4 stationary frequencies ($\pi_i$), scaled by an overall rate $\mu$ (<a id="cite-16"></a>[Tavaré 1986](https://archive.org/details/someprobabilisticandstatisticalproblemsintheanalysisofdnasequences) [[16](#ref-16)]). [↩](#gloss-use-1)
+2. <a id="gloss-2"></a> **Gamma rate variation.** Among-site rate heterogeneity modeled as a discretized Gamma distribution with shape parameter $\alpha$. Smaller $\alpha$ implies greater rate variation (<a id="cite-3d"></a>[Yang 1994](https://doi.org/10.1007/BF00160154) [[3](#ref-3)]). [↩](#gloss-use-2)
+3. <a id="gloss-3"></a> **Mutation-selection balance.** Equilibrium between diversifying mutation and purifying selection at a genomic site, determining the site's stationary distribution of allowed states. The theoretical basis for site-specific equilibrium frequencies (<a id="cite-1d"></a>[Halpern and Bruno 1998](https://doi.org/10.1093/oxfordjournals.molbev.a025995) [[1](#ref-1)]). [↩](#gloss-use-3)
 4. <a id="gloss-4"></a> **Exchangeability matrix.** The symmetric matrix $W_{ij}$ in the GTR model encoding relative rates of exchange between nucleotide pairs, independent of base composition. [↩](#gloss-use-4)
 5. <a id="gloss-5"></a> **Equilibrium frequencies.** The stationary distribution $\pi_i$ of nucleotide (or amino acid) frequencies under a substitution model, satisfying detailed balance. [↩](#gloss-use-5)
 6. <a id="gloss-6"></a> **FreeRate (+R).** Site rate heterogeneity model with freely estimated rate categories and weights, without assuming a parametric distribution. More flexible than Gamma but requires more parameters. [↩](#gloss-use-6)
-7. <a id="gloss-7"></a> **Dirichlet process.** A Bayesian nonparametric prior over probability distributions, used in the CAT model to define an infinite mixture of site frequency profiles where the number of occupied classes adapts to the data ([Lartillot and Philippe 2004](https://doi.org/10.1093/molbev/msh112) [[6](#ref-6)]). [↩](#gloss-use-7)
-8. <a id="gloss-8"></a> **PMSF (Posterior Mean Site Frequency).** Per-site amino acid frequency profile computed as the conditional mean over mixture model classes, given data and a guide tree. Used as a fixed approximation to full mixture models for ML tree search ([Wang et al. 2018](https://doi.org/10.1093/sysbio/syx068) [[8](#ref-8)]). [↩](#gloss-use-8)
-9. <a id="gloss-9"></a> **Non-negative matrix factorization (NMF).** A family of algorithms that decompose a non-negative matrix into non-negative factors using multiplicative update rules that guarantee positivity and monotone objective improvement ([Lee and Seung 2001](https://proceedings.neurips.cc/paper/2000/hash/f9d1152547c0bde01830b7e8bd60024c-Abstract.html) [[9](#ref-9)]). [↩](#gloss-use-9)
+7. <a id="gloss-7"></a> **Dirichlet process.** A Bayesian nonparametric prior over probability distributions, used in the CAT model to define an infinite mixture of site frequency profiles where the number of occupied classes adapts to the data (<a id="cite-6b"></a>[Lartillot and Philippe 2004](https://doi.org/10.1093/molbev/msh112) [[6](#ref-6)]). [↩](#gloss-use-7)
+8. <a id="gloss-8"></a> **PMSF (Posterior Mean Site Frequency).** Per-site amino acid frequency profile computed as the conditional mean over mixture model classes, given data and a guide tree. Used as a fixed approximation to full mixture models for ML tree search (<a id="cite-8c"></a>[Wang et al. 2018](https://doi.org/10.1093/sysbio/syx068) [[8](#ref-8)]). [↩](#gloss-use-8)
+9. <a id="gloss-9"></a> **Non-negative matrix factorization (NMF).** A family of algorithms that decompose a non-negative matrix into non-negative factors using multiplicative update rules that guarantee positivity and monotone objective improvement (<a id="cite-9b"></a>[Lee and Seung 2001](https://proceedings.neurips.cc/paper/2000/hash/f9d1152547c0bde01830b7e8bd60024c-Abstract.html) [[9](#ref-9)]). [↩](#gloss-use-9)
 10. <a id="gloss-10"></a> **Fitch parsimony.** Ancestral state reconstruction algorithm minimizing the total number of state changes on a phylogenetic tree. Uses a two-pass approach: bottom-up to assign state sets, top-down to resolve ambiguities. [↩](#gloss-use-10)
+11. <a id="gloss-11"></a> **CAT.** Bayesian site-heterogeneous substitution model in which a Dirichlet-process mixture assigns sites to equilibrium-frequency profiles. [↩](#gloss-use-11)
+12. <a id="gloss-12"></a> **AIC (Akaike information criterion).** Model-selection criterion that balances maximized likelihood against a penalty proportional to the number of fitted parameters. [↩](#gloss-use-12)
+13. <a id="gloss-13"></a> **BIC (Bayesian information criterion).** Model-selection criterion that penalizes fitted parameters by the logarithm of sample size. [↩](#gloss-use-13)
 
 ## References
 
-1. <a id="ref-1"></a> Halpern, Aaron L., and William J. Bruno. 1998. "Evolutionary Distances for Protein-Coding Sequences: Modeling Site-Specific Residue Frequencies." _Molecular Biology and Evolution_ 15(7):910-917. https://doi.org/10.1093/oxfordjournals.molbev.a025995 [↩¹](#cite-1a) [↩²](#cite-1b) [↩³](#cite-1c)
-2. <a id="ref-2"></a> Puller, Vadim, Pavel Sagulenko, and Richard A. Neher. 2020. "Efficient Inference, Potential, and Limitations of Site-Specific Substitution Models." _Virus Evolution_ 6(2):veaa066. https://doi.org/10.1093/ve/veaa066 [↩¹](#cite-2a) [↩²](#cite-2b) [↩³](#cite-2c) [↩⁴](#cite-2d) [↩⁵](#cite-2e)
-3. <a id="ref-3"></a> Yang, Ziheng. 1994. "Estimating the Pattern of Nucleotide Substitution." _Journal of Molecular Evolution_ 39:105-111. https://doi.org/10.1007/BF00178256 [↩¹](#cite-3) [↩²](#cite-3b) [↩³](#cite-3c)
-4. <a id="ref-4"></a> Hilton, Sarah K., and Jesse D. Bloom. 2018. "Modeling Site-Specific Amino-Acid Preferences Deepens Phylogenetic Estimates of Viral Sequence Divergence." _Virus Evolution_ 4(2):vey033. https://doi.org/10.1093/ve/vey033 [↩](#cite-4)
-5. <a id="ref-5"></a> Bruno, William J. 1996. "Modeling Residue Usage in Aligned Protein Sequences via Maximum Likelihood." _Molecular Biology and Evolution_ 13(10):1368-1374. https://doi.org/10.1093/oxfordjournals.molbev.a025583 [↩](#cite-5)
-6. <a id="ref-6"></a> Lartillot, Nicolas, and Herve Philippe. 2004. "A Bayesian Mixture Model for Across-Site Heterogeneities in the Amino-Acid Replacement Process." _Molecular Biology and Evolution_ 21(6):1095-1109. https://doi.org/10.1093/molbev/msh112 [↩](#cite-6)
-7. <a id="ref-7"></a> Lartillot, Nicolas, Henner Brinkmann, and Herve Philippe. 2007. "Suppression of Long-Branch Attraction Artefacts in the Animal Phylogeny Using a Site-Heterogeneous Model." _BMC Evolutionary Biology_ 7(Suppl 1):S4. https://doi.org/10.1186/1471-2148-7-S1-S4 [↩](#cite-7)
-8. <a id="ref-8"></a> Wang, Huai-Chun, Bui Quang Minh, Edward Susko, and Andrew J. Roger. 2018. "Modeling Site Heterogeneity with Posterior Mean Site Frequency Profiles Accelerates Accurate Phylogenomic Estimation." _Systematic Biology_ 67(2):216-235. https://doi.org/10.1093/sysbio/syx068 [↩¹](#cite-8a) [↩²](#cite-8b)
-9. <a id="ref-9"></a> Lee, Daniel D., and H. Sebastian Seung. 2001. "Algorithms for Non-Negative Matrix Factorization." In _Advances in Neural Information Processing Systems 13_, 556-562. MIT Press. https://proceedings.neurips.cc/paper/2000/hash/f9d1152547c0bde01830b7e8bd60024c-Abstract.html [↩](#cite-9)
-10. <a id="ref-10"></a> Gascuel, Olivier, and Mike Steel. 2020. "A Darwinian Uncertainty Principle." _Systematic Biology_ 69(3):521-529. https://doi.org/10.1093/sysbio/syz054 [↩](#cite-10)
-11. <a id="ref-11"></a> Posada, David, and Thomas R. Buckley. 2004. "Model Selection and Model Averaging in Phylogenetics: Advantages of Akaike Information Criterion and Bayesian Approaches Over Likelihood Ratio Tests." _Systematic Biology_ 53(5):793-808. https://doi.org/10.1080/10635150490522304 [↩](#cite-11)
-12. <a id="ref-12"></a> Liu, Qin. 2022. "Performance of Akaike Information Criterion and Bayesian Information Criterion in Selecting Partition Models and Mixture Models." _Systematic Biology_ 72(2):469-479. https://doi.org/10.1093/sysbio/syac081 [↩](#cite-12)
-13. <a id="ref-13"></a> Lanfear, Robert, Brett Calcott, Simon Y. W. Ho, and Stephane Guindon. 2012. "PartitionFinder: Combined Selection of Partitioning Schemes and Substitution Models for Phylogenetic Analyses." _Molecular Biology and Evolution_ 29(6):1695-1701. https://doi.org/10.1093/molbev/mss020 [↩](#cite-13)
-14. <a id="ref-14"></a> Lanfear, Robert, Brett Calcott, David Kainer, Christoph Mayer, and Alexandros Stamatakis. 2014. "Selecting Optimal Partitioning Schemes for Phylogenomic Datasets." _BMC Evolutionary Biology_ 14:82. https://doi.org/10.1186/1471-2148-14-82 [↩](#cite-14)
-15. <a id="ref-15"></a> Frandsen, Paul B., Brett Calcott, Christoph Mayer, and Robert Lanfear. 2015. "Automatic Selection of Partitioning Schemes for Phylogenetic Analyses Using Iterative k-Means Clustering of Site Rates." _BMC Evolutionary Biology_ 15:13. https://doi.org/10.1186/s12862-015-0283-7 [↩¹](#cite-15) [↩²](#cite-15b)
-16. <a id="ref-16"></a> Tavare, Simon. 1986. "Some Probabilistic and Statistical Problems in the Analysis of DNA Sequences." _Lectures on Mathematics in the Life Sciences_ 17:57-86. https://archive.org/details/someprobabilisticandstatisticalproblemsintheanalysisofdnasequences [↩](#cite-16)
+1. <a id="ref-1"></a> Halpern, Aaron L., and William J. Bruno. 1998. "Evolutionary distances for protein-coding sequences: Modeling site-specific residue frequencies." _Molecular Biology and Evolution_ 15(7):910-917. https://doi.org/10.1093/oxfordjournals.molbev.a025995 [↩¹](#cite-1a) [↩²](#cite-1b) [↩³](#cite-1c) [↩⁴](#cite-1d)
+2. <a id="ref-2"></a> Puller, Vadim, Pavel Sagulenko, and Richard A. Neher. 2020. "Efficient inference, potential, and limitations of site-specific substitution models." _Virus Evolution_ 6(2):veaa066. https://doi.org/10.1093/ve/veaa066 [↩¹](#cite-2a) [↩²](#cite-2b) [↩³](#cite-2c) [↩⁴](#cite-2d) [↩⁵](#cite-2e) [↩⁶](#cite-2f)
+3. <a id="ref-3"></a> Yang, Ziheng. 1994. "Maximum likelihood phylogenetic estimation from DNA sequences with variable rates over sites: Approximate methods." _Journal of Molecular Evolution_ 39:306-314. https://doi.org/10.1007/BF00160154 [↩¹](#cite-3) [↩²](#cite-3b) [↩³](#cite-3c) [↩⁴](#cite-3d)
+4. <a id="ref-4"></a> Hilton, Sarah K., and Jesse D. Bloom. 2018. "Modeling site-specific amino-acid preferences deepens phylogenetic estimates of viral sequence divergence." _Virus Evolution_ 4(2):vey033. https://doi.org/10.1093/ve/vey033 [↩](#cite-4)
+5. <a id="ref-5"></a> Bruno, William J. 1996. "Modeling residue usage in aligned protein sequences via maximum likelihood." _Molecular Biology and Evolution_ 13(10):1368-1374. https://doi.org/10.1093/oxfordjournals.molbev.a025583 [↩](#cite-5)
+6. <a id="ref-6"></a> Lartillot, Nicolas, and Hervé Philippe. 2004. "A Bayesian mixture model for across-site heterogeneities in the amino-acid replacement process." _Molecular Biology and Evolution_ 21(6):1095-1109. https://doi.org/10.1093/molbev/msh112 [↩¹](#cite-6) [↩²](#cite-6b)
+7. <a id="ref-7"></a> Lartillot, Nicolas, Henner Brinkmann, and Hervé Philippe. 2007. "Suppression of long-branch attraction artefacts in the animal phylogeny using a site-heterogeneous model." _BMC Evolutionary Biology_ 7(Suppl 1):S4. https://doi.org/10.1186/1471-2148-7-S1-S4 [↩](#cite-7)
+8. <a id="ref-8"></a> Wang, Huai-Chun, Bui Quang Minh, Edward Susko, and Andrew J. Roger. 2018. "Modeling site heterogeneity with posterior mean site frequency profiles accelerates accurate phylogenomic estimation." _Systematic Biology_ 67(2):216-235. https://doi.org/10.1093/sysbio/syx068 [↩¹](#cite-8a) [↩²](#cite-8b) [↩³](#cite-8c)
+9. <a id="ref-9"></a> Lee, Daniel D., and H. Sebastian Seung. 2001. "Algorithms for non-negative matrix factorization." In _Advances in Neural Information Processing Systems 13_, 556-562. MIT Press. https://proceedings.neurips.cc/paper/2000/hash/f9d1152547c0bde01830b7e8bd60024c-Abstract.html [↩¹](#cite-9) [↩²](#cite-9b)
+10. <a id="ref-10"></a> Gascuel, Olivier, and Mike Steel. 2020. "A Darwinian uncertainty principle." _Systematic Biology_ 69(3):521-529. https://doi.org/10.1093/sysbio/syz054 [↩](#cite-10)
+11. <a id="ref-11"></a> Posada, David, and Thomas R. Buckley. 2004. "Model selection and model averaging in phylogenetics: Advantages of Akaike information criterion and Bayesian approaches over likelihood ratio tests." _Systematic Biology_ 53(5):793-808. https://doi.org/10.1080/10635150490522304 [↩](#cite-11)
+12. <a id="ref-12"></a> Liu, Qin, Michael A. Charleston, Shane A. Richards, and Barbara R. Holland. 2023. "Performance of Akaike information criterion and Bayesian information criterion in selecting partition models and mixture models." _Systematic Biology_ 72(1):92-105. https://doi.org/10.1093/sysbio/syac081 [↩](#cite-12)
+13. <a id="ref-13"></a> Lanfear, Robert, Brett Calcott, Simon Y. W. Ho, and Stéphane Guindon. 2012. "PartitionFinder: Combined selection of partitioning schemes and substitution models for phylogenetic analyses." _Molecular Biology and Evolution_ 29(6):1695-1701. https://doi.org/10.1093/molbev/mss020 [↩](#cite-13)
+14. <a id="ref-14"></a> Lanfear, Robert, Brett Calcott, David Kainer, Christoph Mayer, and Alexandros Stamatakis. 2014. "Selecting optimal partitioning schemes for phylogenomic datasets." _BMC Evolutionary Biology_ 14:82. https://doi.org/10.1186/1471-2148-14-82 [↩](#cite-14)
+15. <a id="ref-15"></a> Frandsen, Paul B., Brett Calcott, Christoph Mayer, and Robert Lanfear. 2015. "Automatic selection of partitioning schemes for phylogenetic analyses using iterative k-means clustering of site rates." _BMC Evolutionary Biology_ 15:13. https://doi.org/10.1186/s12862-015-0283-7 [↩¹](#cite-15) [↩²](#cite-15b)
+16. <a id="ref-16"></a> Tavaré, Simon. 1986. "Some probabilistic and statistical problems in the analysis of DNA sequences." _Lectures on Mathematics in the Life Sciences_ 17:57-86. https://archive.org/details/someprobabilisticandstatisticalproblemsintheanalysisofdnasequences [↩](#cite-16)

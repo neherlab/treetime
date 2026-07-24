@@ -4,7 +4,7 @@
 
 ## Belief Propagation
 
-Two-pass message passing for time inference on the phylogenetic tree (<a id="cite-1"></a>[Pearl 1988](https://doi.org/10.1016/B978-0-08-051489-5.50001-5) [[1](#ref-1)]). The backward pass convolves and multiplies child distributions from leaves toward the root. The forward pass divides and convolves parent distributions from root toward leaves, refining each node's time estimate with information from the rest of the tree.
+Two-pass message passing for time inference on the phylogenetic tree (<a id="cite-1"></a>[Pearl 1988](https://doi.org/10.1016/C2009-0-27609-4) [[1](#ref-1)]). The backward pass convolves and multiplies child distributions from leaves toward the root. The forward pass divides and convolves parent distributions from root toward leaves, refining each node's time estimate with information from the rest of the tree.
 
 v1: [`packages/treetime/src/timetree/inference/backward_pass.rs`](../../packages/treetime/src/timetree/inference/backward_pass.rs), [`packages/treetime/src/timetree/inference/forward_pass.rs`](../../packages/treetime/src/timetree/inference/forward_pass.rs).
 v0: [`packages/legacy/treetime/treetime/node_interpolator.py`](../../packages/legacy/treetime/treetime/node_interpolator.py).
@@ -68,7 +68,7 @@ Detailed ownership and objective identities are documented in [kb/algo/coalescen
 
 ## Tc Optimization
 
-Optimizes the coalescent time scale Tc in log space over the bracket [-20, 2] using Brent's method (<a id="cite-4"></a>[Brent 1973](https://doi.org/10.1007/978-3-0348-5952-3) [[4](#ref-4)]). Brent's method is a hybrid of parabolic interpolation and golden section search, achieving superlinear convergence without requiring derivatives.
+Optimizes the coalescent time scale Tc in log space over the bracket [-20, 2] using Brent's method (<a id="cite-4"></a>[Brent 1973](https://maths-people.anu.edu.au/brent/pub/pub011.html) [[4](#ref-4)]). Brent's method is a hybrid of parabolic interpolation and golden section search, achieving superlinear convergence without requiring derivatives.
 
 `optimize_tc()` (`#optimize_tc`) [packages/treetime/src/coalescent/optimize_tc.rs](../../packages/treetime/src/coalescent/optimize_tc.rs) precomputes lineage state and inferred edge endpoints, then binds each constant candidate $T_c$ to `CoalescentModel` and minimizes the shared edge-derived objective. Nodes without inferred dates are skipped with a warning; reversed finite endpoints are errors.
 
@@ -199,9 +199,9 @@ v1: [`packages/treetime/src/timetree/convergence/`](../../packages/treetime/src/
 
 Alternates sequence reconstruction (E-step) and time inference (M-step), iterating until convergence ([[3](#ref-3)], Section 2.4). Each iteration optionally applies relaxed clock rate estimation, resolves polytomies, and re-estimates the clock model.
 
-v1: [`packages/treetime/src/commands/timetree/refinement.rs`](../../packages/treetime/src/commands/timetree/refinement.rs).
+v1: [`packages/treetime/src/timetree/refinement.rs`](../../packages/treetime/src/timetree/refinement.rs).
 
-- `run_refinement_iteration()` (`#run_refinement_iteration`) [packages/treetime/src/commands/timetree/refinement.rs#L21-L106](../../packages/treetime/src/commands/timetree/refinement.rs#L21-L106): per-iteration logic: relaxed clock, polytomy resolution, ancestral reconstruction, timetree inference, clock re-estimation. Captures ancestral state snapshots before polytomy resolution.
+- `run_refinement_iteration()` (`#run_refinement_iteration`) [packages/treetime/src/timetree/refinement.rs#L23-L103](../../packages/treetime/src/timetree/refinement.rs#L23-L103): per-iteration logic: relaxed clock, polytomy resolution, ancestral reconstruction, timetree inference, clock re-estimation. Captures ancestral state snapshots before polytomy resolution.
 
 ---
 
@@ -309,10 +309,10 @@ v1: [`packages/treetime/src/timetree/optimization/reroot.rs`](../../packages/tre
 
 ## References
 
-- <a id="ref-1"></a>Pearl, Judea. 1988. _Probabilistic Reasoning in Intelligent Systems: Networks of Plausible Inference._ Morgan Kaufmann. ISBN 978-0-934613-73-2. [↩](#cite-1)
+- <a id="ref-1"></a>Pearl, Judea. 1988. _Probabilistic Reasoning in Intelligent Systems: Networks of Plausible Inference._ Morgan Kaufmann. ISBN 978-0-934613-73-2. https://doi.org/10.1016/C2009-0-27609-4 [↩](#cite-1)
 - <a id="ref-2"></a>Kingman, J. F. C. 1982. "The Coalescent." _Stochastic Processes and their Applications_ 13(3):235-248. https://doi.org/10.1016/0304-4149(82)90011-4 [↩](#cite-2)
 - <a id="ref-3"></a>Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-3)
-- <a id="ref-4"></a>Brent, Richard P. 1973. _Algorithms for Minimization Without Derivatives._ Prentice-Hall. ISBN 978-0-13-022335-7. [↩](#cite-4)
+- <a id="ref-4"></a>Brent, Richard P. 1973. _Algorithms for Minimization Without Derivatives._ Prentice-Hall. ISBN 0-13-022335-2. https://maths-people.anu.edu.au/brent/pub/pub011.html [↩](#cite-4)
 - <a id="ref-5"></a>Pybus, Oliver G., Andrew Rambaut, and Paul H. Harvey. 2000. "An Integrated Framework for the Inference of Viral Population History from Reconstructed Genealogies." _Genetics_ 155(3):1429-1437. https://doi.org/10.1093/genetics/155.3.1429 [↩](#cite-5)
 - <a id="ref-6"></a>Drummond, Alexei J., Andrew Rambaut, Beth Shapiro, and Oliver G. Pybus. 2005. "Bayesian Coalescent Inference of Past Population Dynamics from Molecular Sequences." _Molecular Biology and Evolution_ 22(5):1185-1192. https://doi.org/10.1093/molbev/msi103 [↩](#cite-6)
 - <a id="ref-7"></a>Minin, Vladimir N., Erik W. Bloomquist, and Marc A. Suchard. 2008. "Smooth Skyride Through a Rough Skyline: Bayesian Coalescent-Based Inference of Population Dynamics." _Molecular Biology and Evolution_ 25(7):1459-1471. https://doi.org/10.1093/molbev/msn090 [↩](#cite-7)
@@ -334,5 +334,5 @@ v1: [`packages/treetime/src/timetree/optimization/reroot.rs`](../../packages/tre
 | [`packages/treetime/src/timetree/optimization/`](../../packages/treetime/src/timetree/optimization/) | Polytomy, relaxed clock, reroot, clock filter                         |
 | [`packages/treetime/src/timetree/convergence/`](../../packages/treetime/src/timetree/convergence/)   | Convergence monitoring, likelihood tracking, sequence change counting |
 | [`packages/treetime/src/commands/timetree/output/`](../../packages/treetime/src/commands/timetree/output/)             | Confidence intervals, date output, plots                              |
-| [`packages/treetime/src/commands/timetree/refinement.rs`](../../packages/treetime/src/commands/timetree/refinement.rs) | EM-like iterative refinement                                          |
+| [`packages/treetime/src/timetree/refinement.rs`](../../packages/treetime/src/timetree/refinement.rs)             | EM-like iterative refinement                                          |
 | [`packages/treetime/src/commands/timetree/run.rs`](../../packages/treetime/src/commands/timetree/run.rs)               | End-to-end estimation pipeline                                        |

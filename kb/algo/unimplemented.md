@@ -2,7 +2,7 @@
 
 [Back to index](README.md)
 
-Algorithms present in v0 Python that have not been ported to v1 Rust. Full detail for implementation planning.
+Algorithms present in v0 Python that remain unported or were intentionally removed from v1 Rust. Struck-through entries marked **Ported** record capabilities that have since been implemented and should move to the relevant algorithm document when this inventory is reorganized.
 
 ---
 
@@ -11,7 +11,7 @@ Algorithms present in v0 Python that have not been ported to v1 Rust. Full detai
 Joint maximum likelihood reconstruction finds the single most likely assignment of ancestral states across all nodes simultaneously, rather than marginalizing over alternatives at each node independently (Pupko, Pe'er, Shamir & Graur 2000). Uses traceback pointers (argmax) instead of marginalization (sum), analogous to the Viterbi algorithm for HMMs vs the forward-backward algorithm.
 
 v0: `_ml_anc_joint()` (`#_ml_anc_joint`) in [`packages/legacy/treetime/treetime/treeanc.py#L934-L1084`](../../packages/legacy/treetime/treetime/treeanc.py#L934-L1084).
-v1: declared as `MethodAncestral::Joint` (`#MethodAncestral`, `#Joint`) but `unimplemented!()` at [`packages/treetime/src/commands/ancestral/run.rs#L194`](../../packages/treetime/src/commands/ancestral/run.rs#L194). Intentionally removed - see [intentional change](../decisions/ancestral-joint-reconstruction-removed.md).
+v1: retained as `MethodAncestral::Joint` only so the CLI can return an explicit removal error at [`packages/treetime/src/ancestral/pipeline.rs#L225-L232`](../../packages/treetime/src/ancestral/pipeline.rs#L225-L232). See the [intentional change](../decisions/ancestral-joint-reconstruction-removed.md).
 
 ### Algorithm
 
@@ -63,7 +63,7 @@ v1: not needed for basic regression (sufficient statistics approach), but missin
 
 `Cov()`: Recursive tree traversal accumulating shared ancestry to build the N x N matrix.
 
-`CovInv()`: Computes inverse via Schur complement recursion. For a 2x2 block `[[A, B], [C, D]]`, the inverse uses `A^{-1}` and the Schur complement `D - C*A^{-1}*B`. Applied recursively down the tree for O(N) computation rather than O(N^3) dense inversion.
+`CovInv()`: Computes the inverse recursively from child inverse blocks and rank-one corrections. This avoids calling a generic dense matrix inversion, but `full_matrix=True` still materializes an $N\times N$ result and allocates a dense matrix for every internal clade. Its cost is therefore at least $\Omega(N^2)$ and depends on topology; the repeated allocations can sum to $O(N^3)$ on a caterpillar tree. The separate sufficient-statistics regression path is the $O(N)$ algorithm.
 
 ---
 
@@ -90,7 +90,7 @@ After finding optimal root position `x*`:
 
 ## Per-Site Rate Variation
 
-The design document specifies a fixed rate vector $\mu^a$, where $a$ indexes alignment sites and each rate scales a shared GTR rate matrix. [`kb/_raw/sequence_evolution.md#L87-L89`](../_raw/sequence_evolution.md#L87-L89) This contract differs from two related models:
+The design document specifies a fixed rate vector $\mu^a$, where $a$ indexes alignment sites and each rate scales a shared GTR rate matrix. [`kb/_raw/sequence_evolution.md#site-specific-models`](../_raw/sequence_evolution.md#site-specific-models) This contract differs from two related models:
 
 - Discrete-gamma among-site rate variation integrates over latent rate categories, $L_a = \sum_k w_k L_a(r_k)$, rather than assigning one known rate to each site.
 - Full site-specific GTR allows parameters such as equilibrium frequencies $\pi^a$ to vary by site, so the rate-matrix eigendecomposition can also vary by site.
@@ -129,14 +129,14 @@ v1: `GTR.is_site_specific` (`#is_site_specific`) field exists (always false); no
 
 ## Stochastic Polytomy Resolution
 
-Mutation-conditioned stochastic topology refinement as an alternative to the greedy deterministic method. The v0 generator combines mutation-removal and branch-merger events; it is not an ordinary Kingman sampler and can leave a multifurcation unresolved.
+Mutation-conditioned stochastic topology refinement as an alternative to the greedy deterministic method. The v0 generator combines mutation-removal and branch-merger events; it is not an ordinary <a id="cite-3"></a>[Kingman 1982](https://doi.org/10.1016/0304-4149(82)90011-4) [[3](#ref-3)] sampler and can leave a multifurcation unresolved.
 
 v0: `generate_subtree()` (`#generate_subtree`) in [`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011), dispatched by `resolve_polytomies()` (`#resolve_polytomies`).
 v1: not ported - v1 has greedy deterministic approach only. Known issue: [kb/issues/N-timetree-stochastic-polytomy-unimplemented.md](../issues/N-timetree-stochastic-polytomy-unimplemented.md). CLI: `--stochastic-resolve` (v0), `--greedy-resolve` (v0 inverse). v0 prints a deprecation warning for greedy mode, intending to make stochastic the default ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
 
 ### Background
 
-The greedy method (`_poly()` in v0, `resolve_polytomies()` in v1) always merges the pair with the highest likelihood gain. This biases toward caterpillar-like (comb) topologies because after the first merge creates a new internal node, subsequent merges preferentially attach to it (<a id="cite-4"></a>[Sagulenko et al. 2018](https://doi.org/10.1093/ve/vex042) [[4](#ref-4)], Section 2.6). The stochastic method instead samples from v0's specialized event generator. v0 intended to make stochastic the default: "Stochastic resolution will become the default in future versions" ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
+The greedy method (`_poly()` in v0, `resolve_polytomies()` in v1) repeatedly merges the pair with the highest estimated likelihood gain (<a id="cite-4"></a>[Sagulenko et al. 2018](https://doi.org/10.1093/ve/vex042) [[4](#ref-4)], Section 2.6). After a merge, the new internal node re-enters the candidate set, so repeated attachment can produce a caterpillar-like topology; the paper does not establish a general statistical bias toward that shape. The stochastic method instead samples from v0's specialized event generator. v0 intended to make stochastic the default: "Stochastic resolution will become the default in future versions" ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
 
 ### Algorithm (`generate_subtree()`, [packages/legacy/treetime/treetime/treetime.py#L872-L1011](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011))
 
@@ -181,18 +181,18 @@ v1: has FFT in treetime-ops but not the delta approximation or tail extrapolatio
 
 ---
 
-## Adaptive Simpson's Rule Convolution
+## Composite Simpson Convolution on an Adaptive Output Grid
 
-Non-uniform-grid convolution using adaptive quadrature. More accurate than FFT for irregular distributions (long tails, multiple modes) but slower.
+Non-uniform-grid convolution that evaluates each output point by composite Simpson quadrature, then adaptively refines the output grid where interpolation error is large. It is more flexible than the uniform-grid FFT path for irregular distributions, at the cost of evaluating many convolution integrals.
 
 v0: `NodeInterpolator.convolve()` (`#NodeInterpolator`, `#convolve`), `_evaluate_convolution()` (`#_evaluate_convolution`) in [`packages/legacy/treetime/treetime/node_interpolator.py#L268-L409`](../../packages/legacy/treetime/treetime/node_interpolator.py#L268-L409).
 v1: not ported. v1 uses grid-based Riemann sum for all convolutions.
 
 ### Algorithm
 
-1. Construct non-uniform grid (lines 280-310): linear spacing near distribution peaks, quadratic spacing in tails, adaptive refinement based on local curvature.
-2. At each output grid point t, evaluate the convolution integral `integral f(tau) * g(t - tau) d_tau` via Simpson's rule: `integral = (h/3) * [f(a) + 4*f(m) + f(b)]`. Subdivide if error estimate exceeds tolerance.
-3. Compare interpolated vs computed values. Add grid points where interpolation error is large. Iterate until convergence.
+1. Construct an initial non-uniform output grid: linear spacing near the predicted convolution peak and quadratic spacing in the tails.
+2. At each output time $t$, evaluate $\int f(\tau)g(t-\tau)\,d\tau$ using `Distribution.integrate_simpson()`. That helper uses a fixed odd number of points on intervals split around the integrand peak; it is composite Simpson quadrature, without recursive local-error subdivision.
+3. Interpolate the resulting output values, compare interpolated and directly evaluated values at candidate points, and add output-grid points where the interpolation error exceeds the tolerance. Repeat until no candidate requires refinement.
 
 ---
 
@@ -216,16 +216,16 @@ Used to determine appropriate grid resolution for FFT convolution and adaptive g
 
 ## Branch Length Interpolator (Input Mode)
 
-Constructs per-branch time prior distributions from branch lengths using Poisson or Gaussian approximation, depending on the branch length regime. This is the `branch_length_mode=input` path, which avoids sequence-based optimization and instead derives time distributions directly from the tree's input branch lengths.
+Constructs per-branch likelihood distributions over evolutionary distance from an input branch length, using a Poisson approximation for short branches and a saturation-aware Gaussian approximation for longer branches. This is v0's `branch_length_mode=input` path, which avoids sequence-based marginal likelihoods.
 
 v0: `BranchLenInterpolator.__init__()` (`#BranchLenInterpolator`) input mode in [`packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102`](../../packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102).
-v1: partially in [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs) but without Poisson/Gaussian switching.
+v1: input mode currently converts each input branch length to a point distribution in [`packages/treetime/src/timetree/inference/runner.rs#L168-L192`](../../packages/treetime/src/timetree/inference/runner.rs#L168-L192); it does not implement either v0 approximation.
 
 ### Algorithm
 
-**Short branches** (Poisson regime, lines 78-86): `log_prob = -k*L + l*L*log(k)` where k = branch_length, l = mutation count, L = seq_length. Valid when expected mutations are much less than sequence length.
+**Short branches** (Poisson regime, lines 78-86): for candidate branch length $x$, observed mutation length $\ell$, and sequence length $L$, the negative log-likelihood up to an additive constant is $L[x-\ell\ln(x+\varepsilon)]$. The implementation uses $\varepsilon=0.01/L$ to keep the logarithm finite.
 
-**Long branches** (Gaussian regime, lines 87-102): mean `mu = mutation_count / clock_rate`, variance `sigma^2 = mutation_count * (1 + overdispersion) / clock_rate^2`, `log_prob = -0.5 * ((t - mu) / sigma)^2`. Accounts for substitution saturation.
+**Long branches** (Gaussian regime, lines 87-102): let $p_0=1-\sum_i\pi_i^2$, $\ell'=\ell+1/L$, and $z=\exp(\ell'/p_0)$. The branch-length variance is $\sigma^2=p_0(z-1)[z-p_0(z-1)]/L$. The implementation uses a quadratic cost near $\ell$ and a linear tail beyond a fixed cost cap to limit extreme penalties.
 
 Transition: switches from Poisson to Gaussian at `mutation_length > 0.05`.
 
@@ -240,10 +240,9 @@ v1: not ported.
 
 ### Algorithm
 
-1. Sample equilibrium frequencies: `pi = Dirichlet(alpha=1)` (uniform on simplex)
-2. Sample symmetric exchangeability matrix: `W[i,j] = W[j,i] = Exponential(1)`
-3. Normalize: `mu = 1 / sum(pi_i * sum_j(W[i,j] * pi_j))`
-4. Build rate matrix Q and compute eigendecomposition
+1. Draw one independent `Uniform(0, 1)` value for each equilibrium-frequency entry.
+2. Draw one independent `Uniform(0, 1)` value for every exchangeability-matrix entry.
+3. Pass the raw arrays and caller-provided $\mu$ to `assign_rates()`, which normalizes $\pi$, clears the diagonal of $W$, rescales $W$ to TreeTime's average-rate convention, adjusts $\mu$ by the same scale, and computes the eigendecomposition. Although `assign_rates()` briefly assigns $\tfrac12(W+W^\mathsf{T})`, the next assignment overwrites that value with the scaled original matrix; random output is therefore not guaranteed to be reversible.
 
 ---
 
@@ -281,9 +280,9 @@ v1: functionality exists in the optimize command but not as a GTR method.
 
 ### Algorithm
 
-`optimal_t(parent_seq, child_seq)`: compute profile from sequences, evaluate log-likelihood on grid of t values, find argmax via golden section or Brent.
+`optimal_t(parent_seq, child_seq)`: compress the two sequences into state pairs and multiplicities, then delegate to `optimal_t_compressed()`.
 
-`optimal_t_compressed(state_pairs, multiplicities)`: same algorithm using compressed representation where `state_pairs[k] = (parent_state, child_state)` and `multiplicities[k]` = count of this pair in alignment.
+`optimal_t_compressed(state_pairs, multiplicities)`: minimize negative log-likelihood with SciPy's Brent method in $\sqrt{t}$ space, bracketed by the Hamming distance and the configured maximum branch length. An older-SciPy fallback uses bounded scalar minimization; a failed Brent result falls back to the Hamming distance.
 
 ---
 
@@ -296,11 +295,10 @@ v1: returns an explicit not-implemented error at [`packages/treetime/src/command
 
 ### Algorithm
 
-1. Run ancestral reconstruction (marginal or joint)
-2. Collect mutations per site across all branches
-3. Identify homoplasies: sites where the same mutation occurred independently on multiple branches
-4. Compute statistics: mutation count per site, consistency index, retention index
-5. Output per-site mutation table with branch annotations
+1. Run joint ancestral reconstruction.
+2. Collect non-gap, non-ambiguous substitutions by exact change $(a, p, d)$, by position, and separately on terminal branches.
+3. Tabulate how often each exact substitution and each position is hit, and compare the position-hit histogram with a Poisson distribution having the same mean.
+4. Rank recurrent exact substitutions by multiplicity and report the top requested entries, optionally annotated with drug-resistance metadata.
 
 ---
 
@@ -343,17 +341,17 @@ v1: `todo!()` at [`packages/treetime/src/commands/timetree/output/plots.rs#L11`]
 
 ---
 
-## Branch Distribution Builder
+## ~~Branch Distribution Builder~~ (Ported)
 
-Build per-edge time prior distributions from branch lengths or marginal reconstruction messages. The function signature and types exist; the implementation body is a stub.
+Build per-edge time likelihood distributions from partition likelihood contributions and branch-length grids, then convert their coordinates to time using the effective clock rate.
 
-v1: `todo!()` at [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L39`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L39).
+v1: `compute_branch_length_distribution()` is implemented at [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L23-L58`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L23-L58) and called from [`packages/treetime/src/timetree/inference/runner.rs#L118-L127`](../../packages/treetime/src/timetree/inference/runner.rs#L118-L127). Input-branch mode remains a separate gap described above.
 
 ---
 
 ## ~~Iterative GTR for Discrete Traits~~ (Ported)
 
-Iterative parameter estimation for discrete trait (mugration) GTR models following the Expectation-Maximization framework ([Dempster, Laird & Rubin 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x)). The E-step computes posterior joint parent-child state distributions via Felsenstein's pruning algorithm ([Felsenstein 1981](https://pubmed.ncbi.nlm.nih.gov/7288891/)), counting expected transitions and dwell times across all edges. The M-step re-estimates the symmetric exchangeability matrix W, equilibrium frequencies pi, and scalar rate mu from these sufficient statistics. Rate optimization uses Brent's method with bracket validation.
+Iterative parameter estimation for discrete-trait GTR models following the expectation-maximization framework (<a id="cite-5"></a>[Dempster, Laird, and Rubin 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x) [[5](#ref-5)]). The E-step computes posterior joint parent-child state distributions through Felsenstein's pruning algorithm (<a id="cite-6"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[6](#ref-6)]), counting expected transitions and dwell times across all edges. The M-step re-estimates the symmetric exchangeability matrix $W$, equilibrium frequencies $\pi$, and scalar rate $\mu$ from these sufficient statistics. Rate optimization uses Brent's method with bracket validation.
 
 v0: `reconstruct_discrete_traits()` in [`packages/legacy/treetime/treetime/wrappers.py#L785-L809`](../../packages/legacy/treetime/treetime/wrappers.py#L785-L809), `TreeAnc.infer_gtr()` in [`packages/legacy/treetime/treetime/treeanc.py#L1500-L1632`](../../packages/legacy/treetime/treetime/treeanc.py#L1500-L1632).
 v1: `refine_gtr_iterative()` in [`packages/treetime/src/gtr/refinement.rs`](../../packages/treetime/src/gtr/refinement.rs). Remaining parity gap tracked in [Mugration golden master parity with v0](../issues/M-mugration-iterative-gtr.md). Full forward-backward per iteration proposed in [mugration-full-reconstruction-per-iteration](../proposals/mugration-full-reconstruction-per-iteration.md).
@@ -366,5 +364,5 @@ v1: `refine_gtr_iterative()` in [`packages/treetime/src/gtr/refinement.rs`](../.
 - <a id="ref-2"></a>Yang, Ziheng. 1994. "Maximum Likelihood Phylogenetic Estimation from DNA Sequences with Variable Rates over Sites: Approximate Methods." _Journal of Molecular Evolution_ 39(3):306-314. https://doi.org/10.1007/BF00160154 [↩](#cite-2)
 - <a id="ref-3"></a>Kingman, J. F. C. 1982. "The Coalescent." _Stochastic Processes and their Applications_ 13(3):235-248. https://doi.org/10.1016/0304-4149(82)90011-4 [↩](#cite-3)
 - <a id="ref-4"></a>Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-4)
-- <a id="ref-5"></a>Dempster, Arthur P., Nan M. Laird, and Donald B. Rubin. 1977. "Maximum Likelihood from Incomplete Data via the EM Algorithm." _Journal of the Royal Statistical Society: Series B_ 39(1):1-38. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x
-- <a id="ref-6"></a>Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359
+- <a id="ref-5"></a>Dempster, Arthur P., Nan M. Laird, and Donald B. Rubin. 1977. "Maximum Likelihood from Incomplete Data via the EM Algorithm." _Journal of the Royal Statistical Society: Series B_ 39(1):1-38. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x [↩](#cite-5)
+- <a id="ref-6"></a>Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-6)

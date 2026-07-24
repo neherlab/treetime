@@ -36,7 +36,7 @@ The `bp` / `build-profiling` command in [`dev/dev`](../../dev/dev) builds the pr
 ./dev/docker/run ./dev/dev br treetime   # release binary
 ```
 
-The profiling binary is at [`.build/docker/profiling/treetime`](../../.build/docker/profiling/treetime). The release binary is copied to [`.out/treetime`](../../.out/treetime).
+The profiling binary is written to `.build/docker/profiling/treetime`. The release binary is copied to `.out/treetime`. Both are generated build artifacts and are absent from a clean checkout.
 
 ### 2.3 OpenBLAS source
 

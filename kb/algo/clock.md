@@ -52,14 +52,14 @@ Key functions: `clock_regression_backward()` (`#clock_regression_backward`), `cl
 
 ## Brent's Method
 
-Hybrid 1D optimization (<a id="cite-3"></a>[Brent 1973](https://doi.org/10.1007/978-3-0348-5952-3) [[3](#ref-3)]) combining parabolic interpolation (fast convergence near minimum) with golden section search (guaranteed convergence). Used for optimizing the root position along a branch: given a branch with endpoints, Brent's method finds the split point that minimizes the clock regression chi-squared.
+Hybrid 1D optimization (<a id="cite-3"></a>[Brent 1973](https://maths-people.anu.edu.au/brent/pub/pub011.html) [[3](#ref-3)]) combining parabolic interpolation (fast convergence near minimum) with golden section search (guaranteed convergence). Used for optimizing the root position along a branch: given a branch with endpoints, Brent's method finds the split point that minimizes the clock regression chi-squared.
 
 v1: [`packages/treetime/src/clock/find_best_root/method_brent.rs#L36-L78`](../../packages/treetime/src/clock/find_best_root/method_brent.rs#L36-L78).
 v0: `scipy.optimize.minimize_scalar` with `method='bounded'`.
 
 ### References
 
-- <a id="ref-3"></a>Brent, Richard P. 1973. _Algorithms for Minimization Without Derivatives._ Prentice-Hall. ISBN 978-0-13-022335-7. [↩](#cite-3)
+- <a id="ref-3"></a>Brent, Richard P. 1973. _Algorithms for Minimization Without Derivatives._ Prentice-Hall. ISBN 0-13-022335-2. https://maths-people.anu.edu.au/brent/pub/pub011.html [↩](#cite-3)
 
 ---
 

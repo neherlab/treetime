@@ -2,6 +2,8 @@
 
 Survey of file formats used to serialize substitution model parameters (rate matrices, equilibrium frequencies, rate scalers) across phylogenetic software. Covers nucleotide and amino acid models. Focused on formats that could inform TreeTime v1's model I/O.
 
+> **Status:** Format survey, not an approved interoperability contract. Parser syntax, normalization, and round-trip claims require version-pinned validation before implementation.
+
 ## PAML matrix format (de facto standard for amino acid models)
 
 The PAML triangular format is the closest thing to a cross-tool standard. IQ-TREE, PhyML, RAxML-NG, and MEGA all accept custom amino acid matrices in this format.
@@ -21,7 +23,7 @@ Example (first 4 rows of the LG matrix, from [ATGC Montpellier](http://www.atgc-
 0.079066 0.055941 0.041977 0.053052 0.012937 0.040767 0.071586 0.057337 0.022355 0.062157 0.099081 0.064600 0.022951 0.042302 0.044040 0.061197 0.053287 0.012066 0.034155 0.069147
 ```
 
-Applicable to nucleotide models: a 4x4 GTR matrix would have 6 exchangeability values (lower triangle) + 4 frequencies = 10 values. No tool currently uses PAML format for nucleotide GTR, but the structure is applicable.
+The triangular shape can represent a 4-state matrix mathematically, but the surveyed tools' PAML-matrix interfaces target empirical amino-acid models. Nucleotide acceptance must be verified per tool rather than inferred from the shape.
 
 Sources: [PAML manual](https://snoweye.github.io/phyclust/document/pamlDOC.pdf), [GIPhy model collection](https://giphy.pasteur.fr/empirical-models-of-amino-acid-substitution/)
 
@@ -32,15 +34,16 @@ Inline parameter specification with curly braces. Used in `.raxml.bestModel` out
 Example (partitioned DNA analysis):
 
 ```
-GTR{0.200/1.000/2.000/4.000/7.000/1.000}+FO{0.280/0.220/0.230/0.270}+G4m{0.500}, NADH4 = 1-504
-HKY{2.500}+FO{0.300/0.200/0.250/0.250}+G4m{1.200}, tRNA = 505-656
-GTR{0.150/0.800/1.500/3.200/5.600/1.000}+FO{0.310/0.190/0.240/0.260}+I{0.150}+G4m{0.870}, NADH5 = 657-898
+GTR{0.200/1.000/2.000/4.000/7.000/1.000}+FU{0.280/0.220/0.230/0.270}+G4m{0.500}, NADH4 = 1-504
+HKY{2.500}+FU{0.300/0.200/0.250/0.250}+G4m{1.200}, tRNA = 505-656
+GTR{0.150/0.800/1.500/3.200/5.600/1.000}+FU{0.310/0.190/0.240/0.260}+I{0.150}+G4m{0.870}, NADH5 = 657-898
 ```
 
 Components:
 
 - `GTR{AC/AG/AT/CG/CT/GT}` - 6 substitution rates (slash-separated)
-- `+FO{A/C/G/T}` - 4 optimized base frequencies
+- `+FO` - optimize base frequencies by maximum likelihood; takes no values
+- `+FU{A/C/G/T}` - use supplied base frequencies
 - `+G4m{alpha}` - gamma shape parameter with 4 rate categories
 - `+I{prop}` - proportion of invariant sites
 - `+R3{r1/r2/r3}{w1/w2/w3}` - FreeRate model with rates and weights
@@ -156,22 +159,22 @@ Symmetrized rates from j->i (W_ij):
   T  0.8  3.1  0.7  0
 ```
 
-Stores $\mu$, $\pi$, and $W$ for scalar GTR only. No site-specific variant. Fragile parser (depends on exact label text). Alphabet inferred from frequency labels.
+Displays $\mu$, $\pi$, and $W$ for scalar GTR only. No site-specific variant. Numeric formatting is lossy, and the parser depends on exact label text, so this is not an exact round-trip representation. Alphabet is inferred from frequency labels.
 
 ## Comparison
 
 | Format                | Content                        | Round-trip   | Human-readable | Cross-tool                     | Per-site |
 | --------------------- | ------------------------------ | ------------ | -------------- | ------------------------------ | -------- |
-| PAML triangular       | $W$ + $\pi$                    | Yes (manual) | Partially      | IQ-TREE, PhyML, RAxML-NG, MEGA | No       |
-| RAxML-NG model string | $W$ + $\pi$ + $\mu$ + $\alpha$ | Yes          | Yes            | RAxML-NG only                  | No       |
+| PAML triangular       | $W$ + $\pi$                    | Tool-specific | Partially      | Empirical amino-acid models    | No       |
+| RAxML-NG model string | $W$ + $\pi$ + site-rate parameters | Version-specific | Yes         | RAxML-NG only                  | No       |
 | 6-digit code          | Model structure only           | N/A          | Yes            | PhyML, IQ-TREE, HyPhy          | No       |
 | MrBayes NEXUS         | Model structure + priors       | Yes          | Yes            | MrBayes only                   | No       |
 | BEAST2 XML            | Full model + priors            | Yes          | Verbose        | BEAST2 only                    | No       |
 | HyPhy NEXUS+HYPHY     | Full model fit                 | Yes          | Partially      | HyPhy only                     | No       |
-| TreeTime v0 text      | $\mu$ + $\pi$ + $W$            | Yes          | Yes            | TreeTime only                  | No       |
+| TreeTime v0 text      | Rounded $\mu$ + $\pi$ + $W$    | Lossy        | Yes            | TreeTime only                  | No       |
 | IQ-TREE `.sitefreq`   | $\pi$ only                     | Yes          | Yes            | IQ-TREE only                   | Yes      |
 
-No format stores all three components ($W$, $\pi$, $\mu$) in a cross-tool standard. PAML triangular comes closest for exchangeability + frequencies but omits the rate scalar. RAxML-NG's model string includes all three in a single line but is tool-specific.
+No surveyed format stores TreeTime's $W$, $\pi$, and overall $\mu$ with a shared normalization contract. PAML triangular omits the rate scalar. RAxML-NG's gamma and FreeRate fields describe among-site heterogeneity rather than TreeTime's overall $\mu$.
 
 ## Relevance for TreeTime v1
 

@@ -14,7 +14,7 @@ v1: [`packages/treetime-graph/src/breadth_first.rs`](../../packages/treetime-gra
 
 ## DFS Preorder/Postorder
 
-Iterative stack-based depth-first traversal (<a id="cite-2"></a>[Cormen et al. 2022](https://doi.org/10.7551/mitpress/13309.001.0001) [[2](#ref-2)], Chapter 22.3) supporting both preorder (parent before children) and postorder (children before parent) visitation. Postorder is used for leaf-to-root passes (Fitch backward, marginal backward, clock regression backward). Preorder is used for root-to-leaf passes (Fitch forward, marginal forward, clock regression forward).
+Iterative stack-based depth-first traversal (<a id="cite-2"></a>[Cormen et al. 2022](https://mitpress.mit.edu/9780262046305/introduction-to-algorithms/) [[2](#ref-2)], Chapter 22.3) supporting both preorder (parent before children) and postorder (children before parent) visitation. Postorder is used for leaf-to-root passes (Fitch backward, marginal backward, clock regression backward). Preorder is used for root-to-leaf passes (Fitch forward, marginal forward, clock regression forward).
 
 v1: [`packages/treetime-graph/src/graph_traverse.rs#L256-L321`](../../packages/treetime-graph/src/graph_traverse.rs#L256-L321).
 
@@ -47,7 +47,7 @@ v1: [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-gr
 ## References
 
 - <a id="ref-1"></a>Leiserson, Charles E., and Tao B. Schardl. 2010. "A Work-Efficient Parallel Breadth-First Search Algorithm (or How to Cope with the Nondeterminism of Reducers)." In _Proceedings of the 22nd ACM Symposium on Parallelism in Algorithms and Architectures (SPAA),_ 303-314. https://doi.org/10.1145/1810479.1810534 [↩](#cite-1)
-- <a id="ref-2"></a>Cormen, Thomas H., Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein. 2022. _Introduction to Algorithms._ 4th ed. MIT Press. ISBN 978-0-262-04630-5. [↩](#cite-2)
+- <a id="ref-2"></a>Cormen, Thomas H., Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein. 2022. _Introduction to Algorithms._ 4th ed. MIT Press. ISBN 978-0-262-04630-5. https://mitpress.mit.edu/9780262046305/introduction-to-algorithms/ [↩](#cite-2)
 - <a id="ref-3"></a>Diestel, Reinhard. 2017. _Graph Theory._ 5th ed. Springer. ISBN 978-3-662-53621-6. https://doi.org/10.1007/978-3-662-53622-3 [↩](#cite-3)
 
 ---

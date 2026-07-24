@@ -10,11 +10,11 @@ Per-edge branch length optimization using Newton's method with analytical first 
 - sqrt(t)-space (`newton_sqrt_inner`): chain rule with $s = \sqrt{t}$. Reduces indel singularity from $O(1/t^2)$ to $O(1/t)$.
 - ln(t)-space (`newton_log_inner`): chain rule with $u = \ln(t)$. Eliminates indel singularity entirely (bounded curvature $-\mu t$). Correct step clamping: upper $u - u_{\min}$, lower $-\ln(1 + 1/t)$.
 
-All variants fall back to a 100-point log-spaced grid search when the second derivative is non-negative.
+A non-negative initial second derivative triggers a 100-point log-spaced grid search. If the second derivative becomes non-negative after a Newton step, the iteration stops and returns its current candidate.
 
 v1: [`packages/treetime/src/optimize/method_newton.rs`](../../packages/treetime/src/optimize/method_newton.rs).
 
-v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket. v1 ships six methods (Newton and Brent in $t$, $\sqrt{t}$, $\ln(t)$ spaces) selectable via `--opt-method`; `brent-sqrt` is the default and matches v0 on the success path. The Newton variants compute analytical derivatives from eigenvalue-space coefficient caching. The Hessian (posterior variance of eigenvalues) uses the centered Welford form $\sum_c w_c (\lambda_c - \bar\lambda)^2$ to avoid catastrophic cancellation in the two-moment form. See [feature inventory](../features/README.md#7-branch-length-optimization) for parity details and [intentional change](../decisions/optimize-newton-raphson-per-edge.md) for the per-method rationale.
+v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in $\sqrt{t}$ space with a Hamming-distance bracket. v1 ships six methods (Newton and Brent in $t$, $\sqrt{t}$, and $\ln(t)$ coordinates) selectable via `--opt-method`; `brent-sqrt` is the default. It uses the same square-root parameterization and corresponding substitution-likelihood objective form as v0, but the solver, bounds, tolerances, regularization, indel term, and resulting branch lengths are not exactly equivalent. The Newton variants compute analytical derivatives from cached eigenvalue-space coefficients. The implementation evaluates the second derivative in a centered eigenvalue form to reduce cancellation relative to subtracting two independently accumulated moments; its signed weights are not a posterior distribution or Welford recurrence. See [feature inventory](../features/optimize.md) for parity evidence and [intentional change](../decisions/optimize-newton-raphson-per-edge.md) for the per-method rationale.
 
 The method is described in <a id="cite-1"></a>[Nocedal and Wright 2006](https://doi.org/10.1007/978-0-387-40065-5) [[1](#ref-1)], Chapter 2, and <a id="cite-2"></a>[Felsenstein 2003](https://doi.org/10.1007/978-0-387-21337-7) [[2](#ref-2)], Chapter 16.
 
@@ -22,11 +22,11 @@ The method is described in <a id="cite-1"></a>[Nocedal and Wright 2006](https://
 
 ## Brent's Method for Branch Length Optimization
 
-Per-edge branch length optimization using Brent's derivative-free method (<a id="cite-3"></a>[Brent 1973](https://doi.org/10.1007/978-3-0348-5952-3) [[3](#ref-3)]) via `argmin::BrentOpt`. Three parameterizations offer different objective surface smoothing:
+Per-edge branch length optimization using Brent's derivative-free method (<a id="cite-3"></a>[Brent 1973](https://maths-people.anu.edu.au/brent/pub/pub011.html) [[3](#ref-3)]) via `argmin::BrentOpt`. Three coordinate transformations change the bounds, curvature, and tolerance interpretation:
 
 - t-space (`brent_inner`): bracket $[\text{min\_bl}, \text{upper}]$, cost function evaluates $-\ell(t)$. Baseline derivative-free method.
-- sqrt(t)-space (`brent_sqrt_inner`): bracket $[\sqrt{\text{min\_bl}}, \sqrt{\text{upper}}]$, cost function evaluates $-\ell(s^2)$. **Default method, matches v0 exactly.** Smooths the objective near $t = 0$, giving parabolic interpolation a better fit. Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero.
-- ln(t)-space (`brent_log_inner`): bracket $[\ln(\text{min\_bl}), \ln(\text{upper})]$, cost function evaluates $-\ell(e^u)$. Smoothest objective surface of all parameterizations. Tolerance $\epsilon_u$ in $u$-space is a natural relative tolerance ($dt/t \approx du$).
+- sqrt(t)-space (`brent_sqrt_inner`): bracket $[\sqrt{\text{min\_bl}}, \sqrt{\text{upper}}]$, cost function evaluates $-\ell(s^2)$. This is the default and uses v0's parameterization. Tolerance $\epsilon_s$ in $s$-space maps locally to $t$-space precision $\approx 2s^* \epsilon_s$.
+- ln(t)-space (`brent_log_inner`): bracket $[\ln(\text{min\_bl}), \ln(\text{upper})]$, cost function evaluates $-\ell(e^u)$. Tolerance $\epsilon_u$ is locally a relative tolerance because $dt/t \approx du$.
 
 v1: [`packages/treetime/src/optimize/method_brent.rs`](../../packages/treetime/src/optimize/method_brent.rs).
 
@@ -40,12 +40,20 @@ See also <a id="cite-4"></a>[Press et al. 2007](https://doi.org/10.1017/CBO97805
 
 ## Eigendecomposition-Based Likelihood
 
-Precomputes eigenvector coefficients for each edge, enabling efficient per-branch log-likelihood and derivative evaluation without repeated matrix exponential computation. For a GTR model with rate matrix Q = V _ diag(lambda) _ V^-1, the transition probabilities at branch length t factor as `P(t) = V * diag(exp(lambda_i * t)) * V^-1`. The key insight is that profile-eigenvector dot products (`msg.dot(V)` and `msg.dot(V_inv.T)`) are branch-length-independent and can be cached once per edge.
+Precomputes eigenvector coefficients for each edge, enabling efficient per-branch log-likelihood and derivative evaluation without repeated matrix exponential computation. For an eigendecomposition
+
+$$Q=V\operatorname{diag}(\lambda)V^{-1},$$
+
+the transition matrix is
+
+$$P(t)=V\operatorname{diag}(e^{\lambda_c t})V^{-1}.$$
+
+If the substitution rate has not already been absorbed into $Q$ or the branch coordinate, the exponent is $\mu\lambda_c t$. Profile-eigenvector products such as `msg.dot(V)` and `msg.dot(V_inv.T)` are independent of branch length and can be cached once per edge.
 
 v1 dense: [`packages/treetime/src/optimize/dense_eval.rs`](../../packages/treetime/src/optimize/dense_eval.rs).
 v1 sparse: [`packages/treetime/src/optimize/sparse_eval.rs`](../../packages/treetime/src/optimize/sparse_eval.rs).
 
-The sparse path weights each site contribution by its multiplicity (number of identical columns in the alignment sharing that substitution pattern), reducing computation for conserved sequences.
+Sparse evaluation handles variable positions individually and aggregates conserved positions by fixed-state counts.
 
 The eigendecomposition approach follows <a id="cite-5"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[5](#ref-5)] and <a id="cite-6"></a>[Yang 2006](https://doi.org/10.1093/acprof:oso/9780198567028.001.0001) [[6](#ref-6)], Chapter 4.
 
@@ -53,11 +61,11 @@ The eigendecomposition approach follows <a id="cite-5"></a>[Felsenstein 1981](ht
 
 ## Poisson Indel Contribution
 
-Adds a Poisson indel log-likelihood term to branch length optimization. Here $k$ is the observed indel count on one edge, $t$ is that edge's branch length, $\mu$ is the global indel rate, and $e$ indexes tree edges for the tree-level estimator. The per-edge log-likelihood is $\ell(t) = k \ln(\mu t) - \mu t - \ln(k!)$. Derivatives $k/t - \mu$ and $-k/t^2$ enter the Newton step alongside substitution derivatives. The rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated from the tree once per optimize pass and reused both for the tree-level objective (`total_indel_log_lh()`) and for per-edge updates (`run_optimize_mixed_with_indel_rate()`).
+Adds a Poisson term to branch-length optimization. Here $k$ is the current number of net contiguous indel annotation records on one edge, $t$ is that edge's branch length, $\mu$ is the global record rate, and $e$ indexes tree edges. The per-edge contribution is $\ell(t) = k \ln(\mu t) - \mu t - \ln(k!)$. Derivatives $k/t - \mu$ and $-k/t^2$ enter the Newton step alongside substitution derivatives. Because annotation composition can merge or cancel records, $k$ is not generally a count of historical indel events. The estimate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is computed before the internal iterations of one `run_optimize_loop()` invocation and then held fixed for its tree-level objective and edge updates.
 
 v1: [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/optimize/indel.rs).
 
-v0: not implemented. v0 ignores indels in the likelihood, same as RAxML, IQ-TREE, PhyML.
+v0: not implemented; v0 ignores indels in this branch-length likelihood.
 
 This is a v1-only feature. See [indel models report](../reports/indel-models/README.md) for the full catalog of indel modeling approaches, [intentional change](../decisions/optimize-indel-contribution-to-likelihood.md), [design doc](../_raw/optimize.md), and [alternatives proposal](../proposals/optimize-indel-model-alternatives.md).
 
@@ -83,7 +91,7 @@ v1: [`packages/treetime-grid/src/interp_nonuniform.rs#L25-L56`](../../packages/t
 
 ## Exponential Damping for Outer-Loop Convergence
 
-Blends optimized branch lengths with previous values using iteration-dependent weights: `bl = bl_new * (1 - damping^(i+1)) + bl_old * damping^(i+1)`. Early iterations take conservative steps; later iterations approach the full Newton update. Prevents oscillation in the alternating optimization (marginal reconstruction / branch length update) cycle.
+Blends optimized branch lengths with previous values using iteration-dependent weights: `bl = bl_new * (1 - damping^(i+1)) + bl_old * damping^(i+1)`. Early iterations take conservative steps; later iterations approach the full update. This is intended to moderate oscillation in the alternating marginal-reconstruction and branch-length-update cycle.
 
 v1: [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs) `apply_damping()`.
 
@@ -95,11 +103,11 @@ Based on <a id="cite-8"></a>[Sagulenko, Puller, and Neher 2018](https://doi.org/
 
 ## Three-Condition Convergence Check
 
-The optimize outer loop uses three orthogonal stopping conditions in `run_optimize_loop()` ([`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs)), where $\mathrm{LH}_i$ is the joint log-likelihood at iteration $i$ and $\mathit{dp}$ is the convergence threshold. In indel-bearing runs, $\mathrm{LH}_i$ includes both substitution likelihood from `update_marginal()` and the tree-level Poisson indel contribution from `total_indel_log_lh()` evaluated with the same per-pass `indel_rate` used by the edge optimizer:
+The optimize outer loop uses three stopping conditions in `run_optimize_loop()` ([`packages/treetime/src/optimize/run_loop.rs`](../../packages/treetime/src/optimize/run_loop.rs)), where $L_i$ is the joint log-likelihood at iteration $i$ and $\mathit{dp}$ is the convergence threshold. In indel-bearing runs, $L_i$ includes both substitution likelihood from `update_marginal()` and the tree-level Poisson contribution evaluated with the fixed rate for that loop invocation:
 
-- Converged: $|\mathrm{LH}_i - \mathrm{LH}_{i-1}| < \mathit{dp}$ (standard monotone convergence)
-- Oscillating: $|\mathrm{LH}_i - \mathrm{LH}_{i-2}| < \mathit{dp}$ (detects 2-cycles from the sparse variable/fixed reclassification; requires $i \ge 2$)
-- Worsened: $\mathrm{LH}_i < \text{best\_LH}$ (restores branch lengths from the best-observed state and stops; analogous to IQ-TREE's per-round monotonicity check)
+- Small change: $|L_i - L_{i-1}| < \mathit{dp}$. Because this uses an absolute difference, it can also accept a small deterioration.
+- Two-cycle: $|L_i - L_{i-2}| < \mathit{dp}$ for $i\ge2$.
+- Decline after a best iteration: $i\ge2$, $L_i<L_{i-1}$, and $L_{i-1}\ge L_{\mathrm{best}}$; the saved branch lengths are restored and iteration stops.
 
 The damping schedule applies a floor: $d_i = \max(d^{i+1},\, \texttt{DAMPING\_FLOOR})$ where $\texttt{DAMPING\_FLOOR} = 0.01$, preventing fully undamped late iterations that amplify the sparse discrete jump. A NaN/Inf guard breaks immediately on numerical instability.
 
@@ -107,7 +115,7 @@ v1 defaults: `max_iter=10`, `dp=0.1`, matching v0's `optimize_tree_marginal()`.
 
 v0: uses a signed check (`deltaLH < LHtol`) which conflates convergence with worsening. See [v0 erratum](../v0-errata/optimize-signed-convergence-check.md).
 
-Background: the sparse representation classifies alignment positions as variable or fixed each iteration. The discrete reclassification produces a non-monotone objective, violating the EM monotone convergence guarantee (<a id="cite-10"></a>[Wu 1983](https://doi.org/10.1214/aos/1176346060) [[10](#ref-10)]). See M-optimize-sparse-em-2-cycle (resolved) for root cause analysis.
+Two-cycles have been observed in sparse optimization. The implemented loop combines coordinate-wise edge optimization, damping, topology edits, profile updates, and a fixed indel-rate estimate, so it has not been established as an exact EM algorithm with a monotonicity guarantee.
 
 IQ-TREE's per-round monotonicity check described in <a id="cite-9"></a>[Minh et al. 2020](https://doi.org/10.1093/molbev/msaa015) [[9](#ref-9)].
 
@@ -125,7 +133,7 @@ v0: inline in `prune_short_branches()` at [`packages/legacy/treetime/treetime/tr
 
 ## Forward-Pass Zero-Divisor Clamping
 
-The sparse and dense forward-pass marginal divisions can produce zero divisors when a child's message assigns zero probability to all states. Clamp divisors to `f64::MIN_POSITIVE` in both paths to prevent NaN propagation. `normalize_inplace` returns a uniform distribution for zero-sum or non-finite rows, matching `softmax_with_log_norm` degenerate-row semantics.
+The sparse and dense forward-pass marginal divisions floor zero divisors at `f64::MIN_POSITIVE`. This prevents NaN propagation, but also turns a structural zero into a finite contribution and therefore changes impossible-state semantics. `normalize_inplace` returns a uniform distribution for zero-sum or non-finite rows. The scientific policy for these degenerate cases remains unresolved.
 
 v1 sparse: [`packages/treetime/src/partition/marginal_passes.rs`](../../packages/treetime/src/partition/marginal_passes.rs).
 v1 dense: [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs).
@@ -136,13 +144,13 @@ v0: no explicit guard; relies on NumPy's inf/nan propagation behavior.
 
 ## Zero-Length Branch Detection (Derivative Sign)
 
-Determines if zero is the optimal branch length by evaluating the sign of `d/dt log L(0)`. For independent sites with eigendecomposition-based likelihood `L_i(t) = sum_c k_{ic} exp(lambda_c t)`, the per-site derivative at zero is `(sum_c k_{ic} lambda_c) / (sum_c k_{ic})`. If the total derivative (summed over sites) is negative, the likelihood decreases as `t` increases from zero, making zero a local maximum.
+For contributions whose model is flagged as unimodal, evaluates the sign of $d\log L/dt$ at zero. With $L_i(t)=\sum_c k_{ic}\exp(\lambda_ct)$, the per-site derivative at zero is $(\sum_c k_{ic}\lambda_c)/(\sum_c k_{ic})$. A negative total derivative implies that zero is optimal only under the unimodality restriction; richer time-reversible models can have multimodal one-dimensional likelihoods.
 
 v1: [`packages/treetime/src/optimize/zero_boundary.rs`](../../packages/treetime/src/optimize/zero_boundary.rs) `is_zero_branch_optimal()`.
 
 v0 does not have an equivalent analytical check. v0 uses `prune_short_branches()` with a compound threshold-and-probability criterion instead.
 
-Based on the zero-branch analysis in <a id="cite-11"></a>[Dinh et al. 2022](https://doi.org/10.1214/21-AOAS1584) [[11](#ref-11)].
+The model restriction is consistent with the one-dimensional likelihood analysis of <a id="cite-10"></a>[Dinh and Matsen 2017](https://doi.org/10.1214/16-AAP1240) [[10](#ref-10)].
 
 ---
 
@@ -152,7 +160,7 @@ Collapses internal edges whose optimal length is zero or near-zero, reparenting 
 
 v0: `prune_short_branches()` at [`packages/legacy/treetime/treetime/treeanc.py#L1475-L1496`](../../packages/legacy/treetime/treetime/treeanc.py#L1475-L1496).
 
-v1: Not implemented in the optimize loop. The prune command has `--prune-short` and `--prune-empty` as standalone operations.
+v1 collapses internal edges driven to exactly zero during optimization. It does not implement v0's post-convergence near-zero threshold plus probability criterion. The prune command separately provides `--prune-short` and `--prune-empty`.
 
 ---
 
@@ -190,15 +198,14 @@ v1: Not implemented. Tracked: `N-timetree-stochastic-polytomy-unimplemented.md`.
 
 - <a id="ref-1"></a>Nocedal, Jorge, and Stephen J. Wright. 2006. _Numerical Optimization._ 2nd ed. Springer. ISBN 978-0-387-30303-1. https://doi.org/10.1007/978-0-387-40065-5 [↩](#cite-1)
 - <a id="ref-2"></a>Felsenstein, Joseph. 2003. _Inferring Phylogenies._ Sinauer Associates. ISBN 978-0-87893-177-4. [↩](#cite-2)
-- <a id="ref-3"></a>Brent, Richard P. 1973. _Algorithms for Minimization Without Derivatives._ Prentice-Hall. ISBN 978-0-13-022335-7. [↩](#cite-3)
+- <a id="ref-3"></a>Brent, Richard P. 1973. _Algorithms for Minimization Without Derivatives._ Prentice-Hall. ISBN 0-13-022335-2. https://maths-people.anu.edu.au/brent/pub/pub011.html [↩](#cite-3)
 - <a id="ref-4"></a>Press, William H., Saul A. Teukolsky, William T. Vetterling, and Brian P. Flannery. 2007. _Numerical Recipes: The Art of Scientific Computing._ 3rd ed. Cambridge University Press. ISBN 978-0-521-88068-8. https://doi.org/10.1017/CBO9780511811340 [↩](#cite-4)
 - <a id="ref-5"></a>Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-5)
 - <a id="ref-6"></a>Yang, Ziheng. 2006. _Computational Molecular Evolution._ Oxford University Press. ISBN 978-0-19-856702-8. [↩](#cite-6)
 - <a id="ref-7"></a>Burden, Richard L., and J. Douglas Faires. 2010. _Numerical Analysis._ 9th ed. Brooks/Cole. ISBN 978-0-538-73351-9. [↩](#cite-7)
 - <a id="ref-8"></a>Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-8)
 - <a id="ref-9"></a>Minh, Bui Quang, Heiko A. Schmidt, Olga Chernomor, Dominik Schrempf, Michael D. Woodhams, Arndt von Haeseler, and Robert Lanfear. 2020. "IQ-TREE 2: New Models and Efficient Methods for Phylogenetic Inference in the Genomic Era." _Molecular Biology and Evolution_ 37(5):1530-1534. https://doi.org/10.1093/molbev/msaa015 [↩](#cite-9)
-- <a id="ref-10"></a>Wu, C. F. Jeff. 1983. "On the Convergence Properties of the EM Algorithm." _The Annals of Statistics_ 11(1):95-103. https://doi.org/10.1214/aos/1176346060 [↩](#cite-10)
-- <a id="ref-11"></a>Dinh, Vu, Lam Si Tung Ho, Marc A. Suchard, and Frederick A. Matsen IV. 2022. "Consistency and Convergence Rate of Phylogenetic Inference via Regularization." _The Annals of Applied Statistics_ 16(4):2240-2261. https://doi.org/10.1214/21-AOAS1584 [↩](#cite-11)
+- <a id="ref-10"></a>Dinh, Vu, and Frederick A. Matsen IV. 2017. "The Shape of the One-Dimensional Phylogenetic Likelihood Function." _The Annals of Applied Probability_ 27(1):1-17. https://doi.org/10.1214/16-AAP1240 [↩](#cite-10)
 
 ---
 

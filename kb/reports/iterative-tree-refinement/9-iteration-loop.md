@@ -121,7 +121,7 @@ Loop (convergence-controlled):
   7. re-estimate clock model
 ```
 
-v1 code: [`packages/treetime/src/commands/timetree/refinement.rs#L21-L106`](../../../packages/treetime/src/commands/timetree/refinement.rs#L21-L106)
+v1 code: [`packages/treetime/src/timetree/refinement.rs#L23-L103`](../../../packages/treetime/src/timetree/refinement.rs#L23-L103)
 
 ## Cross-loop comparison
 

@@ -97,7 +97,7 @@ Six methods via `--opt-method`: Newton and Brent in $t$, $\sqrt{t}$, $\ln(t)$ sp
 
 ### Outer loop
 
-**P4. Indel rate caching.** Compute `estimate_indel_rate` once (after topology stabilizes) and pass to `run_optimize_mixed` as a fixed parameter.
+<a id="indel-rate-caching"></a>**P4. Indel rate caching.** Compute `estimate_indel_rate` once (after topology stabilizes) and pass to `run_optimize_mixed` as a fixed parameter.
 
 - Addresses: the $\hat{\mu}$ feedback loop that amplifies the 2-cycle. On sc2/2844, $\hat{\mu} \approx 12{,}000$ oscillates proportionally with total BL.
 - Implementation: ~10 lines. Add `indel_rate: f64` parameter to `run_optimize_mixed`. Recompute in `run_optimize_loop` while topology changes occur (`prune_and_merge_in_loop` returns true); cache once topology stabilizes.

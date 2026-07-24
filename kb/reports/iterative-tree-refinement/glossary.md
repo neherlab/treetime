@@ -108,7 +108,7 @@ In TreeTime, conditional likelihood vectors are called [messages](#message).
 
 ## Continuous-Time Markov Chain (CTMC)
 
-A stochastic process on a finite set of states (e.g., {A, C, G, T}) where transitions occur continuously over time according to a [rate matrix](#rate-matrix) Q.
+A stochastic process on a finite set of states (e.g., {A, C, G, T}) where transitions occur continuously over time according to a [rate matrix](#rate-matrix-q) Q.
 
 The Markov property: the probability of the next state depends only on the current state, not on the history. This justifies treating each branch independently when computing tree likelihoods.
 
@@ -479,7 +479,7 @@ This means ML inherently over-resolves [polytomies](#polytomy) <a id="cite-16"><
 
 The equilibrium frequency vector `pi` of a [continuous-time Markov chain](#continuous-time-markov-chain-ctmc). As evolutionary time increases, the state frequencies converge to `pi` regardless of starting state.
 
-For reversible [substitution models](#substitution-model), the [rate matrix](#rate-matrix) satisfies detailed balance: `pi_i * Q_{ij} = pi_j * Q_{ji}`. The [GTR](#gtr-general-time-reversible) model factors as `Q = S * diag(pi)` where S is a symmetric exchangeability matrix.
+For reversible [substitution models](#substitution-model), the [rate matrix](#rate-matrix-q) satisfies detailed balance: `pi_i * Q_{ij} = pi_j * Q_{ji}`. The [GTR](#gtr-general-time-reversible) model factors as `Q = S * diag(pi)` where S is a symmetric exchangeability matrix.
 
 At the [root](#root) of the tree, the stationary distribution serves as the prior over root states.
 
@@ -499,7 +499,7 @@ A to G at position 42 means the ancestral state was A and the descendant state i
 
 ## Substitution Model
 
-A mathematical model describing how nucleotides change over time, formalized as a [continuous-time Markov chain](#continuous-time-markov-chain-ctmc) with [rate matrix](#rate-matrix) Q.
+A mathematical model describing how nucleotides change over time, formalized as a [continuous-time Markov chain](#continuous-time-markov-chain-ctmc) with [rate matrix](#rate-matrix-q) Q.
 
 The model defines the probability of each nucleotide change as a function of time.
 
@@ -531,7 +531,7 @@ Not to be confused with [transition probability matrix](#transition-probability-
 
 ## Transition Probability Matrix
 
-The matrix `P(t) = exp(Q*t)` where Q is the [rate matrix](#rate-matrix) and t is the [branch length](#branch-length).
+The matrix `P(t) = exp(Q*t)` where Q is the [rate matrix](#rate-matrix-q) and t is the [branch length](#branch-length).
 
 Entry `P(t)_{ij}` is the probability that state i changes to state j over evolutionary distance t.
 

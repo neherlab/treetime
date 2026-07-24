@@ -210,7 +210,7 @@ final marginal reconstruction with refined GTR
 
 Mugration operates on a single "position" with $N$ discrete states. Small shifts in $\pi$ (equilibrium frequencies) or $W$ (rate matrix) substantially change posteriors at ambiguous internal nodes, because there is no averaging across hundreds of alignment columns. Ancestral reconstruction aggregates over many sites, so expected substitution counts constrain the GTR model more tightly from the first inference pass.
 
-A proposal to add iterative GTR refinement to ancestral exists ([../proposals/ancestral-iterative-gtr-refinement.md](../../proposals/ancestral-iterative-gtr-refinement.md)) but is not accepted. That proposal notes iterative refinement would help ancestral in specific cases: short alignments, strong compositional bias, large alphabets, weakly resolved branches, poor initialization model.
+Optional iterative GTR refinement is accepted and implemented for ancestral reconstruction through `--gtr-iterations`. The [accepted decision](../../decisions/ancestral-iterative-gtr-refinement.md) records the model-fitting contract, implementation, and cases where refinement can help: short alignments, strong compositional bias, large alphabets, weakly resolved branches, and poor initialization models.
 
 ## Message passing implementation
 

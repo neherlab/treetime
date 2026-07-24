@@ -110,8 +110,10 @@ These exist as separate files because fn `evaluate_mixed_impl()` [optimize/likel
 fn `evaluate_site_contributions()` [optimize/eval.rs#L32](../../packages/treetime/src/optimize/eval.rs#L32) computes log-likelihood, gradient, and Hessian from an iterator of `(multiplicity, coefficients)` pairs:
 
 - Site likelihood: $L_i(t) = \sum_c k_{ic} e^{\lambda_c t}$
-- Gradient: posterior mean eigenvalue $\ell'_i = \sum_c w_{ic} \lambda_c$
-- Hessian: posterior variance of eigenvalues in centered (Welford) form $\ell''_i = -\sum_c w_{ic} (\lambda_c - \ell'_i)^2$
+- Gradient: centered eigenvalue sum $\ell'_i = \sum_c w_{ic} \lambda_c$
+- Hessian: centered algebraic evaluation $\ell''_i = \sum_c w_{ic} (\lambda_c - \ell'_i)^2$
+
+The coefficients $w_{ic}$ can be negative, so these expressions are not a posterior mean or variance. The centered Hessian form reduces cancellation relative to subtracting two separately accumulated moments; it is not Welford's online recurrence.
 
 Dense and sparse arrive as different iterators but the evaluation is identical.
 

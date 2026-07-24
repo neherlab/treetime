@@ -43,7 +43,7 @@ v1 uses deterministic `get_one()` (`#get_one`) for root state selection when the
 
 ## Marginal ML
 
-Maximum likelihood ancestral reconstruction via the Felsenstein pruning algorithm (<a id="cite-4"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[4](#ref-4)]), equivalent to the sum-product algorithm (belief propagation) on a tree-structured factor graph (<a id="cite-5"></a>[Pearl 1988](https://doi.org/10.1016/B978-0-08-051489-5.50001-5) [[5](#ref-5)]). Each site is treated independently: the total likelihood is a product over sites.
+Maximum likelihood ancestral reconstruction via the Felsenstein pruning algorithm (<a id="cite-4"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[4](#ref-4)]), equivalent to the sum-product algorithm (belief propagation) on a tree-structured factor graph (<a id="cite-5"></a>[Pearl 1988](https://doi.org/10.1016/C2009-0-27609-4) [[5](#ref-5)]). Each site is treated independently: the total likelihood is a product over sites.
 
 The algorithm computes partial likelihoods at each node - the probability of observing the data in the node's subtree given each possible ancestral state. For an internal node k with children i and j:
 
@@ -95,7 +95,7 @@ O(n _ k^2 _ L) total for n nodes, k alphabet states (4 for nucleotides, 20 for a
 ### References
 
 - <a id="ref-4"></a>Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-4)
-- <a id="ref-5"></a>Pearl, Judea. 1988. _Probabilistic Reasoning in Intelligent Systems: Networks of Plausible Inference._ Morgan Kaufmann. ISBN 978-0-934613-73-2. [↩](#cite-5)
+- <a id="ref-5"></a>Pearl, Judea. 1988. _Probabilistic Reasoning in Intelligent Systems: Networks of Plausible Inference._ Morgan Kaufmann. ISBN 978-0-934613-73-2. https://doi.org/10.1016/C2009-0-27609-4 [↩](#cite-5)
 - <a id="ref-6"></a>Kschischang, Frank R., Brendan J. Frey, and Hans-Andrea Loeliger. 2001. "Factor Graphs and the Sum-Product Algorithm." _IEEE Transactions on Information Theory_ 47(2):498-519. https://doi.org/10.1109/18.910572
 
 ---

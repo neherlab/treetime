@@ -38,7 +38,7 @@ Whether this matters in practice depends on how much total branch length changes
 
 ### Empirical evidence from the codebase
 
-The intentional changes document [../decisions/optimize-indel-contribution-to-likelihood.md](../decisions/optimize-indel-contribution-to-likelihood.md) records that per-iteration $\hat\mu$ recomputation amplifies a 2-cycle on sc2/2844 ($\hat\mu \approx 12{,}000$, oscillating proportionally with total branch length). This is a real convergence concern, but the root cause is the sparse variable/fixed position boundary (not the indel rate itself). The convergence proposal's [P4](../proposals/optimize-convergence-and-robustness.md#L100) suggests caching $\hat\mu$ once topology stabilizes as a pragmatic fix, while P1/P2/P3 address the root cause.
+The intentional changes document [../decisions/optimize-indel-contribution-to-likelihood.md](../decisions/optimize-indel-contribution-to-likelihood.md) records that per-iteration $\hat\mu$ recomputation amplifies a 2-cycle on sc2/2844 ($\hat\mu \approx 12{,}000$, oscillating proportionally with total branch length). This is a real convergence concern, but the root cause is the sparse variable/fixed position boundary (not the indel rate itself). The convergence proposal's [P4](../proposals/optimize-convergence-and-robustness.md#indel-rate-caching) suggests caching $\hat\mu$ once topology stabilizes as a pragmatic fix, while P1/P2/P3 address the root cause.
 
 Caching the indel rate is a valid workaround for the 2-cycle, but it changes the optimization objective. The clean fix is to address the sparse boundary discontinuity (P1-P3), which eliminates the 2-cycle without freezing a parameter that should be free.
 
