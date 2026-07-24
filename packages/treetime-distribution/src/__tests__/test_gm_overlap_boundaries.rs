@@ -26,24 +26,25 @@ mod tests {
     let input = &inputs[case_name];
     let expected = &outputs[case_name];
 
-    let left = input.left.to_distribution()?;
-    let right = input.right.to_distribution()?;
-    let actual = match input.operation {
+    let left = input.left().to_distribution()?;
+    let right = input.right().to_distribution()?;
+    let actual = match input.operation() {
       Operation::Divide => distribution_division(&left, &right)?,
       Operation::Multiply => distribution_multiplication(&left, &right)?,
     };
 
     // Oracle: v0 `Distribution.multiply()` and `Distribution.divide()` in
     // packages/legacy/treetime/treetime/distribution.py:82-185.
-    pretty_assert_eq!(expected.kind, DistributionKind::from_distribution(&actual));
-    pretty_assert_ulps_eq!(expected.bounds[0], actual.time_bounds().0, max_ulps = 4);
-    pretty_assert_ulps_eq!(expected.bounds[1], actual.time_bounds().1, max_ulps = 4);
+    pretty_assert_eq!(expected.kind(), DistributionKind::from_distribution(&actual));
+    let [expected_start, expected_end] = expected.bounds();
+    pretty_assert_ulps_eq!(expected_start, actual.time_bounds().0, max_ulps = 4);
+    pretty_assert_ulps_eq!(expected_end, actual.time_bounds().1, max_ulps = 4);
 
-    if let Some(expected) = expected.endpoint_values {
-      let actual = [actual.eval(outputs[case_name].bounds[0])?, actual.eval(outputs[case_name].bounds[1])?];
+    if let Some([expected_start_value, expected_end_value]) = expected.endpoint_values() {
+      let actual = [actual.eval(expected_start)?, actual.eval(expected_end)?];
       // V0 clips vectorized endpoint evaluation inward by TINY_NUMBER=1e-12.
-      pretty_assert_abs_diff_eq!(expected[0], actual[0], epsilon = 1e-12);
-      pretty_assert_abs_diff_eq!(expected[1], actual[1], epsilon = 1e-12);
+      pretty_assert_abs_diff_eq!(expected_start_value, actual[0], epsilon = 1e-12);
+      pretty_assert_abs_diff_eq!(expected_end_value, actual[1], epsilon = 1e-12);
     }
 
     Ok(())
@@ -85,9 +86,23 @@ mod tests {
 
     #[derive(Deserialize)]
     pub(super) struct GoldenInput {
-      pub(super) operation: Operation,
-      pub(super) left: GoldenOperand,
-      pub(super) right: GoldenOperand,
+      operation: Operation,
+      left: GoldenOperand,
+      right: GoldenOperand,
+    }
+
+    impl GoldenInput {
+      pub(super) fn operation(&self) -> Operation {
+        self.operation
+      }
+
+      pub(super) fn left(&self) -> &GoldenOperand {
+        &self.left
+      }
+
+      pub(super) fn right(&self) -> &GoldenOperand {
+        &self.right
+      }
     }
 
     #[derive(Deserialize)]
@@ -114,9 +129,23 @@ mod tests {
 
     #[derive(Deserialize)]
     pub(super) struct GoldenOutput {
-      pub(super) kind: DistributionKind,
-      pub(super) bounds: [f64; 2],
-      pub(super) endpoint_values: Option<[f64; 2]>,
+      kind: DistributionKind,
+      bounds: [f64; 2],
+      endpoint_values: Option<[f64; 2]>,
+    }
+
+    impl GoldenOutput {
+      pub(super) fn kind(&self) -> DistributionKind {
+        self.kind
+      }
+
+      pub(super) fn bounds(&self) -> [f64; 2] {
+        self.bounds
+      }
+
+      pub(super) fn endpoint_values(&self) -> Option<[f64; 2]> {
+        self.endpoint_values
+      }
     }
   }
 

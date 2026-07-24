@@ -46,7 +46,8 @@ pub fn distribution_time_bounds_overlaps<Y: YAxisPolicy>(dist_a: &Distribution<Y
   distribution_time_bounds_intersection(dist_a, dist_b).is_some()
 }
 
-pub(crate) fn distribution_support_intersection(a: (f64, f64), b: (f64, f64)) -> SupportIntersection {
+#[allow(clippy::float_cmp)] // Point support requires exact contact; a tolerance would enlarge the intersection.
+pub(super) fn distribution_support_intersection(a: (f64, f64), b: (f64, f64)) -> SupportIntersection {
   let start = a.0.max(b.0);
   let end = a.1.min(b.1);
 
@@ -59,7 +60,7 @@ pub(crate) fn distribution_support_intersection(a: (f64, f64), b: (f64, f64)) ->
   }
 }
 
-pub(crate) fn distribution_support_n_points((start, end): (f64, f64), dx: f64) -> Result<usize, Report> {
+pub(super) fn distribution_support_n_points((start, end): (f64, f64), dx: f64) -> Result<usize, Report> {
   let Some(intervals) = ((end - start) / dx).ceil().to_usize() else {
     return make_error!("Cannot discretize distribution support [{start}, {end}] with spacing {dx}");
   };
@@ -70,7 +71,7 @@ pub(crate) fn distribution_support_n_points((start, end): (f64, f64), dx: f64) -
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum SupportIntersection {
+pub(super) enum SupportIntersection {
   Disjoint,
   Point(f64),
   Interval((f64, f64)),
