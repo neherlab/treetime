@@ -425,7 +425,13 @@ fn estimate_coalescent_tc(
     CoalescentMode::Constant => 1,
     CoalescentMode::Skyline => skyline_params.n_points,
   };
-  let result = optimize_skyline(graph, &SkylineParams { n_points, ..skyline_params.clone() })?;
+  let result = optimize_skyline(
+    graph,
+    &SkylineParams {
+      n_points,
+      ..skyline_params.clone()
+    },
+  )?;
   Ok(Some(result.tc_distribution))
 }
 

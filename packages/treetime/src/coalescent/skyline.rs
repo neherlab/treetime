@@ -265,7 +265,11 @@ fn solve_log_tc(
   // non-finite).
   let i_tot: f64 = i_seg.iter().sum();
   let m_tot: f64 = m_seg.iter().sum();
-  let z_pooled = if i_tot > 0.0 && m_tot > 0.0 { (i_tot / m_tot).ln() } else { 0.0 };
+  let z_pooled = if i_tot > 0.0 && m_tot > 0.0 {
+    (i_tot / m_tot).ln()
+  } else {
+    0.0
+  };
   let mut z: Vec<f64> = (0..n)
     .map(|k| {
       let zk = (i_seg[k] / m_seg[k]).ln();

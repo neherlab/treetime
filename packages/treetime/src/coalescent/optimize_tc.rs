@@ -32,7 +32,13 @@ where
   E: GraphEdge,
   D: Sync + Send,
 {
-  let result = optimize_skyline(graph, &SkylineParams { n_points: 1, ..SkylineParams::default() })?;
+  let result = optimize_skyline(
+    graph,
+    &SkylineParams {
+      n_points: 1,
+      ..SkylineParams::default()
+    },
+  )?;
   Ok(OptimizeTcResult {
     tc: result.tc_values[0],
     likelihood: result.log_likelihood,

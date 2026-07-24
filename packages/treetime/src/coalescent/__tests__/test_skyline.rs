@@ -172,8 +172,8 @@ mod tests {
     let graph = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
     let params = SkylineParams {
       n_points: 4,
-      stiffness: 1e-6,   // near-zero smoothing: skyline free to fit each segment
-      tolerance: 1e-12,  // converge hard so the slack below reflects only solver noise
+      stiffness: 1e-6,  // near-zero smoothing: skyline free to fit each segment
+      tolerance: 1e-12, // converge hard so the slack below reflects only solver noise
       ..SkylineParams::default()
     };
 

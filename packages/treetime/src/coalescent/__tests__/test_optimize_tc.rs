@@ -52,6 +52,7 @@ mod tests {
   }
 
   #[test]
+  #[allow(clippy::float_cmp)] // Exact equality is the determinism contract tested here.
   fn test_optimize_tc_is_deterministic() -> Result<(), Report> {
     // The optimum is a closed form (Tc = I/M), so repeated calls are identical.
     let graph = setup_graph()?;
