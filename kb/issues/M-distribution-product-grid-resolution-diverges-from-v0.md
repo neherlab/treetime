@@ -17,7 +17,3 @@ No implementation ticket is ready until the project chooses one of these contrac
 - preserve v0's union-of-knots behavior, including a parity-compatible thinning rule;
 - use a derived spacing/error criterion for uniform resampling; or
 - approve a bounded approximation with empirically justified error limits.
-
-## Related issues
-
-- [M-distribution-mixed-support-operations-lose-exact-intersection-boundaries.md](M-distribution-mixed-support-operations-lose-exact-intersection-boundaries.md)

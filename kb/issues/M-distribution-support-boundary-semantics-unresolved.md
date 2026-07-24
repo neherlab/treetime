@@ -1,6 +1,6 @@
 # Distribution support-boundary semantics are unresolved
 
-`GridFn` is a generic interpolated function with constant extrapolation, while `Distribution::Function` is also used as a finite-support probability distribution. These contracts conflict: a bounded probability distribution is effectively zero outside its support in v0, but v1 interpolation repeats the nearest boundary value indefinitely.
+`GridFn` is a generic interpolated function with constant extrapolation, while `Distribution::Function` is also used as a finite-support probability distribution. These contracts conflict: a bounded probability distribution is effectively zero outside its support in v0, but v1 interpolation repeats the nearest boundary value without a support limit.
 
 ## Current and reference behavior
 
@@ -40,5 +40,4 @@ The reference-aligned candidate is A1 generic function, A2 representation-aware 
 
 ## Related issues
 
-- [M-distribution-mixed-support-operations-lose-exact-intersection-boundaries.md](M-distribution-mixed-support-operations-lose-exact-intersection-boundaries.md)
 - [M-timetree-marginal-node-times-can-violate-topology.md](M-timetree-marginal-node-times-can-violate-topology.md)

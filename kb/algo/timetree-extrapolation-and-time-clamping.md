@@ -30,7 +30,7 @@ The backward and forward passes require different tail behaviour on each side:
 In the backward pass, each `parent_message` is computed as
 
 ```
-parent_message = child_time_dist ⊛ (−branch_dist)
+parent_message = child_time_dist ⊛ (-branch_dist)
 ```
 
 This message represents "when could the parent be, given this child?" The parent could be arbitrarily far in the past -- there is no upper bound on ancestral age imposed by the child alone. The left tail must therefore be `Constant`, not `Zero`. The right tail is `Zero` because the child's sampling date provides a hard upper bound: the parent cannot be more recent than the child.
@@ -49,25 +49,22 @@ Apply the policy immediately after computing each message, before storing or usi
 
 ## 2. Exact intersection boundaries in distribution multiplication
 
-When two distributions are multiplied pointwise, the result is only non-zero on the intersection of their supports. The result grid must span exactly `[max(a.x_min, b.x_min), min(a.x_max, b.x_max)]`, with that intersection treated as empty if `overlap_min >= overlap_max`.
+The Range-Function multiplication and division paths and the Function-Function division path are defined on the intersection of their operand supports. A positive-width result grid spans exactly `[max(a.x_min, b.x_min), min(a.x_max, b.x_max)]`. An intersection is empty when `overlap_min > overlap_max`; exact endpoint contact in these paths produces a Point distribution evaluated at the shared endpoint, matching v0. Function-Function multiplication applies the same endpoint-contact rule.
 
 **Do not** filter the existing grid points of either input to those falling inside the overlap, then use the closest existing point as the boundary. This snaps the boundary to the nearest grid point and loses the fractional part of the intersection. When a range boundary falls between two grid points of a function, the snapped boundary produces a result that is either too wide (including a region where one factor is zero) or too narrow (excluding a region where both are non-zero).
 
-Instead, compute `overlap_min` and `overlap_max` from the analytical support boundaries, then resample or evaluate both factors at `n_points` uniformly spaced across the exact `[overlap_min, overlap_max]` interval.
+Instead, compute `overlap_min` and `overlap_max` from the analytical support boundaries, then resample or evaluate both factors at `n_points` uniformly spaced across the exact `[overlap_min, overlap_max]` interval. Range-Function multiplication and division derive `n_points` from the Function spacing. Function-Function division uses the finer input spacing. In both cases, ceiling division followed by endpoint-inclusive uniform spacing ensures the result is no coarser than the relevant input and includes both exact boundaries.
 
-For `Function * Function`, choose `n_points` from the intersection width and the finer of the two grid spacings:
+Function-Function multiplication already uses exact analytical endpoints, but its point-count rule remains tracked separately in [kb/issues/M-distribution-product-grid-resolution-diverges-from-v0.md](../issues/M-distribution-product-grid-resolution-diverges-from-v0.md). Formula-Function multiplication also computes exact endpoints.
+
+For spacing-derived grids, choose `n_points` from the intersection width and the relevant input spacing:
 
 ```
-dx       = min(a.dx, b.dx)
-n_points = round((overlap_max - overlap_min) / dx) + 1
-n_points = clamp(n_points, 2, MAX_GRID_POINTS)
+dx       = min(a.dx, b.dx)  # Function-Function division; use function.dx for Range-Function
+n_points = ceil((overlap_max - overlap_min) / dx) + 1
 ```
 
-This replaces the naive `max(a.len, b.len)` choice, which uses the larger of the two input lengths regardless of how much smaller the intersection is than either input's domain. The naive approach inflates grid sizes whenever the two distributions are wide but only partially overlapping.
-
-The same principle applies to `Range * Function` and `Formula * Function`: compute the exact `[overlap_min, overlap_max]` and derive `n_points` from `b.dx` and the overlap width rather than inheriting `b.len`.
-
-For `Function * Function` and `Range * Function` this applies to both `multiply` and `divide`.
+This support-intersection rule is independent of generic `GridFn` extrapolation. Arithmetic establishes a valid finite domain before calling interpolation; other callers retain the current constant-extrapolation behavior while the broader distribution support policy remains unresolved.
 
 ---
 
