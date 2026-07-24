@@ -3,6 +3,9 @@ use crate::distribution_core::formula::DistributionFormula;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
+use crate::distribution_ops::time_bounds::{
+  SupportIntersection, distribution_support_intersection, distribution_support_n_points,
+};
 use crate::policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::Array1;
@@ -108,64 +111,34 @@ fn multiply_range_function<Y: YAxisPolicy>(
   range: &DistributionRange<f64, Y>,
   func: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  const EPS: f64 = 1e-9;
-
-  let func_t = func.t();
-  let func_y = func.y();
-
-  // Filter to range support
-  let filtered: Vec<(f64, f64)> = func_t
-    .iter()
-    .zip(func_y.iter())
-    .filter(|&(&t, _)| t >= range.start() - EPS && t <= range.end() + EPS)
-    .map(|(&t, &y)| (t, Y::multiply(y, range.amplitude())))
-    .collect();
-
-  if filtered.is_empty() {
-    return Ok(Distribution::empty());
+  match distribution_support_intersection((range.start(), range.end()), (func.x_min(), func.x_max())) {
+    SupportIntersection::Disjoint => Ok(Distribution::empty()),
+    SupportIntersection::Point(t) => {
+      let amplitude = Y::multiply(range.amplitude(), func.interp(t));
+      Ok(Distribution::point(t, amplitude))
+    },
+    SupportIntersection::Interval(bounds) => {
+      let n_points = distribution_support_n_points(bounds, func.dx())?;
+      let function =
+        DistributionFunction::from_n_points(bounds, n_points, |t| Y::multiply(range.amplitude(), func.interp(t)))?;
+      Ok(Distribution::Function(function))
+    },
   }
-
-  let overlap_min = filtered.first().unwrap().0;
-  let overlap_max = filtered.last().unwrap().0;
-  let values: Vec<f64> = filtered.iter().map(|(_, v)| *v).collect();
-  let values_array = Array1::from_vec(values);
-
-  let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), values_array)?;
-  Ok(Distribution::Function(distribution_fn))
-}
-
-/// Compute evaluation range for multiplying two distributions.
-///
-/// Returns the intersection of the two ranges, or `None` when the supports are
-/// disjoint (the product is zero everywhere). Branch-length distribution grids
-/// span the plausible branch-length range, so overlapping supports are the
-/// common case; disjoint supports can still arise for very short branches whose
-/// time support is narrow relative to the separation of date constraints.
-pub fn multiplication_eval_range(a: (f64, f64), b: (f64, f64)) -> Option<(f64, f64)> {
-  let eval_min = a.0.max(b.0);
-  let eval_max = a.1.min(b.1);
-  (eval_min < eval_max).then_some((eval_min, eval_max))
 }
 
 fn multiply_function_function<Y: YAxisPolicy>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  let Some((eval_min, eval_max)) = multiplication_eval_range((a.x_min(), a.x_max()), (b.x_min(), b.x_max())) else {
-    return Ok(Distribution::empty());
-  };
-
-  let n_points = a.len().max(b.len());
-
-  let values: Array1<f64> = Array1::from_shape_fn(n_points, |i| {
-    let t = eval_min + (eval_max - eval_min) * (i as f64 / (n_points - 1) as f64);
-    let va = a.interp(t);
-    let vb = b.interp(t);
-    Y::multiply(va, vb)
-  });
-
-  let distribution_fn = DistributionFunction::from_range_values((eval_min, eval_max), values)?;
-  Ok(Distribution::Function(distribution_fn))
+  match distribution_support_intersection((a.x_min(), a.x_max()), (b.x_min(), b.x_max())) {
+    SupportIntersection::Disjoint => Ok(Distribution::empty()),
+    SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.interp(t), b.interp(t)))),
+    SupportIntersection::Interval(bounds) => {
+      let function =
+        DistributionFunction::from_n_points(bounds, a.len().max(b.len()), |t| Y::multiply(a.interp(t), b.interp(t)))?;
+      Ok(Distribution::Function(function))
+    },
+  }
 }
 
 fn multiply_formula_formula<Y: YAxisPolicy>(

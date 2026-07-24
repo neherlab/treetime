@@ -4672,6 +4672,7 @@ dependencies = [
  "num",
  "ordered-float",
  "pretty_assertions",
+ "proptest",
  "rayon",
  "rstest",
  "serde",

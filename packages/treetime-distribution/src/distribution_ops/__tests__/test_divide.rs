@@ -2,8 +2,9 @@
 mod tests {
   use crate::DistributionPlain as Distribution;
   use crate::distribution_ops::divide::distribution_division;
-  use ndarray::array;
-  use treetime_utils::assert_error;
+  use ndarray::{Array1, array};
+  use rstest::rstest;
+  use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   const TINY_NUMBER: f64 = 1e-10;
 
@@ -84,17 +85,41 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
-  #[test]
-  fn test_divide_range_by_function_partial_overlap() {
-    // Range [1.5, 2.5] overlaps with function at point [2.0]
-    let range = Distribution::range((1.5, 2.5), 12.0);
-    let t = array![0.0, 1.0, 2.0, 3.0];
-    let y = array![1.0, 2.0, 4.0, 8.0];
-    let func = Distribution::function(t, y).unwrap();
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::contained(        (1.0, 3.0), vec![1.0, 2.0, 3.0],                         vec![6.0, 4.0, 3.0])]
+  #[case::left_partial(    (-1.0, 2.5), vec![0.0, 5.0 / 6.0, 5.0 / 3.0, 2.5],       vec![12.0, 72.0 / 11.0, 4.5, 24.0 / 7.0])]
+  #[case::right_partial(    (1.5, 5.0), vec![1.5, 7.0 / 3.0, 19.0 / 6.0, 4.0],      vec![4.8, 3.6, 72.0 / 25.0, 2.4])]
+  #[case::no_interior_knot( (1.2, 1.8), vec![1.2, 1.8],                              vec![60.0 / 11.0, 30.0 / 7.0])]
+  #[trace]
+  fn test_divide_range_by_function_preserves_analytical_overlap(
+    #[case] range_bounds: (f64, f64),
+    #[case] expected_t: Vec<f64>,
+    #[case] expected_y: Vec<f64>,
+  ) {
+    let range = Distribution::range(range_bounds, 12.0);
+    let function = Distribution::function(
+      array![0.0, 1.0, 2.0, 3.0, 4.0],
+      array![1.0, 2.0, 3.0, 4.0, 5.0],
+    )
+    .unwrap();
 
-    let actual = distribution_division(&range, &func).unwrap();
-    // Result should only cover the overlap region (point at 2.0)
-    let expected = Distribution::point(2.0, 3.0);
+    let actual = distribution_division(&range, &function).unwrap();
+    let Distribution::Function(actual) = actual else {
+      panic!("Expected Function variant, got {actual:?}");
+    };
+    pretty_assert_ulps_eq!(Array1::from_vec(expected_t), actual.t(), max_ulps = 4);
+    pretty_assert_ulps_eq!(Array1::from_vec(expected_y), actual.y(), max_ulps = 4);
+  }
+
+  #[test]
+  fn test_divide_range_by_function_endpoint_contact_returns_point() {
+    let range = Distribution::range((2.0, 3.0), 12.0);
+    let function = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
+
+    let actual = distribution_division(&range, &function).unwrap();
+    // Oracle: v0 `Distribution.divide()` converts one surviving endpoint knot to a delta.
+    let expected = Distribution::point(2.0, 4.0);
     assert_eq!(expected, actual);
   }
 
@@ -138,6 +163,27 @@ mod tests {
     let actual = distribution_division(&dividend, &divisor).unwrap();
 
     let expected = Distribution::function(t1, array![5.0, 20.0 / 3.5, 6.0, 40.0 / 7.5, 5.0]).unwrap();
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_divide_function_by_function_uses_exact_intersection() {
+    let dividend = Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![2.0, 4.0, 6.0, 8.0, 10.0]).unwrap();
+    let divisor = Distribution::function(array![1.5, 2.5, 3.5], array![2.0, 2.0, 2.0]).unwrap();
+
+    let actual = distribution_division(&dividend, &divisor).unwrap();
+    let expected = Distribution::function(array![1.5, 2.5, 3.5], array![2.5, 3.5, 4.5]).unwrap();
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_divide_function_by_function_endpoint_contact_returns_point() {
+    let dividend = Distribution::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap();
+    let divisor = Distribution::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
+
+    let actual = distribution_division(&dividend, &divisor).unwrap();
+    // Oracle: v0 `Distribution.divide()` converts one surviving endpoint knot to a delta.
+    let expected = Distribution::point(1.0, 0.6);
     assert_eq!(expected, actual);
   }
 }

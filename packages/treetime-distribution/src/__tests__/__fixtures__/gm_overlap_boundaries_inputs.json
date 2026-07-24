@@ -1,0 +1,67 @@
+{
+  "divide_endpoint_contact": {
+    "operation": "divide",
+    "left": {
+      "kind": "range",
+      "x": [0.0, 1.0],
+      "y": [0.5, 0.5]
+    },
+    "right": {
+      "kind": "function",
+      "x": [1.0, 2.0, 3.0],
+      "y": [0.25, 0.5, 1.0]
+    }
+  },
+  "divide_function_narrower_divisor": {
+    "operation": "divide",
+    "left": {
+      "kind": "function",
+      "x": [0.0, 1.0, 2.0, 3.0, 4.0],
+      "y": [4.0, 2.0, 1.0, 2.0, 4.0]
+    },
+    "right": {
+      "kind": "function",
+      "x": [1.5, 2.5, 3.5],
+      "y": [0.5, 0.25, 0.75]
+    }
+  },
+  "divide_range_partial_overlap": {
+    "operation": "divide",
+    "left": {
+      "kind": "range",
+      "x": [1.5, 3.5],
+      "y": [0.75, 0.75]
+    },
+    "right": {
+      "kind": "function",
+      "x": [0.0, 1.0, 2.0, 3.0, 4.0],
+      "y": [4.0, 2.0, 1.0, 3.0, 5.0]
+    }
+  },
+  "multiply_endpoint_contact": {
+    "operation": "multiply",
+    "left": {
+      "kind": "range",
+      "x": [0.0, 1.0],
+      "y": [0.5, 0.5]
+    },
+    "right": {
+      "kind": "function",
+      "x": [1.0, 2.0, 3.0],
+      "y": [0.25, 0.5, 1.0]
+    }
+  },
+  "multiply_range_partial_overlap": {
+    "operation": "multiply",
+    "left": {
+      "kind": "range",
+      "x": [1.5, 3.5],
+      "y": [0.75, 0.75]
+    },
+    "right": {
+      "kind": "function",
+      "x": [0.0, 1.0, 2.0, 3.0, 4.0],
+      "y": [4.0, 2.0, 1.0, 3.0, 5.0]
+    }
+  }
+}

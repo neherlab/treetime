@@ -1,0 +1,51 @@
+{
+  "divide_endpoint_contact": {
+    "kind": "point",
+    "bounds": [
+      1.0,
+      1.0
+    ],
+    "endpoint_values": null
+  },
+  "divide_function_narrower_divisor": {
+    "kind": "function",
+    "bounds": [
+      1.5,
+      3.5
+    ],
+    "endpoint_values": [
+      1.00000000000025,
+      2.2500000000005
+    ]
+  },
+  "divide_range_partial_overlap": {
+    "kind": "function",
+    "bounds": [
+      1.5,
+      3.5
+    ],
+    "endpoint_values": [
+      -0.75,
+      -3.25
+    ]
+  },
+  "multiply_endpoint_contact": {
+    "kind": "point",
+    "bounds": [
+      1.0,
+      1.0
+    ],
+    "endpoint_values": null
+  },
+  "multiply_range_partial_overlap": {
+    "kind": "function",
+    "bounds": [
+      1.5,
+      3.5
+    ],
+    "endpoint_values": [
+      2.25,
+      4.75
+    ]
+  }
+}

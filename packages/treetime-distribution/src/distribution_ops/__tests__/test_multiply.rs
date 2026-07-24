@@ -3,10 +3,12 @@ mod tests {
   use crate::DistributionFunction;
   use crate::DistributionPlain as Distribution;
   use crate::distribution_core::formula::DistributionFormula;
-  use crate::distribution_ops::multiply::{distribution_multiplication, multiplication_eval_range};
+  use crate::distribution_ops::multiply::distribution_multiplication;
   use crate::policy::Plain;
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
+  use rstest::rstest;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   /// Formula * Function returns a Function with correct pointwise products.
   ///
@@ -59,6 +61,65 @@ mod tests {
     };
 
     assert_ulps_eq!(ff_fn.y(), fxf_fn.y(), max_ulps = 10);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::contained(        (1.0, 3.0), vec![1.0, 2.0, 3.0],                         vec![4.0, 6.0, 8.0])]
+  #[case::left_partial(    (-1.0, 2.5), vec![0.0, 5.0 / 6.0, 5.0 / 3.0, 2.5],       vec![2.0, 11.0 / 3.0, 16.0 / 3.0, 7.0])]
+  #[case::right_partial(    (1.5, 5.0), vec![1.5, 7.0 / 3.0, 19.0 / 6.0, 4.0],      vec![5.0, 20.0 / 3.0, 25.0 / 3.0, 10.0])]
+  #[case::no_interior_knot( (1.2, 1.8), vec![1.2, 1.8],                              vec![4.4, 5.6])]
+  #[trace]
+  fn test_multiply_range_function_preserves_analytical_overlap(
+    #[case] range_bounds: (f64, f64),
+    #[case] expected_t: Vec<f64>,
+    #[case] expected_y: Vec<f64>,
+  ) {
+    let range = Distribution::range(range_bounds, 2.0);
+    let function = Distribution::function(
+      array![0.0, 1.0, 2.0, 3.0, 4.0],
+      array![1.0, 2.0, 3.0, 4.0, 5.0],
+    )
+    .unwrap();
+
+    let actual = distribution_multiplication(&range, &function).unwrap();
+    let Distribution::Function(actual) = actual else {
+      panic!("Expected Function variant, got {actual:?}");
+    };
+    pretty_assert_ulps_eq!(Array1::from_vec(expected_t), actual.t(), max_ulps = 4);
+    pretty_assert_ulps_eq!(Array1::from_vec(expected_y), actual.y(), max_ulps = 4);
+  }
+
+  #[test]
+  fn test_multiply_range_function_disjoint_returns_empty() {
+    let range = Distribution::range((5.0, 6.0), 2.0);
+    let function = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
+
+    let actual = distribution_multiplication(&range, &function).unwrap();
+    let expected = Distribution::Empty;
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_multiply_range_function_endpoint_contact_returns_point() {
+    let range = Distribution::range((2.0, 3.0), 2.0);
+    let function = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
+
+    let actual = distribution_multiplication(&range, &function).unwrap();
+    // Oracle: v0 `Distribution.multiply()` converts one surviving endpoint knot to a delta.
+    let expected = Distribution::point(2.0, 6.0);
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_multiply_function_function_endpoint_contact_returns_point() {
+    let left = Distribution::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap();
+    let right = Distribution::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
+
+    let actual = distribution_multiplication(&left, &right).unwrap();
+    // Oracle: v0 `Distribution.multiply()` converts one surviving endpoint knot to a delta.
+    let expected = Distribution::point(1.0, 15.0);
+    assert_eq!(expected, actual);
   }
 
   fn make_gaussian(mu: f64, sigma: f64, n_points: usize) -> Distribution {
@@ -135,31 +196,5 @@ mod tests {
     let likely = accum.likely_time().expect("Final distribution must have likely_time");
     // After 50 steps with shifts of 0.01, the accumulated peak drifts slightly
     assert!(likely.abs() < 1.0, "Peak at {likely}, expected near 0");
-  }
-
-  #[rustfmt::skip]
-  #[rstest::rstest]
-  #[case::overlapping(         (0.0, 10.0), (5.0, 15.0), Some((5.0, 10.0)))]
-  #[case::identical(           (0.0, 10.0), (0.0, 10.0), Some((0.0, 10.0)))]
-  #[case::contained(           (0.0, 10.0), (2.0,  8.0), Some((2.0,  8.0)))]
-  #[case::non_overlapping(     (0.0,  5.0), (10.0, 15.0), None)]
-  #[case::adjacent(            (0.0,  5.0), (5.0,  10.0), None)]
-  #[case::non_overlapping_rev( (10.0, 15.0), (0.0, 5.0),  None)]
-  #[case::degenerate(          (5.0,  5.0), (5.0,  5.0), None)]
-  #[trace]
-  fn test_multiplication_eval_range(
-    #[case] a: (f64, f64),
-    #[case] b: (f64, f64),
-    #[case] expected: Option<(f64, f64)>,
-  ) {
-    let result = multiplication_eval_range(a, b);
-    match (result, expected) {
-      (Some((rmin, rmax)), Some((emin, emax))) => {
-        assert_ulps_eq!(rmin, emin, max_ulps = 4);
-        assert_ulps_eq!(rmax, emax, max_ulps = 4);
-      },
-      (None, None) => {},
-      _ => panic!("Expected {expected:?}, got {result:?}"),
-    }
   }
 }

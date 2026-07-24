@@ -2,6 +2,9 @@ use crate::Distribution;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
+use crate::distribution_ops::time_bounds::{
+  SupportIntersection, distribution_support_intersection, distribution_support_n_points,
+};
 use crate::policy::YAxisPolicy;
 use eyre::Report;
 use treetime_utils::make_error;
@@ -71,62 +74,38 @@ fn divide_range_by_function<Y: YAxisPolicy>(
   range: &DistributionRange<f64, Y>,
   divisor: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  const EPS: f64 = 1e-9;
-
-  let dividend_amplitude = range.amplitude();
-  let func_t = divisor.t();
-  let func_y = divisor.y();
-
-  // Filter to range support (consistent with multiply_range_function)
-  let filtered: Vec<(f64, f64)> = func_t
-    .iter()
-    .zip(func_y.iter())
-    .filter(|&(&t, _)| t >= range.start() - EPS && t <= range.end() + EPS)
-    .map(|(&t, &y)| (t, Y::divide(dividend_amplitude, Y::safe_divisor(y))))
-    .collect();
-
-  if filtered.is_empty() {
-    return Ok(Distribution::empty());
+  match distribution_support_intersection((range.start(), range.end()), (divisor.x_min(), divisor.x_max())) {
+    SupportIntersection::Disjoint => Ok(Distribution::empty()),
+    SupportIntersection::Point(t) => Ok(Distribution::point(
+      t,
+      Y::divide(range.amplitude(), Y::safe_divisor(divisor.interp(t))),
+    )),
+    SupportIntersection::Interval(bounds) => {
+      let n_points = distribution_support_n_points(bounds, divisor.dx())?;
+      let function = DistributionFunction::from_n_points(bounds, n_points, |t| {
+        Y::divide(range.amplitude(), Y::safe_divisor(divisor.interp(t)))
+      })?;
+      Ok(Distribution::Function(function))
+    },
   }
-
-  // Single point -> return Point distribution
-  if filtered.len() == 1 {
-    let (t, v) = filtered[0];
-    return Ok(Distribution::point(t, v));
-  }
-
-  let overlap_min = filtered.first().unwrap().0;
-  let overlap_max = filtered.last().unwrap().0;
-  let values_array: ndarray::Array1<f64> = filtered.iter().map(|(_, v)| *v).collect();
-
-  let result_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), values_array)?;
-  Ok(Distribution::Function(result_fn))
 }
 
 fn divide_function_by_function<Y: YAxisPolicy>(
   dividend: &DistributionFunction<f64, Y>,
   divisor: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  let div_min = dividend.x_min();
-  let div_max = dividend.x_max();
-  let div_dx = dividend.dx();
-
-  let divisor_on_dividend_grid = if (divisor.x_min() - div_min).abs() < 1e-10
-    && (divisor.x_max() - div_max).abs() < 1e-10
-    && (divisor.dx() - div_dx).abs() < 1e-10
-  {
-    divisor.y().clone()
-  } else {
-    let resampled = divisor.resample_range_dx((div_min, div_max), div_dx)?;
-    resampled.y().clone()
-  };
-
-  let result_y = dividend
-    .y()
-    .iter()
-    .zip(divisor_on_dividend_grid.iter())
-    .map(|(&d, &s)| Y::divide(d, Y::safe_divisor(s)))
-    .collect();
-
-  DistributionFunction::from_range_values((div_min, div_max), result_y).map(Distribution::Function)
+  match distribution_support_intersection((dividend.x_min(), dividend.x_max()), (divisor.x_min(), divisor.x_max())) {
+    SupportIntersection::Disjoint => Ok(Distribution::empty()),
+    SupportIntersection::Point(t) => Ok(Distribution::point(
+      t,
+      Y::divide(dividend.interp(t), Y::safe_divisor(divisor.interp(t))),
+    )),
+    SupportIntersection::Interval(bounds) => {
+      let n_points = distribution_support_n_points(bounds, dividend.dx().min(divisor.dx()))?;
+      let function = DistributionFunction::from_n_points(bounds, n_points, |t| {
+        Y::divide(dividend.interp(t), Y::safe_divisor(divisor.interp(t)))
+      })?;
+      Ok(Distribution::Function(function))
+    },
+  }
 }

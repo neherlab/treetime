@@ -3,5 +3,6 @@ mod test_divide;
 mod test_log_cost;
 mod test_multiply;
 mod test_negation;
+mod test_prop_overlap;
 mod test_scalar_multiply;
 mod test_time_bounds;

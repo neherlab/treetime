@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Capture v0 support boundaries and endpoint values for mixed-support operations."""
+
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+
+PROJECT_ROOT = Path(__file__).resolve().parents[5]
+FIXTURES_DIR = Path(__file__).parent
+sys.path.insert(0, str(PROJECT_ROOT / "packages" / "legacy" / "treetime"))
+
+from treetime.distribution import Distribution  # noqa: E402
+
+
+def make_distribution(operand: dict[str, object]) -> Distribution:
+    """Construct a v0 neg-log distribution from one serialized operand."""
+    return Distribution(
+        np.asarray(operand["x"], dtype=float),
+        np.asarray(operand["y"], dtype=float),
+        is_log=True,
+    )
+
+
+def capture_case(case: dict[str, object]) -> dict[str, object]:
+    """Return v0's observable overlap contract for one operation."""
+    left = make_distribution(case["left"])
+    right = make_distribution(case["right"])
+    operation = case["operation"]
+    result = Distribution.multiply([left, right]) if operation == "multiply" else Distribution.divide(left, right)
+
+    if result.is_delta:
+        return {
+            "kind": "point",
+            "bounds": [float(result.xmin), float(result.xmax)],
+            "endpoint_values": None,
+        }
+
+    return {
+        "kind": "function",
+        "bounds": [float(result.xmin), float(result.xmax)],
+        "endpoint_values": [float(result(result.xmin)), float(result(result.xmax))],
+    }
+
+
+def main() -> None:
+    """Capture every input case from the canonical v0 implementation."""
+    inputs_path = FIXTURES_DIR / "gm_overlap_boundaries_inputs.json"
+    outputs_path = FIXTURES_DIR / "gm_overlap_boundaries_outputs.json"
+    with inputs_path.open() as file:
+        inputs = json.load(file)
+    outputs = {name: capture_case(case) for name, case in inputs.items()}
+    with outputs_path.open("w") as file:
+        json.dump(outputs, file, indent=2)
+        file.write("\n")
+
+
+if __name__ == "__main__":
+    main()
