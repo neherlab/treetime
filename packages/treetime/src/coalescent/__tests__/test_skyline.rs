@@ -13,12 +13,20 @@ mod tests {
   const SMALL_TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
 
   fn small_tree_dates() -> DatesMap {
+    scaled_small_tree_dates(1.0)
+  }
+
+  /// `small_tree_dates` with every node time scaled by `s` about the root (2000), so
+  /// all time intervals scale by `s` while the topology and relative timing are
+  /// preserved.
+  fn scaled_small_tree_dates(s: f64) -> DatesMap {
+    let base = 2000.0;
     btreemap! {
-      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
-      "internal1".to_owned() => Some(DateConstraint::exact(2005.0)),
-      "leaf1".to_owned() => Some(DateConstraint::exact(2010.0)),
-      "leaf2".to_owned() => Some(DateConstraint::exact(2010.0)),
-      "leaf3".to_owned() => Some(DateConstraint::exact(2012.0)),
+      "root".to_owned() => Some(DateConstraint::exact(base)),
+      "internal1".to_owned() => Some(DateConstraint::exact(base + s * 5.0)),
+      "leaf1".to_owned() => Some(DateConstraint::exact(base + s * 10.0)),
+      "leaf2".to_owned() => Some(DateConstraint::exact(base + s * 10.0)),
+      "leaf3".to_owned() => Some(DateConstraint::exact(base + s * 12.0)),
     }
   }
 
@@ -164,19 +172,55 @@ mod tests {
     let graph = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
     let params = SkylineParams {
       n_points: 4,
-      stiffness: 1e-6, // near-zero smoothing: skyline free to fit each segment
+      stiffness: 1e-6,   // near-zero smoothing: skyline free to fit each segment
+      tolerance: 1e-12,  // converge hard so the slack below reflects only solver noise
       ..SkylineParams::default()
     };
 
     let result = optimize_skyline(&graph, &params)?;
 
     let constant_tc = crate::coalescent::optimize_tc::optimize_tc(&graph)?;
+    // The constant Tc is a feasible skyline (all segments equal), so the skyline
+    // optimum can only match or beat its likelihood; the slack is solver noise.
     assert!(
-      result.log_likelihood >= constant_tc.likelihood - 1e-6,
+      result.log_likelihood >= constant_tc.likelihood - 1e-10,
       "skyline LL {} should be >= constant-Tc LL {}",
       result.log_likelihood,
       constant_tc.likelihood
     );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_skyline_scale_invariant_trajectory() -> Result<(), Report> {
+    // The penalty charges squared log-fold-changes of Tc, so it is scale-independent:
+    // scaling every node time by a factor s scales the whole Tc(t) trajectory by s
+    // and leaves its shape unchanged. Equal-width boundaries scale with the span, so
+    // each segment's optimum shifts by exactly ln(s) in z = ln Tc.
+    let params = SkylineParams {
+      n_points: 4,
+      stiffness: 2.0,
+      tolerance: 1e-12,
+      max_iter: 1000,
+    };
+    let s = 3.0;
+
+    let g1 = helpers::create_graph_with_dates(SMALL_TREE_NWK, &scaled_small_tree_dates(1.0))?;
+    let gs = helpers::create_graph_with_dates(SMALL_TREE_NWK, &scaled_small_tree_dates(s))?;
+    let r1 = optimize_skyline(&g1, &params)?;
+    let rs = optimize_skyline(&gs, &params)?;
+
+    for i in 0..params.n_points {
+      let expected = s * r1.tc_values[i];
+      let rel = ((rs.tc_values[i] - expected) / expected).abs();
+      assert!(
+        rel < 1e-10,
+        "segment {i}: scaled Tc {} should be s×{} = {expected} (rel err {rel:.2e})",
+        rs.tc_values[i],
+        r1.tc_values[i]
+      );
+    }
 
     Ok(())
   }

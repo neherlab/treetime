@@ -336,7 +336,7 @@ fn solve_log_tc(
   }
   // warn when we did not break early but reach the max iteration count.
   if !converged {
-    warn!("Skyline optimization did not converge within {} iterations", max_iter);
+    warn!("Skyline optimization did not converge within {max_iter} iterations");
   }
 
   Ok(z)
