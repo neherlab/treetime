@@ -4,7 +4,7 @@ use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::make_error;
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
-use log::info;
+use log::{info, warn};
 use ndarray::Array1;
 use treetime_distribution::{Distribution, DistributionFormula};
 use treetime_graph::edge::GraphEdge;
@@ -292,7 +292,15 @@ fn solve_log_tc(
   if n == 1 {
     return Ok(z);
   }
+  // error if stiffness is non-positive, which would make the Hessian indefinite.
+  if stiffness <= 0.0 {
+    return make_error!(
+      "Skyline optimization requires positive stiffness for more than one segment, got {}",
+      stiffness
+    );
+  }
 
+  let mut converged = false;
   for _ in 0..max_iter {
     // Gradient and tridiagonal Hessian (diagonal `diag`, off-diagonal `off = -γ`).
     // For the data term, ∂/∂zᵢ (Iᵢ e^{-zᵢ} + Mᵢ zᵢ) = -Iᵢ e^{-zᵢ} + Mᵢ and its
@@ -316,6 +324,7 @@ fn solve_log_tc(
 
     let g_norm = g.iter().fold(0.0_f64, |acc, &v| acc.max(v.abs()));
     if g_norm < tolerance {
+      converged = true;
       break;
     }
 
@@ -339,6 +348,10 @@ fn solve_log_tc(
         break;
       }
     }
+  }
+  // warn when we did not break early but reach the max iteration count.
+  if !converged {
+    warn!("Skyline optimization did not converge within {} iterations", max_iter);
   }
 
   Ok(z)
