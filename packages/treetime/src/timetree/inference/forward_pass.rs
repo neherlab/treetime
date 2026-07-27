@@ -3,6 +3,7 @@ use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
 use rayon::prelude::*;
 use std::sync::Arc;
+use treetime_distribution::BoundaryBehavior;
 use treetime_distribution::distribution_convolution;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
@@ -125,7 +126,12 @@ where
         parent_time_dist.as_ref().clone()
       };
 
-      let dist_from_parent = distribution_convolution(&parent_except_subtree, branch_dist)?;
+      // Tail policy for the forward message (kb/decisions/timetree-inference-pass-boundary-tails.md).
+      // The parent's time is a hard lower bound (left tail Zero); there is no upper bound from
+      // the parent side on how far in the future the node could be (right tail Constant).
+      let dist_from_parent = distribution_convolution(&parent_except_subtree, branch_dist)?
+        .with_left_extrap(BoundaryBehavior::Zero)?
+        .with_right_extrap(BoundaryBehavior::Constant)?;
       // Normalize to prevent numerical underflow: the backward pass stores normalized
       // distributions (max=1.0), and the convolution/division can produce arbitrary scales.
       // Without normalization, values accumulate downward across tree depth.
@@ -134,7 +140,12 @@ where
     } else if let (Some(parent_time_dist), Some(branch_dist)) =
       (parent.time_distribution(), edge.branch_length_distribution())
     {
-      let dist_from_parent = distribution_convolution(parent_time_dist, branch_dist)?.normalize();
+      // Same forward tail policy as the two-parent-message branch above. normalize() rebuilds
+      // the grid, so the tail policy is applied afterwards, not before.
+      let dist_from_parent = distribution_convolution(parent_time_dist, branch_dist)?
+        .normalize()
+        .with_left_extrap(BoundaryBehavior::Zero)?
+        .with_right_extrap(BoundaryBehavior::Constant)?;
       slot.node.set_time_distribution(Some(Arc::new(dist_from_parent)));
     }
   }

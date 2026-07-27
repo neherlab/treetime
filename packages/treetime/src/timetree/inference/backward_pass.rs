@@ -4,6 +4,7 @@ use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
 use rayon::prelude::*;
 use std::sync::Arc;
+use treetime_distribution::BoundaryBehavior;
 use treetime_distribution::Distribution;
 use treetime_distribution::distribution_apply_neg_log_weight;
 use treetime_distribution::distribution_convolution;
@@ -116,7 +117,12 @@ where
     && let (Some(branch_dist), Some(node_time_dist)) = (edge.branch_length_distribution(), outgoing_distribution)
   {
     let negated_branch_dist = branch_dist.negate()?;
-    let parent_message = distribution_convolution(node_time_dist.as_ref(), &negated_branch_dist)?;
+    // Tail policy for the backward message (kb/decisions/timetree-inference-pass-boundary-tails.md).
+    // The parent could be arbitrarily far in the past, so the left tail is Constant; the
+    // child's sampling date is a hard upper bound on the parent's age, so the right tail is Zero.
+    let parent_message = distribution_convolution(node_time_dist.as_ref(), &negated_branch_dist)?
+      .with_left_extrap(BoundaryBehavior::Constant)?
+      .with_right_extrap(BoundaryBehavior::Zero)?;
     edge.set_msg_to_parent(Some(Arc::new(parent_message)));
   }
 
