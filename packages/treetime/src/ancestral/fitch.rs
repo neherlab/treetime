@@ -6,7 +6,7 @@ use crate::ancestral::fitch_sub::{
 };
 use crate::make_report;
 use crate::partition::fitch::PartitionFitch;
-use crate::partition::indexed_pass::{IndexedPass, IndexedPassSlot};
+use crate::partition::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
 use crate::partition::sparse::{
   FitchSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, SparseSeqInfo,
 };
@@ -123,10 +123,8 @@ where
     let length = partition.length();
     let (nodes, edges) = partition.storage_mut();
     let mut pass = IndexedPass::new(graph, nodes, edges, |_| Ok(SparseNodePartition::empty(&alphabet)))?;
-    let result = pass.try_for_each_backward_frontier(|node_indices, _, _, completed, frontier| {
-      frontier
-        .par_iter_mut()
-        .try_for_each(|slot| run_fitch_backward_indexed(graph, &alphabet, length, node_indices, completed, slot))
+    let result = pass.try_for_each_backward(|dependencies, slot| {
+      run_fitch_backward_indexed(graph, &alphabet, length, dependencies, slot)
     });
     let (nodes, edges) = pass.into_maps()?;
     *partition.nodes_mut() = nodes;
@@ -140,8 +138,7 @@ fn run_fitch_backward_indexed<N, E>(
   graph: &Graph<N, E, ()>,
   alphabet: &Alphabet,
   length: usize,
-  node_indices: &[Option<usize>],
-  completed: &[IndexedPassSlot<SparseNodePartition, SparseEdgePartition>],
+  dependencies: &IndexedPassDependencies<SparseNodePartition, SparseEdgePartition>,
   slot: &mut IndexedPassSlot<SparseNodePartition, SparseEdgePartition>,
 ) -> Result<(), Report>
 where
@@ -158,8 +155,7 @@ where
     .iter()
     .map(|(child, _)| {
       let child_key = child.read_arc().key();
-      let child_index = node_indices[child_key.as_usize()].expect("Indexed child must have a slot");
-      let child = &completed[child_index];
+      let child = dependencies.slot(child_key);
       let edge = &child
         .parent_edge
         .as_ref()
@@ -228,11 +224,8 @@ where
         "Partition node {key} is missing before the Fitch forward pass"
       ))
     })?;
-    let result = pass.try_for_each_forward_frontier(|node_indices, _, _, completed_start, frontier, completed| {
-      frontier
-        .par_iter_mut()
-        .try_for_each(|slot| run_fitch_forward_indexed(&alphabet, node_indices, completed_start, completed, slot))
-    });
+    let result =
+      pass.try_for_each_forward(|dependencies, slot| run_fitch_forward_indexed(&alphabet, dependencies, slot));
     let (nodes, edges) = pass.into_maps()?;
     *partition.nodes_mut() = nodes;
     *partition.edges_mut() = edges;
@@ -243,9 +236,7 @@ where
 
 fn run_fitch_forward_indexed(
   alphabet: &Alphabet,
-  node_indices: &[Option<usize>],
-  completed_start: usize,
-  completed: &[IndexedPassSlot<SparseNodePartition, SparseEdgePartition>],
+  dependencies: &IndexedPassDependencies<SparseNodePartition, SparseEdgePartition>,
   slot: &mut IndexedPassSlot<SparseNodePartition, SparseEdgePartition>,
 ) -> Result<(), Report> {
   let node_data = &mut slot.node;
@@ -254,8 +245,7 @@ fn run_fitch_forward_indexed(
       .parent_edge
       .as_mut()
       .expect("Non-root node must own its parent edge");
-    let parent_index = node_indices[parent_key.as_usize()].expect("Indexed parent must have a slot");
-    let parent = &completed[parent_index - completed_start].node.seq;
+    let parent = &dependencies.node(parent_key).seq;
     let seq = &mut node_data.seq;
     seq.composition = parent.composition.clone();
 

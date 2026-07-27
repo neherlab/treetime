@@ -28,6 +28,7 @@ auto_ops = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true, optional = true }
 color-eyre = { workspace = true }
+crossbeam-channel = { workspace = true }
 crossbeam-queue = { workspace = true }
 crossbeam-skiplist = { workspace = true }
 eyre = { workspace = true }

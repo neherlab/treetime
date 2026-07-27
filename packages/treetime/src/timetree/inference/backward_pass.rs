@@ -1,8 +1,7 @@
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::partition::indexed_pass::{IndexedPassSlot, with_indexed_graph_payloads};
+use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
-use rayon::prelude::*;
 use std::sync::Arc;
 use treetime_distribution::BoundaryBehavior;
 use treetime_distribution::Distribution;
@@ -27,10 +26,8 @@ where
   D: Send + Sync,
 {
   with_indexed_graph_payloads(graph, |pass| {
-    pass.try_for_each_backward_frontier(|node_indices, _, _, completed, frontier| {
-      frontier.par_iter_mut().try_for_each(|slot| {
-        propagate_distributions_backward_slot(graph, coalescent_model, node_indices, completed, slot)
-      })
+    pass.try_for_each_backward(|dependencies, slot| {
+      propagate_distributions_backward_slot(graph, coalescent_model, dependencies, slot)
     })
   })
 }
@@ -39,8 +36,7 @@ where
 fn propagate_distributions_backward_slot<N, E, D>(
   graph: &Graph<N, E, D>,
   coalescent_model: Option<&CoalescentModel>,
-  node_indices: &[Option<usize>],
-  completed: &[IndexedPassSlot<N, E>],
+  dependencies: &IndexedPassDependencies<N, E>,
   slot: &mut IndexedPassSlot<N, E>,
 ) -> Result<(), Report>
 where
@@ -60,8 +56,7 @@ where
 
   for (child, _) in graph.children_of(&graph.get_node(slot.key).expect("Indexed node must exist").read_arc()) {
     let child_key = child.read_arc().key();
-    let child_index = node_indices[child_key.as_usize()].expect("Indexed child must have a slot");
-    let child = &completed[child_index];
+    let child = dependencies.slot(child_key);
     if child.node.bad_branch() {
       continue;
     }

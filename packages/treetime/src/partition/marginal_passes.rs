@@ -1,5 +1,5 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
-use crate::partition::indexed_pass::{IndexedPass, IndexedPassSlot};
+use crate::partition::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
 use crate::partition::marginal_core::{
   forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_1d_inplace,
 };
@@ -10,7 +10,6 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
-use rayon::prelude::*;
 use std::collections::BTreeSet;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
@@ -34,19 +33,8 @@ where
   let mut pass = IndexedPass::new(graph, nodes, edges, |key| {
     treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass")
   })?;
-  let result = pass.try_for_each_backward_frontier(|node_indices, edge_indices, _, completed, frontier| {
-    frontier.par_iter_mut().try_for_each(|slot| {
-      process_node_backward_indexed(
-        graph,
-        &alphabet,
-        &gtr,
-        length,
-        node_indices,
-        edge_indices,
-        completed,
-        slot,
-      )
-    })
+  let result = pass.try_for_each_backward(|dependencies, slot| {
+    process_node_backward_indexed(graph, &alphabet, &gtr, length, dependencies, slot)
   });
   let (nodes, edges) = pass.into_maps()?;
   partition.nodes = nodes;
@@ -70,20 +58,8 @@ where
   let mut pass = IndexedPass::new(graph, nodes, edges, |key| {
     treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass")
   })?;
-  let result = pass.try_for_each_forward_frontier(|node_indices, _, _, completed_start, frontier, completed| {
-    frontier.par_iter_mut().try_for_each(|slot| {
-      process_node_forward_indexed(
-        graph,
-        &alphabet,
-        &gtr,
-        length,
-        &root_sequence,
-        node_indices,
-        completed_start,
-        completed,
-        slot,
-      )
-    })
+  let result = pass.try_for_each_forward(|dependencies, slot| {
+    process_node_forward_indexed(graph, &alphabet, &gtr, length, &root_sequence, dependencies, slot)
   });
   let (nodes, edges) = pass.into_maps()?;
   partition.nodes = nodes;
@@ -98,9 +74,7 @@ fn process_node_forward_indexed<N, E>(
   gtr: &crate::gtr::gtr::GTR,
   length: usize,
   root_sequence: &treetime_primitives::Seq,
-  node_indices: &[Option<usize>],
-  completed_start: usize,
-  completed: &[IndexedPassSlot<SparseNodePartition, SparseEdgePartition>],
+  dependencies: &IndexedPassDependencies<SparseNodePartition, SparseEdgePartition>,
   slot: &mut IndexedPassSlot<SparseNodePartition, SparseEdgePartition>,
 ) -> Result<(), Report>
 where
@@ -108,8 +82,7 @@ where
   E: EdgeOptimizeOps,
 {
   if let Some(parent_key) = slot.parent_key {
-    let parent_index = node_indices[parent_key.as_usize()].expect("Indexed parent must have a slot");
-    let parent = &completed[parent_index - completed_start].node;
+    let parent = dependencies.node(parent_key);
     let (edge_key, edge_data) = slot
       .parent_edge
       .as_mut()
@@ -280,9 +253,7 @@ fn process_node_backward_indexed<N, E>(
   alphabet: &crate::alphabet::alphabet::Alphabet,
   gtr: &crate::gtr::gtr::GTR,
   length: usize,
-  node_indices: &[Option<usize>],
-  edge_indices: &[Option<usize>],
-  completed: &[IndexedPassSlot<SparseNodePartition, SparseEdgePartition>],
+  dependencies: &IndexedPassDependencies<SparseNodePartition, SparseEdgePartition>,
   slot: &mut IndexedPassSlot<SparseNodePartition, SparseEdgePartition>,
 ) -> Result<(), Report>
 where
@@ -333,12 +304,7 @@ where
     for (ci, (child, edge)) in child_pairs.iter().enumerate() {
       let child_key = child.read_arc().key();
       let edge_key = edge.read_arc().key();
-      let edge_index = edge_indices[edge_key.as_usize()].expect("Indexed child edge must have a slot");
-      let edge_data = &completed[edge_index]
-        .parent_edge
-        .as_ref()
-        .expect("Non-root indexed node must own its parent edge")
-        .1;
+      let edge_data = dependencies.edge(edge_key);
       for mutation in edge_data.fitch_subs() {
         variable_pos.insert(mutation.pos(), mutation.reff());
         child_states[ci].insert(mutation.pos(), mutation.qry());
@@ -351,8 +317,7 @@ where
     }
 
     for (ci, child_key) in child_keys.iter().enumerate() {
-      let child_index = node_indices[child_key.as_usize()].expect("Indexed child must have a slot");
-      let child_data = &completed[child_index].node;
+      let child_data = dependencies.node(*child_key);
       for (pos, parent_state) in &variable_pos {
         if child_states[ci].contains_key(pos) {
           continue;

@@ -1,12 +1,11 @@
 use crate::clock::clock_model::{ClockModel, ClockRegression};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::reroot::{RerootParams, reroot_in_place};
-use crate::partition::indexed_pass::{IndexedPassSlot, with_indexed_graph_payloads};
+use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::{ClockEdge, ClockNode};
 use eyre::Report;
 use log::{debug, info};
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
@@ -99,10 +98,8 @@ where
   D: Send + Sync,
 {
   with_indexed_graph_payloads(graph, |pass| {
-    pass.try_for_each_backward_frontier(|node_indices, _, _, completed, frontier| {
-      frontier.par_iter_mut().try_for_each(|slot| {
-        clock_regression_backward_slot(graph, options, prev_clock_rate, node_indices, completed, slot)
-      })
+    pass.try_for_each_backward(|dependencies, slot| {
+      clock_regression_backward_slot(graph, options, prev_clock_rate, dependencies, slot)
     })
   })
 }
@@ -111,8 +108,7 @@ fn clock_regression_backward_slot<N, E, D>(
   graph: &Graph<N, E, D>,
   options: &ClockParams,
   prev_clock_rate: Option<f64>,
-  node_indices: &[Option<usize>],
-  completed: &[IndexedPassSlot<N, E>],
+  dependencies: &IndexedPassDependencies<N, E>,
   slot: &mut IndexedPassSlot<N, E>,
 ) -> Result<(), Report>
 where
@@ -134,8 +130,8 @@ where
       .iter()
       .fold(ClockSet::default(), |mut total, (child, _)| {
         let child_key = child.read_arc().key();
-        let child_index = node_indices[child_key.as_usize()].expect("Indexed child must have a slot");
-        let edge = &completed[child_index]
+        let edge = &dependencies
+          .slot(child_key)
           .parent_edge
           .as_ref()
           .expect("Non-root indexed node must own its parent edge")
@@ -176,26 +172,23 @@ where
   D: Sync + Send,
 {
   with_indexed_graph_payloads(graph, |pass| {
-    pass.try_for_each_forward_frontier(|node_indices, _, _, completed_start, frontier, completed| {
-      frontier.par_iter_mut().for_each(|slot| {
-        if let Some(parent_key) = slot.parent_key {
-          let parent_index = node_indices[parent_key.as_usize()].expect("Indexed parent must have a slot");
-          let parent = &completed[parent_index - completed_start].node;
-          let (_, edge) = slot
-            .parent_edge
-            .as_mut()
-            .expect("Non-root indexed node must own its parent edge");
-          let mut q_to_child = parent.clock_set().clone();
-          q_to_child -= edge.from_child();
-          *edge.to_child_mut() = q_to_child;
+    pass.try_for_each_forward(|dependencies, slot| {
+      if let Some(parent_key) = slot.parent_key {
+        let parent = dependencies.node(parent_key);
+        let (_, edge) = slot
+          .parent_edge
+          .as_mut()
+          .expect("Non-root indexed node must own its parent edge");
+        let mut q_to_child = parent.clock_set().clone();
+        q_to_child -= edge.from_child();
+        *edge.to_child_mut() = q_to_child;
 
-          let edge_len = edge_divergence(edge.branch_length(), edge.time_length(), edge.gamma(), prev_clock_rate);
-          let branch_variance = options.variance_factor * edge_len + options.variance_offset;
-          let mut q_dest = edge.to_parent().clone();
-          q_dest += edge.to_child().propagate_averages(edge_len, branch_variance);
-          *slot.node.clock_set_mut() = q_dest;
-        }
-      });
+        let edge_len = edge_divergence(edge.branch_length(), edge.time_length(), edge.gamma(), prev_clock_rate);
+        let branch_variance = options.variance_factor * edge_len + options.variance_offset;
+        let mut q_dest = edge.to_parent().clone();
+        q_dest += edge.to_child().propagate_averages(edge_len, branch_variance);
+        *slot.node.clock_set_mut() = q_dest;
+      }
       Ok(())
     })
   })

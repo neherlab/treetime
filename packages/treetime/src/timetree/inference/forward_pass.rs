@@ -1,7 +1,6 @@
-use crate::partition::indexed_pass::{IndexedPassSlot, with_indexed_graph_payloads};
+use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
-use rayon::prelude::*;
 use std::sync::Arc;
 use treetime_distribution::BoundaryBehavior;
 use treetime_distribution::distribution_convolution;
@@ -18,19 +17,13 @@ where
   D: Send + Sync,
 {
   with_indexed_graph_payloads(graph, |pass| {
-    pass.try_for_each_forward_frontier(|node_indices, _, _, completed_start, frontier, completed| {
-      frontier.par_iter_mut().try_for_each(|slot| {
-        propagate_distributions_forward_slot(graph, node_indices, completed_start, completed, slot)
-      })
-    })
+    pass.try_for_each_forward(|dependencies, slot| propagate_distributions_forward_slot(graph, dependencies, slot))
   })
 }
 
 fn propagate_distributions_forward_slot<N, E, D>(
   graph: &Graph<N, E, D>,
-  node_indices: &[Option<usize>],
-  completed_start: usize,
-  completed: &[IndexedPassSlot<N, E>],
+  dependencies: &IndexedPassDependencies<N, E>,
   slot: &mut IndexedPassSlot<N, E>,
 ) -> Result<(), Report>
 where
@@ -38,7 +31,7 @@ where
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  refine_distribution_from_parent(graph, node_indices, completed_start, completed, slot)?;
+  refine_distribution_from_parent(graph, dependencies, slot)?;
 
   // Independent marginal modes can invert even though the forward pass commits each
   // parent before visiting its children. Current behavior projects non-leaf internal
@@ -46,26 +39,20 @@ where
   // This changes the point estimate without recomputing the posterior. The statistical
   // contract remains open in kb/issues/M-timetree-marginal-node-times-can-violate-topology.md.
   let parent_time = (!graph.is_leaf(slot.key))
-    .then(|| parent_time(node_indices, completed_start, completed, slot))
+    .then(|| parent_time(dependencies, slot))
     .flatten();
   set_likely_time(&mut slot.node, parent_time);
   Ok(())
 }
 
 /// Committed time of the slot's parent, if it has one and it is set.
-fn parent_time<N, E>(
-  node_indices: &[Option<usize>],
-  completed_start: usize,
-  completed: &[IndexedPassSlot<N, E>],
-  slot: &IndexedPassSlot<N, E>,
-) -> Option<f64>
+fn parent_time<N, E>(dependencies: &IndexedPassDependencies<N, E>, slot: &IndexedPassSlot<N, E>) -> Option<f64>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + TimetreeEdge,
 {
   let parent_key = slot.parent_key?;
-  let parent_index = node_indices[parent_key.as_usize()].expect("Indexed parent must have a slot");
-  completed[parent_index - completed_start].node.time()
+  dependencies.node(parent_key).time()
 }
 
 fn set_likely_time(node: &mut impl TimetreeNode, parent_time: Option<f64>) {
@@ -84,9 +71,7 @@ fn set_likely_time(node: &mut impl TimetreeNode, parent_time: Option<f64>) {
 
 fn refine_distribution_from_parent<N, E, D>(
   graph: &Graph<N, E, D>,
-  node_indices: &[Option<usize>],
-  completed_start: usize,
-  completed: &[IndexedPassSlot<N, E>],
+  dependencies: &IndexedPassDependencies<N, E>,
   slot: &mut IndexedPassSlot<N, E>,
 ) -> Result<(), Report>
 where
@@ -104,8 +89,7 @@ where
   }
 
   if let Some(parent_key) = slot.parent_key {
-    let parent_index = node_indices[parent_key.as_usize()].expect("Indexed parent must have a slot");
-    let parent = &completed[parent_index - completed_start].node;
+    let parent = dependencies.node(parent_key);
     let (_, edge) = slot
       .parent_edge
       .as_ref()

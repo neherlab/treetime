@@ -4,11 +4,10 @@ use crate::gtr::infer_gtr::common::{
   MutationCounts, accumulate_mutation_counts, get_branch_mutation_matrix, is_profile_informative,
 };
 use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
-use crate::partition::indexed_pass::{IndexedPass, IndexedPassSlot};
+use crate::partition::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
 use eyre::Report;
 use itertools::{Itertools, izip};
 use ndarray::prelude::*;
-use rayon::prelude::*;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
@@ -98,10 +97,8 @@ where
   partition.marginal_data_mut().nodes.append(&mut missing_nodes);
   let (nodes, edges) = partition.indexed_storage_mut();
   let mut pass = IndexedPass::new(graph, nodes, edges, |_| unreachable!("Missing nodes were initialized"))?;
-  let result = pass.try_for_each_backward_frontier(|node_indices, edge_indices, _, completed, frontier| {
-    frontier.par_iter_mut().try_for_each(|slot| {
-      marginal_process_node_backward_indexed(partition, graph, node_indices, edge_indices, completed, slot)
-    })
+  let result = pass.try_for_each_backward(|dependencies, slot| {
+    marginal_process_node_backward_indexed(partition, graph, dependencies, slot)
   });
   let (nodes, edges) = pass.into_maps()?;
   partition.marginal_data_mut().nodes = nodes;
@@ -112,9 +109,7 @@ where
 fn marginal_process_node_backward_indexed<N, E>(
   partition: &impl IndexedMarginalPartition<N, E>,
   graph: &Graph<N, E, ()>,
-  node_indices: &[Option<usize>],
-  edge_indices: &[Option<usize>],
-  completed: &[IndexedPassSlot<DenseNodePartition, DenseEdgePartition>],
+  dependencies: &IndexedPassDependencies<DenseNodePartition, DenseEdgePartition>,
   slot: &mut IndexedPassSlot<DenseNodePartition, DenseEdgePartition>,
 ) -> Result<(), Report>
 where
@@ -131,8 +126,7 @@ where
       .iter()
       .map(|(child, _)| {
         let child_key = child.read_arc().key();
-        let child_index = node_indices[child_key.as_usize()].expect("Indexed child must have a slot");
-        &completed[child_index].node
+        dependencies.node(child_key)
       })
       .collect_vec();
     slot.node.seq = partition.indexed_backward_internal(&children)?;
@@ -141,12 +135,7 @@ where
       .iter()
       .map(|(_, edge)| {
         let edge_key = edge.read_arc().key();
-        let edge_index = edge_indices[edge_key.as_usize()].expect("Indexed child edge must have a slot");
-        &completed[edge_index]
-          .parent_edge
-          .as_ref()
-          .expect("Non-root indexed node must own its parent edge")
-          .1
+        dependencies.edge(edge_key)
       })
       .collect_vec();
     let first_edge = child_edges.first().expect("Internal node must have children");
@@ -209,10 +198,8 @@ where
   let mut pass = IndexedPass::new(graph, nodes, edges, |key| {
     treetime_utils::make_internal_error!("Partition node {key} is missing before the marginal forward pass")
   })?;
-  let result = pass.try_for_each_forward_frontier(|node_indices, _, _, completed_start, frontier, completed| {
-    frontier.par_iter_mut().try_for_each(|slot| {
-      marginal_process_node_forward_indexed(partition, graph, node_indices, completed_start, completed, slot)
-    })
+  let result = pass.try_for_each_forward(|dependencies, slot| {
+    marginal_process_node_forward_indexed(partition, graph, dependencies, slot)
   });
   let (nodes, edges) = pass.into_maps()?;
   partition.marginal_data_mut().nodes = nodes;
@@ -224,9 +211,7 @@ where
 fn marginal_process_node_forward_indexed<N, E>(
   partition: &impl IndexedMarginalPartition<N, E>,
   graph: &Graph<N, E, ()>,
-  node_indices: &[Option<usize>],
-  completed_start: usize,
-  completed: &[IndexedPassSlot<DenseNodePartition, DenseEdgePartition>],
+  dependencies: &IndexedPassDependencies<DenseNodePartition, DenseEdgePartition>,
   slot: &mut IndexedPassSlot<DenseNodePartition, DenseEdgePartition>,
 ) -> Result<(), Report>
 where
@@ -235,8 +220,7 @@ where
 {
   let mut parent_edge = None;
   let parent = if let Some(parent_key) = slot.parent_key {
-    let parent_index = node_indices[parent_key.as_usize()].expect("Indexed parent must have a slot");
-    let parent = &completed[parent_index - completed_start].node;
+    let parent = dependencies.node(parent_key);
     parent_edge = slot.parent_edge.as_mut();
     Some(parent)
   } else {
