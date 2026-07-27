@@ -122,6 +122,24 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
+  #[test]
+  fn test_multiply_function_function_uses_finer_spacing_over_intersection() {
+    let coarse = Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+    let fine = Distribution::function(array![1.2, 1.7, 2.2, 2.7], array![2.0, 3.0, 4.0, 5.0]).unwrap();
+
+    let actual = distribution_multiplication(&coarse, &fine).unwrap();
+    let Distribution::Function(actual) = actual else {
+      panic!("Expected Function variant, got {actual:?}");
+    };
+
+    // Oracle: Richard Neher's grid contract in commit 542ac860c7cfa4bab6764aee1d1b3810a09eb54f:
+    // round(overlap_width / min(dx)) + 1 points over the exact intersection.
+    let expected_t = array![1.2, 1.7, 2.2, 2.7];
+    let expected_y = array![4.4, 8.1, 12.8, 18.5];
+    pretty_assert_ulps_eq!(expected_t, actual.t(), max_ulps = 4);
+    pretty_assert_ulps_eq!(expected_y, actual.y(), max_ulps = 4);
+  }
+
   fn make_gaussian(mu: f64, sigma: f64, n_points: usize) -> Distribution {
     let x_min = mu - 5.0 * sigma;
     let x_max = mu + 5.0 * sigma;

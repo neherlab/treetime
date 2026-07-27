@@ -36,6 +36,21 @@ mod tests {
     }
 
     #[test]
+    fn test_prop_multiply_function_function_commutative(
+      left_points in 2_usize..20,
+      right_points in 2_usize..20,
+      left_width_hundredths in 100_u16..500,
+      right_width_hundredths in 100_u16..500,
+    ) {
+      let left = linear_function_n_points(left_points, f64::from(left_width_hundredths) / 100.0);
+      let right = linear_function_n_points(right_points, f64::from(right_width_hundredths) / 100.0);
+
+      let left_right = distribution_multiplication(&left, &right).unwrap();
+      let right_left = distribution_multiplication(&right, &left).unwrap();
+      prop_assert_eq!(left_right, right_left);
+    }
+
+    #[test]
     fn test_prop_divide_recovers_range_amplitude(
       start_hundredths in 0_u16..400,
       width_hundredths in 1_u16..600,
@@ -78,5 +93,11 @@ mod tests {
 
   fn linear_function() -> Distribution {
     Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap()
+  }
+
+  fn linear_function_n_points(n_points: usize, width: f64) -> Distribution {
+    let x = Array1::linspace(0.0, width, n_points);
+    let y = x.mapv(|value| value + 1.0);
+    Distribution::function(x, y).unwrap()
   }
 }

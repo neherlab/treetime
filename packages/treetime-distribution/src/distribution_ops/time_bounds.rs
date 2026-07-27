@@ -4,6 +4,8 @@ use eyre::Report;
 use num::ToPrimitive;
 use treetime_utils::make_error;
 
+pub(super) const MAX_GRID_POINTS: usize = 1_000_000;
+
 /// Compute union of time bounds from two distributions.
 ///
 /// Return (t_min, t_max) tuple representing the smallest interval that encompasses
@@ -61,13 +63,17 @@ pub(super) fn distribution_support_intersection(a: (f64, f64), b: (f64, f64)) ->
 }
 
 pub(super) fn distribution_support_n_points((start, end): (f64, f64), dx: f64) -> Result<usize, Report> {
-  let Some(intervals) = ((end - start) / dx).ceil().to_usize() else {
+  let intervals = ((end - start) / dx).round();
+  if !intervals.is_finite() || intervals < 0.0 {
     return make_error!("Cannot discretize distribution support [{start}, {end}] with spacing {dx}");
-  };
-  let Some(n_points) = intervals.checked_add(1) else {
+  }
+  if intervals >= (MAX_GRID_POINTS - 1) as f64 {
+    return Ok(MAX_GRID_POINTS);
+  }
+  let Some(n_points) = intervals.to_usize().and_then(|intervals| intervals.checked_add(1)) else {
     return make_error!("Distribution support [{start}, {end}] with spacing {dx} exceeds the grid size limit");
   };
-  Ok(n_points)
+  Ok(n_points.clamp(2, MAX_GRID_POINTS))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

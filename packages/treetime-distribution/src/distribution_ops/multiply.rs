@@ -134,8 +134,8 @@ fn multiply_function_function<Y: YAxisPolicy>(
     SupportIntersection::Disjoint => Ok(Distribution::empty()),
     SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.interp(t), b.interp(t)))),
     SupportIntersection::Interval(bounds) => {
-      let function =
-        DistributionFunction::from_n_points(bounds, a.len().max(b.len()), |t| Y::multiply(a.interp(t), b.interp(t)))?;
+      let n_points = distribution_support_n_points(bounds, a.dx().min(b.dx()))?;
+      let function = DistributionFunction::from_n_points(bounds, n_points, |t| Y::multiply(a.interp(t), b.interp(t)))?;
       Ok(Distribution::Function(function))
     },
   }
