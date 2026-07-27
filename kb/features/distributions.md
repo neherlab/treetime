@@ -5,7 +5,7 @@
 - [x] Analytical Gaussian (PDF, product, convolution)
 - [x] Analytical Exponential (PDF, convolution, special case a=b)
 - [x] Gaussian-Exponential convolution
-- [/] Grid distributions (uniform grid and linear interpolation implemented; support-boundary semantics unresolved - [kb/issues/M-distribution-support-boundary-semantics-unresolved.md](../issues/M-distribution-support-boundary-semantics-unresolved.md))
+- [x] Grid distributions (uniform grid, linear interpolation, and explicit boundary behavior; [kb/decisions/timetree-inference-pass-boundary-tails.md](../decisions/timetree-inference-pass-boundary-tails.md))
 - [x] ScaledArray pattern (normalized values + log-scale factor)
 
 ## Partial or Not Implemented

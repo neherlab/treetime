@@ -28,4 +28,4 @@ No implementation ticket is ready until the project chooses the desired contract
 
 ## Related issues
 
-- [M-distribution-support-boundary-semantics-unresolved.md](M-distribution-support-boundary-semantics-unresolved.md) - tail semantics can change posterior peaks but do not guarantee topology
+- [kb/decisions/timetree-inference-pass-boundary-tails.md](../decisions/timetree-inference-pass-boundary-tails.md) - the per-pass tail semantics can change posterior peaks but do not by themselves guarantee topology
