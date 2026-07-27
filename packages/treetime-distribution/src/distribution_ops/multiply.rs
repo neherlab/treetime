@@ -84,7 +84,13 @@ fn multiply_point_function<Y: YAxisPolicy>(
   func: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
   let t = point.t();
-  let func_value = func.interp(t);
+  // The product with a finite-support function is zero where the point lies outside the
+  // function support, so return an empty distribution rather than evaluating the function
+  // out of support. This matches multiply_point_range and multiply_point_point.
+  if t < func.x_min() || t > func.x_max() {
+    return Ok(Distribution::empty());
+  }
+  let func_value = func.interp(t)?;
   let amplitude = Y::multiply(point.amplitude(), func_value);
   if !Y::is_defined(amplitude) {
     return Ok(Distribution::empty());
@@ -114,13 +120,14 @@ fn multiply_range_function<Y: YAxisPolicy>(
   match distribution_support_intersection((range.start(), range.end()), (func.x_min(), func.x_max())) {
     SupportIntersection::Disjoint => Ok(Distribution::empty()),
     SupportIntersection::Point(t) => {
-      let amplitude = Y::multiply(range.amplitude(), func.interp(t));
+      let amplitude = Y::multiply(range.amplitude(), func.interp(t)?);
       Ok(Distribution::point(t, amplitude))
     },
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, func.dx())?;
-      let function =
-        DistributionFunction::from_n_points(bounds, n_points, |t| Y::multiply(range.amplitude(), func.interp(t)))?;
+      let grid = Array1::linspace(bounds.0, bounds.1, n_points);
+      let values = func.interp_many(&grid)?.mapv(|value| Y::multiply(range.amplitude(), value));
+      let function = DistributionFunction::from_range_values(bounds, values)?;
       Ok(Distribution::Function(function))
     },
   }
@@ -132,10 +139,16 @@ fn multiply_function_function<Y: YAxisPolicy>(
 ) -> Result<Distribution<Y>, Report> {
   match distribution_support_intersection((a.x_min(), a.x_max()), (b.x_min(), b.x_max())) {
     SupportIntersection::Disjoint => Ok(Distribution::empty()),
-    SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.interp(t), b.interp(t)))),
+    SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.interp(t)?, b.interp(t)?))),
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, a.dx().min(b.dx()))?;
-      let function = DistributionFunction::from_n_points(bounds, n_points, |t| Y::multiply(a.interp(t), b.interp(t)))?;
+      let grid = Array1::linspace(bounds.0, bounds.1, n_points);
+      let values_a = a.interp_many(&grid)?;
+      let values_b = b.interp_many(&grid)?;
+      let values = Zip::from(&values_a)
+        .and(&values_b)
+        .map_collect(|&value_a, &value_b| Y::multiply(value_a, value_b));
+      let function = DistributionFunction::from_range_values(bounds, values)?;
       Ok(Distribution::Function(function))
     },
   }
@@ -172,14 +185,15 @@ fn multiply_formula_function<Y: YAxisPolicy>(
 ) -> Result<Distribution<Y>, Report> {
   match distribution_support_intersection((a.t_min(), a.t_max()), (b.x_min(), b.x_max())) {
     SupportIntersection::Disjoint => Ok(Distribution::empty()),
-    SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.eval_single(t)?, b.interp(t)))),
+    SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.eval_single(t)?, b.interp(t)?))),
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, b.dx())?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
-      let mut values = a.eval_many(&grid)?;
-      Zip::from(&mut values).and(&grid).for_each(|formula, &t| {
-        *formula = Y::multiply(*formula, b.interp(t));
-      });
+      let formula_values = a.eval_many(&grid)?;
+      let function_values = b.interp_many(&grid)?;
+      let values = Zip::from(&formula_values)
+        .and(&function_values)
+        .map_collect(|&formula, &function| Y::multiply(formula, function));
       let function = DistributionFunction::from_range_values(bounds, values)?;
       Ok(Distribution::Function(function))
     },

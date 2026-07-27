@@ -7,6 +7,7 @@ use crate::distribution_ops::time_bounds::{
 };
 use crate::policy::YAxisPolicy;
 use eyre::Report;
+use ndarray::{Array1, Zip};
 use treetime_utils::make_error;
 
 pub fn distribution_division<Y: YAxisPolicy>(
@@ -59,7 +60,7 @@ fn divide_point_by_function<Y: YAxisPolicy>(
 ) -> Result<Distribution<Y>, Report> {
   let t = point.t();
   let dividend_value = point.amplitude();
-  let divisor_value = divisor.interp(t);
+  let divisor_value = divisor.interp(t)?;
   let safe_divisor_value = Y::safe_divisor(divisor_value);
   let result_value = Y::divide(dividend_value, safe_divisor_value);
 
@@ -78,13 +79,15 @@ fn divide_range_by_function<Y: YAxisPolicy>(
     SupportIntersection::Disjoint => Ok(Distribution::empty()),
     SupportIntersection::Point(t) => Ok(Distribution::point(
       t,
-      Y::divide(range.amplitude(), Y::safe_divisor(divisor.interp(t))),
+      Y::divide(range.amplitude(), Y::safe_divisor(divisor.interp(t)?)),
     )),
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, divisor.dx())?;
-      let function = DistributionFunction::from_n_points(bounds, n_points, |t| {
-        Y::divide(range.amplitude(), Y::safe_divisor(divisor.interp(t)))
-      })?;
+      let grid = Array1::linspace(bounds.0, bounds.1, n_points);
+      let values = divisor
+        .interp_many(&grid)?
+        .mapv(|value| Y::divide(range.amplitude(), Y::safe_divisor(value)));
+      let function = DistributionFunction::from_range_values(bounds, values)?;
       Ok(Distribution::Function(function))
     },
   }
@@ -98,13 +101,17 @@ fn divide_function_by_function<Y: YAxisPolicy>(
     SupportIntersection::Disjoint => Ok(Distribution::empty()),
     SupportIntersection::Point(t) => Ok(Distribution::point(
       t,
-      Y::divide(dividend.interp(t), Y::safe_divisor(divisor.interp(t))),
+      Y::divide(dividend.interp(t)?, Y::safe_divisor(divisor.interp(t)?)),
     )),
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, dividend.dx().min(divisor.dx()))?;
-      let function = DistributionFunction::from_n_points(bounds, n_points, |t| {
-        Y::divide(dividend.interp(t), Y::safe_divisor(divisor.interp(t)))
-      })?;
+      let grid = Array1::linspace(bounds.0, bounds.1, n_points);
+      let dividend_values = dividend.interp_many(&grid)?;
+      let divisor_values = divisor.interp_many(&grid)?;
+      let values = Zip::from(&dividend_values)
+        .and(&divisor_values)
+        .map_collect(|&dividend, &divisor| Y::divide(dividend, Y::safe_divisor(divisor)));
+      let function = DistributionFunction::from_range_values(bounds, values)?;
       Ok(Distribution::Function(function))
     },
   }

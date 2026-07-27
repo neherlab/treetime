@@ -27,6 +27,7 @@ pub use distribution_scaled::divide::scaled_distribution_division;
 pub use distribution_scaled::multiply::{scaled_distribution_multiplication, scaled_distribution_multiply_many};
 pub use distribution_scaled::scaled::ScaledDistribution;
 pub use policy::{NegLog, Plain, PolicyMarker, SupportsConvolution, SupportsSubtraction, YAxisPolicy};
+pub use treetime_grid::BoundaryBehavior;
 
 #[cfg(test)]
 mod __tests__;

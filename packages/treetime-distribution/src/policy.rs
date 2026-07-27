@@ -10,6 +10,14 @@ pub trait YAxisPolicy: Clone + Copy + Debug + Default + PartialEq + Send + Sync 
   fn divide(a: f64, b: f64) -> f64;
   fn is_defined(val: f64) -> bool;
   fn safe_divisor(val: f64) -> f64;
+
+  /// Whether a numeric `0.0` correctly represents zero probability under this policy.
+  ///
+  /// A `Zero` boundary tail writes the literal `0.0` outside support. That is zero
+  /// probability under [`Plain`], but the multiplicative identity (probability one) under
+  /// [`NegLog`], where zero probability is `+inf`. The distribution layer rejects a `Zero`
+  /// tail on a policy that returns `false` here.
+  fn supports_zero_boundary() -> bool;
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -59,6 +67,10 @@ impl YAxisPolicy for Plain {
     const TINY_NUMBER: f64 = 1e-10;
     val.max(TINY_NUMBER)
   }
+
+  fn supports_zero_boundary() -> bool {
+    true
+  }
 }
 
 impl YAxisPolicy for NegLog {
@@ -88,6 +100,10 @@ impl YAxisPolicy for NegLog {
 
   fn safe_divisor(val: f64) -> f64 {
     val
+  }
+
+  fn supports_zero_boundary() -> bool {
+    false
   }
 }
 

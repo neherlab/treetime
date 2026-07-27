@@ -10,6 +10,7 @@ use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use treetime_grid::BoundaryBehavior;
 use treetime_utils::make_error;
 
 pub const TIME_LIMIT: f64 = 1e10;
@@ -133,7 +134,7 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 
   pub fn eval(&self, t: f64) -> Result<f64, Report> {
     match self {
-      Self::Function(f) => Ok(f.interp(t)),
+      Self::Function(f) => f.interp(t),
       Self::Formula(f) => f.eval_single(t),
       Self::Point(p) => {
         if ulps_eq!(t, p.t(), max_ulps = 10) {
@@ -155,7 +156,7 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 
   pub fn eval_many(&self, t: &Array1<f64>) -> Result<Array1<f64>, Report> {
     match self {
-      Self::Function(f) => Ok(f.interp_many(t)),
+      Self::Function(f) => f.interp_many(t),
       Self::Formula(f) => f.eval_many(t),
       Self::Point(p) => {
         let results = t
@@ -184,6 +185,26 @@ impl<Y: YAxisPolicy> Distribution<Y> {
         Ok(Array1::from(results))
       },
       Self::Empty => make_error!("Cannot evaluate empty distribution"),
+    }
+  }
+
+  /// Set the left (far past) out-of-support tail policy.
+  ///
+  /// Applies to the `Function` variant, whose support is finite and gridded. The other
+  /// variants have no interpolated tail, so this is a no-op for them. Rejects a
+  /// [`BoundaryBehavior::Zero`] tail under a negative-log representation.
+  pub fn with_left_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
+    match self {
+      Self::Function(f) => Ok(Self::Function(f.with_left_extrap(behavior)?)),
+      other => Ok(other),
+    }
+  }
+
+  /// Set the right (far future) out-of-support tail policy. See [`Self::with_left_extrap`].
+  pub fn with_right_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
+    match self {
+      Self::Function(f) => Ok(Self::Function(f.with_right_extrap(behavior)?)),
+      other => Ok(other),
     }
   }
 }

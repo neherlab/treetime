@@ -6,7 +6,8 @@ use ndarray_stats::QuantileExt;
 use num::Float;
 use serde::{Deserialize, Serialize};
 use treetime_grid::grid::Grid;
-use treetime_grid::{GridFn, InterpElem};
+use treetime_grid::{BoundaryBehavior, GridFn, InterpElem};
+use treetime_utils::make_error;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
@@ -154,23 +155,52 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.grid()
   }
 
-  pub fn interp(&self, x: T) -> T
+  pub fn interp(&self, x: T) -> Result<T, Report>
   where
-    T: Float,
+    T: Float + UlpsEq,
   {
     self.grid_fn.interp(x)
   }
 
-  pub fn interp_many(&self, xs: &Array1<T>) -> Array1<T>
+  pub fn interp_many(&self, xs: &Array1<T>) -> Result<Array1<T>, Report>
   where
-    T: Float,
+    T: Float + UlpsEq,
   {
     self.grid_fn.interp_many(xs)
   }
 
+  /// Set the left (below `x_min`) out-of-support tail policy.
+  ///
+  /// Rejects a [`BoundaryBehavior::Zero`] tail when the representation cannot express zero
+  /// probability as `0.0` (negative-log), where zero probability is `+inf`.
+  pub fn with_left_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
+    Self::check_zero_boundary(behavior)?;
+    Ok(Self::from_grid_fn(self.grid_fn.with_left_extrap(behavior)))
+  }
+
+  /// Set the right (above `x_max`) out-of-support tail policy. See [`Self::with_left_extrap`].
+  pub fn with_right_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
+    Self::check_zero_boundary(behavior)?;
+    Ok(Self::from_grid_fn(self.grid_fn.with_right_extrap(behavior)))
+  }
+
+  /// Set the same out-of-support tail policy on both sides.
+  pub fn with_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
+    self.with_left_extrap(behavior)?.with_right_extrap(behavior)
+  }
+
+  fn check_zero_boundary(behavior: BoundaryBehavior) -> Result<(), Report> {
+    if behavior == BoundaryBehavior::Zero && !Y::supports_zero_boundary() {
+      return make_error!(
+        "Refusing a Zero boundary tail: it writes 0.0 outside support, which is the multiplicative identity (probability one), not zero probability, under this distribution's negative-log representation"
+      );
+    }
+    Ok(())
+  }
+
   pub fn resample(&self, grid: &Grid<T>) -> Result<Self, Report>
   where
-    T: Float,
+    T: Float + UlpsEq,
   {
     let grid_fn = self.grid_fn.resample(grid)?;
     Ok(Self {
@@ -181,7 +211,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   pub fn resample_start_dx(&self, x_min: T, dx: T, n_points: usize) -> Result<Self, Report>
   where
-    T: Float,
+    T: Float + UlpsEq,
   {
     let grid_fn = self.grid_fn.resample_start_dx(x_min, dx, n_points)?;
     Ok(Self {
@@ -216,7 +246,16 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   where
     T: Float + UlpsEq,
   {
-    self.resample_range_dx((self.x_min(), self.x_max()), dx)
+    // Re-grid onto the function's own support. When dx does not divide the range evenly,
+    // the final uniform grid point can fall marginally beyond x_max; hold the boundary
+    // value there instead of erroring, since this is a gridding artifact, not a genuine
+    // out-of-support query. The resampled result keeps this function's own tail policy.
+    let regridded = self.grid_fn.clone().with_extrap(BoundaryBehavior::Constant);
+    let resampled = regridded.resample_range_dx((self.x_min(), self.x_max()), dx)?;
+    let resampled = resampled
+      .with_left_extrap(self.grid_fn.left_extrap())
+      .with_right_extrap(self.grid_fn.right_extrap());
+    Ok(Self::from_grid_fn(resampled))
   }
 
   pub fn len(&self) -> usize {
