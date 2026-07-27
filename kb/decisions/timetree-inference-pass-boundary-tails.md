@@ -56,6 +56,18 @@ The v1 pass tails are motivated by node-time monotonicity: without a `Constant` 
 
 Under v1's intersection-based multiplication, the product is evaluated only on the support intersection of its operands, so operand tails are not exercised by multiplication. Division also uses the exact support intersection while the divisor has the default `Error` boundary behavior. An explicit divisor tail extends the division domain on that side to the dividend boundary, allowing inference-message tails to take effect without changing finite-support division. Exact endpoint contact produces a point distribution, and positive-width products preserve the finest input grid spacing.
 
+Division derives its result bounds independently for each side:
+
+```text
+divisor_eval_min = divisor.x_min if divisor.left_extrap  == Error else dividend_min
+divisor_eval_max = divisor.x_max if divisor.right_extrap == Error else dividend_max
+result_bounds    = intersection(dividend_bounds, [divisor_eval_min, divisor_eval_max])
+```
+
+Both `Zero` and `Constant` are explicit declarations that evaluation is defined beyond the corresponding grid boundary. `Error` leaves that side finite. A disjoint effective domain produces `Empty`, endpoint-only contact produces `Point`, and a positive-width domain uses the spacing contract in [kb/decisions/distribution-intersection-grid-resolution.md](distribution-intersection-grid-resolution.md).
+
+The division tests cover both contracts: `packages/treetime-distribution/src/distribution_ops/__tests__/test_divide.rs` verifies exact intersection under default boundaries and extension under explicit divisor tails. Boundary representation tests in `packages/treetime-distribution/src/distribution_core/__tests__/test_boundary_behavior.rs` verify that plain distributions accept `Zero`, negative-log distributions reject it, and both representations accept `Constant`.
+
 ## Code references
 
 - `packages/treetime-grid/src/grid_fn.rs`: `BoundaryBehavior`, `left_extrap`/`right_extrap`, `with_left_extrap`/`with_right_extrap`/`with_extrap`, `interp` (fallible), `resample` (propagates policy), `negate_arg_inplace` (swaps sides).

@@ -19,5 +19,5 @@ A fix must define a concrete interior grid for nonlinear range weighting without
 
 ## Related issues
 
-- [kb/decisions/distribution-uniform-product-grid-resolution.md](../decisions/distribution-uniform-product-grid-resolution.md): approved uniform-grid resolution contract for distribution products
+- [kb/decisions/distribution-intersection-grid-resolution.md](../decisions/distribution-intersection-grid-resolution.md): approved uniform-grid resolution contract for distribution arithmetic
 - [M-timetree-backward-pass-plain-space-underflow.md](M-timetree-backward-pass-plain-space-underflow.md): underflow in the same backward pass product path (separate mechanism)

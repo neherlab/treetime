@@ -47,13 +47,15 @@ Apply the policy immediately after computing each message, before storing or usi
 
 ---
 
-## 2. Exact intersection boundaries in distribution multiplication
+## 2. Exact intersection boundaries in distribution arithmetic
 
-The Range-Function multiplication and division paths and the Function-Function division path are defined on the intersection of their operand supports. A positive-width result grid spans exactly `[max(a.x_min, b.x_min), min(a.x_max, b.x_max)]`. An intersection is empty when `overlap_min > overlap_max`; exact endpoint contact in these paths produces a Point distribution evaluated at the shared endpoint, matching v0. Function-Function multiplication applies the same endpoint-contact rule.
+Range-Function, Function-Function, and Formula-Function multiplication are defined on the exact intersection of their operand supports. Range-Function and Function-Function division use the same intersection while the divisor has the default `Error` boundary behavior. A positive-width result grid spans exactly `[max(a.x_min, b.x_min), min(a.x_max, b.x_max)]`. An intersection is empty when `overlap_min > overlap_max`; exact endpoint contact produces a Point distribution evaluated at the shared endpoint, matching v0.
+
+An explicit divisor tail changes the divisor's evaluable domain on that side. `Zero` and `Constant` tails extend division to the dividend boundary; an `Error` side remains constrained by the nominal divisor grid. Left and right sides are resolved independently before intersecting the resulting divisor domain with the dividend. [kb/decisions/timetree-inference-pass-boundary-tails.md](../decisions/timetree-inference-pass-boundary-tails.md) defines these boundary behaviors and their use by inference messages.
 
 **Do not** filter the existing grid points of either input to those falling inside the overlap, then use the closest existing point as the boundary. This snaps the boundary to the nearest grid point and loses the fractional part of the intersection. When a range boundary falls between two grid points of a function, the snapped boundary produces a result that is either too wide (including a region where one factor is zero) or too narrow (excluding a region where both are non-zero).
 
-Instead, compute `overlap_min` and `overlap_max` from the analytical support boundaries, then resample or evaluate both factors at `n_points` uniformly spaced across the exact `[overlap_min, overlap_max]` interval. Range-Function multiplication and division and Formula-Function multiplication derive `n_points` from the Function spacing. Function-Function multiplication and division use the finer input spacing. Endpoint-inclusive uniform spacing preserves both exact boundaries. [kb/decisions/distribution-uniform-product-grid-resolution.md](../decisions/distribution-uniform-product-grid-resolution.md) records this intentional divergence from v0's union of knots.
+Instead, compute `overlap_min` and `overlap_max` from the analytical or explicitly extended boundaries, then resample or evaluate both factors at `n_points` uniformly spaced across the exact `[overlap_min, overlap_max]` interval. Range-Function multiplication and division and Formula-Function multiplication derive `n_points` from the Function spacing. Function-Function multiplication and division use the finer input spacing. Endpoint-inclusive uniform spacing preserves both exact boundaries. [kb/decisions/distribution-intersection-grid-resolution.md](../decisions/distribution-intersection-grid-resolution.md) records this intentional divergence from v0's union of knots.
 
 For spacing-derived grids, choose `n_points` from the intersection width and the relevant input spacing:
 
@@ -62,7 +64,7 @@ dx       = min(a.dx, b.dx)  # Function-Function; use function.dx for Range-Funct
 n_points = clamp(round((overlap_max - overlap_min) / dx) + 1, 2, 1_000_000)
 ```
 
-This support-intersection rule is independent of generic `GridFn` extrapolation. Arithmetic establishes a valid finite domain before calling interpolation; other callers retain the current constant-extrapolation behavior while the broader distribution support policy remains unresolved.
+Multiplication establishes a finite intersection before interpolation and never exercises operand tails. Division establishes its domain from the divisor's per-side boundary behavior: default `Error` sides preserve finite-support intersection, while explicit tails opt into evaluation beyond the nominal grid. This keeps generic `GridFn` evaluation erroring by default and makes every extrapolated arithmetic path explicit.
 
 ---
 
