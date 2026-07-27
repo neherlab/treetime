@@ -4,7 +4,7 @@ use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 
 #[must_use]
-#[derive(Debug, Default, Clone, Serialize, Deserialize, CopyGetters)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct ClockSet {
   t_sum: f64,
@@ -39,14 +39,16 @@ impl ClockSet {
   }
 
   pub fn leaf_contribution_to_parent(date: Option<f64>, branch_length: f64, variance: f64) -> Self {
-    let num_date = date.unwrap_or(0.0);
+    let Some(date) = date else {
+      return Self::outlier_contribution();
+    };
     Self {
-      t_sum: num_date / variance,
-      tsq_sum: num_date.powi(2) / variance,
+      t_sum: date / variance,
+      tsq_sum: date.powi(2) / variance,
       d_sum: branch_length / variance,
-      dt_sum: branch_length * num_date / variance,
+      dt_sum: branch_length * date / variance,
       dsq_sum: branch_length.powi(2) / variance,
-      norm: if date.is_some() { 1.0 / variance } else { 0.0 },
+      norm: 1.0 / variance,
     }
   }
 

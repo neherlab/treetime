@@ -2,7 +2,27 @@
 mod tests {
   use crate::payload::clock_set::ClockSet;
   use ndarray::array;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zero_branch( 0.0, 1.0)]
+  #[case::short_branch(0.1, 0.01)]
+  #[case::long_branch(10.0, 2.0)]
+  #[trace]
+  fn test_clock_set_dateless_leaf_contribution_is_zero(
+    #[case] branch_length: f64,
+    #[case] variance: f64,
+  ) {
+    // Oracle: v0 TreeRegression::propagate_averages() excludes terminal nodes
+    // whose tip value is absent (treeregression.py:240-242).
+    let expected = ClockSet::outlier_contribution();
+    let actual = ClockSet::leaf_contribution_to_parent(None, branch_length, variance);
+
+    assert_eq!(expected, actual);
+  }
 
   #[test]
   fn test_clock_set_cov_is_hessian_inverse() {

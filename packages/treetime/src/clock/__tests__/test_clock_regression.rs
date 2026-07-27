@@ -4,11 +4,13 @@ mod tests {
   use crate::clock::clock_model::{ClockModel, ClockRegression};
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward};
   use crate::o;
+  use crate::payload::clock_set::ClockSet;
   use crate::payload::traits::ClockNode;
   use crate::seq::div::{OnlyLeaves, compute_divs};
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use maplit::btreemap;
+  use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::node::Named;
   use treetime_io::nwk::nwk_read_str;
@@ -62,5 +64,40 @@ mod tests {
     pretty_assert_ulps_eq!(0.007710610618916924, clock.clock_rate(), max_ulps = 4);
 
     Ok(())
+  }
+
+  #[test]
+  fn test_clock_regression_dateless_leaf_does_not_change_root_statistics() -> Result<(), Report> {
+    let dates = btreemap! {
+      o!("A") => 2013.0,
+      o!("B") => 2022.0,
+      o!("C") => 2017.0,
+      o!("D") => 2005.0,
+    };
+
+    // Oracle: TreeTime root regression sums paired sampling-date and divergence
+    // observations (Sagulenko, Puller, and Neher 2018, Equation 6).
+    let expected = helpers::root_clock_set("(A:0.1,B:0.2,C:0.2,D:0.12)root;", &dates)?;
+    let actual = helpers::root_clock_set("(A:0.1,B:0.2,C:0.2,D:0.12,E:10.0)root;", &dates)?;
+
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  mod helpers {
+    use super::*;
+
+    pub(super) fn root_clock_set(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockSet, Report> {
+      let graph: GraphClock = nwk_read_str(tree)?;
+      for node in graph.get_leaves() {
+        let name = node.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
+        node.write_arc().payload().write_arc().time = dates.get(&name).copied();
+      }
+
+      clock_regression_backward(&graph, &ClockParams::default(), None)?;
+      let root = graph.get_exactly_one_root()?;
+      let clock_set = root.read_arc().payload().read_arc().clock_set().clone();
+      Ok(clock_set)
+    }
   }
 }
