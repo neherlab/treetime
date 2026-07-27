@@ -63,6 +63,24 @@ mod tests {
     assert_ulps_eq!(ff_fn.y(), fxf_fn.y(), max_ulps = 10);
   }
 
+  #[test]
+  fn test_multiply_formula_function_uses_function_spacing_over_intersection() {
+    let formula = Distribution::Formula(DistributionFormula::new(|t| Ok(2.0 * t), 1.2, 2.4));
+    let function = Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+
+    let actual = distribution_multiplication(&formula, &function).unwrap();
+    let Distribution::Function(actual) = actual else {
+      panic!("Expected Function variant, got {actual:?}");
+    };
+
+    // Oracle: Richard Neher's grid contract in commit 542ac860c7cfa4bab6764aee1d1b3810a09eb54f:
+    // round(overlap_width / function.dx()) + 1 points over the exact intersection.
+    let expected_t = array![1.2, 2.4];
+    let expected_y = array![5.28, 16.32];
+    pretty_assert_ulps_eq!(expected_t, actual.t(), max_ulps = 4);
+    pretty_assert_ulps_eq!(expected_y, actual.y(), max_ulps = 4);
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::contained(        (1.0, 3.0), vec![1.0, 2.0, 3.0],                         vec![4.0, 6.0, 8.0])]

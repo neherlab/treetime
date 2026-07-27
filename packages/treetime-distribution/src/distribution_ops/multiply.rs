@@ -8,7 +8,7 @@ use crate::distribution_ops::time_bounds::{
 };
 use crate::policy::YAxisPolicy;
 use eyre::Report;
-use ndarray::Array1;
+use ndarray::{Array1, Zip};
 
 /// Grid size for discretizing Formula distributions that have no natural grid.
 const FORMULA_GRID_SIZE: usize = 200;
@@ -170,27 +170,20 @@ fn multiply_formula_function<Y: YAxisPolicy>(
   a: &DistributionFormula<Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  let overlap_min = a.t_min().max(b.x_min());
-  let overlap_max = a.t_max().min(b.x_max());
-
-  if overlap_min >= overlap_max {
-    return Ok(Distribution::empty());
+  match distribution_support_intersection((a.t_min(), a.t_max()), (b.x_min(), b.x_max())) {
+    SupportIntersection::Disjoint => Ok(Distribution::empty()),
+    SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.eval_single(t)?, b.interp(t)))),
+    SupportIntersection::Interval(bounds) => {
+      let n_points = distribution_support_n_points(bounds, b.dx())?;
+      let grid = Array1::linspace(bounds.0, bounds.1, n_points);
+      let mut values = a.eval_many(&grid)?;
+      Zip::from(&mut values).and(&grid).for_each(|formula, &t| {
+        *formula = Y::multiply(*formula, b.interp(t));
+      });
+      let function = DistributionFunction::from_range_values(bounds, values)?;
+      Ok(Distribution::Function(function))
+    },
   }
-
-  // Evaluate the Formula on the Function's grid (matching multiply_function_function).
-  // The Function provides the grid; the Formula is evaluated at each grid point.
-  let n_points = b.len();
-  let values = (0..n_points)
-    .map(|i| {
-      let t = overlap_min + (overlap_max - overlap_min) * (i as f64 / (n_points - 1) as f64);
-      let va = a.eval_single(t)?;
-      let vb = b.interp(t);
-      Ok(Y::multiply(va, vb))
-    })
-    .collect::<Result<Vec<f64>, Report>>()?;
-
-  let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), Array1::from_vec(values))?;
-  Ok(Distribution::Function(distribution_fn))
 }
 
 fn multiply_formula_point<Y: YAxisPolicy>(
