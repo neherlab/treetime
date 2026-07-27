@@ -6,6 +6,7 @@ mod tests {
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_utils::assert_error;
 
   #[rustfmt::skip]
   #[rstest]
@@ -22,7 +23,7 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
-    let actual = grid_fn.interp(query);
+    let actual = grid_fn.interp(query)?;
     assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
@@ -44,50 +45,79 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
-    let actual = grid_fn.interp(query);
+    let actual = grid_fn.interp(query)?;
     assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
-  // Constant extrapolation: return first y value
+  // Constant extrapolation: return first y value (explicit opt-in on the left tail)
   #[case::one_unit_left((0.0, 1.0), array![0.0, 10.0], -1.0, 0.0)]
   #[case::half_unit_left((0.0, 1.0), array![0.0, 10.0], -0.5, 0.0)]
   #[case::two_units_left((0.0, 1.0), array![0.0, 10.0], -2.0, 0.0)]
   #[case::offset_range((1.0, 2.0), array![5.0, 15.0], 0.0, 5.0)]
   #[case::three_points((1.0, 3.0), array![10.0, 20.0, 30.0], 0.0, 10.0)]
   #[trace]
-  fn test_gridfn_interp_left_extrapolation(
+  fn test_gridfn_interp_left_extrapolation_constant(
     #[case] x_range: (f64, f64),
     #[case] y: Array1<f64>,
     #[case] query: f64,
     #[case] expected: f64,
   ) -> Result<(), Report> {
-    let grid_fn = GridFn::from_range_values(x_range, y)?;
-    let actual = grid_fn.interp(query);
+    let grid_fn = GridFn::from_range_values(x_range, y)?.with_left_extrap(BoundaryBehavior::Constant);
+    let actual = grid_fn.interp(query)?;
     assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
-  // Constant extrapolation: return last y value
+  // Constant extrapolation: return last y value (explicit opt-in on the right tail)
   #[case::one_unit_right((0.0, 1.0), array![0.0, 10.0], 2.0, 10.0)]
   #[case::half_unit_right((0.0, 1.0), array![0.0, 10.0], 1.5, 10.0)]
   #[case::two_units_right((0.0, 1.0), array![0.0, 10.0], 3.0, 10.0)]
   #[case::offset_range((1.0, 2.0), array![5.0, 15.0], 3.0, 15.0)]
   #[case::three_points((0.0, 2.0), array![10.0, 20.0, 30.0], 3.0, 30.0)]
   #[trace]
-  fn test_gridfn_interp_right_extrapolation(
+  fn test_gridfn_interp_right_extrapolation_constant(
     #[case] x_range: (f64, f64),
     #[case] y: Array1<f64>,
     #[case] query: f64,
     #[case] expected: f64,
   ) -> Result<(), Report> {
-    let grid_fn = GridFn::from_range_values(x_range, y)?;
-    let actual = grid_fn.interp(query);
+    let grid_fn = GridFn::from_range_values(x_range, y)?.with_right_extrap(BoundaryBehavior::Constant);
+    let actual = grid_fn.interp(query)?;
     assert_ulps_eq!(expected, actual, max_ulps = 4);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  // Zero extrapolation: return 0.0 on either side (explicit opt-in)
+  #[case::left((0.0, 1.0), array![2.0, 10.0], -1.0)]
+  #[case::right((0.0, 1.0), array![2.0, 10.0], 2.0)]
+  #[trace]
+  fn test_gridfn_interp_extrapolation_zero(
+    #[case] x_range: (f64, f64),
+    #[case] y: Array1<f64>,
+    #[case] query: f64,
+  ) -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values(x_range, y)?.with_extrap(BoundaryBehavior::Zero);
+    let actual = grid_fn.interp(query)?;
+    assert_ulps_eq!(0.0, actual, max_ulps = 4);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  // Default policy is Error: out-of-support evaluation fails on both sides.
+  #[case::left(-1.0, "GridFn evaluated at -1.0, below the support boundary 0.0, but no extrapolation policy is set for that side")]
+  #[case::right(2.0, "GridFn evaluated at 2.0, above the support boundary 1.0, but no extrapolation policy is set for that side")]
+  #[trace]
+  fn test_gridfn_interp_out_of_support_errors_by_default(#[case] query: f64, #[case] expected: &str) -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 1.0), array![2.0, 10.0])?;
+    assert_error!(grid_fn.interp(query), expected);
     Ok(())
   }
 
@@ -96,8 +126,30 @@ mod tests {
     let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?;
     let queries = array![0.5, 1.0, 1.5];
     let expected = array![5.0, 10.0, 15.0];
-    let actual = grid_fn.interp_many(&queries);
+    let actual = grid_fn.interp_many(&queries)?;
     assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_negate_arg_swaps_extrap_sides() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
+      .with_left_extrap(BoundaryBehavior::Constant)
+      .with_right_extrap(BoundaryBehavior::Zero);
+    let negated = grid_fn.negate_arg()?;
+    assert_eq!(BoundaryBehavior::Zero, negated.left_extrap());
+    assert_eq!(BoundaryBehavior::Constant, negated.right_extrap());
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_resample_preserves_extrap() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?
+      .with_left_extrap(BoundaryBehavior::Zero)
+      .with_right_extrap(BoundaryBehavior::Constant);
+    let resampled = grid_fn.resample_range_dx((0.0, 2.0), 0.5)?;
+    assert_eq!(BoundaryBehavior::Zero, resampled.left_extrap());
+    assert_eq!(BoundaryBehavior::Constant, resampled.right_extrap());
     Ok(())
   }
 

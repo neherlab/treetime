@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use crate::InterpElem;
 use crate::grid::Grid;
 use crate::interp_nonuniform::interp_nonuniform;
-use approx::UlpsEq;
+use approx::{UlpsEq, ulps_eq};
 use eyre::Report;
 use itertools::{Itertools, izip};
 use ndarray::{Array1, s};
@@ -14,10 +14,33 @@ use treetime_utils::array::ndarray::has_uniform_spacing;
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 use treetime_utils::make_error;
 
+/// Behavior of a [`GridFn`] when evaluated outside its grid support.
+///
+/// A bare grid function is a generic interpolant with no probabilistic meaning, so the
+/// default is [`BoundaryBehavior::Error`]: a query outside the grid is a programming error
+/// unless the caller has declared how the tail should behave. The two non-default variants
+/// are explicit opt-ins used by finite-support distributions and by the timetree message
+/// passes, which assign a per-side tail policy to each message.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BoundaryBehavior {
+  /// Out-of-support evaluation is an error.
+  #[default]
+  Error,
+  /// Return `0.0` outside support. For a plain-probability distribution this is zero
+  /// probability. Not representable under a negative-log representation, where zero
+  /// probability is `+inf`; that combination is rejected at the distribution layer.
+  Zero,
+  /// Return the nearest boundary value (`y[0]` to the left, `y[n-1]` to the right),
+  /// i.e. a flat tail. Use when the function is genuinely uninformative beyond the edge.
+  Constant,
+}
+
 /// Function represented on a uniform grid for piecewise linear interpolation
 ///
 /// Represents a function as a set of (x, y) points on a uniformly-spaced grid, providing
-/// linear interpolation between points and constant extrapolation beyond the grid boundaries.
+/// linear interpolation between points. Behavior outside the grid is governed by the
+/// per-side [`BoundaryBehavior`] policies `left_extrap` and `right_extrap`, which default
+/// to [`BoundaryBehavior::Error`].
 ///
 /// # Invariants
 ///
@@ -32,6 +55,12 @@ pub struct GridFn<T: InterpElem> {
   grid: Grid<T>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   y: Array1<T>,
+  // Out-of-support tail policy is runtime behavior, not persisted data: skip it so serialized
+  // output (auspice node data, snapshots) is unchanged. Deserialization restores the default.
+  #[serde(skip)]
+  left_extrap: BoundaryBehavior,
+  #[serde(skip)]
+  right_extrap: BoundaryBehavior,
 }
 
 impl<T: InterpElem> GridFn<T> {
@@ -43,7 +72,40 @@ impl<T: InterpElem> GridFn<T> {
         y.len()
       );
     }
-    Ok(Self { grid, y })
+    Ok(Self {
+      grid,
+      y,
+      left_extrap: BoundaryBehavior::default(),
+      right_extrap: BoundaryBehavior::default(),
+    })
+  }
+
+  /// Set the out-of-support behavior for the left (below `x_min`) tail.
+  #[must_use]
+  pub fn with_left_extrap(mut self, behavior: BoundaryBehavior) -> Self {
+    self.left_extrap = behavior;
+    self
+  }
+
+  /// Set the out-of-support behavior for the right (above `x_max`) tail.
+  #[must_use]
+  pub fn with_right_extrap(mut self, behavior: BoundaryBehavior) -> Self {
+    self.right_extrap = behavior;
+    self
+  }
+
+  /// Set the same out-of-support behavior for both tails.
+  #[must_use]
+  pub fn with_extrap(self, behavior: BoundaryBehavior) -> Self {
+    self.with_left_extrap(behavior).with_right_extrap(behavior)
+  }
+
+  pub fn left_extrap(&self) -> BoundaryBehavior {
+    self.left_extrap
+  }
+
+  pub fn right_extrap(&self) -> BoundaryBehavior {
+    self.right_extrap
   }
 
   pub fn from_grid_fn<F>(grid: Grid<T>, y_fn: F) -> Result<Self, Report>
@@ -266,8 +328,9 @@ impl<T: InterpElem> GridFn<T> {
 
   /// Interpolate function value at a single point
   ///
-  /// Uses piecewise linear interpolation within grid bounds and constant extrapolation
-  /// outside bounds (returns boundary values).
+  /// Uses piecewise linear interpolation within the grid bounds. Outside the bounds the
+  /// per-side [`BoundaryBehavior`] applies: `Error` (default) rejects the query, `Zero`
+  /// returns `0.0`, `Constant` returns the nearest boundary value.
   ///
   /// # Arguments
   ///
@@ -275,64 +338,64 @@ impl<T: InterpElem> GridFn<T> {
   ///
   /// # Returns
   ///
-  /// Interpolated or extrapolated function value at `xi`
-  pub fn interp(&self, xi: T) -> T
+  /// Interpolated value at `xi`, or an error when `xi` is outside the support and the
+  /// relevant tail policy is [`BoundaryBehavior::Error`].
+  pub fn interp(&self, xi: T) -> Result<T, Report>
   where
-    T: Float,
+    T: Float + UlpsEq,
   {
     let x_min = self.grid.x_min();
     let x_max = self.grid.x_max();
 
+    // A query at the nominal support boundary can land a few ulps outside the grid, because
+    // x_max is reconstructed as x_min + (n-1)*dx and need not reproduce the value originally
+    // passed in. Treat such a query as the boundary grid point, not as extrapolation, so that
+    // evaluating a distribution exactly at its own endpoint is in-support.
     if xi < x_min {
-      return self.extrapolate_left(xi);
+      if ulps_eq!(xi, x_min, max_ulps = 4) {
+        return Ok(self.y[0]);
+      }
+      return self.extrapolate(self.left_extrap, self.y[0], xi, x_min, "below");
     }
 
     if xi > x_max {
-      return self.extrapolate_right(xi);
+      let n = self.grid.n_points();
+      if ulps_eq!(xi, x_max, max_ulps = 4) {
+        return Ok(self.y[n - 1]);
+      }
+      return self.extrapolate(self.right_extrap, self.y[n - 1], xi, x_max, "above");
     }
 
     let idx = self.grid.find_interval_index(xi);
-    self.interpolate_at(xi, idx)
+    Ok(self.interpolate_at(xi, idx))
   }
 
-  /// Interpolate function values at multiple points
+  /// Interpolate function values at multiple points.
   ///
-  /// Uses piecewise linear interpolation within grid bounds and constant extrapolation
-  /// outside bounds.
-  ///
-  /// # Arguments
-  ///
-  /// * `queries` - Query points at which to evaluate the function
-  ///
-  /// # Returns
-  ///
-  /// Array of interpolated or extrapolated function values at each query point
-  pub fn interp_many(&self, queries: &Array1<T>) -> Array1<T>
+  /// Applies [`GridFn::interp`] to each query; a single out-of-support query under an
+  /// `Error` tail fails the whole call.
+  pub fn interp_many(&self, queries: &Array1<T>) -> Result<Array1<T>, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    let values = queries
+      .iter()
+      .map(|&q| self.interp(q))
+      .collect::<Result<Vec<T>, Report>>()?;
+    Ok(Array1::from_vec(values))
+  }
+
+  fn extrapolate(&self, behavior: BoundaryBehavior, boundary_value: T, xi: T, bound: T, side: &str) -> Result<T, Report>
   where
     T: Float,
   {
-    queries.mapv(|q| self.interp(q))
-  }
-
-  fn extrapolate_left(&self, _q: T) -> T
-  where
-    T: Float,
-  {
-    // Use constant extrapolation: return first value
-    // This matches Python scipy.interpolate.interp1d behavior when
-    // the domain is extended with boundary values
-    self.y[0]
-  }
-
-  fn extrapolate_right(&self, _q: T) -> T
-  where
-    T: Float,
-  {
-    // Use constant extrapolation: return last value
-    // This matches Python scipy.interpolate.interp1d behavior when
-    // the domain is extended with boundary values
-    let n = self.grid.n_points();
-    self.y[n - 1]
+    match behavior {
+      BoundaryBehavior::Constant => Ok(boundary_value),
+      BoundaryBehavior::Zero => Ok(T::zero()),
+      BoundaryBehavior::Error => make_error!(
+        "GridFn evaluated at {xi:?}, {side} the support boundary {bound:?}, but no extrapolation policy is set for that side"
+      ),
+    }
   }
 
   fn interpolate_at(&self, q: T, idx: usize) -> T
@@ -358,6 +421,8 @@ impl<T: InterpElem> GridFn<T> {
     Self {
       grid: self.grid,
       y: self.y.mapv(f),
+      left_extrap: self.left_extrap,
+      right_extrap: self.right_extrap,
     }
   }
 
@@ -399,6 +464,9 @@ impl<T: InterpElem> GridFn<T> {
     for i in 0..n / 2 {
       self.y.swap(i, n - 1 - i);
     }
+
+    // Negating the argument reflects the domain, so the left and right tails swap sides.
+    std::mem::swap(&mut self.left_extrap, &mut self.right_extrap);
     Ok(())
   }
 
@@ -416,11 +484,18 @@ impl<T: InterpElem> GridFn<T> {
   /// New GridFn with values interpolated onto the target grid
   pub fn resample(&self, grid: &Grid<T>) -> Result<Self, Report>
   where
-    T: Float,
+    T: Float + UlpsEq,
   {
     let n_points = grid.n_points();
-    let y_new = Array1::from_shape_fn(n_points, |i| self.interp(grid.x_at(i)));
-    Self::from_grid_array(*grid, y_new)
+    let y_new = (0..n_points)
+      .map(|i| self.interp(grid.x_at(i)))
+      .collect::<Result<Vec<T>, Report>>()?;
+    let resampled = Self::from_grid_array(*grid, Array1::from_vec(y_new))?;
+    Ok(
+      resampled
+        .with_left_extrap(self.left_extrap)
+        .with_right_extrap(self.right_extrap),
+    )
   }
 
   /// Resamples function to a new uniform grid with specified start, spacing, and length
@@ -440,7 +515,7 @@ impl<T: InterpElem> GridFn<T> {
   /// New GridFn with uniformly spaced grid
   pub fn resample_start_dx(&self, x_min: T, dx: T, n_points: usize) -> Result<Self, Report>
   where
-    T: Float,
+    T: Float + UlpsEq,
   {
     let grid = Grid::from_start_dx(x_min, dx, n_points)?;
     self.resample(&grid)
