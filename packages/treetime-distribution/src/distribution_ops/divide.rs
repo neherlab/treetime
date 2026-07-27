@@ -8,6 +8,7 @@ use crate::distribution_ops::time_bounds::{
 use crate::policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::{Array1, Zip};
+use treetime_grid::BoundaryBehavior;
 use treetime_utils::make_error;
 
 pub fn distribution_division<Y: YAxisPolicy>(
@@ -75,7 +76,7 @@ fn divide_range_by_function<Y: YAxisPolicy>(
   range: &DistributionRange<f64, Y>,
   divisor: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  match distribution_support_intersection((range.start(), range.end()), (divisor.x_min(), divisor.x_max())) {
+  match division_support_intersection((range.start(), range.end()), divisor) {
     SupportIntersection::Disjoint => Ok(Distribution::empty()),
     SupportIntersection::Point(t) => Ok(Distribution::point(
       t,
@@ -97,7 +98,7 @@ fn divide_function_by_function<Y: YAxisPolicy>(
   dividend: &DistributionFunction<f64, Y>,
   divisor: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  match distribution_support_intersection((dividend.x_min(), dividend.x_max()), (divisor.x_min(), divisor.x_max())) {
+  match division_support_intersection((dividend.x_min(), dividend.x_max()), divisor) {
     SupportIntersection::Disjoint => Ok(Distribution::empty()),
     SupportIntersection::Point(t) => Ok(Distribution::point(
       t,
@@ -115,4 +116,23 @@ fn divide_function_by_function<Y: YAxisPolicy>(
       Ok(Distribution::Function(function))
     },
   }
+}
+
+fn division_support_intersection<Y: YAxisPolicy>(
+  dividend_bounds: (f64, f64),
+  divisor: &DistributionFunction<f64, Y>,
+) -> SupportIntersection {
+  let divisor_bounds = (
+    if divisor.left_extrap() == BoundaryBehavior::Error {
+      divisor.x_min()
+    } else {
+      dividend_bounds.0
+    },
+    if divisor.right_extrap() == BoundaryBehavior::Error {
+      divisor.x_max()
+    } else {
+      dividend_bounds.1
+    },
+  );
+  distribution_support_intersection(dividend_bounds, divisor_bounds)
 }

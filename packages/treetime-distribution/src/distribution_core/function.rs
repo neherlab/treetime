@@ -169,6 +169,14 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.interp_many(xs)
   }
 
+  pub fn left_extrap(&self) -> BoundaryBehavior {
+    self.grid_fn.left_extrap()
+  }
+
+  pub fn right_extrap(&self) -> BoundaryBehavior {
+    self.grid_fn.right_extrap()
+  }
+
   /// Set the left (below `x_min`) out-of-support tail policy.
   ///
   /// Rejects a [`BoundaryBehavior::Zero`] tail when the representation cannot express zero

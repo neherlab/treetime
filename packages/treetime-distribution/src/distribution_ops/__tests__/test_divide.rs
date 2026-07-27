@@ -4,6 +4,7 @@ mod tests {
   use crate::distribution_ops::divide::distribution_division;
   use ndarray::{Array1, array};
   use rstest::rstest;
+  use treetime_grid::BoundaryBehavior;
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   const TINY_NUMBER: f64 = 1e-10;
@@ -173,6 +174,24 @@ mod tests {
 
     let actual = distribution_division(&dividend, &divisor).unwrap();
     let expected = Distribution::function(array![1.5, 2.5, 3.5], array![2.5, 3.5, 4.5]).unwrap();
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_divide_function_by_function_honors_explicit_divisor_tails() {
+    let dividend =
+      Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![10.0, 20.0, 30.0, 40.0, 50.0]).unwrap();
+    let divisor = Distribution::function(array![1.0, 2.0, 3.0], array![2.0, 2.0, 2.0])
+      .unwrap()
+      .with_left_extrap(BoundaryBehavior::Constant)
+      .unwrap()
+      .with_right_extrap(BoundaryBehavior::Constant)
+      .unwrap();
+
+    let actual = distribution_division(&dividend, &divisor).unwrap();
+    // Oracle: kb/decisions/timetree-inference-pass-boundary-tails.md, "Scope and interaction".
+    let expected =
+      Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![5.0, 10.0, 15.0, 20.0, 25.0]).unwrap();
     assert_eq!(expected, actual);
   }
 

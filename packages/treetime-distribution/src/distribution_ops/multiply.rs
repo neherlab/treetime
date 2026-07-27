@@ -126,7 +126,9 @@ fn multiply_range_function<Y: YAxisPolicy>(
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, func.dx())?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
-      let values = func.interp_many(&grid)?.mapv(|value| Y::multiply(range.amplitude(), value));
+      let values = func
+        .interp_many(&grid)?
+        .mapv(|value| Y::multiply(range.amplitude(), value));
       let function = DistributionFunction::from_range_values(bounds, values)?;
       Ok(Distribution::Function(function))
     },
