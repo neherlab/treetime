@@ -12,7 +12,7 @@
 
 - [ ] Unified Distribution class (v0: wraps scipy.interpolate.interp1d)
 - [ ] Delta functions (point masses, v0 `Distribution.delta_function()`)
-- [/] Distribution multiplication (implemented; [kb/issues/M-distribution-product-grid-resolution-diverges-from-v0.md](../issues/M-distribution-product-grid-resolution-diverges-from-v0.md))
+- [x] Distribution multiplication (uniform-grid divergence documented in [kb/decisions/distribution-uniform-product-grid-resolution.md](../decisions/distribution-uniform-product-grid-resolution.md))
 - [/] Distribution division (implemented; [kb/issues/M-distribution-plain-division-fixed-floor.md](../issues/M-distribution-plain-division-fixed-floor.md), [kb/issues/H-distribution-result-api-panics-on-formula.md](../issues/H-distribution-result-api-panics-on-formula.md))
 - [ ] Numerical integration (v0 Simpson's rule, trapezoidal)
 - [ ] FFT transform (v0 `Distribution.fft()`)

@@ -19,5 +19,5 @@ A fix must define a concrete interior grid for nonlinear range weighting without
 
 ## Related issues
 
-- [M-distribution-product-grid-resolution-diverges-from-v0.md](M-distribution-product-grid-resolution-diverges-from-v0.md): grid resolution divergence in distribution products (separate concern, same domain)
+- [kb/decisions/distribution-uniform-product-grid-resolution.md](../decisions/distribution-uniform-product-grid-resolution.md): approved uniform-grid resolution contract for distribution products
 - [M-timetree-backward-pass-plain-space-underflow.md](M-timetree-backward-pass-plain-space-underflow.md): underflow in the same backward pass product path (separate mechanism)

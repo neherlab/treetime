@@ -24,4 +24,4 @@ Occurrence is unverified. It requires wide $T_c$ or large lineage counts, where 
 
 ## Related issues
 
-- [M-distribution-product-grid-resolution-diverges-from-v0.md](M-distribution-product-grid-resolution-diverges-from-v0.md): the same product path resamples onto a uniform grid, a separate accuracy concern.
+- [kb/decisions/distribution-uniform-product-grid-resolution.md](../decisions/distribution-uniform-product-grid-resolution.md): the same product path follows the approved uniform-grid resampling contract.

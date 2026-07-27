@@ -53,15 +53,13 @@ The Range-Function multiplication and division paths and the Function-Function d
 
 **Do not** filter the existing grid points of either input to those falling inside the overlap, then use the closest existing point as the boundary. This snaps the boundary to the nearest grid point and loses the fractional part of the intersection. When a range boundary falls between two grid points of a function, the snapped boundary produces a result that is either too wide (including a region where one factor is zero) or too narrow (excluding a region where both are non-zero).
 
-Instead, compute `overlap_min` and `overlap_max` from the analytical support boundaries, then resample or evaluate both factors at `n_points` uniformly spaced across the exact `[overlap_min, overlap_max]` interval. Range-Function multiplication and division derive `n_points` from the Function spacing. Function-Function division uses the finer input spacing. In both cases, ceiling division followed by endpoint-inclusive uniform spacing ensures the result is no coarser than the relevant input and includes both exact boundaries.
-
-Function-Function multiplication already uses exact analytical endpoints, but its point-count rule remains tracked separately in [kb/issues/M-distribution-product-grid-resolution-diverges-from-v0.md](../issues/M-distribution-product-grid-resolution-diverges-from-v0.md). Formula-Function multiplication also computes exact endpoints.
+Instead, compute `overlap_min` and `overlap_max` from the analytical support boundaries, then resample or evaluate both factors at `n_points` uniformly spaced across the exact `[overlap_min, overlap_max]` interval. Range-Function multiplication and division and Formula-Function multiplication derive `n_points` from the Function spacing. Function-Function multiplication and division use the finer input spacing. Endpoint-inclusive uniform spacing preserves both exact boundaries. [kb/decisions/distribution-uniform-product-grid-resolution.md](../decisions/distribution-uniform-product-grid-resolution.md) records this intentional divergence from v0's union of knots.
 
 For spacing-derived grids, choose `n_points` from the intersection width and the relevant input spacing:
 
 ```
-dx       = min(a.dx, b.dx)  # Function-Function division; use function.dx for Range-Function
-n_points = ceil((overlap_max - overlap_min) / dx) + 1
+dx       = min(a.dx, b.dx)  # Function-Function; use function.dx for Range-Function or Formula-Function
+n_points = clamp(round((overlap_max - overlap_min) / dx) + 1, 2, 1_000_000)
 ```
 
 This support-intersection rule is independent of generic `GridFn` extrapolation. Arithmetic establishes a valid finite domain before calling interpolation; other callers retain the current constant-extrapolation behavior while the broader distribution support policy remains unresolved.
