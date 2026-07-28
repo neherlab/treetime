@@ -16,6 +16,33 @@ pub fn distribution_division<Y: YAxisPolicy>(
   divisor: &Distribution<Y>,
 ) -> Result<Distribution<Y>, Report> {
   match (dividend, divisor) {
+    (Distribution::Formula(_), Distribution::Empty) => {
+      make_error!("Cannot divide Formula by Empty: operation not implemented")
+    },
+    (Distribution::Formula(_), Distribution::Point(_)) => {
+      make_error!("Cannot divide Formula by Point: operation not implemented")
+    },
+    (Distribution::Formula(_), Distribution::Range(_)) => {
+      make_error!("Cannot divide Formula by Range: operation not implemented")
+    },
+    (Distribution::Formula(_), Distribution::Function(_)) => {
+      make_error!("Cannot divide Formula by Function: operation not implemented")
+    },
+    (Distribution::Formula(_), Distribution::Formula(_)) => {
+      make_error!("Cannot divide Formula by Formula: operation not implemented")
+    },
+    (Distribution::Empty, Distribution::Formula(_)) => {
+      make_error!("Cannot divide Empty by Formula: operation not implemented")
+    },
+    (Distribution::Point(_), Distribution::Formula(_)) => {
+      make_error!("Cannot divide Point by Formula: operation not implemented")
+    },
+    (Distribution::Range(_), Distribution::Formula(_)) => {
+      make_error!("Cannot divide Range by Formula: operation not implemented")
+    },
+    (Distribution::Function(_), Distribution::Formula(_)) => {
+      make_error!("Cannot divide Function by Formula: operation not implemented")
+    },
     (Distribution::Empty, _) => {
       Ok(Distribution::Empty) //
     },
@@ -49,9 +76,6 @@ pub fn distribution_division<Y: YAxisPolicy>(
     (Distribution::Function(a), Distribution::Function(b)) => {
       divide_function_by_function::<Y>(a, b) //
     },
-    (Distribution::Formula(_), _) | (_, Distribution::Formula(_)) => {
-      panic!("Division not implemented for Formula distributions")
-    }, //
   }
 }
 

@@ -7,7 +7,33 @@ mod tests {
   use treetime_grid::BoundaryBehavior;
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
+  use self::helpers::{DistributionVariant, distribution};
+
   const TINY_NUMBER: f64 = 1e-10;
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::formula_empty(   DistributionVariant::Formula,  DistributionVariant::Empty,    "Cannot divide Formula by Empty: operation not implemented")]
+  #[case::formula_point(   DistributionVariant::Formula,  DistributionVariant::Point,    "Cannot divide Formula by Point: operation not implemented")]
+  #[case::formula_range(   DistributionVariant::Formula,  DistributionVariant::Range,    "Cannot divide Formula by Range: operation not implemented")]
+  #[case::formula_function(DistributionVariant::Formula,  DistributionVariant::Function, "Cannot divide Formula by Function: operation not implemented")]
+  #[case::formula_formula( DistributionVariant::Formula,  DistributionVariant::Formula,  "Cannot divide Formula by Formula: operation not implemented")]
+  #[case::empty_formula(   DistributionVariant::Empty,    DistributionVariant::Formula,  "Cannot divide Empty by Formula: operation not implemented")]
+  #[case::point_formula(   DistributionVariant::Point,    DistributionVariant::Formula,  "Cannot divide Point by Formula: operation not implemented")]
+  #[case::range_formula(   DistributionVariant::Range,    DistributionVariant::Formula,  "Cannot divide Range by Formula: operation not implemented")]
+  #[case::function_formula(DistributionVariant::Function, DistributionVariant::Formula,  "Cannot divide Function by Formula: operation not implemented")]
+  #[trace]
+  fn test_divide_formula_combinations_return_errors(
+    #[case] dividend: DistributionVariant,
+    #[case] divisor: DistributionVariant,
+    #[case] expected: &str,
+  ) {
+    // Oracle: kb/issues/H-distribution-result-api-panics-on-formula.md.
+    assert_error!(
+      distribution_division(&distribution(dividend), &distribution(divisor)),
+      expected
+    );
+  }
 
   #[test]
   fn test_divide_empty_by_any() {
@@ -204,5 +230,30 @@ mod tests {
     // Oracle: v0 `Distribution.divide()` converts one surviving endpoint knot to a delta.
     let expected = Distribution::point(1.0, 0.6);
     assert_eq!(expected, actual);
+  }
+
+  mod helpers {
+    use crate::DistributionPlain as Distribution;
+    use crate::distribution_core::formula::DistributionFormula;
+    use ndarray::array;
+
+    #[derive(Clone, Copy, Debug)]
+    pub enum DistributionVariant {
+      Empty,
+      Point,
+      Range,
+      Function,
+      Formula,
+    }
+
+    pub fn distribution(variant: DistributionVariant) -> Distribution {
+      match variant {
+        DistributionVariant::Empty => Distribution::empty(),
+        DistributionVariant::Point => Distribution::point(0.0, 1.0),
+        DistributionVariant::Range => Distribution::range((0.0, 1.0), 1.0),
+        DistributionVariant::Function => Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 1.0]).unwrap(),
+        DistributionVariant::Formula => Distribution::Formula(DistributionFormula::new(|_| Ok(1.0), 0.0, 1.0)),
+      }
+    }
   }
 }

@@ -2,6 +2,7 @@ use crate::Distribution;
 use crate::distribution_core::function::DistributionFunction;
 use crate::policy::YAxisPolicy;
 use eyre::Report;
+use treetime_utils::make_error;
 
 pub fn distribution_map<Y: YAxisPolicy, F>(dist: &Distribution<Y>, f: F) -> Result<Distribution<Y>, Report>
 where
@@ -14,6 +15,6 @@ where
     Distribution::Point(point) => Ok(Distribution::point(point.t(), f(point.amplitude()))),
     Distribution::Range(range) => Ok(Distribution::range((range.start(), range.end()), f(range.amplitude()))),
     Distribution::Empty => Ok(Distribution::empty()),
-    Distribution::Formula(_) => panic!("Map not implemented for Formula distributions"),
+    Distribution::Formula(_) => make_error!("Cannot map Formula: operation not implemented"),
   }
 }

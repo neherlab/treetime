@@ -15,6 +15,21 @@ pub fn distribution_convolution<Y: SupportsConvolution>(
   b: &Distribution<Y>,
 ) -> Result<Distribution<Y>, Report> {
   match (a, b) {
+    (Distribution::Formula(_), Distribution::Empty) | (Distribution::Empty, Distribution::Formula(_)) => {
+      make_error!("Cannot convolve Formula with Empty: operation not implemented")
+    },
+    (Distribution::Formula(_), Distribution::Point(_)) | (Distribution::Point(_), Distribution::Formula(_)) => {
+      make_error!("Cannot convolve Formula with Point: operation not implemented")
+    },
+    (Distribution::Formula(_), Distribution::Range(_)) | (Distribution::Range(_), Distribution::Formula(_)) => {
+      make_error!("Cannot convolve Formula with Range: operation not implemented")
+    },
+    (Distribution::Formula(_), Distribution::Function(_)) | (Distribution::Function(_), Distribution::Formula(_)) => {
+      make_error!("Cannot convolve Formula with Function: operation not implemented")
+    },
+    (Distribution::Formula(_), Distribution::Formula(_)) => {
+      make_error!("Cannot convolve Formula with Formula: operation not implemented")
+    },
     (Distribution::Empty, _) | (_, Distribution::Empty) => {
       Ok(Distribution::Empty) //
     },
@@ -35,9 +50,6 @@ pub fn distribution_convolution<Y: SupportsConvolution>(
     },
     (Distribution::Function(a), Distribution::Function(b)) => {
       convolution_function_function::<Y>(a, b) //
-    },
-    (Distribution::Formula(_), _) | (_, Distribution::Formula(_)) => {
-      panic!("Convolution not implemented for Formula distributions") //
     },
   }
 }

@@ -2,6 +2,7 @@ use crate::Distribution;
 use crate::distribution_core::function::DistributionFunction;
 use crate::policy::YAxisPolicy;
 use eyre::Report;
+use treetime_utils::make_error;
 
 /// Multiply a distribution by a scalar value.
 ///
@@ -25,8 +26,6 @@ pub fn distribution_scalar_multiplication<Y: YAxisPolicy>(
       Ok(Distribution::range((r.start(), r.end()), amplitude))
     },
     Distribution::Empty => Ok(Distribution::empty()),
-    Distribution::Formula(_) => {
-      panic!("Scalar multiplication not implemented for Formula distributions")
-    },
+    Distribution::Formula(_) => make_error!("Cannot multiply Formula by scalar: operation not implemented"),
   }
 }

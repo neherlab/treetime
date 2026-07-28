@@ -7,6 +7,31 @@ mod tests {
   use eyre::Report;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use treetime_utils::assert_error;
+
+  use self::helpers::{DistributionVariant, distribution};
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::formula_empty(   DistributionVariant::Formula,  DistributionVariant::Empty,    "Cannot convolve Formula with Empty: operation not implemented")]
+  #[case::formula_point(   DistributionVariant::Formula,  DistributionVariant::Point,    "Cannot convolve Formula with Point: operation not implemented")]
+  #[case::formula_range(   DistributionVariant::Formula,  DistributionVariant::Range,    "Cannot convolve Formula with Range: operation not implemented")]
+  #[case::formula_function(DistributionVariant::Formula,  DistributionVariant::Function, "Cannot convolve Formula with Function: operation not implemented")]
+  #[case::formula_formula( DistributionVariant::Formula,  DistributionVariant::Formula,  "Cannot convolve Formula with Formula: operation not implemented")]
+  #[case::empty_formula(   DistributionVariant::Empty,    DistributionVariant::Formula,  "Cannot convolve Formula with Empty: operation not implemented")]
+  #[case::point_formula(   DistributionVariant::Point,    DistributionVariant::Formula,  "Cannot convolve Formula with Point: operation not implemented")]
+  #[case::range_formula(   DistributionVariant::Range,    DistributionVariant::Formula,  "Cannot convolve Formula with Range: operation not implemented")]
+  #[case::function_formula(DistributionVariant::Function, DistributionVariant::Formula,  "Cannot convolve Formula with Function: operation not implemented")]
+  #[trace]
+  fn test_convolve_formula_combinations_return_errors(
+    #[case] left: DistributionVariant,
+    #[case] right: DistributionVariant,
+    #[case] expected: &str,
+  ) {
+    // Oracle: kb/issues/H-distribution-result-api-panics-on-formula.md.
+    assert_error!(distribution_convolution(&distribution(left), &distribution(right)), expected);
+  }
 
   #[test]
   fn test_convolution_empty() {
@@ -307,5 +332,30 @@ mod tests {
     assert_eq!(n, f.len());
     assert_abs_diff_eq!(dx, f.dx(), epsilon = 1e-15);
     Ok(())
+  }
+
+  mod helpers {
+    use crate::DistributionPlain as Distribution;
+    use crate::distribution_core::formula::DistributionFormula;
+    use ndarray::array;
+
+    #[derive(Clone, Copy, Debug)]
+    pub enum DistributionVariant {
+      Empty,
+      Point,
+      Range,
+      Function,
+      Formula,
+    }
+
+    pub fn distribution(variant: DistributionVariant) -> Distribution {
+      match variant {
+        DistributionVariant::Empty => Distribution::empty(),
+        DistributionVariant::Point => Distribution::point(0.0, 1.0),
+        DistributionVariant::Range => Distribution::range((0.0, 1.0), 1.0),
+        DistributionVariant::Function => Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 1.0]).unwrap(),
+        DistributionVariant::Formula => Distribution::Formula(DistributionFormula::new(|_| Ok(1.0), 0.0, 1.0)),
+      }
+    }
   }
 }
