@@ -98,10 +98,10 @@
 
 - [x] Sequence change count (n_diff)
 - [x] Polytomies resolved count (n_resolved)
-- [x] Sequence likelihood (lh_seq)
-- [x] Positional likelihood (lh_pos)
+- [x] Sequence log-likelihood (`log_lh_seq`)
+- [x] Positional log-likelihood (`log_lh_pos`)
 - [x] Tracelog CSV output (`--tracelog`)
-- [x] Coalescent likelihood in metrics (lh_coal)
+- [x] Coalescent log-likelihood in metrics (`log_lh_coal`)
 
 ## Confidence Intervals
 

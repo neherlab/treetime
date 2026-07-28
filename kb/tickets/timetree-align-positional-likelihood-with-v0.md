@@ -1,8 +1,8 @@
 # Align positional likelihood metric with v0
 
-v1 uses a different formula for the positional likelihood convergence metric than v0. Both metrics track the same quantity (how well inferred times explain branch-length distributions) and trend in the same direction during convergence, but produce different numerical values.
+v1 uses a different formula for the positional log-likelihood convergence metric than v0. Both metrics track the same quantity (how well inferred times explain branch-length distributions) and trend in the same direction during convergence, but produce different numerical values.
 
-- v1: `compute_positional_likelihood()` (`#compute_positional_likelihood`) at
+- v1: `compute_positional_log_lh()` (`#compute_positional_log_lh`) at
   [`packages/treetime/src/timetree/convergence/likelihood.rs#L35-L76`](../../packages/treetime/src/timetree/convergence/likelihood.rs#L35-L76)
 - v0: `timetree_likelihood()` (`#timetree_likelihood`) at
   [`packages/legacy/treetime/treetime/clock_tree.py#L621-L639`](../../packages/legacy/treetime/treetime/clock_tree.py#L621-L639)
