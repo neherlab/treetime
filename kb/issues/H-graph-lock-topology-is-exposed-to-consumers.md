@@ -31,5 +31,4 @@ The abstraction must avoid returning references beyond guard lifetimes and must 
 
 ## Related issues
 
-- [H-graph-traversal-visit-state-is-shared.md](H-graph-traversal-visit-state-is-shared.md)
 - [H-graph-indexed-payload-extraction-exposes-invalid-state.md](H-graph-indexed-payload-extraction-exposes-invalid-state.md)
