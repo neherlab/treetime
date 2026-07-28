@@ -1,6 +1,6 @@
 # Tickets
 
-Immediately actionable items that are waiting to be addressed. Often derived from (and linked to) issues and proposals, but contain decided, more exact implementation details and are ready to be worked on.
+Immediately actionable items derived from and linked to decided issues. Tickets contain exact implementation instructions and require no further research or design decisions.
 
 Distinct from:
 

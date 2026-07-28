@@ -50,7 +50,7 @@ This differs from v0 in two ways:
 1. Tail ownership. v0 owns convolution tails inside `convolve_fft` as slope-based extrapolation; it has no per-pass tail override. v1 instead attaches a per-pass `Constant`/`Zero` policy to each message and does not reconstruct v0's slope-based convolution tails.
 2. Default out-of-support handling. v0 returns effectively zero probability everywhere outside support (a soft value). v1 errors by default and requires an explicit `Zero` or `Constant` opt-in.
 
-The v1 pass tails are motivated by node-time monotonicity: without a `Constant` left tail on the backward message, a parent's inferred time can be truncated too recent, producing negative branch lengths. The `Constant` left tail lets the combined distribution place the parent appropriately older. This is paired with, but distinct from, the child-time monotonicity clamp in the forward pass.
+The v1 pass tails are motivated by node-time monotonicity: without a `Constant` left tail on the backward message, a parent's inferred time can be truncated too recent, producing negative branch lengths. The `Constant` left tail lets the combined distribution place the parent appropriately older. A separate forward-pass projection currently clamps committed internal-node times to their parent; this decision neither specifies nor approves that projection. Its contract remains open in [kb/issues/M-timetree-marginal-node-times-can-violate-topology.md](../issues/M-timetree-marginal-node-times-can-violate-topology.md).
 
 ## Scope and interaction
 

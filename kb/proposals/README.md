@@ -10,5 +10,7 @@ Distinct from:
 - [features](../features/README.md) - feature parity checklist (done/partial/missing)
 - [issues](../issues/README.md) - v1 defects, missing features, unintentional v0 divergences
 - [reports](../reports/README.md) - research reports on algorithms, optimization methods, and implementation analysis
-- [tickets](../tickets/README.md) - actionable implementation instructions derived from issues and proposals
+- [tickets](../tickets/README.md) - actionable implementation instructions derived from decided, implementation-ready issues
 - [v0-errata](../v0-errata/README.md) - v0 defects that v1 correctly avoids
+
+Extract every actionable item from a proposal into a separate issue. Create tickets only from decided issues whose implementation path is clear; proposals with open design axes are not ticket sources.

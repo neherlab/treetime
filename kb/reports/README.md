@@ -10,5 +10,5 @@ Distinct from:
 - [features](../features/README.md) - feature parity checklist (done/partial/missing)
 - [issues](../issues/README.md) - v1 defects, missing features, unintentional v0 divergences
 - [proposals](../proposals/README.md) - undecided design documents with options and tradeoffs
-- [tickets](../tickets/README.md) - actionable implementation instructions derived from issues and proposals
+- [tickets](../tickets/README.md) - actionable implementation instructions derived from decided, implementation-ready issues
 - [v0-errata](../v0-errata/README.md) - v0 defects that v1 correctly avoids

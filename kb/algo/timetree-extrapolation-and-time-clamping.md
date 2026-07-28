@@ -1,6 +1,6 @@
-# Timetree: Distribution Extrapolation and Node-Time Monotonicity
+# Timetree: Distribution Extrapolation and Committed Node Times
 
-This document specifies three related requirements for correct timetree inference: how grid functions should behave outside their support, how intersection boundaries should be computed when combining distributions, and how to enforce the topology constraint that child nodes are younger than their parents.
+This document specifies how grid functions behave outside their support and how intersection boundaries are computed when combining distributions. It also records the current projection of committed internal-node times; the statistical contract for that projection is unresolved.
 
 ---
 
@@ -68,23 +68,22 @@ Multiplication establishes a finite intersection before interpolation and never 
 
 ---
 
-## 3. Child-time monotonicity clamp
+## 3. Committed node-time projection
 
 ### Why message-passing alone is insufficient
 
 After the forward pass refines each internal node's time distribution and extracts the argmax, the result is not guaranteed to satisfy `child_t >= parent_t`. For near-identical sequences the branch-length distribution is broad and carries little temporal information. The backward message from the subtree (driven by dated leaves) can dominate the combined distribution and pull its peak to a time earlier than the parent's inferred time, producing a negative branch length in the output.
 
-The extrapolation fix above reduces how often this happens -- parents are assigned more appropriate (older) times when backward messages are not artificially truncated on the left -- but does not eliminate it. When branch lengths genuinely carry no temporal signal, the subtree dates dominate regardless of extrapolation policy. The two fixes address different failure modes and both are necessary.
+The extrapolation policy above can change where posterior modes occur, but it does not jointly constrain independently selected modes. Current v1 separately projects committed internal-node point estimates after inference; that projection has a distinct, unresolved statistical contract.
 
-### Implementation
+### Current implementation
 
-After extracting the argmax from the combined distribution (`set_likely_time`), apply a monotonicity clamp to every non-root, non-leaf internal node:
+After extracting the mode from the combined distribution, `set_likely_time()` commits the following value for every non-root, non-leaf internal node:
 
 ```
-if child_t < parent_t:
-    child_t = parent_t + epsilon      # epsilon ~ 1e-10
+child_t = max(marginal_mode, parent_t)
 ```
 
-Leaves are excluded because their times come from date constraints. The root is excluded because it has no parent. A small epsilon offset ensures the child is strictly after the parent, avoiding zero-length branches.
+Leaves retain their observed date constraints, and the root has no parent. An inverted internal-node mode is projected to equality with its parent, so the implementation permits zero-duration edges.
 
-This matches Python TreeTime v0 behaviour (`clock_tree.make_time_tree`).
+This differs from v0 marginal inference, which commits independent posterior modes and can produce negative branch lengths. The projection changes the committed point estimate without recomputing the posterior or its summaries. Its desired contract remains undecided in [kb/issues/M-timetree-marginal-node-times-can-violate-topology.md](../issues/M-timetree-marginal-node-times-can-violate-topology.md); this algorithm inventory records current behavior without approving the divergence.

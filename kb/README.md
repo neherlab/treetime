@@ -26,7 +26,7 @@ Shared knowledge base (KB). AI agents and humans collaborate here: documenting p
 | [`issues/`](issues/)       | Concrete problems. Severity-prefixed (H/M/N). The working list agents consult before domain work. PREFER independent issues, but entangled problems may share a file when splitting would lose clarity                                                    |
 | [`proposals/`](proposals/) | Undecided design documents analyzing a problem space with options and tradeoffs. Source material for issues -- every actionable item in a proposal must be extracted into a separate issue so it is not lost when the proposal is no longer actively read |
 | [`reports/`](reports/)     | Research reports on algorithms, optimization methods, and implementation analysis                                                                                                                                                                         |
-| [`tickets/`](tickets/)     | Implementation instructions for a coding agent. One task per file, executable in one session without further research or decisions. Derived from issues and proposals when the implementation path is fully decided                                       |
+| [`tickets/`](tickets/)     | Implementation instructions for a coding agent. One task per file, executable in one session without further research or decisions. Derived from decided, implementation-ready issues                                                                 |
 | [`v0-errata/`](v0-errata/) | Defects in v0 that v1 correctly avoids (2+ evidence sources required)                                                                                                                                                                                     |
 
 ## Structure
@@ -45,7 +45,7 @@ Every work item falls into exactly one category:
 | ------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | Implemented, same behavior      | [`algo/`](algo/), [`features/`](features/)                                    | Feature with equivalent behavior to v0 or design spec                |
 | Implemented, different behavior | [`decisions/`](decisions/)                                                    | Feature with deliberate divergence from v0, or intentionally removed |
-| Not yet done                    | [`issues/`](issues/), [`algo/unimplemented.md`](algo/unimplemented.md)        | Bugs, missing features, stubs, dead flags, behavioral differences    |
+| Not yet done                    | [`issues/`](issues/), [`algo/unimplemented.md`](algo/unimplemented.md)        | Bugs, missing features, stubs, unused flags, behavioral differences  |
 | New in v1                       | [`proposals/`](proposals/) (pre-impl), [`decisions/`](decisions/) (post-impl) | Feature not in v0 or design specs                                    |
 | v0 defective, v1 correct        | [`v0-errata/`](v0-errata/)                                                    | v0 defect that v1 does not reproduce                                 |
 
@@ -63,14 +63,16 @@ Every work item falls into exactly one category:
 
 | Prefix | Severity   | Criteria                                                                        |
 | ------ | ---------- | ------------------------------------------------------------------------------- |
-| `H-`   | High       | Crashes, panics, blocks correct results, or missing standard expected feature   |
-| `M-`   | Medium     | Wrong results under specific conditions, or missing feature affecting workflows |
-| `N-`   | Negligible | Edge cases, niche missing features, weak assertions, cosmetic                   |
+| `H-`   | High       | Crashes, data loss, incorrect scientific results, or blocked required behavior  |
+| `M-`   | Medium     | Incorrect behavior under bounded conditions or a specified capability gap       |
+| `N-`   | Negligible | Documentation, test, maintainability, or presentation defect with no demonstrated runtime effect |
+
+Derive severity from specification language, user requirements, external evidence, or demonstrated impact. If the evidence does not distinguish a severity, do not infer one from assumed usage frequency.
 
 ### Proposal lifecycle
 
-- Proposal created during research session with ecosystem survey, design axes, options, tradeoffs
-- User decides per axis. Decided items become tickets (if immediately implementable) or stay as issues (if further research needed)
+- Proposal records the problem space, design axes, options, and tradeoffs.
+- Extract every actionable item into a separate issue. Create a ticket from a decided, implementation-ready issue; keep open design questions in their issues until the required decisions are approved.
 
 ### Ticket lifecycle
 

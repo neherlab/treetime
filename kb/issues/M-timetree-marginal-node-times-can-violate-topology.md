@@ -1,31 +1,34 @@
-# Marginal timetree node times can violate topology
+# Marginal timetree point estimates use an unapproved topology projection
 
-The marginal forward pass selects the peak of each node's posterior independently. It does not jointly constrain the selected peaks to satisfy `child_time >= parent_time` in calendar coordinates, so an inferred edge can have a negative time length even when each node individually maximizes its marginal posterior.
+Marginal inference computes each node's posterior independently, so the raw posterior modes are not jointly constrained by `child_time >= parent_time` in calendar coordinates. Current v1 then projects the committed point estimate of each non-leaf internal node onto that constraint. The projection prevents negative committed durations between internal nodes but does not make the marginal posteriors jointly consistent.
 
 ## Current and reference behavior
 
-[`set_likely_time()`](../../packages/treetime/src/timetree/inference/forward_pass.rs) assigns each node's `likely_time()` without consulting its parent. Later edge-time assignment derives the duration from the two selected node times.
+After refining a node's marginal distribution, [`set_likely_time()`](../../packages/treetime/src/timetree/inference/forward_pass.rs) commits `max(likely_time, parent_time)` for non-root, non-leaf internal nodes. An inverted mode is therefore stored at exactly the parent's time, permitting a zero-duration edge. Leaves retain their observed dates and are excluded from this projection.
 
-V0 [`ClockTree._ml_t_marginal()`](../../packages/legacy/treetime/treetime/clock_tree.py) explicitly states that marginal reconstruction can produce negative branch lengths, then assigns the independent marginal peak and computes `clock_length` from the parent and child peaks. The parent-plus-epsilon clamp proposed in commit `542ac860c7cfa4bab6764aee1d1b3810a09eb54f` therefore does not match v0 behavior.
+V0 [`ClockTree._ml_t_marginal()`](../../packages/legacy/treetime/treetime/clock_tree.py) commits each independent marginal peak without projection and explicitly notes that marginal reconstruction can produce negative branch lengths. The v1 projection is therefore an intentional-behavior candidate that has not been approved or specified in `kb/decisions/`.
 
-## Why a post-hoc clamp is not neutral
+## Inconsistent derived state
 
-Changing only the stored node time to `parent_time + epsilon` would leave three representations inconsistent:
+The projection changes only the committed node time:
 
-- the node posterior still peaks at the original unconstrained time;
-- confidence intervals and likelihood-derived state still describe that posterior;
-- edge time length and output date would describe the clamped value.
+- the node posterior still peaks at the original unconstrained mode;
+- confidence extraction computes its highest-posterior-density region from that posterior, then expands the interval to include the projected date;
+- positional likelihood evaluates branch distributions at differences between projected node dates;
+- each edge's stored `time_length` remains the mode of its independently inferred branch-length distribution.
 
-The proposed fixed epsilon also has no derivation from the time coordinate, grid spacing, posterior resolution, or data precision.
+These values describe different estimators when projection occurs. Equality with the parent also introduces a zero duration without deriving that value from grid spacing, posterior resolution, or date precision.
 
 ## Decision required
 
 No implementation ticket is ready until the project chooses the desired contract:
 
-- preserve v0 parity and permit/report negative marginal edge lengths;
-- perform constrained inference so node posteriors and selected times satisfy topology together; or
-- approve an output projection and define how posteriors, confidence intervals, likelihoods, and edge state are recomputed or labeled after projection.
+- preserve v0 parity by committing independent marginal modes and handling negative durations explicitly downstream;
+- perform constrained inference so posteriors and selected times satisfy topology together; or
+- approve a point-estimate projection and define how posterior summaries, confidence intervals, likelihoods, and edge state represent projected nodes.
+
+Validation must include an inverted-mode case and dated-leaf boundaries once the contract is decided.
 
 ## Related issues
 
-- [kb/decisions/timetree-inference-pass-boundary-tails.md](../decisions/timetree-inference-pass-boundary-tails.md) - the per-pass tail semantics can change posterior peaks but do not by themselves guarantee topology
+- [kb/decisions/timetree-inference-pass-boundary-tails.md](../decisions/timetree-inference-pass-boundary-tails.md) - per-pass tail semantics can change posterior peaks but do not jointly constrain marginal modes

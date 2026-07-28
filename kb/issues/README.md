@@ -10,7 +10,7 @@ Distinct from:
 - [features](../features/README.md) - feature parity checklist (done/partial/missing)
 - [proposals](../proposals/README.md) - undecided design documents with options and tradeoffs
 - [reports](../reports/README.md) - research reports on algorithms, optimization methods, and implementation analysis
-- [tickets](../tickets/README.md) - actionable implementation instructions derived from issues and proposals
+- [tickets](../tickets/README.md) - actionable implementation instructions derived from decided, implementation-ready issues
 - [v0-errata](../v0-errata/README.md) - v0 defects that v1 correctly avoids
 
 ## Filename convention
@@ -19,11 +19,9 @@ Distinct from:
 
 | Prefix | Severity   | Criteria                                                                        |
 | ------ | ---------- | ------------------------------------------------------------------------------- |
-| `H-`   | High       | Crashes, panics, blocks correct results, or missing standard expected feature   |
-| `M-`   | Medium     | Wrong results under specific conditions, or missing feature affecting workflows |
-| `N-`   | Negligible | Edge cases, niche missing features, weak assertions, cosmetic                   |
+| `H-`   | High       | Crashes, data loss, incorrect scientific results, or blocked required behavior  |
+| `M-`   | Medium     | Incorrect behavior under bounded conditions or a specified capability gap       |
+| `N-`   | Negligible | Documentation, test, maintainability, or presentation defect with no demonstrated runtime effect |
 
 - Domain prefix (`ancestral-`, `clock-`, `timetree-`, etc.) follows the severity letter, grouping related issues within each tier.
-- Severity for missing features: a missing feature that most users expect (e.g., a standard phylogenetic capability) is High. A missing feature that affects specific workflows is Medium. A niche or rarely used missing feature is Negligible.
-
-Issue name in the summary table must match the H1 heading in the linked file exactly.
+- Derive severity from specification language, user requirements, external evidence, or demonstrated impact. If the evidence does not distinguish a severity, do not infer one from assumed usage frequency.

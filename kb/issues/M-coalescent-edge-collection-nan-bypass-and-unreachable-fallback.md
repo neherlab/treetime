@@ -29,4 +29,3 @@ The parent was already successfully retrieved at lines 69-83. The second `get_no
 ## Related issues
 
 - [N-timetree-negative-coalescent-tc.md](N-timetree-negative-coalescent-tc.md): negative Tc accepted without validation (related but distinct -- that issue covers CLI-level acceptance, not model construction deficiencies)
-- [M-timetree-marginal-node-times-can-violate-topology.md](M-timetree-marginal-node-times-can-violate-topology.md): topology violations are the upstream source of some reversed dates that trigger the ordering guard
