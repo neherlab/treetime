@@ -12,7 +12,7 @@ per-edge contributions for the whole-tree likelihood and for $T_c$ optimization.
 - [x] Total pairwise merger rate $\lambda(t)=k(k-1)/(2T_c)$
 - [x] Expected-merger integral $H(t)=\int_t^P \kappa(s)\,ds$
 - [x] Per-edge contribution with actual parent multiplicity (see [decisions/coalescent-total-lh-actual-multiplicity.md](../decisions/coalescent-total-lh-actual-multiplicity.md))
-- [x] Bad branches excluded from edge collection
+- [x] Bad branches excluded from lineage-event and edge collection
 
 ## Time scale $T_c$
 

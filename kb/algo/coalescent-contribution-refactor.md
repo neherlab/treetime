@@ -16,7 +16,7 @@ H(t)=\int_t^P \kappa(s)\,ds,
 \kappa(t)=\frac{\max(0.5,k(t)-1)}{2T_c(t)},
 $$
 
-where $k(t)$ is the lineage count. In code, $H(t)$ is the model's `expected_mergers` field, the expected number of merger events a branch experiences up to $t$, and $\lambda(t)$ is `total_merger_rate`. Tree events are aggregated in ascending calendar order. The oldest tail contains one ancestral lineage; applying event deltas toward the present leaves zero lineages after the newest sample. Calendar right-continuity at merger breakpoints exposes the sampled-tree-side lineage count, equivalent to v0's left-sided evaluation in time-before-present coordinates.
+where $k(t)$ is the lineage count. In code, $H(t)$ is the model's `expected_mergers` field, the expected number of merger events a branch experiences up to $t$, and $\lambda(t)$ is `total_merger_rate`. Tree events are aggregated in ascending calendar order. The oldest tail contains one ancestral lineage. Applying retained event deltas toward the present leaves zero lineages for a clean tree and one lineage per excluded bad-branch subtree after the newest retained sample, matching v0. Calendar right-continuity at merger breakpoints exposes the sampled-tree-side lineage count, equivalent to v0's left-sided evaluation in time-before-present coordinates.
 
 Constants are coordinate-independent. A nonconstant `Distribution` used as $T_c(t)$ is evaluated in decimal calendar years. Coordinate enforcement by a dedicated type remains tracked in [kb/issues/N-coalescent-time-scale-coordinate-not-type-enforced.md](../issues/N-coalescent-time-scale-coordinate-not-type-enforced.md).
 
@@ -45,6 +45,7 @@ The parent's merger-density term is divided among its outgoing edges so their su
 ## Shared implementation
 
 - [`packages/treetime/src/coalescent/coalescent.rs`](../../packages/treetime/src/coalescent/coalescent.rs): `CoalescentModel`, and the node and edge contributions (`leaf`/`internal`/`root`/`edge_contribution`).
+- [`packages/treetime/src/coalescent/events.rs`](../../packages/treetime/src/coalescent/events.rs): v0-compatible event collection, including bad-branch exclusion and the resulting terminal lineage count.
 - [`packages/treetime-distribution/src/distribution_ops/log_cost.rs`](../../packages/treetime-distribution/src/distribution_ops/log_cost.rs): `distribution_apply_neg_log_weight`, the log-space pointwise application of a per-time contribution to a distribution.
 - [`packages/treetime/src/coalescent/lineage_dynamics.rs`](../../packages/treetime/src/coalescent/lineage_dynamics.rs): calendar lineage state.
 - [`packages/treetime/src/coalescent/integration.rs`](../../packages/treetime/src/coalescent/integration.rs): shared scalar rates and the checked cumulative merger integral (`expected_mergers`).
