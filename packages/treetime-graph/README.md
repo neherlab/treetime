@@ -71,6 +71,8 @@ Each traversal method takes a closure receiving `GraphNodeForward` or `GraphNode
 
 Parallel traversal processes each frontier (set of nodes whose dependencies are resolved) concurrently using rayon. Returns `GraphTraversalContinuation` to allow early termination.
 
+Each traversal invocation tracks completed nodes locally by `GraphNodeKey`. Concurrent traversals over one graph remain independent, and early termination or errors require no graph reset.
+
 ## Path finding
 
 - `find_paths` - find all edges on paths between two nodes

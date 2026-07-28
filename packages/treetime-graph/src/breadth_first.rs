@@ -5,6 +5,7 @@ use eyre::Report;
 use itertools::Itertools;
 use parking_lot::{Mutex, RwLock};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use treetime_utils::sync::mutex::extract_parallel_error;
 
@@ -140,6 +141,9 @@ where
 ///
 /// TraversalPolicy here is a generic type, that defines how to access predecessors and successors during a
 /// concrete type of traversal.
+///
+/// Each invocation owns its completed-node set. Traversals over the same graph can therefore overlap without
+/// sharing visit markers or requiring callers to reset graph state.
 pub fn directed_breadth_first_traversal<N, E, D, F, TraversalPolicy>(
   graph: &Graph<N, E, D>,
   sources: &[SafeNode<N>],
@@ -153,6 +157,7 @@ where
   TraversalPolicy: BfsTraversalPolicy<N, E, D>,
 {
   let error: Arc<Mutex<Option<Report>>> = Arc::new(Mutex::new(None));
+  let visited = Mutex::new(BTreeSet::new());
 
   let mut frontier = sources.to_vec();
 
@@ -162,19 +167,23 @@ where
       .map(|node| {
         {
           let node = node.write_arc();
-          if !node.is_visited() {
-            match explorer(&node) {
-              Ok(GraphTraversalContinuation::Continue) => {},
-              Ok(GraphTraversalContinuation::Stop) => return vec![],
-              Err(e) => {
-                let mut guard = error.lock();
-                if guard.is_none() {
-                  *guard = Some(e);
-                }
-                return vec![];
-              },
-            }
-            node.mark_as_visited();
+          let node_key = node.key();
+          if visited.lock().contains(&node_key) {
+            return vec![];
+          }
+
+          match explorer(&node) {
+            Ok(GraphTraversalContinuation::Continue) => {
+              visited.lock().insert(node_key);
+            },
+            Ok(GraphTraversalContinuation::Stop) => return vec![],
+            Err(e) => {
+              let mut guard = error.lock();
+              if guard.is_none() {
+                *guard = Some(e);
+              }
+              return vec![];
+            },
           }
         }
 
@@ -186,9 +195,12 @@ where
     let next_frontier = frontier_candidate_nodes
       .into_par_iter()
       .filter(|candidate_node| {
-        TraversalPolicy::node_predecessors(graph, candidate_node)
+        let predecessor_keys = TraversalPolicy::node_predecessors(graph, candidate_node)
           .iter()
-          .all(|asc| asc.read().is_visited())
+          .map(|predecessor| predecessor.read_arc().key())
+          .collect_vec();
+        let visited = visited.lock();
+        predecessor_keys.iter().all(|key| visited.contains(key))
       })
       .collect();
 

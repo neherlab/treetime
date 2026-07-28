@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Defines how to read and write node name
 pub trait Named {
@@ -75,7 +74,6 @@ pub struct Node<N: GraphNode> {
   data: Arc<RwLock<N>>,
   outbound_edges: Vec<GraphEdgeKey>,
   inbound_edges: Vec<GraphEdgeKey>,
-  is_visited: AtomicBool,
 }
 
 impl<N> PartialEq<Self> for Node<N>
@@ -99,7 +97,6 @@ where
       data: Arc::new(RwLock::new(data)),
       outbound_edges: Vec::new(),
       inbound_edges: Vec::new(),
-      is_visited: AtomicBool::new(false),
     }
   }
 
@@ -196,20 +193,5 @@ where
   #[inline]
   pub fn inbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
     &mut self.inbound_edges
-  }
-
-  #[inline]
-  pub fn is_visited(&self) -> bool {
-    self.is_visited.load(Ordering::Relaxed)
-  }
-
-  #[inline]
-  pub fn mark_as_visited(&self) {
-    self.is_visited.store(true, Ordering::Relaxed);
-  }
-
-  #[inline]
-  pub fn mark_as_not_visited(&self) {
-    self.is_visited.store(false, Ordering::Relaxed);
   }
 }

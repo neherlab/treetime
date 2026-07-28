@@ -32,11 +32,9 @@ where
     //  - there exists a backward path from `finish` to `target`
     let source = graph.get_node(edge.read().source()).unwrap();
     let has_forward_path = exists_forward_path_between(graph, start, &source);
-    graph.reset_nodes();
 
     let target = graph.get_node(edge.read().target()).unwrap();
     let has_backward_path = exists_backward_path_between(graph, finish, &target);
-    graph.reset_nodes();
 
     if has_forward_path && has_backward_path {
       edge_keys.insert(edge.read().key());

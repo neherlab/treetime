@@ -386,18 +386,6 @@ where
     Ok(path)
   }
 
-  /// Returns graph into initial state after traversal
-  pub fn reset_nodes(&self) {
-    // Mark all nodes as not visited. As a part of traversal all nodes, one by one, marked as visited,
-    // to ensure correctness of traversal. Here we reset the "is visited" markers this,
-    // to allow for traversals again.
-    self
-      .nodes
-      .iter()
-      .filter_map(|node| node.as_ref())
-      .for_each(|node| node.write().mark_as_not_visited());
-  }
-
   pub fn is_root(&self, key: GraphNodeKey) -> bool {
     self.roots.contains(&key)
   }

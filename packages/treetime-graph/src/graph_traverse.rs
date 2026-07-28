@@ -239,12 +239,9 @@ where
   {
     let roots = self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec();
 
-    let result = directed_breadth_first_traversal_forward::<N, E, D, _>(self, roots.as_slice(), |node| {
+    directed_breadth_first_traversal_forward::<N, E, D, _>(self, roots.as_slice(), |node| {
       explorer(GraphNodeForward::new(self, node))
-    });
-
-    self.reset_nodes();
-    result
+    })
   }
 
   /// Parallel breadth-first backward traversal (leaves to roots, against edge directions).
@@ -261,12 +258,9 @@ where
       .rev()
       .collect_vec();
 
-    let result = directed_breadth_first_traversal_backward::<N, E, D, _>(self, leaves.as_slice(), |node| {
+    directed_breadth_first_traversal_backward::<N, E, D, _>(self, leaves.as_slice(), |node| {
       explorer(GraphNodeBackward::new(self, node))
-    });
-
-    self.reset_nodes();
-    result
+    })
   }
 
   /// Serial depth-first preorder forward traversal (roots to leaves, parents before children).
