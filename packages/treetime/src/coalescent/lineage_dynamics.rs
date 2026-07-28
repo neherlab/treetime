@@ -15,9 +15,15 @@ use treetime_utils::make_error;
 /// Events must be sorted by increasing time (past to present). Event deltas are
 /// expressed in the time-before-present direction, so they are subtracted while
 /// traversing calendar time toward the present.
-pub fn compute_lineage_count_distribution(events: &[(CalendarTime, i32)]) -> Result<PiecewiseConstantFn, Report> {
+pub fn compute_lineage_count_distribution(
+  events: &[(CalendarTime, i32)],
+  terminal_lineage_count: i32,
+) -> Result<PiecewiseConstantFn, Report> {
   if events.is_empty() {
     return make_error!("Cannot build lineage count from empty events");
+  }
+  if terminal_lineage_count < 0 {
+    return make_error!("Terminal lineage count must be non-negative, got {terminal_lineage_count}");
   }
 
   // Aggregate events at same time
@@ -37,8 +43,10 @@ pub fn compute_lineage_count_distribution(events: &[(CalendarTime, i32)]) -> Res
     })
     .unzip();
 
-  if current_count != 0 {
-    return make_error!("Lineage count must end at zero after the latest sample, got {current_count}");
+  if current_count != terminal_lineage_count {
+    return make_error!(
+      "Lineage count must end at {terminal_lineage_count} after the latest retained sample, got {current_count}"
+    );
   }
 
   let breakpoints = Array1::from_vec(breakpoints);

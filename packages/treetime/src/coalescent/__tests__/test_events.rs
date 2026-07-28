@@ -5,6 +5,7 @@ mod tests {
   use crate::coalescent::time_coordinate::CalendarTime;
   use crate::partition::timetree::GraphTimetree;
   use crate::pretty_assert_ulps_eq;
+  use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -33,9 +34,10 @@ mod tests {
     };
 
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
-    let (present_time, events) = collect_tree_events(&graph)?;
+    let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph)?;
 
     pretty_assert_ulps_eq!(present_time.value(), 2015.0, max_ulps = 4);
+    assert_eq!(terminal_lineage_count, 0);
     assert_eq!(
       events,
       vec![(cal(2000.0), -2), (cal(2005.0), 1), (cal(2010.0), 1), (cal(2015.0), 1)]
@@ -56,9 +58,10 @@ mod tests {
     };
 
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
-    let (present_time, events) = collect_tree_events(&graph)?;
+    let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph)?;
 
     pretty_assert_ulps_eq!(present_time.value(), 2012.0, max_ulps = 4);
+    assert_eq!(terminal_lineage_count, 0);
     assert_eq!(
       events,
       vec![
@@ -85,7 +88,7 @@ mod tests {
     };
 
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
-    let (_present_time, events) = collect_tree_events(&graph)?;
+    let (_present_time, events, _terminal_lineage_count) = collect_tree_events(&graph)?;
 
     for i in 1..events.len() {
       assert!(events[i - 1].0 <= events[i].0);
@@ -128,12 +131,89 @@ mod tests {
     };
 
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
-    let (present_time, events) = collect_tree_events(&graph)?;
+    let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph)?;
 
     pretty_assert_ulps_eq!(present_time.value(), 2010.0, max_ulps = 4);
+    assert_eq!(terminal_lineage_count, 0);
     assert_eq!(
       events,
       vec![(cal(2000.0), -2), (cal(2010.0), 1), (cal(2010.0), 1), (cal(2010.0), 1)]
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collect_tree_events_excludes_bad_leaf() -> Result<(), Report> {
+    const TREE_NWK: &str = "(child1:1.0,child2:1.0,child3:1.0)root:1.0;";
+    let dates = btreemap! {
+      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
+      "child1".to_owned() => Some(DateConstraint::exact(2005.0)),
+      "child2".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "child3".to_owned() => Some(DateConstraint::exact(2015.0)),
+    };
+    let graph = create_graph_with_dates(TREE_NWK, &dates)?;
+    let child3_key = find_node_key_by_name(&graph, "child3").expect("child3 not found");
+    graph
+      .get_node(child3_key)
+      .expect("child3 exists")
+      .read_arc()
+      .payload()
+      .write_arc()
+      .bad_branch = true;
+
+    let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph)?;
+
+    // Oracle: v0 filters `bad_branch` nodes before constructing `tree_events`.
+    // packages/legacy/treetime/treetime/merger_models.py#L102-L105
+    pretty_assert_ulps_eq!(present_time.value(), 2010.0, max_ulps = 4);
+    assert_eq!(terminal_lineage_count, 1);
+    assert_eq!(events, vec![(cal(2000.0), -2), (cal(2005.0), 1), (cal(2010.0), 1)]);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collect_tree_events_excludes_bad_leaf_without_time() -> Result<(), Report> {
+    const TREE_NWK: &str = "(child1:1.0,child2:1.0,child3:1.0,child4:1.0)root:1.0;";
+    let dates = btreemap! {
+      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
+      "child1".to_owned() => Some(DateConstraint::exact(2005.0)),
+      "child2".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "child3".to_owned() => Some(DateConstraint::exact(2015.0)),
+    };
+    let graph = create_graph_with_dates(TREE_NWK, &dates)?;
+
+    let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph)?;
+
+    pretty_assert_ulps_eq!(present_time.value(), 2015.0, max_ulps = 4);
+    assert_eq!(terminal_lineage_count, 1);
+    assert_eq!(
+      events,
+      vec![(cal(2000.0), -3), (cal(2005.0), 1), (cal(2010.0), 1), (cal(2015.0), 1)]
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collect_tree_events_counts_excluded_subtree_once() -> Result<(), Report> {
+    const TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0,leaf4:1.0,leaf5:1.0)root:1.0;";
+    let dates = btreemap! {
+      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
+      "leaf3".to_owned() => Some(DateConstraint::exact(2005.0)),
+      "leaf4".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "leaf5".to_owned() => Some(DateConstraint::exact(2015.0)),
+    };
+    let graph = create_graph_with_dates(TREE_NWK, &dates)?;
+
+    let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph)?;
+
+    pretty_assert_ulps_eq!(present_time.value(), 2015.0, max_ulps = 4);
+    assert_eq!(terminal_lineage_count, 1);
+    assert_eq!(
+      events,
+      vec![(cal(2000.0), -3), (cal(2005.0), 1), (cal(2010.0), 1), (cal(2015.0), 1)]
     );
 
     Ok(())

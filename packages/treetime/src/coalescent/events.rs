@@ -9,9 +9,14 @@ use treetime_utils::make_error;
 
 /// Collects tree merger events as (time, delta_branches) tuples sorted by increasing time.
 ///
-/// Returns present time and events sorted by increasing time (past to present).
+/// Returns present time, events sorted by increasing time (past to present), and
+/// the lineage count remaining after the latest retained sample. Each connected
+/// bad-branch subtree contributes one remaining lineage because all of its node
+/// events are excluded.
 /// delta_branches: +1 for leaf nodes, -(k-1) for internal nodes with k children.
-pub fn collect_tree_events<N, E, D>(graph: &Graph<N, E, D>) -> Result<(CalendarTime, Vec<(CalendarTime, i32)>), Report>
+pub fn collect_tree_events<N, E, D>(
+  graph: &Graph<N, E, D>,
+) -> Result<(CalendarTime, Vec<(CalendarTime, i32)>, i32), Report>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge,
@@ -23,13 +28,18 @@ where
 
   let mut max_time = CalendarTime::new(f64::NEG_INFINITY);
   let mut events = Vec::new();
+  let mut terminal_lineage_count = 0;
 
   graph.iter_breadth_first_forward(|node| {
-    // Every node must contribute an event: the lineage-count function relies on the
-    // per-node deltas summing to exactly 1 (one leaf `+1` per node, one merger `-(k-1)`
-    // per internal node). Silently dropping a node without an inferred time breaks that
-    // invariant and surfaces later as a nonsensical "count must end at zero" failure, so
-    // reject the missing state here and name the offending node instead.
+    let delta = tree_event_delta(node.child_edges.len());
+    if node.payload.bad_branch() {
+      terminal_lineage_count += delta;
+      return Ok(());
+    }
+
+    // Every retained node must contribute an event. Silently dropping a good node
+    // without an inferred time breaks the lineage-count balance and hides incomplete
+    // state after topology changes.
     let Some(t) = node
       .payload
       .time_distribution()
@@ -46,13 +56,7 @@ where
     let t = CalendarTime::new(t);
     max_time = max_time.max(t);
 
-    let num_children = node.child_edges.len();
-
-    if num_children == 0 {
-      events.push((t, 1));
-    } else {
-      events.push((t, -((num_children as i32) - 1)));
-    }
+    events.push((t, delta));
     Ok(())
   })?;
 
@@ -66,5 +70,13 @@ where
 
   events.sort_by_key(|(t, _)| OrderedFloat(t.value()));
 
-  Ok((max_time, events))
+  Ok((max_time, events, terminal_lineage_count))
+}
+
+fn tree_event_delta(num_children: usize) -> i32 {
+  if num_children == 0 {
+    1
+  } else {
+    -((num_children as i32) - 1)
+  }
 }

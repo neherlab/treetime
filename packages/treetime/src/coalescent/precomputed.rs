@@ -33,8 +33,8 @@ impl CoalescentPrecomputed {
     E: GraphEdge,
     D: Sync + Send,
   {
-    let (_, events) = collect_tree_events(graph)?;
-    let lineage_counts = compute_lineage_count_distribution(&events)?;
+    let (_, events, terminal_lineage_count) = collect_tree_events(graph)?;
+    let lineage_counts = compute_lineage_count_distribution(&events, terminal_lineage_count)?;
     Ok(Self { lineage_counts })
   }
 }
