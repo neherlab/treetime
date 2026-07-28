@@ -1,6 +1,6 @@
 use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
 use crate::timetree::convergence::likelihood::{
-  compute_coalescent_likelihood, compute_positional_likelihood, compute_sequence_likelihood,
+  compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
 };
 use crate::timetree::convergence::metrics::ConvergenceMetrics;
 use eyre::Report;
@@ -53,18 +53,21 @@ impl TimetreeOptimizer {
     partitions: &[PartitionTimetreeRef],
     coalescent_tc: Option<&Distribution>,
   ) -> Result<(), Report> {
-    let lh_seq = compute_sequence_likelihood(graph, partitions);
-    let lh_pos = compute_positional_likelihood(graph);
-    let lh_coal = compute_coalescent_likelihood(graph, coalescent_tc);
-    let lh_total = [lh_seq, lh_pos, lh_coal].into_iter().flatten().reduce(|acc, v| acc + v);
+    let log_lh_seq = compute_sequence_log_lh(graph, partitions);
+    let log_lh_pos = compute_positional_log_lh(graph);
+    let log_lh_coal = compute_coalescent_log_lh(graph, coalescent_tc);
+    let log_lh_total = [log_lh_seq, log_lh_pos, log_lh_coal]
+      .into_iter()
+      .flatten()
+      .reduce(|acc, v| acc + v);
 
     let metric = ConvergenceMetrics {
       n_diff,
       n_resolved,
-      lh_seq,
-      lh_pos,
-      lh_coal,
-      lh_total,
+      log_lh_seq,
+      log_lh_pos,
+      log_lh_coal,
+      log_lh_total,
     };
 
     if let Some(writer) = &mut self.tracelog_writer {
@@ -72,12 +75,12 @@ impl TimetreeOptimizer {
     }
 
     info!(
-      "  Iteration {}: n_diff={n_diff}, n_resolved={n_resolved}, lh_seq={:.2}, lh_pos={:.2}, lh_coal={:.2}, total_LH={:.2}{}",
+      "  Iteration {}: n_diff={n_diff}, n_resolved={n_resolved}, log_lh_seq={:.2}, log_lh_pos={:.2}, log_lh_coal={:.2}, log_lh_total={:.2}{}",
       self.i,
-      metric.lh_seq.unwrap_or(f64::NAN),
-      metric.lh_pos.unwrap_or(f64::NAN),
-      metric.lh_coal.unwrap_or(f64::NAN),
-      metric.lh_total.unwrap_or(f64::NAN),
+      metric.log_lh_seq.unwrap_or(f64::NAN),
+      metric.log_lh_pos.unwrap_or(f64::NAN),
+      metric.log_lh_coal.unwrap_or(f64::NAN),
+      metric.log_lh_total.unwrap_or(f64::NAN),
       if metric.has_converged() { " [converged]" } else { "" }
     );
 

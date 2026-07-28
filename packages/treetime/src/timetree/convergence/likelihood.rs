@@ -5,14 +5,14 @@ use log::{debug, warn};
 use treetime_distribution::Distribution;
 
 /// Sum of per-partition root log-likelihoods from marginal reconstruction.
-pub fn compute_sequence_likelihood(graph: &GraphTimetree, partitions: &[PartitionTimetreeRef]) -> Option<f64> {
+pub fn compute_sequence_log_lh(graph: &GraphTimetree, partitions: &[PartitionTimetreeRef]) -> Option<f64> {
   if partitions.is_empty() {
     return None;
   }
   match graph_log_lh(graph, partitions) {
     Ok(lh) => Some(lh),
     Err(e) => {
-      debug!("Sequence likelihood unavailable: {e}");
+      debug!("Sequence log-likelihood unavailable: {e}");
       None
     },
   }
@@ -26,7 +26,7 @@ pub fn compute_sequence_likelihood(graph: &GraphTimetree, partitions: &[Partitio
 /// This is a v1-specific metric. v0's `positional_LH` sums node-level marginal
 /// log-likelihoods from the forward pass. Both metrics trend in the same direction
 /// during convergence but produce different numerical values.
-pub fn compute_positional_likelihood(graph: &GraphTimetree) -> Option<f64> {
+pub fn compute_positional_log_lh(graph: &GraphTimetree) -> Option<f64> {
   let mut total = 0.0;
   let mut count = 0_usize;
 
@@ -73,12 +73,12 @@ pub fn compute_positional_likelihood(graph: &GraphTimetree) -> Option<f64> {
 ///
 /// Sums per-edge costs under the Kingman coalescent for the given Tc distribution.
 /// Returns `None` when no coalescent model is active (coalescent_tc is None).
-pub fn compute_coalescent_likelihood(graph: &GraphTimetree, coalescent_tc: Option<&Distribution>) -> Option<f64> {
+pub fn compute_coalescent_log_lh(graph: &GraphTimetree, coalescent_tc: Option<&Distribution>) -> Option<f64> {
   let tc = coalescent_tc?;
   match compute_coalescent_total_lh(graph, tc) {
     Ok(lh) => Some(lh),
     Err(e) => {
-      warn!("Coalescent likelihood unavailable: {e}");
+      warn!("Coalescent log-likelihood unavailable: {e}");
       None
     },
   }

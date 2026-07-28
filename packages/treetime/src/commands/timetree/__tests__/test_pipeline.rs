@@ -40,12 +40,10 @@ mod tests {
     let lines: Vec<&str> = csv_content.lines().collect();
     assert!(lines.len() >= 2, "Tracelog must have header + at least 1 data row");
 
-    // Verify header contains expected columns
+    // Verify the exact log-likelihood schema.
     let header = lines[0];
-    assert!(header.contains("n_diff"), "Tracelog header missing n_diff column");
-    assert!(header.contains("lh_seq"), "Tracelog header missing lh_seq column");
-    assert!(header.contains("lh_pos"), "Tracelog header missing lh_pos column");
-    assert!(header.contains("lh_total"), "Tracelog header missing lh_total column");
+    let expected_header = "n_diff,n_resolved,log_lh_seq,log_lh_pos,log_lh_coal,log_lh_total";
+    assert_eq!(expected_header, header);
 
     // Verify first data row has non-empty likelihood values
     let data_row = lines[1];
@@ -59,14 +57,27 @@ mod tests {
         .position(|c| *c == name)
         .unwrap_or_else(|| panic!("Column '{name}' not found in header"))
     };
-    let lh_seq: f64 = fields[col("lh_seq")].parse().expect("lh_seq must be a valid number");
-    let lh_pos: f64 = fields[col("lh_pos")].parse().expect("lh_pos must be a valid number");
-    let lh_total: f64 = fields[col("lh_total")]
+    let log_lh_seq: f64 = fields[col("log_lh_seq")]
       .parse()
-      .expect("lh_total must be a valid number");
-    assert!(lh_seq < 0.0, "Sequence log-likelihood must be negative, got {lh_seq}");
-    assert!(lh_pos < 0.0, "Positional log-likelihood must be negative, got {lh_pos}");
-    assert!(lh_total < 0.0, "Total log-likelihood must be negative, got {lh_total}");
+      .expect("log_lh_seq must be a valid number");
+    let log_lh_pos: f64 = fields[col("log_lh_pos")]
+      .parse()
+      .expect("log_lh_pos must be a valid number");
+    let log_lh_total: f64 = fields[col("log_lh_total")]
+      .parse()
+      .expect("log_lh_total must be a valid number");
+    assert!(
+      log_lh_seq < 0.0,
+      "Sequence log-likelihood must be negative, got {log_lh_seq}"
+    );
+    assert!(
+      log_lh_pos < 0.0,
+      "Positional log-likelihood must be negative, got {log_lh_pos}"
+    );
+    assert!(
+      log_lh_total < 0.0,
+      "Total log-likelihood must be negative, got {log_lh_total}"
+    );
 
     // Verify output tree files exist and are non-empty
     let nwk_path = outdir.join("timetree.nwk");
