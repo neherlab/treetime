@@ -42,10 +42,10 @@ impl CoalescentEdgeData {
 
 /// Inferred time of a node for coalescent edge collection.
 ///
-/// Prefers the committed `time()`, which the forward pass sets from the marginal
-/// mode and clamps to respect parent≤child ordering. Falls back to the raw marginal
-/// mode for graphs carrying only date constraints without a full inference pass
-/// (e.g. unit tests), where the modes are already ordered.
+/// Prefers the committed `time()`. A full forward pass projects non-leaf internal
+/// point estimates to their committed parent time, while leaves retain observed dates.
+/// Falls back to the raw marginal mode for graphs without a full inference pass;
+/// `collect_coalescent_edges()` validates ordering for either representation.
 fn node_time(payload: &impl TimetreeNode) -> Option<f64> {
   payload
     .time()

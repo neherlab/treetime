@@ -40,15 +40,11 @@ where
 {
   refine_distribution_from_parent(graph, node_indices, completed_start, completed, slot)?;
 
-  // The forward pass fixes each parent's time before its children. Clamp an internal
-  // child's committed time up to its parent's so the point estimates respect
-  // ancestor-before-descendant ordering, which the coalescent and other consumers
-  // rely on. The marginals themselves already respect the physics (strictly positive
-  // branch lengths keep each parent's support below its descendant tips), but they
-  // integrate out other node times, so their independent modes can invert. Leaves
-  // keep their observed date and are never clamped; the same positive-branch bound
-  // keeps a parent's mode below its descendant tips, so clamping cannot push a child
-  // past its own tips.
+  // Independent marginal modes can invert even though the forward pass commits each
+  // parent before visiting its children. Current behavior projects non-leaf internal
+  // point estimates to the committed parent time; leaves retain their observed dates.
+  // This changes the point estimate without recomputing the posterior. The statistical
+  // contract remains open in kb/issues/M-timetree-marginal-node-times-can-violate-topology.md.
   let parent_time = (!graph.is_leaf(slot.key))
     .then(|| parent_time(node_indices, completed_start, completed, slot))
     .flatten();
