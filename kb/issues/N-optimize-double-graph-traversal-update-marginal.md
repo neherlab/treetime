@@ -1,17 +1,11 @@
-# update_marginal traverses the graph twice for mixed partitions
+# Optimize marginal updates traverse mixed representations separately
 
-`update_marginal()` is generic over `P: PartitionMarginalOps<N, E>`. Dense and sparse partitions are different concrete types, so each call requires a separate slice. Every site that needs both runs two sequential graph traversals:
+Optimize stores dense and sparse marginal partitions in different concrete vectors. Calls to `update_marginal()` therefore traverse the graph once for each representation at several pipeline boundaries [packages/treetime/src/optimize/pipeline.rs#L104-L107](../../packages/treetime/src/optimize/pipeline.rs#L104-L107) [packages/treetime/src/optimize/pipeline.rs#L150-L152](../../packages/treetime/src/optimize/pipeline.rs#L150-L152). Numerical-failure and worsened-likelihood recovery repeat that pair [packages/treetime/src/optimize/run_loop.rs#L108-L113](../../packages/treetime/src/optimize/run_loop.rs#L108-L113) [packages/treetime/src/optimize/run_loop.rs#L133-L137](../../packages/treetime/src/optimize/run_loop.rs#L133-L137).
 
-- `packages/treetime/src/commands/optimize/run.rs:173+180:` initial marginal
-- `packages/treetime/src/commands/optimize/run.rs:221+222:` pre-annotation
-- `packages/treetime/src/commands/optimize/run.rs:314+315:` numerical failure revert
-- `packages/treetime/src/commands/optimize/run.rs:352+353:` worsened revert
-- `packages/treetime/src/commands/optimize/run.rs:395+396:` per-iteration likelihood
+Each call performs a backward and forward graph pass. Source inspection establishes the repeated traversal, but does not establish that traversal and synchronization overhead materially affect complete-command runtime relative to per-partition computation.
 
-Each traversal does a full backward + forward pass over the tree. The per-node partition work dominates, but the graph traversal overhead and synchronization barriers double.
+## Evidence required
 
-A single-traversal version could accept both partition types via a trait object (`dyn PartitionMarginalOps`) or an enum wrapper, processing all partitions at each node in one pass.
-
-## Related tickets
-
-- [kb/tickets/optimize-update-marginal-double-graph-traversal.md](../tickets/optimize-update-marginal-double-graph-traversal.md)
+- Profile mixed-representation runs and separate graph-traversal overhead from marginal kernel work.
+- Preserve dense and sparse numerical results and failure atomicity when evaluating consolidation options.
+- Create an implementation ticket only after measurements identify a meaningful bottleneck and the chosen representation preserves static dispatch or supplies an equally explicit type boundary.
