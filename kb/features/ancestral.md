@@ -8,7 +8,7 @@
 - [x] Composition tracking (character counts)
 - [x] Deterministic root state resolution ([kb/decisions/ancestral-fitch-deterministic-root-state.md](../decisions/ancestral-fitch-deterministic-root-state.md))
 - [x] Forward cleanup drops stored full sequences from non-root internal nodes
-- [/] Parallel site classification ([kb/issues/N-ancestral-fitch-site-classification-parallel-regression.md](../issues/N-ancestral-fitch-site-classification-parallel-regression.md))
+- [/] Fitch preprocessing parallelism (the former serial site index is gone and leaf construction is parallel; site-level work and complete-command scaling remain unverified: [kb/issues/N-ancestral-fitch-site-classification-parallel-scaling-unverified.md](../issues/N-ancestral-fitch-site-classification-parallel-scaling-unverified.md))
 
 ## Marginal Reconstruction (Dense)
 

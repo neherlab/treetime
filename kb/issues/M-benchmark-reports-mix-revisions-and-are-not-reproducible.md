@@ -25,4 +25,4 @@ Use a typed observation schema and the workspace plotting stack so revision dime
 
 ## Related issues
 
-- [N-ancestral-fitch-site-classification-parallel-regression.md](N-ancestral-fitch-site-classification-parallel-regression.md)
+- [N-ancestral-fitch-site-classification-parallel-scaling-unverified.md](N-ancestral-fitch-site-classification-parallel-scaling-unverified.md)

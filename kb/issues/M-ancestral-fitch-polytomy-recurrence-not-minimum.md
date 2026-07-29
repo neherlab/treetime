@@ -18,7 +18,7 @@ Approve O1 as an intentional v0 divergence. Validate it with the explicit $C,C,A
 
 ## Related issues
 
-- [N-ancestral-fitch-site-classification-parallel-regression.md](N-ancestral-fitch-site-classification-parallel-regression.md)
+- [N-ancestral-fitch-site-classification-parallel-scaling-unverified.md](N-ancestral-fitch-site-classification-parallel-scaling-unverified.md)
 - [N-test-coverage-gaps.md](N-test-coverage-gaps.md)
 
 ## Glossary
