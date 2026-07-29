@@ -577,7 +577,6 @@ Steps 1-2 are correctness fixes. Step 3 is a diagnostic improvement. Step 4 chan
 
 ### Issues
 
-- [kb/issues/M-io-sequence-attachment-quadratic.md](../issues/M-io-sequence-attachment-quadratic.md) -- O(n^2) performance, resolved by Axis 1
 - [kb/issues/M-io-sequence-name-matching-unreliable.md](../issues/M-io-sequence-name-matching-unreliable.md) -- source issue for this proposal
 - [kb/issues/M-dates-date-column-requires-exact-header-match.md](../issues/M-dates-date-column-requires-exact-header-match.md) -- date column detection matches exact headers only
 - [kb/issues/M-mugration-column-detection-no-positional-fallback.md](../issues/M-mugration-column-detection-no-positional-fallback.md) -- mugration column detection lacks v0's positional fallback

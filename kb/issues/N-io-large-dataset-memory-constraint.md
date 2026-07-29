@@ -74,7 +74,6 @@ Adds external dependency and I/O overhead.
 
 ## Related issues
 
-- [M-io-sequence-attachment-quadratic.md](M-io-sequence-attachment-quadratic.md) - attachment performance
 - [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md) - related input architecture
 
 ## Related documentation

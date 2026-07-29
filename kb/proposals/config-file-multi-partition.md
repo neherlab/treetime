@@ -78,7 +78,6 @@ The `mugration` command already demonstrates multi-partition operation (discrete
 ### Known issues
 
 - [M-io-sequence-name-matching-unreliable](../issues/M-io-sequence-name-matching-unreliable.md) -- config file could include explicit name mappings
-- [M-io-sequence-attachment-quadratic](../issues/M-io-sequence-attachment-quadratic.md) -- name index would improve attachment performance
 - [N-io-large-dataset-memory-constraint](../issues/N-io-large-dataset-memory-constraint.md) -- config could specify lazy loading options
 - [N-optimize-multi-alignment-input](../issues/N-optimize-multi-alignment-input.md) -- optimize accepts only a single alignment
 - [N-io-multi-segment-genome-input](../issues/N-io-multi-segment-genome-input.md) -- multi-segment genome input not wired

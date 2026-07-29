@@ -20,7 +20,6 @@ Concatenate alignments before running optimize (loses per-partition model contro
 ### Known issues
 
 - [M-io-sequence-name-matching-unreliable](M-io-sequence-name-matching-unreliable.md) -- name matching affects multi-alignment attachment
-- [M-io-sequence-attachment-quadratic](M-io-sequence-attachment-quadratic.md) -- attachment performance with multiple alignments
 - [N-io-multi-segment-genome-input](N-io-multi-segment-genome-input.md) -- related multi-input limitation
 
 ### Proposals

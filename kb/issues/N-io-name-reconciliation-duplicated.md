@@ -22,5 +22,4 @@ The mugration validator is the best implementation (bidirectional batch via `Ind
 ## Related
 
 - [M-io-sequence-name-matching-unreliable.md](M-io-sequence-name-matching-unreliable.md) -- user-facing defects caused by the poor reimplementations
-- [M-io-sequence-attachment-quadratic.md](M-io-sequence-attachment-quadratic.md) -- O(n\*m) performance in the FASTA sites
 - Design: [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md) (Architecture section, Option B: shared function)

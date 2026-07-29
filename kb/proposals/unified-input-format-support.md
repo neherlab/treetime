@@ -2,7 +2,7 @@
 
 ## Motivation
 
-Analysis commands (`ancestral`, `timetree`, `optimize`, `clock`, `mugration`) currently accept only Newick trees and FASTA alignments as separate files. This two-file model requires name-based matching to reconcile sequences with tree nodes, which is unreliable and inefficient (see [kb/issues/M-io-sequence-name-matching-unreliable.md](../issues/M-io-sequence-name-matching-unreliable.md) and [kb/issues/M-io-sequence-attachment-quadratic.md](../issues/M-io-sequence-attachment-quadratic.md)).
+Analysis commands (`ancestral`, `timetree`, `optimize`, `clock`, `mugration`) currently accept only Newick trees and FASTA alignments as separate files. This two-file model requires name-based matching to reconcile sequences with tree nodes, which remains unreliable (see [kb/issues/M-io-sequence-name-matching-unreliable.md](../issues/M-io-sequence-name-matching-unreliable.md)).
 
 The codebase already includes format adapters for unified formats where sequence data is bound to tree structure:
 
@@ -109,7 +109,6 @@ The graph payload question affects internal organization. This proposal affects 
 ## Related issues
 
 - [kb/issues/M-io-sequence-name-matching-unreliable.md](../issues/M-io-sequence-name-matching-unreliable.md)
-- [kb/issues/M-io-sequence-attachment-quadratic.md](../issues/M-io-sequence-attachment-quadratic.md)
 - [kb/issues/N-io-large-dataset-memory-constraint.md](../issues/N-io-large-dataset-memory-constraint.md)
 - [kb/issues/N-io-multi-segment-genome-input.md](../issues/N-io-multi-segment-genome-input.md)
 
