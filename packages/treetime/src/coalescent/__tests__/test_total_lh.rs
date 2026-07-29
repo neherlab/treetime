@@ -16,7 +16,7 @@ mod tests {
     let graph = setup_graph()?;
     let tc = Distribution::constant(1.0);
 
-    let lh = compute_coalescent_total_lh(&graph, &tc)?;
+    let lh = compute_coalescent_total_lh(&graph, &tc)?.value();
 
     assert!(lh.is_finite(), "Total coalescent LH should be finite, got {lh}");
     Ok(())
@@ -29,7 +29,7 @@ mod tests {
     let graph = setup_graph()?;
     let tc = Distribution::constant(1.0);
 
-    let lh = compute_coalescent_total_lh(&graph, &tc)?;
+    let lh = compute_coalescent_total_lh(&graph, &tc)?.value();
 
     assert!(lh < 0.0, "Coalescent log-likelihood should be negative, got {lh}");
     Ok(())
@@ -46,7 +46,7 @@ mod tests {
     let graph = setup_graph()?;
     let tc = Distribution::constant(tc_value);
 
-    let lh = compute_coalescent_total_lh(&graph, &tc)?;
+    let lh = compute_coalescent_total_lh(&graph, &tc)?.value();
 
     assert!(lh.is_finite(), "LH should be finite for Tc={tc_value}");
     Ok(())
@@ -57,8 +57,8 @@ mod tests {
     // The coalescent LH depends on Tc. Different Tc values produce different LH.
     let graph = setup_graph()?;
 
-    let lh_small = compute_coalescent_total_lh(&graph, &Distribution::constant(0.1))?;
-    let lh_large = compute_coalescent_total_lh(&graph, &Distribution::constant(100.0))?;
+    let lh_small = compute_coalescent_total_lh(&graph, &Distribution::constant(0.1))?.value();
+    let lh_large = compute_coalescent_total_lh(&graph, &Distribution::constant(100.0))?.value();
 
     assert!(
       (lh_small - lh_large).abs() > 1e-6,
@@ -74,9 +74,9 @@ mod tests {
     let opt = optimize_tc(&graph)?;
 
     let tc_opt = opt.tc;
-    let lh_opt = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt))?;
-    let lh_low = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt * 0.01))?;
-    let lh_high = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt * 100.0))?;
+    let lh_opt = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt))?.value();
+    let lh_low = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt * 0.01))?.value();
+    let lh_high = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt * 100.0))?.value();
 
     assert!(
       lh_opt >= lh_low,
@@ -97,9 +97,9 @@ mod tests {
     let graph = setup_graph()?;
     let opt = optimize_tc(&graph)?;
 
-    let lh = compute_coalescent_total_lh(&graph, &Distribution::constant(opt.tc))?;
+    let lh = compute_coalescent_total_lh(&graph, &Distribution::constant(opt.tc))?.value();
 
-    pretty_assert_ulps_eq!(opt.likelihood, lh, max_ulps = 10);
+    pretty_assert_ulps_eq!(opt.likelihood.value(), lh, max_ulps = 10);
 
     Ok(())
   }
@@ -116,8 +116,8 @@ mod tests {
       1000.0,
     ));
 
-    let lh_const = compute_coalescent_total_lh(&graph, &tc_const)?;
-    let lh_formula = compute_coalescent_total_lh(&graph, &tc_formula)?;
+    let lh_const = compute_coalescent_total_lh(&graph, &tc_const)?.value();
+    let lh_formula = compute_coalescent_total_lh(&graph, &tc_formula)?.value();
 
     pretty_assert_ulps_eq!(lh_const, lh_formula, max_ulps = 10);
 

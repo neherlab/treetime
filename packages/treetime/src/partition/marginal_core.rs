@@ -15,6 +15,7 @@ use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLe
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
 use treetime_utils::collections::container::get_exactly_one;
@@ -154,7 +155,7 @@ where
       log_dis += &edge.msg_from_child.dis.mapv(f64::ln);
     }
     let (dis, delta_ll) = normalize_from_log(&log_dis);
-    let log_lh = child_edges.iter().map(|edge| edge.msg_from_child.log_lh).sum::<f64>() + delta_ll;
+    let log_lh = child_edges.iter().map(|edge| edge.msg_from_child.log_lh).sum::<LogLh>() + LogLh::new(delta_ll);
     slot.node.profile = DenseSeqDistribution {
       dis: dis.clone(),
       log_lh,
@@ -168,7 +169,7 @@ where
     let delta_ll = normalize_inplace(&mut dis);
     slot.node.profile = DenseSeqDistribution {
       dis,
-      log_lh: msg_to_parent.log_lh + delta_ll,
+      log_lh: msg_to_parent.log_lh + LogLh::new(delta_ll),
     };
   } else {
     let (edge_key, edge) = slot
@@ -269,7 +270,7 @@ where
     let delta_ll = normalize_inplace(&mut dis);
     slot.node.profile = DenseSeqDistribution {
       dis,
-      log_lh: edge.msg_to_parent.log_lh + edge.msg_to_child.log_lh + delta_ll,
+      log_lh: edge.msg_to_parent.log_lh + edge.msg_to_child.log_lh + LogLh::new(delta_ll),
     };
   }
 
@@ -311,7 +312,7 @@ where
     }
 
     let (dis, delta_ll) = normalize_from_log(&log_dis);
-    let log_lh: f64 = node
+    let log_lh: LogLh = node
       .child_keys
       .iter()
       .map(|(_, edge_key)| data.edges[edge_key].msg_from_child.log_lh)
@@ -320,12 +321,12 @@ where
     let node_data = data.nodes.get_mut(&node.key).unwrap();
     node_data.profile = DenseSeqDistribution {
       dis: dis.clone(),
-      log_lh: log_lh + delta_ll,
+      log_lh: log_lh + LogLh::new(delta_ll),
     };
 
     DenseSeqDistribution {
       dis,
-      log_lh: log_lh + delta_ll,
+      log_lh: log_lh + LogLh::new(delta_ll),
     }
   };
 
@@ -337,7 +338,7 @@ where
 
     let node_data = data.nodes.get_mut(&node.key).unwrap();
     node_data.profile.dis = dis;
-    node_data.profile.log_lh = msg_to_parent.log_lh + delta_ll;
+    node_data.profile.log_lh = msg_to_parent.log_lh + LogLh::new(delta_ll);
   } else {
     let edge_key = get_exactly_one(&node.parent_edge_keys).expect("Only nodes with exactly one parent are supported");
     let branch_length = node.parent_edges[0].branch_length().unwrap_or(0.0);
@@ -367,7 +368,7 @@ where
   if !node.is_root {
     let data = partition.marginal_data();
     let mut dis: Option<Array2<f64>> = None;
-    let mut log_lh = 0.0;
+    let mut log_lh = LogLh::ZERO;
     for (_, edge_key) in &node.parent_keys {
       let edge = &data.edges[edge_key];
       let edge_payload = graph.get_edge(*edge_key).unwrap().read_arc().payload().read_arc();
@@ -386,7 +387,7 @@ where
     }
     let mut dis = dis.expect("Non-root node must have at least one parent");
     let delta_ll = normalize_inplace(&mut dis);
-    log_lh += delta_ll;
+    log_lh += LogLh::new(delta_ll);
 
     let data = partition.marginal_data_mut();
     data.nodes.get_mut(&node.key).unwrap().profile = DenseSeqDistribution { dis, log_lh };
@@ -418,11 +419,11 @@ where
 /// `f64::NEG_INFINITY` scale. Matching sentinels refer to the same removed
 /// factor, so they cancel instead of performing the undefined IEEE-754
 /// operation `-inf - (-inf)`.
-pub(crate) fn forward_log_lh_remove_child(node_log_lh: f64, child_log_lh: f64) -> f64 {
-  if node_log_lh == f64::NEG_INFINITY && child_log_lh == f64::NEG_INFINITY {
-    0.0
+pub(crate) fn forward_log_lh_remove_child(node_log_lh: LogLh, child_log_lh: LogLh) -> LogLh {
+  if node_log_lh == LogLh::IMPOSSIBLE && child_log_lh == LogLh::IMPOSSIBLE {
+    LogLh::ZERO
   } else {
-    node_log_lh - child_log_lh
+    LogLh::new(node_log_lh - child_log_lh)
   }
 }
 
@@ -432,11 +433,11 @@ pub(crate) fn forward_log_lh_remove_child(node_log_lh: f64, child_log_lh: f64) -
 /// fallback. It has no finite scale to add to the conditional message. Other
 /// non-finite values still propagate so unexpected NaN and positive infinity
 /// remain observable.
-pub(crate) fn forward_log_lh_add_normalization(log_lh: f64, normalization: f64) -> f64 {
+pub(crate) fn forward_log_lh_add_normalization(log_lh: LogLh, normalization: f64) -> LogLh {
   if normalization == f64::NEG_INFINITY {
     log_lh
   } else {
-    log_lh + normalization
+    log_lh + LogLh::new(normalization)
   }
 }
 

@@ -86,8 +86,8 @@ mod tests {
     assert!(
       result_without.lh_history[0] > result_with.lh_history[0],
       "no_indels=true should produce higher likelihood than with indels: {} vs {}",
-      result_without.lh_history[0],
-      result_with.lh_history[0]
+      result_without.lh_history[0].value(),
+      result_with.lh_history[0].value()
     );
     Ok(())
   }
@@ -111,7 +111,7 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
-    update_marginal(&graph, &sparse_partitions)?;
+    update_marginal(&graph, &sparse_partitions)?.value();
 
     let bl_before: Vec<f64> = graph
       .get_edges()
@@ -175,7 +175,7 @@ mod tests {
       .zip(&result_flag.lh_history)
       .enumerate()
     {
-      assert_abs_diff_eq!(lh_nf, lh_f, epsilon = 1e-10);
+      assert_abs_diff_eq!(lh_nf.value(), lh_f.value(), epsilon = 1e-10);
     }
     Ok(())
   }

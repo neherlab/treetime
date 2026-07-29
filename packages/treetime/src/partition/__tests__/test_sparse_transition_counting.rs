@@ -38,7 +38,7 @@ mod tests {
       ..JC69Params::default()
     })?;
     let partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
-    update_marginal(&graph, std::slice::from_ref(&partition))?;
+    update_marginal(&graph, std::slice::from_ref(&partition))?.value();
     Ok((graph, partition))
   }
 

@@ -21,7 +21,7 @@ pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> 
   let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
   let partitions = [Arc::new(RwLock::new(partition))];
 
-  initialize_marginal(&graph, &partitions, &aln)
+  initialize_marginal(&graph, &partitions, &aln).map(|log_lh| log_lh.value())
 }
 
 pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
@@ -33,5 +33,5 @@ pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) ->
   let partition = fitch.into_marginal_sparse(gtr, &graph)?;
   let partitions = [Arc::new(RwLock::new(partition))];
 
-  update_marginal(&graph, &partitions)
+  update_marginal(&graph, &partitions).map(|log_lh| log_lh.value())
 }

@@ -20,6 +20,7 @@ use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::nwk::NodeCommentProvider;
+use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::argmax_first;
 
 #[derive(Clone, Debug, Serialize)]
@@ -78,7 +79,7 @@ impl PartitionMarginalDiscrete {
         leaf_key,
         DenseNodePartition {
           seq: DenseSeqInfo::default(),
-          profile: DenseSeqDistribution::new(profile, 0.0),
+          profile: DenseSeqDistribution::new(profile, LogLh::ZERO),
         },
       );
     }
@@ -119,13 +120,17 @@ impl HasGtr for PartitionMarginalDiscrete {
 }
 
 impl HasLogLh for PartitionMarginalDiscrete {
-  fn get_log_lh(&self, node_key: GraphNodeKey) -> f64 {
-    self.data.nodes.get(&node_key).map_or(0.0, |node| node.profile.log_lh)
+  fn get_log_lh(&self, node_key: GraphNodeKey) -> LogLh {
+    self
+      .data
+      .nodes
+      .get(&node_key)
+      .map_or(LogLh::ZERO, |node| node.profile.log_lh)
   }
 
   fn reset_node_log_likelihoods(&mut self) {
     for node_data in self.data.nodes.values_mut() {
-      node_data.profile.log_lh = 0.0;
+      node_data.profile.log_lh = LogLh::ZERO;
     }
   }
 }

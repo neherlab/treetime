@@ -41,7 +41,9 @@ pub fn compute_branch_length_distribution(
   let log_lh: Array1<f64> = grid
     .iter()
     .copied()
-    .map(|branch_len| evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, branch_len))
+    .map(|branch_len| {
+      evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, branch_len).map(|log_lh| log_lh.value())
+    })
     .collect::<Result<_, _>>()?;
   let max_log_lh = log_lh.max()?;
 

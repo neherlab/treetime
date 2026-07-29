@@ -50,7 +50,7 @@ mod tests {
       alphabet,
       get_common_length(aln)?,
     )))];
-    initialize_marginal(graph, &partitions, aln)?;
+    initialize_marginal(graph, &partitions, aln)?.value();
     Ok(partitions)
   }
 
@@ -78,7 +78,7 @@ mod tests {
     // Replace GTR but do NOT re-run update_marginal.
     let graph_stale: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions_stale = setup_dense_jc69(&graph_stale, &aln)?;
-    update_marginal(&graph_stale, &partitions_stale)?;
+    update_marginal(&graph_stale, &partitions_stale)?.value();
     partitions_stale[0].write_arc().data.gtr = f81_gtr.clone();
     initial_guess_mixed(&graph_stale, &partitions_stale, true, false)?;
     let bl_stale = get_branch_lengths(&graph_stale);
@@ -87,9 +87,9 @@ mod tests {
     // Replace GTR AND re-run update_marginal.
     let graph_fresh: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions_fresh = setup_dense_jc69(&graph_fresh, &aln)?;
-    update_marginal(&graph_fresh, &partitions_fresh)?;
+    update_marginal(&graph_fresh, &partitions_fresh)?.value();
     partitions_fresh[0].write_arc().data.gtr = f81_gtr;
-    update_marginal(&graph_fresh, &partitions_fresh)?;
+    update_marginal(&graph_fresh, &partitions_fresh)?.value();
     initial_guess_mixed(&graph_fresh, &partitions_fresh, true, false)?;
     let bl_fresh = get_branch_lengths(&graph_fresh);
 
@@ -115,9 +115,9 @@ mod tests {
     // Run full initialization with the fix: JC69, update, replace, update, guess
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions = setup_dense_jc69(&graph, &aln)?;
-    update_marginal(&graph, &partitions)?;
+    update_marginal(&graph, &partitions)?.value();
     partitions[0].write_arc().data.gtr = f81_gtr.clone();
-    update_marginal(&graph, &partitions)?;
+    update_marginal(&graph, &partitions)?.value();
     initial_guess_mixed(&graph, &partitions, true, false)?;
     let bl_first = get_branch_lengths(&graph);
 
@@ -129,9 +129,9 @@ mod tests {
     // produce the same result.
     let graph2: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions2 = setup_dense_jc69(&graph2, &aln)?;
-    update_marginal(&graph2, &partitions2)?;
+    update_marginal(&graph2, &partitions2)?.value();
     partitions2[0].write_arc().data.gtr = f81_gtr;
-    update_marginal(&graph2, &partitions2)?;
+    update_marginal(&graph2, &partitions2)?.value();
     initial_guess_mixed(&graph2, &partitions2, true, false)?;
     let bl_second = get_branch_lengths(&graph2);
 

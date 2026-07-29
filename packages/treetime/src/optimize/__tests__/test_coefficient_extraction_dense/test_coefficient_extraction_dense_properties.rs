@@ -25,7 +25,7 @@ mod tests {
     let metrics = evaluate_dense_contribution(&contribution, 0.0).expect("valid branch length");
 
     // Log-LH should be finite for valid probability distributions
-    assert!(metrics.log_lh.is_finite(), "log-LH should be finite");
+    assert!(metrics.log_lh.value().is_finite(), "log-LH should be finite");
   }
 
   #[test]
@@ -54,7 +54,7 @@ mod tests {
     let mismatch_metrics = evaluate_dense_contribution(&mismatch_contribution, 0.0).expect("valid branch length");
 
     assert!(
-      match_metrics.log_lh > mismatch_metrics.log_lh,
+      match_metrics.log_lh.value() > mismatch_metrics.log_lh.value(),
       "matching states should have higher log-LH at zero branch length"
     );
   }
@@ -77,7 +77,7 @@ mod tests {
     let contribution = get_coefficients(&msg_to_parent, &msg_to_child, &gtr);
 
     let metrics = evaluate_dense_contribution(&contribution, branch_length).expect("valid branch length");
-    assert!(metrics.log_lh.is_finite(), "log-LH should be finite");
+    assert!(metrics.log_lh.value().is_finite(), "log-LH should be finite");
     assert!(metrics.derivative.is_finite(), "derivative should be finite");
     assert!(metrics.second_derivative.is_finite(), "second_derivative should be finite");
   }

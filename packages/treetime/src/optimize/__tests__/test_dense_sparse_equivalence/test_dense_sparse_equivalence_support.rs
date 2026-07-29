@@ -61,7 +61,7 @@ pub mod tests {
       get_common_length(aln)?,
     )))];
 
-    initialize_marginal(graph, &partitions, aln)?;
+    initialize_marginal(graph, &partitions, aln)?.value();
 
     Ok(partitions)
   }
@@ -75,7 +75,7 @@ pub mod tests {
     let partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
-    update_marginal(graph, &partitions)?;
+    update_marginal(graph, &partitions)?.value();
 
     Ok(partitions)
   }

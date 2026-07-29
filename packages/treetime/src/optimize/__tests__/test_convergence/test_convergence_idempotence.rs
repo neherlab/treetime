@@ -34,7 +34,7 @@ mod tests {
     // Run optimization iterations
     for i in 0..20 {
       run_optimize_mixed(&graph, &mixed_partitions, method)?;
-      let lh = update_marginal(&graph, &dense_partitions)? + update_marginal(&graph, &sparse_partitions)?;
+      let lh = update_marginal(&graph, &dense_partitions)?.value() + update_marginal(&graph, &sparse_partitions)?.value();
 
       lh_history.push(lh);
 
@@ -83,8 +83,8 @@ mod tests {
 
     for _ in 0..10 {
       run_optimize_mixed(&graph1, &mixed_partitions1, method)?;
-      update_marginal(&graph1, &dense_partitions1)?;
-      update_marginal(&graph1, &sparse_partitions1)?;
+      update_marginal(&graph1, &dense_partitions1)?.value();
+      update_marginal(&graph1, &sparse_partitions1)?.value();
     }
 
     let lh1 = compute_total_lh(&graph1, &dense_partitions1, &sparse_partitions1)?;
@@ -95,8 +95,8 @@ mod tests {
 
     for _ in 0..10 {
       run_optimize_mixed(&graph2, &mixed_partitions2, method)?;
-      update_marginal(&graph2, &dense_partitions2)?;
-      update_marginal(&graph2, &sparse_partitions2)?;
+      update_marginal(&graph2, &dense_partitions2)?.value();
+      update_marginal(&graph2, &sparse_partitions2)?.value();
     }
 
     let lh2 = compute_total_lh(&graph2, &dense_partitions2, &sparse_partitions2)?;

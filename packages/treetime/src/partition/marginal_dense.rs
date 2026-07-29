@@ -26,7 +26,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
-use treetime_primitives::{Seq, seq};
+use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range::range_contains;
@@ -78,13 +78,17 @@ impl HasGtr for PartitionMarginalDense {
 }
 
 impl HasLogLh for PartitionMarginalDense {
-  fn get_log_lh(&self, node_key: GraphNodeKey) -> f64 {
-    self.data.nodes.get(&node_key).map_or(0.0, |node| node.profile.log_lh)
+  fn get_log_lh(&self, node_key: GraphNodeKey) -> LogLh {
+    self
+      .data
+      .nodes
+      .get(&node_key)
+      .map_or(LogLh::ZERO, |node| node.profile.log_lh)
   }
 
   fn reset_node_log_likelihoods(&mut self) {
     for node_data in self.data.nodes.values_mut() {
-      node_data.profile.log_lh = 0.0;
+      node_data.profile.log_lh = LogLh::ZERO;
     }
   }
 }
@@ -246,7 +250,7 @@ where
     let seq_info = &self.data.nodes[&node_key];
     Ok(DenseSeqDistribution {
       dis: self.alphabet.seq2prof(&seq_info.seq.sequence)?,
-      log_lh: 0.0,
+      log_lh: LogLh::ZERO,
     })
   }
 
@@ -356,7 +360,7 @@ where
   fn indexed_leaf_profile(&self, node: &DenseNodePartition) -> Result<DenseSeqDistribution, Report> {
     Ok(DenseSeqDistribution {
       dis: self.alphabet.seq2prof(&node.seq.sequence)?,
-      log_lh: 0.0,
+      log_lh: LogLh::ZERO,
     })
   }
 

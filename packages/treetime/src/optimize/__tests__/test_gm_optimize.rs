@@ -183,6 +183,7 @@ mod tests {
 
     use crate::payload::ancestral::GraphAncestral;
     use eyre::Report;
+    use itertools::Itertools;
 
     use parking_lot::RwLock;
     use serde::Deserialize;
@@ -192,6 +193,7 @@ mod tests {
     use std::sync::Arc;
     use treetime_io::fasta::read_many_fasta;
     use treetime_io::nwk::nwk_read_file;
+    use treetime_primitives::LogLh;
 
     #[derive(Clone, Deserialize)]
     pub struct GmOptimizeCase {
@@ -253,9 +255,9 @@ mod tests {
         length,
       )))];
 
-      initialize_marginal(&graph, &dense_partitions, &aln)?;
-      update_marginal(&graph, &sparse_partitions)?;
-      update_marginal(&graph, &dense_partitions)?;
+      initialize_marginal(&graph, &dense_partitions, &aln)?.value();
+      update_marginal(&graph, &sparse_partitions)?.value();
+      update_marginal(&graph, &dense_partitions)?.value();
 
       let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
       initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
@@ -276,9 +278,9 @@ mod tests {
       // Append a trailing likelihood measurement so `lh_history.last()` reflects the state
       // AFTER the final in-loop branch-length update (`run_optimize_loop` records the LH
       // at the START of each iteration, before that iteration's update).
-      let mut lh_history = result.lh_history;
-      let sparse_lh = update_marginal(&graph, &sparse_partitions)?;
-      let dense_lh = update_marginal(&graph, &dense_partitions)?;
+      let mut lh_history = result.lh_history.into_iter().map(LogLh::value).collect_vec();
+      let sparse_lh = update_marginal(&graph, &sparse_partitions)?.value();
+      let dense_lh = update_marginal(&graph, &dense_partitions)?.value();
       lh_history.push(sparse_lh + dense_lh);
 
       Ok(OptimizeResult {

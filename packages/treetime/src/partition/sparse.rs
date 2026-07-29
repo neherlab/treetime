@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 use treetime_primitives::AlphabetLike;
-use treetime_primitives::{AsciiChar, Seq, StateSet, seq};
+use treetime_primitives::{AsciiChar, LogLh, Seq, StateSet, seq};
 use treetime_utils::interval::range_union::range_union;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -72,7 +72,7 @@ impl SparseNodePartition {
         variable_indel: BTreeSet::new(),
         fixed: btreemap! {},
         fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
-        log_lh: 0.0,
+        log_lh: LogLh::ZERO,
       },
     })
   }
@@ -185,7 +185,7 @@ pub struct SparseSeqDistribution {
   pub fixed_counts: Composition,
 
   /// Total log likelihood
-  pub log_lh: f64,
+  pub log_lh: LogLh,
 }
 
 impl Default for SparseSeqDistribution {
@@ -195,7 +195,7 @@ impl Default for SparseSeqDistribution {
       variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
-      log_lh: 0.0,
+      log_lh: LogLh::ZERO,
     }
   }
 }

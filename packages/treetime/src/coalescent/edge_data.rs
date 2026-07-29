@@ -6,6 +6,7 @@ use log::warn;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
+use treetime_primitives::LogLh;
 use treetime_utils::make_error;
 
 /// Per-edge inferred calendar dates and the parent node's child count.
@@ -116,10 +117,10 @@ where
 
 /// Sums the shared model's endpoint-derived edge contributions and negates to
 /// return the coalescent log-likelihood (higher is more likely).
-pub fn coalescent_log_likelihood(edges: &[CoalescentEdgeData], model: &CoalescentModel) -> Result<f64, Report> {
+pub fn coalescent_log_likelihood(edges: &[CoalescentEdgeData], model: &CoalescentModel) -> Result<LogLh, Report> {
   let total_contribution = edges
     .iter()
     .map(|edge| model.edge_contribution(edge))
     .sum::<Result<f64, Report>>()?;
-  Ok(-total_contribution)
+  Ok(LogLh::new(-total_contribution))
 }

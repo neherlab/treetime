@@ -18,6 +18,7 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
 
@@ -75,12 +76,12 @@ pub fn run_optimize_loop(
     estimate_indel_rate(graph, mixed_partitions)
   };
 
-  let mut lh_history: Vec<f64> = Vec::with_capacity(max_iter);
+  let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
-  let mut lh_prev = f64::NEG_INFINITY;
-  let mut lh_prev_prev = f64::NEG_INFINITY;
+  let mut lh_prev = LogLh::IMPOSSIBLE;
+  let mut lh_prev_prev = LogLh::IMPOSSIBLE;
 
-  let mut best_lh = f64::NEG_INFINITY;
+  let mut best_lh = LogLh::IMPOSSIBLE;
   let mut best_branch_lengths: Vec<f64> = Vec::new();
 
   for i in 0..max_iter {
@@ -97,14 +98,14 @@ pub fn run_optimize_loop(
     debug!(
       "Iteration {}: likelihood {} (sparse: {}, dense: {}, indel: {}, rate: {})",
       i + 1,
-      float_to_significant_digits(iteration_lh.total_lh, 7),
-      float_to_significant_digits(iteration_lh.sparse_lh, 7),
-      float_to_significant_digits(iteration_lh.dense_lh, 7),
-      float_to_significant_digits(iteration_lh.indel_lh, 7),
+      float_to_significant_digits(iteration_lh.total_lh.value(), 7),
+      float_to_significant_digits(iteration_lh.sparse_lh.value(), 7),
+      float_to_significant_digits(iteration_lh.dense_lh.value(), 7),
+      float_to_significant_digits(iteration_lh.indel_lh.value(), 7),
       float_to_significant_digits(iteration_lh.indel_rate, 7)
     );
 
-    if !iteration_lh.total_lh.is_finite() {
+    if !iteration_lh.total_lh.value().is_finite() {
       if best_branch_lengths.len() == graph.get_edges().len() {
         restore_branch_lengths(graph, &best_branch_lengths);
         update_marginal(graph, sparse_partitions)?;
@@ -146,7 +147,7 @@ pub fn run_optimize_loop(
 
     let topology_changed = prune_and_merge_in_loop(graph, sparse_partitions, dense_partitions, &zero_optimal_edges)?;
     if topology_changed {
-      best_lh = f64::NEG_INFINITY;
+      best_lh = LogLh::IMPOSSIBLE;
     }
 
     lh_prev_prev = lh_prev;
@@ -183,7 +184,7 @@ pub struct OptimizeLoopResult {
   /// branch-length update. Length equals the number of iterations actually executed
   /// (including the final iteration that triggered the convergence break, if any).
   #[allow(dead_code, reason = "read only in test code")]
-  pub lh_history: Vec<f64>,
+  pub lh_history: Vec<LogLh>,
 
   /// Iteration index (0-based) and reason the loop stopped early.
   /// `None` if the loop exhausted `max_iter` without meeting any stopping criterion.
@@ -210,10 +211,10 @@ pub fn collect_optimize_partitions(
 
 #[derive(Clone, Copy, Debug, Default)]
 struct OptimizeIterationLikelihood {
-  sparse_lh: f64,
-  dense_lh: f64,
-  indel_lh: f64,
-  total_lh: f64,
+  sparse_lh: LogLh,
+  dense_lh: LogLh,
+  indel_lh: LogLh,
+  total_lh: LogLh,
   indel_rate: f64,
 }
 
@@ -228,7 +229,7 @@ fn compute_iteration_likelihood(
   let sparse_lh = update_marginal(graph, sparse_partitions)?;
   let dense_lh = update_marginal(graph, dense_partitions)?;
   let indel_lh = if no_indels {
-    0.0
+    LogLh::ZERO
   } else {
     total_indel_log_lh(graph, mixed_partitions, indel_rate)?
   };

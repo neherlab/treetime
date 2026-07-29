@@ -162,7 +162,7 @@ pub fn execute_mugration(
   let partition = Arc::new(RwLock::new(partition));
 
   let log_lh = update_marginal(&graph, std::slice::from_ref(&partition))?;
-  info!("Mugration: initial log likelihood = {log_lh:.4}");
+  info!("Mugration: initial log likelihood = {:.4}", log_lh.value());
 
   let log_lh = refine_gtr_iterative(
     &graph,

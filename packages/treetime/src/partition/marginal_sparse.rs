@@ -23,7 +23,7 @@ use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::reroot::{EdgeMergeInfo, RerootChanges};
 use treetime_io::fasta::FastaRecord;
-use treetime_primitives::{AlphabetLike, Seq, seq};
+use treetime_primitives::{AlphabetLike, LogLh, Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
@@ -117,13 +117,16 @@ pub(crate) fn reconstruct_map_seq_sampled(
 }
 
 impl HasLogLh for PartitionMarginalSparse {
-  fn get_log_lh(&self, node_key: GraphNodeKey) -> f64 {
-    self.nodes.get(&node_key).map_or(0.0, |node| node.profile.log_lh)
+  fn get_log_lh(&self, node_key: GraphNodeKey) -> LogLh {
+    self
+      .nodes
+      .get(&node_key)
+      .map_or(LogLh::ZERO, |node| node.profile.log_lh)
   }
 
   fn reset_node_log_likelihoods(&mut self) {
     for node_data in self.nodes.values_mut() {
-      node_data.profile.log_lh = 0.0;
+      node_data.profile.log_lh = LogLh::ZERO;
     }
   }
 }

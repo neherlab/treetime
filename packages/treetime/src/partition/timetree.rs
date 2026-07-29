@@ -20,7 +20,7 @@ use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::reroot::RerootChanges;
 use treetime_io::fasta::FastaRecord;
-use treetime_primitives::Seq;
+use treetime_primitives::{LogLh, Seq};
 
 pub type GraphTimetree<D = ()> = Graph<NodeTimetree, EdgeTimetree, D>;
 pub type PartitionTimetreeRef = Arc<RwLock<PartitionTimetree>>;
@@ -56,7 +56,7 @@ impl HasGtr for PartitionTimetree {
 }
 
 impl HasLogLh for PartitionTimetree {
-  fn get_log_lh(&self, node_key: GraphNodeKey) -> f64 {
+  fn get_log_lh(&self, node_key: GraphNodeKey) -> LogLh {
     match self {
       Self::Dense(partition) => partition.get_log_lh(node_key),
       Self::Sparse(partition) => partition.get_log_lh(node_key),

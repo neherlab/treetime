@@ -108,7 +108,7 @@ pub mod tests {
       get_common_length(&aln)?,
     )))];
 
-    let log_lh = initialize_marginal(&graph, &partitions, &aln)?;
+    let log_lh = initialize_marginal(&graph, &partitions, &aln)?.value();
     Ok(log_lh)
   }
 }

@@ -43,7 +43,7 @@ NNGTACGTAC
       length,
     )));
 
-    initialize_marginal(&graph, std::slice::from_ref(&partition), &aln)?;
+    initialize_marginal(&graph, std::slice::from_ref(&partition), &aln)?.value();
     Ok((graph, partition))
   }
 
@@ -68,7 +68,7 @@ NNGTACGTAC
     let partition = Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ));
-    update_marginal(&graph, std::slice::from_ref(&partition))?;
+    update_marginal(&graph, std::slice::from_ref(&partition))?.value();
     Ok((graph, partition))
   }
 
@@ -170,7 +170,7 @@ ACGTACGTAC
       length,
     )));
 
-    initialize_marginal(&graph, std::slice::from_ref(&partition), &aln)?;
+    initialize_marginal(&graph, std::slice::from_ref(&partition), &aln)?.value();
     Ok((graph, partition))
   }
 
@@ -236,7 +236,7 @@ ACGTACGTAC
     let partition = Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ));
-    update_marginal(&graph, std::slice::from_ref(&partition))?;
+    update_marginal(&graph, std::slice::from_ref(&partition))?.value();
     Ok((graph, partition))
   }
 

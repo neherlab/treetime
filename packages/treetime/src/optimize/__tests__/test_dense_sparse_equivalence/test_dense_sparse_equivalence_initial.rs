@@ -19,12 +19,12 @@ mod tests {
     // Initialize dense
     let graph_dense: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let dense_partitions = setup_dense_only(&graph_dense, &aln)?;
-    let log_lh_dense = update_marginal(&graph_dense, &dense_partitions)?;
+    let log_lh_dense = update_marginal(&graph_dense, &dense_partitions)?.value();
 
     // Initialize sparse
     let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let sparse_partitions = setup_sparse_only(&graph_sparse, &aln)?;
-    let log_lh_sparse = update_marginal(&graph_sparse, &sparse_partitions)?;
+    let log_lh_sparse = update_marginal(&graph_sparse, &sparse_partitions)?.value();
 
     // Initial log-LH should be equivalent (before any optimization)
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 100);
@@ -52,12 +52,12 @@ mod tests {
     // Initialize dense
     let graph_dense: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let dense_partitions = setup_dense_only(&graph_dense, &aln)?;
-    let log_lh_dense = update_marginal(&graph_dense, &dense_partitions)?;
+    let log_lh_dense = update_marginal(&graph_dense, &dense_partitions)?.value();
 
     // Initialize sparse
     let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let sparse_partitions = setup_sparse_only(&graph_sparse, &aln)?;
-    let log_lh_sparse = update_marginal(&graph_sparse, &sparse_partitions)?;
+    let log_lh_sparse = update_marginal(&graph_sparse, &sparse_partitions)?.value();
 
     // Initial log-LH should be equivalent
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, max_ulps = 100);

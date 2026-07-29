@@ -76,7 +76,7 @@ mod tests {
     ))));
 
     let partitions: PartitionTimetreeAllVec = vec![dense_partition];
-    initialize_marginal(&graph, &partitions, &aln)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
     initialize_node_divergences(&graph)?;
 
     let clock_model = estimate_clock_model_with_reroot(

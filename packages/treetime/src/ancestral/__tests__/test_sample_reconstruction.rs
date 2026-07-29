@@ -102,7 +102,7 @@ mod tests {
         fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
       ))];
 
-      update_marginal(&graph, &partitions)?;
+      update_marginal(&graph, &partitions)?.value();
 
       let mut rng = StdRng::seed_from_u64(seed);
       let mut out = BTreeMap::new();

@@ -25,7 +25,7 @@ mod tests {
 
     // Log-LH should differ at different branch lengths
     assert!(
-      (metrics_short.log_lh - metrics_long.log_lh).abs() > 1e-6,
+      (metrics_short.log_lh.value() - metrics_long.log_lh.value()).abs() > 1e-6,
       "log-LH should differ at different branch lengths"
     );
   }

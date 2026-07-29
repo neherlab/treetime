@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use treetime_primitives::LogLh;
 
 /// Tracks convergence metrics across timetree optimization iterations.
 ///
@@ -13,13 +14,13 @@ pub struct ConvergenceMetrics {
   /// Number of polytomies resolved in this iteration
   pub n_resolved: usize,
   /// Sequence log-likelihood (log-probability of sequences given the tree and substitution model)
-  pub log_lh_seq: Option<f64>,
+  pub log_lh_seq: Option<LogLh>,
   /// Positional log-likelihood (log-probability of node positions on the time axis)
-  pub log_lh_pos: Option<f64>,
+  pub log_lh_pos: Option<LogLh>,
   /// Coalescent log-likelihood (population genetic log-prior on node times)
-  pub log_lh_coal: Option<f64>,
+  pub log_lh_coal: Option<LogLh>,
   /// Total log-likelihood (sum of available components; absent components are excluded)
-  pub log_lh_total: Option<f64>,
+  pub log_lh_total: Option<LogLh>,
 }
 
 impl ConvergenceMetrics {

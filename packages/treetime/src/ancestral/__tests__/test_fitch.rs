@@ -1132,7 +1132,7 @@ mod tests {
 
     // Run initial marginal pass before reroot
     let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![Arc::new(RwLock::new(sparse))];
-    update_marginal(&graph, &partitions)?;
+    update_marginal(&graph, &partitions)?.value();
 
     // Reroot on AB->A
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
@@ -1162,7 +1162,7 @@ mod tests {
     partitions[0].write_arc().apply_reroot(&changes)?;
 
     // Run marginal pass after reroot
-    update_marginal(&graph, &partitions)?;
+    update_marginal(&graph, &partitions)?.value();
 
     let partition = partitions[0].read_arc();
     let root_edge_totals: Vec<(_, usize)> = graph

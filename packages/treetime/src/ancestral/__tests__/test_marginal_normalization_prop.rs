@@ -46,9 +46,9 @@ mod tests {
   /// Returns a proptest-compatible `TestCaseError` on failure to support shrinking.
   fn assert_sparse_profile_normalized(profile: &SparseSeqDistribution) -> Result<(), TestCaseError> {
     prop_assert!(
-      profile.log_lh.is_finite(),
+      profile.log_lh.value().is_finite(),
       "Profile log_lh non-finite: {}",
-      profile.log_lh
+      profile.log_lh.value()
     );
 
     for (pos, var_pos) in &profile.variable {

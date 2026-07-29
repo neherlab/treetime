@@ -36,7 +36,7 @@ mod tests {
       "precondition: second_derivative at branch_length=0.1 must be negative for Newton to run, got {}",
       metrics.second_derivative
     );
-    let initial_lh = metrics.log_lh;
+    let initial_lh = metrics.log_lh.value();
 
     let mut new_branch_length =
       (branch_length - clamp(metrics.derivative / metrics.second_derivative, -1.0, branch_length)).max(min_bl);
@@ -72,9 +72,9 @@ mod tests {
     let final_metrics =
       evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length).expect("valid branch length");
     assert!(
-      final_metrics.log_lh >= initial_lh - 1e-10,
+      final_metrics.log_lh.value() >= initial_lh - 1e-10,
       "Newton degraded log_lh from {initial_lh} to {final}",
-      final = final_metrics.log_lh,
+      final = final_metrics.log_lh.value(),
     );
   }
 

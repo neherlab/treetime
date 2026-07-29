@@ -51,7 +51,7 @@ mod tests {
   #[trace]
   fn test_gm_total_lh_binary(#[case] tc: f64, #[case] expected: f64) -> Result<(), Report> {
     let graph = setup_graph()?;
-    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc))?;
+    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc))?.value();
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-8);
     Ok(())
   }
@@ -68,7 +68,7 @@ mod tests {
   #[trace]
   fn test_gm_total_lh_polytomy(#[case] tc: f64, #[case] expected: f64) -> Result<(), Report> {
     let graph = setup_polytomy_graph()?;
-    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc))?;
+    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc))?.value();
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-8);
     Ok(())
   }

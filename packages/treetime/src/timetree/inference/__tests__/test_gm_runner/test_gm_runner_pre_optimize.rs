@@ -57,7 +57,7 @@ mod tests {
     )));
 
     let partitions: PartitionTimetreeAllVec = vec![sparse_partition];
-    initialize_marginal(&graph, &partitions, &aln)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
 
     let before = extract_branch_lengths(&graph);
 
@@ -109,7 +109,7 @@ mod tests {
     )));
 
     let partitions: PartitionTimetreeAllVec = vec![sparse_partition];
-    initialize_marginal(&graph, &partitions, &aln)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
     initialize_node_divergences(&graph)?;
 
     // Pre-optimization step (matching v0 flow)

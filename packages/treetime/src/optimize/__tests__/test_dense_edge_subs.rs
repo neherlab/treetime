@@ -21,6 +21,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::LogLh;
 
   /// Regression test: uniform outgroup message must not create false substitutions.
   ///
@@ -56,17 +57,17 @@ mod tests {
         nodes: btreemap! {
           parent_key => DenseNodePartition {
             seq: DenseSeqInfo::default(),
-            profile: DenseSeqDistribution::new(parent_posterior, 0.0),
+            profile: DenseSeqDistribution::new(parent_posterior, LogLh::ZERO),
           },
           child_key => DenseNodePartition {
             seq: DenseSeqInfo::default(),
-            profile: DenseSeqDistribution::new(child_posterior, 0.0),
+            profile: DenseSeqDistribution::new(child_posterior, LogLh::ZERO),
           },
         },
         edges: btreemap! {
           edge_key => DenseEdgePartition {
-            msg_to_parent: DenseSeqDistribution::new(msg_to_parent, 0.0),
-            msg_to_child: DenseSeqDistribution::new(msg_to_child, 0.0),
+            msg_to_parent: DenseSeqDistribution::new(msg_to_parent, LogLh::ZERO),
+            msg_to_child: DenseSeqDistribution::new(msg_to_child, LogLh::ZERO),
             ..Default::default()
           },
         },
@@ -117,17 +118,17 @@ mod tests {
         nodes: btreemap! {
           parent_key => DenseNodePartition {
             seq: DenseSeqInfo::default(),
-            profile: DenseSeqDistribution::new(parent_posterior, 0.0),
+            profile: DenseSeqDistribution::new(parent_posterior, LogLh::ZERO),
           },
           child_key => DenseNodePartition {
             seq: DenseSeqInfo::default(),
-            profile: DenseSeqDistribution::new(child_posterior, 0.0),
+            profile: DenseSeqDistribution::new(child_posterior, LogLh::ZERO),
           },
         },
         edges: btreemap! {
           edge_key => DenseEdgePartition {
-            msg_to_parent: DenseSeqDistribution::new(msg_to_parent, 0.0),
-            msg_to_child: DenseSeqDistribution::new(msg_to_child, 0.0),
+            msg_to_parent: DenseSeqDistribution::new(msg_to_parent, LogLh::ZERO),
+            msg_to_child: DenseSeqDistribution::new(msg_to_child, LogLh::ZERO),
             ..Default::default()
           },
         },
@@ -169,8 +170,8 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &partitions, &aln)?;
-    update_marginal(&graph, &partitions)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
+    update_marginal(&graph, &partitions)?.value();
 
     let partition = partitions[0].read_arc();
 
@@ -249,11 +250,11 @@ mod tests {
         nodes: btreemap! {
           parent_key => DenseNodePartition {
             seq: DenseSeqInfo::default(),
-            profile: DenseSeqDistribution::new(parent_posterior, 0.0),
+            profile: DenseSeqDistribution::new(parent_posterior, LogLh::ZERO),
           },
           child_key => DenseNodePartition {
             seq: DenseSeqInfo { gaps: vec![(1, 3)], non_char: vec![(1, 3)], ..Default::default() },
-            profile: DenseSeqDistribution::new(child_posterior, 0.0),
+            profile: DenseSeqDistribution::new(child_posterior, LogLh::ZERO),
           },
         },
         edges: btreemap! {
@@ -293,8 +294,8 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &partitions, &aln)?;
-    update_marginal(&graph, &partitions)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
+    update_marginal(&graph, &partitions)?.value();
 
     let partition = partitions[0].read_arc();
     for edge_ref in graph.get_edges() {

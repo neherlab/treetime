@@ -67,12 +67,9 @@ pub(super) fn grid_search_inner(
     .try_fold(
       None,
       |best, branch_length| -> Result<Option<(f64, OrderedFloat<f64>)>, Report> {
-        let log_lh = OrderedFloat(evaluate_with_indels_log_lh_only(
-          contributions,
-          indel_count,
-          indel_rate,
-          branch_length,
-        )?);
+        let log_lh = OrderedFloat(
+          evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, branch_length)?.value(),
+        );
         Ok(match best {
           Some((_, best_log_lh)) if best_log_lh >= log_lh => best,
           _ => Some((branch_length, log_lh)),

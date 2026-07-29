@@ -4,13 +4,14 @@ use eyre::Report;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
+use treetime_primitives::LogLh;
 
 /// Result of Tc optimization.
 pub struct OptimizeTcResult {
   /// Optimized coalescence time scale.
   pub tc: f64,
   /// Total coalescent likelihood at optimized Tc.
-  pub likelihood: f64,
+  pub likelihood: LogLh,
 }
 
 /// Computes the constant coalescence time scale Tc that maximizes the coalescent

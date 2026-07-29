@@ -40,7 +40,7 @@ mod tests {
     // (transition matrix allows state changes)
     let metrics = evaluate_dense_contribution(&contribution, 0.1).expect("valid branch length");
     assert!(
-      metrics.log_lh.is_finite(),
+      metrics.log_lh.value().is_finite(),
       "At t>0, disjoint support should have finite log-lh"
     );
     assert!(metrics.derivative.is_finite(), "At t>0, derivative should be finite");
@@ -138,7 +138,7 @@ mod tests {
         };
         let multi_metrics = evaluate_sparse_contribution(&multi, branch_length).expect("valid branch length");
 
-        prop_assert_abs_diff_eq!(multi_metrics.log_lh, multiplicity * single_metrics.log_lh, epsilon = 1e-9);
+        prop_assert_abs_diff_eq!(multi_metrics.log_lh.value(), multiplicity * single_metrics.log_lh.value(), epsilon = 1e-9);
         prop_assert_abs_diff_eq!(multi_metrics.derivative, multiplicity * single_metrics.derivative, epsilon = 1e-9);
         prop_assert_abs_diff_eq!(multi_metrics.second_derivative, multiplicity * single_metrics.second_derivative, epsilon = 1e-9);
       }
@@ -171,7 +171,7 @@ mod tests {
         };
         let sparse_metrics = evaluate_sparse_contribution(&sparse_contrib, branch_length).expect("valid branch length");
 
-        prop_assert_abs_diff_eq!(dense_metrics.log_lh, sparse_metrics.log_lh, epsilon = 1e-8);
+        prop_assert_abs_diff_eq!(dense_metrics.log_lh.value(), sparse_metrics.log_lh.value(), epsilon = 1e-8);
         prop_assert_abs_diff_eq!(dense_metrics.derivative, sparse_metrics.derivative, epsilon = 1e-8);
         prop_assert_abs_diff_eq!(dense_metrics.second_derivative, sparse_metrics.second_derivative, epsilon = 1e-8);
       }
@@ -206,7 +206,7 @@ mod tests {
         let contrib_combined = get_coefficients(&make_dense_seq_dis(parents), &make_dense_seq_dis(children), &gtr);
         let metrics_combined = evaluate_dense_contribution(&contrib_combined, branch_length).expect("valid branch length");
 
-        prop_assert_abs_diff_eq!(metrics_combined.log_lh, metrics_a.log_lh + metrics_b.log_lh, epsilon = 1e-9);
+        prop_assert_abs_diff_eq!(metrics_combined.log_lh.value(), metrics_a.log_lh.value() + metrics_b.log_lh.value(), epsilon = 1e-9);
         prop_assert_abs_diff_eq!(metrics_combined.derivative, metrics_a.derivative + metrics_b.derivative, epsilon = 1e-9);
         prop_assert_abs_diff_eq!(metrics_combined.second_derivative, metrics_a.second_derivative + metrics_b.second_derivative, epsilon = 1e-9);
       }
@@ -227,8 +227,8 @@ mod tests {
         let metrics = evaluate_dense_contribution(&contribution, branch_length).expect("valid branch length");
 
         let h = f64::max(branch_length * 1e-4, 1e-5);
-        let lh_plus = evaluate_dense_contribution(&contribution, branch_length + h).expect("valid branch length").log_lh;
-        let lh_minus = evaluate_dense_contribution(&contribution, branch_length - h).expect("valid branch length").log_lh;
+        let lh_plus = evaluate_dense_contribution(&contribution, branch_length + h).expect("valid branch length").log_lh.value();
+        let lh_minus = evaluate_dense_contribution(&contribution, branch_length - h).expect("valid branch length").log_lh.value();
         let numerical_derivative = (lh_plus - lh_minus) / (2.0 * h);
 
         prop_assert_relative_eq!(metrics.derivative, numerical_derivative, max_relative = 1e-4);

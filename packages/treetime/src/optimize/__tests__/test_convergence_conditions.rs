@@ -154,9 +154,13 @@ mod tests {
         assert!(iter >= 2, "Worsened should not fire before iteration 2, got {iter}");
         // The best LH should be the maximum in the history (the worsened condition
         // restores branch lengths from the best iteration).
-        let best_lh = result.lh_history.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        let best_lh = result
+          .lh_history
+          .iter()
+          .map(|log_lh| log_lh.value())
+          .fold(f64::NEG_INFINITY, f64::max);
         // The iteration that triggered worsened must have a lower LH than the best.
-        let trigger_lh = result.lh_history[iter];
+        let trigger_lh = result.lh_history[iter].value();
         assert!(
           trigger_lh < best_lh,
           "Trigger LH ({trigger_lh:.6}) should be less than best LH ({best_lh:.6})"

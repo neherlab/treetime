@@ -7,6 +7,7 @@ use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
+use treetime_primitives::LogLh;
 
 /// Computes the total coalescent log-likelihood of the tree under the given Tc.
 ///
@@ -21,7 +22,7 @@ use treetime_graph::node::GraphNode;
 ///
 /// Accepts any `Distribution` for Tc (constant, skyline, or formula-based).
 /// Nonconstant distributions are evaluated in decimal calendar years.
-pub fn compute_coalescent_total_lh<N, E, D>(graph: &Graph<N, E, D>, tc_dist: &Distribution) -> Result<f64, Report>
+pub fn compute_coalescent_total_lh<N, E, D>(graph: &Graph<N, E, D>, tc_dist: &Distribution) -> Result<LogLh, Report>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge,

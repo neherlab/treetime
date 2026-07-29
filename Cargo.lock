@@ -4767,6 +4767,7 @@ dependencies = [
 name = "treetime-primitives"
 version = "1.0.0"
 dependencies = [
+ "approx",
  "auto_ops",
  "ctor 0.5.0",
  "eyre",

@@ -79,8 +79,8 @@ mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(get_gtr_by_name(model)?, graph)?,
     ))];
-    initialize_marginal(graph, &dense_partitions, &aln)?;
-    update_marginal(graph, &sparse_partitions)?;
+    initialize_marginal(graph, &dense_partitions, &aln)?.value();
+    update_marginal(graph, &sparse_partitions)?.value();
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
     initial_guess_mixed(graph, &mixed_partitions, false, false)?;
@@ -277,10 +277,18 @@ mod tests {
   #[test]
   fn test_dispatch_zero_boundary_reconcile_positive_candidate_finds_positive_mode() {
     let contributions = [make_dinh_matsen_k80_contribution()];
-    let lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0).expect("valid branch length");
-    let lh_near_peak = evaluate_mixed_log_lh_only(&contributions, 0.2).expect("valid branch length");
-    let lh_at_dip = evaluate_mixed_log_lh_only(&contributions, 1.0).expect("valid branch length");
-    let lh_recovery = evaluate_mixed_log_lh_only(&contributions, 5.0).expect("valid branch length");
+    let lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0)
+      .expect("valid branch length")
+      .value();
+    let lh_near_peak = evaluate_mixed_log_lh_only(&contributions, 0.2)
+      .expect("valid branch length")
+      .value();
+    let lh_at_dip = evaluate_mixed_log_lh_only(&contributions, 1.0)
+      .expect("valid branch length")
+      .value();
+    let lh_recovery = evaluate_mixed_log_lh_only(&contributions, 5.0)
+      .expect("valid branch length")
+      .value();
 
     assert!(
       lh_near_peak > lh_zero,
@@ -302,7 +310,9 @@ mod tests {
     // $t \approx 0.2$ is better than both the dip and zero. The helper
     // must delegate to `grid_search_inner` and return the local max.
     let candidate = 1.0;
-    let lh_candidate = evaluate_mixed_log_lh_only(&contributions, candidate).expect("valid branch length");
+    let lh_candidate = evaluate_mixed_log_lh_only(&contributions, candidate)
+      .expect("valid branch length")
+      .value();
     assert!(
       lh_candidate < lh_zero,
       "precondition: candidate log_lh({candidate})={lh_candidate} must be worse than log_lh(0)={lh_zero}"
@@ -319,7 +329,9 @@ mod tests {
       result > 0.0,
       "reconcile_zero_boundary must return a positive mode, not zero, got {result}"
     );
-    let lh_result = evaluate_mixed_log_lh_only(&contributions, result).expect("valid branch length");
+    let lh_result = evaluate_mixed_log_lh_only(&contributions, result)
+      .expect("valid branch length")
+      .value();
     assert!(
       lh_result > lh_zero,
       "reconciled result must beat zero: log_lh(result)={lh_result} vs log_lh(0)={lh_zero}"
@@ -608,8 +620,12 @@ mod tests {
   #[test]
   fn test_dispatch_zero_boundary_reconcile_exact_zero_finds_positive_mode() {
     let contributions = [make_dinh_matsen_k80_contribution()];
-    let lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0).expect("valid branch length");
-    let lh_near_peak = evaluate_mixed_log_lh_only(&contributions, 0.2).expect("valid branch length");
+    let lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0)
+      .expect("valid branch length")
+      .value();
+    let lh_near_peak = evaluate_mixed_log_lh_only(&contributions, 0.2)
+      .expect("valid branch length")
+      .value();
     assert!(
       lh_near_peak > lh_zero,
       "precondition: log_lh(0.2)={lh_near_peak} > log_lh(0)={lh_zero}"
@@ -630,7 +646,9 @@ mod tests {
       result > 0.0,
       "reconcile_zero_boundary must reject exact-zero and return a positive mode on a multi-modal surface, got {result}"
     );
-    let lh_result = evaluate_mixed_log_lh_only(&contributions, result).expect("valid branch length");
+    let lh_result = evaluate_mixed_log_lh_only(&contributions, result)
+      .expect("valid branch length")
+      .value();
     assert!(
       lh_result > lh_zero,
       "reconciled result must beat zero: log_lh(result)={lh_result} vs log_lh(0)={lh_zero}"

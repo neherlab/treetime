@@ -33,7 +33,7 @@ mod tests {
 
     // Verify via evaluate function
     let metrics = evaluate_dense_contribution(&contribution, 0.0).expect("valid branch length");
-    pretty_assert_ulps_eq!(metrics.log_lh, 0.25_f64.ln(), max_ulps = 100);
+    pretty_assert_ulps_eq!(metrics.log_lh.value(), 0.25_f64.ln(), max_ulps = 100);
   }
 
   #[test]
@@ -83,7 +83,10 @@ mod tests {
 
     // At branch_length=0, likelihood should be high (states match)
     let metrics = evaluate_dense_contribution(&contribution, 0.0).expect("valid branch length");
-    assert!(metrics.log_lh > -1.0, "log-LH should be high for matching states");
+    assert!(
+      metrics.log_lh.value() > -1.0,
+      "log-LH should be high for matching states"
+    );
   }
 
   #[test]
@@ -101,7 +104,7 @@ mod tests {
     // At branch_length=0, likelihood should be zero (mismatch with no time for substitution)
     let metrics = evaluate_dense_contribution(&contribution, 0.0).expect("valid branch length");
     assert!(
-      metrics.log_lh < -10.0 || metrics.log_lh == f64::NEG_INFINITY,
+      metrics.log_lh.value() < -10.0 || metrics.log_lh.value() == f64::NEG_INFINITY,
       "log-LH should be very low for mismatched states at zero branch length"
     );
   }

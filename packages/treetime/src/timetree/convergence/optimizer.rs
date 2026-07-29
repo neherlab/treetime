@@ -77,10 +77,10 @@ impl TimetreeOptimizer {
     info!(
       "  Iteration {}: n_diff={n_diff}, n_resolved={n_resolved}, log_lh_seq={:.2}, log_lh_pos={:.2}, log_lh_coal={:.2}, log_lh_total={:.2}{}",
       self.i,
-      metric.log_lh_seq.unwrap_or(f64::NAN),
-      metric.log_lh_pos.unwrap_or(f64::NAN),
-      metric.log_lh_coal.unwrap_or(f64::NAN),
-      metric.log_lh_total.unwrap_or(f64::NAN),
+      metric.log_lh_seq.map_or(f64::NAN, |log_lh| log_lh.value()),
+      metric.log_lh_pos.map_or(f64::NAN, |log_lh| log_lh.value()),
+      metric.log_lh_coal.map_or(f64::NAN, |log_lh| log_lh.value()),
+      metric.log_lh_total.map_or(f64::NAN, |log_lh| log_lh.value()),
       if metric.has_converged() { " [converged]" } else { "" }
     );
 

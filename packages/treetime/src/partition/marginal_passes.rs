@@ -15,7 +15,7 @@ use std::collections::BTreeSet;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
-use treetime_primitives::AsciiChar;
+use treetime_primitives::{AsciiChar, LogLh};
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::interval::range::range_contains;
 
@@ -214,7 +214,7 @@ fn compute_msg_to_child(
     }
   }
 
-  let mut delta_ll = 0.0;
+  let mut delta_ll = LogLh::ZERO;
   for (pos, parent_state) in parent_states {
     let divisor = child_dis
       .variable
@@ -246,7 +246,7 @@ fn compute_msg_to_child(
     delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);
     seq_dis.fixed.insert(*state, dis);
   }
-  seq_dis.log_lh = forward_log_lh_add_normalization(seq_dis.log_lh, delta_ll);
+  seq_dis.log_lh += delta_ll;
   Ok(seq_dis)
 }
 
@@ -321,7 +321,7 @@ where
       variable,
       variable_indel: BTreeSet::new(),
       fixed,
-      log_lh: 0.0,
+      log_lh: LogLh::ZERO,
     }
   } else {
     let mut variable_pos = btreemap! {};

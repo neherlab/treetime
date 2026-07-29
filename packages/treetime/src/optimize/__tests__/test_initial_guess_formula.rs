@@ -171,7 +171,7 @@ mod tests {
     let partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
-    update_marginal(graph, &partitions)?;
+    update_marginal(graph, &partitions)?.value();
 
     Ok(partitions)
   }
@@ -188,7 +188,7 @@ mod tests {
       get_common_length(aln)?,
     )))];
 
-    initialize_marginal(graph, &partitions, aln)?;
+    initialize_marginal(graph, &partitions, aln)?.value();
 
     Ok(partitions)
   }
@@ -243,7 +243,7 @@ mod tests {
           .expect("valid branch length");
         Ok((
           child_name,
-          (metrics.log_lh, metrics.derivative, metrics.second_derivative),
+          (metrics.log_lh.value(), metrics.derivative, metrics.second_derivative),
         ))
       })
       .collect()

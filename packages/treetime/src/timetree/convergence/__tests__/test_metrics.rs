@@ -4,6 +4,7 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
+  use treetime_primitives::LogLh;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
 
   #[test]
@@ -11,10 +12,10 @@ mod tests {
     let metrics = ConvergenceMetrics {
       n_diff: 2,
       n_resolved: 1,
-      log_lh_seq: Some(-10.0),
-      log_lh_pos: Some(-20.0),
-      log_lh_coal: Some(-30.0),
-      log_lh_total: Some(-60.0),
+      log_lh_seq: Some(LogLh::new(-10.0)),
+      log_lh_pos: Some(LogLh::new(-20.0)),
+      log_lh_coal: Some(LogLh::new(-30.0)),
+      log_lh_total: Some(LogLh::new(-60.0)),
     };
     let expected = indoc! {r#"{
       "n_diff": 2,

@@ -22,6 +22,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::LogLh;
   use treetime_utils::{o, pretty_assert_ulps_eq};
 
   #[test]
@@ -34,7 +35,9 @@ mod tests {
     // Oracle: graph_log_lh() contract in packages/treetime/src/partition/traits.rs.
     let expected = -5.5;
 
-    let actual = compute_sequence_log_lh(&graph, &partitions).expect("sequence log-likelihood must be available");
+    let actual = compute_sequence_log_lh(&graph, &partitions)
+      .expect("sequence log-likelihood must be available")
+      .value();
 
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 10);
     Ok(())
@@ -56,7 +59,9 @@ mod tests {
     // Oracle: one edge with probability 0.25 contributes ln(0.25).
     let expected = 0.25_f64.ln();
 
-    let actual = compute_positional_log_lh(&graph).expect("positional log-likelihood must be available");
+    let actual = compute_positional_log_lh(&graph)
+      .expect("positional log-likelihood must be available")
+      .value();
 
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 10);
     Ok(())
@@ -77,9 +82,11 @@ mod tests {
     let graph = helpers::coalescent_graph()?;
     let tc = Distribution::constant(1.0);
     // Oracle: compute_coalescent_total_lh() is the coalescent model's whole-tree log-likelihood.
-    let expected = compute_coalescent_total_lh(&graph, &tc)?;
+    let expected = compute_coalescent_total_lh(&graph, &tc)?.value();
 
-    let actual = compute_coalescent_log_lh(&graph, Some(&tc)).expect("coalescent log-likelihood must be available");
+    let actual = compute_coalescent_log_lh(&graph, Some(&tc))
+      .expect("coalescent log-likelihood must be available")
+      .value();
 
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 10);
     Ok(())
@@ -110,7 +117,8 @@ mod tests {
       .first()
       .expect("one convergence metric must be recorded")
       .log_lh_total
-      .expect("total log-likelihood must be available");
+      .expect("total log-likelihood must be available")
+      .value();
 
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 10);
     Ok(())
@@ -132,7 +140,7 @@ mod tests {
         root_key,
         DenseNodePartition {
           seq: DenseSeqInfo::default(),
-          profile: DenseSeqDistribution::new(array![[1.0, 0.0, 0.0, 0.0]], log_lh),
+          profile: DenseSeqDistribution::new(array![[1.0, 0.0, 0.0, 0.0]], LogLh::new(log_lh)),
         },
       );
       Ok(Arc::new(RwLock::new(PartitionTimetree::Dense(partition))))

@@ -28,8 +28,8 @@ mod tests {
     let gtr = jc69(JC69Params::default())?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
     let partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![Arc::new(RwLock::new(partition))];
-    initialize_marginal(&graph, &partitions, &aln)?;
-    update_marginal(&graph, &partitions)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
+    update_marginal(&graph, &partitions)?.value();
     let mixed: Vec<Arc<RwLock<dyn PartitionOptimizeOps>>> = partitions
       .into_iter()
       .map(|p| -> Arc<RwLock<dyn PartitionOptimizeOps>> { p })

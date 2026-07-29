@@ -53,8 +53,8 @@ mod tests {
     let fixed_metrics = evaluate_sparse_contribution(&fixed_contribution, branch_length).expect("valid branch length");
 
     // Total log-LH equals sum of individual contributions
-    let expected_log_lh = variable_metrics.log_lh + fixed_metrics.log_lh;
-    pretty_assert_ulps_eq!(metrics.log_lh, expected_log_lh, max_ulps = 100);
+    let expected_log_lh = variable_metrics.log_lh.value() + fixed_metrics.log_lh.value();
+    pretty_assert_ulps_eq!(metrics.log_lh.value(), expected_log_lh, max_ulps = 100);
 
     // Total derivative equals sum of individual derivatives
     let expected_derivative = variable_metrics.derivative + fixed_metrics.derivative;
@@ -88,12 +88,12 @@ mod tests {
     // variable: 1.0 * ln(0.4) ≈ -0.916
     // fixed: 1000.0 * ln(1.0) = 0.0
     // Total ≈ -0.916, but fixed sites with high LH reduce total magnitude
-    assert!(metrics.log_lh.is_finite());
+    assert!(metrics.log_lh.value().is_finite());
     // The fixed site with sum ~1.0 contributes 0 to log-LH per multiplicity
     // The variable site with sum ~0.4 contributes negative value
     let fixed_coeff_sum: f64 = 0.9 + 0.03 + 0.03 + 0.04;
     let variable_coeff_sum: f64 = 0.1 + 0.1 + 0.1 + 0.1;
     let expected = 1.0 * variable_coeff_sum.ln() + 1000.0 * fixed_coeff_sum.ln();
-    pretty_assert_ulps_eq!(metrics.log_lh, expected, max_ulps = 100);
+    pretty_assert_ulps_eq!(metrics.log_lh.value(), expected, max_ulps = 100);
   }
 }

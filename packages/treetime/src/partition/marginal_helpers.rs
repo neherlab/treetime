@@ -7,7 +7,7 @@ use maplit::btreemap;
 use ndarray::{Array1, Array2};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::zip;
-use treetime_primitives::AsciiChar;
+use treetime_primitives::{AsciiChar, LogLh};
 use treetime_utils::array::ndarray::is_max_above;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
 use treetime_utils::interval::range::range_contains;
@@ -62,7 +62,7 @@ pub fn combine_messages(
     }
 
     let (dis, log_norm) = softmax_with_log_norm(log_vec.view());
-    seq_dis.log_lh += log_norm;
+    seq_dis.log_lh += LogLh::new(log_norm);
     if let Some(count) = fixed_counts.get_mut(&state) {
       *count -= 1.0;
     }
@@ -81,7 +81,7 @@ pub fn combine_messages(
     }
 
     let (dis, log_norm) = softmax_with_log_norm(log_vec.view());
-    seq_dis.log_lh += fixed_counts[&state] * log_norm;
+    seq_dis.log_lh += LogLh::new(fixed_counts[&state] * log_norm);
     seq_dis.fixed.insert(state, dis);
   }
   Ok(seq_dis)
@@ -228,7 +228,7 @@ mod tests {
       variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
-      log_lh: 0.0,
+      log_lh: LogLh::ZERO,
     };
 
     let result = propagate_raw_per_site(&gtr, t, false, &seq_dis, None);
@@ -284,7 +284,7 @@ mod tests {
       variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
-      log_lh: 0.0,
+      log_lh: LogLh::ZERO,
     };
 
     let result = propagate_raw_per_site(&gtr, t, true, &seq_dis, None);

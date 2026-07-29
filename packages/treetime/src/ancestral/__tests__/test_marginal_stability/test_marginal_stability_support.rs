@@ -24,9 +24,9 @@ pub mod tests {
   /// Assert that a dense marginal profile is numerically stable.
   pub fn assert_dense_profile_stable(profile: &DenseSeqDistribution, max_ulps: u32) {
     assert!(
-      profile.log_lh.is_finite(),
+      profile.log_lh.value().is_finite(),
       "Profile log_lh is not finite: {}",
-      profile.log_lh
+      profile.log_lh.value()
     );
     pretty_assert_array_finite!(profile.dis);
     pretty_assert_array_nonneg!(profile.dis, epsilon = 1e-15);
@@ -38,9 +38,9 @@ pub mod tests {
   /// Assert that a sparse marginal profile is numerically stable.
   pub fn assert_sparse_profile_stable(profile: &SparseSeqDistribution, max_ulps: u32) {
     assert!(
-      profile.log_lh.is_finite(),
+      profile.log_lh.value().is_finite(),
       "Profile log_lh is not finite: {}",
-      profile.log_lh
+      profile.log_lh.value()
     );
 
     for var_pos in profile.variable.values() {
@@ -73,7 +73,7 @@ pub mod tests {
       get_common_length(&aln)?,
     )))];
 
-    let log_lh = initialize_marginal(&graph, &partitions, &aln)?;
+    let log_lh = initialize_marginal(&graph, &partitions, &aln)?.value();
     Ok((log_lh, partitions))
   }
 
@@ -89,7 +89,7 @@ pub mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
     let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?))];
-    let log_lh = update_marginal(&graph, &partitions)?;
+    let log_lh = update_marginal(&graph, &partitions)?.value();
     Ok((log_lh, partitions))
   }
 }

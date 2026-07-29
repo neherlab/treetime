@@ -130,8 +130,8 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
-    let sparse_lh = update_marginal(&graph, &sparse_partitions)?;
-    let dense_lh = update_marginal(&graph, &dense_partitions)?;
+    let sparse_lh = update_marginal(&graph, &sparse_partitions)?.value();
+    let dense_lh = update_marginal(&graph, &dense_partitions)?.value();
     let indel_lh = manual_total_indel_log_lh(&graph, &sparse_partitions);
     let expected_total_lh = sparse_lh + dense_lh + indel_lh;
 
@@ -148,7 +148,7 @@ mod tests {
     )?;
 
     assert_eq!(result.lh_history.len(), 1);
-    assert_abs_diff_eq!(result.lh_history[0], expected_total_lh, epsilon = 1e-10);
+    assert_abs_diff_eq!(result.lh_history[0].value(), expected_total_lh, epsilon = 1e-10);
     Ok(())
   }
 
@@ -231,7 +231,7 @@ mod tests {
       false,
     )?;
 
-    for (i, &lh) in result.lh_history.iter().enumerate() {
+    for (i, lh) in result.lh_history.iter().map(|log_lh| log_lh.value()).enumerate() {
       assert!(lh.is_finite(), "Iteration {i}: log-likelihood must be finite, got {lh}");
     }
     Ok(())
@@ -258,8 +258,8 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
-    let initial_sparse_lh = update_marginal(&graph, &sparse_partitions)?;
-    let initial_dense_lh = update_marginal(&graph, &dense_partitions)?;
+    let initial_sparse_lh = update_marginal(&graph, &sparse_partitions)?.value();
+    let initial_dense_lh = update_marginal(&graph, &dense_partitions)?.value();
     let initial_lh = initial_sparse_lh + initial_dense_lh + manual_total_indel_log_lh(&graph, &sparse_partitions);
 
     run_optimize_loop(
@@ -274,8 +274,8 @@ mod tests {
       false,
     )?;
 
-    let final_sparse_lh = update_marginal(&graph, &sparse_partitions)?;
-    let final_dense_lh = update_marginal(&graph, &dense_partitions)?;
+    let final_sparse_lh = update_marginal(&graph, &sparse_partitions)?.value();
+    let final_dense_lh = update_marginal(&graph, &dense_partitions)?.value();
     let final_lh = final_sparse_lh + final_dense_lh + manual_total_indel_log_lh(&graph, &sparse_partitions);
 
     assert!(

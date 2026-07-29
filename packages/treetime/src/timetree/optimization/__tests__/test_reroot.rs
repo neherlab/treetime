@@ -28,7 +28,7 @@ mod tests {
   use treetime_graph::reroot::RerootChanges;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::{AsciiChar, Seq, seq};
+  use treetime_primitives::{AsciiChar, LogLh, Seq, seq};
   use treetime_utils::make_report;
 
   fn c(b: u8) -> AsciiChar {
@@ -207,7 +207,7 @@ mod tests {
         edge_to_a_key => {
           let mut edge = SparseEdgePartition::with_fitch_subs_and_indels(vec![sub_original], vec![indel_original]);
           edge.msg_from_child = SparseSeqDistribution {
-            log_lh: 1.0, // non-default to verify it gets cleared
+            log_lh: LogLh::new(1.0), // non-default to verify it gets cleared
             ..SparseSeqDistribution::default()
           };
           edge
@@ -235,7 +235,7 @@ mod tests {
     assert!(!indel_after.is_deletion(), "Indel direction should be toggled");
 
     // Verify msg_from_child is cleared
-    pretty_assert_ulps_eq!(edge_data.msg_from_child.log_lh, 0.0, max_ulps = 5);
+    pretty_assert_ulps_eq!(edge_data.msg_from_child.log_lh.value(), 0.0, max_ulps = 5);
 
     Ok(())
   }
@@ -497,7 +497,7 @@ mod tests {
     let initial_leaf_count = graph.get_leaves().len();
 
     // Initialize marginal for the sparse partition
-    update_marginal(&graph, &partitions)?;
+    update_marginal(&graph, &partitions)?.value();
 
     // First reroot call (simulating keep_root=false flow)
     let clock_model_1 = reroot_tree(

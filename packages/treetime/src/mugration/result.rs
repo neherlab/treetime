@@ -7,6 +7,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Write;
 use treetime_graph::node::Named;
+use treetime_primitives::LogLh;
 #[derive(Clone, Debug, Serialize)]
 pub struct ConfidenceRow {
   /// Node name.
@@ -110,7 +111,7 @@ impl MugrationTraitsOutput {
 pub struct MugrationGraphData {
   pub traits: MugrationTraitsOutput,
   pub confidence: MugrationConfidenceOutput,
-  pub log_lh: f64,
+  pub log_lh: LogLh,
   pub partition: PartitionMarginalDiscrete,
 }
 
@@ -129,7 +130,7 @@ impl std::ops::Deref for MugrationResult {
 }
 
 impl MugrationResult {
-  pub fn new(graph: GraphAncestral, partition: PartitionMarginalDiscrete, attribute: &str, log_lh: f64) -> Self {
+  pub fn new(graph: GraphAncestral, partition: PartitionMarginalDiscrete, attribute: &str, log_lh: LogLh) -> Self {
     let assignments = extract_trait_assignments(&graph, &partition);
     let traits = MugrationTraitsOutput::new(attribute, assignments);
     let confidence = MugrationConfidenceOutput::new(&graph, &partition);

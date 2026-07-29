@@ -79,8 +79,8 @@ TCGGCCGTGTRTTG--
     let graph: GraphAncestral = nwk_read_str(&input.newick)?;
     let (_, partitions) = run_dense_marginal(&input)?;
 
-    let log_lh_first = update_marginal(&graph, &partitions)?;
-    let log_lh_second = update_marginal(&graph, &partitions)?;
+    let log_lh_first = update_marginal(&graph, &partitions)?.value();
+    let log_lh_second = update_marginal(&graph, &partitions)?.value();
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())
@@ -106,8 +106,8 @@ TCGGCCGTGTRTTG--
     let graph: GraphAncestral = nwk_read_str(&input.newick)?;
     let (_, partitions) = run_sparse_marginal(&input)?;
 
-    let log_lh_first = update_marginal(&graph, &partitions)?;
-    let log_lh_second = update_marginal(&graph, &partitions)?;
+    let log_lh_first = update_marginal(&graph, &partitions)?.value();
+    let log_lh_second = update_marginal(&graph, &partitions)?.value();
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())

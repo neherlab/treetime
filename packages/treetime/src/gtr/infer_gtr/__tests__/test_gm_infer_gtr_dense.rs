@@ -144,7 +144,7 @@ mod tests {
       get_common_length(aln)?,
     )));
 
-    initialize_marginal(&graph, from_ref(&partition), aln)?;
+    initialize_marginal(&graph, from_ref(&partition), aln)?.value();
     Ok((graph, partition))
   }
 
@@ -170,7 +170,7 @@ mod tests {
       get_common_length(&aln)?,
     )));
 
-    initialize_marginal(&graph, from_ref(&partition), &aln)?;
+    initialize_marginal(&graph, from_ref(&partition), &aln)?.value();
     Ok((graph, partition))
   }
 

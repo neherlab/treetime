@@ -120,7 +120,7 @@ mod tests {
     partition.attach_traits(&graph, &traits)?;
 
     let partition = Arc::new(RwLock::new(partition));
-    let actual_log_lh = update_marginal(&graph, std::slice::from_ref(&partition))?;
+    let actual_log_lh = update_marginal(&graph, std::slice::from_ref(&partition))?.value();
 
     assert!(actual_log_lh.is_finite());
     assert!(

@@ -14,7 +14,7 @@ mod tests {
 
     let metrics = evaluate_mixed(&contributions, 0.1).expect("valid branch length");
 
-    assert!(metrics.log_lh.is_finite());
+    assert!(metrics.log_lh.value().is_finite());
     assert!(metrics.derivative.is_finite());
     assert!(metrics.second_derivative.is_finite());
   }
@@ -29,7 +29,7 @@ mod tests {
     let metrics = evaluate_mixed(&contributions, 0.1).expect("valid branch length");
 
     // Log of a probability is negative or zero
-    assert!(metrics.log_lh <= 0.0);
+    assert!(metrics.log_lh.value() <= 0.0);
   }
 
   #[test]
@@ -42,7 +42,7 @@ mod tests {
     let branch_lengths = [0.001, 0.01, 0.1, 0.5, 1.0];
     for &bl in &branch_lengths {
       let metrics = evaluate_mixed(&contributions, bl).expect("valid branch length");
-      assert!(metrics.log_lh.is_finite(), "log_lh should be finite at bl={bl}");
+      assert!(metrics.log_lh.value().is_finite(), "log_lh should be finite at bl={bl}");
       assert!(metrics.derivative.is_finite(), "derivative should be finite at bl={bl}");
       assert!(
         metrics.second_derivative.is_finite(),

@@ -20,7 +20,7 @@ pub mod tests {
       .iter()
       .max_by_key(|&&bl| {
         let metrics = evaluate_mixed(contributions, bl).expect("valid branch length");
-        OrderedFloat(metrics.log_lh)
+        OrderedFloat(metrics.log_lh.value())
       })
       .copied()
       .unwrap_or(branch_length)

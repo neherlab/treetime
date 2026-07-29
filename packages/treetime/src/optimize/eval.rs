@@ -3,6 +3,7 @@ use crate::optimize::likelihood::OptimizationMetrics;
 use eyre::Report;
 use itertools::izip;
 use ndarray::{Array1, ArrayView1};
+use treetime_primitives::LogLh;
 
 /// Unified evaluation of eigenvalue-space site contributions.
 ///
@@ -80,5 +81,9 @@ pub fn evaluate_site_contributions<'a>(
     }
   }
 
-  Ok(OptimizationMetrics::new(log_lh, derivative, second_derivative))
+  Ok(OptimizationMetrics::new(
+    LogLh::new(log_lh),
+    derivative,
+    second_derivative,
+  ))
 }

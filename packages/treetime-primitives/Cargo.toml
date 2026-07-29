@@ -21,6 +21,7 @@ itertools = { workspace = true }
 serde = { workspace = true }
 
 [dev-dependencies]
+approx = { workspace = true }
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }

@@ -41,7 +41,7 @@ mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    update_marginal(&graph, &sparse_partitions)?;
+    update_marginal(&graph, &sparse_partitions)?.value();
 
     let dense_partitions = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
@@ -90,7 +90,7 @@ mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    update_marginal(&graph, &sparse_partitions)?;
+    update_marginal(&graph, &sparse_partitions)?.value();
 
     let dense_partitions = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);

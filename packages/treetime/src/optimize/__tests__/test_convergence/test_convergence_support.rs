@@ -64,8 +64,8 @@ pub mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
-    initialize_marginal(graph, &dense_partitions, aln)?;
-    update_marginal(graph, &sparse_partitions)?;
+    initialize_marginal(graph, &dense_partitions, aln)?.value();
+    update_marginal(graph, &sparse_partitions)?.value();
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
     initial_guess_mixed(graph, &mixed_partitions, true, false)?;
@@ -78,8 +78,8 @@ pub mod tests {
     dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
     sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   ) -> Result<f64, Report> {
-    let dense_lh = update_marginal(graph, dense_partitions)?;
-    let sparse_lh = update_marginal(graph, sparse_partitions)?;
+    let dense_lh = update_marginal(graph, dense_partitions)?.value();
+    let sparse_lh = update_marginal(graph, sparse_partitions)?.value();
     Ok(dense_lh + sparse_lh)
   }
 }

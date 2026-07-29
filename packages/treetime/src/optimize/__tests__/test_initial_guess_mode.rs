@@ -375,8 +375,8 @@ pub mod tests {
         get_common_length(&aln)?,
       )))];
 
-      initialize_marginal(&graph, &partitions, &aln)?;
-      update_marginal(&graph, &partitions)?;
+      initialize_marginal(&graph, &partitions, &aln)?.value();
+      update_marginal(&graph, &partitions)?.value();
 
       Ok((graph, partitions))
     }

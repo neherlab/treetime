@@ -30,10 +30,10 @@ mod tests {
 
     for _ in 0..10 {
       run_optimize_mixed(&graph_dense, &dense_partitions, method)?;
-      update_marginal(&graph_dense, &dense_partitions)?;
+      update_marginal(&graph_dense, &dense_partitions)?.value();
     }
 
-    let log_lh_dense = update_marginal(&graph_dense, &dense_partitions)?;
+    let log_lh_dense = update_marginal(&graph_dense, &dense_partitions)?.value();
 
     // Run sparse-only optimization
     let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
@@ -41,10 +41,10 @@ mod tests {
 
     for _ in 0..10 {
       run_optimize_mixed(&graph_sparse, &sparse_partitions, method)?;
-      update_marginal(&graph_sparse, &sparse_partitions)?;
+      update_marginal(&graph_sparse, &sparse_partitions)?.value();
     }
 
-    let log_lh_sparse = update_marginal(&graph_sparse, &sparse_partitions)?;
+    let log_lh_sparse = update_marginal(&graph_sparse, &sparse_partitions)?.value();
 
     // Both modes should produce finite log-LH in expected range
     assert!(
@@ -86,7 +86,7 @@ mod tests {
 
     for _ in 0..10 {
       run_optimize_mixed(&graph_dense, &dense_partitions, method)?;
-      update_marginal(&graph_dense, &dense_partitions)?;
+      update_marginal(&graph_dense, &dense_partitions)?.value();
     }
 
     let branch_lengths_dense = get_branch_lengths(&graph_dense);
@@ -97,7 +97,7 @@ mod tests {
 
     for _ in 0..10 {
       run_optimize_mixed(&graph_sparse, &sparse_partitions, method)?;
-      update_marginal(&graph_sparse, &sparse_partitions)?;
+      update_marginal(&graph_sparse, &sparse_partitions)?.value();
     }
 
     let branch_lengths_sparse = get_branch_lengths(&graph_sparse);

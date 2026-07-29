@@ -45,9 +45,9 @@ mod tests {
   /// Kolmogorov axioms: P(s) >= 0 for all states s, and sum_s P(s) = 1.
   fn assert_sparse_profile_normalized(profile: &SparseSeqDistribution, max_ulps: u32) {
     assert!(
-      profile.log_lh.is_finite(),
+      profile.log_lh.value().is_finite(),
       "Profile log_lh is not finite: {}",
-      profile.log_lh
+      profile.log_lh.value()
     );
 
     for (pos, var_pos) in &profile.variable {
@@ -122,7 +122,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(graph, 0, alphabet, aln)?;
     let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, graph)?))];
-    let log_lh = update_marginal(graph, &partitions)?;
+    let log_lh = update_marginal(graph, &partitions)?.value();
     Ok((log_lh, partitions))
   }
 
@@ -188,7 +188,7 @@ mod tests {
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
 
-    let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?;
+    let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?.value();
 
     // generate ancestral reconstruction and test against expectation
     let mut actual = BTreeMap::new();
@@ -298,8 +298,8 @@ mod tests {
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
     let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?))];
 
-    let log_lh_first = update_marginal(&graph, &partitions)?;
-    let log_lh_second = update_marginal(&graph, &partitions)?;
+    let log_lh_first = update_marginal(&graph, &partitions)?.value();
+    let log_lh_second = update_marginal(&graph, &partitions)?.value();
 
     // Verify log-likelihood value matches expected (same tree/alignment as normalization test)
     pretty_assert_ulps_eq!(-55.33813399214274, log_lh_first, epsilon = 1e-6);
@@ -460,7 +460,7 @@ mod tests {
           let fitch = create_fitch_partition(&graph, 0, alphabet.clone(), &aln)?;
           let partitions_marginal_sparse = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr.clone(), &graph)?))];
 
-          let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?;
+          let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?.value();
           total_lh += log_lh.exp();
         }
       }
@@ -500,7 +500,7 @@ mod tests {
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?,
     ))];
-    update_marginal(&graph, &partitions)?;
+    update_marginal(&graph, &partitions)?.value();
 
     let actual_by_edge = {
       let partition = partitions[0].read_arc();
@@ -577,6 +577,7 @@ mod tests {
           partition.nodes[&graph.get_exactly_one_root()?.read_arc().key()]
             .profile
             .log_lh
+            .value()
             .to_bits(),
           json_write_str(&partition.nodes, JsonPretty(false))?,
           json_write_str(&partition.edges, JsonPretty(false))?,

@@ -9,13 +9,13 @@ use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_io::fasta::FastaRecord;
-use treetime_primitives::{Seq, seq};
+use treetime_primitives::{LogLh, Seq, seq};
 
 pub fn initialize_marginal<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   aln: &[FastaRecord],
-) -> Result<f64, Report>
+) -> Result<LogLh, Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
@@ -27,7 +27,7 @@ where
   update_marginal(graph, partitions)
 }
 
-pub fn update_marginal<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<f64, Report>
+pub fn update_marginal<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<LogLh, Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
@@ -35,7 +35,7 @@ where
 {
   marginal_backward(graph, partitions)?;
   let log_lh = graph_log_lh(graph, partitions)?;
-  trace!("Marginal log likelihood (substitution): {log_lh}");
+  trace!("Marginal log likelihood (substitution): {}", log_lh.value());
   marginal_forward(graph, partitions)?;
   Ok(log_lh)
 }

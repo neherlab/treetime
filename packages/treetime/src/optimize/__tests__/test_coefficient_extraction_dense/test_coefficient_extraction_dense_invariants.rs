@@ -96,7 +96,7 @@ mod tests {
     };
     let multi_metrics = evaluate_sparse_contribution(&multi, branch_length).expect("valid branch length");
 
-    assert_abs_diff_eq!(multi_metrics.log_lh, multiplicity * single_metrics.log_lh, epsilon = 1e-12);
+    assert_abs_diff_eq!(multi_metrics.log_lh.value(), multiplicity * single_metrics.log_lh.value(), epsilon = 1e-12);
     assert_abs_diff_eq!(multi_metrics.derivative, multiplicity * single_metrics.derivative, epsilon = 1e-12);
     assert_abs_diff_eq!(multi_metrics.second_derivative, multiplicity * single_metrics.second_derivative, epsilon = 1e-12);
   }
@@ -137,7 +137,7 @@ mod tests {
     };
     let sparse_metrics = evaluate_sparse_contribution(&sparse_contrib, branch_length).expect("valid branch length");
 
-    assert_abs_diff_eq!(dense_metrics.log_lh, sparse_metrics.log_lh, epsilon = 1e-10);
+    assert_abs_diff_eq!(dense_metrics.log_lh.value(), sparse_metrics.log_lh.value(), epsilon = 1e-10);
     assert_abs_diff_eq!(dense_metrics.derivative, sparse_metrics.derivative, epsilon = 1e-10);
     assert_abs_diff_eq!(dense_metrics.second_derivative, sparse_metrics.second_derivative, epsilon = 1e-10);
   }
@@ -182,8 +182,8 @@ mod tests {
     let metrics_combined = evaluate_dense_contribution(&contrib_combined, branch_length).expect("valid branch length");
 
     assert_abs_diff_eq!(
-      metrics_combined.log_lh,
-      metrics_a.log_lh + metrics_b.log_lh,
+      metrics_combined.log_lh.value(),
+      metrics_a.log_lh.value() + metrics_b.log_lh.value(),
       epsilon = 1e-12
     );
     assert_abs_diff_eq!(

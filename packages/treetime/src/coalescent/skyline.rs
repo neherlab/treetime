@@ -11,6 +11,7 @@ use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+use treetime_primitives::LogLh;
 
 /// Parameters for skyline (piecewise-constant Tc) optimization.
 #[derive(Debug, Clone)]
@@ -48,7 +49,7 @@ pub struct SkylineResult {
   /// Optimized Tc value per segment (length `n_points`).
   pub tc_values: Array1<f64>,
   /// Coalescent log-likelihood at the optimized Tc(t).
-  pub log_likelihood: f64,
+  pub log_likelihood: LogLh,
 }
 
 /// Optimizes a piecewise-constant Tc(t) trajectory that maximizes the coalescent
@@ -140,7 +141,10 @@ where
   let model = CoalescentModel::new(&precomputed, &tc_distribution)?;
   let log_likelihood = coalescent_log_likelihood(&edges, &model)?;
 
-  info!("Skyline optimization completed: log_likelihood={log_likelihood:.4}");
+  info!(
+    "Skyline optimization completed: log_likelihood={:.4}",
+    log_likelihood.value()
+  );
   info!("Skyline Tc(t) trajectory ({} segments):", tc_values.len());
   for (i, &tc) in tc_values.iter().enumerate() {
     info!(

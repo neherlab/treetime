@@ -46,8 +46,8 @@ mod tests {
       let graph: GraphAncestral = nwk_read_str(&input.newick).unwrap();
       let (_, partitions) = run_dense_marginal(&input).unwrap();
 
-      let log_lh_first = update_marginal(&graph, &partitions).unwrap();
-      let log_lh_second = update_marginal(&graph, &partitions).unwrap();
+      let log_lh_first = update_marginal(&graph, &partitions).unwrap().value();
+      let log_lh_second = update_marginal(&graph, &partitions).unwrap().value();
 
       prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
     }
@@ -76,8 +76,8 @@ mod tests {
       let graph: GraphAncestral = nwk_read_str(&input.newick).unwrap();
       let (_, partitions) = run_sparse_marginal(&input).unwrap();
 
-      let log_lh_first = update_marginal(&graph, &partitions).unwrap();
-      let log_lh_second = update_marginal(&graph, &partitions).unwrap();
+      let log_lh_first = update_marginal(&graph, &partitions).unwrap().value();
+      let log_lh_second = update_marginal(&graph, &partitions).unwrap().value();
 
       prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
     }

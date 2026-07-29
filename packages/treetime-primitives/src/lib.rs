@@ -1,8 +1,10 @@
 pub mod bitset128;
+pub mod log_lh;
 pub mod seq;
 pub mod seq_char;
 
 pub use bitset128::{BitSet128, BitSet128Status};
+pub use log_lh::LogLh;
 pub use seq::Seq;
 pub use seq_char::AsciiChar;
 

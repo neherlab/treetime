@@ -42,7 +42,7 @@ mod tests {
 
     assert_eq!(result.segment_boundaries.len(), 6);
     assert_eq!(result.tc_values.len(), 5);
-    assert!(result.log_likelihood.is_finite());
+    assert!(result.log_likelihood.value().is_finite());
 
     Ok(())
   }
@@ -118,7 +118,7 @@ mod tests {
     let result = optimize_skyline(&graph, &params)?;
 
     assert_eq!(result.tc_values.len(), 10);
-    assert!(result.log_likelihood.is_finite());
+    assert!(result.log_likelihood.value().is_finite());
 
     Ok(())
   }
@@ -134,9 +134,9 @@ mod tests {
     };
 
     let result = optimize_skyline(&graph, &params)?;
-    let expected = compute_coalescent_total_lh(&graph, &result.tc_distribution)?;
+    let expected = compute_coalescent_total_lh(&graph, &result.tc_distribution)?.value();
 
-    pretty_assert_ulps_eq!(expected, result.log_likelihood, max_ulps = 10);
+    pretty_assert_ulps_eq!(expected, result.log_likelihood.value(), max_ulps = 10);
     Ok(())
   }
 
@@ -157,11 +157,11 @@ mod tests {
     };
 
     let result = optimize_skyline(&graph, &params)?;
-    let expected = compute_coalescent_total_lh(&graph, &result.tc_distribution)?;
+    let expected = compute_coalescent_total_lh(&graph, &result.tc_distribution)?.value();
 
     // Oracle: the canonical per-edge Kingman cost assigns m - 1 merger-rate
     // factors to an m-child polytomy (Kingman 1982, doi:10.1016/0304-4149(82)90011-4).
-    pretty_assert_ulps_eq!(expected, result.log_likelihood, max_ulps = 10);
+    pretty_assert_ulps_eq!(expected, result.log_likelihood.value(), max_ulps = 10);
     Ok(())
   }
 
@@ -183,10 +183,10 @@ mod tests {
     // The constant Tc is a feasible skyline (all segments equal), so the skyline
     // optimum can only match or beat its likelihood; the slack is solver noise.
     assert!(
-      result.log_likelihood >= constant_tc.likelihood - 1e-10,
+      result.log_likelihood.value() >= constant_tc.likelihood.value() - 1e-10,
       "skyline LL {} should be >= constant-Tc LL {}",
-      result.log_likelihood,
-      constant_tc.likelihood
+      result.log_likelihood.value(),
+      constant_tc.likelihood.value()
     );
 
     Ok(())

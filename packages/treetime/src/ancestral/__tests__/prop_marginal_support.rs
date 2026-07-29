@@ -50,7 +50,7 @@ pub mod tests {
       length,
     )))];
 
-    let log_lh = initialize_marginal(&graph, &partitions, &input.alignment)?;
+    let log_lh = initialize_marginal(&graph, &partitions, &input.alignment)?.value();
     Ok((log_lh, partitions))
   }
 
@@ -83,7 +83,7 @@ pub mod tests {
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(input.gtr.clone(), &graph)?,
     ))];
-    let log_lh = update_marginal(&graph, &partitions)?;
+    let log_lh = update_marginal(&graph, &partitions)?.value();
     Ok((log_lh, partitions))
   }
 }

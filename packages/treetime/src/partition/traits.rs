@@ -22,7 +22,7 @@ use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::reroot::RerootChanges;
 use treetime_io::fasta::FastaRecord;
 use treetime_io::nwk::NodeCommentProvider;
-use treetime_primitives::Seq;
+use treetime_primitives::{LogLh, Seq};
 
 pub trait HasGtr {
   fn gtr(&self) -> &GTR;
@@ -264,7 +264,7 @@ pub trait PartitionCompressed: Sync + Send {
 }
 
 pub trait HasLogLh {
-  fn get_log_lh(&self, node_key: GraphNodeKey) -> f64;
+  fn get_log_lh(&self, node_key: GraphNodeKey) -> LogLh;
 
   fn reset_node_log_likelihoods(&mut self);
 }
@@ -350,7 +350,7 @@ where
 }
 
 /// Calculate the total log likelihood of the graph given the partitions
-pub fn graph_log_lh<P, N, E, D>(graph: &Graph<N, E, D>, partitions: &[Arc<RwLock<P>>]) -> Result<f64, Report>
+pub fn graph_log_lh<P, N, E, D>(graph: &Graph<N, E, D>, partitions: &[Arc<RwLock<P>>]) -> Result<LogLh, Report>
 where
   P: HasLogLh + Send + Sync + ?Sized,
   N: GraphNode,

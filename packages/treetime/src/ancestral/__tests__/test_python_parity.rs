@@ -78,7 +78,7 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &partitions, &aln)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
 
     let mut root_seq = String::new();
     ancestral_reconstruction_marginal(
@@ -190,7 +190,7 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &partitions, &aln)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
 
     // Find node AB and check profile at position 0
     let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
@@ -236,7 +236,7 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &partitions, &aln)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
 
     // Find root node
     let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("Node root not found"))?;
@@ -278,7 +278,7 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &partitions, &aln)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
 
     let cd_key = find_node_key_by_name(&graph, "CD").ok_or_else(|| make_report!("Node CD not found"))?;
     let partition = partitions[0].read_arc();
@@ -321,7 +321,7 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &partitions, &aln)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
 
     let partition = partitions[0].read_arc();
 
@@ -372,7 +372,7 @@ mod tests {
 
     let partitions = [Arc::clone(&partition1), Arc::clone(&partition2)];
 
-    initialize_marginal(&graph, &partitions, &aln)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
     let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("Node root not found"))?;
 
     let p1 = partition1.read_arc();
@@ -434,7 +434,7 @@ mod tests {
 
     let partitions = [Arc::clone(&partition1), Arc::clone(&partition2)];
 
-    initialize_marginal(&graph, &partitions, &aln)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
 
     let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
 
@@ -490,12 +490,12 @@ mod tests {
       length,
     )));
 
-    let dense_log_lh = initialize_marginal(&graph, from_ref(&dense_partition), &aln)?;
+    let dense_log_lh = initialize_marginal(&graph, from_ref(&dense_partition), &aln)?.value();
 
     // Sparse partition
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
     let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
-    let sparse_log_lh = update_marginal(&graph, from_ref(&sparse_partition))?;
+    let sparse_log_lh = update_marginal(&graph, from_ref(&sparse_partition))?.value();
 
     // Log-likelihoods should match for clean sequences
     pretty_assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);

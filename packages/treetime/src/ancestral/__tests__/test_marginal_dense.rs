@@ -89,7 +89,7 @@ mod tests {
       get_common_length(aln)?,
     )))];
 
-    let log_lh = initialize_marginal(graph, &partitions, aln)?;
+    let log_lh = initialize_marginal(graph, &partitions, aln)?.value();
     Ok((log_lh, partitions))
   }
 
@@ -262,8 +262,8 @@ mod tests {
 
     let (log_lh_init, partitions) = run_dense_marginal(&graph, &ALN_7_TAXON, gtr)?;
 
-    let log_lh_first = update_marginal(&graph, &partitions)?;
-    let log_lh_second = update_marginal(&graph, &partitions)?;
+    let log_lh_first = update_marginal(&graph, &partitions)?.value();
+    let log_lh_second = update_marginal(&graph, &partitions)?.value();
 
     // Repeated updates must produce identical log-likelihood to initialization
     pretty_assert_ulps_eq!(log_lh_init, log_lh_first, epsilon = 1e-10);

@@ -152,9 +152,9 @@ ACGTACGC
     for node_data in partition.nodes.values() {
       let profile = &node_data.profile;
       assert!(
-        profile.log_lh.is_finite(),
+        profile.log_lh.value().is_finite(),
         "Sparse node profile log-lh is not finite: {}",
-        profile.log_lh
+        profile.log_lh.value()
       );
       for var_pos in profile.variable.values() {
         pretty_assert_array_finite!(var_pos.dis);
@@ -170,9 +170,9 @@ ACGTACGC
     for edge_data in partition.edges.values() {
       let profile = &edge_data.msg_to_child;
       assert!(
-        profile.log_lh.is_finite(),
+        profile.log_lh.value().is_finite(),
         "Sparse edge message log-lh is not finite: {}",
-        profile.log_lh
+        profile.log_lh.value()
       );
       for var_pos in profile.variable.values() {
         pretty_assert_array_finite!(var_pos.dis);

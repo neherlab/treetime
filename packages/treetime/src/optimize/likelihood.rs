@@ -3,12 +3,13 @@ use crate::optimize::indel::poisson_indel_log_lh;
 use crate::optimize::sparse_eval::{evaluate_sparse_contribution, evaluate_sparse_contribution_impl};
 use crate::partition::optimization_contribution::OptimizationContribution;
 use eyre::Report;
+use treetime_primitives::LogLh;
 
 /// Metrics computed during branch length optimization
 #[derive(Clone, Debug, Default)]
 pub struct OptimizationMetrics {
   /// Log likelihood value
-  pub log_lh: f64,
+  pub log_lh: LogLh,
   /// First derivative (gradient) of log likelihood with respect to branch length
   pub derivative: f64,
   /// Second derivative (hessian) of log likelihood with respect to branch length
@@ -16,7 +17,7 @@ pub struct OptimizationMetrics {
 }
 
 impl OptimizationMetrics {
-  pub fn new(log_lh: f64, derivative: f64, second_derivative: f64) -> Self {
+  pub fn new(log_lh: LogLh, derivative: f64, second_derivative: f64) -> Self {
     Self {
       log_lh,
       derivative,
@@ -52,7 +53,7 @@ pub fn evaluate_mixed(
 pub fn evaluate_mixed_log_lh_only(
   contributions: &[OptimizationContribution],
   branch_length: f64,
-) -> Result<f64, Report> {
+) -> Result<LogLh, Report> {
   Ok(evaluate_mixed_impl(contributions, branch_length, false)?.log_lh)
 }
 
@@ -90,7 +91,7 @@ pub fn evaluate_with_indels_log_lh_only(
   indel_count: usize,
   indel_rate: f64,
   branch_length: f64,
-) -> Result<f64, Report> {
+) -> Result<LogLh, Report> {
   let sub_lh = evaluate_mixed_log_lh_only(contributions, branch_length)?;
   let indel_lh = poisson_indel_log_lh(indel_count, indel_rate, branch_length)?.log_lh;
   Ok(sub_lh + indel_lh)

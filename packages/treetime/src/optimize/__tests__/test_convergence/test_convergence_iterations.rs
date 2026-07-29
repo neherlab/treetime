@@ -126,8 +126,8 @@ mod tests {
     // Run several optimization iterations
     for _ in 0..10 {
       run_optimize_mixed(&graph, &mixed_partitions, method)?;
-      update_marginal(&graph, &dense_partitions)?;
-      update_marginal(&graph, &sparse_partitions)?;
+      update_marginal(&graph, &dense_partitions)?.value();
+      update_marginal(&graph, &sparse_partitions)?.value();
     }
 
     // Verify all branch lengths are in valid range

@@ -13,6 +13,7 @@ use std::sync::Arc;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
+use treetime_primitives::LogLh;
 
 pub fn refine_gtr_iterative<N, E, P>(
   graph: &Graph<N, E, ()>,
@@ -22,7 +23,7 @@ pub fn refine_gtr_iterative<N, E, P>(
   pc: f64,
   sampling_bias_correction: Option<f64>,
   optimize_rate: bool,
-) -> Result<f64, Report>
+) -> Result<LogLh, Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
@@ -79,8 +80,10 @@ where
   let guard = partition.read_arc();
   let gtr = guard.gtr();
   info!(
-    "GTR refinement: final log likelihood = {log_lh:.4}, mu = {:.6}, pi = {:?}",
-    gtr.mu, gtr.pi
+    "GTR refinement: final log likelihood = {:.4}, mu = {:.6}, pi = {:?}",
+    log_lh.value(),
+    gtr.mu,
+    gtr.pi
   );
 
   Ok(log_lh)

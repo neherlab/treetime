@@ -29,7 +29,7 @@ mod tests {
   use treetime_graph::node::{GraphNodeKey, Named};
   use treetime_io::graph::TreeWriteKind;
   use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
-  use treetime_primitives::{AsciiChar, Seq};
+  use treetime_primitives::{AsciiChar, LogLh, Seq};
   use treetime_utils::io::json::{JsonPretty, json_read_file, json_read_str, json_write_str};
 
   #[test]
@@ -710,12 +710,12 @@ mod tests {
             key,
             DenseNodePartition {
               seq: DenseSeqInfo::default(),
-              profile: DenseSeqDistribution::new(profile, 0.0),
+              profile: DenseSeqDistribution::new(profile, LogLh::ZERO),
             },
           )
         })
         .collect();
-      Ok(MugrationResult::new(graph, partition, "country", 0.0).graph)
+      Ok(MugrationResult::new(graph, partition, "country", LogLh::ZERO).graph)
     }
 
     fn timetree_graph() -> Result<GraphTimetree<TimetreeGraphData>, Report> {

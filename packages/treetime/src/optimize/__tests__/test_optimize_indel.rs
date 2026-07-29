@@ -87,8 +87,8 @@ pub mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
-    initialize_marginal(graph, &dense_partitions, &aln)?;
-    update_marginal(graph, &sparse_partitions)?;
+    initialize_marginal(graph, &dense_partitions, &aln)?.value();
+    update_marginal(graph, &sparse_partitions)?.value();
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
     initial_guess_mixed(graph, &mixed_partitions, true, false)?;
@@ -146,7 +146,9 @@ pub mod tests {
       .set_branch_length(Some(0.1));
 
     let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
-    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate).expect("valid branch lengths");
+    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate)
+      .expect("valid branch lengths")
+      .value();
 
     let expected_total_lh: f64 = graph
       .get_edges()
@@ -158,6 +160,7 @@ pub mod tests {
         poisson_indel_log_lh(indel_count, indel_rate, branch_length)
           .expect("valid Poisson parameters")
           .log_lh
+          .value()
       })
       .sum();
 
@@ -180,7 +183,9 @@ pub mod tests {
       .set_branch_length(Some(0.0));
 
     let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
-    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate).expect("valid branch lengths");
+    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate)
+      .expect("valid branch lengths")
+      .value();
 
     pretty_assert_neg_inf!(total_lh);
     Ok(())
@@ -199,7 +204,9 @@ pub mod tests {
       .set_branch_length(Some(0.0));
 
     let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
-    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate).expect("valid branch lengths");
+    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate)
+      .expect("valid branch lengths")
+      .value();
 
     assert!(total_lh.is_finite(), "Expected finite total indel LH, got {total_lh}");
     Ok(())
@@ -417,8 +424,8 @@ pub mod tests {
     );
 
     // Run marginal + optimize
-    update_marginal(&graph, &dense_partitions)?;
-    update_marginal(&graph, &sparse_partitions)?;
+    update_marginal(&graph, &dense_partitions)?.value();
+    update_marginal(&graph, &sparse_partitions)?.value();
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
     let bl_final = graph.get_edges()[0]
@@ -479,8 +486,8 @@ pub mod tests {
     let t_mle = k as f64 / mu;
     let t = t_mle + delta;
     if t > 0.0 {
-      let lh_mle = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters").log_lh;
-      let lh = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters").log_lh;
+      let lh_mle = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters").log_lh.value();
+      let lh = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters").log_lh.value();
       assert!(lh <= lh_mle + 1e-14, "log-lh at t={t} ({lh}) should be <= log-lh at MLE ({lh_mle})");
     }
   }
@@ -498,10 +505,12 @@ pub mod tests {
     let h1 = 1e-7;
     let lh_plus = poisson_indel_log_lh(k, mu, t + h1)
       .expect("valid Poisson parameters")
-      .log_lh;
+      .log_lh
+      .value();
     let lh_minus = poisson_indel_log_lh(k, mu, t - h1)
       .expect("valid Poisson parameters")
-      .log_lh;
+      .log_lh
+      .value();
     let numerical_deriv = (lh_plus - lh_minus) / (2.0 * h1);
     assert_abs_diff_eq!(metrics.derivative, numerical_deriv, epsilon = 1e-8);
 
@@ -509,11 +518,16 @@ pub mod tests {
     let h2 = 1e-4;
     let lh_plus2 = poisson_indel_log_lh(k, mu, t + h2)
       .expect("valid Poisson parameters")
-      .log_lh;
-    let lh_center = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters").log_lh;
+      .log_lh
+      .value();
+    let lh_center = poisson_indel_log_lh(k, mu, t)
+      .expect("valid Poisson parameters")
+      .log_lh
+      .value();
     let lh_minus2 = poisson_indel_log_lh(k, mu, t - h2)
       .expect("valid Poisson parameters")
-      .log_lh;
+      .log_lh
+      .value();
     let numerical_second = (lh_plus2 - 2.0 * lh_center + lh_minus2) / (h2 * h2);
     assert_abs_diff_eq!(metrics.second_derivative, numerical_second, epsilon = 1e-5);
   }
@@ -547,8 +561,12 @@ pub mod tests {
     let indel_rate = 5.0;
 
     // Bug precondition: substitution-only comparison prefers zero
-    let sub_lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0).expect("valid branch length");
-    let sub_lh_best = evaluate_mixed_log_lh_only(&contributions, best_positive).expect("valid branch length");
+    let sub_lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0)
+      .expect("valid branch length")
+      .value();
+    let sub_lh_best = evaluate_mixed_log_lh_only(&contributions, best_positive)
+      .expect("valid branch length")
+      .value();
     assert!(
       sub_lh_zero > sub_lh_best,
       "Bug precondition: subs-only likelihood at zero ({sub_lh_zero}) should exceed positive ({sub_lh_best})"
@@ -557,10 +575,12 @@ pub mod tests {
     // Indel-aware comparison: Poisson log-lh diverges to -infinity near t=0
     let indel_lh_near_zero = poisson_indel_log_lh(indel_count, indel_rate, 1e-15)
       .expect("valid Poisson parameters")
-      .log_lh;
+      .log_lh
+      .value();
     let indel_lh_at_best = poisson_indel_log_lh(indel_count, indel_rate, best_positive)
       .expect("valid Poisson parameters")
-      .log_lh;
+      .log_lh
+      .value();
 
     let combined_near_zero = sub_lh_zero + indel_lh_near_zero;
     let combined_at_best = sub_lh_best + indel_lh_at_best;
@@ -657,8 +677,8 @@ pub mod tests {
       .write_arc()
       .set_branch_length(Some(1e-15));
 
-    update_marginal(&graph, &dense_partitions)?;
-    update_marginal(&graph, &sparse_partitions)?;
+    update_marginal(&graph, &dense_partitions)?.value();
+    update_marginal(&graph, &sparse_partitions)?.value();
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
     let bl = edge_ref.read_arc().payload().read_arc().branch_length().unwrap();
@@ -691,8 +711,8 @@ pub mod tests {
     let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
     let contributions = vec![contribution];
 
-    let sub_only = evaluate_mixed_log_lh_only(&contributions, t).expect("valid branch length");
-    let indel_lh = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters").log_lh;
+    let sub_only = evaluate_mixed_log_lh_only(&contributions, t).expect("valid branch length").value();
+    let indel_lh = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters").log_lh.value();
     let combined = sub_only + indel_lh;
 
     if k == 0 {
@@ -761,8 +781,8 @@ pub mod tests {
         let h = t * 1e-6;
         prop_assert!(h > 0.0);
         let metrics = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
-        let lh_plus = poisson_indel_log_lh(k, mu, t + h).expect("valid Poisson parameters").log_lh;
-        let lh_minus = poisson_indel_log_lh(k, mu, t - h).expect("valid Poisson parameters").log_lh;
+        let lh_plus = poisson_indel_log_lh(k, mu, t + h).expect("valid Poisson parameters").log_lh.value();
+        let lh_minus = poisson_indel_log_lh(k, mu, t - h).expect("valid Poisson parameters").log_lh.value();
         let numerical = (lh_plus - lh_minus) / (2.0 * h);
         prop_assert_relative_eq!(metrics.derivative, numerical, max_relative = 1e-4);
       }

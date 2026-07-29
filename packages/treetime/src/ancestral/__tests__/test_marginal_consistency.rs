@@ -100,7 +100,7 @@ mod tests {
     )));
     let partitions = [Arc::clone(&partition)];
 
-    let log_lh = initialize_marginal(graph, &partitions, aln)?;
+    let log_lh = initialize_marginal(graph, &partitions, aln)?.value();
     Ok((log_lh, partition))
   }
 
@@ -127,7 +127,7 @@ mod tests {
     let partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, graph)?));
     let partitions = [Arc::clone(&partition)];
 
-    let log_lh = update_marginal(graph, &partitions)?;
+    let log_lh = update_marginal(graph, &partitions)?.value();
     Ok((log_lh, partition))
   }
 
@@ -272,9 +272,9 @@ mod tests {
 
     for node_data in sparse.nodes.values() {
       assert!(
-        node_data.profile.log_lh.is_finite(),
+        node_data.profile.log_lh.value().is_finite(),
         "Sparse node profile log_lh is not finite: {}",
-        node_data.profile.log_lh
+        node_data.profile.log_lh.value()
       );
 
       for (pos, var_pos) in &node_data.profile.variable {
@@ -450,7 +450,7 @@ mod tests {
     )));
     let partitions = [Arc::clone(&partition)];
 
-    initialize_marginal(&graph, &partitions, &aln)?;
+    initialize_marginal(&graph, &partitions, &aln)?.value();
 
     // Verify all marginal posterior rows sum to 1.0
     let partition = partition.read_arc();

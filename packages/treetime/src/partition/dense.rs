@@ -5,7 +5,7 @@ use eyre::Report;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
-use treetime_primitives::Seq;
+use treetime_primitives::{LogLh, Seq};
 use treetime_utils::interval::range_union::range_union;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
@@ -56,11 +56,11 @@ pub struct DenseSeqDistribution {
   pub dis: Array2<f64>,
 
   /// Total log likelihood
-  pub log_lh: f64,
+  pub log_lh: LogLh,
 }
 
 impl DenseSeqDistribution {
-  pub fn new(dis: Array2<f64>, log_lh: f64) -> Self {
+  pub fn new(dis: Array2<f64>, log_lh: LogLh) -> Self {
     Self { dis, log_lh }
   }
 }

@@ -46,7 +46,7 @@ mod tests {
 
     assert!(result.tc > 0.0, "Optimized Tc should be positive");
     assert!(result.tc.is_finite(), "Optimized Tc should be finite");
-    assert!(result.likelihood.is_finite(), "Likelihood should be finite");
+    assert!(result.likelihood.value().is_finite(), "Likelihood should be finite");
 
     Ok(())
   }
@@ -61,7 +61,7 @@ mod tests {
     let b = optimize_tc(&graph)?;
 
     assert_eq!(a.tc, b.tc);
-    assert_eq!(a.likelihood, b.likelihood);
+    assert_eq!(a.likelihood.value(), b.likelihood.value());
 
     Ok(())
   }

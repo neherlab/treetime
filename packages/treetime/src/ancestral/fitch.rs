@@ -26,7 +26,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
-use treetime_primitives::{AlphabetLike, Seq, seq};
+use treetime_primitives::{AlphabetLike, LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::sync::mutex::unwrap_arc_rwlock;
 
@@ -207,7 +207,7 @@ where
       variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
-      log_lh: 0.0,
+      log_lh: LogLh::ZERO,
     },
   };
   Ok(())

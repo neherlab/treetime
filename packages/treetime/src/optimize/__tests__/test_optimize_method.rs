@@ -109,7 +109,7 @@ mod tests {
     let h = u.abs() * 1e-5;
     let eval_u = |uv: f64| {
       let tv = uv.exp();
-      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length") + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh
+      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length").value() + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh.value()
     };
     let dl_du_numerical = (eval_u(u + h) - eval_u(u - h)) / (2.0 * h);
 
@@ -149,7 +149,7 @@ mod tests {
     let h = u.abs() * 1e-4;
     let eval_u = |uv: f64| {
       let tv = uv.exp();
-      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length") + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh
+      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length").value() + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh.value()
     };
     let d2l_du2_numerical = (eval_u(u + h) - 2.0 * eval_u(u) + eval_u(u - h)) / (h * h);
 
@@ -192,7 +192,7 @@ mod tests {
     let h = s * 1e-5;
     let eval_s = |sv: f64| {
       let tv = sv * sv;
-      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length") + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh
+      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length").value() + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh.value()
     };
     let dl_ds_numerical = (eval_s(s + h) - eval_s(s - h)) / (2.0 * h);
 
@@ -232,7 +232,7 @@ mod tests {
     let h = s * 1e-4;
     let eval_s = |sv: f64| {
       let tv = sv * sv;
-      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length") + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh
+      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length").value() + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh.value()
     };
     let d2l_ds2_numerical = (eval_s(s + h) - 2.0 * eval_s(s) + eval_s(s - h)) / (h * h);
 
@@ -725,12 +725,16 @@ mod tests {
     );
 
     // Verify local optimality in t-space
-    let lh_opt = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result).expect("valid branch length");
+    let lh_opt = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result)
+      .expect("valid branch length")
+      .value();
     if result > 1e-10 {
-      let lh_below =
-        evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 0.99).expect("valid branch length");
-      let lh_above =
-        evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 1.01).expect("valid branch length");
+      let lh_below = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 0.99)
+        .expect("valid branch length")
+        .value();
+      let lh_above = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 1.01)
+        .expect("valid branch length")
+        .value();
       assert!(
         lh_opt >= lh_below - 1e-10,
         "sqrt: lh at opt ({lh_opt}) < lh below ({lh_below})"
@@ -771,11 +775,15 @@ mod tests {
     );
 
     // Verify local optimality in t-space
-    let lh_opt = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result).expect("valid branch length");
-    let lh_below =
-      evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 0.99).expect("valid branch length");
-    let lh_above =
-      evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 1.01).expect("valid branch length");
+    let lh_opt = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result)
+      .expect("valid branch length")
+      .value();
+    let lh_below = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 0.99)
+      .expect("valid branch length")
+      .value();
+    let lh_above = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 1.01)
+      .expect("valid branch length")
+      .value();
     assert!(
       lh_opt >= lh_below - 1e-10,
       "log: lh at opt ({lh_opt}) < lh below ({lh_below})"
@@ -1012,10 +1020,13 @@ mod tests {
 
       let indel_count: usize = partitions.iter().map(|p| p.read_arc().edge_indel_count(edge_key)).sum();
 
-      let sub_lh = evaluate_mixed_log_lh_only(&contributions, t).expect("valid branch length");
+      let sub_lh = evaluate_mixed_log_lh_only(&contributions, t)
+        .expect("valid branch length")
+        .value();
       let indel_lh = poisson_indel_log_lh(indel_count, indel_rate, t)
         .expect("valid Poisson parameters")
-        .log_lh;
+        .log_lh
+        .value();
       Ok(sub_lh + indel_lh)
     }
 

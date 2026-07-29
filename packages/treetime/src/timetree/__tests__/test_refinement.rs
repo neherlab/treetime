@@ -83,7 +83,7 @@ mod tests {
       .sum::<Result<f64, Report>>()?;
 
     // Kingman's node and edge factorizations telescope to the same objective.
-    pretty_assert_abs_diff_eq!(node_lh, edge_lh, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(node_lh, edge_lh.value(), epsilon = 1e-10);
 
     let outcome = refine(&mut graph, &partitions, &mut clock_model, Some(&tc))?;
     assert_eq!(TopologyOutcome::Unchanged, outcome.topology);
