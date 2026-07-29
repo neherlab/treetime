@@ -18,5 +18,3 @@ Keep reusable crates backend-neutral. Select exactly one backend in each final a
 An implementation ticket is blocked until the supported application/target/backend matrix is approved; changing backend features without that matrix can make supported targets unbuildable or select an unintended native library.
 
 ## Related issues
-
-- [N-architectural-debt-documented.md](N-architectural-debt-documented.md)
