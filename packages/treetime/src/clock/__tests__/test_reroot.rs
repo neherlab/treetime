@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::clock_graph::GraphClock;
-  use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::clock::find_best_root::find_best_root::find_best_root;
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootMethod, RerootSpec, RootObjective};
   use crate::clock::reroot::{RerootParams, reroot_in_place};
@@ -10,10 +9,12 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
   use treetime_graph::node::Named;
   use treetime_graph::reroot::remove_node_if_trivial;
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_utils::assert_error;
+
+  use helpers::{setup_reroot_test_graph, setup_reroot_test_graph_with_dates};
 
   #[test]
   fn test_remove_node_if_trivial_simple() -> Result<(), Report> {
@@ -38,37 +39,6 @@ mod tests {
     assert_eq!(expected, actual);
 
     Ok(())
-  }
-
-  fn setup_reroot_test_graph_with_dates(dates: &BTreeMap<String, f64>) -> Result<(GraphClock, ClockParams), Report> {
-    let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    for n in graph.get_leaves() {
-      let name = n
-        .read_arc()
-        .payload()
-        .read_arc()
-        .name()
-        .expect("Leaf has name")
-        .as_ref()
-        .to_owned();
-      n.write_arc().payload().write_arc().time = Some(dates[&name]);
-    }
-
-    let options = ClockParams::default();
-    clock_regression_backward(&graph, &options, None)?;
-    clock_regression_forward(&graph, &options, None)?;
-
-    Ok((graph, options))
-  }
-
-  fn setup_reroot_test_graph() -> Result<(GraphClock, ClockParams), Report> {
-    let dates = btreemap! {
-      o!("A") => 2013.0,
-      o!("B") => 2022.0,
-      o!("C") => 2017.0,
-      o!("D") => 2005.0,
-    };
-    setup_reroot_test_graph_with_dates(&dates)
   }
 
   #[test]
@@ -263,19 +233,14 @@ mod tests {
       ..RerootParams::default()
     };
 
-    let err = reroot_in_place(
+    let result = reroot_in_place(
       &mut graph,
       &options,
       &BranchPointOptimizationParams::default(),
       &reroot_params,
-    )
-    .unwrap_err();
-
-    assert!(
-      err.to_string().contains("Reroot tip not found: missing"),
-      "error should identify the missing tip"
     );
 
+    assert_error!(result, "Reroot tip not found: missing");
     Ok(())
   }
 
@@ -321,5 +286,49 @@ mod tests {
     );
 
     Ok(())
+  }
+
+  mod helpers {
+    use crate::clock::clock_graph::GraphClock;
+    use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
+    use crate::o;
+    use eyre::Report;
+    use maplit::btreemap;
+    use std::collections::BTreeMap;
+    use treetime_graph::node::Named;
+    use treetime_io::nwk::nwk_read_str;
+
+    pub fn setup_reroot_test_graph_with_dates(
+      dates: &BTreeMap<String, f64>,
+    ) -> Result<(GraphClock, ClockParams), Report> {
+      let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+      for node in graph.get_leaves() {
+        let name = node
+          .read_arc()
+          .payload()
+          .read_arc()
+          .name()
+          .expect("Leaf has name")
+          .as_ref()
+          .to_owned();
+        node.write_arc().payload().write_arc().time = Some(dates[&name]);
+      }
+
+      let options = ClockParams::default();
+      clock_regression_backward(&graph, &options, None)?;
+      clock_regression_forward(&graph, &options, None)?;
+
+      Ok((graph, options))
+    }
+
+    pub fn setup_reroot_test_graph() -> Result<(GraphClock, ClockParams), Report> {
+      let dates = btreemap! {
+        o!("A") => 2013.0,
+        o!("B") => 2022.0,
+        o!("C") => 2017.0,
+        o!("D") => 2005.0,
+      };
+      setup_reroot_test_graph_with_dates(&dates)
+    }
   }
 }

@@ -24,10 +24,11 @@ mod tests {
     assert_ulps_eq!(stats.dsq_sum(), 0.02, max_ulps = 4);
   }
 
-  // Oracle: weighted variance of root-to-tip distances. For two tips at distances
-  // d1, d2 with unit variance, score = (d1 - d2)^2 / 4 (analytical derivation);
-  // also equals v0 base_regression chisq with fixed zero slope and no dates
-  // (treeregression.py:45).
+  // Oracle: half the weighted residual sum around the weighted mean. For two
+  // tips at distances d1, d2 with unit variance, score = (d1 - d2)^2 / 4;
+  // This is the documented fixed-zero-slope min-dev objective. The v0
+  // implementation retains an estimated-rate term; see
+  // kb/v0-errata/clock-min-dev-fixed-slope-score.md.
   #[test]
   fn test_div_stats_score_two_tips_analytical() {
     let d1 = 0.1;
