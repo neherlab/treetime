@@ -12,7 +12,7 @@ mod tests {
   use petgraph::visit::EdgeRef;
   use std::collections::BTreeMap;
   use std::io::Cursor;
-  use treetime_graph::edge::{HasBranchLength, TimeLength};
+  use treetime_graph::edge::{BranchDistribution, HasBranchLength, TimeLength};
   use treetime_graph::node::Named;
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
@@ -152,6 +152,30 @@ mod tests {
       }
     }
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_input_mode_uses_time_length_when_branch_length_is_absent() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A)root;")?;
+    let edge = graph.get_edges().pop().expect("tree must contain one edge");
+    {
+      let mut payload = edge.read_arc().payload().write_arc();
+      payload.set_time_length(Some(7.5));
+      payload.set_branch_length(None);
+    }
+
+    create_branch_distributions_input_mode(&graph, 0.001)?;
+
+    let payload = edge.read_arc().payload().read_arc();
+    assert_eq!(Some(7.5), payload.time_length());
+    assert_eq!(
+      Some(7.5),
+      payload
+        .branch_length_distribution()
+        .as_ref()
+        .and_then(|distribution| distribution.likely_time())
+    );
     Ok(())
   }
 }

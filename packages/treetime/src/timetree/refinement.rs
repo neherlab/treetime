@@ -6,7 +6,9 @@ use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::{PartitionMarginalPasses, PartitionTimetreeOps};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
 use crate::timetree::inference::runner::run_timetree;
-use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
+use crate::timetree::optimization::polytomy::{
+  prepare_tree_after_topology_change, resolve_polytomies, validate_tree_before_topology_change,
+};
 use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
 use eyre::{Report, WrapErr};
 use log::info;
@@ -29,6 +31,10 @@ pub fn run_refinement_iteration(
   branch_params: &BranchPointOptimizationParams,
   coalescent_tc: Option<&Distribution>,
 ) -> Result<(usize, usize), Report> {
+  if params.resolve_polytomies {
+    validate_tree_before_topology_change(graph)?;
+  }
+
   let total_length: usize = partitions.iter().map(|p| p.read_arc().get_sequence_length()).sum();
 
   if !params.relax.is_empty() {
@@ -68,12 +74,17 @@ pub fn run_refinement_iteration(
   let is_tree_dirty = n_resolved > 0;
 
   if is_tree_dirty {
-    info!("Tree structure changed - recomputing timetree then marginal");
-    run_timetree(graph, partitions, clock_model, coalescent_tc, params.no_indels)
-      .wrap_err("Timetree inference failed")?;
-
+    info!("Tree structure changed - rebuilding ancestral and node-time state");
     if !partitions.is_empty() {
       update_marginal(graph, partitions)?;
+    }
+
+    run_timetree(graph, partitions, clock_model, None, params.no_indels)
+      .wrap_err("Coalescent-free timetree rebuild failed")?;
+
+    if coalescent_tc.is_some() {
+      run_timetree(graph, partitions, clock_model, coalescent_tc, params.no_indels)
+        .wrap_err("Post-topology timetree inference failed")?;
     }
   } else {
     if !partitions.is_empty() {

@@ -12,10 +12,27 @@ use treetime_distribution::Distribution;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::remove_node_if_trivial;
-use treetime_utils::make_internal_error;
+use treetime_utils::{make_error, make_internal_error};
 
 /// Default minimum likelihood gain required to merge two children.
 pub const DEFAULT_RESOLUTION_THRESHOLD: f64 = 0.05;
+
+/// Validate state required to rebuild inference after a topology change.
+///
+/// This runs before relaxed-clock estimation and polytomy resolution so invalid
+/// input leaves the complete previous inference state untouched.
+pub fn validate_tree_before_topology_change(graph: &GraphTimetree) -> Result<(), Report> {
+  for node in graph.get_nodes() {
+    let node = node.read_arc();
+    if !node.is_leaf() && node.payload().read_arc().time.is_none() {
+      return make_error!(
+        "Topology rebuild requires an inferred time for every internal node, but node {:?} has none",
+        node.key()
+      );
+    }
+  }
+  Ok(())
+}
 
 /// Resolve multifurcations using temporal constraints and sequence data.
 ///
@@ -536,25 +553,29 @@ fn remove_single_child_nodes(graph: &mut GraphTimetree) -> Result<usize, Report>
   Ok(removed_count)
 }
 
-/// Reset internal state after tree topology changes.
+/// Rebuild inference state after tree topology changes.
 ///
-/// Clears cached time distributions and bad_branch flags on internal nodes only.
-/// Leaf nodes retain their date constraints (`time_distribution` from `load_date_constraints()`)
-/// and exclusion flags (`bad_branch` from outlier detection or dateless leaves).
-/// Edge distributions, messages, and topology-dependent rate state are reset
-/// unconditionally. Branch lengths and time lengths remain valid inputs for the
-/// next inference pass.
+/// Internal nodes receive point constraints at their previously inferred times or
+/// the times assigned during polytomy resolution. Leaf nodes retain their observed
+/// date constraints and exclusion flags. Edge distributions, messages, and
+/// topology-dependent rate state are reset unconditionally. Branch lengths and
+/// time lengths remain valid inputs for the next inference pass.
 pub fn prepare_tree_after_topology_change(graph: &GraphTimetree) -> Result<(), Report> {
-  // Clear cached time distributions and bad_branch flags on internal nodes only.
-  // Leaf nodes must retain their date constraints and exclusion flags because
-  // load_date_constraints() runs once at initialization and is not re-invoked.
+  validate_tree_before_topology_change(graph)?;
+
   for node in graph.get_nodes() {
     let node = node.read_arc();
     if node.is_leaf() {
       continue;
     }
     let mut payload = node.payload().write_arc();
-    payload.time_distribution = None;
+    let Some(time) = payload.time else {
+      return make_error!(
+        "Topology rebuild requires an inferred time for every internal node, but node {:?} has none",
+        node.key()
+      );
+    };
+    payload.time_distribution = Some(Arc::new(Distribution::point(time, 1.0)));
     payload.bad_branch = false;
   }
 

@@ -177,11 +177,16 @@ where
     let mut edge = edge_ref.write_arc().payload().write_arc();
     // TODO: this is wrong. The branch length distribution should be a gamma distribution with branch_length/one_mutation
     // as the shape parameter. n_mut = branch_length/one_mutation --> P(dt) = (mu*dt)^n_mut * exp(-mu*dt) / n_mut!
-    if let Some(branch_length) = edge.branch_length() {
+    let time_duration = if let Some(branch_length) = edge.branch_length() {
       // Convert branch length (substitutions/site) to time duration (years)
       // gamma > 1 means faster evolution, so same substitutions correspond to shorter time
       let effective_clock_rate = clock_rate * edge.gamma();
-      let time_duration = branch_length / effective_clock_rate;
+      Some(branch_length / effective_clock_rate)
+    } else {
+      edge.time_length()
+    };
+
+    if let Some(time_duration) = time_duration {
       let distribution = Distribution::point(time_duration, 1.0);
       edge.set_time_length(Some(time_duration));
       edge.set_branch_length_distribution(Some(Arc::new(distribution)));

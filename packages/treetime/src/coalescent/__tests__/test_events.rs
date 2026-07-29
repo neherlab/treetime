@@ -4,11 +4,14 @@ mod tests {
   use crate::coalescent::events::collect_tree_events;
   use crate::coalescent::time_coordinate::CalendarTime;
   use crate::partition::timetree::GraphTimetree;
+  use crate::payload::timetree::NodeTimetree;
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use std::sync::Arc;
+  use treetime_distribution::Distribution;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
@@ -115,6 +118,30 @@ mod tests {
     assert_error!(
       collect_tree_events(&graph),
       "Coalescent lineage count requires an inferred time for every node, but node (key=GraphNodeKey(2)) has none. The coalescent model was likely built before node times were recomputed for the current tree topology."
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_collect_tree_events_rejects_unreachable_active_node() -> Result<(), Report> {
+    const TREE_NWK: &str = "(child1:1.0,child2:1.0,child3:1.0)root:1.0;";
+    let dates = btreemap! {
+      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
+      "child1".to_owned() => Some(DateConstraint::exact(2005.0)),
+      "child2".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "child3".to_owned() => Some(DateConstraint::exact(2015.0)),
+    };
+    let mut graph = create_graph_with_dates(TREE_NWK, &dates)?;
+    graph.add_node(NodeTimetree {
+      time: Some(2002.0),
+      time_distribution: Some(Arc::new(Distribution::point(2002.0, 1.0))),
+      ..NodeTimetree::default()
+    });
+
+    assert_error!(
+      collect_tree_events(&graph),
+      "Coalescent event state is incomplete: collected 4 events for 5 nodes, with 1 root(s), 3/3 leaves, 1/2 internal nodes, and event delta sum 1 (expected 1)"
     );
 
     Ok(())

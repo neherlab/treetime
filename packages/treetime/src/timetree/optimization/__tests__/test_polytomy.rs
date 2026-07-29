@@ -456,13 +456,18 @@ mod tests {
       assert!(payload.bad_branch, "Leaf bad_branch flag must survive topology change");
     }
 
-    // Internal node ABC must be cleared
+    // Internal node ABC must be rebuilt from its inferred time
     {
       let node = graph.get_node(abc_key).expect("Node must exist");
       let payload = node.read_arc().payload().read_arc();
-      assert!(
-        payload.time_distribution.is_none(),
-        "Internal node time_distribution must be cleared"
+      pretty_assert_abs_diff_eq!(
+        payload
+          .time_distribution
+          .as_ref()
+          .and_then(|distribution| distribution.likely_time())
+          .expect("Internal node time distribution must be rebuilt"),
+        2010.0,
+        epsilon = 1e-10
       );
       assert!(!payload.bad_branch, "Internal node bad_branch must be cleared");
     }
