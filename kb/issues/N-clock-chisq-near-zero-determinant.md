@@ -14,6 +14,6 @@ The `force_positive_rate: false` path in the pre-filter step does not meaningful
 
 `packages/treetime/src/clock/find_best_root/find_best_root.rs:137-139` (`has_positive_clock_rate` checks `det > 0.0` without minimum)
 
-## Related tickets
+## Ticket readiness
 
-- [kb/tickets/clock-chisq-near-zero-determinant.md](../tickets/clock-chisq-near-zero-determinant.md)
+No failing input or theoretically justified determinant threshold is established. Reproduce a reachable near-degenerate root choice and derive the admissible numerical boundary before creating an implementation ticket.
