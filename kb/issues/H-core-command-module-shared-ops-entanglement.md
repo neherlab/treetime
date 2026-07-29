@@ -7,9 +7,7 @@ The command boundary is not a thin adapter. Command runners combine argument tra
 - `fn run_ancestral_reconstruction()` reads FASTA, maps CLI arguments, runs inference, builds output projections, and writes several formats [`packages/treetime/src/commands/ancestral/run.rs#L31`](../../packages/treetime/src/commands/ancestral/run.rs#L31).
 - The same application-level shape appears in clock, mugration, optimize, prune, and timetree runners under [`packages/treetime/src/commands`](../../packages/treetime/src/commands).
 - `fn timetree::pipeline::run()` spans the complete scientific sequence from date loading and clock estimation through coalescent initialization, refinement, rerooting, confidence intervals, and result assembly [`packages/treetime/src/timetree/pipeline.rs#L102`](../../packages/treetime/src/timetree/pipeline.rs#L102).
-- `fn run_refinement_iteration()` combines relaxed-clock application, topology resolution, partition reconciliation, ancestral-state comparison, and clock re-estimation [`packages/treetime/src/timetree/refinement.rs#L27`](../../packages/treetime/src/timetree/refinement.rs#L27).
-
-Domain modules do not import `commands/`, but the remaining application orchestration has no explicit owner and the timetree workflow does not expose its scientifically meaningful state transitions.
+Domain modules do not import `commands/`, but the remaining application orchestration has no explicit owner.
 
 ## Open design question
 
@@ -24,5 +22,4 @@ No ticket should move `commands/` until this boundary is decided. Scientific sta
 - [M-core-partition-init-orchestration-duplication.md](M-core-partition-init-orchestration-duplication.md)
 - [M-command-output-ownership-is-scattered.md](M-command-output-ownership-is-scattered.md)
 - [M-mugration-analysis-interface-exposes-policy-wiring.md](M-mugration-analysis-interface-exposes-policy-wiring.md)
-- [M-timetree-refinement-iteration-mixes-state-transitions.md](M-timetree-refinement-iteration-mixes-state-transitions.md)
 - [M-output-module-mixes-topology-ordering.md](M-output-module-mixes-topology-ordering.md)

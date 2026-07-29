@@ -92,7 +92,7 @@ The timetree EM loop [packages/treetime/src/commands/timetree/run.rs#L244](../..
 
 ```
 while !converged:
-  1. run_refinement_iteration:
+  1. Refinement::run:
      a. update_marginal (partition backward + forward)
      b. optimize_branch_lengths (read partitions, write graph edges)
      c. reroot (topology mutation)

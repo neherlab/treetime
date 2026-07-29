@@ -89,7 +89,7 @@
 - [x] Relaxed clock application
 - [x] Polytomy resolution
 - [x] Dirty-tree-aware reconstruction ordering
-  - [x] If topology changed, reconcile partitions, rerun marginal reconstruction, establish node times without coalescent, then rerun timetree with coalescent
+  - [x] If topology changed, reconcile partitions, propagate internal bad-branch state, rerun marginal reconstruction, establish node times without coalescent, then rerun timetree with coalescent
   - [x] If topology did not change, rerun marginal first and timetree second
 - [x] Re-estimate clock model after every iteration without rerooting
 - [x] Optional tracelog write on each recorded iteration

@@ -18,7 +18,6 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 - `fn propagate_distributions_forward`: zero dedicated unit tests (forward pass tested only through GM)
 - `fn create_poisson_branch_distributions`: no unit tests for edge cases
 - `fn load_input_data` / `fn initialize_partitions`: no direct tests
-- `fn run_refinement_iteration`: no tests
 - `fn build_branch_distributions()`: untestable (`todo!()` body)
 - `fn run_timetree_estimation()`: no branch coverage for input mode, confidence, skyline, rerooting, failure paths
 
