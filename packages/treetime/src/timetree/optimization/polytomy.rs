@@ -24,9 +24,18 @@ pub const DEFAULT_RESOLUTION_THRESHOLD: f64 = 0.05;
 pub fn validate_tree_before_topology_change(graph: &GraphTimetree) -> Result<(), Report> {
   for node in graph.get_nodes() {
     let node = node.read_arc();
-    if !node.is_leaf() && node.payload().read_arc().time.is_none() {
+    if node.is_leaf() {
+      continue;
+    }
+    let Some(time) = node.payload().read_arc().time else {
       return make_error!(
         "Topology rebuild requires an inferred time for every internal node, but node {:?} has none",
+        node.key()
+      );
+    };
+    if !time.is_finite() {
+      return make_error!(
+        "Topology rebuild requires a finite inferred time for every internal node, but node {:?} has {time}",
         node.key()
       );
     }
@@ -76,6 +85,7 @@ pub fn resolve_polytomies_with_options(
   merge_compressed: bool,
 ) -> Result<usize, Report> {
   let mut total_resolved = 0;
+  let mut topology_validated = false;
 
   // Find all polytomy nodes (>2 children)
   let polytomy_keys = find_polytomy_nodes(graph);
@@ -90,6 +100,7 @@ pub fn resolve_polytomies_with_options(
       zero_branch_slope,
       clock_rate,
       merge_compressed,
+      &mut topology_validated,
     )?;
     total_resolved += n_resolved;
 
@@ -159,6 +170,7 @@ fn resolve_single_polytomy(
   zero_branch_slope: f64,
   clock_rate: f64,
   merge_compressed: bool,
+  topology_validated: &mut bool,
 ) -> Result<usize, Report> {
   let mut nodes_created = 0;
 
@@ -170,6 +182,7 @@ fn resolve_single_polytomy(
     zero_branch_slope,
     clock_rate,
     true,
+    topology_validated,
   )?;
 
   // Optionally merge compressed children
@@ -181,6 +194,7 @@ fn resolve_single_polytomy(
       zero_branch_slope,
       clock_rate,
       false,
+      topology_validated,
     )?;
   }
 
@@ -203,10 +217,12 @@ fn merge_child_group(
   zero_branch_slope: f64,
   clock_rate: f64,
   select_stretched: bool,
+  topology_validated: &mut bool,
 ) -> Result<usize, Report> {
   let parent_time = {
     let node = graph.get_node(node_key).expect("Node must exist");
-    node.read_arc().payload().read_arc().time.unwrap_or(0.0)
+    let node = node.read_arc();
+    inferred_time(&node.payload().read_arc(), node.key())?
   };
 
   let all_children = collect_children_info(graph, node_key, clock_rate)?;
@@ -269,6 +285,10 @@ fn merge_child_group(
     let likelihood_gain = best_candidate.cost_gain;
     debug!("Merging children {key_a} and {key_b} with gain {likelihood_gain:.4} at time {optimal_time:.4}");
 
+    if !*topology_validated {
+      validate_tree_before_topology_change(graph)?;
+      *topology_validated = true;
+    }
     let new_node_key = merge_children(
       graph,
       node_key,
@@ -308,14 +328,14 @@ fn collect_children_info(
 
   let mut children = Vec::new();
   for &edge_key in node.outbound() {
-    children.push(build_child_info(graph, edge_key, clock_rate));
+    children.push(build_child_info(graph, edge_key, clock_rate)?);
   }
 
   Ok(children)
 }
 
 /// Build ChildInfo for a single child identified by its parent edge.
-fn build_child_info(graph: &GraphTimetree, edge_key: GraphEdgeKey, clock_rate: f64) -> ChildInfo {
+fn build_child_info(graph: &GraphTimetree, edge_key: GraphEdgeKey, clock_rate: f64) -> Result<ChildInfo, Report> {
   let edge = graph.get_edge(edge_key).expect("Edge must exist");
   let edge = edge.read_arc();
   let child_key = edge.target();
@@ -324,7 +344,7 @@ fn build_child_info(graph: &GraphTimetree, edge_key: GraphEdgeKey, clock_rate: f
   let child_payload = child_node.read_arc().payload().read_arc();
   let edge_payload = edge.payload().read_arc();
 
-  let time = child_payload.time.unwrap_or(0.0);
+  let time = inferred_time(&child_payload, child_key)?;
   let branch_dist = edge_payload
     .branch_length_distribution
     .clone()
@@ -333,14 +353,14 @@ fn build_child_info(graph: &GraphTimetree, edge_key: GraphEdgeKey, clock_rate: f
   let time_length = edge_payload.time_length.unwrap_or(0.0);
   let clock_length = time_length * clock_rate;
 
-  ChildInfo {
+  Ok(ChildInfo {
     node_key: child_key,
     edge_key,
     time,
     branch_dist,
     mutation_length,
     clock_length,
-  }
+  })
 }
 
 /// Collect ChildInfo for a specific child node of a parent.
@@ -356,11 +376,21 @@ fn collect_single_child_info(
   for &edge_key in parent.outbound() {
     let edge = graph.get_edge(edge_key).expect("Edge must exist");
     if edge.read_arc().target() == child_key {
-      return Ok(build_child_info(graph, edge_key, clock_rate));
+      return build_child_info(graph, edge_key, clock_rate);
     }
   }
 
   make_internal_error!("Child {child_key} not found among children of {parent_key}")
+}
+
+fn inferred_time(payload: &NodeTimetree, node_key: GraphNodeKey) -> Result<f64, Report> {
+  let Some(time) = payload.time else {
+    return make_error!("Polytomy resolution requires an inferred time for node {node_key}, but it has none");
+  };
+  if !time.is_finite() {
+    return make_error!("Polytomy resolution requires a finite inferred time for node {node_key}, but it has {time}");
+  }
+  Ok(time)
 }
 
 /// Compute cost gain from merging two children under a new internal node.
@@ -576,7 +606,6 @@ pub fn prepare_tree_after_topology_change(graph: &GraphTimetree) -> Result<(), R
       );
     };
     payload.time_distribution = Some(Arc::new(Distribution::point(time, 1.0)));
-    payload.bad_branch = false;
   }
 
   // Reset fields whose meaning depends on the previous edge topology. Keep the

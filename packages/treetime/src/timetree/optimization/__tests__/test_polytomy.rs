@@ -469,7 +469,7 @@ mod tests {
         2010.0,
         epsilon = 1e-10
       );
-      assert!(!payload.bad_branch, "Internal node bad_branch must be cleared");
+      assert!(payload.bad_branch, "Internal node bad_branch must be preserved");
     }
 
     // Edge distributions must be cleared

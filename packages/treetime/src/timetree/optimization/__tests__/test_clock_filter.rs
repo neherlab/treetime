@@ -3,6 +3,7 @@ mod tests {
   use crate::clock::clock_filter::{ClockFilterResult, clock_filter_inplace};
   use crate::clock::clock_model::ClockModel;
   use crate::partition::timetree::GraphTimetree;
+  use crate::timetree::optimization::clock_filter::propagate_bad_branches;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -164,6 +165,49 @@ mod tests {
       outliers_high_threshold <= outliers_low_threshold,
       "Higher threshold should result in fewer or equal outliers"
     );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_clock_filter_propagates_bad_branches_after_topology_change() -> Result<(), Report> {
+    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root;")?;
+    for node in graph.get_leaves() {
+      let node = node.read_arc();
+      let is_bad = node
+        .payload()
+        .read_arc()
+        .name()
+        .is_some_and(|name| name.as_ref() != "C");
+      node.payload().write_arc().bad_branch = is_bad;
+    }
+
+    propagate_bad_branches(&graph)?;
+
+    let actual = graph
+      .get_nodes()
+      .iter()
+      .map(|node| {
+        let node = node.read_arc();
+        let payload = node.payload().read_arc();
+        (
+          payload
+            .name()
+            .expect("Every fixture node must be named")
+            .as_ref()
+            .to_owned(),
+          payload.bad_branch,
+        )
+      })
+      .collect::<BTreeMap<_, _>>();
+    let expected = btreemap! {
+      "A".to_owned() => true,
+      "AB".to_owned() => true,
+      "B".to_owned() => true,
+      "C".to_owned() => false,
+      "root".to_owned() => false,
+    };
+    assert_eq!(expected, actual);
 
     Ok(())
   }

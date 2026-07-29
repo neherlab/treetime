@@ -25,7 +25,7 @@ use crate::timetree::inference::runner::run_timetree;
 use crate::timetree::optimization::clock_filter::{apply_outlier_bad_branches, report_bad_branches};
 use crate::timetree::optimization::reroot::reroot_tree;
 use crate::timetree::params::{TimeMarginalMode, build_covariation_clock_params, compute_effective_time_marginal};
-use crate::timetree::refinement::{RefinementParams, run_refinement_iteration};
+use crate::timetree::refinement::{Refinement, RefinementOptions, TopologyRefinement};
 use crate::timetree::utils::{initialize_clock_totals_from_time_distributions, initialize_node_divergences};
 use eyre::{Report, WrapErr};
 use log::{debug, info};
@@ -282,6 +282,16 @@ pub fn run(
   if let Some(writer) = tracelog {
     optimizer = optimizer.with_tracelog(writer)?;
   }
+  let refinement_options = RefinementOptions {
+    relax: params.relax.clone(),
+    topology: if params.resolve_polytomies {
+      TopologyRefinement::Resolve
+    } else {
+      TopologyRefinement::Disabled
+    },
+    clock_rate: params.clock_rate,
+    no_indels: params.no_indels,
+  };
   let max_iter = params.max_iter;
   while let Some(IterationContext { i }) = optimizer.next_iter() {
     progress.check_cancelled()?;
@@ -296,25 +306,26 @@ pub fn run(
       coalescent_tc = estimate_coalescent_tc(&coalescent, &input.graph, &skyline_params)?;
     }
 
-    let refinement_params = RefinementParams {
-      relax: params.relax.clone(),
-      resolve_polytomies: params.resolve_polytomies,
-      clock_rate: params.clock_rate,
-      no_indels: params.no_indels,
-    };
-    let (n_diff, n_resolved) = run_refinement_iteration(
-      &refinement_params,
-      &mut input.graph,
-      &partitions,
-      &mut clock_model,
-      reroot_clock_params,
-      &branch_params,
-      coalescent_tc.as_ref(),
-    )
+    let outcome = Refinement {
+      graph: &mut input.graph,
+      partitions: &partitions,
+      clock_model: &mut clock_model,
+      clock_params: reroot_clock_params,
+      branch_params: &branch_params,
+      coalescent_tc: coalescent_tc.as_ref(),
+      options: &refinement_options,
+    }
+    .run()
     .wrap_err_with(|| format!("When running round {i}"))?;
 
     optimizer
-      .record(n_diff, n_resolved, &input.graph, &partitions, coalescent_tc.as_ref())
+      .record(
+        outcome.sequence_changes,
+        outcome.topology.resolved_nodes(),
+        &input.graph,
+        &partitions,
+        coalescent_tc.as_ref(),
+      )
       .wrap_err("Failed to record convergence metrics")
       .wrap_err_with(|| format!("When running round {i}"))?;
   }

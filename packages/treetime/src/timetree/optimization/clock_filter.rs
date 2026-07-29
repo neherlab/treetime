@@ -83,6 +83,11 @@ pub fn apply_outlier_bad_branches(graph: &GraphTimetree) -> Result<(), Report> {
     }
   }
 
+  propagate_bad_branches(graph)
+}
+
+/// Recompute internal bad-branch state from the current topology.
+pub fn propagate_bad_branches(graph: &GraphTimetree) -> Result<(), Report> {
   graph.iter_depth_first_postorder_forward(|mut node| {
     if node.is_leaf {
       return Ok(());

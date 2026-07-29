@@ -15,7 +15,9 @@ mod tests {
   use crate::pretty_assert_abs_diff_eq;
   use crate::seq::alignment::get_common_length;
   use crate::timetree::inference::runner::run_timetree;
-  use crate::timetree::refinement::{RefinementParams, run_refinement_iteration};
+  use crate::timetree::refinement::{
+    Refinement, RefinementOptions, RefinementOutcome, TopologyOutcome, TopologyRefinement,
+  };
   use crate::timetree::utils::{initialize_clock_totals_from_time_distributions, initialize_node_divergences};
   use eyre::Report;
   use indoc::indoc;
@@ -39,18 +41,15 @@ mod tests {
     let (mut graph, partitions, mut clock_model) = create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
 
-    let (n_diff, n_resolved) = run_refinement_iteration(
-      &refinement_params(),
-      &mut graph,
-      &partitions,
-      &mut clock_model,
-      &ClockParams::default(),
-      &BranchPointOptimizationParams::default(),
-      Some(&tc),
-    )?;
+    let outcome = refine(&mut graph, &partitions, &mut clock_model, Some(&tc))?;
 
-    assert_eq!(0, n_diff);
-    assert_eq!(1, n_resolved);
+    assert_eq!(
+      RefinementOutcome {
+        sequence_changes: 0,
+        topology: TopologyOutcome::Changed { resolved_nodes: 1 },
+      },
+      outcome
+    );
     assert_eq!(5, graph.get_nodes().len());
     assert!(
       graph
@@ -86,16 +85,8 @@ mod tests {
     // Kingman's node and edge factorizations telescope to the same objective.
     pretty_assert_abs_diff_eq!(node_lh, edge_lh, epsilon = 1e-10);
 
-    let (_, n_resolved) = run_refinement_iteration(
-      &refinement_params(),
-      &mut graph,
-      &partitions,
-      &mut clock_model,
-      &ClockParams::default(),
-      &BranchPointOptimizationParams::default(),
-      Some(&tc),
-    )?;
-    assert_eq!(0, n_resolved);
+    let outcome = refine(&mut graph, &partitions, &mut clock_model, Some(&tc))?;
+    assert_eq!(TopologyOutcome::Unchanged, outcome.topology);
 
     Ok(())
   }
@@ -106,19 +97,16 @@ mod tests {
     let root = graph.get_exactly_one_root()?;
     root.write_arc().payload().write_arc().time = None;
     let expected_error = format!(
-      "Topology rebuild requires an inferred time for every internal node, but node {:?} has none",
+      "Polytomy resolution failed: Polytomy resolution requires an inferred time for node {}, but it has none",
       root.read_arc().key()
     );
     let before = serialize_state(&graph, &partitions, &clock_model)?;
 
     assert_error!(
-      run_refinement_iteration(
-        &refinement_params(),
+      refine(
         &mut graph,
         &partitions,
         &mut clock_model,
-        &ClockParams::default(),
-        &BranchPointOptimizationParams::default(),
         Some(&Distribution::constant(10.0)),
       ),
       expected_error
@@ -126,6 +114,58 @@ mod tests {
 
     let after = serialize_state(&graph, &partitions, &clock_model)?;
     assert_eq!(before, after);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_refinement_non_finite_time_preserves_inference_state() -> Result<(), Report> {
+    let (mut graph, partitions, mut clock_model) = create_polytomy_state()?;
+    let root = graph.get_exactly_one_root()?;
+    let root_key = root.read_arc().key();
+    root.write_arc().payload().write_arc().time = Some(f64::NAN);
+    let before = serialize_state(&graph, &partitions, &clock_model)?;
+
+    assert_error!(
+      refine(
+        &mut graph,
+        &partitions,
+        &mut clock_model,
+        Some(&Distribution::constant(10.0)),
+      ),
+      format!(
+        "Polytomy resolution failed: Polytomy resolution requires a finite inferred time for node {root_key}, but it has NaN"
+      )
+    );
+
+    let after = serialize_state(&graph, &partitions, &clock_model)?;
+    assert_eq!(before, after);
+    assert_eq!(
+      f64::NAN.to_bits(),
+      root
+        .read_arc()
+        .payload()
+        .read_arc()
+        .time
+        .expect("Root time must remain present")
+        .to_bits()
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_refinement_unchanged_topology_recomputes_missing_time() -> Result<(), Report> {
+    let (mut graph, partitions, mut clock_model) = create_polytomy_state()?;
+    let tc = Distribution::constant(10.0);
+    refine(&mut graph, &partitions, &mut clock_model, Some(&tc))?;
+    let root = graph.get_exactly_one_root()?;
+    root.write_arc().payload().write_arc().time = None;
+
+    let outcome = refine(&mut graph, &partitions, &mut clock_model, None)?;
+
+    assert_eq!(TopologyOutcome::Unchanged, outcome.topology);
+    assert!(root.read_arc().payload().read_arc().time.is_some_and(f64::is_finite));
 
     Ok(())
   }
@@ -215,10 +255,28 @@ mod tests {
       .collect()
   }
 
-  fn refinement_params() -> RefinementParams {
-    RefinementParams {
+  fn refine(
+    graph: &mut GraphTimetree,
+    partitions: &PartitionTimetreeAllVec,
+    clock_model: &mut ClockModel,
+    coalescent_tc: Option<&Distribution>,
+  ) -> Result<RefinementOutcome, Report> {
+    Refinement {
+      graph,
+      partitions,
+      clock_model,
+      clock_params: &ClockParams::default(),
+      branch_params: &BranchPointOptimizationParams::default(),
+      coalescent_tc,
+      options: &refinement_options(),
+    }
+    .run()
+  }
+
+  fn refinement_options() -> RefinementOptions {
+    RefinementOptions {
       relax: vec![],
-      resolve_polytomies: true,
+      topology: TopologyRefinement::Resolve,
       clock_rate: Some(CLOCK_RATE),
       no_indels: false,
     }
