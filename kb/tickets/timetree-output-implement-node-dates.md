@@ -5,5 +5,3 @@
 ## Related issues
 
 - Source: [N-timetree-node-dates-output-unimplemented.md](../issues/N-timetree-node-dates-output-unimplemented.md) -- delete after full resolution
-- [kb/issues/N-timetree-missing-output-files.md](../issues/N-timetree-missing-output-files.md)
-  umbrella issue for all missing outputs

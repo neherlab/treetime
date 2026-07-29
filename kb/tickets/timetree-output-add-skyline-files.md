@@ -15,8 +15,6 @@ Let $T_c$ denote the coalescent population-size time scale. v0 `--coalescent=sky
 ## Related issues
 
 - Source: [N-timetree-missing-skyline-output.md](../issues/N-timetree-missing-skyline-output.md) -- delete after full resolution
-- [kb/issues/N-timetree-missing-output-files.md](../issues/N-timetree-missing-output-files.md)
-  umbrella issue for all missing outputs
 - [timetree.json missing coalescent parameters](timetree-output-json-missing-coalescent-parameters.md)
   skyline results also not serialized to JSON
 - [kb/decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md)

@@ -12,8 +12,6 @@ v0 records the optimized Tc in `molecular_clock.txt` and the coal_LH in `trace_r
 
 - [Missing skyline output files](N-timetree-missing-skyline-output.md)
   skyline results not written to any file
-- [Missing output files compared to v0](N-timetree-missing-output-files.md)
-  umbrella issue
 
 ## Related tickets
 

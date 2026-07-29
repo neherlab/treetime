@@ -8,11 +8,6 @@ A public enhancement request asks TreeTime to emit root-to-tip plots at multiple
 
 [`packages/treetime/src/commands/timetree/run.rs#L195-L201`](../../packages/treetime/src/commands/timetree/run.rs#L195-L201)
 
-## Related issues
-
-- [Missing output files compared to v0](N-timetree-missing-output-files.md)
-  `root_to_tip_regression.pdf` and `timetree.pdf` listed as missing outputs
-
 ## Related tickets
 
 - [kb/tickets/timetree-output-implement-plot-and-rtt.md](../tickets/timetree-output-implement-plot-and-rtt.md)
