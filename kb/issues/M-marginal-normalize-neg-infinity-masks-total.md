@@ -32,6 +32,6 @@ Options:
 2. Track degenerate row count separately and exclude from convergence arithmetic
 3. Use a masked accumulator that skips degenerate contributions
 
-## Related tickets
+## Ticket readiness
 
-- [kb/tickets/marginal-fix-normalize-neg-infinity-masking-total.md](../tickets/marginal-fix-normalize-neg-infinity-masking-total.md)
+The listed finite-penalty, exclusion, and masked-accumulation choices define different likelihoods. Derive the intended probability model and convergence behavior before selecting a correction.
