@@ -7,7 +7,7 @@ All tree-writing commands (ancestral, clock, timetree, optimize, prune, mugratio
 Two independent problems converge:
 
 1. Newick annotation styles (plain, BEAST `[&...]`, NHX `[&&NHX:...]`) are a serialization choice that the user cannot control. Plain Newick and annotated Newick are both valid outputs users may need simultaneously.
-2. Some commands should produce multiple tree files with different semantics -- timetree should output both time-branch-length and divergence-branch-length trees ([kb/issues/N-io-time-based-branch-lengths-not-implemented.md](../issues/N-io-time-based-branch-lengths-not-implemented.md)), and v0 does this.
+2. Some commands should produce multiple tree files with different semantics -- timetree should output both time-branch-length and divergence-branch-length trees ([kb/issues/N-io-timetree-divergence-tree-output-unimplemented.md](../issues/N-io-timetree-divergence-tree-output-unimplemented.md)), and v0 does this.
 
 A single `--nwk-style` flag cannot address all three. The root problem is that the output system lacks format selection.
 
@@ -138,7 +138,7 @@ Both produce `BTreeMap<String, String>`. The format variant dispatch applies aft
 
 ## Impact
 
-- Resolves [kb/issues/N-io-time-based-branch-lengths-not-implemented.md](../issues/N-io-time-based-branch-lengths-not-implemented.md) -- timetree outputs both tree identities
+- Resolves [kb/issues/N-io-timetree-divergence-tree-output-unimplemented.md](../issues/N-io-timetree-divergence-tree-output-unimplemented.md) -- timetree outputs both tree identities
 - Intentional default change: `graph-json` and `dot` no longer produced by default (currently produced unconditionally by `write_graph_files_with_options`)
 
 ## Validation
@@ -153,4 +153,3 @@ Both produce `BTreeMap<String, String>`. The format variant dispatch applies aft
 - [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md) -- format adapter architecture
 - [kb/reports/newick-annotation-dialects.md](../reports/newick-annotation-dialects.md) -- NWK dialect grammars and tool interop
 - [kb/proposals/unified-input-format-support.md](unified-input-format-support.md) -- input-side counterpart (analysis commands accept any format)
-- [kb/tickets/io-timetree-divergence-tree-output.md](../tickets/io-timetree-divergence-tree-output.md) -- timetree divergence-tree output
