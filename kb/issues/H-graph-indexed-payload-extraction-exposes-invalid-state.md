@@ -4,9 +4,9 @@
 
 `with_indexed_graph_payloads()` removes payload maps from the graph with `mem::take`, releases the locks, and runs fallible work while the shared graph contains default payloads. Extraction occurs one payload lock at a time, so concurrent readers and a second indexed pass can observe a mixture of default and original payloads. A concurrent writer can update a default payload and have that update overwritten during restoration. Panic or restoration failure can leave defaults permanently installed.
 
-The extraction and restoration transaction is implemented in `fn with_indexed_graph_payloads()` [packages/treetime/src/partition/indexed_pass.rs#L8-L60](../../packages/treetime/src/partition/indexed_pass.rs#L8-L60). Marginal and timetree passes invoke fallible parallel frontier callbacks while those payloads are detached [packages/treetime/src/partition/marginal_passes.rs#L37-L88](../../packages/treetime/src/partition/marginal_passes.rs#L37-L88).
+The extraction and restoration transaction is implemented in `fn with_indexed_graph_payloads()` [packages/treetime/src/partition/indexed_pass.rs#L10-L61](../../packages/treetime/src/partition/indexed_pass.rs#L10-L61). Marginal and timetree passes invoke fallible dependency-ready callbacks while those payloads are detached [packages/treetime/src/partition/marginal_passes.rs#L33-L72](../../packages/treetime/src/partition/marginal_passes.rs#L33-L72).
 
-The restoration path publishes modified slots before returning either `Ok` or `Err`. Work already running under Rayon's best-effort cancellation can therefore commit a scheduling-dependent subset after one visitor fails. The existing error test returns an error before mutating a slot, so it verifies payload presence rather than rollback [packages/treetime/src/partition/__tests__/test_indexed_pass.rs#L78-L120](../../packages/treetime/src/partition/__tests__/test_indexed_pass.rs#L78-L120).
+The restoration path publishes modified slots before returning either `Ok` or `Err`. Work already running under Rayon's best-effort cancellation can therefore commit a scheduling-dependent subset after one visitor fails. The existing error test returns an error before mutating a slot, so it verifies payload presence rather than rollback [packages/treetime/src/partition/__tests__/test_indexed_pass.rs#L100-L131](../../packages/treetime/src/partition/__tests__/test_indexed_pass.rs#L100-L131).
 
 ## Options
 
@@ -22,4 +22,3 @@ Use O2 for `with_indexed_graph_payloads()` and every current caller: snapshot va
 ## Related issues
 
 - [M-inference-fallible-parallel-passes-partially-commit.md](M-inference-fallible-parallel-passes-partially-commit.md)
-- [N-inference-indexed-pass-exposes-execution-internals.md](N-inference-indexed-pass-exposes-execution-internals.md)

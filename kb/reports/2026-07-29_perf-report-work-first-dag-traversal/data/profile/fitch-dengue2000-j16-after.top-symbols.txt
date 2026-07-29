@@ -1,0 +1,40 @@
+    53.76%     0.00%  [.] 0xffffffffffffffff                                                                                                                                                                                                                                                                                                                                                                          -      -            
+            |
+            ---0xffffffffffffffff
+               |          
+               |--23.00%--treetime::main
+               |          treetime::commands::ancestral::run::run_ancestral_reconstruction
+               |          |          
+               |          |--17.34%--treetime::commands::ancestral::augur_node_data::write_augur_node_data_json_with_aa
+               |          |          |          
+               |          |          |--11.50%--treetime_utils::io::json::json_write_file (inlined)
+               |          |          |          |          
+               |          |          |          |--10.84%--treetime_utils::io::json::json_write (inlined)
+               |          |          |          |          serde_json::ser::to_writer_pretty (inlined)
+               |          |          |          |          |          
+               |          |          |          |          |--6.27%--serde_core::ser::impls::<impl serde_core::ser::Serialize for &T>::serialize (inlined)
+               |          |          |          |          |          serde_core::ser::impls::<impl serde_core::ser::Serialize for &T>::serialize (inlined)
+               |          |          |          |          |          util_augur_node_data_json::common::_::<impl serde_core::ser::Serialize for util_augur_node_data_json::common::AugurNodeDataJson<M,N>>::serialize (inlined)
+               |          |          |          |          |          serde_core::ser::SerializeMap::serialize_entry (inlined)
+               |          |          |          |          |          <serde_json::ser::Compound<W,F> as serde_core::ser::SerializeMap>::serialize_value (inlined)
+               |          |          |          |          |          serde_core::ser::impls::<impl serde_core::ser::Serialize for alloc::collections::btree::map::BTreeMap<K,V>>::serialize (inlined)
+               |          |          |          |          |          serde_core::ser::Serializer::collect_map (inlined)
+               |          |          |          |          |          core::iter::traits::iterator::Iterator::try_for_each (inlined)
+               |          |          |          |          |          core::iter::traits::iterator::Iterator::try_fold (inlined)
+               |          |          |          |          |          core::iter::traits::iterator::Iterator::try_for_each::call::_$u7b$$u7b$closure$u7d$$u7d$::ha6c9472d37ac4882 (inlined)
+               |          |          |          |          |          serde_core::ser::Serializer::collect_map::_$u7b$$u7b$closure$u7d$$u7d$::h3d78c3448817ded7 (inlined)
+               |          |          |          |          |          serde_core::ser::SerializeMap::serialize_entry (inlined)
+               |          |          |          |          |          <serde_json::ser::Compound<W,F> as serde_core::ser::SerializeMap>::serialize_value (inlined)
+               |          |          |          |          |          serde_core::ser::impls::<impl serde_core::ser::Serialize for &T>::serialize (inlined)
+               |          |          |          |          |          util_augur_node_data_json::ancestral::_::<impl serde_core::ser::Serialize for util_augur_node_data_json::ancestral::AugurNodeDataJsonAncestralNode>::serialize (inlined)
+               |          |          |          |          |          |          
+               |          |          |          |          |           --5.99%--serde_core::ser::SerializeMap::serialize_entry
+               |          |          |          |          |                     <serde_json::ser::Compound<W,F> as serde_core::ser::SerializeMap>::serialize_value (inlined)
+               |          |          |          |          |                     serde_core::ser::impls::<impl serde_core::ser::Serialize for core::option::Option<T>>::serialize (inlined)
+               |          |          |          |          |                     <&mut serde_json::ser::Serializer<W,F> as serde_core::ser::Serializer>::serialize_some (inlined)
+               |          |          |          |          |                     serde_core::ser::impls::<impl serde_core::ser::Serialize for alloc::string::String>::serialize (inlined)
+               |          |          |          |          |                     <&mut serde_json::ser::Serializer<W,F> as serde_core::ser::Serializer>::serialize_str (inlined)
+               |          |          |          |          |                     serde_json::ser::format_escaped_str
+               |          |          |          |          |                     serde_json::ser::format_escaped_str_contents (inlined)
+               |          |          |          |          |                     |          
+               |          |          |          |          |                      --2.43%--serde_json::ser::Formatter::write_string_fragment (inlined)

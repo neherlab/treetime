@@ -1,0 +1,40 @@
+    79.15%     0.07%  [.] rayon_core::registry::WorkerThread::wait_until_cold                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     -      -            
+            |          
+             --79.08%--rayon_core::registry::WorkerThread::wait_until_cold
+                       |          
+                        --78.61%--rayon_core::registry::WorkerThread::execute (inlined)
+                                  rayon_core::job::JobRef::execute (inlined)
+                                  |          
+                                  |--55.00%--<rayon_core::job::StackJob<L,F,R> as rayon_core::job::Job>::execute
+                                  |          rayon_core::job::JobResult<T>::call (inlined)
+                                  |          rayon_core::unwind::halt_unwinding (inlined)
+                                  |          std::panic::catch_unwind (inlined)
+                                  |          std::panicking::catch_unwind (inlined)
+                                  |          std::panicking::catch_unwind::do_call (inlined)
+                                  |          <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once (inlined)
+                                  |          rayon_core::job::JobResult$LT$T$GT$::call::_$u7b$$u7b$closure$u7d$$u7d$::ha602495a830bb592 (inlined)
+                                  |          rayon_core::join::join_context::call_b::_$u7b$$u7b$closure$u7d$$u7d$::h37f2ce0425256b4e (inlined)
+                                  |          rayon::iter::plumbing::bridge_producer_consumer::helper::_$u7b$$u7b$closure$u7d$$u7d$::h1ae52b99709cb90a (inlined)
+                                  |          rayon::iter::plumbing::bridge_producer_consumer::helper
+                                  |          |          
+                                  |          |--53.93%--rayon_core::join::join_context (inlined)
+                                  |          |          rayon_core::registry::in_worker (inlined)
+                                  |          |          rayon_core::join::join_context::_$u7b$$u7b$closure$u7d$$u7d$::hc03337b098fccb85
+                                  |          |          |          
+                                  |          |          |--31.84%--rayon_core::unwind::halt_unwinding (inlined)
+                                  |          |          |          std::panic::catch_unwind (inlined)
+                                  |          |          |          std::panicking::catch_unwind (inlined)
+                                  |          |          |          std::panicking::catch_unwind::do_call (inlined)
+                                  |          |          |          <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once (inlined)
+                                  |          |          |          rayon_core::join::join_context::call_a::_$u7b$$u7b$closure$u7d$$u7d$::hbfb234b63f4fee16 (inlined)
+                                  |          |          |          rayon::iter::plumbing::bridge_producer_consumer::helper::_$u7b$$u7b$closure$u7d$$u7d$::hff358bf1cd83ed40 (inlined)
+                                  |          |          |          rayon::iter::plumbing::bridge_producer_consumer::helper
+                                  |          |          |          |          
+                                  |          |          |          |--30.24%--rayon_core::join::join_context (inlined)
+                                  |          |          |          |          rayon_core::registry::in_worker (inlined)
+                                  |          |          |          |          rayon_core::join::join_context::_$u7b$$u7b$closure$u7d$$u7d$::hc03337b098fccb85
+                                  |          |          |          |          |          
+                                  |          |          |          |          |--19.49%--rayon_core::unwind::halt_unwinding (inlined)
+                                  |          |          |          |          |          std::panic::catch_unwind (inlined)
+                                  |          |          |          |          |          std::panicking::catch_unwind (inlined)
+                                  |          |          |          |          |          std::panicking::catch_unwind::do_call (inlined)

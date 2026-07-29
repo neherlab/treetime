@@ -1,0 +1,504 @@
+{
+  "results": [
+    {
+      "command": "before/.out/treetime --jobs=1 ancestral --method-anc=marginal --dense=true -t repo/data/flu/h3n2/500/tree.nwk -a repo/data/flu/h3n2/500/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-flu",
+      "mean": 0.49510056900000005,
+      "stddev": 0.01037818638828465,
+      "median": 0.493977545,
+      "user": 0.43506229999999996,
+      "system": 0.059558599999999996,
+      "min": 0.47929269300000005,
+      "max": 0.520870713,
+      "times": [
+        0.49782022000000004,
+        0.49613036200000005,
+        0.47929269300000005,
+        0.48951347900000003,
+        0.494158441,
+        0.49384665000000005,
+        0.49410844000000004,
+        0.520870713,
+        0.49244463400000005,
+        0.492820058
+      ],
+      "memory_usage_byte": [
+        200269824,
+        200269824,
+        200273920,
+        200273920,
+        200273920,
+        200273920,
+        200273920,
+        200273920,
+        200273920,
+        200273920
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "before/.out/treetime",
+        "jobs": "1"
+      }
+    },
+    {
+      "command": "before/.out/treetime --jobs=2 ancestral --method-anc=marginal --dense=true -t repo/data/flu/h3n2/500/tree.nwk -a repo/data/flu/h3n2/500/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-flu",
+      "mean": 0.3564663178,
+      "stddev": 0.007428054925613828,
+      "median": 0.3544088635,
+      "user": 0.4421216,
+      "system": 0.0724997,
+      "min": 0.35172287100000005,
+      "max": 0.376811885,
+      "times": [
+        0.355082084,
+        0.376811885,
+        0.35445360800000003,
+        0.35234654400000004,
+        0.35375926,
+        0.35475411300000004,
+        0.358947778,
+        0.35242091600000003,
+        0.35172287100000005,
+        0.35436411900000003
+      ],
+      "memory_usage_byte": [
+        200695808,
+        204951552,
+        204951552,
+        204951552,
+        204951552,
+        204951552,
+        204951552,
+        204951552,
+        204951552,
+        204951552
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "before/.out/treetime",
+        "jobs": "2"
+      }
+    },
+    {
+      "command": "before/.out/treetime --jobs=4 ancestral --method-anc=marginal --dense=true -t repo/data/flu/h3n2/500/tree.nwk -a repo/data/flu/h3n2/500/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-flu",
+      "mean": 0.30784922870000003,
+      "stddev": 0.030899833350392283,
+      "median": 0.2967928375,
+      "user": 0.4991845,
+      "system": 0.0941017,
+      "min": 0.27913559200000004,
+      "max": 0.37616617700000005,
+      "times": [
+        0.27935166100000003,
+        0.32497334,
+        0.30120602500000004,
+        0.34175313900000004,
+        0.37616617700000005,
+        0.29719427400000004,
+        0.291759153,
+        0.296391401,
+        0.29056152500000004,
+        0.27913559200000004
+      ],
+      "memory_usage_byte": [
+        217616384,
+        217616384,
+        217616384,
+        217616384,
+        220897280,
+        220897280,
+        220897280,
+        220897280,
+        220897280,
+        220897280
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "before/.out/treetime",
+        "jobs": "4"
+      }
+    },
+    {
+      "command": "before/.out/treetime --jobs=8 ancestral --method-anc=marginal --dense=true -t repo/data/flu/h3n2/500/tree.nwk -a repo/data/flu/h3n2/500/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-flu",
+      "mean": 0.26833544080000005,
+      "stddev": 0.024726882544218745,
+      "median": 0.257539093,
+      "user": 0.557078,
+      "system": 0.11236139999999999,
+      "min": 0.24595638400000003,
+      "max": 0.31477680700000005,
+      "times": [
+        0.28703146,
+        0.31477680700000005,
+        0.304633659,
+        0.253452185,
+        0.26032614400000004,
+        0.24595638400000003,
+        0.254752042,
+        0.247403426,
+        0.253304287,
+        0.261718014
+      ],
+      "memory_usage_byte": [
+        220897280,
+        220897280,
+        220897280,
+        220897280,
+        220897280,
+        220897280,
+        223629312,
+        223629312,
+        223629312,
+        223629312
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "before/.out/treetime",
+        "jobs": "8"
+      }
+    },
+    {
+      "command": "before/.out/treetime --jobs=16 ancestral --method-anc=marginal --dense=true -t repo/data/flu/h3n2/500/tree.nwk -a repo/data/flu/h3n2/500/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-flu",
+      "mean": 0.27391321999999996,
+      "stddev": 0.020519721379964086,
+      "median": 0.265675374,
+      "user": 0.8274003999999999,
+      "system": 0.1717901,
+      "min": 0.25422589500000004,
+      "max": 0.30871881700000003,
+      "times": [
+        0.25422589500000004,
+        0.261515616,
+        0.307636888,
+        0.26858649300000004,
+        0.26033358100000004,
+        0.256826371,
+        0.264609574,
+        0.30871881700000003,
+        0.266741174,
+        0.289937791
+      ],
+      "memory_usage_byte": [
+        228098048,
+        228098048,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "before/.out/treetime",
+        "jobs": "16"
+      }
+    },
+    {
+      "command": "after/.out/treetime --jobs=1 ancestral --method-anc=marginal --dense=true -t repo/data/flu/h3n2/500/tree.nwk -a repo/data/flu/h3n2/500/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-flu",
+      "mean": 0.529422402,
+      "stddev": 0.032329966929379915,
+      "median": 0.5209415500000001,
+      "user": 0.46109609999999995,
+      "system": 0.0679138,
+      "min": 0.496726241,
+      "max": 0.5791917160000001,
+      "times": [
+        0.5791917160000001,
+        0.5543720400000001,
+        0.536177475,
+        0.5461186570000001,
+        0.572952098,
+        0.505705625,
+        0.501283602,
+        0.496844263,
+        0.496726241,
+        0.5048523030000001
+      ],
+      "memory_usage_byte": [
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "after/.out/treetime",
+        "jobs": "1"
+      }
+    },
+    {
+      "command": "after/.out/treetime --jobs=2 ancestral --method-anc=marginal --dense=true -t repo/data/flu/h3n2/500/tree.nwk -a repo/data/flu/h3n2/500/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-flu",
+      "mean": 0.3709024828,
+      "stddev": 0.04177200423449425,
+      "median": 0.3570576615,
+      "user": 0.47291160000000004,
+      "system": 0.0730916,
+      "min": 0.34357378400000005,
+      "max": 0.485298237,
+      "times": [
+        0.347870294,
+        0.353432403,
+        0.350717117,
+        0.350366387,
+        0.34357378400000005,
+        0.37687449700000003,
+        0.485298237,
+        0.37578849200000003,
+        0.36068292,
+        0.364420697
+      ],
+      "memory_usage_byte": [
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "after/.out/treetime",
+        "jobs": "2"
+      }
+    },
+    {
+      "command": "after/.out/treetime --jobs=4 ancestral --method-anc=marginal --dense=true -t repo/data/flu/h3n2/500/tree.nwk -a repo/data/flu/h3n2/500/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-flu",
+      "mean": 0.28922833530000003,
+      "stddev": 0.02600140772987791,
+      "median": 0.27847182950000005,
+      "user": 0.46363519999999997,
+      "system": 0.09343019999999999,
+      "min": 0.276485584,
+      "max": 0.357585101,
+      "times": [
+        0.278148114,
+        0.27991006500000004,
+        0.276625822,
+        0.27829464400000004,
+        0.279363091,
+        0.277579685,
+        0.278649015,
+        0.309642232,
+        0.357585101,
+        0.276485584
+      ],
+      "memory_usage_byte": [
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "after/.out/treetime",
+        "jobs": "4"
+      }
+    },
+    {
+      "command": "after/.out/treetime --jobs=8 ancestral --method-anc=marginal --dense=true -t repo/data/flu/h3n2/500/tree.nwk -a repo/data/flu/h3n2/500/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-flu",
+      "mean": 0.2581932447,
+      "stddev": 0.025197004219711015,
+      "median": 0.24580774300000002,
+      "user": 0.5326850999999999,
+      "system": 0.0883791,
+      "min": 0.24042229,
+      "max": 0.32020547000000005,
+      "times": [
+        0.26449525500000004,
+        0.24063117,
+        0.262044253,
+        0.24042229,
+        0.242020157,
+        0.24829757100000002,
+        0.24331791500000002,
+        0.277576674,
+        0.32020547000000005,
+        0.24292169200000002
+      ],
+      "memory_usage_byte": [
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272,
+        230838272
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "after/.out/treetime",
+        "jobs": "8"
+      }
+    },
+    {
+      "command": "after/.out/treetime --jobs=16 ancestral --method-anc=marginal --dense=true -t repo/data/flu/h3n2/500/tree.nwk -a repo/data/flu/h3n2/500/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-flu",
+      "mean": 0.24492935680000003,
+      "stddev": 0.0114832854763848,
+      "median": 0.242086845,
+      "user": 0.7163329999999999,
+      "system": 0.1275566,
+      "min": 0.232340594,
+      "max": 0.27378951900000004,
+      "times": [
+        0.27378951900000004,
+        0.242563936,
+        0.23779428300000002,
+        0.24072527300000002,
+        0.23750009000000002,
+        0.252258625,
+        0.241609754,
+        0.244672986,
+        0.24603850800000002,
+        0.232340594
+      ],
+      "memory_usage_byte": [
+        230838272,
+        230838272,
+        230838272,
+        231698432,
+        231698432,
+        231698432,
+        231698432,
+        231735296,
+        231735296,
+        231735296
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "after/.out/treetime",
+        "jobs": "16"
+      }
+    }
+  ]
+}

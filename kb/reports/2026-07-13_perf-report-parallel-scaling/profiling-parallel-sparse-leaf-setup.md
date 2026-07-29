@@ -51,7 +51,7 @@ The next ancestral experiment should compress repeated invariant alignment patte
 
 ### Shared graph passes: retain frontier coarsening as a separate target
 
-The original mugration profile found substantial work-stealing and scheduler churn from one fork-join per tree frontier. That mechanism remains in [`packages/treetime/src/partition/indexed_pass.rs`](../../../packages/treetime/src/partition/indexed_pass.rs#L185). This follow-up profile covers ancestral only and therefore does not supersede the mugration evidence in [profiling-findings.md](profiling-findings.md). Dependency-aware subtree tasks or another coarsened scheduling unit remain the next shared traversal experiment.
+The original mugration profile found substantial work-stealing and scheduler churn from one fork-join per tree frontier. This follow-up profile covers ancestral only and therefore does not supersede the mugration evidence in [profiling-findings.md](profiling-findings.md). Indexed passes now use dependency-ready scheduling in [`packages/treetime/src/partition/indexed_pass.rs`](../../../packages/treetime/src/partition/indexed_pass.rs#L378-L485); this report does not measure that scheduler.
 
 ### Serial boundary work
 

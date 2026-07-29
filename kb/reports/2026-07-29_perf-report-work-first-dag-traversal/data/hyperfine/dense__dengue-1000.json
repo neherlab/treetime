@@ -1,0 +1,384 @@
+{
+  "results": [
+    {
+      "command": "before/.out/treetime --jobs=1 ancestral --method-anc=marginal --dense=true -t repo/data/dengue/1000/tree.nwk -a repo/data/dengue/1000/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-dengue1000",
+      "mean": 7.299523523,
+      "stddev": 0.038237310486664594,
+      "median": 7.2885790085,
+      "user": 6.411835000000001,
+      "system": 0.8783288333333332,
+      "min": 7.247133077,
+      "max": 7.356246212,
+      "times": [
+        7.286464565,
+        7.330139267,
+        7.287941699,
+        7.356246212,
+        7.289216318,
+        7.247133077
+      ],
+      "memory_usage_byte": [
+        2785968128,
+        2785968128,
+        2785968128,
+        2785968128,
+        2785968128,
+        2785968128
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "before/.out/treetime",
+        "jobs": "1"
+      }
+    },
+    {
+      "command": "before/.out/treetime --jobs=2 ancestral --method-anc=marginal --dense=true -t repo/data/dengue/1000/tree.nwk -a repo/data/dengue/1000/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-dengue1000",
+      "mean": 5.002145889,
+      "stddev": 0.03461651966967171,
+      "median": 4.99699192,
+      "user": 6.594116166666667,
+      "system": 0.8864341666666666,
+      "min": 4.960487305,
+      "max": 5.055188969,
+      "times": [
+        5.002644107,
+        5.027345816,
+        4.960487305,
+        5.055188969,
+        4.975869404,
+        4.991339733
+      ],
+      "memory_usage_byte": [
+        2796564480,
+        2796564480,
+        2796564480,
+        2796564480,
+        2796564480,
+        2796564480
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "before/.out/treetime",
+        "jobs": "2"
+      }
+    },
+    {
+      "command": "before/.out/treetime --jobs=4 ancestral --method-anc=marginal --dense=true -t repo/data/dengue/1000/tree.nwk -a repo/data/dengue/1000/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-dengue1000",
+      "mean": 3.8506965665,
+      "stddev": 0.019681822260331584,
+      "median": 3.8503256485,
+      "user": 6.848431166666667,
+      "system": 1.0190915,
+      "min": 3.828315682,
+      "max": 3.873452817,
+      "times": [
+        3.85758492,
+        3.873452817,
+        3.843066377,
+        3.871033999,
+        3.828315682,
+        3.830725604
+      ],
+      "memory_usage_byte": [
+        2833571840,
+        2833571840,
+        2833571840,
+        2833571840,
+        2833571840,
+        2833571840
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "before/.out/treetime",
+        "jobs": "4"
+      }
+    },
+    {
+      "command": "before/.out/treetime --jobs=8 ancestral --method-anc=marginal --dense=true -t repo/data/dengue/1000/tree.nwk -a repo/data/dengue/1000/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-dengue1000",
+      "mean": 3.369005099666667,
+      "stddev": 0.017866751959968077,
+      "median": 3.3692735894999997,
+      "user": 8.117491333333332,
+      "system": 1.1448494999999999,
+      "min": 3.340283191,
+      "max": 3.392385624,
+      "times": [
+        3.392385624,
+        3.36114715,
+        3.340283191,
+        3.381667454,
+        3.370341393,
+        3.368205786
+      ],
+      "memory_usage_byte": [
+        2853974016,
+        2867142656,
+        2867142656,
+        2867142656,
+        2867142656,
+        2867142656
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "before/.out/treetime",
+        "jobs": "8"
+      }
+    },
+    {
+      "command": "before/.out/treetime --jobs=16 ancestral --method-anc=marginal --dense=true -t repo/data/dengue/1000/tree.nwk -a repo/data/dengue/1000/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-dengue1000",
+      "mean": 3.4148035516666666,
+      "stddev": 0.017726046254736002,
+      "median": 3.4157890589999997,
+      "user": 14.42579433333333,
+      "system": 1.8772686666666667,
+      "min": 3.390215027,
+      "max": 3.437707495,
+      "times": [
+        3.390215027,
+        3.437707495,
+        3.429443365,
+        3.414602048,
+        3.41697607,
+        3.399877305
+      ],
+      "memory_usage_byte": [
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "before/.out/treetime",
+        "jobs": "16"
+      }
+    },
+    {
+      "command": "after/.out/treetime --jobs=1 ancestral --method-anc=marginal --dense=true -t repo/data/dengue/1000/tree.nwk -a repo/data/dengue/1000/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-dengue1000",
+      "mean": 7.367422455666667,
+      "stddev": 0.03881445620989315,
+      "median": 7.363126277499999,
+      "user": 6.5324585,
+      "system": 0.8208625,
+      "min": 7.329687618,
+      "max": 7.427497508,
+      "times": [
+        7.38635735,
+        7.385888893,
+        7.334739703,
+        7.427497508,
+        7.340363662,
+        7.329687618
+      ],
+      "memory_usage_byte": [
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "after/.out/treetime",
+        "jobs": "1"
+      }
+    },
+    {
+      "command": "after/.out/treetime --jobs=2 ancestral --method-anc=marginal --dense=true -t repo/data/dengue/1000/tree.nwk -a repo/data/dengue/1000/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-dengue1000",
+      "mean": 4.938547376666666,
+      "stddev": 0.013947082150326964,
+      "median": 4.941774161,
+      "user": 6.582156499999999,
+      "system": 0.8803296666666668,
+      "min": 4.914746414,
+      "max": 4.952206206,
+      "times": [
+        4.952206206,
+        4.949108173,
+        4.946244832,
+        4.931675145,
+        4.93730349,
+        4.914746414
+      ],
+      "memory_usage_byte": [
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "after/.out/treetime",
+        "jobs": "2"
+      }
+    },
+    {
+      "command": "after/.out/treetime --jobs=4 ancestral --method-anc=marginal --dense=true -t repo/data/dengue/1000/tree.nwk -a repo/data/dengue/1000/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-dengue1000",
+      "mean": 3.757409141166667,
+      "stddev": 0.016874745164325983,
+      "median": 3.7571037910000005,
+      "user": 6.834904666666667,
+      "system": 0.9175971666666666,
+      "min": 3.732585682,
+      "max": 3.778606456,
+      "times": [
+        3.7585431170000003,
+        3.77266053,
+        3.778606456,
+        3.755664465,
+        3.746394597,
+        3.732585682
+      ],
+      "memory_usage_byte": [
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "after/.out/treetime",
+        "jobs": "4"
+      }
+    },
+    {
+      "command": "after/.out/treetime --jobs=8 ancestral --method-anc=marginal --dense=true -t repo/data/dengue/1000/tree.nwk -a repo/data/dengue/1000/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-dengue1000",
+      "mean": 3.263829698166667,
+      "stddev": 0.01572308962213598,
+      "median": 3.2603493009999998,
+      "user": 7.967338499999999,
+      "system": 1.0264295,
+      "min": 3.245361103,
+      "max": 3.292833218,
+      "times": [
+        3.260186588,
+        3.260512014,
+        3.258642774,
+        3.245361103,
+        3.292833218,
+        3.265442492
+      ],
+      "memory_usage_byte": [
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752,
+        2990026752
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "after/.out/treetime",
+        "jobs": "8"
+      }
+    },
+    {
+      "command": "after/.out/treetime --jobs=16 ancestral --method-anc=marginal --dense=true -t repo/data/dengue/1000/tree.nwk -a repo/data/dengue/1000/aln.fasta.xz -O repo/tmp/perf-pangraph/bench/scratch/dense-dengue1000",
+      "mean": 3.3320621498333325,
+      "stddev": 0.02123545762520616,
+      "median": 3.332854822,
+      "user": 14.117773333333332,
+      "system": 1.8215051666666666,
+      "min": 3.300317916,
+      "max": 3.35856538,
+      "times": [
+        3.348489949,
+        3.31929001,
+        3.325426871,
+        3.300317916,
+        3.35856538,
+        3.340282773
+      ],
+      "memory_usage_byte": [
+        2994483200,
+        2994483200,
+        2994483200,
+        3024687104,
+        3024687104,
+        3024687104
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "bin": "after/.out/treetime",
+        "jobs": "16"
+      }
+    }
+  ]
+}

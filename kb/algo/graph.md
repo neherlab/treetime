@@ -4,11 +4,19 @@
 
 ## Parallel BFS
 
-Frontier-based parallel breadth-first traversal (<a id="cite-1"></a>[Leiserson and Schardl 2010](https://doi.org/10.1145/1810479.1810534) [[1](#ref-1)]) using Rayon for work distribution across CPU cores. Each BFS level is processed in parallel, with synchronization between levels. Deterministic forward and backward frontier builders also expose the level structure for algorithms whose mutable state is stored outside the graph.
+Frontier-based parallel breadth-first traversal (<a id="cite-1"></a>[Leiserson and Schardl 2010](https://doi.org/10.1145/1810479.1810534) [[1](#ref-1)]) using Rayon for work distribution across CPU cores. Each BFS level is processed in parallel, with synchronization between levels. Deterministic forward and backward frontier builders expose the level structure for callers that require it.
 
-Fitch and marginal reconstruction first arrange partition data in topology order. A frontier then owns a disjoint mutable node slice, reads only predecessor slices completed at an earlier barrier, and updates stable per-edge slots. This makes parallel writes independent without a partition-wide lock.
+v1: [`packages/treetime-graph/src/breadth_first.rs`](../../packages/treetime-graph/src/breadth_first.rs), [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs).
 
-v1: [`packages/treetime-graph/src/breadth_first.rs`](../../packages/treetime-graph/src/breadth_first.rs), [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs), [`packages/treetime/src/partition/indexed_pass.rs`](../../packages/treetime/src/partition/indexed_pass.rs).
+---
+
+## Dependency-ready Indexed Passes
+
+Fitch, marginal, clock, and timetree passes arrange partition payloads in stable indexed slots and execute them in one Rayon scope. Roots seed forward passes and leaves seed backward passes. Each completed node decrements an atomic prerequisite counter for its successors; a successor enters the shared work queue as soon as its counter reaches zero.
+
+Workers take ownership of one mutable slot and publish it once after processing. Domain callbacks receive read-only access to completed dependency payloads and the writable current slot. Payloads are moved into and out of the pass, so scheduling does not clone sequence or probability-matrix state. The queue removes per-depth fork/join barriers while preserving parent-before-child or child-before-parent ordering.
+
+v1: [`packages/treetime/src/partition/indexed_pass.rs`](../../packages/treetime/src/partition/indexed_pass.rs).
 
 ---
 
@@ -61,3 +69,4 @@ v1: [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-gr
 | [`packages/treetime-graph/src/find_paths.rs`](../../packages/treetime-graph/src/find_paths.rs)         | Path finding                           |
 | [`packages/treetime-graph/src/graph_ops.rs`](../../packages/treetime-graph/src/graph_ops.rs)           | Edge collapse                          |
 | [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-graph/src/topology_order.rs) | Topology ordering                      |
+| [`packages/treetime/src/partition/indexed_pass.rs`](../../packages/treetime/src/partition/indexed_pass.rs) | Dependency-ready indexed passes     |

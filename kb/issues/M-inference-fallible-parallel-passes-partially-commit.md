@@ -2,7 +2,7 @@
 
 Marginal reconstruction, branch optimization, and timetree branch-distribution passes mutate graph or partition state inside fallible parallel loops. If one worker fails, completed siblings remain committed; which siblings ran depends on scheduling.
 
-Examples include fallible Rayon callbacks in the backward and forward marginal frontiers [packages/treetime/src/partition/marginal_core.rs#L99-L126](../../packages/treetime/src/partition/marginal_core.rs#L99-L126) [packages/treetime/src/partition/marginal_core.rs#L210-L240](../../packages/treetime/src/partition/marginal_core.rs#L210-L240).
+Examples include fallible dependency-ready callbacks in the backward and forward marginal passes [packages/treetime/src/partition/marginal_core.rs#L98-L105](../../packages/treetime/src/partition/marginal_core.rs#L98-L105) [packages/treetime/src/partition/marginal_core.rs#L198-L207](../../packages/treetime/src/partition/marginal_core.rs#L198-L207).
 
 ## Impact
 

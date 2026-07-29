@@ -1,0 +1,40 @@
+    82.01%     0.00%  [.] rayon_core::registry::WorkerThread::execute (inlined)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               -      -            
+            |
+            ---rayon_core::registry::WorkerThread::execute (inlined)
+               rayon_core::job::JobRef::execute (inlined)
+               |          
+               |--61.63%--<rayon_core::job::HeapJob<BODY> as rayon_core::job::Job>::execute
+               |          rayon_core::scope::Scope::spawn::_$u7b$$u7b$closure$u7d$$u7d$::h576482e89570a976 (inlined)
+               |          rayon_core::scope::ScopeBase::execute_job (inlined)
+               |          rayon_core::scope::ScopeBase::execute_job_closure (inlined)
+               |          rayon_core::unwind::halt_unwinding (inlined)
+               |          std::panic::catch_unwind (inlined)
+               |          std::panicking::catch_unwind (inlined)
+               |          std::panicking::catch_unwind::do_call (inlined)
+               |          <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once (inlined)
+               |          rayon_core::scope::Scope::spawn::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::h8981b762676503cc (inlined)
+               |          treetime::partition::indexed_pass::DependencyWorkers$LT$F$GT$::run::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::h00a2a9af13997294 (inlined)
+               |          treetime::partition::indexed_pass::DependencyWorkers<F>::run_worker (inlined)
+               |          |          
+               |           --61.63%--treetime::partition::indexed_pass::IndexedPass$LT$N$C$E$GT$::try_for_each_ready::_$u7b$$u7b$closure$u7d$$u7d$::h5090e146ff0cd6cd (inlined)
+               |                     |          
+               |                      --61.62%--treetime::timetree::inference::backward_pass::propagate_distributions_backward::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::hbbc3a1a916a9c30b (inlined)
+               |                                treetime::timetree::inference::backward_pass::propagate_distributions_backward_slot
+               |                                |          
+               |                                 --61.37%--treetime_distribution::distribution_ops::convolve::distribution_convolution
+               |                                           |          
+               |                                           |--59.70%--treetime_distribution::distribution_ops::convolve::convolution_function_function (inlined)
+               |                                           |          |          
+               |                                           |           --59.35%--treetime_ops::convolution::convolve
+               |                                           |                     |          
+               |                                           |                      --59.32%--_$LT$ndarray..ArrayBase$LT$S$C$ndarray..dimension..dim..Dim$LT$$u5b$usize$u3b$$u20$N$u5d$$GT$$GT$$u20$as$u20$ndarray_conv..conv..ConvExt$LT$T$C$S$C$SK$C$_$GT$$GT$::conv::h41541fbf97cd9cf3 (inlined)
+               |                                           |                                |          
+               |                                           |                                 --59.23%--core::iter::traits::iterator::Iterator::for_each (inlined)
+               |                                           |                                           <core::iter::adapters::enumerate::Enumerate<I> as core::iter::traits::iterator::Iterator>::fold (inlined)
+               |                                           |                                           <ndarray::iterators::Iter<A,D> as core::iter::traits::iterator::Iterator>::fold (inlined)
+               |                                           |                                           <core::slice::iter::Iter<T> as core::iter::traits::iterator::Iterator>::fold (inlined)
+               |                                           |                                           |          
+               |                                           |                                            --59.22%--_$LT$core..iter..adapters..enumerate..Enumerate$LT$I$GT$$u20$as$u20$core..iter..traits..iterator..Iterator$GT$::fold::enumerate::_$u7b$$u7b$closure$u7d$$u7d$::h5c221bba157a438e (inlined)
+               |                                           |                                                      core::iter::traits::iterator::Iterator::for_each::call::_$u7b$$u7b$closure$u7d$$u7d$::hc4128c07ad403c67 (inlined)
+               |                                           |                                                      _$LT$ndarray..ArrayBase$LT$S$C$ndarray..dimension..dim..Dim$LT$$u5b$usize$u3b$$u20$N$u5d$$GT$$GT$$u20$as$u20$ndarray_conv..conv..ConvExt$LT$T$C$S$C$SK$C$_$GT$$GT$::conv::_$u7b$$u7b$closure$u7d$$u7d$::h7ff96b23e1c1a00d (inlined)
+               |                                           |                                                      |          

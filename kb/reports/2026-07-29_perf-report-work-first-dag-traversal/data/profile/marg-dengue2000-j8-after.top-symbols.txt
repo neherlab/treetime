@@ -1,0 +1,40 @@
+    50.55%     0.00%  [.] _$LT$rayon_core..registry..DefaultSpawn$u20$as$u20$rayon_core..registry..ThreadSpawn$GT$::spawn::_$u7b$$u7b$closure$u7d$$u7d$::h2eb6d55c28a02597 (inlined)                                                                                                                                                                                                                                                                           -      -            
+            |
+            ---_$LT$rayon_core..registry..DefaultSpawn$u20$as$u20$rayon_core..registry..ThreadSpawn$GT$::spawn::_$u7b$$u7b$closure$u7d$$u7d$::h2eb6d55c28a02597 (inlined)
+               rayon_core::registry::ThreadBuilder::run (inlined)
+               rayon_core::registry::main_loop (inlined)
+               |          
+                --50.47%--rayon_core::registry::WorkerThread::wait_until_out_of_work (inlined)
+                          rayon_core::registry::WorkerThread::wait_until (inlined)
+                          rayon_core::registry::WorkerThread::wait_until_cold
+                          |          
+                           --50.35%--rayon_core::registry::WorkerThread::execute (inlined)
+                                     rayon_core::job::JobRef::execute (inlined)
+                                     |          
+                                     |--25.05%--<rayon_core::job::HeapJob<BODY> as rayon_core::job::Job>::execute
+                                     |          rayon_core::scope::Scope::spawn::_$u7b$$u7b$closure$u7d$$u7d$::ha2d432db6d746239 (inlined)
+                                     |          rayon_core::scope::ScopeBase::execute_job (inlined)
+                                     |          rayon_core::scope::ScopeBase::execute_job_closure (inlined)
+                                     |          rayon_core::unwind::halt_unwinding (inlined)
+                                     |          std::panic::catch_unwind (inlined)
+                                     |          std::panicking::catch_unwind (inlined)
+                                     |          std::panicking::catch_unwind::do_call (inlined)
+                                     |          <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once (inlined)
+                                     |          rayon_core::scope::Scope::spawn::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::ha0a6f3db71cf226a (inlined)
+                                     |          treetime::partition::indexed_pass::DependencyWorkers$LT$F$GT$::run::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::hbc9ab92639517b28 (inlined)
+                                     |          treetime::partition::indexed_pass::DependencyWorkers<F>::run_worker (inlined)
+                                     |          |          
+                                     |           --24.81%--treetime::partition::indexed_pass::IndexedPass$LT$N$C$E$GT$::try_for_each_ready::_$u7b$$u7b$closure$u7d$$u7d$::hd51ba4d074f9056d (inlined)
+                                     |                     |          
+                                     |                      --24.64%--treetime::partition::marginal_passes::process_forward_indexed::_$u7b$$u7b$closure$u7d$$u7d$::h4d4084e9dd0f8763 (inlined)
+                                     |                                treetime::partition::marginal_passes::process_node_forward_indexed (inlined)
+                                     |                                |          
+                                     |                                |--7.48%--treetime::partition::marginal_passes::compute_msg_to_child
+                                     |                                |          |          
+                                     |                                |          |--1.12%--alloc::collections::btree::map::BTreeMap<K,V,A>::entry (inlined)
+                                     |                                |          |          |          
+                                     |                                |          |           --1.06%--alloc::collections::btree::search::<impl alloc::collections::btree::node::NodeRef<BorrowType,K,V,alloc::collections::btree::node::marker::LeafOrInternal>>::search_tree (inlined)
+                                     |                                |          |                     |          
+                                     |                                |          |                      --0.90%--alloc::collections::btree::search::<impl alloc::collections::btree::node::NodeRef<BorrowType,K,V,Type>>::search_node (inlined)
+                                     |                                |          |                                alloc::collections::btree::search::<impl alloc::collections::btree::node::NodeRef<BorrowType,K,V,Type>>::find_key_index (inlined)
+                                     |                                |          |          
