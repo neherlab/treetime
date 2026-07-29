@@ -58,7 +58,6 @@ Fixed-$T_c$, optimized-$T_c$, and skyline paths all bind their candidate $T_c$ t
 
 ### Core model
 
-- Complete coalescent event state after topology changes: [kb/issues/H-timetree-coalescent-events-incomplete-after-topology-change.md](../issues/H-timetree-coalescent-events-incomplete-after-topology-change.md).
 - Enforce the calendar coordinate of nonconstant $T_c$ values in the type system: [kb/issues/N-coalescent-time-scale-coordinate-not-type-enforced.md](../issues/N-coalescent-time-scale-coordinate-not-type-enforced.md).
 
 ### Skyline

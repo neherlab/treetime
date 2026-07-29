@@ -61,7 +61,7 @@ The shared pipeline is:
 
 The backward pass combines every child message before evaluating one leaf, internal, or root cost on the completed distribution's existing coordinates. It subtracts the minimum finite cost before exponentiation and normalizes the result. Leaf factors affect only outgoing messages, so observed date distributions are not overwritten or compounded by repeated passes.
 
-The first timetree pass runs without coalescent to establish node time distributions via backward+forward belief propagation. Coalescent contributions are computed from these established times on the second pass.
+The first timetree pass runs without coalescent to establish node time distributions via backward+forward belief propagation. Coalescent contributions are computed from these established times on the second pass. Refinement repeats this two-pass sequence whenever a topology change invalidates the coalescent event state.
 Detailed ownership and objective identities are documented in [kb/algo/coalescent-contribution-refactor.md](coalescent-contribution-refactor.md).
 
 ---
@@ -154,7 +154,8 @@ This approach is deterministic and reproducible but biases toward caterpillar-li
 - `resolve_polytomies()` (`#resolve_polytomies`) [packages/treetime/src/timetree/optimization/polytomy.rs#L27-L32](../../packages/treetime/src/timetree/optimization/polytomy.rs#L27-L32): entry point with default threshold (0.05).
 - `compute_merge_gain()` (`#compute_merge_gain`) [packages/treetime/src/timetree/optimization/polytomy.rs#L225](../../packages/treetime/src/timetree/optimization/polytomy.rs#L225): uses Brent optimization (via `argmin` crate) to find the optimal merge time and cost gain for a child pair.
 - `merge_children()` (`#merge_children`) [packages/treetime/src/timetree/optimization/polytomy.rs#L345](../../packages/treetime/src/timetree/optimization/polytomy.rs#L345): creates a new internal node, adds parent-to-new-node edge, reparents the two children.
-- `prepare_tree_after_topology_change()` (`#prepare_tree_after_topology_change`) [packages/treetime/src/timetree/optimization/polytomy.rs](../../packages/treetime/src/timetree/optimization/polytomy.rs): clears cached internal-node distributions and resets topology-dependent edge distributions, clock messages, and relaxed-clock rates; leaf date constraints, leaf `bad_branch` flags, branch lengths, and time lengths are preserved.
+- `validate_tree_before_topology_change()` (`#validate_tree_before_topology_change`) [packages/treetime/src/timetree/optimization/polytomy.rs](../../packages/treetime/src/timetree/optimization/polytomy.rs): verifies that every existing internal node has an inferred time before relaxed-clock or topology mutation begins. A missing-time error therefore leaves the existing graph, partitions, and clock model unchanged without copying them.
+- `prepare_tree_after_topology_change()` (`#prepare_tree_after_topology_change`) [packages/treetime/src/timetree/optimization/polytomy.rs](../../packages/treetime/src/timetree/optimization/polytomy.rs): reconstructs each internal-node time distribution as a point constraint at its inferred time and resets topology-dependent edge distributions, clock messages, and relaxed-clock rates; leaf date constraints, leaf `bad_branch` flags, branch lengths, and time lengths are preserved.
 
 After resolution, partition data is reconciled via `reconcile_topology()` to add entries for new nodes/edges.
 
@@ -201,7 +202,7 @@ Alternates sequence reconstruction (E-step) and time inference (M-step), iterati
 
 v1: [`packages/treetime/src/timetree/refinement.rs`](../../packages/treetime/src/timetree/refinement.rs).
 
-- `run_refinement_iteration()` (`#run_refinement_iteration`) [packages/treetime/src/timetree/refinement.rs#L23-L103](../../packages/treetime/src/timetree/refinement.rs#L23-L103): per-iteration logic: relaxed clock, polytomy resolution, ancestral reconstruction, timetree inference, clock re-estimation. Captures ancestral state snapshots before polytomy resolution.
+- `run_refinement_iteration()` (`#run_refinement_iteration`) [packages/treetime/src/timetree/refinement.rs](../../packages/treetime/src/timetree/refinement.rs): validates topology-rebuild inputs, applies relaxed clock and polytomy resolution, reconciles partition state, performs marginal ancestral reconstruction, establishes complete node times without coalescent, reruns inference with the active coalescent prior, and re-estimates the clock model. It captures ancestral state snapshots before polytomy resolution.
 
 ---
 

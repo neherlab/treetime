@@ -88,8 +88,8 @@
 - [x] Skyline mode suppresses early convergence exit
 - [x] Relaxed clock application
 - [x] Polytomy resolution
-- [/] Dirty-tree-aware reconstruction ordering (the sequence of passes is implemented, but coalescent events can remain incomplete after topology changes: [kb/issues/H-timetree-coalescent-events-incomplete-after-topology-change.md](../issues/H-timetree-coalescent-events-incomplete-after-topology-change.md))
-  - [x] If topology changed, rerun timetree first and marginal second
+- [x] Dirty-tree-aware reconstruction ordering
+  - [x] If topology changed, reconcile partitions, rerun marginal reconstruction, establish node times without coalescent, then rerun timetree with coalescent
   - [x] If topology did not change, rerun marginal first and timetree second
 - [x] Re-estimate clock model after every iteration without rerooting
 - [x] Optional tracelog write on each recorded iteration
