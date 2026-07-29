@@ -63,4 +63,3 @@ The remaining differences follow from dense storing full N-by-K matrices while s
 ## Cross-references
 
 - [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md) - S3 may contribute to the ~2.5% population with elevated divergence
-- [Sparse variable-site alphabet mismatch](M-ancestral-sparse-alphabet-mismatch.md) - another dense/sparse behavioral difference
