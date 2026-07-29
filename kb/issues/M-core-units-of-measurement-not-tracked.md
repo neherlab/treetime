@@ -17,7 +17,7 @@ All physical quantities are `f64` with no type-level or documentation-level dist
 
 ## Known problems
 
-- `INITIAL_COALESCENT_TC` was `0.001` subs/site when it should have been ~5 years (fixed by PR#851, filed in [N-coalescent-initial-tc-hardcoded-fallback.md](N-coalescent-initial-tc-hardcoded-fallback.md))
+- `INITIAL_COALESCENT_TC` was `0.001` subs/site when it should have been approximately 5 years (fixed by PR#851)
 - Coalescent Tc coordinate convention (calendar years) not type-enforced ([N-coalescent-time-scale-coordinate-not-type-enforced.md](N-coalescent-time-scale-coordinate-not-type-enforced.md))
 - `CalendarTime` newtype exists in coalescent but is not used elsewhere -- node times, date constraints, and confidence intervals pass raw `f64`
 - Branch lengths transition from subs/site to years during clock model application with no type change at the boundary
@@ -37,4 +37,3 @@ All physical quantities are `f64` with no type-level or documentation-level dist
 ## Related issues
 
 - [N-coalescent-time-scale-coordinate-not-type-enforced.md](N-coalescent-time-scale-coordinate-not-type-enforced.md)
-- [N-coalescent-initial-tc-hardcoded-fallback.md](N-coalescent-initial-tc-hardcoded-fallback.md)

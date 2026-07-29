@@ -47,7 +47,6 @@
   - [x] Re-optimizes constant Tc inside loop for iterations i >= 2
 - [/] Skyline (`--coalescent-skyline`, Nelder-Mead, piecewise linear $T_c(t)$; simplex, extrapolation, quadrature, and grid-validation contracts remain open: [kb/issues/N-coalescent-skyline-simplex-initialization-undecided.md](../issues/N-coalescent-skyline-simplex-initialization-undecided.md), [kb/issues/N-coalescent-skyline-extrapolation-policy-undecided.md](../issues/N-coalescent-skyline-extrapolation-policy-undecided.md), [kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md](../issues/N-coalescent-skyline-quadrature-contract-undecided.md), [kb/issues/N-coalescent-skyline-grid-validation-incomplete.md](../issues/N-coalescent-skyline-grid-validation-incomplete.md))
   - [x] Pre-loop constant Tc optimization
-  - [x] Warning fallback to Tc = 1.0 on failure or non-convergence
   - [x] Final skyline re-optimization after refinement loop
   - [x] Extra final timetree pass unless `--time-marginal=only-final`
 - [x] Coalescent leaf, internal-node, and root contributions

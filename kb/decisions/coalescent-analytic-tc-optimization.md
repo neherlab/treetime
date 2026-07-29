@@ -84,5 +84,4 @@ skyline case.
 - On a degenerate tree ($M \le 0$ or non-finite/non-positive $I$) there is no
   hardcoded initial $T_c$ and no fallback: the shared solve returns an error, which
   the pipeline propagates to stop the run rather than substituting an invented
-  timescale (see
-  [issues/N-coalescent-initial-tc-hardcoded-fallback.md](../issues/N-coalescent-initial-tc-hardcoded-fallback.md)).
+  timescale.

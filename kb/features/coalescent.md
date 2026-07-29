@@ -22,8 +22,7 @@ per-edge contributions for the whole-tree likelihood and for $T_c$ optimization.
 - [x] No hardcoded initial/fallback $T_c$ — the analytic solve needs no seed and
   cannot fail numerically; it errors only on a tree that is degenerate for the
   coalescent (no time span or no mergers), which the pipeline propagates so the run
-  stops with a clear message rather than substituting an invented timescale (see
-  [issues/N-coalescent-initial-tc-hardcoded-fallback.md](../issues/N-coalescent-initial-tc-hardcoded-fallback.md))
+  stops with a clear message rather than substituting an invented timescale
 
 ## Optimal constant $T_c$
 
