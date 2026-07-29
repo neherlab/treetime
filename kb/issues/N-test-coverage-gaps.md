@@ -112,11 +112,11 @@ Production defects remain in their domain issues; this issue owns the cross-cutt
 
 `struct ClockSet` algebra and propagation [packages/treetime/src/payload/clock_set.rs#L53-L172](../../packages/treetime/src/payload/clock_set.rs#L53-L172)
 
-`+`, `-`, `+=`, `-=`, `fn propagate_averages` lack property test coverage for algebraic identities (associativity, commutativity, identity element).
+Addition and `+=` lack coverage for associativity, commutativity, and the zero identity. Subtraction and `-=` require inverse-law properties such as `(a - b) + b = a`; subtraction is neither associative nor commutative. `fn propagate_averages` needs separately derived invariants for its valid input domain.
 
 ### No property tests for Fitch parsimony invariants
 
-Score invariant under rerooting, state-set subset relation between parent and child Fitch sets.
+Score invariance under rerooting remains relevant. State-set containment must be conditioned on the Fitch recurrence: an intersection result is a subset of every child set, while a union result contains each disjoint child set. A single unconditional parent/child subset property is false.
 
 ## Potential solutions
 
@@ -129,4 +129,4 @@ Use O1. Keep this file as the coverage inventory, link each focused ticket back 
 
 ## Ticket readiness
 
-The inventory itself is not ticket-ready. Existing focused property and domain tickets remain executable; ignored golden masters and unrelated zero-test functions require separate source issues or resolved blockers.
+The inventory itself is not ticket-ready. Focused property and domain tickets require valid properties, explicit generators, and traceable oracles; ignored golden masters and unrelated zero-test functions require separate source issues or resolved blockers.
