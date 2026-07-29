@@ -24,6 +24,6 @@ Negligible when the initial guess is calibrated (the standard workflow). On data
 
 - [packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs) (`reconcile_zero_boundary`, `grid_search_branch_lengths`)
 
-## Related tickets
+## Ticket readiness
 
-- [kb/tickets/optimize-reconcile-grid-extent-argument-unverified.md](../tickets/optimize-reconcile-grid-extent-argument-unverified.md)
+The proposed test is evidence gathering, and the alternative extent formulas are speculative. Create an implementation ticket only after a failing fixture identifies the required admissible interval.
