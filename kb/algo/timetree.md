@@ -98,7 +98,7 @@ The stiffness term penalizes rapid changes in log(Tc) between adjacent grid poin
 
 v1: [`packages/treetime/src/coalescent/skyline.rs`](../../packages/treetime/src/coalescent/skyline.rs).
 v0: [`packages/legacy/treetime/treetime/merger_models.py#L281`](../../packages/legacy/treetime/treetime/merger_models.py#L281).
-v1 uses Nelder-Mead (via `argmin` crate); v0 uses SLSQP (via `scipy.optimize.minimize`). See [known issue](../issues/M-timetree-skyline-nelder-mead-optimizer.md).
+v1 uses a convex Newton solve in log $T_c$; v0 uses SLSQP via `scipy.optimize.minimize`. See [kb/decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md).
 
 Skyline is re-optimized after the main iteration loop converges with stabilized node times, then a final timetree pass runs with the optimized Tc(t).
 

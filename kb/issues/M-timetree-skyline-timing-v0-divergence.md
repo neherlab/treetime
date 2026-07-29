@@ -14,6 +14,6 @@ Both approaches produce self-consistent results. The difference is whether the f
 
 ## Related
 
-- `kb/issues/N-coalescent-skyline-simplex-initialization-undecided.md`
+- `kb/decisions/coalescent-skyline-convex-log-tc.md`
 - `kb/issues/N-coalescent-skyline-extrapolation-policy-undecided.md`
 - `kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md`

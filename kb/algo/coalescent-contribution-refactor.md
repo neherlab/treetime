@@ -64,5 +64,5 @@ Fixed-$T_c$, optimized-$T_c$, and skyline paths all bind their candidate $T_c$ t
 
 - Decide and enforce the extrapolation policy: [kb/issues/N-coalescent-skyline-extrapolation-policy-undecided.md](../issues/N-coalescent-skyline-extrapolation-policy-undecided.md).
 - Define an accuracy contract for cumulative-hazard quadrature: [kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md](../issues/N-coalescent-skyline-quadrature-contract-undecided.md).
-- Decide the scale and direction of simplex initialization: [kb/issues/N-coalescent-skyline-simplex-initialization-undecided.md](../issues/N-coalescent-skyline-simplex-initialization-undecided.md).
+- Validate the internally derived skyline boundaries: [kb/issues/N-coalescent-skyline-grid-validation-incomplete.md](../issues/N-coalescent-skyline-grid-validation-incomplete.md).
 - Validate skyline grid shape and domain before endpoint access: [kb/issues/N-coalescent-skyline-grid-validation-incomplete.md](../issues/N-coalescent-skyline-grid-validation-incomplete.md).

@@ -18,7 +18,7 @@ Let $T_c$ denote the coalescent population-size time scale. v0 `--coalescent=sky
   umbrella issue for all missing outputs
 - [timetree.json missing coalescent parameters](N-timetree-json-missing-coalescent.md)
   skyline results also not serialized to JSON
-- [M-timetree-skyline-nelder-mead-optimizer.md](M-timetree-skyline-nelder-mead-optimizer.md)
+- [kb/decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md)
   the objective and optimizer both diverge from v0
 
 ## Related tickets

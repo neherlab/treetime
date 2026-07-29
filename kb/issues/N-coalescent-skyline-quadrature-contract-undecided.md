@@ -30,5 +30,3 @@ The numerical method must define an observable error contract for approximating 
 Prefer O3 when the selected interpolation has a stable analytic integral; otherwise use O2. Validate convergence against an independent high-precision integral before creating an implementation ticket.
 
 ## Related issues
-
-- [N-coalescent-skyline-simplex-initialization-undecided.md](N-coalescent-skyline-simplex-initialization-undecided.md)

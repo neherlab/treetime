@@ -131,8 +131,5 @@ $x=1/T_c$ parametrization before reliable smoothing, and does not recur.)
   (log-fold-changes), so it is dimensionless and scale-independent. Its numeric
   scale differs from the intermediate $1/T_c$ implementation; the CLI default is
   retained at `2.0` and reinterpreted on the log scale.
-- Supersedes the Nelder-Mead optimizer and simplex-initialization concerns in
-  [issues/M-timetree-skyline-nelder-mead-optimizer.md](../issues/M-timetree-skyline-nelder-mead-optimizer.md)
-  and [issues/N-coalescent-skyline-simplex-initialization-undecided.md](../issues/N-coalescent-skyline-simplex-initialization-undecided.md).
-  Boundary out-of-domain evaluation still uses constant extrapolation
+- Boundary out-of-domain evaluation still uses constant extrapolation
   ([issues/N-coalescent-skyline-extrapolation-policy-undecided.md](../issues/N-coalescent-skyline-extrapolation-policy-undecided.md)).

@@ -44,7 +44,7 @@ The coalescent + GMRF gradient is analytically tractable:
 
 ## NelderMead vs LBFGS
 
-v1 uses NelderMead (derivative-free) for the skyline. v0 uses SLSQP (gradient-based via scipy). This is a known difference (`M-timetree-skyline-nelder-mead-optimizer`).
+v1 uses a convex Newton solve in log $T_c$ for the skyline. v0 uses SLSQP via SciPy. The intentional solver and parametrization change is documented in [kb/decisions/coalescent-skyline-convex-log-tc.md](../../decisions/coalescent-skyline-convex-log-tc.md).
 
 | Property              | Nelder-Mead          | L-BFGS                    | SLSQP (v0)             |
 | :-------------------- | :------------------- | :------------------------ | :--------------------- |

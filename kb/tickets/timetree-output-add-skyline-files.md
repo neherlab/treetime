@@ -19,5 +19,5 @@ Let $T_c$ denote the coalescent population-size time scale. v0 `--coalescent=sky
   umbrella issue for all missing outputs
 - [timetree.json missing coalescent parameters](timetree-output-json-missing-coalescent-parameters.md)
   skyline results also not serialized to JSON
-- [Skyline coalescent uses Nelder-Mead instead of SLSQP](../issues/M-timetree-skyline-nelder-mead-optimizer.md)
+- [kb/decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md)
   different optimizer produces different skyline values

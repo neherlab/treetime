@@ -45,8 +45,8 @@
 - [x] Constant Tc (fixed from CLI `--coalescent`)
 - [x] Optimized Tc (`--coalescent-opt`, analytic one-segment skyline solve)
   - [x] Re-optimizes constant Tc inside loop for iterations i >= 2
-- [/] Skyline (`--coalescent-skyline`, Nelder-Mead, piecewise linear $T_c(t)$; simplex, extrapolation, quadrature, and grid-validation contracts remain open: [kb/issues/N-coalescent-skyline-simplex-initialization-undecided.md](../issues/N-coalescent-skyline-simplex-initialization-undecided.md), [kb/issues/N-coalescent-skyline-extrapolation-policy-undecided.md](../issues/N-coalescent-skyline-extrapolation-policy-undecided.md), [kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md](../issues/N-coalescent-skyline-quadrature-contract-undecided.md), [kb/issues/N-coalescent-skyline-grid-validation-incomplete.md](../issues/N-coalescent-skyline-grid-validation-incomplete.md))
   - [x] Pre-loop constant Tc optimization
+- [/] Skyline (`--coalescent-skyline`, convex Newton solve over piecewise-constant $T_c(t)$; extrapolation, quadrature, and internal boundary-validation contracts remain open: [kb/issues/N-coalescent-skyline-extrapolation-policy-undecided.md](../issues/N-coalescent-skyline-extrapolation-policy-undecided.md), [kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md](../issues/N-coalescent-skyline-quadrature-contract-undecided.md), [kb/issues/N-coalescent-skyline-grid-validation-incomplete.md](../issues/N-coalescent-skyline-grid-validation-incomplete.md))
   - [x] Final skyline re-optimization after refinement loop
   - [x] Extra final timetree pass unless `--time-marginal=only-final`
 - [x] Coalescent leaf, internal-node, and root contributions
