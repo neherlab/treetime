@@ -27,5 +27,3 @@ The parent was already successfully retrieved at lines 69-83. The second `get_no
 `CoalescentModel::total_merger_rate()` validates Tc at each queried coordinate ([`coalescent.rs#L84-L98`](../../packages/treetime/src/coalescent/coalescent.rs#L84-L98)), but construction-time validation occurs only at lineage-count midpoints during integration ([`integration.rs#L42-L59`](../../packages/treetime/src/coalescent/integration.rs#L42-L59)). A Distribution with valid midpoints but invalid endpoint or interior values would pass construction and fail only at later query time, with a less informative error context.
 
 ## Related issues
-
-- [N-timetree-negative-coalescent-tc.md](N-timetree-negative-coalescent-tc.md): negative Tc accepted without validation (related but distinct -- that issue covers CLI-level acceptance, not model construction deficiencies)
