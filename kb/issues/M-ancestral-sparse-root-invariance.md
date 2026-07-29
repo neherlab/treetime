@@ -33,6 +33,6 @@ Dense marginal operates on full probability vectors at every position, independe
 - [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md):
   same Fitch compression mechanism causes dense and sparse to produce different likelihoods on ~2.5% of random inputs (distinct issue, same root cause).
 
-## Related tickets
+## Ticket readiness
 
-- [kb/tickets/ancestral-sparse-root-invariance-violation.md](../tickets/ancestral-sparse-root-invariance-violation.md)
+The failing invariant and reproducer establish a scientific correctness problem, but the proposed Fitch-assignment explanation does not establish the required representation-preserving correction. Keep this issue active until the sparse representation mapping and an independent oracle define an executable fix.
