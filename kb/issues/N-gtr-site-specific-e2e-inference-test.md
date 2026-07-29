@@ -18,6 +18,8 @@ The site-specific GTR inference is validated against v0 using synthetic mutation
 
 Requires partition integration (`N-gtr-site-specific-partition-integration.md`). The mutation count extraction functions (`get_branch_mutation_matrix`, `accumulate_mutation_counts`) currently produce site-summed `MutationCounts`, not per-site `MutationCountsSiteSpecific`.
 
-## Related tickets
+The existing `1e-3` solver-recovery and golden-master tolerances do not establish the project's `1e-6` numerical contract. Measure the actual discrepancy and identify its source independently of the missing end-to-end path.
 
-- [kb/tickets/gtr-site-specific-lacks-end-to-end-inference-test.md](../tickets/gtr-site-specific-lacks-end-to-end-inference-test.md)
+## Ticket readiness
+
+The end-to-end test depends on site-specific partition integration and lacks an independent per-site mutation-count oracle. Create a focused test ticket only after those prerequisites exist.
