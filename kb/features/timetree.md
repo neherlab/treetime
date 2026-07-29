@@ -43,9 +43,8 @@
 ## Coalescent Models
 
 - [x] Constant Tc (fixed from CLI `--coalescent`)
-- [/] Optimized Tc (`--coalescent-opt`, Brent's method, log-space bracket [-20, 2]; the command can report success without retaining an optimized parameter: [kb/issues/M-timetree-constant-tc-success-without-parameter.md](../issues/M-timetree-constant-tc-success-without-parameter.md))
+- [x] Optimized Tc (`--coalescent-opt`, analytic one-segment skyline solve)
   - [x] Re-optimizes constant Tc inside loop for iterations i >= 2
-  - [/] No special pre-loop setup unless skyline also active
 - [/] Skyline (`--coalescent-skyline`, Nelder-Mead, piecewise linear $T_c(t)$; simplex, extrapolation, quadrature, and grid-validation contracts remain open: [kb/issues/N-coalescent-skyline-simplex-initialization-undecided.md](../issues/N-coalescent-skyline-simplex-initialization-undecided.md), [kb/issues/N-coalescent-skyline-extrapolation-policy-undecided.md](../issues/N-coalescent-skyline-extrapolation-policy-undecided.md), [kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md](../issues/N-coalescent-skyline-quadrature-contract-undecided.md), [kb/issues/N-coalescent-skyline-grid-validation-incomplete.md](../issues/N-coalescent-skyline-grid-validation-incomplete.md))
   - [x] Pre-loop constant Tc optimization
   - [x] Warning fallback to Tc = 1.0 on failure or non-convergence
