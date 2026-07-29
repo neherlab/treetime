@@ -169,8 +169,7 @@ where
       reroot_params.objective,
     ),
     RerootSpec::Method(RerootMethod::MinDev) => {
-      // v0 min_dev disables the positive-rate guard but still ranks roots by estimated-rate WLS chisq.
-      find_best_root(graph, options, params, false, RootObjective::EstimatedRate)
+      find_best_root(graph, options, params, false, RootObjective::FixedRate(0.0))
     },
     RerootSpec::Method(RerootMethod::Oldest) => find_oldest_root(graph, options, reroot_params.objective),
     RerootSpec::Method(RerootMethod::ClockFilter) => find_best_root(

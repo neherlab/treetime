@@ -2,12 +2,15 @@
 mod tests {
   use crate::clock::clock_graph::GraphClock;
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
-  use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootMethod, RerootSpec};
+  use crate::clock::find_best_root::find_best_root::find_best_root;
+  use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootMethod, RerootSpec, RootObjective};
   use crate::clock::reroot::{RerootParams, reroot_in_place};
   use crate::o;
+  use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use treetime_graph::node::Named;
   use treetime_graph::reroot::remove_node_if_trivial;
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
@@ -37,14 +40,7 @@ mod tests {
     Ok(())
   }
 
-  fn setup_reroot_test_graph() -> Result<(GraphClock, ClockParams), Report> {
-    let dates = btreemap! {
-      o!("A") => 2013.0,
-      o!("B") => 2022.0,
-      o!("C") => 2017.0,
-      o!("D") => 2005.0,
-    };
-
+  fn setup_reroot_test_graph_with_dates(dates: &BTreeMap<String, f64>) -> Result<(GraphClock, ClockParams), Report> {
     let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     for n in graph.get_leaves() {
       let name = n
@@ -63,6 +59,73 @@ mod tests {
     clock_regression_forward(&graph, &options, None)?;
 
     Ok((graph, options))
+  }
+
+  fn setup_reroot_test_graph() -> Result<(GraphClock, ClockParams), Report> {
+    let dates = btreemap! {
+      o!("A") => 2013.0,
+      o!("B") => 2022.0,
+      o!("C") => 2017.0,
+      o!("D") => 2005.0,
+    };
+    setup_reroot_test_graph_with_dates(&dates)
+  }
+
+  #[test]
+  fn test_reroot_min_dev_matches_fixed_zero_rate_objective() -> Result<(), Report> {
+    let (mut graph, options) = setup_reroot_test_graph()?;
+    let branch_params = BranchPointOptimizationParams::default();
+    let expected = find_best_root(&graph, &options, &branch_params, false, RootObjective::FixedRate(0.0))?;
+    let expected_edge = expected.edge.expect("fixture should select a root edge");
+
+    let reroot_params = RerootParams {
+      spec: RerootSpec::Method(RerootMethod::MinDev),
+      ..RerootParams::default()
+    };
+    let actual = reroot_in_place(&mut graph, &options, &branch_params, &reroot_params)?;
+    let actual_split = actual.edge_split.expect("fixture should select an interior root point");
+
+    assert_eq!(expected_edge, actual_split.old_edge_key);
+    pretty_assert_ulps_eq!(expected.split, actual_split.split_position, max_ulps = 4);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_reroot_min_dev_is_independent_of_sampling_date_values() -> Result<(), Report> {
+    let dates_ascending = btreemap! {
+      o!("A") => 2000.0,
+      o!("B") => 2001.0,
+      o!("C") => 2002.0,
+      o!("D") => 2003.0,
+    };
+    let dates_descending = btreemap! {
+      o!("A") => 2003.0,
+      o!("B") => 2002.0,
+      o!("C") => 2001.0,
+      o!("D") => 2000.0,
+    };
+    let (mut graph_ascending, options_ascending) = setup_reroot_test_graph_with_dates(&dates_ascending)?;
+    let (mut graph_descending, options_descending) = setup_reroot_test_graph_with_dates(&dates_descending)?;
+    let reroot_params = RerootParams {
+      spec: RerootSpec::Method(RerootMethod::MinDev),
+      ..RerootParams::default()
+    };
+    let branch_params = BranchPointOptimizationParams::default();
+
+    reroot_in_place(&mut graph_ascending, &options_ascending, &branch_params, &reroot_params)?;
+    reroot_in_place(
+      &mut graph_descending,
+      &options_descending,
+      &branch_params,
+      &reroot_params,
+    )?;
+
+    let expected = nwk_write_str(&graph_ascending, &NwkWriteOptions::default())?;
+    let actual = nwk_write_str(&graph_descending, &NwkWriteOptions::default())?;
+    assert_eq!(expected, actual);
+
+    Ok(())
   }
 
   #[test]
