@@ -42,9 +42,11 @@ The assertion is stripped in release builds. When gamma <= 0 reaches this code p
 - Column-stochastic property violated by additive perturbation
 - Degenerate zero branch lengths and non-positive gamma values are not rejected at boundaries
 
+## Ticket readiness
+
+Each instance needs an independent issue because input validation, denominator regularization, stochastic normalization, and release-mode guards have different behavioral contracts. Existing focused tickets remain valid only where their source issue selects one correction and supplies an oracle.
+
 ## Related tickets
 
-- [kb/tickets/numerical-min-positive-clamp-biases-near-zero-divisor.md](../tickets/numerical-min-positive-clamp-biases-near-zero-divisor.md)
-- [kb/tickets/numerical-name-and-document-magic-1e-10-thresholds.md](../tickets/numerical-name-and-document-magic-1e-10-thresholds.md)
 - [kb/tickets/numerical-promote-debug-assert-to-production-guards.md](../tickets/numerical-promote-debug-assert-to-production-guards.md)
 - [kb/tickets/numerical-supertiny-number-distorts-column-stochastic-normalization.md](../tickets/numerical-supertiny-number-distorts-column-stochastic-normalization.md)
