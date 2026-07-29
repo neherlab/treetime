@@ -23,7 +23,6 @@ Approximately 75 production `unwrap()`/`expect()`/`assert!()` calls panic instea
 | `packages/treetime-utils/src/datetime/date_range.rs` | 4         | `.unwrap()` in `from_ymd()`                                   |
 | `seq/mutation.rs`                                    | 2         | `.unwrap()` on byte access                                    |
 | `seq/div.rs`                                         | 2         | `.unwrap()` on graph lookups                                  |
-| `seq/indel.rs`                                       | 1         | `assert!()` on range validity                                 |
 | `ancestral/fitch.rs`                                 | 3         | `.unwrap()` on node operations                                |
 | `packages/treetime-cli/src/cli/verbosity.rs`         | 1         | `.unwrap()` on parse                                          |
 | `cli/rtt_chart.rs`                                   | 1         | `assert!(!results.is_empty())`                                |

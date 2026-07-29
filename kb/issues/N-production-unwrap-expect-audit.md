@@ -2,15 +2,7 @@
 
 ## Summary
 
-One CLI-reachable panic via `assert!` and approximately 75 production `unwrap()`/`expect()`/`assert!()` calls that panic instead of returning errors.
-
-## CLI-reachable panic
-
-### InDel::new uses assert! instead of Result
-
-`packages/treetime/src/seq/indel.rs:23-24:`
-
-`assert!(range.0 <= range.1)` and `assert_eq!(seq.len(), range.1 - range.0)` panic on invalid input instead of returning `Result`. Reachable from any command that processes alignments with indels when input data contains malformed gap annotations.
+Production `unwrap()`/`expect()`/`assert!()` calls remain that can panic instead of returning contextual errors. The former `InDel::new()` assertions have been replaced by a fallible constructor and are no longer part of this audit.
 
 ## Production unwrap/expect/assert instances (~75+)
 
@@ -31,23 +23,20 @@ One CLI-reachable panic via `assert!` and approximately 75 production `unwrap()`
 | `packages/treetime-utils/src/datetime/date_range.rs` | 4         | `.unwrap()` in `from_ymd()`                                   |
 | `seq/mutation.rs`                                    | 2         | `.unwrap()` on byte access                                    |
 | `seq/div.rs`                                         | 2         | `.unwrap()` on graph lookups                                  |
-| `seq/indel.rs`                                       | 1         | `assert!()` on range validity                                 |
 | `ancestral/fitch.rs`                                 | 3         | `.unwrap()` on node operations                                |
 | `packages/treetime-cli/src/cli/verbosity.rs`         | 1         | `.unwrap()` on parse                                          |
 | `cli/rtt_chart.rs`                                   | 1         | `assert!(!results.is_empty())`                                |
 
 ## Impact
 
-- Any malformed input reaching InDel::new causes an unrecoverable panic
 - Graph lookup unwraps panic if tree structure is inconsistent (e.g., after failed topology operations)
 - Numeric conversion unwraps panic on out-of-range values
 - Production users see panic backtraces instead of actionable error messages
 
 ## Fix
 
-Replace `assert!` in `InDel::new` with `Result` return. For the ~75 production unwraps, prioritize by reachability: graph traversal unwraps and numeric conversion unwraps are highest priority since they are reachable from normal input paths.
+Prioritize remaining calls by verified reachability: graph traversal unwraps and numeric conversion unwraps require contextual error propagation when normal input can reach them.
 
 ## Related tickets
 
 - [kb/tickets/safety-audit-production-unwrap-expect-assert-calls.md](../tickets/safety-audit-production-unwrap-expect-assert-calls.md)
-- [kb/tickets/safety-convert-indel-new-assert-to-result.md](../tickets/safety-convert-indel-new-assert-to-result.md)
