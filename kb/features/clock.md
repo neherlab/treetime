@@ -26,7 +26,7 @@
 ## Reroot Modes (4 modes)
 
 - [x] Least-squares (minimize RTT regression residuals)
-- [x] Min-dev (minimize RTT variance)
+- [x] Min-dev (fixed-zero-rate WLS; minimize RTT variance independently of sampling-date values; see [kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md))
 - [x] Oldest (root at oldest node)
 - [x] Tip/MRCA mode (`--reroot-tips`)
 

@@ -15,5 +15,5 @@ Use the existing topology/reference-order index to construct deterministic slots
 
 ## Related issues
 
-- [N-reroot-missing-v0-golden-master.md](N-reroot-missing-v0-golden-master.md)
+- [N-reroot-missing-min-dev-end-to-end-oracle.md](N-reroot-missing-min-dev-end-to-end-oracle.md)
 - [N-clock-svg-output-nondeterministic-untraced.md](N-clock-svg-output-nondeterministic-untraced.md)

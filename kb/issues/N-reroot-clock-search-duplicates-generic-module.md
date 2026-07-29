@@ -17,6 +17,9 @@ Use O1. Implement `RootStats` directly for `ClockSet`, route clock rerooting thr
 
 ## Related issues
 
-- [M-clock-mindev-wrong-objective.md](M-clock-mindev-wrong-objective.md)
 - [N-reroot-duplicated-tip-name-resolution.md](N-reroot-duplicated-tip-name-resolution.md)
 - [N-reroot-split-optimizer-default-diverges-from-v0.md](N-reroot-split-optimizer-default-diverges-from-v0.md)
+
+## Related errata
+
+- [kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md)

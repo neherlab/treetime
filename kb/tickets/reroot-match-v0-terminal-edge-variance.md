@@ -19,4 +19,4 @@ Split the complete terminal-edge variance, including the leaf offset, between th
 ## Related issues
 
 - Source: [kb/issues/N-reroot-leaf-variance-offset-diverges-from-v0.md](../issues/N-reroot-leaf-variance-offset-diverges-from-v0.md)
-- [kb/issues/N-reroot-missing-v0-golden-master.md](../issues/N-reroot-missing-v0-golden-master.md)
+- [kb/issues/N-reroot-missing-min-dev-end-to-end-oracle.md](../issues/N-reroot-missing-min-dev-end-to-end-oracle.md)
