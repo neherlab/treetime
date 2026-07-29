@@ -187,6 +187,8 @@ v1: [`packages/treetime/src/timetree/convergence/`](../../packages/treetime/src/
 
 ### Log-likelihood components
 
+Component and total scalar boundaries use `LogLh`, while positional distribution grids and probability arrays remain native `f64`. Transparent serialization preserves the existing convergence CSV schema. See [kb/decisions/typed-log-likelihood-values.md](../decisions/typed-log-likelihood-values.md).
+
 - `compute_sequence_log_lh()` (`#compute_sequence_log_lh`) [packages/treetime/src/timetree/convergence/likelihood.rs#L11-L25](../../packages/treetime/src/timetree/convergence/likelihood.rs#L11-L25): sum of per-partition root log-likelihoods from marginal reconstruction
 - `compute_positional_log_lh()` (`#compute_positional_log_lh`) [packages/treetime/src/timetree/convergence/likelihood.rs#L35-L76](../../packages/treetime/src/timetree/convergence/likelihood.rs#L35-L76): sum of log-probabilities of branch length distributions evaluated at inferred time durations. **v1-specific metric** - v0's `positional_LH` sums node-level marginal log-likelihoods from the forward pass. Both trend in the same direction during convergence but produce different numerical values.
 - `compute_coalescent_log_lh()` (`#compute_coalescent_log_lh`) [packages/treetime/src/timetree/convergence/likelihood.rs#L80-L91](../../packages/treetime/src/timetree/convergence/likelihood.rs#L80-L91): total coalescent log-likelihood via `compute_coalescent_total_lh()`. Sums per-edge Kingman coalescent costs under the active Tc distribution.

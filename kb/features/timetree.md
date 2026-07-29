@@ -102,6 +102,7 @@
 - [x] Positional log-likelihood (`log_lh_pos`)
 - [x] Tracelog CSV output (`--tracelog`)
 - [x] Coalescent log-likelihood in metrics (`log_lh_coal`)
+- [x] Typed aggregate likelihood components (`LogLh`) with unchanged numeric CSV serialization
 
 ## Confidence Intervals
 

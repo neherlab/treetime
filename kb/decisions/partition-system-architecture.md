@@ -175,7 +175,7 @@ Behavior is defined through traits in `packages/treetime/src/partition/traits.rs
 
 `PartitionCompressed` (`traits.rs:42-72:1:`) provides access to sparse node/edge maps, alphabet, and length.
 
-`HasLogLh` (`traits.rs:74-77:1:`) extracts log-likelihood per node.
+`HasLogLh` extracts a typed `LogLh` aggregate per node. Probability arrays and local numerical kernels remain native `f64`; see [typed-log-likelihood-values.md](typed-log-likelihood-values.md).
 
 `PartitionTimetreeOps<N, E>` (`partition_ops.rs:29-43:1:`) defines:
 
@@ -196,7 +196,7 @@ pub trait PartitionTimetreeAll<N, E>:
 Commands operate on `Vec<Arc<RwLock<dyn PartitionTimetreeAll<...>>>>`, iterating over partitions during each tree traversal. The graph log-likelihood sums across all partitions (`traits.rs:80-96:1:`):
 
 ```rust
-pub fn graph_log_lh<P, N, E, D>(graph: &Graph<N, E, D>, partitions: &[Arc<RwLock<P>>]) -> Result<f64, Report>
+pub fn graph_log_lh<P, N, E, D>(graph: &Graph<N, E, D>, partitions: &[Arc<RwLock<P>>]) -> Result<LogLh, Report>
 where
   P: HasLogLh + ?Sized,
 {

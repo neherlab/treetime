@@ -38,6 +38,7 @@ v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with 
 - [x] Grid search fallback when second derivative >= 0 (100 points, log-spaced grid with 0.5 subs/site minimum upper bound)
 - [x] Zero branch length short-circuit (combined likelihood > 0.01 and derivative < 0 at zero)
 - [x] `compute_derivatives` flag to skip derivative computation for log-likelihood-only evaluation
+- [x] Typed aggregate likelihood results and convergence history (`LogLh`), with native `f64` derivative kernels
 - [x] Collect dense contribution (`PartitionMarginalDense`)
 - [x] Collect sparse contribution (`PartitionMarginalSparse`, multiplicity-weighted)
 - [x] Unified mixed-partition evaluation (`evaluate_mixed()` sums metrics across partition types)

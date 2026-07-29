@@ -105,6 +105,8 @@ Based on <a id="cite-8"></a>[Sagulenko, Puller, and Neher 2018](https://doi.org/
 
 The optimize outer loop uses three stopping conditions in `run_optimize_loop()` ([`packages/treetime/src/optimize/run_loop.rs`](../../packages/treetime/src/optimize/run_loop.rs)), where $L_i$ is the joint log-likelihood at iteration $i$ and $\mathit{dp}$ is the convergence threshold. In indel-bearing runs, $L_i$ includes both substitution likelihood from `update_marginal()` and the tree-level Poisson contribution evaluated with the fixed rate for that loop invocation:
 
+Aggregate likelihood results and histories use `LogLh`; per-site coefficients, derivatives, branch lengths, and solver coordinates remain `f64`. Subtraction between two `LogLh` values produces the scalar convergence delta used below. See [kb/decisions/typed-log-likelihood-values.md](../decisions/typed-log-likelihood-values.md).
+
 - Small change: $|L_i - L_{i-1}| < \mathit{dp}$. Because this uses an absolute difference, it can also accept a small deterioration.
 - Two-cycle: $|L_i - L_{i-2}| < \mathit{dp}$ for $i\ge2$.
 - Decline after a best iteration: $i\ge2$, $L_i<L_{i-1}$, and $L_{i-1}\ge L_{\mathrm{best}}$; the saved branch lengths are restored and iteration stops.
