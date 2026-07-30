@@ -81,6 +81,8 @@ Each operand extends its own domain symmetrically. The extension limit is the ot
 
 When both operands have `Error` or `Zero` tails (the default), the result is identical to strict intersection. When operands carry `Constant` tails -- as backward parent messages do (see [tail assignments](#tail-assignments-in-the-timetree-pipeline)) -- disjoint finite grids overlap via the tails. This prevents the product from collapsing to `Empty` when temporal signals conflict, for example under `--keep-root` where rerooting cannot resolve the tension between subtrees.
 
+Point * Function follows the same per-side rule without constructing a result grid. A point in a `Constant` tail evaluates against the Function's boundary value. A point beyond an `Error` or `Zero` boundary produces `Empty`.
+
 #### Division
 
 The divisor extends its domain; the dividend's bounds are used as-is. This asymmetry reflects the use case: the forward pass divides a parent's time distribution (dividend) by a child's backward message (divisor) to compute the cavity. The divisor's tail metadata determines how far the cavity extends:
@@ -120,7 +122,7 @@ Scientific workflows requiring posterior peak, normalization, or integrated-prob
 
 ### Tail-aware arithmetic
 
-- [packages/treetime-distribution/src/distribution_ops/multiply.rs](../../packages/treetime-distribution/src/distribution_ops/multiply.rs): `fn multiplication_support_intersection()`, `fn multiply_function_function()`, `fn multiply_range_function()`
+- [packages/treetime-distribution/src/distribution_ops/multiply.rs](../../packages/treetime-distribution/src/distribution_ops/multiply.rs): `fn multiplication_support_intersection()`, `fn multiply_point_function()`, `fn multiply_function_function()`, `fn multiply_range_function()`
 - [packages/treetime-distribution/src/distribution_ops/divide.rs](../../packages/treetime-distribution/src/distribution_ops/divide.rs): `fn division_support_intersection()`, `fn divide_function_by_function()`, `fn divide_range_by_function()`
 
 ### Inference pass tail application

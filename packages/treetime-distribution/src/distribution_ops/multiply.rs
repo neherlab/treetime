@@ -85,11 +85,18 @@ fn multiply_point_function<Y: YAxisPolicy>(
   func: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
   let t = point.t();
-  // The product with a finite-support function is zero where the point lies outside the
-  // function support, so return an empty distribution rather than evaluating the function
-  // out of support. This matches multiply_point_range and multiply_point_point.
-  if t < func.x_min() || t > func.x_max() {
-    return Ok(Distribution::empty());
+  let tail = if t < func.x_min() {
+    Some(func.left_extrap())
+  } else if t > func.x_max() {
+    Some(func.right_extrap())
+  } else {
+    None
+  };
+  if let Some(tail) = tail {
+    match tail {
+      BoundaryBehavior::Constant => {},
+      BoundaryBehavior::Error | BoundaryBehavior::Zero => return Ok(Distribution::empty()),
+    }
   }
   let func_value = func.interp(t)?;
   let amplitude = Y::multiply(point.amplitude(), func_value);

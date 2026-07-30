@@ -7,6 +7,7 @@ mod tests {
   use approx::assert_ulps_eq;
   use eyre::Report;
   use ndarray::array;
+  use rstest::rstest;
   use treetime_grid::BoundaryBehavior;
   use treetime_utils::assert_error;
 
@@ -73,13 +74,30 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_boundary_multiply_point_outside_function_is_empty() -> Result<(), Report> {
-    let f: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::error_left(    (-1.0, BoundaryBehavior::Error,    BoundaryBehavior::Error),    None)]
+  #[case::error_right(   ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Error),    None)]
+  #[case::zero_left(     (-1.0, BoundaryBehavior::Zero,     BoundaryBehavior::Error),    None)]
+  #[case::zero_right(    ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Zero),     None)]
+  #[case::constant_left( (-1.0, BoundaryBehavior::Constant, BoundaryBehavior::Error),    Some(2.0))]
+  #[case::constant_right(( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Constant), Some(6.0))]
+  #[trace]
+  fn test_boundary_multiply_point_function_outside_support(
+    #[case] (t, left, right): (f64, BoundaryBehavior, BoundaryBehavior),
+    #[case] expected_amplitude: Option<f64>,
+  ) -> Result<(), Report> {
+    let f: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
+      .with_left_extrap(left)?
+      .with_right_extrap(right)?;
     let function = Distribution::Function(f);
-    let point_outside = Distribution::point(5.0, 1.0);
-    let actual = distribution_multiplication(&point_outside, &function)?;
-    assert_eq!(Distribution::empty(), actual);
+    let point = Distribution::point(t, 2.0);
+
+    let actual = distribution_multiplication(&point, &function)?;
+    // Oracle: kb/decisions/distribution-tails-and-arithmetic.md#L74-L84 defines Constant
+    // as evaluable outside the grid and Zero/Error as carrying no product there.
+    let expected = expected_amplitude.map_or_else(Distribution::empty, |amplitude| Distribution::point(t, amplitude));
+    assert_eq!(expected, actual);
     Ok(())
   }
 
