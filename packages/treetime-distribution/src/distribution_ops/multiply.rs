@@ -9,6 +9,7 @@ use crate::distribution_ops::time_bounds::{
 use crate::policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::{Array1, Zip};
+use treetime_grid::BoundaryBehavior;
 
 /// Grid size for discretizing Formula distributions that have no natural grid.
 const FORMULA_GRID_SIZE: usize = 200;
@@ -117,7 +118,12 @@ fn multiply_range_function<Y: YAxisPolicy>(
   range: &DistributionRange<f64, Y>,
   func: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  match distribution_support_intersection((range.start(), range.end()), (func.x_min(), func.x_max())) {
+  match multiplication_support_intersection(
+    (range.start(), range.end()),
+    (BoundaryBehavior::Error, BoundaryBehavior::Error),
+    (func.x_min(), func.x_max()),
+    (func.left_extrap(), func.right_extrap()),
+  ) {
     SupportIntersection::Disjoint => Ok(Distribution::empty()),
     SupportIntersection::Point(t) => {
       let amplitude = Y::multiply(range.amplitude(), func.interp(t)?);
@@ -139,7 +145,12 @@ fn multiply_function_function<Y: YAxisPolicy>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  match distribution_support_intersection((a.x_min(), a.x_max()), (b.x_min(), b.x_max())) {
+  match multiplication_support_intersection(
+    (a.x_min(), a.x_max()),
+    (a.left_extrap(), a.right_extrap()),
+    (b.x_min(), b.x_max()),
+    (b.left_extrap(), b.right_extrap()),
+  ) {
     SupportIntersection::Disjoint => Ok(Distribution::empty()),
     SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.interp(t)?, b.interp(t)?))),
     SupportIntersection::Interval(bounds) => {
@@ -185,7 +196,12 @@ fn multiply_formula_function<Y: YAxisPolicy>(
   a: &DistributionFormula<Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  match distribution_support_intersection((a.t_min(), a.t_max()), (b.x_min(), b.x_max())) {
+  match multiplication_support_intersection(
+    (a.t_min(), a.t_max()),
+    (BoundaryBehavior::Error, BoundaryBehavior::Error),
+    (b.x_min(), b.x_max()),
+    (b.left_extrap(), b.right_extrap()),
+  ) {
     SupportIntersection::Disjoint => Ok(Distribution::empty()),
     SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.eval_single(t)?, b.interp(t)?))),
     SupportIntersection::Interval(bounds) => {
@@ -246,4 +262,43 @@ fn multiply_formula_range<Y: YAxisPolicy>(
 
   let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), Array1::from_vec(values))?;
   Ok(Distribution::Function(distribution_fn))
+}
+
+/// Compute support intersection for multiplication, honoring operand tails.
+///
+/// A `Constant` tail declares the operand evaluable beyond its grid boundary on that side.
+/// Multiplication extends the evaluable domain to the other operand's bound. `Zero` and `Error`
+/// tails keep the grid boundary as-is (intersection is correct when the value is zero or
+/// undefined outside support).
+fn multiplication_support_intersection(
+  a_bounds: (f64, f64),
+  a_tails: (BoundaryBehavior, BoundaryBehavior),
+  b_bounds: (f64, f64),
+  b_tails: (BoundaryBehavior, BoundaryBehavior),
+) -> SupportIntersection {
+  let a_eval = (
+    if a_tails.0 == BoundaryBehavior::Constant {
+      a_bounds.0.min(b_bounds.0)
+    } else {
+      a_bounds.0
+    },
+    if a_tails.1 == BoundaryBehavior::Constant {
+      a_bounds.1.max(b_bounds.1)
+    } else {
+      a_bounds.1
+    },
+  );
+  let b_eval = (
+    if b_tails.0 == BoundaryBehavior::Constant {
+      b_bounds.0.min(a_bounds.0)
+    } else {
+      b_bounds.0
+    },
+    if b_tails.1 == BoundaryBehavior::Constant {
+      b_bounds.1.max(a_bounds.1)
+    } else {
+      b_bounds.1
+    },
+  );
+  distribution_support_intersection(a_eval, b_eval)
 }
