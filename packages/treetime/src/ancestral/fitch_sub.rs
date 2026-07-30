@@ -29,6 +29,10 @@ pub fn resolve_variable_positions_backward(
   let mut variable = BTreeMap::new();
 
   for pos in variable_positions {
+    if range_contains(non_char, pos) {
+      continue; // this node has no character state here, so nothing is variable
+    }
+
     // Collect child profiles (1D vectors)
     let child_profiles = children
       .iter()
@@ -142,6 +146,9 @@ pub fn resolve_nonroot_substitutions_forward(
 
   // for each variable position, pick a state or a mutation
   for (pos, states) in variable.iter_mut() {
+    if range_contains(gaps, *pos) {
+      continue; // deleted on this edge: there is no character state to resolve or mutate
+    }
     let pnuc = parent_seq.sequence[*pos];
     if alphabet.is_canonical(pnuc) {
       // check whether parent is in child profile (sum>0 --> parent state is in profile)
@@ -163,7 +170,7 @@ pub fn resolve_nonroot_substitutions_forward(
   }
 
   for &pos in parent_seq.fitch.variable.keys() {
-    if variable.contains_key(&pos) || range_contains(&parent_seq.gaps, pos) {
+    if variable.contains_key(&pos) || range_contains(&parent_seq.gaps, pos) || range_contains(gaps, pos) {
       continue;
     }
 

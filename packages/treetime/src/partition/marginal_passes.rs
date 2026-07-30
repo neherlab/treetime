@@ -239,6 +239,13 @@ fn compute_ml_subs_for_nodes(
     .dedup();
   positions
     .filter_map(|pos| {
+      // Parity with the dense `edge_subs()` (`marginal_dense.rs`), which skips any position that
+      // is `non_char` at either endpoint. A deleted position can still hold a `profile.variable`
+      // entry whose argmax is an ordinary residue, and reporting it would put a substitution and
+      // a deletion on the same edge at the same site.
+      if range_contains(&parent.seq.non_char, pos) || range_contains(&child.seq.non_char, pos) {
+        return None;
+      }
       let parent_state = resolve_map_state(parent, pos, alphabet);
       let child_state = resolve_map_state(child, pos, alphabet);
       (parent_state != child_state && alphabet.is_canonical(parent_state) && alphabet.is_canonical(child_state))

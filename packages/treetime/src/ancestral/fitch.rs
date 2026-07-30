@@ -28,6 +28,7 @@ use treetime_graph::node::{GraphNode, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
+use treetime_utils::interval::range_union::range_union;
 use treetime_utils::sync::mutex::unwrap_arc_rwlock;
 
 pub fn create_fitch_partition<N, E>(
@@ -169,8 +170,22 @@ where
   let child_gaps: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.gaps).collect_vec();
 
   let ranges = compute_node_ranges(&child_non_chars, &child_gaps);
-  let non_char = ranges.non_char;
   let unknown = ranges.unknown;
+
+  let child_unknown: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.unknown).collect_vec();
+  let child_variable_indels: Vec<&_> = children.iter().map(|(c, _)| &c.fitch.variable_indel).collect_vec();
+
+  let indels_bw = resolve_indels_backward(&child_gaps, &child_unknown, &child_variable_indels, length);
+
+  // A resolved gap is a position with no character state, so it has to be masked like every other
+  // non-char position. `compute_node_ranges` intersects the children's `non_char`, which drops any
+  // column a child left as `variable_indel`, while `resolve_indels_backward` still resolves such a
+  // column to a gap (it counts `variable_indel` as gap-compatible). Taking the union keeps `gaps` a
+  // subset of `non_char`, the invariant leaves (`SparseNodePartition::new`) and the dense
+  // representation (`DenseSeqInfo::new`) already hold. Without it a single determined residue
+  // stranded inside a missing-data run keeps a character state at a position the node reports as
+  // deleted, and the forward pass then emits a substitution inside its own deletion.
+  let non_char = range_union(&[ranges.non_char, indels_bw.resolved_gaps.clone()]);
 
   let mut sequence = seq![FILL_CHAR; length];
   for r in &non_char {
@@ -179,11 +194,6 @@ where
 
   let mut variable = resolve_variable_positions_backward(&children, &non_char, &mut sequence);
   resolve_fixed_positions_backward(&children, alphabet, &mut sequence, &mut variable);
-
-  let child_unknown: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.unknown).collect_vec();
-  let child_variable_indels: Vec<&_> = children.iter().map(|(c, _)| &c.fitch.variable_indel).collect_vec();
-
-  let indels_bw = resolve_indels_backward(&child_gaps, &child_unknown, &child_variable_indels, length);
 
   slot.node = SparseNodePartition {
     seq: SparseSeqInfo {
@@ -272,6 +282,10 @@ fn run_fitch_forward_indexed(
       &seq.sequence,
     );
     seq.gaps = new_gaps;
+    // The forward pass widens `gaps` with gaps inherited from the parent, so re-establish
+    // `gaps ⊆ non_char` here too. Must run after `resolve_indels_forward`, which distinguishes
+    // insertions by testing `non_char` as it stood during the backward pass.
+    seq.non_char = range_union(&[seq.non_char.clone(), seq.gaps.clone()]);
     for indel in &indels {
       seq.composition.add_indel(indel);
     }

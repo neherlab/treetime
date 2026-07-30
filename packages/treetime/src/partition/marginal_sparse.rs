@@ -113,6 +113,17 @@ pub(crate) fn reconstruct_map_seq_sampled(
     }
   }
 
+  // Re-apply deletions last. The profile writes above are keyed by position and would otherwise
+  // resurrect a residue at a site the edge reports as deleted, leaving the reconstructed sequence
+  // disagreeing with its own indel track.
+  if let Some(edge) = edge {
+    for indel in &edge.indels {
+      if indel.is_deletion() {
+        seq[indel.range.0..indel.range.1].fill(alphabet.gap());
+      }
+    }
+  }
+
   seq
 }
 

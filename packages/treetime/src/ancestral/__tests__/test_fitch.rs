@@ -646,8 +646,15 @@ mod tests {
       let variable_positions = get_root_variable_positions(&graph, &partition);
       assert_eq!(vec![0, 2, 3, 5, 6], variable_positions);
 
+      // Positions 14-15 read as non-char ('.') rather than "AC". The root resolves 14..16 to a gap
+      // (AB leaves it `variable_indel`, CD is gapped, and `resolve_indels_backward` treats
+      // `variable_indel` as gap-compatible), so the backward mask covers them and the states A/C
+      // that leaf A carries there no longer propagate up. Before `gaps` was unioned into
+      // `non_char`, those columns kept a character state while the node reported them deleted,
+      // which let the forward pass emit a substitution inside its own deletion.
+      // See test_fitch_gap_sub_conflict.rs.
       let root_seq = get_root_seq(&graph, &partition);
-      assert_eq!("~C~~C~~TGTATTGAC", root_seq);
+      assert_eq!("~C~~C~~TGTATTG..", root_seq);
 
       // Verify state sets at each variable position (which characters are possible)
       let state_sets = get_root_state_sets(&graph, &partition);
