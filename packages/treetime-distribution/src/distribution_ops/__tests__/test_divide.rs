@@ -215,7 +215,7 @@ mod tests {
       .unwrap();
 
     let actual = distribution_division(&dividend, &divisor).unwrap();
-    // Oracle: kb/decisions/timetree-inference-pass-boundary-tails.md, "Scope and interaction".
+    // Oracle: kb/decisions/distribution-tails-and-arithmetic.md, division tail rules.
     let expected =
       Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![5.0, 10.0, 15.0, 20.0, 25.0]).unwrap();
     assert_eq!(expected, actual);

@@ -8,6 +8,7 @@ mod tests {
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
   use rstest::rstest;
+  use treetime_grid::BoundaryBehavior;
   use treetime_utils::pretty_assert_ulps_eq;
 
   /// Formula * Function returns a Function with correct pointwise products.
@@ -170,10 +171,7 @@ mod tests {
     Distribution::Function(f)
   }
 
-  /// Non-overlapping Function × Function returns Empty.
-  ///
-  /// When two distributions have disjoint supports, their product is
-  /// identically zero, so the multiplication collapses to `Empty`.
+  /// Non-overlapping Function * Function with default (Error) tails returns Empty.
   #[test]
   fn test_multiply_function_function_non_overlapping_returns_empty() {
     let a = make_gaussian(0.0, 1.0, 101);
@@ -232,5 +230,319 @@ mod tests {
     let likely = accum.likely_time().expect("Final distribution must have likely_time");
     // After 50 steps with shifts of 0.01, the accumulated peak drifts slightly
     assert!(likely.abs() < 1.0, "Peak at {likely}, expected near 0");
+  }
+
+  fn make_function(x_min: f64, x_max: f64, n: usize, peak_at: f64, sigma: f64) -> DistributionFunction<f64, Plain> {
+    let dx = (x_max - x_min) / (n - 1) as f64;
+    let y = Array1::from_shape_fn(n, |i| {
+      let x = x_min + dx * (i as f64);
+      (-0.5 * ((x - peak_at) / sigma).powi(2)).exp()
+    });
+    DistributionFunction::<f64, Plain>::from_start_dx_values(x_min, dx, y).unwrap()
+  }
+
+  /// C1: overlapping grids, no tails -- unchanged from pre-tail behavior.
+  #[test]
+  fn test_multiply_tail_c1_overlapping_no_tails() {
+    let a = Distribution::Function(make_function(0.0, 10.0, 101, 5.0, 2.0));
+    let b = Distribution::Function(make_function(3.0, 13.0, 101, 8.0, 2.0));
+    let result = distribution_multiplication(&a, &b).unwrap();
+    let Distribution::Function(f) = &result else {
+      panic!("Expected Function")
+    };
+    // Intersection: [3.0, 10.0]
+    assert_ulps_eq!(f.x_min(), 3.0, max_ulps = 4);
+    assert_ulps_eq!(f.x_max(), 10.0, max_ulps = 4);
+    let peak = result.likely_time().unwrap();
+    // Product of two Gaussians (mu=5, mu=8) peaks at the weighted mean ~6.5
+    assert!(peak > 5.5 && peak < 7.5, "Peak at {peak}, expected ~6.5");
+  }
+
+  /// C2: overlapping grids with Constant tails -- intersection unchanged (tails only extend).
+  #[test]
+  fn test_multiply_tail_c2_overlapping_with_tails() {
+    let a = Distribution::Function(
+      make_function(0.0, 10.0, 101, 5.0, 2.0)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap(),
+    );
+    let b = Distribution::Function(
+      make_function(3.0, 13.0, 101, 8.0, 2.0)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap(),
+    );
+    let result = distribution_multiplication(&a, &b).unwrap();
+    let Distribution::Function(f) = &result else {
+      panic!("Expected Function")
+    };
+    // A's Constant left extends to min(0, 3) = 0 (no change). B's extends to min(3, 0) = 0.
+    // Intersection of [0, 10] and [0, 13] = [0, 10].
+    assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
+    assert_ulps_eq!(f.x_max(), 10.0, max_ulps = 4);
+  }
+
+  /// C3: disjoint grids, one Constant left tail -- extends to produce non-empty result.
+  #[test]
+  fn test_multiply_tail_c3_disjoint_one_constant_left() {
+    // A: grid [10, 20], Constant left tail
+    // B: grid [0, 8], default Error tails
+    let a = Distribution::Function(
+      make_function(10.0, 20.0, 101, 15.0, 3.0)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap(),
+    );
+    let b = Distribution::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
+    let result = distribution_multiplication(&a, &b).unwrap();
+    let Distribution::Function(f) = &result else {
+      panic!("Expected Function, got {result:?}")
+    };
+    // A extends left to min(10, 0) = 0. B stays [0, 8].
+    // Intersection of [0, 20] and [0, 8] = [0, 8].
+    assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
+    assert_ulps_eq!(f.x_max(), 8.0, max_ulps = 4);
+    assert!(result.likely_time().is_some());
+  }
+
+  /// C4: disjoint grids, both Constant left -- backward-pass pattern.
+  #[test]
+  fn test_multiply_tail_c4_disjoint_both_constant_left() {
+    // Two backward-pass messages with disjoint finite grids but overlapping via Constant
+    // left tails: leaf message [2001, 2007] and subtree message [1970, 2000].
+    let leaf_msg = Distribution::Function(
+      make_function(2001.0, 2007.0, 61, 2004.0, 2.0)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Zero)
+        .unwrap(),
+    );
+    let subtree_msg = Distribution::Function(
+      make_function(1970.0, 2000.0, 301, 1990.0, 5.0)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Zero)
+        .unwrap(),
+    );
+    let result = distribution_multiplication(&leaf_msg, &subtree_msg).unwrap();
+    let Distribution::Function(f) = &result else {
+      panic!("Expected Function (non-empty product), got {result:?}")
+    };
+    // Leaf extends left to min(2001, 1970) = 1970. Subtree extends left to min(1970, 2001) = 1970.
+    // Right sides: both Zero, no extension.
+    // Intersection of [1970, 2007] and [1970, 2000] = [1970, 2000].
+    assert_ulps_eq!(f.x_min(), 1970.0, max_ulps = 4);
+    assert_ulps_eq!(f.x_max(), 2000.0, max_ulps = 4);
+    // Product should be dominated by the subtree's shape (leaf is flat constant in this region).
+    let peak = result.likely_time().unwrap();
+    assert!(peak > 1985.0 && peak < 1995.0, "Peak at {peak}, expected near 1990");
+  }
+
+  /// C5: disjoint grids, Zero tail -- stays Empty (zero outside support, intersection correct).
+  #[test]
+  fn test_multiply_tail_c5_disjoint_zero_tail() {
+    let a = Distribution::Function(
+      make_function(10.0, 20.0, 101, 15.0, 3.0)
+        .with_left_extrap(BoundaryBehavior::Zero)
+        .unwrap(),
+    );
+    let b = Distribution::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
+    let result = distribution_multiplication(&a, &b).unwrap();
+    assert!(
+      matches!(result, Distribution::Empty),
+      "Zero tail should not prevent Empty"
+    );
+  }
+
+  /// C6: endpoint contact with Constant tail -- extends past contact to produce interval.
+  #[test]
+  fn test_multiply_tail_c6_endpoint_contact_with_constant() {
+    // Without tails: endpoint contact -> Point. With Constant left on A: extends past.
+    let a = Distribution::Function(
+      make_function(5.0, 10.0, 51, 7.5, 2.0)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap(),
+    );
+    let b = Distribution::Function(make_function(0.0, 5.0, 51, 2.5, 2.0));
+    let result = distribution_multiplication(&a, &b).unwrap();
+    let Distribution::Function(f) = &result else {
+      panic!("Expected Function (interval, not point contact), got {result:?}")
+    };
+    // A extends left to min(5, 0) = 0. B stays [0, 5].
+    // Intersection of [0, 10] and [0, 5] = [0, 5].
+    assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
+    assert_ulps_eq!(f.x_max(), 5.0, max_ulps = 4);
+  }
+
+  /// C7: one contained in other with tails -- intersection unchanged.
+  #[test]
+  fn test_multiply_tail_c7_contained_with_tails() {
+    let outer = Distribution::Function(
+      make_function(0.0, 20.0, 201, 10.0, 5.0)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap(),
+    );
+    let inner = Distribution::Function(make_function(5.0, 15.0, 101, 10.0, 3.0));
+    let result = distribution_multiplication(&outer, &inner).unwrap();
+    let Distribution::Function(f) = &result else {
+      panic!("Expected Function")
+    };
+    // Inner is fully contained -- tails don't change the intersection.
+    assert_ulps_eq!(f.x_min(), 5.0, max_ulps = 4);
+    assert_ulps_eq!(f.x_max(), 15.0, max_ulps = 4);
+  }
+
+  /// C8: mixed Constant left + Zero right -- backward message pattern.
+  #[test]
+  fn test_multiply_tail_c8_mixed_constant_zero() {
+    // Both messages have Constant left (parent could be older) and Zero right (hard upper bound).
+    // Overlapping case -- verify tails don't corrupt the result.
+    let a = Distribution::Function(
+      make_function(0.0, 10.0, 101, 5.0, 2.0)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Zero)
+        .unwrap(),
+    );
+    let b = Distribution::Function(
+      make_function(3.0, 8.0, 51, 5.5, 1.5)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Zero)
+        .unwrap(),
+    );
+    let result = distribution_multiplication(&a, &b).unwrap();
+    let Distribution::Function(f) = &result else {
+      panic!("Expected Function")
+    };
+    // Both extend left to min of both = 0. Right: both Zero, no extension.
+    // Intersection of [0, 10] and [0, 8] = [0, 8].
+    assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
+    assert_ulps_eq!(f.x_max(), 8.0, max_ulps = 4);
+    assert!(result.likely_time().is_some());
+  }
+
+  /// Commutativity holds with tail-extended multiplication.
+  #[test]
+  fn test_multiply_tail_commutative() {
+    let a = Distribution::Function(
+      make_function(10.0, 20.0, 101, 15.0, 3.0)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap(),
+    );
+    let b = Distribution::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
+    let ab = distribution_multiplication(&a, &b).unwrap();
+    let ba = distribution_multiplication(&b, &a).unwrap();
+    let (Distribution::Function(fab), Distribution::Function(fba)) = (&ab, &ba) else {
+      panic!("Both results should be Function")
+    };
+    assert_ulps_eq!(fab.x_min(), fba.x_min(), max_ulps = 4);
+    assert_ulps_eq!(fab.x_max(), fba.x_max(), max_ulps = 4);
+    assert_ulps_eq!(fab.y(), fba.y(), max_ulps = 10);
+  }
+
+  /// Chained multiplication with normalize-then-reapply-tails survives disjoint late child.
+  ///
+  /// Simulates the backward pass: three overlapping messages produce a narrow accumulated
+  /// result. After normalize (which resets tails to Error), the accumulated result must have
+  /// tails re-applied before multiplying with a fourth disjoint message. Without re-application,
+  /// the fourth multiplication collapses to Empty.
+  #[test]
+  fn test_multiply_tail_chained_normalize_reapply() {
+    let msg1 = Distribution::Function(
+      make_function(2000.0, 2010.0, 101, 2005.0, 2.0)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Zero)
+        .unwrap(),
+    );
+    let msg2 = Distribution::Function(
+      make_function(2001.0, 2008.0, 71, 2004.0, 1.5)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Zero)
+        .unwrap(),
+    );
+    let msg3 = Distribution::Function(
+      make_function(2003.0, 2009.0, 61, 2006.0, 1.5)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Zero)
+        .unwrap(),
+    );
+    // Fourth message: disjoint from the narrowed accumulator but reachable via Constant left tail.
+    let msg4 = Distribution::Function(
+      make_function(1970.0, 1999.0, 291, 1990.0, 5.0)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Zero)
+        .unwrap(),
+    );
+
+    // Simulate backward pass accumulation with normalize + tail re-application.
+    let mut accum = msg1;
+    for msg in [&msg2, &msg3, &msg4] {
+      accum = distribution_multiplication(&accum, msg)
+        .unwrap()
+        .normalize()
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Zero)
+        .unwrap();
+    }
+
+    assert!(
+      !matches!(accum, Distribution::Empty),
+      "Chained multiplication collapsed to Empty despite Constant left tails"
+    );
+    assert!(
+      accum.likely_time().is_some(),
+      "Accumulated result must have a likely_time"
+    );
+  }
+
+  /// Chained multiplication where normalize resets the accumulator's tails to Error.
+  ///
+  /// Two recent messages narrow the accumulator to ~(2024.5, 2025.5). After normalize resets
+  /// tails to Error, a much older message at (1970, 1999) is disjoint. The old message's
+  /// Constant left can't help (it extends leftward, not rightward). The accumulator's Error
+  /// left can't extend leftward either. Product is Empty -- this is the scenario the backward
+  /// pass re-apply fix addresses.
+  #[test]
+  fn test_multiply_tail_chained_normalize_without_reapply_collapses() {
+    let msg_recent_1 = Distribution::Function(
+      make_function(2024.0, 2026.0, 21, 2025.0, 0.5)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Zero)
+        .unwrap(),
+    );
+    let msg_recent_2 = Distribution::Function(
+      make_function(2024.5, 2025.5, 11, 2025.0, 0.3)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Zero)
+        .unwrap(),
+    );
+    let msg_old = Distribution::Function(
+      make_function(1970.0, 1999.0, 291, 1990.0, 5.0)
+        .with_left_extrap(BoundaryBehavior::Constant)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Zero)
+        .unwrap(),
+    );
+
+    // First two messages overlap and narrow the accumulator.
+    let product = distribution_multiplication(&msg_recent_1, &msg_recent_2).unwrap();
+    assert!(!matches!(product, Distribution::Empty));
+
+    // Normalize resets tails to Error.
+    let normalized = product.normalize();
+
+    // Old message's Constant left extends to min(1970, ~2024.5) = 1970 (already there).
+    // Accumulator's Error left stays at ~2024.5. Disjoint.
+    let final_result = distribution_multiplication(&normalized, &msg_old).unwrap();
+    assert!(
+      matches!(final_result, Distribution::Empty),
+      "Without tail re-application, the accumulator can't extend leftward to overlap the old message"
+    );
   }
 }
