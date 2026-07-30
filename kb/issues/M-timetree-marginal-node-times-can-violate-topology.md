@@ -31,4 +31,4 @@ Validation must include an inverted-mode case and dated-leaf boundaries once the
 
 ## Related issues
 
-- [kb/decisions/timetree-inference-pass-boundary-tails.md](../decisions/timetree-inference-pass-boundary-tails.md) - per-pass tail semantics can change posterior peaks but do not jointly constrain marginal modes
+- [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) - per-pass tail semantics can change posterior peaks but do not jointly constrain marginal modes

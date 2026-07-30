@@ -20,11 +20,18 @@ For the Poisson dengue_20 case, expected output has 39 entries (20 leaves + 19 i
 
 The failure is in the inference output itself. The tests reach the value-comparison stage and expose a semantic mismatch: internal node times are absent rather than merely named differently or hidden behind an earlier crash.
 
-## Possible causes
+## Root cause
 
-- `extract_node_times()` returns `None` for `time()` on internal nodes, indicating backward/forward pass does not set time distributions on them for these datasets
-- The golden master rerooted tree structure may differ from what v1's rerooting produces, leading to different internal node naming or topology
-- These datasets have characteristics (short branches, specific branch length distributions) that cause the inference to not converge or produce empty distributions
+The backward pass multiplies child parent-time messages at each internal node. Two issues caused the product to collapse to `Empty`, leaving internal time distributions unset:
+
+1. `distribution_multiplication` ignored operand `Constant` tails, producing `Empty` when child messages had disjoint finite grids. Fixed: multiplication now extends evaluable domain on sides with `Constant` tails.
+2. `normalize()` between successive child multiplications reset tails to `Error`, so the accumulated result lost its `Constant` left tail before the next multiplication. Fixed: backward pass re-applies `Constant` left / `Zero` right after each normalize.
+
+Both fixes are in the `fix/multiply-honor-tails` branch. End-to-end verification on flu/h3n2/20 (36/36 nodes dated) and mpox/hmpxv1 (1451/1451 nodes dated) confirms internal times are now produced under `--keep-root`.
+
+## Remaining verification
+
+The 15 commented-out GM runner test cases (5 datasets * 3 modes) need to be uncommented and run. They may still fail for independent reasons (grid-width tolerance, rerooting topology differences) even though the missing-times root cause is addressed.
 
 ## Working datasets
 

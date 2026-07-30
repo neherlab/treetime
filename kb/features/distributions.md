@@ -5,14 +5,14 @@
 - [x] Analytical Gaussian (PDF, product, convolution)
 - [x] Analytical Exponential (PDF, convolution, special case a=b)
 - [x] Gaussian-Exponential convolution
-- [x] Grid distributions (uniform grid, linear interpolation, and explicit boundary behavior; [kb/decisions/timetree-inference-pass-boundary-tails.md](../decisions/timetree-inference-pass-boundary-tails.md))
+- [x] Grid distributions (uniform grid, linear interpolation, and explicit boundary behavior; [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md))
 - [x] ScaledArray pattern (normalized values + log-scale factor)
 
 ## Partial or Not Implemented
 
 - [ ] Unified Distribution class (v0: wraps scipy.interpolate.interp1d)
 - [ ] Delta functions (point masses, v0 `Distribution.delta_function()`)
-- [x] Distribution multiplication (uniform-grid divergence documented in [kb/decisions/distribution-intersection-grid-resolution.md](../decisions/distribution-intersection-grid-resolution.md))
+- [x] Distribution multiplication (uniform-grid divergence documented in [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md))
 - [/] Distribution division (implemented; [kb/issues/M-distribution-plain-division-fixed-floor.md](../issues/M-distribution-plain-division-fixed-floor.md))
 - [ ] Numerical integration (v0 Simpson's rule, trapezoidal)
 - [ ] FFT transform (v0 `Distribution.fft()`)
