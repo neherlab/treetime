@@ -106,7 +106,7 @@ where
         parent_time_dist.as_ref().clone()
       };
 
-      // Tail policy for the forward message (kb/decisions/timetree-inference-pass-boundary-tails.md).
+      // Tail policy for the forward message (kb/decisions/distribution-tails-and-arithmetic.md).
       // The parent's time is a hard lower bound (left tail Zero); there is no upper bound from
       // the parent side on how far in the future the node could be (right tail Constant).
       let dist_from_parent = distribution_convolution(&parent_except_subtree, branch_dist)?

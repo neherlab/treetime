@@ -309,6 +309,9 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   /// Create a new distribution function with y values scaled by factor.
   /// Preserves the grid parameters exactly, avoiding floating point issues
   /// that can occur when regenerating the x array.
+  ///
+  /// Resets tail policies to `Error` (the `GridFn` default). Callers that need
+  /// tails after scaling must re-apply them -- the forward pass depends on this.
   pub fn scale_y(&self, factor: T) -> Result<Self, Report>
   where
     T: Float,

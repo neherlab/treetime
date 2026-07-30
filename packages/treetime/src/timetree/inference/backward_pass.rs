@@ -71,8 +71,15 @@ where
       // without normalization, the peak decays as ~(peak)^N across N children, underflowing
       // to zero for large trees. Normalization (max=1.0) is safe because all downstream
       // consumers (likely_time, quantile, hpd_region) are scale-invariant.
+      //
+      // Re-apply backward-message tails after normalize(), which resets them to Error.
+      // Without this, subsequent multiplications would ignore the Constant left tail and
+      // collapse to Empty when child messages have disjoint finite grids.
       result = Some(if let Some(current) = result {
-        distribution_multiplication(&current, parent_message)?.normalize()
+        distribution_multiplication(&current, parent_message)?
+          .normalize()
+          .with_left_extrap(BoundaryBehavior::Constant)?
+          .with_right_extrap(BoundaryBehavior::Zero)?
       } else {
         parent_message.as_ref().clone()
       });
@@ -112,7 +119,7 @@ where
     && let (Some(branch_dist), Some(node_time_dist)) = (edge.branch_length_distribution(), outgoing_distribution)
   {
     let negated_branch_dist = branch_dist.negate()?;
-    // Tail policy for the backward message (kb/decisions/timetree-inference-pass-boundary-tails.md).
+    // Tail policy for the backward message (kb/decisions/distribution-tails-and-arithmetic.md).
     // The parent could be arbitrarily far in the past, so the left tail is Constant; the
     // child's sampling date is a hard upper bound on the parent's age, so the right tail is Zero.
     let parent_message = distribution_convolution(node_time_dist.as_ref(), &negated_branch_dist)?
