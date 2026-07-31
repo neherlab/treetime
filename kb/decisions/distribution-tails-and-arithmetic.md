@@ -51,6 +51,16 @@ This lets the backward pass combine child messages with multiplication and norma
 
 The forward pass still applies its own tail policies _after_ normalization ([forward_pass.rs#L126-L127](../../packages/treetime/src/timetree/inference/forward_pass.rs#L126-L127), [forward_pass.rs#L141-L142](../../packages/treetime/src/timetree/inference/forward_pass.rs#L141-L142)) because the forward message needs `Zero` left / `Constant` right regardless of the tails the multiplication produced. This explicit application overwrites the preserved tails, which is correct.
 
+## Branch-length far-tail decay
+
+The branch-length time distribution is discretized on a grid that hard-truncates the long-branch side at `max_bl = min(5 * center, 5.0)` substitutions/site. Beyond that boundary the density was previously held flat by the backward message's `Constant` tail. A flat far tail is physically wrong: under a Poisson substitution model the branch likelihood is $\mathcal{L}(t) \propto e^{-\mu t}(\mu t)^k$, whose logarithm is asymptotically linear, so long branches decay exponentially rather than holding constant. The flat floor over-weights arbitrarily long branches and, after negation and convolution, over-weights an arbitrarily old parent, biasing deep internal-node dates older.
+
+The branch-length distribution now continues that decay explicitly. `fn DistributionFunction.extend_log_linear_tail()` appends grid points on the long-branch side that continue the local log-linear slope, estimated from the outermost `min(3, n/3)` points, stopping when the extrapolated density falls below $10^{-10}$ of the peak or the grid reaches ten times its base size. The backward message keeps its `Constant` left tail (retained deliberately to preserve coverage under `--keep-root`), now anchored at the negligible extended-boundary value rather than at the truncated boundary.
+
+Measured on `flu/h3n2/20` with `--keep-root --clock-rate=0.003`, the effect is driven by grid extent, not resolution: a tenfold resolution increase at fixed extent moves internal-node dates by under $0.04$ years, while filling the truncated tail moves them by tens of years. The flat tail places the deepest internal node at 1985.7; the log-linear extrapolation reaches 1991.0.
+
+Because the boundary slope of the concave log-likelihood is shallower than its asymptotic slope, the log-linear extrapolation under-decays: it captures only part of the correction the true likelihood produces. The same experiment extended with real likelihood values instead of extrapolation reaches 2011.6, so the extrapolated tail is a known approximation of the exact branch-length likelihood in the far region.
+
 ## Grid intersection contract
 
 v1 computes the result grid for both multiplication and division by resampling onto a new uniform grid spanning the exact analytical support intersection. This is an intentional divergence from v0, which collects knots from both operands inside the overlap and builds a non-uniform grid from them ([distribution.py#L82-L145](../../packages/legacy/treetime/treetime/distribution.py#L82-L145)).
@@ -116,7 +126,7 @@ Coalescent contributions do not introduce another grid. The backward pass multip
 
 Two specific divergences from v0's distribution handling:
 
-1. **Tail ownership.** v0 owns convolution tails inside `fn NodeInterpolator.convolve_fft()` ([node_interpolator.py#L231-L256](../../packages/legacy/treetime/treetime/node_interpolator.py#L231-L256)) as slope-based extrapolation (linear in neg-log, exponential in probability) constructed from the outermost trusted points. v0 has no per-pass tail override. v1 attaches a per-message `Constant`/`Zero` policy after each convolution and does not reconstruct v0's slope-based tails.
+1. **Tail ownership.** v0 owns convolution tails inside `fn NodeInterpolator.convolve_fft()` ([node_interpolator.py#L231-L256](../../packages/legacy/treetime/treetime/node_interpolator.py#L231-L256)) as slope-based extrapolation (linear in neg-log, exponential in probability) constructed from the outermost trusted points. v0 has no per-pass tail override. v1 attaches a per-message `Constant`/`Zero` policy after each convolution, and separately constructs a log-linear decay tail on the branch-length distribution before convolution (see [Branch-length far-tail decay](#branch-length-far-tail-decay)). v1 does not reconstruct v0's tails on the convolution result itself.
 
 2. **Default out-of-support handling.** v0 returns effectively zero probability outside support as a soft value (`fill_value=1e10` in neg-log, i.e. $\exp(-10^{10})$). v1 returns `Error` by default, requiring an explicit `Zero` or `Constant` opt-in.
 
@@ -158,10 +168,6 @@ Scientific workflows requiring posterior peak, normalization, or integrated-prob
 ### Specifications
 
 - [kb/algo/timetree-extrapolation-and-time-clamping.md](../algo/timetree-extrapolation-and-time-clamping.md): original spec defining extrapolation policies, exact intersection boundaries, and the monotonicity clamp. Source material for this decision.
-
-### Proposals
-
-- [kb/proposals/exponential-branch-length-tails.md](../proposals/exponential-branch-length-tails.md): a `BoundaryBehavior::Exponential` variant for branch length distributions, continuing the log-linear slope at the grid boundary. Would replace the flat `Constant` tail on backward messages with a physically motivated exponential decay.
 
 ### Issues
 
