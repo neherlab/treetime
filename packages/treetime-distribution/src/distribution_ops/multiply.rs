@@ -142,7 +142,12 @@ fn multiply_range_function<Y: YAxisPolicy>(
       let values = func
         .interp_many(&grid)?
         .mapv(|value| Y::multiply(range.amplitude(), value));
-      let function = DistributionFunction::from_range_values(bounds, values)?;
+      // A range has no interpolated tail (Error both sides), so composition keeps Error tails.
+      let function = with_composed_tails(
+        DistributionFunction::from_range_values(bounds, values)?,
+        (BoundaryBehavior::Error, BoundaryBehavior::Error),
+        (func.left_extrap(), func.right_extrap()),
+      )?;
       Ok(Distribution::Function(function))
     },
   }
@@ -168,7 +173,11 @@ fn multiply_function_function<Y: YAxisPolicy>(
       let values = Zip::from(&values_a)
         .and(&values_b)
         .map_collect(|&value_a, &value_b| Y::multiply(value_a, value_b));
-      let function = DistributionFunction::from_range_values(bounds, values)?;
+      let function = with_composed_tails(
+        DistributionFunction::from_range_values(bounds, values)?,
+        (a.left_extrap(), a.right_extrap()),
+        (b.left_extrap(), b.right_extrap()),
+      )?;
       Ok(Distribution::Function(function))
     },
   }
@@ -219,7 +228,12 @@ fn multiply_formula_function<Y: YAxisPolicy>(
       let values = Zip::from(&formula_values)
         .and(&function_values)
         .map_collect(|&formula, &function| Y::multiply(formula, function));
-      let function = DistributionFunction::from_range_values(bounds, values)?;
+      // A formula has no interpolated tail (Error both sides), so composition keeps Error tails.
+      let function = with_composed_tails(
+        DistributionFunction::from_range_values(bounds, values)?,
+        (BoundaryBehavior::Error, BoundaryBehavior::Error),
+        (b.left_extrap(), b.right_extrap()),
+      )?;
       Ok(Distribution::Function(function))
     },
   }
@@ -269,6 +283,31 @@ fn multiply_formula_range<Y: YAxisPolicy>(
 
   let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), Array1::from_vec(values))?;
   Ok(Distribution::Function(distribution_fn))
+}
+
+/// Attach the per-side result tails composed from the two operands' tails to a Function result.
+fn with_composed_tails<Y: YAxisPolicy>(
+  function: DistributionFunction<f64, Y>,
+  a_tails: (BoundaryBehavior, BoundaryBehavior),
+  b_tails: (BoundaryBehavior, BoundaryBehavior),
+) -> Result<DistributionFunction<f64, Y>, Report> {
+  function
+    .with_left_extrap(compose_multiplication_tail(a_tails.0, b_tails.0))?
+    .with_right_extrap(compose_multiplication_tail(a_tails.1, b_tails.1))
+}
+
+/// Compose the per-side result tail for a product from the two operands' tails on that side.
+///
+/// Beyond a boundary the product is evaluated pointwise: if either operand is undefined there
+/// the product is undefined (`Error`); otherwise if either operand is zero the product is zero
+/// (`Zero`); only when both operands are flat non-zero constants is the product a flat constant
+/// (`Constant`). This is the maximum over the precedence `Constant` < `Zero` < `Error`.
+fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> BoundaryBehavior {
+  match (a, b) {
+    (BoundaryBehavior::Error, _) | (_, BoundaryBehavior::Error) => BoundaryBehavior::Error,
+    (BoundaryBehavior::Zero, _) | (_, BoundaryBehavior::Zero) => BoundaryBehavior::Zero,
+    (BoundaryBehavior::Constant, BoundaryBehavior::Constant) => BoundaryBehavior::Constant,
+  }
 }
 
 /// Compute support intersection for multiplication, honoring operand tails.

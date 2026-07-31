@@ -439,14 +439,16 @@ mod tests {
     assert_ulps_eq!(fab.y(), fba.y(), max_ulps = 10);
   }
 
-  /// Chained multiplication with normalize-then-reapply-tails survives disjoint late child.
+  /// Chained multiply + normalize (no manual re-apply) survives a disjoint late child.
   ///
   /// Simulates the backward pass: three overlapping messages produce a narrow accumulated
-  /// result. After normalize (which resets tails to Error), the accumulated result must have
-  /// tails re-applied before multiplying with a fourth disjoint message. Without re-application,
-  /// the fourth multiplication collapses to Empty.
+  /// result, then a fourth message with a disjoint finite grid but overlapping via its Constant
+  /// left tail. Multiplication composes the result tails from its operands and normalize()
+  /// preserves them, so the accumulator keeps its Constant left tail across steps without any
+  /// manual re-application. The fourth multiplication therefore extends leftward and stays
+  /// non-empty.
   #[test]
-  fn test_multiply_tail_chained_normalize_reapply() {
+  fn test_multiply_tail_chained_normalize_preserves_tails_survives_disjoint() {
     let msg1 = Distribution::Function(
       make_function(2000.0, 2010.0, 101, 2005.0, 2.0)
         .with_left_extrap(BoundaryBehavior::Constant)
@@ -477,37 +479,33 @@ mod tests {
         .unwrap(),
     );
 
-    // Simulate backward pass accumulation with normalize + tail re-application.
+    // Backward-pass accumulation: multiply + normalize only, exactly as the inference pass runs.
     let mut accum = msg1;
     for msg in [&msg2, &msg3, &msg4] {
-      accum = distribution_multiplication(&accum, msg)
-        .unwrap()
-        .normalize()
-        .with_left_extrap(BoundaryBehavior::Constant)
-        .unwrap()
-        .with_right_extrap(BoundaryBehavior::Zero)
-        .unwrap();
+      accum = distribution_multiplication(&accum, msg).unwrap().normalize();
     }
 
-    assert!(
-      !matches!(accum, Distribution::Empty),
-      "Chained multiplication collapsed to Empty despite Constant left tails"
-    );
+    let Distribution::Function(f) = &accum else {
+      panic!("Chained multiplication collapsed to {accum:?} despite Constant left tails")
+    };
+    // The composed tails survive normalization across every step.
+    assert_eq!(BoundaryBehavior::Constant, f.left_extrap());
+    assert_eq!(BoundaryBehavior::Zero, f.right_extrap());
     assert!(
       accum.likely_time().is_some(),
       "Accumulated result must have a likely_time"
     );
   }
 
-  /// Chained multiplication where normalize resets the accumulator's tails to Error.
+  /// The specific narrow-then-disjoint scenario that used to collapse now survives.
   ///
-  /// Two recent messages narrow the accumulator to ~(2024.5, 2025.5). After normalize resets
-  /// tails to Error, a much older message at (1970, 1999) is disjoint. The old message's
-  /// Constant left can't help (it extends leftward, not rightward). The accumulator's Error
-  /// left can't extend leftward either. Product is Empty -- this is the scenario the backward
-  /// pass re-apply fix addresses.
+  /// Two recent messages narrow the accumulator to ~(2024.5, 2025.5). A much older message at
+  /// (1970, 1999) has a disjoint finite grid. Because normalize() preserves the accumulator's
+  /// Constant left tail, the final multiplication extends leftward to reach the old message and
+  /// produces a non-empty result. Under the old behavior, where normalize reset tails to Error,
+  /// this product collapsed to Empty.
   #[test]
-  fn test_multiply_tail_chained_normalize_without_reapply_collapses() {
+  fn test_multiply_tail_chained_normalize_no_reapply_survives() {
     let msg_recent_1 = Distribution::Function(
       make_function(2024.0, 2026.0, 21, 2025.0, 0.5)
         .with_left_extrap(BoundaryBehavior::Constant)
@@ -530,19 +528,76 @@ mod tests {
         .unwrap(),
     );
 
-    // First two messages overlap and narrow the accumulator.
+    // First two messages overlap and narrow the accumulator; the product keeps Constant left.
     let product = distribution_multiplication(&msg_recent_1, &msg_recent_2).unwrap();
     assert!(!matches!(product, Distribution::Empty));
 
-    // Normalize resets tails to Error.
+    // Normalize preserves the Constant left tail.
     let normalized = product.normalize();
+    let Distribution::Function(f) = &normalized else {
+      panic!("Expected Function, got {normalized:?}")
+    };
+    assert_eq!(BoundaryBehavior::Constant, f.left_extrap());
 
-    // Old message's Constant left extends to min(1970, ~2024.5) = 1970 (already there).
-    // Accumulator's Error left stays at ~2024.5. Disjoint.
+    // The old message's disjoint grid is reachable because the accumulator extends leftward.
     let final_result = distribution_multiplication(&normalized, &msg_old).unwrap();
     assert!(
-      matches!(final_result, Distribution::Empty),
-      "Without tail re-application, the accumulator can't extend leftward to overlap the old message"
+      !matches!(final_result, Distribution::Empty),
+      "Constant left tail must survive normalize() so the accumulator overlaps the old message"
     );
+  }
+
+  /// normalize() preserves the per-side tail policies of a Function distribution.
+  #[test]
+  fn test_multiply_normalize_preserves_tails() {
+    let f = make_function(2000.0, 2010.0, 101, 2005.0, 2.0)
+      .with_left_extrap(BoundaryBehavior::Constant)
+      .unwrap()
+      .with_right_extrap(BoundaryBehavior::Zero)
+      .unwrap();
+    let normalized = Distribution::Function(f).normalize();
+    let Distribution::Function(f) = &normalized else {
+      panic!("Expected Function, got {normalized:?}")
+    };
+    assert_eq!(BoundaryBehavior::Constant, f.left_extrap());
+    assert_eq!(BoundaryBehavior::Zero, f.right_extrap());
+    // Peak scaled to 1.0, tails unchanged.
+    assert_ulps_eq!(1.0, f.y().iter().copied().fold(f64::MIN, f64::max), max_ulps = 4);
+  }
+
+  /// Function * Function composes the per-side result tail from the operands' tails, with
+  /// precedence Constant < Zero < Error (the more restrictive tail wins).
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::constant_constant(BoundaryBehavior::Constant, BoundaryBehavior::Constant, BoundaryBehavior::Constant)]
+  #[case::constant_zero(    BoundaryBehavior::Constant, BoundaryBehavior::Zero,     BoundaryBehavior::Zero)]
+  #[case::constant_error(   BoundaryBehavior::Constant, BoundaryBehavior::Error,    BoundaryBehavior::Error)]
+  #[case::zero_zero(        BoundaryBehavior::Zero,     BoundaryBehavior::Zero,     BoundaryBehavior::Zero)]
+  #[case::zero_error(       BoundaryBehavior::Zero,     BoundaryBehavior::Error,    BoundaryBehavior::Error)]
+  #[case::error_error(      BoundaryBehavior::Error,    BoundaryBehavior::Error,    BoundaryBehavior::Error)]
+  #[trace]
+  fn test_multiply_function_function_composes_result_tails(
+    #[case] a_left: BoundaryBehavior,
+    #[case] b_left: BoundaryBehavior,
+    #[case] expected_left: BoundaryBehavior,
+  ) {
+    // Overlapping interior grids so the product is always a Function; the right side stays Error
+    // (compose(Error, Error) = Error), and only the left tail varies.
+    let a = Distribution::Function(make_function(0.0, 10.0, 101, 5.0, 2.0).with_left_extrap(a_left).unwrap());
+    let b = Distribution::Function(make_function(2.0, 12.0, 101, 7.0, 2.0).with_left_extrap(b_left).unwrap());
+
+    let ab = distribution_multiplication(&a, &b).unwrap();
+    let Distribution::Function(fab) = &ab else {
+      panic!("Expected Function, got {ab:?}")
+    };
+    assert_eq!(expected_left, fab.left_extrap());
+    assert_eq!(BoundaryBehavior::Error, fab.right_extrap());
+
+    // Composition is symmetric: swapping operands gives the same result tail.
+    let ba = distribution_multiplication(&b, &a).unwrap();
+    let Distribution::Function(fba) = &ba else {
+      panic!("Expected Function, got {ba:?}")
+    };
+    assert_eq!(expected_left, fba.left_extrap());
   }
 }

@@ -307,17 +307,15 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   }
 
   /// Create a new distribution function with y values scaled by factor.
-  /// Preserves the grid parameters exactly, avoiding floating point issues
-  /// that can occur when regenerating the x array.
   ///
-  /// Resets tail policies to `Error` (the `GridFn` default). Callers that need
-  /// tails after scaling must re-apply them -- the forward pass depends on this.
+  /// Preserves the grid parameters exactly (via `fn GridFn.mapv()`), avoiding floating point
+  /// issues that can occur when regenerating the x array, and preserves the per-side tail
+  /// policies. Scaling by a positive factor does not change out-of-support behavior, so the
+  /// tails carry through. This makes `fn Distribution.normalize()` tail-preserving.
   pub fn scale_y(&self, factor: T) -> Result<Self, Report>
   where
     T: Float,
   {
-    let scaled_y = self.grid_fn.y().mapv(|v| v * factor);
-    let new_grid_fn = GridFn::from_grid_array(*self.grid_fn.grid(), scaled_y)?;
-    Ok(Self::from_grid_fn(new_grid_fn))
+    Ok(Self::from_grid_fn(self.grid_fn.mapv(|v| v * factor)))
   }
 }
