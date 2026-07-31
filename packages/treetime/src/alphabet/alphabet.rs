@@ -265,6 +265,20 @@ impl Alphabet {
     self.canonical.iter()
   }
 
+  /// First state of `set` in canonical alphabet order, or `None` if `set` holds no canonical state.
+  ///
+  /// Use this, rather than `StateSet::get_one()`, whenever an arbitrary member of a state set has
+  /// to be committed to a sequence. `get_one()` returns the lowest ASCII byte and never consults
+  /// the alphabet: for `nuc` that happens to coincide with canonical order (`A`, `C`, `G`, `T`),
+  /// but for `aa` it does not, since canonical order lists `*` last while its byte (42) sorts
+  /// below `A`.
+  pub fn first_canonical(&self, set: StateSet) -> Option<AsciiChar> {
+    // Iterates `index_to_char`, which is built from `config.canonical` and so preserves the
+    // configured order. `canonical()` cannot be used here: it iterates a `StateSet`, which yields
+    // ascending byte order and would reproduce exactly the behaviour this method exists to avoid.
+    self.index_to_char.iter().copied().find(|c| set.contains(*c))
+  }
+
   /// Check is character is canonical
   pub fn is_canonical(&self, c: AsciiChar) -> bool {
     self.canonical.contains(c)

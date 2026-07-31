@@ -559,15 +559,23 @@ mod tests {
     let partition = partitions[0].read_arc();
 
     // Verify substitutions on edges
+    //
+    // Position 4 exercises the multifurcation recurrence. C and D read `T` there while E reads
+    // `C`, so the child state sets are {T}, {T}, {C}: no state is shared by all three. Fitch's
+    // union fallback would retain {T,C} and commit `C`, charging one substitution to each of
+    // `CDE->C` and `CDE->D` plus `A4C` on `root->CDE`, for three changes. The plurality is {T},
+    // which commits `T` and charges only `CDE->E` plus `A4T` on `root->CDE`, for two. Two is
+    // minimal: B reads `A`, C and D read `T`, and E reads `C`, three distinct states in separate
+    // subtrees, so at least two changes are unavoidable.
     let actual_subs = collect_edge_subs(&graph, &partition);
     let expected_subs = btreemap! {
       o!("AB->A")     => vec![],
       o!("AB->B")     => vec![],
       o!("root->AB")  => vec![],
-      o!("CDE->C")    => vec![o!("C4T")],
-      o!("CDE->D")    => vec![o!("C4T")],
-      o!("CDE->E")    => vec![],
-      o!("root->CDE") => vec![o!("C2G"), o!("A4C")],
+      o!("CDE->C")    => vec![],
+      o!("CDE->D")    => vec![],
+      o!("CDE->E")    => vec![o!("T4C")],
+      o!("root->CDE") => vec![o!("C2G"), o!("A4T")],
     };
     assert_eq!(expected_subs, actual_subs);
 

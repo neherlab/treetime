@@ -171,6 +171,169 @@ mod tests {
   }
 
   #[test]
+  fn test_bitset128_from_plurality_breaks_fitch_union_tie() {
+    // The canonical counterexample: Fitch's union fallback yields {A,C} and admits root A at a
+    // cost of two changes, while only C is minimal at one.
+    let sets = [bitset128! {'C'}, bitset128! {'C'}, bitset128! {'A'}];
+    let actual = BitSet128::from_plurality(&sets);
+    let expected = bitset128! {'C'};
+    assert_eq!(actual, expected);
+  }
+
+  #[test]
+  fn test_bitset128_from_plurality_large_majority() {
+    let sets = [
+      bitset128! {'C'},
+      bitset128! {'C'},
+      bitset128! {'C'},
+      bitset128! {'C'},
+      bitset128! {'A'},
+    ];
+    let actual = BitSet128::from_plurality(&sets);
+    let expected = bitset128! {'C'};
+    assert_eq!(actual, expected);
+  }
+
+  #[test]
+  fn test_bitset128_from_plurality_retains_genuine_tie() {
+    let sets = [bitset128! {'C'}, bitset128! {'C'}, bitset128! {'A'}, bitset128! {'A'}];
+    let actual = BitSet128::from_plurality(&sets);
+    let expected = bitset128! {'A', 'C'};
+    assert_eq!(actual, expected);
+  }
+
+  #[test]
+  fn test_bitset128_from_plurality_overlapping_sets_tie_above_half() {
+    // Overlapping sets let counts sum above the number of sets, so both states reach count = 5.
+    // A simple majority over half the sets therefore cannot imply a unique result.
+    let sets = [bitset128! {'A', 'C'}; 5];
+    let actual = BitSet128::from_plurality(&sets);
+    let expected = bitset128! {'A', 'C'};
+    assert_eq!(actual, expected);
+  }
+
+  #[test]
+  fn test_bitset128_from_plurality_partial_overlap() {
+    // count(A) = 3, count(C) = 2, count(G) = 1.
+    let sets = [bitset128! {'A', 'C'}, bitset128! {'A', 'C'}, bitset128! {'A', 'G'}];
+    let actual = BitSet128::from_plurality(&sets);
+    let expected = bitset128! {'A'};
+    assert_eq!(actual, expected);
+  }
+
+  #[rstest]
+  #[case(bitset128! {'A', 'C'}, bitset128! {'G', 'T'}, bitset128! {'A', 'C', 'G', 'T'})]
+  #[case(bitset128! {'A', 'C'}, bitset128! {'C', 'G'}, bitset128! {'C'})]
+  #[case(bitset128! {'A'}, bitset128! {'A'}, bitset128! {'A'})]
+  #[case(bitset128! {'A'}, bitset128! {'C'}, bitset128! {'A', 'C'})]
+  fn test_bitset128_from_plurality_two_sets_matches_fitch(
+    #[case] a: BitSet128,
+    #[case] b: BitSet128,
+    #[case] expected: BitSet128,
+  ) {
+    // With one or two sets the plurality coincides with intersect-or-unite, so the existing
+    // bifurcating behaviour is preserved exactly.
+    let sets = [a, b];
+    let intersection = BitSet128::from_intersection(sets);
+    let fitch = if intersection.is_empty() {
+      BitSet128::from_union(sets)
+    } else {
+      intersection
+    };
+    assert_eq!(BitSet128::from_plurality(&sets), expected);
+    assert_eq!(BitSet128::from_plurality(&sets), fitch);
+  }
+
+  #[test]
+  fn test_bitset128_from_plurality_single_set() {
+    let sets = [bitset128! {'A', 'G'}];
+    let actual = BitSet128::from_plurality(&sets);
+    let expected = bitset128! {'A', 'G'};
+    assert_eq!(actual, expected);
+  }
+
+  #[test]
+  fn test_bitset128_from_plurality_empty_input() {
+    let actual = BitSet128::from_plurality(&[]);
+    assert_eq!(actual, bitset128! {});
+  }
+
+  #[test]
+  fn test_bitset128_from_plurality_all_empty_sets() {
+    let sets = [bitset128! {}; 3];
+    let actual = BitSet128::from_plurality(&sets);
+    assert_eq!(actual, bitset128! {});
+  }
+
+  /// Exhaustive check against a brute-force minimisation of the parsimony cost.
+  ///
+  /// For a star tree whose children have optimal sets `S_i`, the cost of assigning state `x` to
+  /// the parent is `Σ_i [x ∉ S_i]`. This enumerates every combination of non-empty subsets of a
+  /// four-letter alphabet, computes the true minimum-cost state set directly from that
+  /// definition, and requires `from_plurality` to return exactly it.
+  #[rstest]
+  #[case(3)]
+  #[case(4)]
+  fn test_bitset128_from_plurality_matches_brute_force_minimum(#[case] n_children: usize) {
+    const STATES: [char; 4] = ['A', 'C', 'G', 'T'];
+
+    // All 15 non-empty subsets of a four-letter alphabet.
+    let subsets: Vec<BitSet128> = (1_u8..16)
+      .map(|mask| {
+        let mut set = BitSet128::new();
+        for (i, state) in STATES.iter().enumerate() {
+          if mask & (1 << i) != 0 {
+            set.insert(*state);
+          }
+        }
+        set
+      })
+      .collect();
+
+    let mut n_cases = 0_usize;
+    let mut indices = vec![0_usize; n_children];
+    loop {
+      let sets: Vec<BitSet128> = indices.iter().map(|&i| subsets[i]).collect();
+
+      // Brute force: cost of each state, then every state attaining the minimum.
+      let costs: Vec<usize> = STATES
+        .iter()
+        .map(|state| sets.iter().filter(|set| !set.contains(*state)).count())
+        .collect();
+      let min_cost = *costs.iter().min().unwrap();
+      let mut expected = BitSet128::new();
+      for (i, state) in STATES.iter().enumerate() {
+        if costs[i] == min_cost {
+          expected.insert(*state);
+        }
+      }
+
+      assert_eq!(
+        BitSet128::from_plurality(&sets),
+        expected,
+        "plurality disagrees with brute-force minimum for sets {sets:?}"
+      );
+      n_cases += 1;
+
+      // Odometer over subset indices.
+      let mut d = 0;
+      while d < n_children {
+        indices[d] += 1;
+        if indices[d] < subsets.len() {
+          break;
+        }
+        indices[d] = 0;
+        d += 1;
+      }
+      if d == n_children {
+        break;
+      }
+    }
+
+    assert_eq!(n_cases, subsets.len().pow(n_children as u32), "enumerated every case");
+  }
+
+  #[test]
   fn test_bitset128_difference() {
     let a = bitset128! {'a', 'b', 'c'};
     let b = bitset128! {'b', 'c', 'x'};

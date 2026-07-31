@@ -5,24 +5,39 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
-use treetime_primitives::{AlphabetLike, AsciiChar, BitSet128, Seq, StateSet, StateSetStatus, stateset};
+use treetime_primitives::{AlphabetLike, AsciiChar, Seq, StateSet, StateSetStatus};
 use treetime_utils::interval::range::range_contains;
 
-/// Backward pass: resolve variable positions using Fitch parsimony.
+/// Backward pass: resolve candidate positions using minimum-change parsimony.
 ///
-/// For each position that is variable in at least one child, collects the child
-/// state sets, computes the intersection (or union when the intersection is
-/// empty), and writes the result into `sequence` and the returned variable map.
+/// This is the authoritative resolution pass. For every candidate position it collects each
+/// informative child's state set exactly once and combines them, writing the result into
+/// `sequence` and the returned variable map.
+///
+/// Candidate positions come from two sources, which must both be supplied:
+///
+/// - positions that are variable in at least one child, i.e. where a child carries an IUPAC
+///   ambiguity code or was itself left ambiguous by its own backward pass;
+/// - `discovered`, the positions where children hold differing canonical states, found by
+///   [`discover_fixed_disagreements_backward`]. These appear in no child's `fitch.variable`.
+///
+/// The combination rule is the intersection of the child state sets when that is non-empty, and
+/// otherwise the plurality: the states held by the greatest number of children. Intersection is
+/// already minimal when non-empty, since its members are contained in every child and so attain
+/// the largest possible count. See [`StateSet::from_plurality`] for why the plurality, rather
+/// than Fitch's union fallback, is required once a node has three or more children.
 ///
 /// Positions transmitted along an edge or in `non_char` ranges are skipped.
 pub fn resolve_variable_positions_backward(
   children: &[(&SparseSeqInfo, &SparseEdgePartition)],
+  discovered: &[usize],
   non_char: &[(usize, usize)],
   sequence: &mut Seq,
 ) -> BTreeMap<usize, StateSet> {
   let variable_positions = children
     .iter()
     .flat_map(|(c, _)| c.fitch.variable.keys().copied())
+    .chain(discovered.iter().copied())
     .unique()
     .collect_vec();
 
@@ -53,7 +68,14 @@ pub fn resolve_variable_positions_backward(
       })
       .collect_vec();
 
-    // Calculate Fitch parsimony.
+    if child_profiles.is_empty() {
+      // No child carries character state here. The node's `non_char` is derived from the
+      // children's, so this is unreachable via that route; guard rather than fall through and
+      // store an empty state set, which no consumer can resolve.
+      continue;
+    }
+
+    // Calculate minimum-change parsimony.
     // If we save the states of the children for each position that is variable in the node,
     // then we would not need the full sequences in the forward pass.
     let intersection = StateSet::from_intersection(&child_profiles);
@@ -69,8 +91,15 @@ pub fn resolve_variable_positions_backward(
         sequence[pos] = VARIABLE_CHAR;
       },
       StateSetStatus::Empty => {
-        let union = StateSet::from_union(&child_profiles);
-        variable.insert(pos, union);
+        // No state is shared by every child, so retain those shared by the most. With one or
+        // two children the plurality is exactly the union, which is Fitch's fallback; with three
+        // or more the union can retain non-minimal states.
+        let resolved = if child_profiles.len() <= 2 {
+          StateSet::from_union(&child_profiles)
+        } else {
+          StateSet::from_plurality(&child_profiles)
+        };
+        variable.insert(pos, resolved);
         sequence[pos] = VARIABLE_CHAR;
       },
     }
@@ -79,38 +108,69 @@ pub fn resolve_variable_positions_backward(
   variable
 }
 
-/// Backward pass: resolve fixed positions where children disagree with current parent state.
+/// Backward pass: find positions where children hold differing canonical states.
 ///
-/// Scans each child's fixed sequence positions. When a child has a canonical state
-/// that differs from the current parent state, either sets the parent (if still
-/// FILL_CHAR) or promotes the position to variable.
-pub fn resolve_fixed_positions_backward(
+/// This is a discovery pass only. It writes the agreed state into `sequence` where all children
+/// agree, and marks a position with `VARIABLE_CHAR` as soon as any child disagrees. It does not
+/// combine state sets: resolution belongs to [`resolve_variable_positions_backward`], which runs
+/// afterwards and recomputes each candidate position from every child.
+///
+/// The returned positions are those marked `VARIABLE_CHAR`, in ascending order.
+///
+/// Detecting a disagreement only requires noticing that *some* child differs, never all children
+/// at once, so this keeps the child-major loop over whole sequences. Comparing every child against
+/// every position is `O(children · length)` and irreducible while nodes store dense sequences, so
+/// the loop deliberately performs no map lookups or state-set construction. Positions are recorded
+/// as they are flagged rather than by rescanning `sequence` afterwards, which would add another
+/// full-length pass per node; the `VARIABLE_CHAR` skip guarantees each is recorded at most once.
+pub fn discover_fixed_disagreements_backward(
   children: &[(&SparseSeqInfo, &SparseEdgePartition)],
   alphabet: &Alphabet,
   sequence: &mut Seq,
-  variable: &mut BTreeMap<usize, StateSet>,
-) {
+) -> Vec<usize> {
+  let mut discovered = vec![];
   for &(child, _) in children {
     for (pos, parent_state) in sequence.iter_mut().enumerate() {
       let child_state = child.sequence[pos];
-      if *parent_state == child_state || *parent_state == NON_CHAR {
-        continue; // if parent is equal to child state or we know it's a non-char, skip
+      if *parent_state == child_state || *parent_state == NON_CHAR || *parent_state == VARIABLE_CHAR {
+        continue; // agrees with the parent, known non-char, or already flagged as disagreeing
       }
       if alphabet.is_canonical(child_state) {
         if *parent_state == FILL_CHAR {
-          // if child state is canonical and parent is still FILL_CHAR, set parent_state
+          // first child to claim this position: adopt its state as the provisional agreement
           *parent_state = child_state;
         } else {
-          // otherwise set or update the variable state
-          *variable.entry(pos).or_insert_with(|| stateset! {*parent_state}) += child_state;
+          // a canonical state differing from the provisional agreement: flag for resolution
           *parent_state = VARIABLE_CHAR;
+          discovered.push(pos);
         }
       }
     }
   }
+
+  // Flags are emitted in ascending order within each child but interleaved across children.
+  // Sorting keeps the returned contract stable for callers and tests; it is over the handful of
+  // disagreeing positions, not the sequence length.
+  discovered.sort_unstable();
+  discovered
+}
+
+/// Commit one state from a set of equally parsimonious alternatives.
+///
+/// Every member of a resolved state set yields the same subtree cost, so this choice is free with
+/// respect to parsimony. It is kept deterministic so that output is reproducible between runs, and
+/// ordered by the alphabet rather than by byte value; see [`Alphabet::first_canonical`].
+///
+/// Falls back to the lowest byte if the set holds no canonical state, which preserves the previous
+/// behaviour for sets that consumers cannot interpret anyway.
+fn choose_state(states: StateSet, alphabet: &Alphabet) -> AsciiChar {
+  alphabet.first_canonical(states).unwrap_or_else(|| states.get_one())
 }
 
 /// Forward pass: resolve variable substitution states at the root.
+///
+/// The root has no parent to inherit from, so each variable position is committed by the
+/// tie-break policy in [`choose_state`].
 ///
 /// Variable indels at the root default to present (no gap). Direction is
 /// resolved in the forward pass on children via parent state.
@@ -118,9 +178,10 @@ pub fn resolve_root_forward(
   sequence: &mut Seq,
   variable: &BTreeMap<usize, StateSet>,
   chosen_state: &mut BTreeMap<usize, AsciiChar>,
+  alphabet: &Alphabet,
 ) {
   for (pos, states) in variable {
-    let chosen = states.get_one();
+    let chosen = choose_state(*states, alphabet);
     sequence[*pos] = chosen;
     chosen_state.insert(*pos, chosen);
   }
@@ -153,9 +214,13 @@ pub fn resolve_nonroot_substitutions_forward(
     if alphabet.is_canonical(pnuc) {
       // check whether parent is in child profile (sum>0 --> parent state is in profile)
       if states.contains(pnuc) {
+        // Preferring the parent's state is not a tie-break heuristic: given a minimal state set it
+        // is provably optimal, since matching the parent avoids a change on this edge while any
+        // other member of the set costs exactly one more. This is what pushes mutations toward the
+        // tips.
         sequence[*pos] = pnuc;
       } else {
-        let cnuc = states.get_one();
+        let cnuc = choose_state(*states, alphabet);
         sequence[*pos] = cnuc;
         let m = Sub::new(pnuc, *pos, cnuc)?;
         m.check_determined(alphabet)?;
@@ -164,7 +229,7 @@ pub fn resolve_nonroot_substitutions_forward(
       }
     } else if alphabet.is_gap(pnuc) && !range_contains(gaps, *pos) {
       // if parent is gap, but child isn't, we need to resolve variable states
-      sequence[*pos] = states.get_one();
+      sequence[*pos] = choose_state(*states, alphabet);
     }
     chosen_state.insert(*pos, sequence[*pos]);
   }
