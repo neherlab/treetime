@@ -1,6 +1,7 @@
 use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
+use log::warn;
 use std::sync::Arc;
 use treetime_distribution::BoundaryBehavior;
 use treetime_distribution::distribution_convolution;
@@ -8,11 +9,11 @@ use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
+use treetime_graph::node::{GraphNode, Named};
 
 pub fn propagate_distributions_forward<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
 where
-  N: GraphNode + TimetreeNode + Default,
+  N: GraphNode + Named + TimetreeNode + Default,
   E: GraphEdge + TimetreeEdge + Default,
   D: Send + Sync,
 {
@@ -27,21 +28,33 @@ fn propagate_distributions_forward_slot<N, E, D>(
   slot: &mut IndexedPassSlot<N, E>,
 ) -> Result<(), Report>
 where
-  N: GraphNode + TimetreeNode,
+  N: GraphNode + Named + TimetreeNode,
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
   refine_distribution_from_parent(graph, dependencies, slot)?;
+
+  let is_leaf = graph.is_leaf(slot.key);
 
   // Independent marginal modes can invert even though the forward pass commits each
   // parent before visiting its children. Current behavior projects non-leaf internal
   // point estimates to the committed parent time; leaves retain their observed dates.
   // This changes the point estimate without recomputing the posterior. The statistical
   // contract remains open in kb/issues/M-timetree-marginal-node-times-can-violate-topology.md.
-  let parent_time = (!graph.is_leaf(slot.key))
-    .then(|| parent_time(dependencies, slot))
-    .flatten();
-  set_likely_time(&mut slot.node, parent_time);
+  let parent_time = (!is_leaf).then(|| parent_time(dependencies, slot)).flatten();
+
+  // An internal node whose time distribution is empty (or degenerate) yields no likely
+  // time, so no date is assigned. This signals irreconcilable inference constraints at the
+  // node (e.g. disjoint child messages). Surface it instead of dropping the date silently.
+  if set_likely_time(&mut slot.node, parent_time).is_none() && !is_leaf {
+    let name = slot.node.name();
+    let name = name.as_ref().map_or("<unnamed>", |name| name.as_ref());
+    warn!(
+      "Timetree forward pass: internal node '{name}' has an empty time distribution; no date was \
+       assigned. The inference constraints at this node are likely irreconcilable (e.g. conflicting \
+       or disjoint date constraints from its subtree)."
+    );
+  }
   Ok(())
 }
 
@@ -55,18 +68,18 @@ where
   dependencies.node(parent_key).time()
 }
 
-fn set_likely_time(node: &mut impl TimetreeNode, parent_time: Option<f64>) {
+/// Assign the node's committed time from the peak of its time distribution, clamped to be no
+/// earlier than the parent's committed time. Returns the assigned time, or `None` when the time
+/// distribution is empty or degenerate and no time could be determined (the node is left undated).
+fn set_likely_time(node: &mut impl TimetreeNode, parent_time: Option<f64>) -> Option<f64> {
   let time = node
     .time_distribution()
     .as_ref()
-    .and_then(|time_dist| time_dist.likely_time());
+    .and_then(|time_dist| time_dist.likely_time())?;
 
-  if let Some(mut time) = time {
-    if let Some(parent_time) = parent_time {
-      time = time.max(parent_time);
-    }
-    node.set_time(Some(time));
-  }
+  let time = parent_time.map_or(time, |parent_time| time.max(parent_time));
+  node.set_time(Some(time));
+  Some(time)
 }
 
 fn refine_distribution_from_parent<N, E, D>(
@@ -131,4 +144,58 @@ where
   }
 
   Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::payload::timetree::NodeTimetree;
+  use crate::pretty_assert_ulps_eq;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use treetime_distribution::Distribution;
+
+  #[test]
+  fn test_forward_pass_set_likely_time_empty_distribution_returns_none() {
+    let mut node = node_with_distribution(Some(Distribution::empty()));
+    assert_eq!(None, set_likely_time(&mut node, None));
+    assert_eq!(None, node.time());
+  }
+
+  #[test]
+  fn test_forward_pass_set_likely_time_missing_distribution_returns_none() {
+    let mut node = node_with_distribution(None);
+    assert_eq!(None, set_likely_time(&mut node, None));
+    assert_eq!(None, node.time());
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::no_parent(      None,      5.0)]
+  #[case::parent_earlier( Some(3.0), 5.0)]
+  #[case::parent_clamps(  Some(8.0), 8.0)]
+  #[trace]
+  fn test_forward_pass_set_likely_time_uses_distribution_peak(
+    #[case] parent_time: Option<f64>,
+    #[case] expected: f64,
+  ) {
+    let mut node = node_with_distribution(Some(Distribution::point(5.0, 1.0)));
+    let assigned = set_likely_time(&mut node, parent_time).expect("a time should be assigned");
+    pretty_assert_ulps_eq!(assigned, expected, max_ulps = 4);
+    let committed = node.time().expect("node time should be committed");
+    pretty_assert_ulps_eq!(committed, expected, max_ulps = 4);
+  }
+
+  mod helpers {
+    use super::*;
+
+    pub(super) fn node_with_distribution(distribution: Option<Distribution>) -> NodeTimetree {
+      NodeTimetree {
+        time_distribution: distribution.map(Arc::new),
+        ..NodeTimetree::default()
+      }
+    }
+  }
+
+  use helpers::*;
 }
