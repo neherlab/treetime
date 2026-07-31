@@ -89,7 +89,7 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
           .map(|(parent, child)| child - parent);
         (clock_length.unwrap_or(0.0), clock_length, mutation_length)
       },
-      None => (0.0, None, None),
+      None => (0.0, Some(0.0), Some(0.0)), // root node: no parent edge, so branch fields are zero
     };
 
     let constraint: Option<&DateConstraint> = dates.and_then(|dates| dates.get(&node_name)).and_then(Option::as_ref);
