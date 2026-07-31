@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR};
 use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::ancestral::fitch_sub::{
-  finalize_sequence_forward, resolve_fixed_positions_backward, resolve_nonroot_substitutions_forward,
+  discover_fixed_disagreements_backward, finalize_sequence_forward, resolve_nonroot_substitutions_forward,
   resolve_root_forward, resolve_variable_positions_backward,
 };
 use crate::make_report;
@@ -192,8 +192,13 @@ where
     sequence[r.0..r.1].fill(NON_CHAR);
   }
 
-  let mut variable = resolve_variable_positions_backward(&children, &non_char, &mut sequence);
-  resolve_fixed_positions_backward(&children, alphabet, &mut sequence, &mut variable);
+  // Discovery first, resolution second. The discovery pass only flags positions where children
+  // hold differing canonical states; the resolution pass then recomputes every candidate position
+  // from all children, so each child is counted exactly once. Running them the other way round
+  // let both passes fold child states into the same map, which is harmless for a union but not
+  // for the plurality rule.
+  let discovered = discover_fixed_disagreements_backward(&children, alphabet, &mut sequence);
+  let variable = resolve_variable_positions_backward(&children, &discovered, &non_char, &mut sequence);
 
   slot.node = SparseNodePartition {
     seq: SparseSeqInfo {
@@ -302,7 +307,12 @@ fn run_fitch_forward_indexed(
     edge.indels.extend(indels);
   } else {
     let seq = &mut node_data.seq;
-    resolve_root_forward(&mut seq.sequence, &seq.fitch.variable, &mut seq.fitch.chosen_state);
+    resolve_root_forward(
+      &mut seq.sequence,
+      &seq.fitch.variable,
+      &mut seq.fitch.chosen_state,
+      alphabet,
+    );
   }
 
   let seq = &mut node_data.seq;

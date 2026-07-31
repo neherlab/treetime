@@ -120,6 +120,43 @@ impl BitSet128 {
       .map_or_else(Self::new, |bits| Self { bits })
   }
 
+  /// States contained in the greatest number of the given sets.
+  ///
+  /// Under unit-cost parsimony this is the minimum-change state set of a node whose children
+  /// have the given optimal sets. Writing `g(x)` for the minimum number of changes in the
+  /// subtree given state `x` at the node, `M_i` for child `i`'s own minimum and `S_i` for its
+  /// optimal set, a child contributes `M_i` when `x ∈ S_i` and exactly `M_i + 1` otherwise, so
+  ///
+  /// ```text
+  /// g(x) = Σ_i M_i + k − count(x),   count(x) = #{ i : x ∈ S_i }
+  /// ```
+  ///
+  /// Minimising `g` therefore maximises `count`. Fitch's intersect-or-unite recurrence agrees
+  /// with this for one or two sets, but for three or more it can retain states that are not of
+  /// minimum cost: for `{C}`, `{C}`, `{A}` the union is `{A,C}` while only `{C}` is minimal.
+  ///
+  /// Note that a simple majority does not imply a unique result. Sets may overlap, so counts can
+  /// sum above `k`: given `k` sets all equal to `{A,C}`, both states reach `count = k`.
+  ///
+  /// Returns the empty set when `sets` is empty or all its members are empty.
+  pub fn from_plurality(sets: &[Self]) -> Self {
+    // Only states present in at least one set can attain the maximum, and there are at most as
+    // many of those as the alphabet is wide, so counting over the union avoids both a
+    // fixed-width counter array and its per-call zeroing.
+    let mut best = Self::new();
+    let mut best_count = 0_usize;
+    for state in Self::from_union(sets).iter() {
+      let count = sets.iter().filter(|set| set.contains(state)).count();
+      if count > best_count {
+        best_count = count;
+        best = Self::from_char(state);
+      } else if count == best_count {
+        best.insert(state);
+      }
+    }
+    best
+  }
+
   pub fn is_disjoint(&self, other: &Self) -> bool {
     (self.bits & other.bits) == 0
   }

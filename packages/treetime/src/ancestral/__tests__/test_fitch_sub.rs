@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
+  use crate::alphabet::alphabet::{Alphabet, AlphabetName, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
   use crate::ancestral::fitch_sub::{
-    finalize_sequence_forward, resolve_fixed_positions_backward, resolve_nonroot_substitutions_forward,
+    discover_fixed_disagreements_backward, finalize_sequence_forward, resolve_nonroot_substitutions_forward,
     resolve_root_forward, resolve_variable_positions_backward,
   };
   use crate::partition::sparse::{FitchSeqDistribution, SparseEdgePartition, SparseSeqInfo};
@@ -47,7 +47,7 @@ mod tests {
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
+    let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
 
     assert!(variable.is_empty(), "No variable positions when children agree");
   }
@@ -61,7 +61,7 @@ mod tests {
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
+    let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
 
     assert!(variable.is_empty(), "Fixed-position disagreement is not handled here");
     assert_eq!(sequence[1], FILL_CHAR, "Position 1 unchanged by variable pass");
@@ -78,7 +78,7 @@ mod tests {
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
+    let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
 
     // intersection {A,G} ∩ {A,C} = {A} is a singleton: resolved immediately, not stored as variable
     assert!(variable.is_empty());
@@ -96,7 +96,7 @@ mod tests {
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
+    let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
 
     // intersection {A,G,C} ∩ {A,C} = {A,C}: ambiguous, stored as variable
     assert_eq!(variable.len(), 1);
@@ -117,7 +117,7 @@ mod tests {
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
+    let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
 
     assert_eq!(variable.len(), 1);
     assert!(variable[&0].contains(b'A'));
@@ -136,7 +136,7 @@ mod tests {
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
+    let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
 
     assert!(variable.is_empty(), "Singleton intersection resolved immediately");
     assert_eq!(sequence[0], AsciiChar::from_byte_unchecked(b'A'));
@@ -154,7 +154,7 @@ mod tests {
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
-    let variable = resolve_variable_positions_backward(&children, &[], &mut sequence);
+    let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
 
     // child1 is in non_char at pos 0, so only child0's {A,G} contributes
     assert_eq!(variable.len(), 1);
@@ -162,24 +162,23 @@ mod tests {
     assert!(variable[&0].contains(b'G'));
   }
 
-  // --- resolve_fixed_positions_backward ---
+  // --- discover_fixed_disagreements_backward ---
 
   #[test]
-  fn test_fitch_sub_fixed_backward_sets_fill_char() {
+  fn test_fitch_sub_discover_sets_fill_char() {
     let child0 = make_seq_info("ACGT");
     let edge0 = make_edge();
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0)];
 
     let mut sequence = seq![FILL_CHAR; 4];
-    let mut variable = BTreeMap::new();
-    resolve_fixed_positions_backward(&children, &NUC_ALPHABET, &mut sequence, &mut variable);
+    let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
 
     assert_eq!(sequence.as_str(), "ACGT");
-    assert!(variable.is_empty());
+    assert!(discovered.is_empty());
   }
 
   #[test]
-  fn test_fitch_sub_fixed_backward_promotes_to_variable() {
+  fn test_fitch_sub_discover_flags_disagreement() {
     let child0 = make_seq_info("ACGT");
     let child1 = make_seq_info("GCGT");
     let edge0 = make_edge();
@@ -187,28 +186,191 @@ mod tests {
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
-    let mut variable = BTreeMap::new();
-    resolve_fixed_positions_backward(&children, &NUC_ALPHABET, &mut sequence, &mut variable);
+    let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
 
-    assert_eq!(variable.len(), 1);
-    assert!(variable[&0].contains(b'A'));
-    assert!(variable[&0].contains(b'G'));
+    assert_eq!(discovered, vec![0], "only the disagreeing position is reported");
     assert_eq!(sequence[0], VARIABLE_CHAR);
     assert_eq!(sequence[1], AsciiChar::from_byte_unchecked(b'C'));
   }
 
   #[test]
-  fn test_fitch_sub_fixed_backward_skips_non_char() {
+  fn test_fitch_sub_discover_skips_non_char() {
     let child0 = make_seq_info("ACGT");
     let edge0 = make_edge();
     let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0)];
 
     let mut sequence = seq![NON_CHAR; 4];
-    let mut variable = BTreeMap::new();
-    resolve_fixed_positions_backward(&children, &NUC_ALPHABET, &mut sequence, &mut variable);
+    let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
 
     assert_eq!(sequence[0], NON_CHAR, "NON_CHAR positions are skipped");
-    assert!(variable.is_empty());
+    assert!(discovered.is_empty());
+  }
+
+  #[test]
+  fn test_fitch_sub_discover_reports_position_once_for_many_children() {
+    // A position is flagged on the first disagreement and skipped by every later child, so it is
+    // reported exactly once however many children differ.
+    let child0 = make_seq_info("A");
+    let child1 = make_seq_info("C");
+    let child2 = make_seq_info("G");
+    let child3 = make_seq_info("T");
+    let edges = [make_edge(), make_edge(), make_edge(), make_edge()];
+    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![
+      (&child0, &edges[0]),
+      (&child1, &edges[1]),
+      (&child2, &edges[2]),
+      (&child3, &edges[3]),
+    ];
+
+    let mut sequence = seq![FILL_CHAR; 1];
+    let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
+
+    assert_eq!(discovered, vec![0]);
+  }
+
+  // --- plurality resolution on multifurcations ---
+
+  /// Builds `n` single-position children, each fixed at the given state.
+  fn fixed_children(states: &[&str]) -> Vec<SparseSeqInfo> {
+    states.iter().map(|s| make_seq_info(s)).collect()
+  }
+
+  fn as_children<'a>(
+    infos: &'a [SparseSeqInfo],
+    edges: &'a [SparseEdgePartition],
+  ) -> Vec<(&'a SparseSeqInfo, &'a SparseEdgePartition)> {
+    infos.iter().zip(edges.iter()).collect()
+  }
+
+  #[test]
+  fn test_fitch_sub_plurality_three_children_c_c_a() {
+    // Fitch's union fallback would give {A,C}, which admits the non-minimal root state A.
+    let infos = fixed_children(&["C", "C", "A"]);
+    let edges = vec![make_edge(), make_edge(), make_edge()];
+    let children = as_children(&infos, &edges);
+
+    let mut sequence = seq![FILL_CHAR; 1];
+    let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
+    let variable = resolve_variable_positions_backward(&children, &discovered, &[], &mut sequence);
+
+    assert_eq!(variable[&0], stateset! {b'C'}, "only C is of minimum cost");
+    assert_eq!(sequence[0], VARIABLE_CHAR);
+  }
+
+  #[test]
+  fn test_fitch_sub_plurality_five_children_four_to_one() {
+    let infos = fixed_children(&["C", "C", "C", "C", "A"]);
+    let edges = vec![make_edge(), make_edge(), make_edge(), make_edge(), make_edge()];
+    let children = as_children(&infos, &edges);
+
+    let mut sequence = seq![FILL_CHAR; 1];
+    let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
+    let variable = resolve_variable_positions_backward(&children, &discovered, &[], &mut sequence);
+
+    assert_eq!(variable[&0], stateset! {b'C'});
+  }
+
+  #[test]
+  fn test_fitch_sub_plurality_retains_genuine_tie() {
+    let infos = fixed_children(&["C", "C", "A", "A"]);
+    let edges = vec![make_edge(), make_edge(), make_edge(), make_edge()];
+    let children = as_children(&infos, &edges);
+
+    let mut sequence = seq![FILL_CHAR; 1];
+    let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
+    let variable = resolve_variable_positions_backward(&children, &discovered, &[], &mut sequence);
+
+    assert_eq!(variable[&0], stateset! {b'A', b'C'}, "an even split stays ambiguous");
+  }
+
+  #[test]
+  fn test_fitch_sub_plurality_two_children_unchanged() {
+    // Bifurcations must keep the intersect-or-unite result exactly.
+    let infos = fixed_children(&["C", "A"]);
+    let edges = vec![make_edge(), make_edge()];
+    let children = as_children(&infos, &edges);
+
+    let mut sequence = seq![FILL_CHAR; 1];
+    let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
+    let variable = resolve_variable_positions_backward(&children, &discovered, &[], &mut sequence);
+
+    assert_eq!(variable[&0], stateset! {b'A', b'C'});
+  }
+
+  #[test]
+  fn test_fitch_sub_plurality_counts_ambiguous_leaf_exactly_once() {
+    // Position 0 is reachable from both discovery sources: child2 carries an IUPAC code, so the
+    // position is in its `fitch.variable`, and the canonical states of child0 and child1 differ,
+    // so the discovery pass also flags it. Counting child0 twice would make count(C) = 2 beat
+    // count(A) = count(G) = 1 and wrongly collapse the result to {C}.
+    let mut child0 = make_seq_info("C");
+    let mut child1 = make_seq_info("A");
+    let mut child2 = make_seq_info("R");
+    child2
+      .fitch
+      .variable
+      .insert(0, NUC_ALPHABET.char_to_set(AsciiChar::from_byte_unchecked(b'R'))); // R = {A, G}
+    child0.fitch.variable.clear();
+    child1.fitch.variable.clear();
+    let edges = [make_edge(), make_edge(), make_edge()];
+    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> =
+      vec![(&child0, &edges[0]), (&child1, &edges[1]), (&child2, &edges[2])];
+
+    let mut sequence = seq![FILL_CHAR; 1];
+    let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
+    assert_eq!(discovered, vec![0], "the fixed disagreement is discovered");
+
+    let variable = resolve_variable_positions_backward(&children, &discovered, &[], &mut sequence);
+
+    // count(C) = 1 (child0), count(A) = 2 (child1, child2), count(G) = 1 (child2).
+    assert_eq!(variable[&0], stateset! {b'A'});
+  }
+
+  #[test]
+  fn test_fitch_sub_plurality_position_from_both_sources_resolved_once() {
+    let mut child0 = make_seq_info("C");
+    child0.fitch.variable.insert(0, stateset! {b'C'});
+    let child1 = make_seq_info("A");
+    let child2 = make_seq_info("A");
+    let edges = [make_edge(), make_edge(), make_edge()];
+    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> =
+      vec![(&child0, &edges[0]), (&child1, &edges[1]), (&child2, &edges[2])];
+
+    let mut sequence = seq![FILL_CHAR; 1];
+    let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
+    let variable = resolve_variable_positions_backward(&children, &discovered, &[], &mut sequence);
+
+    assert_eq!(variable.len(), 1, "the position appears once in the merged list");
+    assert_eq!(variable[&0], stateset! {b'A'}, "count(A) = 2 beats count(C) = 1");
+  }
+
+  #[test]
+  fn test_fitch_sub_resolution_never_stores_sentinel_states() {
+    // The discovery pass writes VARIABLE_CHAR into `sequence`; no sentinel may ever reach a
+    // StateSet, whether from that marker or from a gap or fill byte.
+    let mut child0 = make_seq_info("CA");
+    child0.fitch.variable.insert(1, stateset! {b'A', b'G'});
+    let child1 = make_seq_info("AA");
+    let child2 = make_seq_info("GA");
+    let edges = [make_edge(), make_edge(), make_edge()];
+    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> =
+      vec![(&child0, &edges[0]), (&child1, &edges[1]), (&child2, &edges[2])];
+
+    let mut sequence = seq![FILL_CHAR; 2];
+    let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
+    let variable = resolve_variable_positions_backward(&children, &discovered, &[], &mut sequence);
+
+    for (pos, states) in &variable {
+      for state in states.chars() {
+        assert!(
+          NUC_ALPHABET.is_canonical(state) || NUC_ALPHABET.is_ambiguous(state),
+          "position {pos} holds non-alphabet state {state:?}"
+        );
+        assert_ne!(state, VARIABLE_CHAR);
+        assert_ne!(state, FILL_CHAR);
+        assert_ne!(state, NON_CHAR);
+      }
+    }
   }
 
   // --- resolve_root_forward ---
@@ -219,14 +381,45 @@ mod tests {
     let variable = btreemap! { 0_usize => stateset! {b'A', b'G'} };
     let mut chosen_state = BTreeMap::new();
 
-    resolve_root_forward(&mut sequence, &variable, &mut chosen_state);
+    resolve_root_forward(&mut sequence, &variable, &mut chosen_state, &NUC_ALPHABET);
 
     assert_eq!(
       sequence[0],
       AsciiChar::from_byte_unchecked(b'A'),
-      "get_one picks alphabetically first"
+      "ties break to the first canonical state"
     );
     assert_eq!(chosen_state[&0], AsciiChar::from_byte_unchecked(b'A'));
+  }
+
+  #[test]
+  fn test_fitch_sub_root_forward_tie_break_uses_canonical_order_not_ascii() {
+    // In the amino-acid alphabet canonical order lists `*` last, but its byte (42) sorts below
+    // `A` (65). Selecting by byte would commit the stop codon; canonical order gives `A`.
+    let aa = Alphabet::new(AlphabetName::Aa).unwrap();
+    let mut sequence = Seq::try_from_str("~").unwrap();
+    let variable = btreemap! { 0_usize => stateset! {b'*', b'A', b'C'} };
+    let mut chosen_state = BTreeMap::new();
+
+    resolve_root_forward(&mut sequence, &variable, &mut chosen_state, &aa);
+
+    assert_eq!(sequence[0], AsciiChar::from_byte_unchecked(b'A'));
+    assert_eq!(chosen_state[&0], AsciiChar::from_byte_unchecked(b'A'));
+    assert_eq!(
+      variable[&0].get_one(),
+      AsciiChar::from_byte_unchecked(b'*'),
+      "get_one would have selected the stop codon"
+    );
+  }
+
+  #[test]
+  fn test_fitch_sub_root_forward_tie_break_is_deterministic() {
+    let variable = btreemap! { 0_usize => stateset! {b'A', b'C', b'G', b'T'} };
+    for _ in 0..16 {
+      let mut sequence = Seq::try_from_str("~").unwrap();
+      let mut chosen_state = BTreeMap::new();
+      resolve_root_forward(&mut sequence, &variable, &mut chosen_state, &NUC_ALPHABET);
+      assert_eq!(sequence[0], AsciiChar::from_byte_unchecked(b'A'));
+    }
   }
 
   #[test]
@@ -237,7 +430,7 @@ mod tests {
     let variable = BTreeMap::new();
     let mut chosen_state = BTreeMap::new();
 
-    resolve_root_forward(&mut sequence, &variable, &mut chosen_state);
+    resolve_root_forward(&mut sequence, &variable, &mut chosen_state, &NUC_ALPHABET);
 
     assert!(chosen_state.is_empty(), "No variable substitutions to resolve");
     assert_eq!(sequence, Seq::try_from_str("ACGT").unwrap(), "Sequence unchanged");
