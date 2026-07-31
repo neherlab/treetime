@@ -7,7 +7,7 @@ pub use distribution_core::distribution::{
   Distribution, DistributionNegLog, DistributionPlain, TIME_EPSILON, TIME_LIMIT,
 };
 pub use distribution_core::formula::DistributionFormula;
-pub use distribution_core::function::DistributionFunction;
+pub use distribution_core::function::{DistributionFunction, TailSide};
 pub use distribution_core::point::DistributionPoint;
 pub use distribution_core::range::DistributionRange;
 pub use distribution_ops::convolve::distribution_convolution;

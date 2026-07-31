@@ -6,6 +6,17 @@ use ndarray_stats::QuantileExt;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
+use treetime_distribution::TailSide;
+
+/// Probability floor, relative to the peak, below which the extrapolated long-branch tail is
+/// numerically negligible and extension stops.
+const TAIL_REL_FLOOR: f64 = 1e-10;
+/// Maximum multiple of the base grid size to which the long-branch tail extension may grow the
+/// branch-length grid. The relative floor terminates earlier for informative branches, so this
+/// only bounds convolution cost and near-flat (weakly informative) tails. The 10x budget matches
+/// the grid extent whose corrected node dates were validated in the sensitivity study behind
+/// kb/decisions/distribution-tails-and-arithmetic.md.
+const TAIL_MAX_GRID_GROWTH: usize = 10;
 
 /// Compute the branch-length likelihood distribution used for time inference.
 ///
@@ -49,13 +60,25 @@ pub fn compute_branch_length_distribution(
 
   let normalized_prob = (&log_lh - *max_log_lh).exp();
 
-  // Convert branch length grid to time grid: time = branch_length / (clock_rate * gamma)
-  // gamma > 1 means faster evolution, so same substitutions correspond to shorter time
-  let effective_clock_rate = clock_rate * gamma;
-  let time_min = grid[0] / effective_clock_rate;
-  let time_max = grid[grid.len() - 1] / effective_clock_rate;
+  // `create_simple_grid` hard-truncates the long-branch side, but the branch-length likelihood
+  // decays exponentially for long branches. Continue that decay as a log-linear tail so the
+  // far-past reach of the backward message reflects the physical decay instead of a flat Constant
+  // floor, which otherwise biases deep internal-node dates older
+  // (kb/decisions/distribution-tails-and-arithmetic.md).
+  let branch_dist = DistributionFunction::from_arrays(&grid, normalized_prob)?.extend_log_linear_tail(
+    TailSide::Right,
+    TAIL_REL_FLOOR,
+    (TAIL_MAX_GRID_GROWTH - 1) * n_grid_points,
+  )?;
 
-  let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), normalized_prob)?;
+  // Convert branch length grid to time grid: time = branch_length / (clock_rate * gamma)
+  // gamma > 1 means faster evolution, so same substitutions correspond to shorter time. The
+  // conversion is a uniform axis rescale, so it preserves the extended grid's uniform spacing.
+  let effective_clock_rate = clock_rate * gamma;
+  let time_min = branch_dist.x_min() / effective_clock_rate;
+  let time_dx = branch_dist.dx() / effective_clock_rate;
+
+  let distribution_fn = DistributionFunction::from_start_dx_values(time_min, time_dx, branch_dist.y().clone())?;
   Ok(Arc::new(Distribution::Function(distribution_fn)))
 }
 

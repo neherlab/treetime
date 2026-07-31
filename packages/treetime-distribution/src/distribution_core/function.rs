@@ -1,13 +1,23 @@
 use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
 use approx::UlpsEq;
 use eyre::Report;
-use ndarray::Array1;
+use ndarray::{Array1, Axis, concatenate};
 use ndarray_stats::QuantileExt;
 use num::Float;
 use serde::{Deserialize, Serialize};
 use treetime_grid::grid::Grid;
 use treetime_grid::{BoundaryBehavior, GridFn, InterpElem};
-use treetime_utils::make_error;
+use treetime_utils::array::ndarray::reverse;
+use treetime_utils::{make_error, make_report};
+
+/// Side of a distribution's grid on which a tail can be extended outward.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TailSide {
+  /// Below `x_min` (toward smaller x).
+  Left,
+  /// Above `x_max` (toward larger x).
+  Right,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
@@ -317,5 +327,100 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     T: Float,
   {
     Ok(Self::from_grid_fn(self.grid_fn.mapv(|v| v * factor)))
+  }
+}
+
+impl<T: InterpElem> DistributionFunction<T, Plain> {
+  /// Extend the grid outward on `side` with a log-linear (exponential-in-probability) tail.
+  ///
+  /// Branch-length likelihoods decay exponentially for long branches: under a Poisson
+  /// substitution model the branch contribution is $\mathcal{L}(t) \propto e^{-\mu t}(\mu t)^k$,
+  /// whose logarithm is asymptotically linear in $t$, so beyond the computed grid the density
+  /// should continue that decay rather than hold flat. See Felsenstein 1981
+  /// (<https://doi.org/10.1007/bf01734359>).
+  ///
+  /// The outward decay rate is estimated in log space from the outermost `min(3, n/3)` points and
+  /// the density is continued as `f = f_boundary * exp(-rate * distance)`. Points are appended at
+  /// the existing spacing until the extrapolated value falls below `rel_floor * peak`, the number
+  /// of appended points reaches `max_added_points`, or the total grid reaches the 1e6-point cap.
+  /// The tail is extended only when the density strictly decays outward on that side (boundary
+  /// value below the interior anchor); a flat or rising boundary is returned unchanged. Both
+  /// out-of-support tail policies are preserved.
+  ///
+  /// Restricted to the [`Plain`] axis: the extrapolation takes logarithms of the ordinate, which
+  /// is a probability density here, not a negative-log value.
+  pub fn extend_log_linear_tail(&self, side: TailSide, rel_floor: T, max_added_points: usize) -> Result<Self, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    let y = self.y();
+    let n = y.len();
+    let dx = self.dx();
+    if n < 2 || max_added_points == 0 || !dx.is_finite() || dx <= T::zero() {
+      return Ok(self.clone());
+    }
+
+    let margin = (n / 3).clamp(1, 3);
+    let (f_boundary, f_anchor, boundary_x) = match side {
+      TailSide::Right => (y[n - 1], y[n - 1 - margin], self.x_max()),
+      TailSide::Left => (y[0], y[margin], self.x_min()),
+    };
+
+    let f_peak = *y
+      .max()
+      .map_err(|e| make_report!("Tail extension requires a non-empty grid: {e}"))?;
+    let floor = rel_floor * f_peak;
+    // Log-linear extrapolation needs positive, finite endpoints, and extension only makes sense
+    // when the density is strictly lower at the boundary than at the interior anchor (decaying
+    // outward) and the boundary is still above the negligibility floor.
+    let can_extend = f_boundary.is_finite()
+      && f_anchor.is_finite()
+      && f_boundary > T::zero()
+      && f_anchor > f_boundary
+      && f_boundary > floor;
+    if !can_extend {
+      return Ok(self.clone());
+    }
+
+    // Outward decay rate per unit x (positive by the check above).
+    let rate = (f_anchor.ln() - f_boundary.ln()) / (T::from(margin).unwrap() * dx);
+    if !rate.is_finite() || rate <= T::zero() {
+      return Ok(self.clone());
+    }
+
+    let cap = max_added_points.min(1_000_000_usize.saturating_sub(n));
+    let mut tail = Vec::new();
+    for k in 1..=cap {
+      let distance = T::from(k).unwrap() * dx;
+      let value = f_boundary * (-rate * distance).exp();
+      if value < floor {
+        break;
+      }
+      tail.push(value);
+    }
+    if tail.is_empty() {
+      return Ok(self.clone());
+    }
+    let tail = Array1::from_vec(tail);
+
+    let (new_x_min, new_y) = match side {
+      TailSide::Right => (
+        self.x_min(),
+        concatenate(Axis(0), &[y.view(), tail.view()]).map_err(|e| make_report!("Tail concatenation failed: {e}"))?,
+      ),
+      TailSide::Left => {
+        let tail = reverse(&tail);
+        let new_x_min = boundary_x - T::from(tail.len()).unwrap() * dx;
+        (
+          new_x_min,
+          concatenate(Axis(0), &[tail.view(), y.view()]).map_err(|e| make_report!("Tail concatenation failed: {e}"))?,
+        )
+      },
+    };
+
+    let grid_fn = GridFn::from_start_dx_values(new_x_min, dx, new_y)?
+      .with_left_extrap(self.left_extrap())
+      .with_right_extrap(self.right_extrap());
+    Ok(Self::from_grid_fn(grid_fn))
   }
 }
