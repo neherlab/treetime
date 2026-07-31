@@ -133,8 +133,9 @@ where
     } else if let (Some(parent_time_dist), Some(branch_dist)) =
       (parent.time_distribution(), edge.branch_length_distribution())
     {
-      // Same forward tail policy as the two-parent-message branch above. normalize() rebuilds
-      // the grid, so the tail policy is applied afterwards, not before.
+      // Same forward tail policy as the two-parent-message branch above. The forward message
+      // needs Zero left / Constant right regardless of the convolution's own tails, so apply
+      // them explicitly after normalize() (which preserves whatever tails it received).
       let dist_from_parent = distribution_convolution(parent_time_dist, branch_dist)?
         .normalize()
         .with_left_extrap(BoundaryBehavior::Zero)?

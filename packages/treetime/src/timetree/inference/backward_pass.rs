@@ -72,14 +72,13 @@ where
       // to zero for large trees. Normalization (max=1.0) is safe because all downstream
       // consumers (likely_time, quantile, hpd_region) are scale-invariant.
       //
-      // Re-apply backward-message tails after normalize(), which resets them to Error.
-      // Without this, subsequent multiplications would ignore the Constant left tail and
-      // collapse to Empty when child messages have disjoint finite grids.
+      // Each parent message carries Constant left / Zero right tails. Multiplication composes
+      // the result tails from its operands and normalize() preserves them, so the accumulator
+      // keeps the Constant left tail across steps and subsequent multiplications can still
+      // extend to reach a child message with a disjoint finite grid
+      // (kb/decisions/distribution-tails-and-arithmetic.md).
       result = Some(if let Some(current) = result {
-        distribution_multiplication(&current, parent_message)?
-          .normalize()
-          .with_left_extrap(BoundaryBehavior::Constant)?
-          .with_right_extrap(BoundaryBehavior::Zero)?
+        distribution_multiplication(&current, parent_message)?.normalize()
       } else {
         parent_message.as_ref().clone()
       });
