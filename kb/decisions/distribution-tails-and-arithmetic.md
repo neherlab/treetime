@@ -30,10 +30,10 @@ The inference pipeline produces several distribution types. Each carries per-sid
 | ----------------------- | ---------------- | ------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | Leaf time constraint    | `Error`          | `Error`             | default                                                                                                 | backward convolution input                                     |
 | Branch length           | `Error`          | `Error`             | default                                                                                                 | convolution input (negated for backward)                       |
-| Backward parent message | `Constant`       | `Zero`              | [backward_pass.rs#L118-L120](../../packages/treetime/src/timetree/inference/backward_pass.rs#L118-L120) | multiplication (combining children), division (forward cavity) |
-| Internal node time dist | `Error`          | `Error`             | multiplication result (see [normalize resets tails](#normalize-resets-tails))                           | forward convolution input, division dividend                   |
-| Forward message         | `Zero`           | `Constant`          | [forward_pass.rs#L112-L114](../../packages/treetime/src/timetree/inference/forward_pass.rs#L112-L114)   | multiplication (refining node dist)                            |
-| Refined node time dist  | `Error`          | `Error`             | multiplication result (see [normalize resets tails](#normalize-resets-tails))                           | `fn Distribution.likely_time()` extraction                     |
+| Backward parent message | `Constant`       | `Zero`              | [backward_pass.rs#L125-L126](../../packages/treetime/src/timetree/inference/backward_pass.rs#L125-L126) | multiplication (combining children), division (forward cavity) |
+| Internal node time dist | `Constant`       | `Zero`              | multiplication result (composed from child messages, preserved by normalize)                            | forward convolution input, division dividend                   |
+| Forward message         | `Zero`           | `Constant`          | [forward_pass.rs#L126-L127](../../packages/treetime/src/timetree/inference/forward_pass.rs#L126-L127)   | multiplication (refining node dist)                            |
+| Refined node time dist  | `Zero`           | `Zero`              | multiplication result (composed from forward message and subtree dist, preserved by normalize)          | `fn Distribution.likely_time()` extraction                     |
 
 ### Why backward messages have `Constant` left / `Zero` right
 
@@ -43,11 +43,13 @@ The backward parent message is the convolution $\text{parent\_message} = \text{c
 
 The forward message is the convolution $\text{dist\_from\_parent} = \text{parent\_except\_subtree} \circledast \text{branch\_dist}$. It represents "when could this node have existed, given its parent and branch?" The parent's committed time provides a hard lower bound (branch lengths are non-negative), so the left tail is `Zero`. There is no upper bound from the parent side on how far in the future the node could be, so the right tail is `Constant`.
 
-### `normalize()` resets tails
+### `normalize()` preserves tails
 
-`fn Distribution.normalize()` calls `fn Distribution.scale_by()`, which calls `fn DistributionFunction.scale_y()`, which constructs a new `GridFn` via `fn GridFn::from_grid_array()` with default `Error` tails. Tail policies do not survive normalization.
+`fn Distribution.normalize()` calls `fn Distribution.scale_by()`, which calls `fn DistributionFunction.scale_y()`. `fn DistributionFunction.scale_y()` scales the y values with `fn GridFn.mapv()`, which copies both tail policies. Scaling by a positive factor does not change out-of-support behavior, so the tails survive normalization.
 
-The forward pass depends on this: it applies tail policies _after_ normalization ([forward_pass.rs#L112-L114](../../packages/treetime/src/timetree/inference/forward_pass.rs#L112-L114), [forward_pass.rs#L125-L128](../../packages/treetime/src/timetree/inference/forward_pass.rs#L125-L128)). If `fn Distribution.normalize()` were changed to preserve tails, the forward pass would double-apply them.
+This lets the backward pass combine child messages with multiplication and normalization alone: multiplication composes the result tails (see [multiplication tails](#multiplication)) and normalization preserves them, so a chain of multiplications keeps its `Constant` left tail and can still extend to reach a child with a disjoint finite grid. No manual re-application is needed.
+
+The forward pass still applies its own tail policies _after_ normalization ([forward_pass.rs#L126-L127](../../packages/treetime/src/timetree/inference/forward_pass.rs#L126-L127), [forward_pass.rs#L141-L142](../../packages/treetime/src/timetree/inference/forward_pass.rs#L141-L142)) because the forward message needs `Zero` left / `Constant` right regardless of the tails the multiplication produced. This explicit application overwrites the preserved tails, which is correct.
 
 ## Grid intersection contract
 
@@ -83,6 +85,21 @@ When both operands have `Error` or `Zero` tails (the default), the result is ide
 
 Point * Function follows the same per-side rule without constructing a result grid. A point in a `Constant` tail evaluates against the Function's boundary value. A point beyond an `Error` or `Zero` boundary produces `Empty`.
 
+##### Result tails
+
+A `Function` result carries per-side tails composed from the two operands' tails on that side. Beyond a boundary the product is evaluated pointwise: if either operand is undefined there the product is undefined (`Error`); otherwise if either operand is zero the product is zero (`Zero`); only when both operands are flat non-zero constants is the product a flat constant (`Constant`). This is the maximum over the precedence `Constant` < `Zero` < `Error` (the more restrictive tail wins):
+
+| A tail     | B tail     | Result tail |
+| ---------- | ---------- | ----------- |
+| `Constant` | `Constant` | `Constant`  |
+| `Constant` | `Zero`     | `Zero`      |
+| `Constant` | `Error`    | `Error`     |
+| `Zero`     | `Zero`     | `Zero`      |
+| `Zero`     | `Error`    | `Error`     |
+| `Error`    | `Error`    | `Error`     |
+
+A `Range` or `Formula` operand has no interpolated tail (it is `Error` on both sides), so Range * Function and Formula * Function results carry `Error` tails. Only Function * Function can produce non-`Error` result tails, and only when both operands opt in. Combined with tail-preserving normalization, this is what lets the backward pass accumulate child messages without re-applying tails.
+
 #### Division
 
 The divisor extends its domain; the dividend's bounds are used as-is. This asymmetry reflects the use case: the forward pass divides a parent's time distribution (dividend) by a child's backward message (divisor) to compute the cavity. The divisor's tail metadata determines how far the cavity extends:
@@ -117,18 +134,18 @@ Scientific workflows requiring posterior peak, normalization, or integrated-prob
 
 - [packages/treetime-grid/src/grid_fn.rs](../../packages/treetime-grid/src/grid_fn.rs): `enum BoundaryBehavior`, `left_extrap`/`right_extrap` fields, `fn GridFn.with_left_extrap()`/`fn GridFn.with_right_extrap()`/`fn GridFn.with_extrap()`, `fn GridFn.interp()` (fallible, dispatches by tail), `fn GridFn.resample()` (propagates policy), `fn GridFn.negate_arg_inplace()` (swaps sides)
 - [packages/treetime-distribution/src/policy.rs](../../packages/treetime-distribution/src/policy.rs): `fn YAxisPolicy::supports_zero_boundary()` (`Plain` true, `NegLog` false)
-- [packages/treetime-distribution/src/distribution_core/function.rs](../../packages/treetime-distribution/src/distribution_core/function.rs): builder rejection of `Zero` under neg-log; `fn DistributionFunction.resample_dx()` regrid boundary handling
-- [packages/treetime-distribution/src/distribution_core/distribution.rs](../../packages/treetime-distribution/src/distribution_core/distribution.rs): `fn Distribution.with_left_extrap()`/`fn Distribution.with_right_extrap()` (no-op for non-Function variants); `fn Distribution.normalize()` (resets tails via `fn Distribution.scale_by()`)
+- [packages/treetime-distribution/src/distribution_core/function.rs](../../packages/treetime-distribution/src/distribution_core/function.rs): builder rejection of `Zero` under neg-log; `fn DistributionFunction.scale_y()` (preserves tails via `fn GridFn.mapv()`); `fn DistributionFunction.resample_dx()` regrid boundary handling
+- [packages/treetime-distribution/src/distribution_core/distribution.rs](../../packages/treetime-distribution/src/distribution_core/distribution.rs): `fn Distribution.with_left_extrap()`/`fn Distribution.with_right_extrap()` (no-op for non-Function variants); `fn Distribution.normalize()` (preserves tails via `fn Distribution.scale_by()`)
 
 ### Tail-aware arithmetic
 
-- [packages/treetime-distribution/src/distribution_ops/multiply.rs](../../packages/treetime-distribution/src/distribution_ops/multiply.rs): `fn multiplication_support_intersection()`, `fn multiply_point_function()`, `fn multiply_function_function()`, `fn multiply_range_function()`
+- [packages/treetime-distribution/src/distribution_ops/multiply.rs](../../packages/treetime-distribution/src/distribution_ops/multiply.rs): `fn multiplication_support_intersection()`, `fn compose_multiplication_tail()`, `fn with_composed_tails()`, `fn multiply_point_function()`, `fn multiply_function_function()`, `fn multiply_range_function()`
 - [packages/treetime-distribution/src/distribution_ops/divide.rs](../../packages/treetime-distribution/src/distribution_ops/divide.rs): `fn division_support_intersection()`, `fn divide_function_by_function()`, `fn divide_range_by_function()`
 
 ### Inference pass tail application
 
-- [packages/treetime/src/timetree/inference/backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs): backward message tail assignment (lines 118-120)
-- [packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs): forward message tail assignment (lines 112-114, 125-128)
+- [packages/treetime/src/timetree/inference/backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs): backward message tail assignment (lines 125-126). Child combination is multiply + normalize only; tail composition and preservation remove the former manual re-application.
+- [packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs): forward message tail assignment (lines 126-127, 141-142)
 
 ### Tests
 

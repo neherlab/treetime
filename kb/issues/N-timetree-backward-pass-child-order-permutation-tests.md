@@ -12,4 +12,4 @@ This would catch ordering-dependent failures from tail metadata loss, normalize 
 
 ## Related
 
-- [kb/issues/M-distribution-multiply-normalize-tail-composition.md](M-distribution-multiply-normalize-tail-composition.md): the underlying tail composition issue that makes ordering matter
+- [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md): tail composition and preservation rules that make child-order invariance the expected behavior
