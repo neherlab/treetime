@@ -87,10 +87,13 @@ pub fn resolve_polytomies(
 
   // Built once from the pre-resolution tree, as v0 does: the lineage counts it derives are a
   // property of the tree entering the pass, not of each intermediate state within it.
+  // TODO: why not use the coalescent model from the upstream inference pass
   let coalescent = coalescent_tc
     .map(|tc| compute_coalescent_model(graph, tc))
     .transpose()?;
 
+  // TODO: This is needed only for as a fall back for branch length mode input when no explicit alignments exist.
+  // In this case, there is no point to get the total length from the partitions
   let total_length: usize = partitions
     .iter()
     .map(|partition| partition.read_arc().get_sequence_length())
@@ -165,6 +168,7 @@ fn resolve_single_polytomy(
     .fold(f64::NEG_INFINITY, f64::max)
     - parent_time;
 
+  // window rate is a fall back when there is no global coalescent model
   let window_rate = WindowMergerRate::new(window);
   let coalescent_rate = coalescent.map(CoalescentMergerRate);
   let merger_rate: &dyn MergerRate = match &coalescent_rate {
