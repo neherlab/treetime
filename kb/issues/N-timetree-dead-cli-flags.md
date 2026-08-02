@@ -1,6 +1,6 @@
 # Dead CLI flags in timetree
 
-Nine flags are parsed by clap but never read in the timetree pipeline:
+Eight flags are parsed by clap but never read in the timetree pipeline:
 
 | Flag                       | Notes                                    |
 | -------------------------- | ---------------------------------------- |
@@ -11,8 +11,9 @@ Nine flags are parsed by clap but never read in the timetree pipeline:
 | `--vcf-reference`          | Never read                               |
 | `--reconstruct-tip-states` | Never read                               |
 | `--report-ambiguous`       | Never read                               |
-| `--seed`                   | Never read                               |
 | `--model-params`           | Never read (renamed from `--gtr-params`) |
+
+Wired since: `--seed` now seeds stochastic polytomy resolution.
 
 Removed: `--aa` (redundant with `--alphabet`, dropped in CLI args unification). Wired: `--reroot` and `--reroot-tips` now pass an explicit root selection spec into timetree rerooting.
 

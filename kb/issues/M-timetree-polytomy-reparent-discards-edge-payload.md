@@ -26,7 +26,7 @@ graph.add_edge(new_node_key, child1.node_key, child1_edge_payload)?;
 
 Only `time_length` survives. Everything else on `EdgeTimetree`
 ([packages/treetime/src/payload/timetree.rs#L161-L177](../../packages/treetime/src/payload/timetree.rs#L161-L177))
-is reset to its default. Two fields carry state that is still live at this point:
+is reset to its default. One field carries state that is still live at this point:
 
 **`branch_length`** — the observed mutation length on the branch, reset to `None`.
 `fn prepare_tree_after_topology_change()` runs immediately afterwards and explicitly
@@ -38,29 +38,24 @@ the three `ClockSet` fields, which is precisely the set it considers topology-de
 `branch_length` is deliberately excluded — and then lost anyway, upstream, for reparented
 children only.
 
-**`gamma`** — the relaxed-clock per-branch rate multiplier, reset from its inferred value to
-the default `1.0`. `fn apply_relaxed_clock()` assigns it at
-[packages/treetime/src/timetree/refinement.rs#L30](../../packages/treetime/src/timetree/refinement.rs#L30),
-three lines before topology refinement runs at
-[packages/treetime/src/timetree/refinement.rs#L33](../../packages/treetime/src/timetree/refinement.rs#L33).
-Under `--relax`, every reparented child silently reverts to the average clock rate while its
-unreparented siblings keep theirs.
+The other payload fields are not at risk: `prepare_tree_after_topology_change` resets
+`branch_length_distribution`, `msg_to_parent`, `gamma` and the three `ClockSet` fields for
+*every* edge moments later, so losing them early makes no difference. `branch_length` is the
+one field it deliberately leaves alone, and the one this drops.
 
-A third consequence is indirect. `add_edge` allocates a new `GraphEdgeKey`
+A second consequence is indirect. `add_edge` allocates a new `GraphEdgeKey`
 ([packages/treetime-graph/src/graph_ops.rs#L77](../../packages/treetime-graph/src/graph_ops.rs#L77)),
 so the partition entry keyed by the old edge is stale. `reconcile_topology` drops it and
 inserts a `Default` under the new key
 ([packages/treetime/src/partition/marginal_sparse.rs#L493-L500](../../packages/treetime/src/partition/marginal_sparse.rs#L493-L500)),
 discarding that edge's substitution and message state. The subsequent `update_marginal`
 ([packages/treetime/src/timetree/refinement.rs#L105](../../packages/treetime/src/timetree/refinement.rs#L105))
-recomputes `subs_ml` and the messages, so this one is recovered; `branch_length` and `gamma`
-are not.
+recomputes `subs_ml` and the messages, so this one is recovered; `branch_length` is not.
 
 ## Evidence
 
 - `prepare_tree_after_topology_change` enumerates the fields it resets and names
   `branch_length` as intentionally retained, contradicting what `merge_children` does to it
-- `gamma` is assigned by the immediately preceding step in the same `Refinement::run()` body
 - The parent-side edge created at
   [packages/treetime/src/timetree/optimization/polytomy.rs#L533-L537](../../packages/treetime/src/timetree/optimization/polytomy.rs#L533-L537)
   legitimately wants a default payload — it is a new branch with no history. The child-side
@@ -94,9 +89,12 @@ where it was costed and deferred.
 
 ## Test
 
-- Reparent a child whose edge carries a non-default `branch_length` and `gamma`; assert both
-  survive on the new edge.
-- Under `--relax`, assert that gamma values across a resolved polytomy's children are not all
-  `1.0`.
+- Reparent a child whose edge carries a non-default `branch_length`; assert it survives.
 - Assert the edge key is unchanged after reparenting, and that the sparse partition entry for
   that key is preserved.
+
+## Status
+
+Resolved. `Graph::reparent_edge` was added in `packages/treetime-graph/src/graph_ops.rs` and
+is used by the stochastic polytomy resolver's `apply_plan`, which replaced `merge_children`.
+Covered by `test_apply_plan_reparents_children_keeping_edge_key_and_mutation_length`.

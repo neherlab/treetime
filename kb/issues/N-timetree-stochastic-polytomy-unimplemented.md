@@ -1,6 +1,6 @@
 # Stochastic polytomy event generator not implemented
 
-v1 implements greedy deterministic polytomy resolution. v0 also supports a mutation-conditioned stochastic event generator for topology refinement.
+Resolved. v1 originally implemented only greedy deterministic polytomy resolution; it now samples a mutation-conditioned stochastic coalescent history instead, and the greedy path has been removed.
 
 ## Background
 
@@ -18,14 +18,14 @@ The branch-merger rate can come from `merger_model`; mutation timing uses `gtr.m
 
 ## v1 status
 
-v1 uses greedy pairwise merging with Brent optimization in [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../packages/treetime/src/timetree/optimization/polytomy.rs). It has no counterpart for v0's stochastic event generator.
+Resolved. v1 resolves polytomies by stochastic coalescent sampling in [`packages/treetime/src/timetree/optimization/polytomy/`](../../packages/treetime/src/timetree/optimization/polytomy/): `sweep.rs` holds the simulation and `apply.rs` the graph surgery. The greedy pairwise merger it replaced is gone.
 
 The public tracker discusses information sources and efficiency for polytomy resolution [[issue](https://github.com/neherlab/treetime/issues/109)] and comparison of stochastic and greedy resolution [[issue](https://github.com/neherlab/treetime/issues/313)]. This issue tracks the narrower v0 parity gap.
 
 ## Impact
 
-- v1 cannot reproduce v0's stochastic topology-generation behavior.
-- Greedy and stochastic resolution can produce different topology and timing inputs for downstream inference.
+- Greedy and stochastic resolution produce different topology and timing inputs for downstream inference, so resolved trees change relative to earlier v1 releases.
+- Resolution is no longer deterministic: runs without `--seed` differ. The generated seed is logged so a run can be reproduced.
 - v0's specialized event generator is not a calibrated posterior over resolutions. The star tree paradox concerns posterior support for arbitrary resolved topologies when data arise from a star tree; proposed remedies give unresolved topologies explicit prior mass rather than randomly resolving them <a id="cite-1"></a>[Lewis et al. 2005](https://doi.org/10.1080/10635150590924208) [[1](#ref-1)]. A calibrated topology-uncertainty feature would require a separately approved target distribution and validation contract.
 
 ## Algorithm detail

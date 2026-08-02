@@ -61,12 +61,14 @@
 ## Polytomy Resolution
 
 - [x] Find polytomy nodes with more than two children
-- [x] Greedy pairwise merging (likelihood gain threshold 0.05)
-- [x] Per-pair Brent optimization for merge time
+- [x] Stochastic coalescent-with-mutations resolution (v0's `--stochastic-resolve`, always on in v1; design in [kb/proposals/timetree-stochastic-polytomy-resolution.md](../proposals/timetree-stochastic-polytomy-resolution.md))
+- [x] Exact per-branch substitution counts from `edge_subs`, falling back to `round(mutation_length * L)`
+- [x] Per-branch coalescent merger rate when `--coalescent` is active, window-calibrated rate otherwise
+- [x] `--seed` for reproducible resolution; a generated seed is logged when none is given
 - [x] Remove obsolete single-child nodes after resolution
 - [x] Reconcile partition topology after tree change
 - [/] `--keep-polytomies` (parsed but never read - [kb/issues/N-timetree-dead-cli-flags.md](../issues/N-timetree-dead-cli-flags.md))
-- [ ] Stochastic resolution (`--stochastic-resolve` in v0 - [kb/issues/N-timetree-stochastic-polytomy-unimplemented.md](../issues/N-timetree-stochastic-polytomy-unimplemented.md), design in [kb/proposals/timetree-stochastic-polytomy-resolution.md](../proposals/timetree-stochastic-polytomy-resolution.md), which also replaces greedy merging)
+- [ ] Greedy pairwise merging (v0's `--greedy-resolve`; removed in v1, which v0 deprecates as unsuitable for large polytomies)
 
 ## Relaxed Clock
 
