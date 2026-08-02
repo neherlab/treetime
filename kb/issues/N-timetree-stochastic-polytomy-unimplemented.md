@@ -37,10 +37,14 @@ See [kb/algo/unimplemented.md](../algo/unimplemented.md#stochastic-polytomy-reso
 - Choose exact seeded parity, which requires the pinned NumPy reference version, NumPy `default_rng` PCG64, parity with NumPy's exponential, uniform-random, and choice transformations, and identical draw ordering; or choose a Rust RNG with distributional and invariant-based comparison.
 - Define whether the CLI exposes v0's specialized generator as parity behavior or adopts a separately approved stochastic topology model.
 
-No implementation ticket is ready until these contracts are approved.
+Both are answered by [kb/proposals/timetree-stochastic-polytomy-resolution.md](../proposals/timetree-stochastic-polytomy-resolution.md):
+
+- **Rust RNG with distributional comparison.** Exact seeded parity is unreachable regardless of the generator, because the proposal corrects three defects in v0's loop — see [kb/v0-errata/timetree-stochastic-resolve-rate-selection-mismatch.md](../v0-errata/timetree-stochastic-resolve-rate-selection-mismatch.md), [kb/v0-errata/timetree-stochastic-resolve-event-past-parent.md](../v0-errata/timetree-stochastic-resolve-event-past-parent.md) and [kb/v0-errata/timetree-stochastic-resolve-skipped-arrival-interval.md](../v0-errata/timetree-stochastic-resolve-skipped-arrival-interval.md) — so the event sequences diverge even under an identical draw stream.
+- **Replace rather than expose as a parity mode.** The greedy path is removed; v1 has a single resolution strategy. v0's `--stochastic-resolve` / `--greedy-resolve` split is not reproduced.
 
 ## Cross-references
 
+- [kb/proposals/timetree-stochastic-polytomy-resolution.md](../proposals/timetree-stochastic-polytomy-resolution.md)
 - [kb/reports/iterative-tree-refinement/7-polytomy-resolution.md](../reports/iterative-tree-refinement/7-polytomy-resolution.md)
 
 ## Glossary

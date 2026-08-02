@@ -66,7 +66,7 @@
 - [x] Remove obsolete single-child nodes after resolution
 - [x] Reconcile partition topology after tree change
 - [/] `--keep-polytomies` (parsed but never read - [kb/issues/N-timetree-dead-cli-flags.md](../issues/N-timetree-dead-cli-flags.md))
-- [ ] Stochastic resolution (`--stochastic-resolve` in v0 - [kb/issues/N-timetree-stochastic-polytomy-unimplemented.md](../issues/N-timetree-stochastic-polytomy-unimplemented.md))
+- [ ] Stochastic resolution (`--stochastic-resolve` in v0 - [kb/issues/N-timetree-stochastic-polytomy-unimplemented.md](../issues/N-timetree-stochastic-polytomy-unimplemented.md), design in [kb/proposals/timetree-stochastic-polytomy-resolution.md](../proposals/timetree-stochastic-polytomy-resolution.md), which also replaces greedy merging)
 
 ## Relaxed Clock
 
