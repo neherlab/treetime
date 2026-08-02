@@ -37,6 +37,7 @@ use treetime_distribution::Distribution;
 use treetime_io::dates_csv::DatesMap;
 use treetime_io::fasta::FastaRecord;
 use treetime_utils::make_report;
+use treetime_utils::sync::random::get_random_number_generator;
 
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
 
@@ -72,6 +73,9 @@ pub struct TimetreeParams {
   pub reconstruct_tip_states: bool,
   pub report_ambiguous: bool,
   pub zero_based: bool,
+  /// Seed for the polytomy-resolution sampler. `None` draws one from entropy and logs it,
+  /// so a run can be reproduced after the fact.
+  pub seed: Option<u64>,
 }
 
 pub struct TimetreeInput {
@@ -293,6 +297,15 @@ pub fn run(
     no_indels: params.no_indels,
   };
   let max_iter = params.max_iter;
+
+  // One generator for the whole loop: polytomy resolution samples a coalescent history per
+  // round, and re-seeding per round would correlate them.
+  let seed = params.seed.unwrap_or_else(rand::random);
+  if params.resolve_polytomies {
+    info!("Polytomy resolution is stochastic; seed {seed} (pass --seed to reproduce this run)");
+  }
+  let mut rng = get_random_number_generator(Some(seed));
+
   while let Some(IterationContext { i }) = optimizer.next_iter() {
     progress.check_cancelled()?;
     let iter_fraction = 0.3 + 0.5 * (i as f64 / max_iter as f64);
@@ -313,6 +326,7 @@ pub fn run(
       clock_params: reroot_clock_params,
       branch_params: &branch_params,
       coalescent_tc: coalescent_tc.as_ref(),
+      rng: &mut rng,
       options: &refinement_options,
     }
     .run()

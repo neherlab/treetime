@@ -1,5 +1,7 @@
 use crate::coalescent::edge_data::CoalescentEdgeData;
-use crate::coalescent::integration::{compute_integral_merger_rate, compute_merger_rate_total_scalar};
+use crate::coalescent::integration::{
+  compute_integral_merger_rate, compute_merger_rate_per_lineage_scalar, compute_merger_rate_total_scalar,
+};
 use crate::coalescent::precomputed::CoalescentPrecomputed;
 use crate::payload::traits::TimetreeNode;
 use eyre::{Context, Report};
@@ -82,6 +84,22 @@ impl CoalescentModel {
   }
 
   fn total_merger_rate(&self, time: f64) -> Result<f64, Report> {
+    let (k, tc) = self.lineage_count_and_tc(time)?;
+    Ok(compute_merger_rate_total_scalar(k, tc))
+  }
+
+  /// Per-branch merger rate $\kappa(t)$: the rate at which one lineage merges with any
+  /// other. v0's `branch_merger_rate`.
+  ///
+  /// Distinct from [`Self::total_merger_rate`], which is the rate over all pairs. Callers
+  /// simulating mergers within one local group scale this by their own lineage count rather
+  /// than the tree-wide $k(t)$ baked into the total.
+  pub fn branch_merger_rate(&self, time: f64) -> Result<f64, Report> {
+    let (k, tc) = self.lineage_count_and_tc(time)?;
+    Ok(compute_merger_rate_per_lineage_scalar(k, tc))
+  }
+
+  fn lineage_count_and_tc(&self, time: f64) -> Result<(f64, f64), Report> {
     // Calendar right-continuity gives the number of lineages immediately on
     // the sampled-tree side of a merger, equivalent to TBP eval_left().
     let k = self.lineage_counts.eval(time);
@@ -95,6 +113,6 @@ impl CoalescentModel {
     if !tc.is_finite() || tc <= 0.0 {
       return make_error!("Coalescent Tc must be finite and positive at calendar time {time:.6e}, got {tc:.6e}");
     }
-    Ok(compute_merger_rate_total_scalar(k, tc))
+    Ok((k, tc))
   }
 }

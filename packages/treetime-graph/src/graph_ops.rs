@@ -103,6 +103,67 @@ where
     Ok(edge_key)
   }
 
+  /// Move an edge to a new source node, keeping its key and payload.
+  ///
+  /// The edge is unlinked from its current source's outbound list, linked into the new
+  /// source's, and its stored source key updated. The target is untouched, so the target
+  /// node's inbound list stays valid.
+  ///
+  /// Preferred over `remove_edge` + `add_edge` when relocating a branch: those allocate a
+  /// fresh [`GraphEdgeKey`] and require the caller to reconstruct the payload, which silently
+  /// drops any edge state the caller forgets to carry over and invalidates external maps keyed
+  /// by edge key. `remove_edge` also scans every node, so reparenting in a loop is quadratic.
+  ///
+  /// Reparenting to the current source is a no-op. Reparenting onto the edge's own target, or
+  /// onto a node already connected to the target, is an error: both would break the tree
+  /// invariants the graph traversals rely on.
+  pub fn reparent_edge(&mut self, edge_key: GraphEdgeKey, new_source_key: GraphNodeKey) -> Result<(), Report> {
+    let edge_lock = self
+      .get_edge(edge_key)
+      .ok_or_else(|| make_internal_report!("When reparenting edge {edge_key}: edge not found"))?;
+
+    let (old_source_key, target_key) = {
+      let edge = edge_lock.read_arc();
+      (edge.source(), edge.target())
+    };
+
+    if old_source_key == new_source_key {
+      return Ok(());
+    }
+
+    if new_source_key == target_key {
+      return make_error!(
+        "When reparenting edge {edge_key} to {new_source_key}: Attempted to connect node {new_source_key} to itself."
+      );
+    }
+
+    let new_source_lock = self.get_node(new_source_key).ok_or_else(|| {
+      make_report!("When reparenting edge {edge_key} to {new_source_key}: Node {new_source_key} not found.")
+    })?;
+
+    {
+      let new_source = new_source_lock.read_arc();
+      let already_connected = new_source
+        .outbound()
+        .iter()
+        .any(|edge| self.get_edge(*edge).is_some_and(|e| e.read().target() == target_key));
+
+      if already_connected {
+        return make_error!(
+          "When reparenting edge {edge_key} to {new_source_key}: Nodes {new_source_key} and {target_key} are already connected."
+        );
+      }
+    }
+
+    if let Some(old_source_lock) = self.get_node(old_source_key) {
+      old_source_lock.write_arc().outbound_mut().retain(|&e| e != edge_key);
+    }
+    new_source_lock.write_arc().outbound_mut().push(edge_key);
+    edge_lock.write_arc().set_source(new_source_key);
+
+    Ok(())
+  }
+
   pub fn remove_edge(&mut self, edge_key: GraphEdgeKey) -> Result<Edge<E>, Report> {
     // Remove the edge key from inbound/outbound lists of nodes
     self.nodes.iter_mut().for_each(|node| {
@@ -207,5 +268,104 @@ where
     let (removed_node, _removed_edges) = self.remove_node(target_key)?;
 
     Ok((removed_node, removed_edge, new_edges))
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::edge::{GraphEdge, GraphEdgeKey};
+  use crate::graph::Graph;
+  use crate::node::{GraphNode, GraphNodeKey};
+  use eyre::Report;
+  use pretty_assertions::assert_eq;
+
+  #[derive(Debug, PartialEq)]
+  struct TestNode(&'static str);
+  impl GraphNode for TestNode {}
+
+  /// Carries a value so tests can tell a preserved payload from a rebuilt one.
+  #[derive(Debug, PartialEq)]
+  struct TestEdge(f64);
+  impl GraphEdge for TestEdge {}
+
+  type TestGraph = Graph<TestNode, TestEdge, ()>;
+
+  /// `root -> {a, b}`, `a -> c`. Returns the graph and the keys in that order.
+  fn fixture() -> Result<(TestGraph, [GraphNodeKey; 4], GraphEdgeKey), Report> {
+    let mut graph = TestGraph::new();
+    let root = graph.add_node(TestNode("root"));
+    let a = graph.add_node(TestNode("a"));
+    let b = graph.add_node(TestNode("b"));
+    let c = graph.add_node(TestNode("c"));
+    graph.add_edge(root, a, TestEdge(1.0))?;
+    graph.add_edge(root, b, TestEdge(2.0))?;
+    let a_to_c = graph.add_edge(a, c, TestEdge(3.0))?;
+    graph.build()?;
+    Ok((graph, [root, a, b, c], a_to_c))
+  }
+
+  fn outbound(graph: &TestGraph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
+    graph.get_node(node_key).expect("node exists").read_arc().outbound().to_vec()
+  }
+
+  fn inbound(graph: &TestGraph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
+    graph.get_node(node_key).expect("node exists").read_arc().inbound().to_vec()
+  }
+
+  #[test]
+  fn test_reparent_edge_moves_the_edge_and_keeps_key_and_payload() -> Result<(), Report> {
+    let (mut graph, [root, a, b, c], a_to_c) = fixture()?;
+
+    graph.reparent_edge(a_to_c, b)?;
+
+    let edge = graph.get_edge(a_to_c).expect("edge survives reparenting");
+    assert_eq!(edge.read_arc().source(), b);
+    assert_eq!(edge.read_arc().target(), c);
+    assert_eq!(*edge.read_arc().payload().read_arc(), TestEdge(3.0), "payload must survive");
+
+    assert!(!outbound(&graph, a).contains(&a_to_c), "old source must drop the edge");
+    assert!(outbound(&graph, b).contains(&a_to_c), "new source must gain the edge");
+    assert_eq!(inbound(&graph, c), vec![a_to_c], "the target's inbound list is untouched");
+    assert_eq!(outbound(&graph, root).len(), 2, "unrelated nodes are untouched");
+    Ok(())
+  }
+
+  #[test]
+  fn test_reparent_edge_to_the_current_source_is_a_noop() -> Result<(), Report> {
+    let (mut graph, [_, a, _, _], a_to_c) = fixture()?;
+    let before = outbound(&graph, a);
+
+    graph.reparent_edge(a_to_c, a)?;
+
+    assert_eq!(outbound(&graph, a), before, "a no-op must not duplicate the edge key");
+    Ok(())
+  }
+
+  #[test]
+  fn test_reparent_edge_rejects_making_the_target_its_own_source() -> Result<(), Report> {
+    let (mut graph, [_, _, _, c], a_to_c) = fixture()?;
+    assert!(graph.reparent_edge(a_to_c, c).is_err());
+    Ok(())
+  }
+
+  #[test]
+  fn test_reparent_edge_rejects_a_duplicate_connection() -> Result<(), Report> {
+    let (mut graph, [root, _, _, c], a_to_c) = fixture()?;
+    // `root` already reaches `c` directly, so moving `a -> c` under `root` would create a
+    // second `root -> c` edge.
+    graph.add_edge(root, c, TestEdge(4.0))?;
+
+    assert!(graph.reparent_edge(a_to_c, root).is_err());
+
+    let edge = graph.get_edge(a_to_c).expect("a rejected reparent must leave the edge in place");
+    assert_eq!(edge.read_arc().source(), fixture()?.1[1], "the edge must not have moved");
+    Ok(())
+  }
+
+  #[test]
+  fn test_reparent_edge_rejects_an_unknown_edge() -> Result<(), Report> {
+    let (mut graph, [root, _, _, _], _) = fixture()?;
+    assert!(graph.reparent_edge(GraphEdgeKey::invalid(), root).is_err());
+    Ok(())
   }
 }

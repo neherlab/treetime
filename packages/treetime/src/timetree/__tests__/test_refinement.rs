@@ -27,6 +27,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
+  use treetime_utils::sync::random::get_random_number_generator;
   use treetime_graph::edge::{BranchDistribution, HasBranchLength};
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::fasta::read_many_fasta_str;
@@ -255,6 +256,9 @@ mod tests {
       .collect()
   }
 
+  /// Polytomy resolution samples; pin the stream so refinement tests stay deterministic.
+  const REFINEMENT_TEST_SEED: u64 = 0xC0FFEE;
+
   fn refine(
     graph: &mut GraphTimetree,
     partitions: &PartitionTimetreeAllVec,
@@ -268,6 +272,7 @@ mod tests {
       clock_params: &ClockParams::default(),
       branch_params: &BranchPointOptimizationParams::default(),
       coalescent_tc,
+      rng: &mut get_random_number_generator(Some(REFINEMENT_TEST_SEED)),
       options: &refinement_options(),
     }
     .run()

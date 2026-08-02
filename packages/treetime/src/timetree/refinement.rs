@@ -21,6 +21,9 @@ pub(crate) struct Refinement<'a> {
   pub clock_params: &'a ClockParams,
   pub branch_params: &'a BranchPointOptimizationParams,
   pub coalescent_tc: Option<&'a Distribution>,
+  /// Shared across refinement rounds so polytomy resolution draws from one continuous
+  /// stream: re-seeding per round would correlate the sampled histories.
+  pub rng: &'a mut dyn rand::RngCore,
   pub options: &'a RefinementOptions,
 }
 
@@ -77,11 +80,15 @@ impl Refinement<'_> {
       return Ok(TopologyOutcome::Unchanged);
     }
 
+    // Expected substitutions per unit time across the whole alignment.
+    let mutation_rate = self.clock_model.clock_rate() * total_length as f64;
+
     let resolved_nodes = resolve_polytomies(
       self.graph,
       self.partitions,
-      self.clock_model.clock_rate() * total_length as f64,
-      self.clock_model.clock_rate(),
+      mutation_rate,
+      self.coalescent_tc,
+      self.rng,
     )
     .wrap_err("Polytomy resolution failed")?;
     if resolved_nodes == 0 {

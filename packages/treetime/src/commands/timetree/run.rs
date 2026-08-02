@@ -83,6 +83,7 @@ pub fn run_timetree_estimation(
     reconstruct_tip_states: args.reconstruct_tip_states,
     report_ambiguous: args.report_ambiguous,
     zero_based: args.zero_based,
+    seed: args.seed,
   };
 
   let input = TimetreeInput {
