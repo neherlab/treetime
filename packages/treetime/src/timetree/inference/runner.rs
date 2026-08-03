@@ -6,7 +6,7 @@ use crate::partition::traits::PartitionTimetreeAll;
 use crate::payload::traits::ClockNode;
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
-use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
+use crate::timetree::inference::branch_length_likelihood::{BranchGridConfig, compute_branch_length_distribution};
 use crate::timetree::inference::forward_pass::propagate_distributions_forward;
 use crate::timetree::utils::initialize_node_divergences;
 use eyre::Report;
@@ -27,6 +27,7 @@ pub fn run_timetree<N, E, P>(
   clock_model: &ClockModel,
   coalescent_tc: Option<&Distribution>,
   no_indels: bool,
+  grid_config: &BranchGridConfig,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named + TimetreeNode + ClockNode + Default,
@@ -44,7 +45,7 @@ where
 
   if !partitions.is_empty() {
     info!("## Computing branch distributions from partitions");
-    compute_branch_distributions_marginal_mode(graph, partitions, clock_rate, no_indels)?;
+    compute_branch_distributions_marginal_mode(graph, partitions, clock_rate, no_indels, grid_config)?;
   } else {
     info!("## Creating branch distributions from input lengths");
     create_branch_distributions_input_mode(graph, clock_rate)?;
@@ -72,6 +73,7 @@ fn compute_branch_distributions_marginal_mode<N, E, P>(
   partitions: &[Arc<RwLock<P>>],
   clock_rate: f64,
   no_indels: bool,
+  grid_config: &BranchGridConfig,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named + TimetreeNode,
@@ -121,7 +123,7 @@ where
         indel_rate,
         branch_length,
         one_mutation,
-        BRANCH_GRID_SIZE,
+        grid_config,
         clock_rate,
         gamma,
       )?;

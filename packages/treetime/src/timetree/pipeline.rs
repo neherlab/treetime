@@ -21,6 +21,7 @@ use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
 };
 use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer};
+use crate::timetree::inference::branch_length_likelihood::BranchGridConfig;
 use crate::timetree::inference::runner::run_timetree;
 use crate::timetree::optimization::clock_filter::{apply_outlier_bad_branches, report_bad_branches};
 use crate::timetree::optimization::reroot::reroot_tree;
@@ -225,7 +226,14 @@ pub fn run(
     return make_error!("--n-branches-posterior is not yet implemented");
   }
 
-  run_timetree(&mut input.graph, &partitions, &clock_model, None, params.no_indels)?;
+  run_timetree(
+    &mut input.graph,
+    &partitions,
+    &clock_model,
+    None,
+    params.no_indels,
+    &BranchGridConfig::default(),
+  )?;
 
   let coalescent = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
 
@@ -242,6 +250,7 @@ pub fn run(
       &clock_model,
       coalescent_tc.as_ref(),
       params.no_indels,
+      &BranchGridConfig::default(),
     )?;
   }
 
@@ -270,8 +279,15 @@ pub fn run(
     // inside the iteration loop.
     // packages/legacy/treetime/treetime/treetime.py#L279-L285
     if coalescent_tc.is_some() {
-      run_timetree(&mut input.graph, &partitions, &clock_model, None, params.no_indels)
-        .wrap_err("Post-reroot timetree inference failed")?;
+      run_timetree(
+        &mut input.graph,
+        &partitions,
+        &clock_model,
+        None,
+        params.no_indels,
+        &BranchGridConfig::default(),
+      )
+      .wrap_err("Post-reroot timetree inference failed")?;
     }
   }
 
@@ -361,6 +377,7 @@ pub fn run(
       &clock_model,
       coalescent_tc.as_ref(),
       params.no_indels,
+      &BranchGridConfig::default(),
     )
     .wrap_err("Final timetree inference failed")?;
 

@@ -5,6 +5,7 @@ use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::{PartitionMarginalPasses, PartitionTimetreeOps};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
+use crate::timetree::inference::branch_length_likelihood::BranchGridConfig;
 use crate::timetree::inference::runner::run_timetree;
 use crate::timetree::optimization::clock_filter::propagate_bad_branches;
 use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
@@ -113,6 +114,7 @@ impl Refinement<'_> {
         self.clock_model,
         None,
         self.options.no_indels,
+        &BranchGridConfig::default(),
       )
       .wrap_err("Coalescent-free timetree rebuild failed")?;
       if self.coalescent_tc.is_none() {
@@ -128,6 +130,7 @@ impl Refinement<'_> {
       self.clock_model,
       self.coalescent_tc,
       self.options.no_indels,
+      &BranchGridConfig::default(),
     )
     .wrap_err("Timetree inference failed")
   }

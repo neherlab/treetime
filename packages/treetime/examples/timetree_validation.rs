@@ -21,6 +21,7 @@ use treetime::partition::timetree::GraphTimetree;
 use treetime::partition::traits::PartitionTimetreeAll;
 use treetime::payload::timetree::{EdgeTimetree, NodeTimetree};
 use treetime::timetree::inference::backward_pass::propagate_distributions_backward;
+use treetime::timetree::inference::branch_length_likelihood::BranchGridConfig;
 use treetime::timetree::inference::forward_pass::propagate_distributions_forward;
 use treetime::timetree::inference::runner::{BRANCH_GRID_SIZE, run_timetree};
 use treetime::timetree::utils::{
@@ -318,7 +319,14 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   initialize_clock_totals_from_time_distributions(&graph)?;
   dump_graph(&graph, &output_dir_str, "004_after_initialize_node_times.json")?;
 
-  run_timetree(&mut graph, &partitions, &clock_model, None, false)?;
+  run_timetree(
+    &mut graph,
+    &partitions,
+    &clock_model,
+    None,
+    false,
+    &BranchGridConfig::default(),
+  )?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
   let actual = extract_node_times(&graph);
@@ -371,7 +379,14 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
   initialize_clock_totals_from_time_distributions(&graph)?;
   dump_graph(&graph, &output_dir_str, "004_after_initialize_node_times.json")?;
 
-  run_timetree(&mut graph, &partitions, &clock_model, None, false)?;
+  run_timetree(
+    &mut graph,
+    &partitions,
+    &clock_model,
+    None,
+    false,
+    &BranchGridConfig::default(),
+  )?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
   let actual = extract_node_times(&graph);

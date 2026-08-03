@@ -11,6 +11,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
+  use crate::timetree::inference::branch_length_likelihood::BranchGridConfig;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::utils::{
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
@@ -40,7 +41,7 @@ mod tests {
     let (graph, partitions, clock_model) = build_timetree_setup(dataset, case)?;
     let mut graph = graph;
     let coalescent_tc = Distribution::constant(tc);
-    run_timetree(&mut graph, &partitions, &clock_model, Some(&coalescent_tc), false)?;
+    run_timetree(&mut graph, &partitions, &clock_model, Some(&coalescent_tc), false, &BranchGridConfig::default())?;
 
     let times = extract_node_times(&graph);
     let expected_count = graph.num_nodes();

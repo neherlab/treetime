@@ -14,6 +14,7 @@ mod tests {
   use crate::payload::clock_set::ClockSet;
   use crate::pretty_assert_abs_diff_eq;
   use crate::seq::alignment::get_common_length;
+  use crate::timetree::inference::branch_length_likelihood::BranchGridConfig;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::refinement::{
     Refinement, RefinementOptions, RefinementOutcome, TopologyOutcome, TopologyRefinement,
@@ -206,7 +207,14 @@ mod tests {
       &BranchPointOptimizationParams::default(),
       None,
     )?;
-    run_timetree(&mut graph, &partitions, &clock_model, None, false)?;
+    run_timetree(
+      &mut graph,
+      &partitions,
+      &clock_model,
+      None,
+      false,
+      &BranchGridConfig::default(),
+    )?;
 
     let times = Array1::linspace(0.0, 30.0, 301);
     let values = times.mapv(|time: f64| (-0.5 * time).exp());

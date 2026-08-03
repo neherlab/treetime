@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::partition::optimization_contribution::OptimizationContribution;
-  use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
+  use crate::timetree::inference::branch_length_likelihood::{BranchGridConfig, compute_branch_length_distribution};
   use crate::timetree::inference::runner::BRANCH_GRID_SIZE;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -27,7 +27,7 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 0.1,
       /* one_mutation */ 1e-3,
-      BRANCH_GRID_SIZE,
+      &BranchGridConfig::default(),
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
@@ -102,7 +102,7 @@ mod tests {
       indel_rate,
       /* current_branch_length */ 5.0,
       one_mutation,
-      BRANCH_GRID_SIZE,
+      &BranchGridConfig::default(),
       clock_rate,
       gamma,
     )?;
@@ -136,7 +136,7 @@ mod tests {
       indel_rate,
       /* current_branch_length */ 5.0,
       one_mutation,
-      BRANCH_GRID_SIZE,
+      &BranchGridConfig::default(),
       clock_rate,
       gamma,
     )?;
@@ -168,7 +168,7 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 0.01,
       /* one_mutation */ 1e-3,
-      BRANCH_GRID_SIZE,
+      &BranchGridConfig::default(),
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
@@ -190,7 +190,7 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 0.1,
       /* one_mutation */ 1e-3,
-      BRANCH_GRID_SIZE,
+      &BranchGridConfig::default(),
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
@@ -212,7 +212,7 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 2.0,
       /* one_mutation */ 1e-3,
-      BRANCH_GRID_SIZE,
+      &BranchGridConfig::default(),
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
@@ -235,7 +235,7 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 0.1,
       one_mutation,
-      BRANCH_GRID_SIZE,
+      &BranchGridConfig::default(),
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
@@ -256,7 +256,7 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 0.1,
       /* one_mutation */ 1e-3,
-      BRANCH_GRID_SIZE,
+      &BranchGridConfig::default(),
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
@@ -284,7 +284,7 @@ mod tests {
         /* indel_rate */ 1.0,
         /* current_branch_length */ 1.0,
         /* one_mutation */ 1e-3,
-        BRANCH_GRID_SIZE,
+        &BranchGridConfig::default(),
         /* clock_rate */ 1.0,
         /* gamma */ 1.0,
       )

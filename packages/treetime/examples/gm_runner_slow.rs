@@ -54,6 +54,7 @@ use treetime::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::partition::marginal_dense::PartitionMarginalDense;
 use treetime::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
+use treetime::timetree::inference::branch_length_likelihood::BranchGridConfig;
 use treetime::timetree::inference::runner::run_timetree;
 use treetime::timetree::utils::{
   extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
@@ -180,7 +181,14 @@ fn run_marginal_dense(case: &GoldenOutputs, paths: &DatasetPaths) -> Result<BTre
   )?;
 
   initialize_clock_totals_from_time_distributions(&graph)?;
-  run_timetree(&mut graph, &partitions, &clock_model, None, false)?;
+  run_timetree(
+    &mut graph,
+    &partitions,
+    &clock_model,
+    None,
+    false,
+    &BranchGridConfig::default(),
+  )?;
 
   Ok(extract_node_times(&graph))
 }
