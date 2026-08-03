@@ -161,10 +161,10 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
   Default value: `2`
 * `--coalescent <COALESCENT>` — Coalescent time scale in years.
 
-   Sensible values are on the order of the average hamming distance of contemporaneous sequences divided by the clock rate. For example, if average pairwise distance is 0.01 substitutions/site and clock rate is 0.001 subs/site/year, then Tc ~ 10 years.
+   Sensible values are on the order of the time from the root to the tips and are given in units of time.
 * `--coalescent-opt` — Optimize coalescent time scale Tc to maximize coalescent likelihood.
 
-   When set, TreeTime will find the optimal Tc using Brent's method. This is equivalent to Python v0's `--coalescent=opt`. If --coalescent is also provided, that value is used as the initial guess; otherwise defaults to 1.0.
+   When set, TreeTime finds the optimal constant Tc analytically (closed-form maximum of the coalescent likelihood). This is similar to Python v0's `--coalescent=opt`, which used a numerical search.
 * `--coalescent-skyline` — Use skyline coalescent model instead of constant Tc.
 
    Estimates a piecewise linear coalescent rate history. Requires --n-skyline to specify the number of grid points.
@@ -173,6 +173,11 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
    Only used when --coalescent-skyline is set. Defines how many piecewise linear segments are used to model Tc(t) over time. Must be at least 2.
 
   Default value: `10`
+* `--skyline-stiffness <SKYLINE_STIFFNESS>` — Smoothing stiffness for the skyline coalescent.
+
+   Penalizes log-fold-changes of the coalescent time scale Tc between adjacent skyline segments: with z = ln Tc, the objective adds `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the stiffness is dimensionless and scale-independent. Larger values enforce a smoother Tc(t). Only used when --coalescent-skyline is set.
+
+  Default value: `2`
 * `--tip-labels` — add tip labels (default for small trees with <30 leaves)
 * `--no-tip-labels` — don't show tip labels (default for trees with >=30 leaves)
 * `--clock-filter <CLOCK_FILTER>` — ignore tips that don't follow a loose clock, 'clock-filter=number of inter-quartile ranges from regression'. Default=3.0, set to 0 to switch off
