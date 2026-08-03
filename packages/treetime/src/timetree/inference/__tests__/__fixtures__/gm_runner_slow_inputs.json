@@ -1,0 +1,6 @@
+{
+  "flu_h3n2_20": {
+    "mode": "marginal_dense",
+    "tolerance": 1e-6
+  }
+}
