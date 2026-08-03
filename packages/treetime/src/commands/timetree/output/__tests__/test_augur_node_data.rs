@@ -68,7 +68,7 @@ mod tests {
         checked += 1;
       }
     }
-    assert_eq!(checked, 2); // leaf_a and leaf_b (root has no clock_length)
+    assert_eq!(checked, 3); // leaf_a, leaf_b, and root (root's clock_length is 0.0)
   }
 
   #[test]
@@ -85,16 +85,18 @@ mod tests {
   }
 
   #[test]
-  fn test_augur_node_data_timetree_root_has_no_branch_fields() {
+  fn test_augur_node_data_timetree_root_has_zero_branch_fields() {
     let case = helpers::sample_case();
     let data = case.write_and_read();
 
-    // Root has no parent edge: branch_length defaults to 0.0, clock_length and
-    // mutation_length are omitted. Internal/root nodes are always date_inferred.
+    // Root has no parent edge, so branch_length, clock_length, and mutation_length
+    // are all zero. augur `export v2` requires mutation_length on every node
+    // (including the root) to compute divergence. Internal/root nodes are always
+    // date_inferred.
     let root = &data.nodes["root"];
     assert_relative_eq!(root.branch_length, 0.0);
-    assert!(root.clock_length.is_none());
-    assert!(root.mutation_length.is_none());
+    assert_relative_eq!(root.clock_length.unwrap(), 0.0);
+    assert_relative_eq!(root.mutation_length.unwrap(), 0.0);
     assert!(root.raw_date.is_none());
     assert_eq!(root.date_inferred, Some(true));
     assert_relative_eq!(root.numdate.unwrap(), 2000.0);
@@ -142,11 +144,13 @@ mod tests {
   }
 
   #[test]
-  fn test_augur_node_data_timetree_mutations_mode_root_has_no_mutation_length() {
+  fn test_augur_node_data_timetree_mutations_mode_root_has_zero_mutation_length() {
     let case = helpers::sample_case();
     let data = case.write_and_read_with_mutations(&[(0, 3), (1, 7)]);
 
-    assert!(data.nodes["root"].mutation_length.is_none());
+    // The root has no parent edge, so its mutation_length is zero regardless of
+    // the mutations-mode counts, which apply only to child edges.
+    assert_relative_eq!(data.nodes["root"].mutation_length.unwrap(), 0.0);
     assert_relative_eq!(data.nodes["root"].branch_length, 0.0);
   }
 

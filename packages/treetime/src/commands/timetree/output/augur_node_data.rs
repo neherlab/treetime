@@ -71,9 +71,10 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
       .map_or_else(|| format!("node_{}", node_key.as_usize()), |n| n.as_ref().to_owned());
     let numdate = payload.time;
 
-    // Per-branch fields live on the parent edge. The root has no incoming branch:
-    // augur emits placeholder values there, but `export v2` sets the root divergence
-    // to 0 regardless and never consumes the root's branch fields, so we omit them.
+    // Per-branch fields live on the parent edge. The root has no incoming branch,
+    // so its branch length, clock length, and mutation length are all zero. augur's
+    // `export v2` requires `mutation_length` on every node (including the root) to
+    // compute divergence, so these are emitted as explicit zeros rather than omitted.
     let (branch_length, clock_length, mutation_length) = match graph.node_parent(node_key)? {
       Some((parent_key, edge_key)) => {
         let mutation_length = if let Some(counts) = mutation_counts {
