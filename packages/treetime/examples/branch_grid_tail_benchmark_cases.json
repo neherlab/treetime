@@ -1,0 +1,20 @@
+{
+  "dataset": "flu_h3n2_20",
+  "mode": "marginal_dense",
+  "repeats": 3,
+  "tolerance": 1e-6,
+  "cases": [
+    { "label": "n300_E1_F1e-10",   "grid_size": 300,  "tail_max_grid_growth": 1,  "tail_rel_floor": 1e-10 },
+    { "label": "n300_E2_F1e-10",   "grid_size": 300,  "tail_max_grid_growth": 2,  "tail_rel_floor": 1e-10 },
+    { "label": "n300_E5_F1e-10",   "grid_size": 300,  "tail_max_grid_growth": 5,  "tail_rel_floor": 1e-10 },
+    { "label": "n300_E10_F1e-10",  "grid_size": 300,  "tail_max_grid_growth": 10, "tail_rel_floor": 1e-10 },
+    { "label": "n300_E20_F1e-10",  "grid_size": 300,  "tail_max_grid_growth": 20, "tail_rel_floor": 1e-10 },
+    { "label": "n150_E10_F1e-10",  "grid_size": 150,  "tail_max_grid_growth": 10, "tail_rel_floor": 1e-10 },
+    { "label": "n600_E10_F1e-10",  "grid_size": 600,  "tail_max_grid_growth": 10, "tail_rel_floor": 1e-10 },
+    { "label": "n1000_E10_F1e-10", "grid_size": 1000, "tail_max_grid_growth": 10, "tail_rel_floor": 1e-10 },
+    { "label": "n2000_E10_F1e-10", "grid_size": 2000, "tail_max_grid_growth": 10, "tail_rel_floor": 1e-10 },
+    { "label": "n3000_E10_F1e-10", "grid_size": 3000, "tail_max_grid_growth": 10, "tail_rel_floor": 1e-10 },
+    { "label": "n300_E10_F1e-4",   "grid_size": 300,  "tail_max_grid_growth": 10, "tail_rel_floor": 1e-4 },
+    { "label": "n300_E10_F1e-300", "grid_size": 300,  "tail_max_grid_growth": 10, "tail_rel_floor": 1e-300 }
+  ]
+}

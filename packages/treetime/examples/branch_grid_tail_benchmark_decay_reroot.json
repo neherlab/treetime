@@ -1,0 +1,14 @@
+{
+  "dataset": "flu_h3n2_20",
+  "mode": "marginal_dense",
+  "repeats": 3,
+  "reroot": true,
+  "tree_source": "rerooted",
+  "compare_v0": true,
+  "tolerance": 1e-6,
+  "cases": [
+    { "label": "decay_off",          "grid_size": 300,  "peak_extent_multiple": 5,  "max_branch_length": 5,  "tail_max_grid_growth": 1,  "tail_rel_floor": 1e-10 },
+    { "label": "decay_extrapolated", "grid_size": 300,  "peak_extent_multiple": 5,  "max_branch_length": 5,  "tail_max_grid_growth": 10, "tail_rel_floor": 1e-10 },
+    { "label": "decay_real",         "grid_size": 3000, "peak_extent_multiple": 50, "max_branch_length": 50, "tail_max_grid_growth": 1,  "tail_rel_floor": 1e-10 }
+  ]
+}
