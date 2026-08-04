@@ -200,11 +200,11 @@ pub fn extract_confidence_intervals(graph: &GraphTimetree) -> Vec<NodeConfidence
         // No CI data available: return point estimate
         (date, date)
       } else {
-        // Physical limits from distribution domain (or unbounded if no distribution)
         let limits = payload
           .time_distribution()
           .as_ref()
-          .map_or((f64::NEG_INFINITY, f64::INFINITY), |dist| dist.time_bounds());
+          .and_then(|dist| dist.time_bounds())
+          .unwrap_or((f64::NEG_INFINITY, f64::INFINITY));
         combine_confidence(date, limits, rate_contribution, mutation_contribution)
       };
 

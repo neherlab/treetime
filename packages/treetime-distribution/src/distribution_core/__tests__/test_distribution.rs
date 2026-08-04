@@ -7,6 +7,30 @@ mod tests {
   use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
+  fn test_distribution_time_bounds_empty_is_none() {
+    assert_eq!(None, Distribution::<Plain>::Empty.time_bounds());
+  }
+
+  #[test]
+  fn test_distribution_time_bounds_point_is_degenerate_interval() {
+    assert_eq!(Some((1.0, 1.0)), Distribution::<Plain>::point(1.0, 5.0).time_bounds());
+  }
+
+  #[test]
+  fn test_distribution_time_bounds_range_spans_endpoints() {
+    assert_eq!(
+      Some((0.0, 2.0)),
+      Distribution::<Plain>::range((0.0, 2.0), 3.0).time_bounds()
+    );
+  }
+
+  #[test]
+  fn test_distribution_time_bounds_function_spans_grid() {
+    let func = Distribution::<Plain>::function(array![0.0, 1.0, 2.0], array![1.0, 4.0, 2.0]).unwrap();
+    assert_eq!(Some((0.0, 2.0)), func.time_bounds());
+  }
+
+  #[test]
   fn test_distribution_max_value() {
     let point = Distribution::<Plain>::point(1.0, 5.0);
     assert_relative_eq!(point.max_value(), 5.0);

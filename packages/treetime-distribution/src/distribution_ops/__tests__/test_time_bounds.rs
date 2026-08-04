@@ -47,7 +47,7 @@ mod tests {
     #[case] expected: (f64, f64),
   ) {
     let actual = distribution_time_bounds_union(&dist_a, &dist_b);
-    assert_eq!(expected, actual);
+    assert_eq!(Some(expected), actual);
   }
 
   #[rustfmt::skip]
@@ -164,11 +164,11 @@ mod tests {
     let dist_b = Distribution::range((3.0, 4.0), 1.0);
     let dist_c = Distribution::range((5.0, 6.0), 1.0);
 
-    let (t_min_ab, t_max_ab) = distribution_time_bounds_union(&dist_a, &dist_b);
+    let (t_min_ab, t_max_ab) = distribution_time_bounds_union(&dist_a, &dist_b).unwrap();
     let dist_ab = Distribution::range((t_min_ab, t_max_ab), 1.0);
     let result_ab_c = distribution_time_bounds_union(&dist_ab, &dist_c);
 
-    let (t_min_bc, t_max_bc) = distribution_time_bounds_union(&dist_b, &dist_c);
+    let (t_min_bc, t_max_bc) = distribution_time_bounds_union(&dist_b, &dist_c).unwrap();
     let dist_bc = Distribution::range((t_min_bc, t_max_bc), 1.0);
     let result_a_bc = distribution_time_bounds_union(&dist_a, &dist_bc);
 
@@ -201,7 +201,7 @@ mod tests {
     assert_eq!(expected, union_result);
 
     let intersection_result = distribution_time_bounds_intersection(&dist, &dist).unwrap();
-    assert_eq!(expected, intersection_result);
+    assert_eq!(expected, Some(intersection_result));
   }
 
   #[test]
@@ -254,7 +254,7 @@ mod tests {
     let dist_a = Distribution::range((1.0, 3.0), 1.0);
     let dist_b = Distribution::range((2.0, 4.0), 1.0);
 
-    let (t_min, t_max) = distribution_time_bounds_union(&dist_a, &dist_b);
+    let (t_min, t_max) = distribution_time_bounds_union(&dist_a, &dist_b).unwrap();
     let union_dist = Distribution::range((t_min, t_max), 1.0);
 
     assert!(distribution_time_bounds_contains(&union_dist, &dist_a));
@@ -280,7 +280,7 @@ mod tests {
     let dist_b = Distribution::range((-4.0, -2.0), 1.0);
 
     let union_result = distribution_time_bounds_union(&dist_a, &dist_b);
-    assert_eq!((-5.0, -2.0), union_result);
+    assert_eq!(Some((-5.0, -2.0)), union_result);
 
     let intersection_result = distribution_time_bounds_intersection(&dist_a, &dist_b).unwrap();
     assert_eq!((-4.0, -3.0), intersection_result);
@@ -294,7 +294,7 @@ mod tests {
     let point_b = Distribution::point(3.0, 1.0);
 
     let union_result = distribution_time_bounds_union(&point_a, &point_b);
-    assert_eq!((2.0, 3.0), union_result);
+    assert_eq!(Some((2.0, 3.0)), union_result);
 
     let intersection_result = distribution_time_bounds_intersection(&point_a, &point_b);
     assert_eq!(None, intersection_result);
@@ -311,5 +311,52 @@ mod tests {
     assert_eq!((2.0, 2.0), intersection_result);
 
     assert!(distribution_time_bounds_overlaps(&range_a, &range_b));
+  }
+
+  #[test]
+  fn test_distribution_time_bounds_union_empty_operand_is_identity() {
+    let empty = Distribution::empty();
+    let range = Distribution::range((1.0, 3.0), 1.0);
+    assert_eq!(Some((1.0, 3.0)), distribution_time_bounds_union(&empty, &range));
+    assert_eq!(Some((1.0, 3.0)), distribution_time_bounds_union(&range, &empty));
+  }
+
+  #[test]
+  fn test_distribution_time_bounds_union_both_empty_is_none() {
+    let empty = Distribution::empty();
+    assert_eq!(None, distribution_time_bounds_union(&empty, &empty));
+  }
+
+  #[test]
+  fn test_distribution_time_bounds_intersection_empty_operand_is_absorbing() {
+    let empty = Distribution::empty();
+    let range = Distribution::range((1.0, 3.0), 1.0);
+    assert_eq!(None, distribution_time_bounds_intersection(&empty, &range));
+    assert_eq!(None, distribution_time_bounds_intersection(&range, &empty));
+    assert_eq!(None, distribution_time_bounds_intersection(&empty, &empty));
+  }
+
+  #[test]
+  fn test_distribution_time_bounds_contains_empty_inner_is_contained() {
+    let empty = Distribution::empty();
+    let range = Distribution::range((1.0, 3.0), 1.0);
+    assert!(distribution_time_bounds_contains(&range, &empty));
+    assert!(distribution_time_bounds_contains(&empty, &empty));
+  }
+
+  #[test]
+  fn test_distribution_time_bounds_contains_empty_outer_contains_no_nonempty() {
+    let empty = Distribution::empty();
+    let range = Distribution::range((1.0, 3.0), 1.0);
+    assert!(!distribution_time_bounds_contains(&empty, &range));
+  }
+
+  #[test]
+  fn test_distribution_time_bounds_overlaps_empty_never_overlaps() {
+    let empty = Distribution::empty();
+    let range = Distribution::range((1.0, 3.0), 1.0);
+    assert!(!distribution_time_bounds_overlaps(&empty, &range));
+    assert!(!distribution_time_bounds_overlaps(&range, &empty));
+    assert!(!distribution_time_bounds_overlaps(&empty, &empty));
   }
 }

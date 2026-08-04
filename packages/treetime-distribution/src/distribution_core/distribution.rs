@@ -126,10 +126,14 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     distribution_negation_inplace(self)
   }
 
-  pub fn time_bounds(&self) -> (f64, f64) {
-    let t = self.t();
-    debug_assert!(!t.is_empty(), "Cannot extract time bounds from empty distribution");
-    (t[0], t[t.len() - 1])
+  pub fn time_bounds(&self) -> Option<(f64, f64)> {
+    match self {
+      Self::Empty => None,
+      Self::Point(p) => Some((p.t(), p.t())),
+      Self::Range(r) => Some((r.start(), r.end())),
+      Self::Function(f) => Some((f.x_min(), f.x_max())),
+      Self::Formula(f) => Some((f.t_min(), f.t_max())),
+    }
   }
 
   pub fn eval(&self, t: f64) -> Result<f64, Report> {

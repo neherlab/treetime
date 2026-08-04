@@ -37,8 +37,9 @@ mod tests {
     // packages/legacy/treetime/treetime/distribution.py:82-185.
     pretty_assert_eq!(expected.kind(), DistributionKind::from_distribution(&actual));
     let [expected_start, expected_end] = expected.bounds();
-    pretty_assert_ulps_eq!(expected_start, actual.time_bounds().0, max_ulps = 4);
-    pretty_assert_ulps_eq!(expected_end, actual.time_bounds().1, max_ulps = 4);
+    let (actual_start, actual_end) = actual.time_bounds().unwrap();
+    pretty_assert_ulps_eq!(expected_start, actual_start, max_ulps = 4);
+    pretty_assert_ulps_eq!(expected_end, actual_end, max_ulps = 4);
 
     if let Some([expected_start_value, expected_end_value]) = expected.endpoint_values() {
       let actual = [actual.eval(expected_start)?, actual.eval(expected_end)?];

@@ -196,7 +196,7 @@ mod tests {
     )?;
 
     // max_bl = min(max(0.1 * 5, 1e-3 * 10), 5.0) = min(0.5, 5.0) = 0.5
-    let (_t_min, t_max) = distribution.time_bounds();
+    let (_t_min, t_max) = distribution.time_bounds().unwrap();
     assert_abs_diff_eq!(t_max, 0.5, epsilon = 1e-12);
     Ok(())
   }
@@ -218,7 +218,7 @@ mod tests {
     )?;
 
     // max_bl = min(max(2.0 * 5, 1e-3 * 10), 5.0) = min(10.0, 5.0) = 5.0
-    let (_t_min, t_max) = distribution.time_bounds();
+    let (_t_min, t_max) = distribution.time_bounds().unwrap();
     assert_abs_diff_eq!(t_max, 5.0, epsilon = 1e-12);
     Ok(())
   }
@@ -240,7 +240,7 @@ mod tests {
       /* gamma */ 1.0,
     )?;
 
-    let (t_min, _t_max) = distribution.time_bounds();
+    let (t_min, _t_max) = distribution.time_bounds().unwrap();
     assert_abs_diff_eq!(t_min, one_mutation * 0.01, epsilon = 1e-12);
     Ok(())
   }
