@@ -292,18 +292,22 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.negate_arg_inplace()
   }
 
-  /// Find the most likely time point (x-value corresponding to maximum y-value)
-  /// Returns the x-coordinate where the function reaches its maximum y-value
+  /// Find the most likely time point (the x-value at the highest-likelihood ordinate).
+  ///
+  /// The extremum direction is policy-aware: the maximum ordinate under [`Plain`], the minimum
+  /// under [`NegLog`] (where the ordinate is `-ln(probability)`). See
+  /// [`YAxisPolicy::likely_is_maximum`].
   pub fn likely_time(&self) -> Option<T>
   where
     T: Float,
   {
     let y_values = self.y();
-    if let Ok(max_idx) = y_values.argmax() {
-      Some(self.t()[max_idx])
+    let extremum = if Y::likely_is_maximum() {
+      y_values.argmax()
     } else {
-      None
-    }
+      y_values.argmin()
+    };
+    extremum.ok().map(|idx| self.t()[idx])
   }
 
   /// Create a new distribution function with y values scaled by factor.

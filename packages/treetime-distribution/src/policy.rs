@@ -18,6 +18,13 @@ pub trait YAxisPolicy: Clone + Copy + Debug + Default + PartialEq + Send + Sync 
   /// [`NegLog`], where zero probability is `+inf`. The distribution layer rejects a `Zero`
   /// tail on a policy that returns `false` here.
   fn supports_zero_boundary() -> bool;
+
+  /// Whether the most likely time sits at the maximum stored ordinate.
+  ///
+  /// Under [`Plain`] the ordinate is probability, so the mode is the maximum ordinate. Under
+  /// [`NegLog`] the ordinate is `-ln(probability)`, so the mode is the minimum ordinate.
+  /// Most-likely-time selection dispatches on this instead of assuming a maximum.
+  fn likely_is_maximum() -> bool;
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -71,6 +78,10 @@ impl YAxisPolicy for Plain {
   fn supports_zero_boundary() -> bool {
     true
   }
+
+  fn likely_is_maximum() -> bool {
+    true
+  }
 }
 
 impl YAxisPolicy for NegLog {
@@ -103,6 +114,10 @@ impl YAxisPolicy for NegLog {
   }
 
   fn supports_zero_boundary() -> bool {
+    false
+  }
+
+  fn likely_is_maximum() -> bool {
     false
   }
 }

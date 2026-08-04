@@ -72,7 +72,12 @@ impl<Y: YAxisPolicy> DistributionFormula<Y> {
     let Ok(values) = self.eval_many(&t) else {
       return midpoint;
     };
-    match values.argmax() {
+    let extremum = if Y::likely_is_maximum() {
+      values.argmax()
+    } else {
+      values.argmin()
+    };
+    match extremum {
       Ok(idx) => t[idx],
       Err(_) => midpoint,
     }
