@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Distribution log-space and hard/soft boundaries -- visual companion</title>
+<style>
+  :root {
+    --bg: #0c0c0c;
+    --surface: #161616;
+    --surface-raised: #1c1c1c;
+    --border: #2a2a2a;
+    --border-light: #383838;
+    --text: #d4d4d4;
+    --text-muted: #8a8a8a;
+    --text-dim: #5a5a5a;
+    --accent-1: #7eb8da;
+    --accent-2: #a8c898;
+    --accent-3: #c8a0b8;
+    --accent-4: #c8b888;
+    --accent-5: #98a8c8;
+    --accent-6: #88c8b0;
+    --danger: #c86868;
+    --warn: #c8a050;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', 'Helvetica Neue', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 2.5rem 3rem;
+    line-height: 1.65;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.3rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--text); letter-spacing: -0.02em; }
+  .subtitle { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 1.5rem; }
+  h2 { font-size: 1.05rem; font-weight: 600; margin: 2.5rem 0 0.4rem; color: var(--accent-1); letter-spacing: -0.01em; }
+  h3 { font-size: 0.9rem; font-weight: 500; margin: 0 0 0.2rem; color: var(--text); }
+  p { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+  code { font-family: 'SF Mono', 'Cascadia Code', monospace; font-size: 0.78rem; color: var(--accent-4); background: var(--surface-raised); padding: 0.1em 0.35em; border-radius: 3px; }
+  .math { font-family: 'Times New Roman', 'STIX Two Math', serif; font-style: italic; color: var(--text); }
+  .chart-row {
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    margin: 0.75rem 0;
+  }
+  .chart-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.85rem 1rem;
+    flex: 1;
+    min-width: 400px;
+  }
+  .chart-panel.wide { min-width: 520px; }
+  canvas { width: 100%; height: 260px; display: block; }
+  .legend {
+    display: flex;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+    margin-top: 0.4rem;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.25rem; }
+  .legend-swatch { width: 14px; height: 2.5px; border-radius: 1px; }
+  .note {
+    background: var(--surface-raised);
+    border-left: 2px solid var(--border-light);
+    padding: 0.45rem 0.7rem;
+    margin: 0.6rem 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+  .note.danger { border-left-color: var(--danger); }
+  .note.warn { border-left-color: var(--warn); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  .controls {
+    display: flex; align-items: center; gap: 0.6rem; margin: 0.4rem 0; font-size: 0.78rem;
+  }
+  .controls input[type=range] { width: 160px; accent-color: var(--accent-1); height: 4px; }
+  .controls label { color: var(--text-dim); min-width: 100px; }
+  .controls .val { color: var(--accent-1); font-family: 'SF Mono', monospace; font-size: 0.75rem; min-width: 55px; }
+  .eq { text-align: center; padding: 0.5rem 0; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<h1>Distribution log-space and hard/soft boundaries</h1>
+<p class="subtitle">Visual companion to <code>kb/proposals/distribution-log-space-and-hard-soft-boundaries.md</code></p>
+
+<hr>
+
+<h2>1. Branch-length likelihood <span class="math">L(t | n, &mu;)</span></h2>
+<p>The substitution likelihood for a branch of length <span class="math">t</span> (subs/site) with <span class="math">n</span> observed mutations at total rate <span class="math">&mu; = clock_rate &times; L</span>:</p>
+<div class="eq"><span class="math">L(t) &prop; (&mu;t)<sup>n</sup> e<sup>&minus;&mu;t</sup></span></div>
+<p>This is evaluated on a uniform grid by <code>compute_branch_length_distribution()</code> and stored as a <code>Distribution::Function</code>. The grid spans <code>[0.01&middot;one_mutation, max(5&middot;center, 10&middot;one_mutation)]</code>.</p>
+
+<div class="chart-row">
+  <div class="chart-panel">
+    <h3>Plain probability space</h3>
+    <canvas id="chart-branch-lh"></canvas>
+    <div class="legend" id="legend-branch-lh"></div>
+    <div class="controls">
+      <label>&mu; (muts/yr):</label>
+      <input type="range" id="slider-mu" min="1" max="30" value="11" step="1">
+      <span class="val" id="val-mu">11</span>
+    </div>
+  </div>
+  <div class="chart-panel">
+    <h3>Neg-log space <span class="math">y = &minus;log L(t)</span></h3>
+    <canvas id="chart-branch-lh-log"></canvas>
+    <div class="legend" id="legend-branch-lh-log"></div>
+    <p>Lower = more probable. The tail is asymptotically linear with slope <span class="math">&mu;</span>. For <span class="math">n &ge; 1</span> the curve diverges as <span class="math">&minus;n log t &rarr; +&infin;</span> near the origin.</p>
+  </div>
+</div>
+
+<div class="note">
+  <code>create_simple_grid()</code> floors at <code>min_bl = 0.01 &middot; one_mutation</code>, so <span class="math">t = 0</span> is never on the grid. For <span class="math">n = 0</span> the mode sits at <span class="math">t = 0</span> (the density is maximal there), but the grid starts past it. For <span class="math">n &ge; 1</span> the density vanishes at the boundary, so the floor avoids storing <span class="math">+&infin;</span> in neg-log space.
+</div>
+
+<hr>
+
+<h2>2. Message to parent: convolution <span class="math">m(t<sub>p</sub>) = &delta;(t<sub>c</sub>) &lowast; (&minus;L)</span></h2>
+<p>A leaf's date constraint (point or narrow distribution at the sampling date) is convolved with the negated branch-length likelihood. The result is a distribution over the parent's time: <span class="math">m(t<sub>p</sub>) = &int; p(t<sub>c</sub>) &middot; L(t<sub>c</sub> &minus; t<sub>p</sub>) dt<sub>c</sub></span>. The backward pass attaches <code>Constant</code> left / <code>Zero</code> right tails to this message.</p>
+
+<div class="chart-row">
+  <div class="chart-panel">
+    <h3>Convolution components and result</h3>
+    <canvas id="chart-convolution"></canvas>
+    <div class="legend" id="legend-convolution"></div>
+    <div class="controls">
+      <label>grid extent (yr):</label>
+      <input type="range" id="slider-branch-width" min="0.2" max="3.0" value="0.89" step="0.01">
+      <span class="val" id="val-branch-width">0.89</span>
+    </div>
+    <p>Leaf fixed at 2023.0. For the Ebola dataset with <span class="math">&mu; = 11.24</span> muts/yr, the grid extent is <span class="math">10 / &mu; &approx; 0.89</span> yr for zero-length branches. Drag the slider to see how wider grids change the message extent.</p>
+  </div>
+  <div class="chart-panel">
+    <h3>Boundary semantics on the message</h3>
+    <canvas id="chart-boundaries"></canvas>
+    <div class="legend" id="legend-boundaries"></div>
+    <p>Right edge: <code>Zero</code> (hard) -- the parent cannot postdate the child's sample. Left edge: <code>Constant</code> (soft) -- the branch could be longer than the grid represents. Proposed: the soft side carries a <code>Linear</code> law (log-linear decay) instead of a flat constant.</p>
+  </div>
+</div>
+
+<hr>
+
+<h2>3. Backward pass: child message multiplication</h2>
+<p>At each internal node, the backward pass multiplies all incoming child messages: <span class="math">p(t<sub>node</sub>) &prop; &prod;<sub>c</sub> m<sub>c</sub>(t<sub>node</sub>)</span>. Currently <code>multiply_function_function()</code> intersects grid bounds via <code>multiplication_support_intersection()</code>, which extends <code>Constant</code> tails to the other operand's bound but treats <code>Zero</code> and <code>Error</code> as hard stops.</p>
+
+<div class="chart-row">
+  <div class="chart-panel">
+    <h3>Overlapping grids (normal case)</h3>
+    <canvas id="chart-multiply-ok"></canvas>
+    <div class="legend" id="legend-multiply-ok"></div>
+    <p>Children 0.5 yr apart. Grids overlap. The product concentrates probability where both messages agree.</p>
+  </div>
+  <div class="chart-panel">
+    <h3>Disjoint grids (the defect)</h3>
+    <canvas id="chart-multiply-bug"></canvas>
+    <div class="legend" id="legend-multiply-bug"></div>
+    <p>Children 3 yr apart. Grid extents &lt; 0.89 yr each. <code>distribution_support_intersection()</code> returns <code>Disjoint</code>. Result: <code>Distribution::empty()</code>. The <code>Constant</code> left tail was attached but <code>multiplication_support_intersection</code> only extends <code>Constant</code> tails -- the <code>Zero</code> right tail of the accumulator blocks rightward extension.</p>
+  </div>
+</div>
+
+<div class="note danger">
+  Node 603 in the Ebola dataset: accumulator <span class="math">[2021.55, 2022.42]</span>, next child message <span class="math">[2024.68, 2025.57]</span>. The 2.26-year gap exceeds both grid extents. <code>multiply_function_function</code> returns <code>Empty</code>. Four such collapses seed 58 empty internal nodes including the root, leaving all 471 internal nodes without <code>num_date</code> across both iterations. <code>compute_positional_log_lh()</code> skips every edge, returns <code>None</code>, and the metric prints <code>NaN</code>.
+</div>
+
+<hr>
+
+<h2>4. Proposed fix: hard/soft boundary multiplication rule</h2>
+<p>Classify each boundary as <strong>hard</strong> (domain terminates, probability is zero beyond) or <strong>soft</strong> (grid stops but an analytic law continues). The multiplication rule per side:</p>
+<div class="note">
+  <strong>Hard:</strong> result bound = tightest (innermost) hard bound among operands.<br>
+  <strong>Soft:</strong> result bound = loosest (outermost) soft bound among operands.<br>
+  <strong>Mixed:</strong> a hard bound dominates a soft bound on the same side.
+</div>
+<p>Each operand is evaluated over the result domain, using its declared tail law wherever the query falls outside its own grid.</p>
+
+<div class="chart-row">
+  <div class="chart-panel">
+    <h3>Disjoint case resolved with soft tails</h3>
+    <canvas id="chart-multiply-fixed"></canvas>
+    <div class="legend" id="legend-multiply-fixed"></div>
+    <p>Left bound: both soft &rarr; take the loosest (2021.55). Right bound: both hard &rarr; take the tightest (2022.42). Child 2's message is evaluated via its <code>Linear</code> tail law across the gap. Product peaks at the hard right edge: parent placed at the earlier child's date, later child absorbs a ~3.15 yr branch.</p>
+  </div>
+  <div class="chart-panel">
+    <h3>Multi-child accumulation with normalization</h3>
+    <canvas id="chart-accumulate"></canvas>
+    <div class="legend" id="legend-accumulate"></div>
+    <div class="controls">
+      <label>children:</label>
+      <input type="range" id="slider-n-children" min="2" max="8" value="4" step="1">
+      <span class="val" id="val-n-children">4</span>
+    </div>
+    <p>In plain space, the peak decays as <span class="math">(peak)<sup>N</sup></span> without intermediate normalization. In neg-log space multiplication is addition: exact, associative, no underflow. The per-step <code>normalize()</code> in the child fold becomes unnecessary.</p>
+  </div>
+</div>
+
+<hr>
+
+<h2>5. Near hard boundaries: power-law approach region (Part C)</h2>
+<p>Near a hard boundary at <span class="math">t<sub>hard</sub></span>, the density follows a power law <span class="math">p(t) &prop; (t &minus; t<sub>hard</sub>)<sup>n</sup></span>. In neg-log space:</p>
+<div class="eq"><span class="math">y(t) = &minus;n &middot; log(t &minus; t<sub>hard</sub>) + &mu;t + C</span></div>
+<p>Proposed two-parameter approach law fit from the innermost grid points by least squares on <span class="math">(log(t &minus; t<sub>hard</sub>), y)</span>:</p>
+<div class="eq"><span class="math">y(t) = a &minus; b &middot; log(t &minus; t<sub>hard</sub>), &ensp; b &ge; 0</span></div>
+
+<div class="chart-row">
+  <div class="chart-panel">
+    <h3>Plain probability near <span class="math">t = 0</span></h3>
+    <canvas id="chart-power-law-linear"></canvas>
+    <div class="legend" id="legend-power-law-linear"></div>
+    <p><span class="math">n = 0</span>: mode at <span class="math">t = 0</span>, step discontinuity (density = <span class="math">e<sup>0</sup> = 1</span>). <span class="math">n = 1</span>: linear vanishing. <span class="math">n = 3</span>: cubic. Dashed line: first grid point <code>min_bl = 0.01/&mu;</code>.</p>
+  </div>
+  <div class="chart-panel">
+    <h3>Neg-log space near <span class="math">t = 0</span></h3>
+    <canvas id="chart-power-law-log"></canvas>
+    <div class="legend" id="legend-power-law-log"></div>
+    <p><span class="math">b = 0</span> (n = 0): finite minimum at boundary, mode preserved exactly. <span class="math">b &gt; 0</span> (n &ge; 1): logarithmic divergence. The approach law is a straight line on these <span class="math">(log t, y)</span> axes. Mass in the approach region: <span class="math">&int; exp(&minus;y) dt = exp(&minus;a) &middot; &Delta;t<sup>b+1</sup> / (b+1)</span> (closed form).</p>
+  </div>
+</div>
+
+<div class="note warn">
+  Storing <span class="math">y(t<sub>hard</sub>) = +&infin;</span> for <span class="math">n &ge; 1</span> poisons the first grid cell: linear interpolation from <span class="math">+&infin;</span> returns <span class="math">+&infin;</span> across the cell, zeroing the density in plain space. Grid placement rule: when <span class="math">b > 0</span>, the grid stays strictly inside the hard boundary; when <span class="math">b = 0</span>, the boundary value is finite and stored as an exact endpoint.
+</div>
+
+<hr>
+
+<h2>6. Distribution lifecycle: leaf to root</h2>
+<p>How a leaf's sampling date propagates through the timetree inference passes.</p>
+
+<div class="chart-row">
+  <div class="chart-panel wide">
+    <h3>Distributions at each inference stage</h3>
+    <canvas id="chart-lifecycle" style="height: 380px;"></canvas>
+    <div class="legend" id="legend-lifecycle"></div>
+    <p>
+      (1) Leaf date constraint <span class="math">&delta;(t<sub>sample</sub>)</span> or narrow distribution for uncertain dates.
+      (2) Branch-length likelihood <span class="math">L(t)</span> from substitution counts.
+      (3) Message to parent: <span class="math">m = constraint &lowast; (&minus;L)</span>, tails: <code>Constant</code> left, <code>Zero</code> right.
+      (4) Accumulated posterior at parent: <span class="math">&prod;<sub>c</sub> m<sub>c</sub></span>.
+      (5) Coalescent weight applied: <span class="math">p &middot; exp(&minus;w<sub>coal</sub>)</span>.
+      (6) Forward-pass cavity: divide out this child's contribution to refine the parent's marginal.
+    </p>
+  </div>
+</div>
+
+<script>
+function createChart(canvasId, legendId, opts) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+
+  function draw() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    const W = rect.width;
+    const H = rect.height;
+    const pad = { top: 10, right: 14, bottom: 26, left: 46 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+
+    ctx.clearRect(0, 0, W, H);
+
+    const series = typeof opts.series === 'function' ? opts.series() : opts.series;
+
+    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+    for (const s of series) {
+      for (const [x, y] of s.data) {
+        if (isFinite(x) && isFinite(y)) {
+          xMin = Math.min(xMin, x); xMax = Math.max(xMax, x);
+          yMin = Math.min(yMin, y); yMax = Math.max(yMax, y);
+        }
+      }
+    }
+    if (opts.xRange) { xMin = opts.xRange[0]; xMax = opts.xRange[1]; }
+    if (opts.yRange) { yMin = opts.yRange[0]; yMax = opts.yRange[1]; }
+    const xSpan = xMax - xMin || 1;
+    const ySpan = yMax - yMin || 1;
+
+    function toPixel(x, y) {
+      return [
+        pad.left + ((x - xMin) / xSpan) * plotW,
+        pad.top + plotH - ((y - yMin) / ySpan) * plotH
+      ];
+    }
+
+    // Grid
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const yVal = yMin + (ySpan * i) / 4;
+      const [, py] = toPixel(xMin, yVal);
+      ctx.beginPath(); ctx.moveTo(pad.left, py); ctx.lineTo(pad.left + plotW, py); ctx.stroke();
+    }
+
+    // Axes
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, pad.top);
+    ctx.lineTo(pad.left, pad.top + plotH);
+    ctx.lineTo(pad.left + plotW, pad.top + plotH);
+    ctx.stroke();
+
+    // Axis ticks
+    ctx.fillStyle = '#666';
+    ctx.font = '11px -apple-system, "Segoe UI", system-ui, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    const xLabel = opts.xLabel || 't';
+    ctx.fillText(xLabel, Math.round(pad.left + plotW / 2), Math.round(H - 4));
+    ctx.font = '10px -apple-system, "Segoe UI", system-ui, sans-serif';
+    for (let i = 0; i <= 4; i++) {
+      const xVal = xMin + (xSpan * i) / 4;
+      const [px] = toPixel(xVal, yMin);
+      ctx.fillText(xVal.toFixed(opts.xDecimals ?? 1), Math.round(px), Math.round(pad.top + plotH + 14));
+    }
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+      const yVal = yMin + (ySpan * i) / 4;
+      const [, py] = toPixel(xMin, yVal);
+      ctx.fillText(yVal.toFixed(opts.yDecimals ?? 2), Math.round(pad.left - 4), Math.round(py));
+    }
+
+    // Regions
+    if (opts.regions) {
+      for (const r of opts.regions) {
+        const [px1] = toPixel(r.x1, 0);
+        const [px2] = toPixel(r.x2, 0);
+        ctx.fillStyle = r.color || 'rgba(126,184,218,0.06)';
+        ctx.fillRect(px1, pad.top, px2 - px1, plotH);
+      }
+    }
+
+    // Series
+    for (const s of series) {
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = s.width || 1.5;
+      ctx.globalAlpha = s.opacity ?? 1.0;
+      ctx.setLineDash(s.dash || []);
+      ctx.beginPath();
+      let started = false;
+      for (const [x, y] of s.data) {
+        if (!isFinite(y)) { started = false; continue; }
+        const clamped = Math.max(yMin, Math.min(yMax, y));
+        const [px, py] = toPixel(x, clamped);
+        if (!started) { ctx.moveTo(px, py); started = true; }
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (s.fill) {
+        ctx.fillStyle = s.fill;
+        const [, baseY] = toPixel(0, yMin);
+        let first = true;
+        ctx.beginPath();
+        for (const [x, y] of s.data) {
+          if (!isFinite(y)) continue;
+          const clamped = Math.max(yMin, Math.min(yMax, y));
+          const [px, py] = toPixel(x, clamped);
+          if (first) { ctx.moveTo(px, baseY); ctx.lineTo(px, py); first = false; }
+          else ctx.lineTo(px, py);
+        }
+        if (!first) {
+          const lastX = s.data[s.data.length - 1][0];
+          const [lpx] = toPixel(lastX, yMin);
+          ctx.lineTo(lpx, baseY);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1.0;
+    }
+
+    // Legend
+    if (legendId) {
+      const el = document.getElementById(legendId);
+      el.innerHTML = '';
+      for (const s of series) {
+        if (s.hideLegend) continue;
+        const item = document.createElement('span');
+        item.className = 'legend-item';
+        const sw = document.createElement('span');
+        sw.className = 'legend-swatch';
+        sw.style.background = s.color;
+        if (s.dash) sw.style.background = `repeating-linear-gradient(90deg, ${s.color} 0 3px, transparent 3px 6px)`;
+        item.appendChild(sw);
+        item.appendChild(document.createTextNode(s.label));
+        el.appendChild(item);
+      }
+    }
+  }
+
+  draw();
+  return draw;
+}
+
+// Math helpers
+function gamma_lh(t, n, mu) {
+  if (t <= 0) return 0;
+  return Math.pow(mu * t, n) * Math.exp(-mu * t);
+}
+
+function gamma_neg_log(t, n, mu) {
+  if (t <= 1e-12) return n > 0 ? 25 : mu * 1e-12;
+  return -(n * Math.log(mu * t) - mu * t);
+}
+
+function linspace(a, b, n) {
+  const arr = [];
+  for (let i = 0; i < n; i++) arr.push(a + (b - a) * i / (n - 1));
+  return arr;
+}
+
+function normalize(data) {
+  let max = -Infinity;
+  for (const [, y] of data) if (isFinite(y) && y > max) max = y;
+  if (max <= 0) return data;
+  return data.map(([x, y]) => [x, y / max]);
+}
+
+function messageShape(leafDate, gridExtent, t) {
+  if (t > leafDate) return 0;
+  const bl = leafDate - t;
+  if (bl > gridExtent * 1.15) return 0;
+  return gamma_lh(bl, 2, 3.0 / gridExtent);
+}
+
+function messageTail(leafDate, gridExtent, t) {
+  const gridLeft = leafDate - gridExtent;
+  if (t >= gridLeft) return messageShape(leafDate, gridExtent, t);
+  const edgeSlope = 2.5 / gridExtent;
+  return messageShape(leafDate, gridExtent, gridLeft) * Math.exp(-edgeSlope * (gridLeft - t));
+}
+
+// 1. Branch-length likelihood
+const muSlider = document.getElementById('slider-mu');
+const muVal = document.getElementById('val-mu');
+
+function branchLhSeries() {
+  const mu = parseFloat(muSlider.value);
+  const colors = ['#7eb8da', '#a8c898', '#c8a0b8', '#c8b888', '#98a8c8'];
+  const ns = [0, 1, 2, 3, 5];
+  const tMax = Math.min(12 / mu, 2.0);
+  const ts = linspace(0.001, tMax, 250);
+  return ns.map((n, i) => ({
+    label: `n=${n}`,
+    color: colors[i],
+    data: normalize(ts.map(t => [t, gamma_lh(t, n, mu)])),
+    width: n === 0 ? 2 : 1.2,
+  }));
+}
+
+function branchLhLogSeries() {
+  const mu = parseFloat(muSlider.value);
+  const colors = ['#7eb8da', '#a8c898', '#c8a0b8', '#c8b888', '#98a8c8'];
+  const ns = [0, 1, 2, 3, 5];
+  const tMax = Math.min(12 / mu, 2.0);
+  const ts = linspace(0.003, tMax, 250);
+  return ns.map((n, i) => ({
+    label: `n=${n}`,
+    color: colors[i],
+    data: ts.map(t => [t, gamma_neg_log(t, n, mu)]),
+    width: n === 0 ? 2 : 1.2,
+  }));
+}
+
+let drawBranchLh = createChart('chart-branch-lh', 'legend-branch-lh', {
+  series: branchLhSeries,
+  xLabel: 't (subs/site)',
+  yLabel: 'L(t) / max',
+  yRange: [0, 1.05],
+});
+
+let drawBranchLhLog = createChart('chart-branch-lh-log', 'legend-branch-lh-log', {
+  series: branchLhLogSeries,
+  xLabel: 't (subs/site)',
+  yLabel: '-log L(t)',
+  yRange: [0, 18],
+  yDecimals: 0,
+});
+
+muSlider.addEventListener('input', () => {
+  muVal.textContent = muSlider.value;
+  drawBranchLh(); drawBranchLhLog();
+});
+
+// 2. Convolution
+const LEAF_DATE = 2023.0;
+const bwSlider = document.getElementById('slider-branch-width');
+const bwVal = document.getElementById('val-branch-width');
+
+function convolutionSeries() {
+  const ge = parseFloat(bwSlider.value);
+  const ts = linspace(LEAF_DATE - ge * 1.6, LEAF_DATE + 0.3, 300);
+
+  const leafDist = ts.map(t => [t, t > LEAF_DATE - 0.02 && t < LEAF_DATE + 0.02 ? 1.0 : 0.0]);
+  const branchReflected = normalize(linspace(0, ge * 1.15, 150).map(bl => [LEAF_DATE - bl, gamma_lh(bl, 2, 3.0 / ge)]));
+  const msg = normalize(ts.map(t => [t, messageShape(LEAF_DATE, ge, t)]));
+
+  return [
+    { label: `date constraint (${LEAF_DATE})`, color: '#7eb8da', data: leafDist, width: 2 },
+    { label: 'negated branch L(t)', color: '#a8c898', data: branchReflected, width: 1.2, dash: [5, 3] },
+    { label: 'msg_to_parent', color: '#c8a0b8', data: msg, width: 2, fill: 'rgba(200,160,184,0.1)' },
+  ];
+}
+
+let drawConv = createChart('chart-convolution', 'legend-convolution', {
+  series: convolutionSeries,
+  xLabel: 'time (yr)',
+  yLabel: 'density / max',
+  yRange: [0, 1.1],
+  xDecimals: 1,
+});
+
+function boundSeries() {
+  const ge = parseFloat(bwSlider.value);
+  const gridLeft = LEAF_DATE - ge;
+  const gridRight = LEAF_DATE - 0.01;
+  const ts = linspace(gridLeft - ge * 0.6, gridRight + 0.15, 300);
+
+  const onGrid = normalize(ts.filter(t => t >= gridLeft && t <= gridRight)
+    .map(t => [t, messageShape(LEAF_DATE, ge, t)]));
+
+  const softTail = ts.filter(t => t < gridLeft).map(t => {
+    const edgeSlope = 2.5 / ge;
+    const edgeVal = messageShape(LEAF_DATE, ge, gridLeft);
+    return [t, (edgeVal / (onGrid.length ? Math.max(...onGrid.map(d => d[1])) : 1)) * Math.exp(-edgeSlope * (gridLeft - t))];
+  });
+
+  return [
+    { label: 'grid values', color: '#a8c898', data: onGrid, width: 2 },
+    { label: 'Linear tail (proposed)', color: '#a8c898', data: softTail, width: 1.2, dash: [4, 3] },
+    { label: 'hard: Zero (sample date)', color: '#c86868', data: [[gridRight, 0], [gridRight, 1.0]], width: 1.5 },
+    { label: 'soft: Constant (grid edge)', color: '#c8b888', data: [[gridLeft, 0], [gridLeft, 0.7]], width: 1.2, dash: [4, 3] },
+  ];
+}
+
+let drawBound = createChart('chart-boundaries', 'legend-boundaries', {
+  series: boundSeries,
+  xLabel: 'time (yr)',
+  yLabel: 'density / max',
+  yRange: [0, 1.1],
+  xDecimals: 1,
+});
+
+bwSlider.addEventListener('input', () => { bwVal.textContent = parseFloat(bwSlider.value).toFixed(2); drawConv(); drawBound(); });
+
+// 3. Multiplication
+createChart('chart-multiply-ok', 'legend-multiply-ok', {
+  series: () => {
+    const d1 = 2023.0, d2 = 2023.5, ge = 0.89;
+    const ts = linspace(2021.5, 2024.0, 300);
+    const m1 = normalize(ts.map(t => [t, messageShape(d1, ge, t)]));
+    const m2 = normalize(ts.map(t => [t, messageShape(d2, ge, t)]));
+    const prod = normalize(ts.map(t => [t, messageShape(d1, ge, t) * messageShape(d2, ge, t)]));
+    return [
+      { label: 'child A msg (2023.0)', color: '#7eb8da', data: m1, width: 1.2 },
+      { label: 'child B msg (2023.5)', color: '#a8c898', data: m2, width: 1.2 },
+      { label: 'product', color: '#c8a0b8', data: prod, width: 2, fill: 'rgba(200,160,184,0.1)' },
+    ];
+  },
+  xLabel: 'time (yr)',
+  yLabel: 'density / max',
+  yRange: [0, 1.1],
+  xDecimals: 1,
+});
+
+createChart('chart-multiply-bug', 'legend-multiply-bug', {
+  series: () => {
+    const d1 = 2022.5, d2 = 2025.5, ge = 0.89;
+    const ts = linspace(2021.0, 2026.5, 300);
+    const m1 = normalize(ts.map(t => [t, messageShape(d1, ge, t)]));
+    const m2 = normalize(ts.map(t => [t, messageShape(d2, ge, t)]));
+    return [
+      { label: 'accumulator [2021.55, 2022.42]', color: '#7eb8da', data: m1, width: 1.2 },
+      { label: 'child msg [2024.68, 2025.57]', color: '#a8c898', data: m2, width: 1.2 },
+      { label: 'result: Empty', color: '#c86868', data: [[2023.5, 0]], width: 0 },
+    ];
+  },
+  xLabel: 'time (yr)',
+  yLabel: 'density / max',
+  yRange: [0, 1.1],
+  xDecimals: 1,
+  regions: [{ x1: 2022.5, x2: 2024.6, color: 'rgba(200,104,104,0.04)' }],
+});
+
+// 4. Fixed multiplication
+createChart('chart-multiply-fixed', 'legend-multiply-fixed', {
+  series: () => {
+    const d1 = 2022.5, d2 = 2025.5, ge = 0.89;
+    const hardRight = d1 - 0.01;
+    const ts = linspace(2020.5, 2026.5, 500);
+
+    const m1 = normalize(ts.map(t => [t, messageShape(d1, ge, t)]));
+    const m2WithTail = normalize(ts.map(t => [t, messageTail(d2, ge, t)]));
+
+    const prod = [];
+    for (let i = 0; i < ts.length; i++) {
+      const t = ts[i];
+      if (t > hardRight) { prod.push([t, 0]); continue; }
+      prod.push([t, m1[i][1] * m2WithTail[i][1]]);
+    }
+    const normProd = normalize(prod);
+
+    return [
+      { label: 'accumulator (grid)', color: '#7eb8da', data: m1, width: 1.2 },
+      { label: 'child msg (grid + Linear tail)', color: '#a8c898', data: m2WithTail, width: 1.2, dash: [4, 3] },
+      { label: 'product', color: '#c8a0b8', data: normProd, width: 2, fill: 'rgba(200,160,184,0.1)' },
+      { label: 'hard bound (tightest Zero)', color: '#c86868', data: [[hardRight, 0], [hardRight, 1.0]], width: 1.5 },
+    ];
+  },
+  xLabel: 'time (yr)',
+  yLabel: 'density / max',
+  yRange: [0, 1.1],
+  xDecimals: 1,
+});
+
+// Accumulation
+const nChildSlider = document.getElementById('slider-n-children');
+const nChildVal = document.getElementById('val-n-children');
+
+function accumulateSeries() {
+  const nC = parseInt(nChildSlider.value);
+  const baseDate = 2023.0;
+  const spacing = 0.15;
+  const ge = 2.0;
+  const ts = linspace(2019.0, 2024.5, 400);
+  const colors = ['#7eb8da', '#a8c898', '#c8a0b8', '#c8b888', '#98a8c8', '#88c8b0', '#c8a8a8', '#b0b0c8', '#a8c8a8', '#c8b0a8'];
+
+  const series = [];
+  const dates = [];
+  for (let i = 0; i < nC; i++) dates.push(baseDate + (i - nC / 2) * spacing);
+
+  for (let i = 0; i < nC; i++) {
+    series.push({
+      label: `msg ${i + 1} (${dates[i].toFixed(2)})`,
+      color: colors[i % colors.length],
+      data: normalize(ts.map(t => [t, messageShape(dates[i], ge, t)])),
+      width: 0.8,
+      dash: [3, 3],
+      opacity: 0.6,
+    });
+  }
+
+  const prod = normalize(ts.map(t => {
+    let p = 1;
+    for (let i = 0; i < nC; i++) {
+      const v = messageShape(dates[i], ge, t);
+      if (v === 0) return [t, 0];
+      p *= v;
+    }
+    return [t, p];
+  }));
+
+  series.push({
+    label: 'accumulated product',
+    color: '#d4d4d4',
+    data: prod,
+    width: 2,
+    fill: 'rgba(212,212,212,0.06)',
+  });
+
+  return series;
+}
+
+let drawAccum = createChart('chart-accumulate', 'legend-accumulate', {
+  series: accumulateSeries,
+  xLabel: 'time (yr)',
+  yLabel: 'density / max',
+  yRange: [0, 1.1],
+  xDecimals: 1,
+});
+
+nChildSlider.addEventListener('input', () => { nChildVal.textContent = nChildSlider.value; drawAccum(); });
+
+// 5. Power law
+createChart('chart-power-law-linear', 'legend-power-law-linear', {
+  series: () => {
+    const mu = 11;
+    const tFirst = 0.01 / mu;
+    const colors = ['#7eb8da', '#a8c898', '#c8a0b8', '#c8b888'];
+    const ns = [0, 1, 3, 5];
+    const ts = linspace(0.0001, 0.12, 300);
+    const series = ns.map((n, i) => ({
+      label: `n=${n}`,
+      color: colors[i],
+      data: normalize(ts.map(t => [t, gamma_lh(t, n, mu)])),
+      width: n === 0 ? 2 : 1.2,
+    }));
+    series.push({
+      label: `min_bl = 0.01/mu`,
+      color: '#444',
+      data: [[tFirst, 0], [tFirst, 1.0]],
+      width: 1,
+      dash: [4, 3],
+    });
+    return series;
+  },
+  xLabel: 't (subs/site)',
+  yLabel: 'L(t) / max',
+  yRange: [0, 1.1],
+  xDecimals: 3,
+});
+
+createChart('chart-power-law-log', 'legend-power-law-log', {
+  series: () => {
+    const mu = 11;
+    const colors = ['#7eb8da', '#a8c898', '#c8a0b8', '#c8b888'];
+    const ns = [0, 1, 3, 5];
+    const ts = linspace(0.002, 0.12, 300);
+    return ns.map((n, i) => ({
+      label: `n=${n}: b=${n}`,
+      color: colors[i],
+      data: ts.map(t => [t, gamma_neg_log(t, n, mu)]),
+      width: n === 0 ? 2 : 1.2,
+    }));
+  },
+  xLabel: 't (subs/site)',
+  yLabel: '-log L(t)',
+  yRange: [0, 22],
+  yDecimals: 0,
+  xDecimals: 3,
+});
+
+// 6. Lifecycle
+createChart('chart-lifecycle', 'legend-lifecycle', {
+  series: () => {
+    const ts = linspace(2018.0, 2024.0, 500);
+    const gap = 0.22;
+    const h = 0.85;
+
+    // (1) Leaf date constraint: narrow spike at sampling date
+    const leafDate = 2023.0;
+    const s1 = ts.map(t => [t, (Math.abs(t - leafDate) < 0.02 ? h : 0) + gap * 5]);
+
+    // (2) Branch-length likelihood: Gamma shape in time, peak ~0.3yr back from leaf
+    const s2 = normalize(ts.map(t => {
+      const bl = leafDate - t;
+      if (bl <= 0) return [t, 0];
+      return [t, gamma_lh(bl, 3, 4.0)];
+    })).map(([x, y]) => [x, y * h + gap * 4]);
+
+    // (3) msg_to_parent: convolution result, asymmetric, peaks ~0.7yr before leaf
+    const msgPeak = leafDate - 0.7;
+    const s3 = normalize(ts.map(t => {
+      if (t > leafDate) return [t, 0];
+      const bl = leafDate - t;
+      return [t, gamma_lh(bl, 3, 3.5)];
+    })).map(([x, y]) => [x, y * h + gap * 3]);
+
+    // (4) Accumulated: product of 3 child messages -> narrower, shifted left
+    // Use wider grid extents (1.5yr) and closer dates so messages overlap
+    const ge = 1.5;
+    const d2 = 2022.5, d3 = 2022.0;
+    const s4 = normalize(ts.map(t => {
+      const m1 = messageShape(leafDate, ge, t);
+      const m2 = messageShape(d2, ge, t);
+      const m3 = messageShape(d3, ge, t);
+      return [t, m1 * m2 * m3];
+    })).map(([x, y]) => [x, y * h + gap * 2]);
+
+    // (5) Coalescent: exponential growth prior penalizes older times
+    const s5 = normalize(ts.map(t => {
+      const m1 = messageShape(leafDate, ge, t);
+      const m2 = messageShape(d2, ge, t);
+      const m3 = messageShape(d3, ge, t);
+      const accum = m1 * m2 * m3;
+      const coalWeight = Math.exp(-1.5 * Math.max(0, 2021.5 - t));
+      return [t, accum * coalWeight];
+    })).map(([x, y]) => [x, y * h + gap * 1]);
+
+    // (6) Forward cavity: divide out child 1's contribution
+    // What the parent looks like to child 1 = (all other children + coalescent)
+    const s6 = normalize(ts.map(t => {
+      const m2 = messageShape(d2, ge, t);
+      const m3 = messageShape(d3, ge, t);
+      const coalWeight = Math.exp(-1.5 * Math.max(0, 2021.5 - t));
+      return [t, m2 * m3 * coalWeight];
+    })).map(([x, y]) => [x, y * h + gap * 0]);
+
+    return [
+      { label: '(1) date constraint', color: '#7eb8da', data: s1, width: 2 },
+      { label: '(2) branch L(t)', color: '#a8c898', data: s2, width: 1.2 },
+      { label: '(3) msg_to_parent', color: '#c8a0b8', data: s3, width: 1.5 },
+      { label: '(4) accumulated (3 children)', color: '#c8b888', data: s4, width: 1.5 },
+      { label: '(5) + coalescent prior', color: '#98a8c8', data: s5, width: 1.5 },
+      { label: '(6) forward cavity (child 1 out)', color: '#88c8b0', data: s6, width: 1.5 },
+    ];
+  },
+  xLabel: 'time (yr)',
+  yLabel: '',
+  yRange: [0, 1.9],
+  xDecimals: 0,
+  yDecimals: 1,
+});
+
+window.addEventListener('resize', () => {
+  drawBranchLh(); drawBranchLhLog(); drawConv(); drawBound(); drawAccum();
+});
+</script>
+
+</body>
+</html>
