@@ -48,7 +48,7 @@ where
   }
   let scaled = neg_log.mapv(|value| (minimum - value).exp());
 
-  let result = if let Distribution::Function(f) = distribution {
+  let result: Distribution<Plain> = if let Distribution::Function(f) = distribution {
     Distribution::Function(DistributionFunction::from_start_dx_values(f.x_min(), f.dx(), scaled)?)
   } else {
     Distribution::function(times, scaled)?

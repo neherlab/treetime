@@ -453,6 +453,54 @@ impl Distribution<NegLog> {
       },
     }
   }
+
+  /// Returns the minimum stored ordinate: the highest-likelihood value under [`NegLog`].
+  ///
+  /// The ordinate is `-ln(probability)`, so the smallest ordinate is the mode. Returns `+inf`
+  /// for an empty distribution, matching the neg-log encoding of zero probability.
+  pub fn min_value(&self) -> f64 {
+    match self {
+      Distribution::Empty => f64::INFINITY,
+      Distribution::Point(p) => p.amplitude(),
+      Distribution::Range(r) => r.amplitude(),
+      Distribution::Function(f) => f.y().min().ok().copied().unwrap_or(f64::INFINITY),
+      Distribution::Formula(f) => {
+        discretize_formula(f).map_or(f64::INFINITY, |df| df.y().min().ok().copied().unwrap_or(f64::INFINITY))
+      },
+    }
+  }
+
+  /// Normalize so the peak probability is one (its ordinate becomes zero).
+  ///
+  /// Under [`NegLog`] the ordinate is `-ln(probability)`, so dividing every probability by the
+  /// peak is subtracting the minimum ordinate. This is a pure shift: exact, no scaling, and it
+  /// preserves likelihood ratios and the grid. It is the neg-log dual of the plain-space
+  /// `normalize` (peak becomes the multiplicative identity) and shares the minimum-subtraction
+  /// convention of [`Self::to_plain_normalized`]. Returns [`Distribution::Empty`] when no finite
+  /// ordinate exists.
+  pub fn normalize(&self) -> Self {
+    match self {
+      Distribution::Empty => Distribution::Empty,
+      Distribution::Point(p) => {
+        if p.amplitude().is_finite() {
+          Distribution::point(p.t(), 0.0)
+        } else {
+          Distribution::Empty
+        }
+      },
+      Distribution::Range(r) => {
+        if r.amplitude().is_finite() {
+          Distribution::range((r.start(), r.end()), 0.0)
+        } else {
+          Distribution::Empty
+        }
+      },
+      Distribution::Function(f) => neglog_function_normalize(f),
+      Distribution::Formula(f) => {
+        discretize_formula(f).map_or(Distribution::Empty, |df| neglog_function_normalize(&df))
+      },
+    }
+  }
 }
 
 fn discretize_formula<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> Result<DistributionFunction<f64, Y>, Report> {
@@ -471,6 +519,16 @@ fn neglog_function_to_plain_normalized(function: &DistributionFunction<f64, NegL
   let values = function.y().mapv(|value| (minimum - value).exp());
   DistributionFunction::from_start_dx_values(function.x_min(), function.dx(), values)
     .map_or(Distribution::Empty, Distribution::Function)
+}
+
+/// Normalize a neg-log function in place on the same axis: subtract the minimum ordinate so the
+/// peak becomes zero. Preserves the grid and tails via [`DistributionFunction::shift_y`]. Returns
+/// [`Distribution::Empty`] when no finite ordinate exists.
+fn neglog_function_normalize(function: &DistributionFunction<f64, NegLog>) -> Distribution<NegLog> {
+  let Some(minimum) = function.y().min().ok().copied().filter(|minimum| minimum.is_finite()) else {
+    return Distribution::Empty;
+  };
+  Distribution::Function(function.shift_y(-minimum))
 }
 
 /// HPD region for a discretized distribution on a uniform grid.

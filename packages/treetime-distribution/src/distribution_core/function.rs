@@ -322,4 +322,18 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   {
     Ok(Self::from_grid_fn(self.grid_fn.mapv(|v| v * factor)))
   }
+
+  /// Create a new distribution function with a constant delta added to every y value.
+  ///
+  /// Preserves the grid parameters and per-side tail policies exactly (via `fn GridFn.mapv()`),
+  /// the additive counterpart of [`Self::scale_y`]. Under [`crate::policy::NegLog`] the ordinate
+  /// is `-ln(probability)`, so adding `-min` shifts the peak ordinate to zero: this is
+  /// normalization by a pure shift, which keeps likelihood ratios and out-of-support tails intact.
+  #[must_use]
+  pub fn shift_y(&self, delta: T) -> Self
+  where
+    T: Float,
+  {
+    Self::from_grid_fn(self.grid_fn.mapv(|v| v + delta))
+  }
 }

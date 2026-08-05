@@ -131,4 +131,69 @@ mod tests {
     let actual = distribution.to_plain_normalized();
     assert_eq!(Distribution::<Plain>::Empty, actual);
   }
+
+  #[test]
+  fn test_distribution_neglog_normalize_function_shifts_peak_to_zero() {
+    // The NegLog ordinate is -ln(p). Normalization divides every probability by the peak, which
+    // is subtracting the minimum ordinate, so the mode becomes 0 = -ln(1). Ordinate differences
+    // (log-likelihood ratios) are preserved exactly: min(1004, 1000, 1003) = 1000.
+    let distribution = Distribution::<NegLog>::function(array![0.0, 1.0, 2.0], array![1004.0, 1000.0, 1003.0]).unwrap();
+    let normalized = distribution.normalize();
+    let expected = array![4.0, 0.0, 3.0];
+    let Distribution::Function(f) = normalized else {
+      panic!("Expected Function");
+    };
+    pretty_assert_ulps_eq!(expected, f.y(), max_ulps = 4);
+  }
+
+  #[test]
+  fn test_distribution_neglog_normalize_is_idempotent() {
+    // An already-normalized distribution has minimum ordinate 0, so re-normalizing shifts by zero.
+    let distribution = Distribution::<NegLog>::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
+    let once = distribution.normalize();
+    let twice = once.normalize();
+    assert_eq!(once, twice);
+  }
+
+  #[test]
+  fn test_distribution_neglog_normalize_point_maps_to_unit_probability() {
+    let normalized = Distribution::<NegLog>::point(2.0, 1000.0).normalize();
+    let expected = Distribution::<NegLog>::point(2.0, 0.0);
+    assert_eq!(expected, normalized);
+  }
+
+  #[test]
+  fn test_distribution_neglog_normalize_range_maps_to_unit_probability() {
+    let normalized = Distribution::<NegLog>::range((1.0, 3.0), 1000.0).normalize();
+    let expected = Distribution::<NegLog>::range((1.0, 3.0), 0.0);
+    assert_eq!(expected, normalized);
+  }
+
+  #[test]
+  fn test_distribution_neglog_normalize_empty_stays_empty() {
+    assert_eq!(Distribution::<NegLog>::Empty, Distribution::<NegLog>::Empty.normalize());
+  }
+
+  #[test]
+  fn test_distribution_neglog_normalize_rejects_nonfinite_minimum() {
+    let distribution = Distribution::<NegLog>::function(
+      array![0.0, 1.0, 2.0],
+      array![f64::INFINITY, f64::INFINITY, f64::INFINITY],
+    )
+    .unwrap();
+    assert_eq!(Distribution::<NegLog>::Empty, distribution.normalize());
+  }
+
+  #[test]
+  fn test_distribution_neglog_min_value_selects_mode_ordinate() {
+    let distribution = Distribution::<NegLog>::function(array![0.0, 1.0, 2.0], array![1004.0, 1000.0, 1003.0]).unwrap();
+    assert_relative_eq!(1000.0, distribution.min_value());
+  }
+
+  #[test]
+  fn test_distribution_neglog_min_value_empty_is_infinite() {
+    // An empty distribution carries no probability, encoded as +inf under NegLog (-ln(0)).
+    let min_value = Distribution::<NegLog>::Empty.min_value();
+    assert!(min_value.is_infinite() && min_value.is_sign_positive());
+  }
 }
