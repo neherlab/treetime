@@ -2,12 +2,12 @@ use crate::Distribution;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
-use crate::policy::{Plain, SupportsConvolution};
+use crate::policy::{NegLog, Plain, SupportsConvolution};
 use approx::ulps_eq;
 use eyre::Report;
-use ndarray::{Array1, array};
+use ndarray::{Array1, array, s};
 use treetime_ops::convolve;
-use treetime_utils::array::ndarray::has_uniform_spacing;
+use treetime_utils::array::ndarray::{has_uniform_spacing, max_or, min_or};
 use treetime_utils::make_error;
 
 pub fn distribution_convolution<Y: SupportsConvolution>(
@@ -202,4 +202,130 @@ fn convolution_function_function<Y: SupportsConvolution>(
     final_distr.y().clone(),
   )?;
   Ok(Distribution::Function(final_distr))
+}
+
+// ---------------------------------------------------------------------------------------------
+// DRAFT: log-space (NegLog) convolution round-trip. Not yet wired into the pipeline. Scope is the
+// Function * Function case, which carries the FFT and the tail-reconstruction science. Point/range
+// convolutions need no FFT and are deferred.
+// ---------------------------------------------------------------------------------------------
+
+/// Fraction of the plain-space convolution peak below which FFT output is roundoff, not signal.
+/// Values under this floor are discarded and the tail is reconstructed by fit instead. Matches v0
+/// (`node_interpolator.py`: `fft_res > fft_res.max() * 1e-13`).
+const CONV_TRUST_FRACTION: f64 = 1e-13;
+
+/// Number of outermost trusted points used for the secant tail slope (v0 caps the margin at 3).
+const CONV_TAIL_MARGIN: usize = 3;
+
+/// Convolve two negative-log distributions.
+///
+/// A convolution is an integral, not a pointwise operation, so it cannot be carried out in
+/// negative-log space. Each operand is moved to plain probability (peak-subtracted so the largest
+/// value is 1.0 and nothing underflows), convolved by FFT, then returned to negative-log space with
+/// the two peak offsets restored. The FFT is trustworthy only in the bulk: values below
+/// [`CONV_TRUST_FRACTION`] of the peak are roundoff. The decisive far-tail values (the node-603
+/// case is ~1e-12 of peak, well under the roundoff floor) are therefore **reconstructed by
+/// log-linear extrapolation** from the outermost trusted points rather than read out of the FFT,
+/// following v0's `NodeInterpolator.convolve_fft`.
+///
+/// DRAFT: implements Function * Function only.
+pub fn distribution_convolution_neglog(
+  a: &Distribution<NegLog>,
+  b: &Distribution<NegLog>,
+) -> Result<Distribution<NegLog>, Report> {
+  match (a, b) {
+    (Distribution::Empty, _) | (_, Distribution::Empty) => Ok(Distribution::Empty),
+    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function_neglog(a, b),
+    _ => make_error!("Log-space convolution is drafted for Function * Function only"),
+  }
+}
+
+// Numerical routine: `a`/`b` operands, `t` grid, `y` ordinates, `n` trusted-point count follow the
+// convolution/interpolation conventions used throughout this module.
+#[allow(clippy::many_single_char_names)]
+fn convolution_function_function_neglog(
+  a: &DistributionFunction<f64, NegLog>,
+  b: &DistributionFunction<f64, NegLog>,
+) -> Result<Distribution<NegLog>, Report> {
+  if a.is_empty() || b.is_empty() {
+    return Ok(Distribution::empty());
+  }
+
+  let dx = a.dx().min(b.dx());
+  if !(dx.is_finite() && dx > 0.0) {
+    return make_error!("Invalid grid spacing detected during log-space convolution: {dx}");
+  }
+
+  // Resample onto the finer common spacing. Still negative-log, so this is linear interpolation of
+  // -ln(p): the intended piecewise-log-linear representation.
+  let a = a.resample_dx(dx)?;
+  let b = b.resample_dx(dx)?;
+  if a.is_empty() || b.is_empty() {
+    return Ok(Distribution::empty());
+  }
+
+  // Peak-subtract each operand, then exponentiate to plain probability with peak 1.0. The shifts
+  // are restored afterward as an additive constant in negative-log space.
+  let shift_a = min_or(a.y(), f64::INFINITY);
+  let shift_b = min_or(b.y(), f64::INFINITY);
+  if !(shift_a.is_finite() && shift_b.is_finite()) {
+    return Ok(Distribution::empty());
+  }
+  let pa = a.y().mapv(|y| (shift_a - y).exp());
+  let pb = b.y().mapv(|y| (shift_b - y).exp());
+
+  // Integral in plain space. `convolve` already applies dx (Riemann normalization).
+  let conv = convolve(dx, &pa, &pb)?;
+  let x_min = a.x_min() + b.x_min();
+  let t = Array1::from_shape_fn(conv.len(), |i| x_min + (i as f64) * dx);
+  let offset = shift_a + shift_b;
+
+  // Trusted bulk: the contiguous region where the plain convolution exceeds the roundoff floor.
+  let peak = max_or(&conv, 0.0);
+  if peak <= 0.0 {
+    return Ok(Distribution::empty());
+  }
+  let floor = peak * CONV_TRUST_FRACTION;
+  let (Some(first), Some(last)) = (
+    conv.iter().position(|&c| c > floor),
+    conv.iter().rposition(|&c| c > floor),
+  ) else {
+    return Ok(Distribution::empty());
+  };
+
+  let trusted_t = t.slice(s![first..=last]).to_owned();
+  let trusted_y = conv.slice(s![first..=last]).mapv(|c| -c.ln() + offset);
+  let n = trusted_y.len();
+  let margin = CONV_TAIL_MARGIN.min(n / 3);
+  if margin < 1 {
+    return make_error!("Log-space convolution left too few trusted points to reconstruct tails");
+  }
+
+  // v0-style secant slopes over the outermost `margin` trusted points. A tail is extended only
+  // where it decays away from support: the neg-log ordinate rises outward (left slope < 0 toward
+  // smaller t, right slope > 0 toward larger t). Where it does not decay, the region carries no
+  // mass (+inf neg-log = zero probability).
+  let left_slope = (trusted_y[margin] - trusted_y[0]) / (trusted_t[margin] - trusted_t[0]);
+  let right_slope = (trusted_y[n - 1] - trusted_y[n - 1 - margin]) / (trusted_t[n - 1] - trusted_t[n - 1 - margin]);
+
+  let mut y = Array1::from_elem(conv.len(), f64::INFINITY);
+  for i in first..=last {
+    y[i] = -conv[i].ln() + offset;
+  }
+  if left_slope < 0.0 {
+    for i in 0..first {
+      y[i] = trusted_y[0] + left_slope * (t[i] - trusted_t[0]);
+    }
+  }
+  if right_slope > 0.0 {
+    for i in (last + 1)..conv.len() {
+      y[i] = trusted_y[n - 1] + right_slope * (t[i] - trusted_t[n - 1]);
+    }
+  }
+
+  // TODO(Part B): carry the fitted slopes as soft `BoundaryBehavior::Linear` tails so the law
+  // continues beyond the grid. Until then the reconstructed tail lives on the grid itself.
+  let result = DistributionFunction::<f64, NegLog>::from_start_dx_values(x_min, dx, y)?;
+  Ok(Distribution::Function(result).normalize())
 }

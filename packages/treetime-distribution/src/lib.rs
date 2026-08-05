@@ -10,7 +10,7 @@ pub use distribution_core::formula::DistributionFormula;
 pub use distribution_core::function::DistributionFunction;
 pub use distribution_core::point::DistributionPoint;
 pub use distribution_core::range::DistributionRange;
-pub use distribution_ops::convolve::distribution_convolution;
+pub use distribution_ops::convolve::{distribution_convolution, distribution_convolution_neglog};
 pub use distribution_ops::divide::distribution_division;
 pub use distribution_ops::log_cost::{distribution_add_neg_log_weight, distribution_apply_neg_log_weight};
 pub use distribution_ops::map::distribution_map;

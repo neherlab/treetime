@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod tests {
+  use crate::DistributionNegLog;
   use crate::DistributionPlain as Distribution;
   use crate::distribution_core::function::DistributionFunction;
-  use crate::distribution_ops::convolve::distribution_convolution;
+  use crate::distribution_ops::convolve::{distribution_convolution, distribution_convolution_neglog};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::{Array1, array};
@@ -11,6 +12,30 @@ mod tests {
   use treetime_utils::assert_error;
 
   use self::helpers::{DistributionVariant, distribution};
+
+  /// Analytic oracle: convolving two unit-variance Gaussians yields a Gaussian with variance
+  /// `sigma1^2 + sigma2^2 = 2` and mean `mu1 + mu2 = 0`. In NegLog the ordinate is the negative
+  /// log likelihood `y(t) = (t - mu)^2 / (2 sigma^2)`, so the result must peak at `t = 0` with
+  /// near-peak curvature `1 / (2 * 2)`: `y(1) - y(0) = 0.25` and `y(2) - y(0) = 1.0`.
+  ///
+  /// Exercises the plain-space FFT round-trip in the trusted bulk. The far tails (reconstructed by
+  /// log-linear fit) need separate validation once this path is wired into the pipeline.
+  #[test]
+  fn test_convolve_neglog_gaussian_variances_add() -> Result<(), Report> {
+    let gaussian = |sigma: f64| -> Result<DistributionNegLog, Report> {
+      let t = Array1::linspace(-6.0, 6.0, 241);
+      let y = t.mapv(|t| t * t / (2.0 * sigma * sigma));
+      DistributionNegLog::function(t, y)
+    };
+
+    let result = distribution_convolution_neglog(&gaussian(1.0)?, &gaussian(1.0)?)?;
+
+    let y0 = result.eval(0.0)?;
+    assert_abs_diff_eq!(0.0, result.likely_time().unwrap(), epsilon = 0.05);
+    assert_abs_diff_eq!(0.25, result.eval(1.0)? - y0, epsilon = 1e-3);
+    assert_abs_diff_eq!(1.00, result.eval(2.0)? - y0, epsilon = 1e-3);
+    Ok(())
+  }
 
   #[rustfmt::skip]
   #[rstest]
