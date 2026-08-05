@@ -15,21 +15,21 @@ mod tests {
   type DistFnNegLog = DistributionFunction<f64, NegLog>;
 
   #[test]
-  fn test_boundary_neglog_zero_left_rejected() -> Result<(), Report> {
+  fn test_boundary_neglog_hard_left_rejected() -> Result<(), Report> {
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
     assert_error!(
-      f.with_left_extrap(BoundaryBehavior::Zero),
-      "Refusing a Zero boundary tail: it writes 0.0 outside support, which is the multiplicative identity (probability one), not zero probability, under this distribution's negative-log representation"
+      f.with_left_extrap(BoundaryBehavior::Hard),
+      "Refusing a Hard boundary tail: it writes 0.0 outside support, which is the multiplicative identity (probability one), not zero probability, under this distribution's negative-log representation"
     );
     Ok(())
   }
 
   #[test]
-  fn test_boundary_neglog_zero_right_rejected() -> Result<(), Report> {
+  fn test_boundary_neglog_hard_right_rejected() -> Result<(), Report> {
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
     assert_error!(
-      f.with_right_extrap(BoundaryBehavior::Zero),
-      "Refusing a Zero boundary tail: it writes 0.0 outside support, which is the multiplicative identity (probability one), not zero probability, under this distribution's negative-log representation"
+      f.with_right_extrap(BoundaryBehavior::Hard),
+      "Refusing a Hard boundary tail: it writes 0.0 outside support, which is the multiplicative identity (probability one), not zero probability, under this distribution's negative-log representation"
     );
     Ok(())
   }
@@ -45,9 +45,9 @@ mod tests {
   }
 
   #[test]
-  fn test_boundary_plain_zero_allowed() -> Result<(), Report> {
+  fn test_boundary_plain_hard_allowed() -> Result<(), Report> {
     let f: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
-    let f = f.with_extrap(BoundaryBehavior::Zero)?;
+    let f = f.with_extrap(BoundaryBehavior::Hard)?;
     assert_ulps_eq!(0.0, f.interp(-1.0)?, max_ulps = 4);
     assert_ulps_eq!(0.0, f.interp(3.0)?, max_ulps = 4);
     Ok(())
@@ -67,9 +67,9 @@ mod tests {
   #[test]
   fn test_boundary_with_extrap_noop_on_point() -> Result<(), Report> {
     // Non-Function variants have no interpolated tail, so setting a tail policy is a no-op
-    // and never rejects (even the Zero tail that a Function would reject under NegLog).
+    // and never rejects (even the Hard tail that a Function would reject under NegLog).
     let point: DistributionPlain = Distribution::point(1.0, 2.0);
-    let unchanged = point.clone().with_left_extrap(BoundaryBehavior::Zero)?;
+    let unchanged = point.clone().with_left_extrap(BoundaryBehavior::Hard)?;
     assert_eq!(point, unchanged);
     Ok(())
   }
@@ -78,8 +78,8 @@ mod tests {
   #[rstest]
   #[case::error_left(    (-1.0, BoundaryBehavior::Error,    BoundaryBehavior::Error),    None)]
   #[case::error_right(   ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Error),    None)]
-  #[case::zero_left(     (-1.0, BoundaryBehavior::Zero,     BoundaryBehavior::Error),    None)]
-  #[case::zero_right(    ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Zero),     None)]
+  #[case::hard_left(     (-1.0, BoundaryBehavior::Hard,     BoundaryBehavior::Error),    None)]
+  #[case::hard_right(    ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Hard),     None)]
   #[case::constant_left( (-1.0, BoundaryBehavior::Constant, BoundaryBehavior::Error),    Some(2.0))]
   #[case::constant_right(( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Constant), Some(6.0))]
   #[trace]
@@ -95,7 +95,7 @@ mod tests {
 
     let actual = distribution_multiplication(&point, &function)?;
     // Oracle: kb/decisions/distribution-tails-and-arithmetic.md#L74-L84 defines Constant
-    // as evaluable outside the grid and Zero/Error as carrying no product there.
+    // as evaluable outside the grid and Hard/Error as carrying no product there.
     let expected = expected_amplitude.map_or_else(Distribution::empty, |amplitude| Distribution::point(t, amplitude));
     assert_eq!(expected, actual);
     Ok(())

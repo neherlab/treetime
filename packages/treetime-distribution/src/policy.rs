@@ -11,13 +11,13 @@ pub trait YAxisPolicy: Clone + Copy + Debug + Default + PartialEq + Send + Sync 
   fn is_defined(val: f64) -> bool;
   fn safe_divisor(val: f64) -> f64;
 
-  /// Whether a numeric `0.0` correctly represents zero probability under this policy.
+  /// Whether a `Hard` boundary tail is representable under this policy.
   ///
-  /// A `Zero` boundary tail writes the literal `0.0` outside support. That is zero
+  /// A `Hard` boundary tail writes the literal `0.0` outside support. That is zero
   /// probability under [`Plain`], but the multiplicative identity (probability one) under
-  /// [`NegLog`], where zero probability is `+inf`. The distribution layer rejects a `Zero`
+  /// [`NegLog`], where zero probability is `+inf`. The distribution layer rejects a `Hard`
   /// tail on a policy that returns `false` here.
-  fn supports_zero_boundary() -> bool;
+  fn supports_hard_boundary() -> bool;
 
   /// Whether the most likely time sits at the maximum stored ordinate.
   ///
@@ -94,7 +94,7 @@ impl YAxisPolicy for Plain {
     val.max(TINY_NUMBER)
   }
 
-  fn supports_zero_boundary() -> bool {
+  fn supports_hard_boundary() -> bool {
     true
   }
 
@@ -140,7 +140,7 @@ impl YAxisPolicy for NegLog {
     val
   }
 
-  fn supports_zero_boundary() -> bool {
+  fn supports_hard_boundary() -> bool {
     false
   }
 

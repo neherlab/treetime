@@ -179,16 +179,16 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   /// Set the left (below `x_min`) out-of-support tail policy.
   ///
-  /// Rejects a [`BoundaryBehavior::Zero`] tail when the representation cannot express zero
+  /// Rejects a [`BoundaryBehavior::Hard`] tail when the representation cannot express zero
   /// probability as `0.0` (negative-log), where zero probability is `+inf`.
   pub fn with_left_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
-    Self::check_zero_boundary(behavior)?;
+    Self::check_hard_boundary(behavior)?;
     Ok(Self::from_grid_fn(self.grid_fn.with_left_extrap(behavior)))
   }
 
   /// Set the right (above `x_max`) out-of-support tail policy. See [`Self::with_left_extrap`].
   pub fn with_right_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
-    Self::check_zero_boundary(behavior)?;
+    Self::check_hard_boundary(behavior)?;
     Ok(Self::from_grid_fn(self.grid_fn.with_right_extrap(behavior)))
   }
 
@@ -197,10 +197,10 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.with_left_extrap(behavior)?.with_right_extrap(behavior)
   }
 
-  fn check_zero_boundary(behavior: BoundaryBehavior) -> Result<(), Report> {
-    if behavior == BoundaryBehavior::Zero && !Y::supports_zero_boundary() {
+  fn check_hard_boundary(behavior: BoundaryBehavior) -> Result<(), Report> {
+    if behavior == BoundaryBehavior::Hard && !Y::supports_hard_boundary() {
       return make_error!(
-        "Refusing a Zero boundary tail: it writes 0.0 outside support, which is the multiplicative identity (probability one), not zero probability, under this distribution's negative-log representation"
+        "Refusing a Hard boundary tail: it writes 0.0 outside support, which is the multiplicative identity (probability one), not zero probability, under this distribution's negative-log representation"
       );
     }
     Ok(())

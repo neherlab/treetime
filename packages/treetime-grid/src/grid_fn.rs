@@ -26,10 +26,11 @@ pub enum BoundaryBehavior {
   /// Out-of-support evaluation is an error.
   #[default]
   Error,
-  /// Return `0.0` outside support. For a plain-probability distribution this is zero
-  /// probability. Not representable under a negative-log representation, where zero
-  /// probability is `+inf`; that combination is rejected at the distribution layer.
-  Zero,
+  /// Hard boundary: the domain terminates and probability is zero beyond the grid edge. In
+  /// plain-probability space this is realized as the literal `0.0`; a negative-log
+  /// representation cannot express it (zero probability is `+inf`), so that combination is
+  /// rejected at the distribution layer.
+  Hard,
   /// Return the nearest boundary value (`y[0]` to the left, `y[n-1]` to the right),
   /// i.e. a flat tail. Use when the function is genuinely uninformative beyond the edge.
   Constant,
@@ -41,7 +42,7 @@ impl BoundaryBehavior {
   /// the distribution. A soft boundary is evaluable beyond the grid via its declared tail law
   /// and therefore *extends* the evaluable domain under multiplication.
   ///
-  /// The complement is a *hard* boundary: the grid edge terminates the domain (`Zero`: zero
+  /// The complement is a *hard* boundary: the grid edge terminates the domain (`Hard`: zero
   /// probability beyond; `Error`: out-of-support evaluation is undefined). A hard boundary
   /// *restricts* the result domain and is never silently extended.
   ///
@@ -346,7 +347,7 @@ impl<T: InterpElem> GridFn<T> {
   /// Interpolate function value at a single point
   ///
   /// Uses piecewise linear interpolation within the grid bounds. Outside the bounds the
-  /// per-side [`BoundaryBehavior`] applies: `Error` (default) rejects the query, `Zero`
+  /// per-side [`BoundaryBehavior`] applies: `Error` (default) rejects the query, `Hard`
   /// returns `0.0`, `Constant` returns the nearest boundary value.
   ///
   /// # Arguments
@@ -408,7 +409,7 @@ impl<T: InterpElem> GridFn<T> {
   {
     match behavior {
       BoundaryBehavior::Constant => Ok(boundary_value),
-      BoundaryBehavior::Zero => Ok(T::zero()),
+      BoundaryBehavior::Hard => Ok(T::zero()),
       BoundaryBehavior::Error => make_error!(
         "GridFn evaluated at {xi:?}, {side} the support boundary {bound:?}, but no extrapolation policy is set for that side"
       ),

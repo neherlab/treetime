@@ -3,7 +3,7 @@
 //! The timetree backward pass combines a node's child parent-time messages by folding
 //! `distribution_multiplication` with `normalize()` between steps
 //! (`packages/treetime/src/timetree/inference/backward_pass.rs`). Each message carries a
-//! `Constant` left tail (the parent may be arbitrarily older) and a `Zero` right tail (the
+//! `Constant` left tail (the parent may be arbitrarily older) and a `Hard` right tail (the
 //! child's sampling date bounds the parent's age)
 //! (`kb/decisions/distribution-tails-and-arithmetic.md`).
 //!
@@ -11,7 +11,7 @@
 //! commutative, and both the support intersection and the composed tails are built from
 //! order-independent `max`/`min` over the operands' bounds, so across every permutation of the
 //! children the fold yields a non-empty distribution over the *same* support with the *same*
-//! `Constant`/`Zero` tails. These invariants guard the exact failure modes the fix targeted:
+//! `Constant`/`Hard` tails. These invariants guard the exact failure modes the fix targeted:
 //! tail-metadata loss (which would collapse some orderings to `Empty` while others survive) and
 //! asymmetric support resolution (which would place the result on different intervals).
 //!
@@ -58,7 +58,7 @@ mod tests {
       }
     }
 
-    /// Every permutation of the children folds to a result carrying `Constant` left / `Zero` right
+    /// Every permutation of the children folds to a result carrying `Constant` left / `Hard` right
     /// tails, so a later disjoint child remains reachable regardless of processing order.
     #[test]
     fn test_prop_multiply_child_order_preserves_tails(
@@ -74,7 +74,7 @@ mod tests {
           return Err(TestCaseError::fail(format!("fold collapsed to {result:?}")));
         };
         prop_assert_eq!(BoundaryBehavior::Constant, f.left_extrap());
-        prop_assert_eq!(BoundaryBehavior::Zero, f.right_extrap());
+        prop_assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
       }
     }
   }
@@ -122,7 +122,7 @@ mod tests {
   }
 
   /// A backward parent message: a Gaussian bump on a finite grid with a `Constant` left tail
-  /// (parent may be older) and a `Zero` right tail (child date bounds the parent's age).
+  /// (parent may be older) and a `Hard` right tail (child date bounds the parent's age).
   fn make_child_message((center, width, sigma, n_points): (f64, f64, f64, usize)) -> Distribution {
     let x_min = center - width / 2.0;
     let dx = width / (n_points - 1) as f64;
@@ -134,7 +134,7 @@ mod tests {
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Constant)
       .unwrap()
-      .with_right_extrap(BoundaryBehavior::Zero)
+      .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
     Distribution::Function(f)
   }

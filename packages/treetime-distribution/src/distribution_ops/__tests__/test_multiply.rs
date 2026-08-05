@@ -312,14 +312,14 @@ mod tests {
       make_function(2001.0, 2007.0, 61, 2004.0, 2.0)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Zero)
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let subtree_msg = Distribution::Function(
       make_function(1970.0, 2000.0, 301, 1990.0, 5.0)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Zero)
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let result = distribution_multiplication(&leaf_msg, &subtree_msg).unwrap();
@@ -327,7 +327,7 @@ mod tests {
       panic!("Expected Function (non-empty product), got {result:?}")
     };
     // Leaf extends left to min(2001, 1970) = 1970. Subtree extends left to min(1970, 2001) = 1970.
-    // Right sides: both Zero, no extension.
+    // Right sides: both Hard, no extension.
     // Intersection of [1970, 2007] and [1970, 2000] = [1970, 2000].
     assert_ulps_eq!(f.x_min(), 1970.0, max_ulps = 4);
     assert_ulps_eq!(f.x_max(), 2000.0, max_ulps = 4);
@@ -336,19 +336,19 @@ mod tests {
     assert!(peak > 1985.0 && peak < 1995.0, "Peak at {peak}, expected near 1990");
   }
 
-  /// C5: disjoint grids, Zero tail -- stays Empty (zero outside support, intersection correct).
+  /// C5: disjoint grids, Hard tail -- stays Empty (zero outside support, intersection correct).
   #[test]
-  fn test_multiply_tail_c5_disjoint_zero_tail() {
+  fn test_multiply_tail_c5_disjoint_hard_tail() {
     let a = Distribution::Function(
       make_function(10.0, 20.0, 101, 15.0, 3.0)
-        .with_left_extrap(BoundaryBehavior::Zero)
+        .with_left_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let b = Distribution::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
     let result = distribution_multiplication(&a, &b).unwrap();
     assert!(
       matches!(result, Distribution::Empty),
-      "Zero tail should not prevent Empty"
+      "Hard tail should not prevent Empty"
     );
   }
 
@@ -390,30 +390,30 @@ mod tests {
     assert_ulps_eq!(f.x_max(), 15.0, max_ulps = 4);
   }
 
-  /// C8: mixed Constant left + Zero right -- backward message pattern.
+  /// C8: mixed Constant left + Hard right -- backward message pattern.
   #[test]
   fn test_multiply_tail_c8_mixed_constant_zero() {
-    // Both messages have Constant left (parent could be older) and Zero right (hard upper bound).
+    // Both messages have Constant left (parent could be older) and Hard right (hard upper bound).
     // Overlapping case -- verify tails don't corrupt the result.
     let a = Distribution::Function(
       make_function(0.0, 10.0, 101, 5.0, 2.0)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Zero)
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let b = Distribution::Function(
       make_function(3.0, 8.0, 51, 5.5, 1.5)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Zero)
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let result = distribution_multiplication(&a, &b).unwrap();
     let Distribution::Function(f) = &result else {
       panic!("Expected Function")
     };
-    // Both extend left to min of both = 0. Right: both Zero, no extension.
+    // Both extend left to min of both = 0. Right: both Hard, no extension.
     // Intersection of [0, 10] and [0, 8] = [0, 8].
     assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
     assert_ulps_eq!(f.x_max(), 8.0, max_ulps = 4);
@@ -453,21 +453,21 @@ mod tests {
       make_function(2000.0, 2010.0, 101, 2005.0, 2.0)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Zero)
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let msg2 = Distribution::Function(
       make_function(2001.0, 2008.0, 71, 2004.0, 1.5)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Zero)
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let msg3 = Distribution::Function(
       make_function(2003.0, 2009.0, 61, 2006.0, 1.5)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Zero)
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     // Fourth message: disjoint from the narrowed accumulator but reachable via Constant left tail.
@@ -475,7 +475,7 @@ mod tests {
       make_function(1970.0, 1999.0, 291, 1990.0, 5.0)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Zero)
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
 
@@ -490,7 +490,7 @@ mod tests {
     };
     // The composed tails survive normalization across every step.
     assert_eq!(BoundaryBehavior::Constant, f.left_extrap());
-    assert_eq!(BoundaryBehavior::Zero, f.right_extrap());
+    assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
     assert!(
       accum.likely_time().is_some(),
       "Accumulated result must have a likely_time"
@@ -510,21 +510,21 @@ mod tests {
       make_function(2024.0, 2026.0, 21, 2025.0, 0.5)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Zero)
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let msg_recent_2 = Distribution::Function(
       make_function(2024.5, 2025.5, 11, 2025.0, 0.3)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Zero)
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let msg_old = Distribution::Function(
       make_function(1970.0, 1999.0, 291, 1990.0, 5.0)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Zero)
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
 
@@ -553,27 +553,27 @@ mod tests {
     let f = make_function(2000.0, 2010.0, 101, 2005.0, 2.0)
       .with_left_extrap(BoundaryBehavior::Constant)
       .unwrap()
-      .with_right_extrap(BoundaryBehavior::Zero)
+      .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
     let normalized = Distribution::Function(f).normalize();
     let Distribution::Function(f) = &normalized else {
       panic!("Expected Function, got {normalized:?}")
     };
     assert_eq!(BoundaryBehavior::Constant, f.left_extrap());
-    assert_eq!(BoundaryBehavior::Zero, f.right_extrap());
+    assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
     // Peak scaled to 1.0, tails unchanged.
     assert_ulps_eq!(1.0, f.y().iter().copied().fold(f64::MIN, f64::max), max_ulps = 4);
   }
 
   /// Function * Function composes the per-side result tail from the operands' tails, with
-  /// precedence Constant < Zero < Error (the more restrictive tail wins).
+  /// precedence Constant < Hard < Error (the more restrictive tail wins).
   #[rustfmt::skip]
   #[rstest]
   #[case::constant_constant(BoundaryBehavior::Constant, BoundaryBehavior::Constant, BoundaryBehavior::Constant)]
-  #[case::constant_zero(    BoundaryBehavior::Constant, BoundaryBehavior::Zero,     BoundaryBehavior::Zero)]
+  #[case::constant_hard(    BoundaryBehavior::Constant, BoundaryBehavior::Hard,     BoundaryBehavior::Hard)]
   #[case::constant_error(   BoundaryBehavior::Constant, BoundaryBehavior::Error,    BoundaryBehavior::Error)]
-  #[case::zero_zero(        BoundaryBehavior::Zero,     BoundaryBehavior::Zero,     BoundaryBehavior::Zero)]
-  #[case::zero_error(       BoundaryBehavior::Zero,     BoundaryBehavior::Error,    BoundaryBehavior::Error)]
+  #[case::hard_hard(        BoundaryBehavior::Hard,     BoundaryBehavior::Hard,     BoundaryBehavior::Hard)]
+  #[case::hard_error(       BoundaryBehavior::Hard,     BoundaryBehavior::Error,    BoundaryBehavior::Error)]
   #[case::error_error(      BoundaryBehavior::Error,    BoundaryBehavior::Error,    BoundaryBehavior::Error)]
   #[trace]
   fn test_multiply_function_function_composes_result_tails(

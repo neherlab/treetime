@@ -224,10 +224,10 @@ where
       let parent_except_subtree = restrict_to_reachable(parent_except_subtree, subtree_dist, branch_dist)?;
 
       // Tail policy for the forward message (kb/decisions/distribution-tails-and-arithmetic.md).
-      // The parent's time is a hard lower bound (left tail Zero); there is no upper bound from
+      // The parent's time is a hard lower bound (left tail Hard); there is no upper bound from
       // the parent side on how far in the future the node could be (right tail Constant).
       let dist_from_parent = distribution_convolution(&parent_except_subtree, branch_dist)?
-        .with_left_extrap(BoundaryBehavior::Zero)?
+        .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Constant)?;
       // Normalize to prevent numerical underflow: the backward pass stores normalized
       // distributions (max=1.0), and the convolution/division can produce arbitrary scales.
@@ -250,11 +250,11 @@ where
       (parent.time_distribution(), edge.branch_length_distribution())
     {
       // Same forward tail policy as the two-parent-message branch above. The forward message
-      // needs Zero left / Constant right regardless of the convolution's own tails, so apply
+      // needs Hard left / Constant right regardless of the convolution's own tails, so apply
       // them explicitly after normalize() (which preserves whatever tails it received).
       let dist_from_parent = distribution_convolution(parent_time_dist, branch_dist)?
         .normalize()
-        .with_left_extrap(BoundaryBehavior::Zero)?
+        .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Constant)?;
       log_refinement(&slot.node, parent_time_dist, &dist_from_parent);
       slot.node.set_time_distribution(Some(Arc::new(dist_from_parent)));

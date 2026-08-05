@@ -95,7 +95,7 @@ fn multiply_point_function<Y: YAxisPolicy>(
   if let Some(tail) = tail {
     match tail {
       BoundaryBehavior::Constant => {},
-      BoundaryBehavior::Error | BoundaryBehavior::Zero => return Ok(Distribution::empty()),
+      BoundaryBehavior::Error | BoundaryBehavior::Hard => return Ok(Distribution::empty()),
     }
   }
   let func_value = func.interp(t)?;
@@ -300,19 +300,19 @@ fn with_composed_tails<Y: YAxisPolicy>(
 ///
 /// Beyond a boundary the product is evaluated pointwise: if either operand is undefined there
 /// the product is undefined (`Error`); otherwise if either operand is zero the product is zero
-/// (`Zero`); only when both operands are flat non-zero constants is the product a flat constant
-/// (`Constant`). This is the maximum over the precedence `Constant` < `Zero` < `Error`.
+/// (`Hard`); only when both operands are flat non-zero constants is the product a flat constant
+/// (`Constant`). This is the maximum over the precedence `Constant` < `Hard` < `Error`.
 fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> BoundaryBehavior {
   match (a, b) {
     (BoundaryBehavior::Error, _) | (_, BoundaryBehavior::Error) => BoundaryBehavior::Error,
-    (BoundaryBehavior::Zero, _) | (_, BoundaryBehavior::Zero) => BoundaryBehavior::Zero,
+    (BoundaryBehavior::Hard, _) | (_, BoundaryBehavior::Hard) => BoundaryBehavior::Hard,
     (BoundaryBehavior::Constant, BoundaryBehavior::Constant) => BoundaryBehavior::Constant,
   }
 }
 
 /// Compute support intersection for multiplication, honoring operand tails.
 ///
-/// Each grid boundary is either *hard* (the domain terminates: `Zero` is zero probability
+/// Each grid boundary is either *hard* (the domain terminates: `Hard` is zero probability
 /// beyond, `Error` is undefined beyond) or *soft* (the distribution continues past the grid
 /// edge under a declared tail law). The product domain, resolved per side independently, is:
 ///

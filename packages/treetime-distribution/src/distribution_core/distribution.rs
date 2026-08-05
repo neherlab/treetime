@@ -201,7 +201,7 @@ impl<Y: YAxisPolicy> Distribution<Y> {
   ///
   /// Applies to the `Function` variant, whose support is finite and gridded. The other
   /// variants have no interpolated tail, so this is a no-op for them. Rejects a
-  /// [`BoundaryBehavior::Zero`] tail under a negative-log representation.
+  /// [`BoundaryBehavior::Hard`] tail under a negative-log representation.
   pub fn with_left_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
     match self {
       Self::Function(f) => Ok(Self::Function(f.with_left_extrap(behavior)?)),
