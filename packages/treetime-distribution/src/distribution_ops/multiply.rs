@@ -312,10 +312,22 @@ fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> Boun
 
 /// Compute support intersection for multiplication, honoring operand tails.
 ///
-/// A `Constant` tail declares the operand evaluable beyond its grid boundary on that side.
-/// Multiplication extends the evaluable domain to the other operand's bound. `Zero` and `Error`
-/// tails keep the grid boundary as-is (intersection is correct when the value is zero or
-/// undefined outside support).
+/// Each grid boundary is either *hard* (the domain terminates: `Zero` is zero probability
+/// beyond, `Error` is undefined beyond) or *soft* (the distribution continues past the grid
+/// edge under a declared tail law). The product domain, resolved per side independently, is:
+///
+/// - both hard: the *tightest* (innermost) hard bound -- a hard bound is a fact about a
+///   distribution, so the product can be non-zero only where both operands are;
+/// - both soft: the *loosest* (outermost) soft bound -- either operand's tail law continues to
+///   the other, so the product remains evaluable out to the farther edge;
+/// - mixed: the hard bound dominates -- it terminates the domain regardless of the soft operand.
+///
+/// A soft boundary extends the operand's evaluable domain to the other operand's bound on the
+/// same side; a hard boundary keeps its grid edge. Intersecting the two extended domains then
+/// selects the tightest-hard / loosest-soft bound automatically. This is why the Ebola-scale
+/// disjoint-grid product stays non-empty: the backward messages are soft on the left (the parent
+/// could be arbitrarily older), so the left side takes the loosest soft bound instead of
+/// collapsing to an empty intersection of the two finite grids.
 fn multiplication_support_intersection(
   a_bounds: (f64, f64),
   a_tails: (BoundaryBehavior, BoundaryBehavior),
@@ -323,24 +335,24 @@ fn multiplication_support_intersection(
   b_tails: (BoundaryBehavior, BoundaryBehavior),
 ) -> SupportIntersection {
   let a_eval = (
-    if a_tails.0 == BoundaryBehavior::Constant {
+    if a_tails.0.is_soft() {
       a_bounds.0.min(b_bounds.0)
     } else {
       a_bounds.0
     },
-    if a_tails.1 == BoundaryBehavior::Constant {
+    if a_tails.1.is_soft() {
       a_bounds.1.max(b_bounds.1)
     } else {
       a_bounds.1
     },
   );
   let b_eval = (
-    if b_tails.0 == BoundaryBehavior::Constant {
+    if b_tails.0.is_soft() {
       b_bounds.0.min(a_bounds.0)
     } else {
       b_bounds.0
     },
-    if b_tails.1 == BoundaryBehavior::Constant {
+    if b_tails.1.is_soft() {
       b_bounds.1.max(a_bounds.1)
     } else {
       b_bounds.1

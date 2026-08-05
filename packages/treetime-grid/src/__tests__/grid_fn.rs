@@ -207,4 +207,16 @@ mod tests {
     assert_ulps_eq!(resampled.y(), &array![0.0, 5.0, 10.0, 15.0, 20.0], max_ulps = 4);
     Ok(())
   }
+
+  /// A soft boundary continues the distribution past the grid edge (`Constant`); a hard
+  /// boundary terminates the domain (`Zero`: zero beyond; `Error`: undefined beyond).
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::constant(BoundaryBehavior::Constant, true)]
+  #[case::zero(    BoundaryBehavior::Zero,     false)]
+  #[case::error(   BoundaryBehavior::Error,    false)]
+  #[trace]
+  fn test_boundary_behavior_is_soft(#[case] behavior: BoundaryBehavior, #[case] expected: bool) {
+    assert_eq!(expected, behavior.is_soft());
+  }
 }

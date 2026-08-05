@@ -35,6 +35,23 @@ pub enum BoundaryBehavior {
   Constant,
 }
 
+impl BoundaryBehavior {
+  /// Whether this boundary is *soft*: the distribution continues past the grid edge, so the
+  /// grid boundary is a representation choice (where interpolation stopped), not a fact about
+  /// the distribution. A soft boundary is evaluable beyond the grid via its declared tail law
+  /// and therefore *extends* the evaluable domain under multiplication.
+  ///
+  /// The complement is a *hard* boundary: the grid edge terminates the domain (`Zero`: zero
+  /// probability beyond; `Error`: out-of-support evaluation is undefined). A hard boundary
+  /// *restricts* the result domain and is never silently extended.
+  ///
+  /// Currently `Constant` is the only soft tail. This predicate is what the multiplication
+  /// rule keys off, so a future soft tail law extends the domain without touching that rule.
+  pub fn is_soft(self) -> bool {
+    matches!(self, BoundaryBehavior::Constant)
+  }
+}
+
 /// Function represented on a uniform grid for piecewise linear interpolation
 ///
 /// Represents a function as a set of (x, y) points on a uniformly-spaced grid, providing
