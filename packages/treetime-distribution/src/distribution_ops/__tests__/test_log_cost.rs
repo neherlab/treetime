@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::DistributionFunction;
+  use crate::DistributionNegLog;
   use crate::DistributionPlain as Distribution;
-  use crate::distribution_ops::log_cost::distribution_apply_neg_log_weight;
+  use crate::distribution_ops::log_cost::{distribution_add_neg_log_weight, distribution_apply_neg_log_weight};
   use approx::assert_abs_diff_eq;
   use ndarray::{Array1, array};
+  use treetime_utils::assert_error;
 
   /// Empty passes through unchanged.
   #[test]
@@ -133,5 +135,44 @@ mod tests {
     // leaves its normalized amplitudes and support unchanged.
     let expected = Distribution::Function(function);
     assert_eq!(expected, actual);
+  }
+
+  /// Cross-representation oracle: applying a neg-log weight natively in log space and converting
+  /// to normalized plain probability equals applying the same weight through the plain path.
+  /// Ordinates [4, 0, 3] are small enough that the plain round-trip does not underflow.
+  #[test]
+  fn test_log_cost_add_neg_log_weight_matches_plain_apply() {
+    let neglog = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
+    let via_neglog = distribution_add_neg_log_weight(&neglog, |t: f64| Ok(0.5 * t))
+      .unwrap()
+      .to_plain_normalized();
+    let via_plain = distribution_apply_neg_log_weight(&neglog.to_plain(), |t: f64| Ok(0.5 * t)).unwrap();
+    assert_abs_diff_eq!(via_plain.y(), via_neglog.y(), epsilon = 1e-15);
+  }
+
+  /// A constant weight is a uniform shift in log space, which normalization removes: the result
+  /// equals the already-normalized input.
+  #[test]
+  fn test_log_cost_add_neg_log_weight_constant_is_uniform_shift() {
+    let neglog = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
+    let actual = distribution_add_neg_log_weight(&neglog, |_| Ok(10.0)).unwrap();
+    assert_abs_diff_eq!(array![4.0, 0.0, 3.0], actual.y(), epsilon = 1e-15);
+  }
+
+  /// Empty passes through unchanged.
+  #[test]
+  fn test_log_cost_add_neg_log_weight_empty_passthrough() {
+    let actual = distribution_add_neg_log_weight(&DistributionNegLog::Empty, |_| Ok(1.0)).unwrap();
+    assert_eq!(DistributionNegLog::Empty, actual);
+  }
+
+  /// A Formula has no grid and is rejected.
+  #[test]
+  fn test_log_cost_add_neg_log_weight_rejects_formula() {
+    let formula = DistributionNegLog::Formula(crate::DistributionFormula::new(|_| Ok(1.0), 0.0, 10.0));
+    assert_error!(
+      distribution_add_neg_log_weight(&formula, |_| Ok(1.0)),
+      "distribution_add_neg_log_weight requires a concrete Point, Range, or Function distribution"
+    );
   }
 }
