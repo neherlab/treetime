@@ -3,7 +3,7 @@ mod tests {
   use crate::DistributionFunction;
   use crate::DistributionPlain as Distribution;
   use crate::distribution_core::formula::DistributionFormula;
-  use crate::distribution_ops::multiply::distribution_multiplication;
+  use crate::distribution_ops::multiply::{distribution_multiplication, hard_domains_disjoint};
   use crate::policy::Plain;
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
@@ -599,5 +599,29 @@ mod tests {
       panic!("Expected Function, got {ba:?}")
     };
     assert_eq!(expected_left, fba.left_extrap());
+  }
+
+  /// An empty product is legitimate only when the operands' hard domains are genuinely disjoint.
+  /// A soft boundary is unbounded on that side, so it bridges a gap and the domains overlap; only
+  /// two hard bounds facing each other can separate the domains. Multiplication returns `Empty`
+  /// exactly in the disjoint case and reports an internal error otherwise (numerical collapse).
+  ///
+  /// `C` = Constant (soft), `H` = Hard, `E` = Error. Each operand is (lo, hi, left_tail, right_tail).
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::hard_gap_disjoint(          (10.0, 20.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    ( 0.0,  8.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    true)]
+  #[case::overlapping(                ( 0.0, 10.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    ( 5.0, 15.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    false)]
+  #[case::endpoint_contact(           ( 0.0, 10.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    (10.0, 20.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    false)]
+  #[case::soft_left_bridges_gap(      (10.0, 20.0, BoundaryBehavior::Constant, BoundaryBehavior::Error), ( 0.0,  8.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    false)]
+  #[case::facing_bounds_hard_far_soft((10.0, 20.0, BoundaryBehavior::Error, BoundaryBehavior::Constant), ( 0.0,  8.0, BoundaryBehavior::Constant, BoundaryBehavior::Error), true)]
+  #[case::backward_messages_never(    (2001.0, 2007.0, BoundaryBehavior::Constant, BoundaryBehavior::Hard), (1970.0, 2000.0, BoundaryBehavior::Constant, BoundaryBehavior::Hard), false)]
+  #[trace]
+  fn test_multiply_hard_domains_disjoint(
+    #[case] (a_lo, a_hi, a_left, a_right): (f64, f64, BoundaryBehavior, BoundaryBehavior),
+    #[case] (b_lo, b_hi, b_left, b_right): (f64, f64, BoundaryBehavior, BoundaryBehavior),
+    #[case] expected: bool,
+  ) {
+    let actual = hard_domains_disjoint((a_lo, a_hi), (a_left, a_right), (b_lo, b_hi), (b_left, b_right));
+    assert_eq!(expected, actual);
   }
 }

@@ -10,6 +10,7 @@ use crate::policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::{Array1, Zip};
 use treetime_grid::BoundaryBehavior;
+use treetime_utils::make_internal_error;
 
 /// Grid size for discretizing Formula distributions that have no natural grid.
 const FORMULA_GRID_SIZE: usize = 200;
@@ -125,13 +126,12 @@ fn multiply_range_function<Y: YAxisPolicy>(
   range: &DistributionRange<f64, Y>,
   func: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  match multiplication_support_intersection(
-    (range.start(), range.end()),
-    (BoundaryBehavior::Error, BoundaryBehavior::Error),
-    (func.x_min(), func.x_max()),
-    (func.left_extrap(), func.right_extrap()),
-  ) {
-    SupportIntersection::Disjoint => Ok(Distribution::empty()),
+  let a_bounds = (range.start(), range.end());
+  let a_tails = (BoundaryBehavior::Error, BoundaryBehavior::Error);
+  let b_bounds = (func.x_min(), func.x_max());
+  let b_tails = (func.left_extrap(), func.right_extrap());
+  match multiplication_support_intersection(a_bounds, a_tails, b_bounds, b_tails) {
+    SupportIntersection::Disjoint => multiplication_empty_result(a_bounds, a_tails, b_bounds, b_tails),
     SupportIntersection::Point(t) => {
       let amplitude = Y::multiply(range.amplitude(), func.interp(t)?);
       Ok(Distribution::point(t, amplitude))
@@ -145,8 +145,8 @@ fn multiply_range_function<Y: YAxisPolicy>(
       // A range has no interpolated tail (Error both sides), so composition keeps Error tails.
       let function = with_composed_tails(
         DistributionFunction::from_range_values(bounds, values)?,
-        (BoundaryBehavior::Error, BoundaryBehavior::Error),
-        (func.left_extrap(), func.right_extrap()),
+        a_tails,
+        b_tails,
       )?;
       Ok(Distribution::Function(function))
     },
@@ -157,13 +157,12 @@ fn multiply_function_function<Y: YAxisPolicy>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  match multiplication_support_intersection(
-    (a.x_min(), a.x_max()),
-    (a.left_extrap(), a.right_extrap()),
-    (b.x_min(), b.x_max()),
-    (b.left_extrap(), b.right_extrap()),
-  ) {
-    SupportIntersection::Disjoint => Ok(Distribution::empty()),
+  let a_bounds = (a.x_min(), a.x_max());
+  let a_tails = (a.left_extrap(), a.right_extrap());
+  let b_bounds = (b.x_min(), b.x_max());
+  let b_tails = (b.left_extrap(), b.right_extrap());
+  match multiplication_support_intersection(a_bounds, a_tails, b_bounds, b_tails) {
+    SupportIntersection::Disjoint => multiplication_empty_result(a_bounds, a_tails, b_bounds, b_tails),
     SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.interp(t)?, b.interp(t)?))),
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, a.dx().min(b.dx()))?;
@@ -175,8 +174,8 @@ fn multiply_function_function<Y: YAxisPolicy>(
         .map_collect(|&value_a, &value_b| Y::multiply(value_a, value_b));
       let function = with_composed_tails(
         DistributionFunction::from_range_values(bounds, values)?,
-        (a.left_extrap(), a.right_extrap()),
-        (b.left_extrap(), b.right_extrap()),
+        a_tails,
+        b_tails,
       )?;
       Ok(Distribution::Function(function))
     },
@@ -212,13 +211,12 @@ fn multiply_formula_function<Y: YAxisPolicy>(
   a: &DistributionFormula<Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  match multiplication_support_intersection(
-    (a.t_min(), a.t_max()),
-    (BoundaryBehavior::Error, BoundaryBehavior::Error),
-    (b.x_min(), b.x_max()),
-    (b.left_extrap(), b.right_extrap()),
-  ) {
-    SupportIntersection::Disjoint => Ok(Distribution::empty()),
+  let a_bounds = (a.t_min(), a.t_max());
+  let a_tails = (BoundaryBehavior::Error, BoundaryBehavior::Error);
+  let b_bounds = (b.x_min(), b.x_max());
+  let b_tails = (b.left_extrap(), b.right_extrap());
+  match multiplication_support_intersection(a_bounds, a_tails, b_bounds, b_tails) {
+    SupportIntersection::Disjoint => multiplication_empty_result(a_bounds, a_tails, b_bounds, b_tails),
     SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.eval_single(t)?, b.interp(t)?))),
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, b.dx())?;
@@ -231,8 +229,8 @@ fn multiply_formula_function<Y: YAxisPolicy>(
       // A formula has no interpolated tail (Error both sides), so composition keeps Error tails.
       let function = with_composed_tails(
         DistributionFunction::from_range_values(bounds, values)?,
-        (BoundaryBehavior::Error, BoundaryBehavior::Error),
-        (b.left_extrap(), b.right_extrap()),
+        a_tails,
+        b_tails,
       )?;
       Ok(Distribution::Function(function))
     },
@@ -359,4 +357,66 @@ fn multiplication_support_intersection(
     },
   );
   distribution_support_intersection(a_eval, b_eval)
+}
+
+/// Produce the `Empty` result of a Function-producing multiplication, checking that it is
+/// legitimate.
+///
+/// A product is `Empty` only when the operands' *hard* domains are genuinely disjoint: a hard
+/// boundary is a fact about a distribution (probability is zero, or evaluation undefined, beyond
+/// it), so two distributions whose hard domains do not overlap cannot both be non-zero anywhere.
+/// A soft boundary never separates domains -- the distribution continues past it under its tail
+/// law -- so an `Empty` that disjoint hard domains do not explain is a numerical or logic
+/// collapse. In the timetree passes such an `Empty` silently poisons every ancestor to the root
+/// (the original motivating defect), so it is reported as an internal error rather than returned.
+fn multiplication_empty_result<Y: YAxisPolicy>(
+  a_bounds: (f64, f64),
+  a_tails: (BoundaryBehavior, BoundaryBehavior),
+  b_bounds: (f64, f64),
+  b_tails: (BoundaryBehavior, BoundaryBehavior),
+) -> Result<Distribution<Y>, Report> {
+  if hard_domains_disjoint(a_bounds, a_tails, b_bounds, b_tails) {
+    Ok(Distribution::empty())
+  } else {
+    make_internal_error!(
+      "Multiplication produced an empty result, but the operands' hard domains overlap: \
+       operand A grid [{}, {}] tails ({:?}, {:?}), operand B grid [{}, {}] tails ({:?}, {:?}). \
+       An empty product must arise only from genuinely disjoint hard domains, never from numerical collapse",
+      a_bounds.0,
+      a_bounds.1,
+      a_tails.0,
+      a_tails.1,
+      b_bounds.0,
+      b_bounds.1,
+      b_tails.0,
+      b_tails.1
+    )
+  }
+}
+
+/// Whether the operands' *hard* domains are genuinely disjoint.
+///
+/// A soft boundary does not bound the domain (the distribution continues under its tail law), so
+/// it is treated as unbounded on that side; only hard boundaries can separate two domains. The
+/// hard domains are disjoint when the greatest hard lower bound exceeds the least hard upper
+/// bound.
+pub fn hard_domains_disjoint(
+  a_bounds: (f64, f64),
+  a_tails: (BoundaryBehavior, BoundaryBehavior),
+  b_bounds: (f64, f64),
+  b_tails: (BoundaryBehavior, BoundaryBehavior),
+) -> bool {
+  let a_lo = if a_tails.0.is_soft() {
+    f64::NEG_INFINITY
+  } else {
+    a_bounds.0
+  };
+  let a_hi = if a_tails.1.is_soft() { f64::INFINITY } else { a_bounds.1 };
+  let b_lo = if b_tails.0.is_soft() {
+    f64::NEG_INFINITY
+  } else {
+    b_bounds.0
+  };
+  let b_hi = if b_tails.1.is_soft() { f64::INFINITY } else { b_bounds.1 };
+  a_lo.max(b_lo) > a_hi.min(b_hi)
 }
