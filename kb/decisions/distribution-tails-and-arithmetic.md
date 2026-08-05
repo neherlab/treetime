@@ -116,7 +116,7 @@ Coalescent contributions do not introduce another grid. The backward pass multip
 
 Two specific divergences from v0's distribution handling:
 
-1. **Tail ownership.** v0 owns convolution tails inside `fn NodeInterpolator.convolve_fft()` ([node_interpolator.py#L231-L256](../../packages/legacy/treetime/treetime/node_interpolator.py#L231-L256)) as slope-based extrapolation (linear in neg-log, exponential in probability) constructed from the outermost trusted points. v0 has no per-pass tail override. v1 attaches a per-message `Constant`/`Zero` policy after each convolution and does not reconstruct v0's slope-based tails.
+1. **Convolution tail reconstruction.** v0 rebuilds convolution tails inside `fn NodeInterpolator.convolve_fft()` ([node_interpolator.py#L231-L256](../../packages/legacy/treetime/treetime/node_interpolator.py#L231-L256)) as slope-based extrapolation (linear in neg-log, exponential in probability) from the outermost trusted points. v1 now reconstructs the same tails in `fn convolution_function_function()`: the FFT runs in plain probability space and is trusted only above a peak-relative floor (`1e-13`, matching v0), and the sub-floor tail is rebuilt by a two-point secant slope in negative-log space, extended only where it decays away from support. The reconstruction is policy-generic (`Plain` and `NegLog`) because each operand is converted to peak-normalized plain probability around the FFT via `fn YAxisPolicy::to_neg_log()` / `fn YAxisPolicy::from_neg_log()` and back. Separately, the inference passes still attach a per-message `Constant`/`Zero` out-of-support policy; that policy governs how the _following_ multiplication or division extends the support intersection and is independent of the on-grid tail values the convolution reconstructs.
 
 2. **Default out-of-support handling.** v0 returns effectively zero probability outside support as a soft value (`fill_value=1e10` in neg-log, i.e. $\exp(-10^{10})$). v1 returns `Error` by default, requiring an explicit `Zero` or `Constant` opt-in.
 
@@ -125,6 +125,8 @@ The v1 pass tails are motivated by node-time monotonicity: without a `Constant` 
 ## Accepted limitations
 
 This is a bounded resampling rule, not a derived interpolation-error criterion. Rounding can make the realized spacing slightly finer or coarser than the target. The $10^6$-point cap can make it substantially coarser. Sequential multiplication resamples at each binary operation and is not guaranteed to be associative, although Function * Function multiplication is commutative because its support and spacing choices are symmetric.
+
+Convolution now routes both policies through a shared plain-space peak-normalization (`fn to_peak_normalized_plain()`), so the `Plain` result carries ULP-level round-trip noise from the `-ln`/`exp` bracketing that the previous raw-probability path did not. The difference is at the limit of `f64` precision, far below any scientific tolerance, but exact-equality assertions on `Plain` convolution output no longer hold.
 
 Scientific workflows requiring posterior peak, normalization, or integrated-probability error bounds need a separate accuracy contract.
 

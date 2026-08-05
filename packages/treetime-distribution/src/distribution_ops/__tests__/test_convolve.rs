@@ -3,13 +3,13 @@ mod tests {
   use crate::DistributionNegLog;
   use crate::DistributionPlain as Distribution;
   use crate::distribution_core::function::DistributionFunction;
-  use crate::distribution_ops::convolve::{distribution_convolution, distribution_convolution_neglog};
+  use crate::distribution_ops::convolve::distribution_convolution;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_utils::assert_error;
+  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
   use self::helpers::{DistributionVariant, distribution};
 
@@ -28,7 +28,7 @@ mod tests {
       DistributionNegLog::function(t, y)
     };
 
-    let result = distribution_convolution_neglog(&gaussian(1.0)?, &gaussian(1.0)?)?;
+    let result = distribution_convolution(&gaussian(1.0)?, &gaussian(1.0)?)?;
 
     let y0 = result.eval(0.0)?;
     assert_abs_diff_eq!(0.0, result.likely_time().unwrap(), epsilon = 0.05);
@@ -151,11 +151,12 @@ mod tests {
     let f = Distribution::function(x, y).unwrap();
     let actual = distribution_convolution(&r, &f).unwrap();
 
-    let x = array![4.0, 6.0, 8.0, 10.0, 12.0, 14.0];
-    let y = array![1.0, 1.0, 3.0, 3.0, 3.0, 1.0];
-    let expected = Distribution::function(x, y).unwrap();
-
-    assert_eq!(expected, actual);
+    // Convolution routes through a shared log-space peak-normalization, so the plain result carries
+    // ULP-level round-trip noise. Compare the grid exactly and the amplitudes at a tight tolerance.
+    let expected_t = array![4.0, 6.0, 8.0, 10.0, 12.0, 14.0];
+    let expected_y = array![1.0, 1.0, 3.0, 3.0, 3.0, 1.0];
+    assert_eq!(expected_t, actual.t());
+    pretty_assert_abs_diff_eq!(expected_y, actual.y(), epsilon = 1e-12);
   }
 
   #[test]
@@ -189,11 +190,11 @@ mod tests {
 
     let actual = distribution_convolution(&a, &b).unwrap();
 
-    let expected_x = array![0.0, 1.0, 2.0, 3.0];
+    // Shared log-space peak-normalization adds ULP-level round-trip noise to the plain result.
+    let expected_t = array![0.0, 1.0, 2.0, 3.0];
     let expected_y = array![1.0, 4.0, 5.0, 2.0];
-    let expected = Distribution::function(expected_x, expected_y).unwrap();
-
-    assert_eq!(expected, actual);
+    assert_eq!(expected_t, actual.t());
+    pretty_assert_abs_diff_eq!(expected_y, actual.y(), epsilon = 1e-12);
   }
 
   #[test]
@@ -301,11 +302,11 @@ mod tests {
 
     let actual = distribution_convolution(&parent_dist, &branch_dist).unwrap();
 
-    let expected_x = array![2011.0, 2011.5, 2012.0, 2012.5, 2013.0];
+    // Shared log-space peak-normalization adds ULP-level round-trip noise to the plain result.
+    let expected_t = array![2011.0, 2011.5, 2012.0, 2012.5, 2013.0];
     let expected_y = array![0.03, 0.13, 0.18, 0.13, 0.03];
-    let expected = Distribution::function(expected_x, expected_y).unwrap();
-
-    assert_eq!(expected, actual);
+    assert_eq!(expected_t, actual.t());
+    pretty_assert_abs_diff_eq!(expected_y, actual.y(), epsilon = 1e-12);
   }
 
   /// Regression: small dx values caused "x array must be uniformly spaced" when grid
