@@ -181,25 +181,26 @@ if [[ "${git_common_dir}" != "$(pwd)/.git" ]]; then
   volumes["${git_common_dir}"]="${git_common_dir}"
 fi
 
-declare -A sccache_env=()
-if [[ "${SCCACHE_ENABLED:-true}" == "true" ]]; then
-  sccache_env=(
-    ["RUSTC_WRAPPER"]="sccache"
-    ["SCCACHE_SERVER_UDS"]="/tmp/sccache.sock"
-  )
-  sccache_minio_port="${SCCACHE_MINIO_PORT:-63900}"
-  if bash -c "echo > /dev/tcp/127.0.0.1/${sccache_minio_port}" 2>/dev/null; then
-    sccache_env["SCCACHE_BUCKET"]="sccache"
-    sccache_env["SCCACHE_ENDPOINT"]="http://127.0.0.1:${sccache_minio_port}"
-    sccache_env["SCCACHE_REGION"]="auto"
-    sccache_env["SCCACHE_S3_USE_SSL"]="false"
-    sccache_env["AWS_ACCESS_KEY_ID"]="sccache"
-    sccache_env["AWS_SECRET_ACCESS_KEY"]="sccache0"
-  else
-    volumes["${SCCACHE_DIR:-${cache_dir}/sccache}"]="/home/${USER}/.cache/sccache"
-    sccache_env["SCCACHE_DIR"]="/home/${USER}/.cache/sccache"
-    sccache_env["SCCACHE_CACHE_SIZE"]="${SCCACHE_CACHE_SIZE:-5G}"
+# Compiler cache (optional). Forward standard sccache and cargo cache variables
+# from the environment (see .env) into the container. Set none of them and the
+# build compiles directly, exactly as before. A local-disk (SCCACHE_DIR) or
+# Unix-socket (SCCACHE_SERVER_UDS) path is bind-mounted at the same location
+# inside the container; networked backends (S3, Redis, WebDAV, memcached) need
+# only variables, since the container shares the host network. Values containing
+# spaces (e.g. CC="sccache cc") survive because each becomes a single --env arg.
+cache_env_flags=()
+for name in RUSTC_WRAPPER RUSTC_WORKSPACE_WRAPPER CARGO_INCREMENTAL CC CXX "${!SCCACHE_@}"; do
+  if [[ -n "${!name+x}" ]]; then
+    cache_env_flags+=(--env="${name}=${!name}")
   fi
+done
+
+if [[ -n "${SCCACHE_DIR:-}" ]]; then
+  volumes["${SCCACHE_DIR}"]="${SCCACHE_DIR}"
+fi
+if [[ "${SCCACHE_SERVER_UDS:-}" == /* ]]; then
+  sccache_uds_dir="$(dirname "${SCCACHE_SERVER_UDS}")"
+  volumes["${sccache_uds_dir}"]="${sccache_uds_dir}"
 fi
 
 mkdir -p "${!volumes[@]}"
@@ -244,7 +245,7 @@ docker run --rm -i $(tty -s && echo "-t") \
   --env="DO_NOT_TRACK=1" \
   --env="TURBO_TELEMETRY_DISABLED=1" \
   --env="electron_config_cache=/workdir/.cache/electron" \
-  $(for key in "${!sccache_env[@]}"; do echo "--env=${key}=${sccache_env[$key]}"; done) \
+  "${cache_env_flags[@]}" \
   "${version_flags[@]}" \
   "${x11_flags[@]}" \
   --ulimit="core=0" \
