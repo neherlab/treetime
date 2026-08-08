@@ -7,6 +7,8 @@ mod tests {
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
   use crate::clock::date_constraints::load_date_constraints;
+  use crate::coalescent::coalescent::CoalescentModel;
+  use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal_dense::PartitionMarginalDense;
@@ -39,8 +41,8 @@ mod tests {
 
     let (graph, partitions, clock_model) = build_timetree_setup(dataset, case)?;
     let mut graph = graph;
-    let coalescent_tc = Distribution::constant(tc);
-    run_timetree(&mut graph, &partitions, &clock_model, Some(&coalescent_tc), false)?;
+    let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph)?, &Distribution::constant(tc))?;
+    run_timetree(&mut graph, &partitions, &clock_model, Some(&coalescent), false)?;
 
     let times = extract_node_times(&graph);
     let expected_count = graph.num_nodes();

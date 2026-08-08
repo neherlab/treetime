@@ -1,4 +1,5 @@
 use crate::clock::clock_model::{ClockModel, ClockModelStats};
+use crate::coalescent::coalescent::CoalescentModel;
 use crate::make_error;
 use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
 use crate::payload::traits::TimetreeNode;
@@ -13,7 +14,6 @@ use std::collections::BTreeMap;
 use std::f64::consts::SQRT_2;
 use std::io::Write;
 use std::path::Path;
-use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::{GraphNodeKey, Named, TimeConstraint};
 use treetime_io::csv::CsvStructWriter;
@@ -54,7 +54,7 @@ pub fn compute_rate_susceptibility(
   graph: &mut GraphTimetree,
   partitions: &[PartitionTimetreeRef],
   clock_model: &ClockModel,
-  coalescent_tc: Option<&Distribution>,
+  coalescent: Option<&CoalescentModel>,
   rate_std: f64,
   no_indels: bool,
 ) -> Result<(), Report> {
@@ -80,21 +80,21 @@ pub fn compute_rate_susceptibility(
   // Run 1: upper rate bound
   scale_gammas(graph, &original_gammas, upper_rate / current_rate);
   info!("Rate susceptibility: running with upper rate {upper_rate:.6e}");
-  run_timetree(graph, partitions, clock_model, coalescent_tc, no_indels)
+  run_timetree(graph, partitions, clock_model, coalescent, no_indels)
     .wrap_err("Rate susceptibility: timetree at upper rate failed")?;
   let upper_dates = collect_node_times(graph);
 
   // Run 2: lower rate bound
   scale_gammas(graph, &original_gammas, lower_rate / current_rate);
   info!("Rate susceptibility: running with lower rate {lower_rate:.6e}");
-  run_timetree(graph, partitions, clock_model, coalescent_tc, no_indels)
+  run_timetree(graph, partitions, clock_model, coalescent, no_indels)
     .wrap_err("Rate susceptibility: timetree at lower rate failed")?;
   let lower_dates = collect_node_times(graph);
 
   // Run 3: central rate (restores graph to pre-call state)
   scale_gammas(graph, &original_gammas, 1.0);
   info!("Rate susceptibility: running with central rate {current_rate:.6e}");
-  run_timetree(graph, partitions, clock_model, coalescent_tc, no_indels)
+  run_timetree(graph, partitions, clock_model, coalescent, no_indels)
     .wrap_err("Rate susceptibility: timetree at central rate failed")?;
 
   // Store sorted date triples per node.

@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::coalescent::coalescent::CoalescentModel;
-  use crate::coalescent::precomputed::CoalescentPrecomputed;
   use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
@@ -399,11 +398,8 @@ mod tests {
     }
 
     pub(super) fn coalescent_model(tc: f64) -> Result<CoalescentModel, Report> {
-      let precomputed = CoalescentPrecomputed::from_lineage_counts(PiecewiseConstantFn::new(
-        array![1900.0, 2100.0],
-        array![1.0, 2.0, 0.0],
-      ));
-      CoalescentModel::new(&precomputed, &Distribution::constant(tc))
+      let lineage_counts = PiecewiseConstantFn::new(array![1900.0, 2100.0], array![1.0, 2.0, 0.0]);
+      CoalescentModel::new(&lineage_counts, &Distribution::constant(tc))
     }
   }
 

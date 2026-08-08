@@ -2,7 +2,6 @@
 mod tests {
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::edge_data::CoalescentEdgeData;
-  use crate::coalescent::precomputed::CoalescentPrecomputed;
   use crate::coalescent::time_coordinate::CalendarTime;
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
@@ -123,7 +122,6 @@ mod tests {
     values: ndarray::Array1<f64>,
     tc: f64,
   ) -> Result<CoalescentModel, Report> {
-    let precomputed = CoalescentPrecomputed::from_lineage_counts(PiecewiseConstantFn::new(breakpoints, values));
-    CoalescentModel::new(&precomputed, &Distribution::constant(tc))
+    CoalescentModel::new(&PiecewiseConstantFn::new(breakpoints, values), &Distribution::constant(tc))
   }
 }

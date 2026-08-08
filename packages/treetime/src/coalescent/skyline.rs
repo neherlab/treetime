@@ -1,6 +1,6 @@
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood, collect_coalescent_edges};
-use crate::coalescent::precomputed::CoalescentPrecomputed;
+use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::make_error;
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
@@ -98,10 +98,10 @@ where
     params.n_points, params.stiffness
   );
 
-  let precomputed = CoalescentPrecomputed::from_graph(graph)?;
+  let lineage_counts = compute_lineage_counts(graph)?;
   let edges = collect_coalescent_edges(graph)?;
 
-  let breakpoints = precomputed.lineage_counts().breakpoints();
+  let breakpoints = lineage_counts.breakpoints();
   if breakpoints.len() < 2 {
     return make_error!(
       "Skyline optimization requires at least 2 breakpoints, got {}",
@@ -113,7 +113,7 @@ where
 
   let boundaries = equal_width_boundaries(t_min, t_max, params.n_points);
 
-  let (i_seg, m_seg) = accumulate_segment_terms(precomputed.lineage_counts(), &edges, &boundaries);
+  let (i_seg, m_seg) = accumulate_segment_terms(&lineage_counts, &edges, &boundaries);
 
   // The whole-tree pairwise-rate integral and merger count must be positive and
   // finite for a coalescent Tc to exist. A tree with no time span or no internal
@@ -138,7 +138,7 @@ where
   let tc_distribution = build_tc_distribution(&boundaries, &tc_values);
 
   // Report the likelihood via the shared model so it matches `compute_coalescent_total_lh`.
-  let model = CoalescentModel::new(&precomputed, &tc_distribution)?;
+  let model = CoalescentModel::new(&lineage_counts, &tc_distribution)?;
   let log_likelihood = coalescent_log_likelihood(&edges, &model)?;
 
   info!(

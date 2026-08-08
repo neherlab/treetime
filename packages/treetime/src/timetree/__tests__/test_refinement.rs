@@ -6,7 +6,8 @@ mod tests {
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
-  use crate::coalescent::coalescent::compute_coalescent_model;
+  use crate::coalescent::coalescent::CoalescentModel;
+  use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal_dense::PartitionMarginalDense;
@@ -44,13 +45,8 @@ mod tests {
 
     let outcome = refine(&mut graph, &partitions, &mut clock_model, Some(&tc))?;
 
-    assert_eq!(
-      RefinementOutcome {
-        sequence_changes: 0,
-        topology: TopologyOutcome::Changed { resolved_nodes: 1 },
-      },
-      outcome
-    );
+    assert_eq!(0, outcome.sequence_changes);
+    assert_eq!(TopologyOutcome::Changed { resolved_nodes: 1 }, outcome.topology);
     assert_eq!(5, graph.get_nodes().len());
     assert!(
       graph
@@ -60,7 +56,7 @@ mod tests {
     );
 
     let edge_lh = compute_coalescent_total_lh(&graph, &tc)?;
-    let model = compute_coalescent_model(&graph, &tc)?;
+    let model = CoalescentModel::new(&compute_lineage_counts(&graph)?, &tc)?;
     let node_lh = -graph
       .get_nodes()
       .iter()
@@ -271,7 +267,10 @@ mod tests {
     coalescent_tc: Option<&Distribution>,
   ) -> Result<RefinementOutcome, Report> {
     let pinned_tc = Distribution::constant(REFINEMENT_TEST_TC);
-    let coalescent = compute_coalescent_model(graph, coalescent_tc.unwrap_or(&pinned_tc))?;
+    let coalescent = CoalescentModel::new(
+      &compute_lineage_counts(graph)?,
+      coalescent_tc.unwrap_or(&pinned_tc),
+    )?;
 
     Refinement {
       graph,
@@ -279,8 +278,8 @@ mod tests {
       clock_model,
       clock_params: &ClockParams::default(),
       branch_params: &BranchPointOptimizationParams::default(),
-      coalescent_tc,
       coalescent: &coalescent,
+      prior: coalescent_tc.is_some().then_some(&coalescent),
       rng: &mut get_random_number_generator(Some(REFINEMENT_TEST_SEED)),
       options: &refinement_options(),
     }

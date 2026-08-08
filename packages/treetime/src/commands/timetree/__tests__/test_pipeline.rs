@@ -42,7 +42,8 @@ mod tests {
 
     // Verify the exact log-likelihood schema.
     let header = lines[0];
-    let expected_header = "n_diff,n_resolved,log_lh_seq,log_lh_pos,log_lh_coal,log_lh_total";
+    let expected_header =
+      "n_diff,n_resolved,max_time_change,rms_time_change,log_lh_seq,log_lh_pos,log_lh_coal,log_lh_total";
     assert_eq!(expected_header, header);
 
     // Verify first data row has non-empty likelihood values

@@ -13,7 +13,6 @@ use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change
 use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
 use eyre::{Report, WrapErr};
 use log::info;
-use treetime_distribution::Distribution;
 use treetime_graph::assign_node_names::assign_node_names;
 
 pub(crate) struct Refinement<'a> {
@@ -22,11 +21,13 @@ pub(crate) struct Refinement<'a> {
   pub clock_model: &'a mut ClockModel,
   pub clock_params: &'a ClockParams,
   pub branch_params: &'a BranchPointOptimizationParams,
-  pub coalescent_tc: Option<&'a Distribution>,
-  /// Baseline coalescent model, built by the caller from the tree entering the optimization
-  /// loop and shared unchanged by every round. Supplies the per-branch merger rate that drives
-  /// polytomy resolution.
+  /// This round's coalescent model: lineage counts frozen at the tree entering the optimization
+  /// loop, `Tc` as re-estimated for this round. Supplies the per-branch merger rate polytomy
+  /// resolution samples against.
   pub coalescent: &'a CoalescentModel,
+  /// The same model, as the prior imposed on node times -- `None` for a run that carries no
+  /// coalescent prior, where the model exists only to give polytomy resolution a merger rate.
+  pub prior: Option<&'a CoalescentModel>,
   /// Shared across refinement rounds so polytomy resolution draws from one continuous
   /// stream: re-seeding per round would correlate the sampled histories.
   pub rng: &'a mut dyn rand::RngCore,
@@ -151,7 +152,7 @@ impl Refinement<'_> {
         self.options.no_indels,
       )
       .wrap_err("Coalescent-free timetree rebuild failed")?;
-      if self.coalescent_tc.is_none() {
+      if self.prior.is_none() {
         return Ok(());
       }
     } else {
@@ -162,7 +163,7 @@ impl Refinement<'_> {
       self.graph,
       self.partitions,
       self.clock_model,
-      self.coalescent_tc,
+      self.prior,
       self.options.no_indels,
     )
     .wrap_err("Timetree inference failed")

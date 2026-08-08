@@ -2,29 +2,26 @@ use crate::coalescent::edge_data::CoalescentEdgeData;
 use crate::coalescent::integration::{
   compute_integral_merger_rate, compute_merger_rate_per_lineage_scalar, compute_merger_rate_total_scalar,
 };
-use crate::coalescent::precomputed::CoalescentPrecomputed;
-use crate::payload::traits::TimetreeNode;
 use eyre::{Context, Report};
 use treetime_distribution::Distribution;
-use treetime_graph::edge::GraphEdge;
-use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_grid::piecewise_linear_fn::PiecewiseLinearFn;
 use treetime_utils::make_error;
 
-/// Builds one calendar-coordinate Kingman coalescent model for a tree and $T_c$.
-pub fn compute_coalescent_model<N, E, D>(graph: &Graph<N, E, D>, tc: &Distribution) -> Result<CoalescentModel, Report>
-where
-  N: GraphNode + TimetreeNode,
-  E: GraphEdge,
-  D: Sync + Send,
-{
-  let precomputed = CoalescentPrecomputed::from_graph(graph)?;
-  CoalescentModel::new(&precomputed, tc)
-}
-
 /// Calendar-coordinate Kingman coalescent rates and expected merger counts.
+///
+/// The three quantities enter differently, which is why the model is assembled from them rather
+/// than read off a tree: $k(t)$ is a fixed input, $T_c$ is estimated, and $H(t)$ is a compound
+/// of the two, materialised once here because it is an integral.
+///
+/// $k(t)$ has two roles, and only one of them may track the times being inferred. As the
+/// **prior** it sets the merger rate imposed on node times, and must be held fixed: deriving it
+/// from the current times makes the prior self-referential, so each pass moves the times, which
+/// moves $k(t)$, which moves the prior the next pass is inferred under, and the loop chases a
+/// receding target. As the **statistic** that $T_c$ is estimated from and the likelihood is
+/// evaluated against, it is read from the live tree, in
+/// [`optimize_skyline`](crate::coalescent::skyline::optimize_skyline) and
+/// [`compute_coalescent_total_lh`](crate::coalescent::total_lh::compute_coalescent_total_lh).
 ///
 /// Correspondence to v0 (`packages/legacy/treetime/treetime/merger_models.py`):
 ///
@@ -46,10 +43,14 @@ pub struct CoalescentModel {
 }
 
 impl CoalescentModel {
-  pub(crate) fn new(precomputed: &CoalescentPrecomputed, tc: &Distribution) -> Result<Self, Report> {
-    let expected_mergers = compute_integral_merger_rate(tc, precomputed.lineage_counts())?;
+  /// Assemble a model from lineage counts and a timescale.
+  ///
+  /// Cheap enough to rebuild whenever $T_c$ is re-estimated: it is one integral over the
+  /// breakpoints of `lineage_counts`, next to the solve that produced `tc`.
+  pub fn new(lineage_counts: &PiecewiseConstantFn, tc: &Distribution) -> Result<Self, Report> {
+    let expected_mergers = compute_integral_merger_rate(tc, lineage_counts)?;
     Ok(Self {
-      lineage_counts: precomputed.lineage_counts().clone(),
+      lineage_counts: lineage_counts.clone(),
       tc: tc.clone(),
       expected_mergers,
     })

@@ -1,5 +1,5 @@
 use crate::clock::clock_model::ClockModel;
-use crate::coalescent::coalescent::compute_coalescent_model;
+use crate::coalescent::coalescent::CoalescentModel;
 use crate::optimize::indel::estimate_indel_rate;
 use crate::partition::optimization_contribution::OptimizationContribution;
 use crate::partition::traits::PartitionTimetreeAll;
@@ -21,11 +21,16 @@ use treetime_graph::node::{GraphNode, Named};
 
 pub const BRANCH_GRID_SIZE: usize = 300;
 
+/// Infer node times.
+///
+/// `coalescent` is the prior imposed on those times, or `None` for a run that carries no
+/// coalescent prior. It is supplied rather than derived here because its lineage counts must be
+/// held fixed across passes; see [`CoalescentModel`].
 pub fn run_timetree<N, E, P>(
   graph: &mut Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   clock_model: &ClockModel,
-  coalescent_tc: Option<&Distribution>,
+  coalescent: Option<&CoalescentModel>,
   no_indels: bool,
 ) -> Result<(), Report>
 where
@@ -50,15 +55,8 @@ where
     create_branch_distributions_input_mode(graph, clock_rate)?;
   }
 
-  let coalescent_model = if let Some(tc) = coalescent_tc {
-    info!("## Computing coalescent model");
-    Some(compute_coalescent_model(graph, tc)?)
-  } else {
-    None
-  };
-
   info!("## Propagating distributions backward");
-  propagate_distributions_backward(graph, coalescent_model.as_ref())?;
+  propagate_distributions_backward(graph, coalescent)?;
 
   info!("## Propagating distributions forward");
   propagate_distributions_forward(graph)?;

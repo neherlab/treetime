@@ -12,6 +12,7 @@ mod tests {
   use crate::timetree::convergence::likelihood::{
     compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
   };
+  use crate::timetree::convergence::node_times::NodeTimeChange;
   use crate::timetree::convergence::optimizer::TimetreeOptimizer;
   use eyre::Report;
   use maplit::btreemap;
@@ -111,7 +112,7 @@ mod tests {
     let expected = -2.0 + 0.25_f64.ln();
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(1, 0, &graph, &partitions, None)?;
+    optimizer.record(1, 0, NodeTimeChange::default(), &graph, &partitions, None)?;
     let actual = optimizer
       .trace()
       .first()

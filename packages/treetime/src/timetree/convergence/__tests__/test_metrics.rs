@@ -12,6 +12,8 @@ mod tests {
     let metrics = ConvergenceMetrics {
       n_diff: 2,
       n_resolved: 1,
+      max_time_change: Some(0.5),
+      rms_time_change: Some(0.125),
       log_lh_seq: Some(LogLh::new(-10.0)),
       log_lh_pos: Some(LogLh::new(-20.0)),
       log_lh_coal: Some(LogLh::new(-30.0)),
@@ -20,6 +22,8 @@ mod tests {
     let expected = indoc! {r#"{
       "n_diff": 2,
       "n_resolved": 1,
+      "max_time_change": 0.5,
+      "rms_time_change": 0.125,
       "log_lh_seq": -10.0,
       "log_lh_pos": -20.0,
       "log_lh_coal": -30.0,

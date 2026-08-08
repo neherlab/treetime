@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::load_date_constraints;
-  use crate::coalescent::coalescent::compute_coalescent_model;
+  use crate::coalescent::coalescent::CoalescentModel;
+  use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::o;
   use crate::partition::timetree::GraphTimetree;
   use eyre::{Report, WrapErr};
@@ -41,7 +42,10 @@ mod tests {
     let snapshot: Snapshot = json_read_file(Path::new(FIXTURES_DIR).join(snapshot_file))
       .wrap_err_with(|| format!("When reading snapshot {snapshot_file}"))?;
     let graph = load_graph(&snapshot)?;
-    let model = compute_coalescent_model(&graph, &Distribution::constant(snapshot.inputs.tc))?;
+    let model = CoalescentModel::new(
+      &compute_lineage_counts(&graph)?,
+      &Distribution::constant(snapshot.inputs.tc),
+    )?;
     let tbp_grid = Grid::from_range_n_points(
       snapshot.tbp_grid.start,
       snapshot.tbp_grid.end,
