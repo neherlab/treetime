@@ -35,4 +35,10 @@ pub trait TimetreeNode: GraphNode + TimeConstraint<Arc<Distribution>> {
 /// Combines clock edge capabilities with branch distribution and time length.
 pub trait TimetreeEdge: GraphEdge + ClockEdge + BranchDistribution<Arc<Distribution>> + TimeLength {
   fn set_gamma(&mut self, gamma: f64);
+
+  /// Clock-constrained branch length, `clock_rate * gamma * (t_child - t_parent)`, as committed
+  /// by [`commit_clock_branch_lengths`](crate::timetree::inference::runner::commit_clock_branch_lengths).
+  /// `None` until the first commit, and read back only to damp the next one.
+  fn clock_branch_length(&self) -> Option<f64>;
+  fn set_clock_branch_length(&mut self, length: Option<f64>);
 }

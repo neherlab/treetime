@@ -161,6 +161,12 @@ impl TimetreeNode for NodeTimetree {
 pub struct EdgeTimetree {
   pub base: EdgeAncestral,
   pub time_length: Option<f64>,
+  /// Clock-constrained branch length in substitutions per site, `clock_rate * gamma * dt` over
+  /// the inferred node times. Distinct from `base.branch_length`, which stays the ML or input
+  /// length the branch-length grid is centred on and the root-to-tip regression reads; this one
+  /// is what sequence profiles propagate along. v0 keeps the same two-length split as
+  /// `branch_length` and `mutation_length`.
+  pub clock_branch_length: Option<f64>,
   pub branch_length_distribution: Option<Arc<Distribution>>,
   pub msg_to_parent: Option<Arc<Distribution>>,
   /// Branch-specific rate multiplier for relaxed molecular clock.
@@ -185,6 +191,12 @@ impl HasBranchLength for EdgeTimetree {
 
   fn set_branch_length(&mut self, weight: Option<f64>) {
     self.base.set_branch_length(weight);
+  }
+
+  /// The clock-constrained length once it has been committed, the ML or input length before
+  /// that and after a topology change has invalidated it.
+  fn profile_branch_length(&self) -> Option<f64> {
+    self.clock_branch_length.or_else(|| self.branch_length())
   }
 }
 
@@ -268,6 +280,14 @@ impl EdgeToGraphviz for EdgeTimetree {}
 impl TimetreeEdge for EdgeTimetree {
   fn set_gamma(&mut self, gamma: f64) {
     self.gamma = gamma;
+  }
+
+  fn clock_branch_length(&self) -> Option<f64> {
+    self.clock_branch_length
+  }
+
+  fn set_clock_branch_length(&mut self, length: Option<f64>) {
+    self.clock_branch_length = length;
   }
 }
 

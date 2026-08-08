@@ -3,6 +3,7 @@ use crate::timetree::convergence::likelihood::{
   compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
 };
 use crate::timetree::convergence::metrics::ConvergenceMetrics;
+use crate::timetree::convergence::node_times::NodeTimeChange;
 use eyre::Report;
 use log::info;
 use std::io::Write;
@@ -49,6 +50,7 @@ impl TimetreeOptimizer {
     &mut self,
     n_diff: usize,
     n_resolved: usize,
+    time_change: NodeTimeChange,
     graph: &GraphTimetree,
     partitions: &[PartitionTimetreeRef],
     coalescent_tc: Option<&Distribution>,
@@ -64,6 +66,8 @@ impl TimetreeOptimizer {
     let metric = ConvergenceMetrics {
       n_diff,
       n_resolved,
+      max_time_change: time_change.max,
+      rms_time_change: time_change.rms,
       log_lh_seq,
       log_lh_pos,
       log_lh_coal,
@@ -75,8 +79,10 @@ impl TimetreeOptimizer {
     }
 
     info!(
-      "  Iteration {}: n_diff={n_diff}, n_resolved={n_resolved}, log_lh_seq={:.2}, log_lh_pos={:.2}, log_lh_coal={:.2}, log_lh_total={:.2}{}",
+      "  Iteration {}: max_dt={:.4}, rms_dt={:.4}, n_diff={n_diff}, n_resolved={n_resolved}, log_lh_seq={:.2}, log_lh_pos={:.2}, log_lh_coal={:.2}, log_lh_total={:.2}{}",
       self.i,
+      metric.max_time_change.unwrap_or(f64::NAN),
+      metric.rms_time_change.unwrap_or(f64::NAN),
       metric.log_lh_seq.map_or(f64::NAN, |log_lh| log_lh.value()),
       metric.log_lh_pos.map_or(f64::NAN, |log_lh| log_lh.value()),
       metric.log_lh_coal.map_or(f64::NAN, |log_lh| log_lh.value()),

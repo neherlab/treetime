@@ -22,7 +22,7 @@ use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
 };
 use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer};
-use crate::timetree::inference::runner::run_timetree;
+use crate::timetree::inference::runner::{commit_clock_branch_lengths, run_timetree};
 use crate::timetree::optimization::clock_filter::{apply_outlier_bad_branches, report_bad_branches};
 use crate::timetree::optimization::reroot::reroot_tree;
 use crate::timetree::params::{TimeMarginalMode, build_covariation_clock_params, compute_effective_time_marginal};
@@ -275,6 +275,10 @@ pub fn run(
   }
   // at this stage we have a consistent coalescent model and timed tree. Subsequence steps are refinement and post-processing.
 
+  // Seed the clock-constrained lengths the loop's first marginal reconstruction propagates along.
+  // Undamped: nothing has been committed yet, so there is nothing to blend with.
+  commit_clock_branch_lengths(&input.graph, clock_model.clock_rate(), 1.0);
+
   progress.check_cancelled()?;
   progress.report("Optimization", 0.3, "");
   info!("### TreeTime: Optimisation rounds");
@@ -334,6 +338,7 @@ pub fn run(
       .record(
         outcome.sequence_changes,
         outcome.topology.resolved_nodes(),
+        outcome.time_change,
         &input.graph,
         &partitions,
         coalescent_tc.as_ref(),
@@ -375,6 +380,10 @@ pub fn run(
       params.no_indels,
     )
     .wrap_err("Final timetree inference failed")?;
+
+    // Undamped: this reconstruction reports the final tree, so it runs on the lengths these
+    // final times imply rather than on a blend with the loop's last round.
+    commit_clock_branch_lengths(&input.graph, clock_model.clock_rate(), 1.0);
 
     if !partitions.is_empty() {
       update_marginal(&input.graph, &partitions)?;

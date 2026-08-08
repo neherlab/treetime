@@ -116,7 +116,7 @@ where
       .read_arc()
       .payload()
       .read_arc()
-      .branch_length()
+      .profile_branch_length()
       .unwrap_or(0.0);
     let branch_length = fix_branch_length(length, branch_length);
     let msg_from_parent = if gtr.has_site_rates() {
@@ -365,7 +365,7 @@ where
       .read_arc()
       .payload()
       .read_arc()
-      .branch_length()
+      .profile_branch_length()
       .unwrap_or(0.0);
     let branch_length = fix_branch_length(length, branch_length);
     edge_data.msg_from_child = if gtr.has_site_rates() {

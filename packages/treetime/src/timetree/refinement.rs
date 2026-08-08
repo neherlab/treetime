@@ -5,8 +5,9 @@ use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_rero
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::{PartitionMarginalPasses, PartitionTimetreeOps};
+use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
-use crate::timetree::inference::runner::run_timetree;
+use crate::timetree::inference::runner::{CLOCK_BRANCH_LENGTH_DAMPING, commit_clock_branch_lengths, run_timetree};
 use crate::timetree::optimization::clock_filter::propagate_bad_branches;
 use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
 use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
@@ -37,17 +38,30 @@ impl Refinement<'_> {
     let total_length = self.total_sequence_length();
     self.apply_relaxed_clock(total_length)?;
 
-    // TODO: I am not sure we need to do the before after comparison. Comparing node times might be better.
-    // comparing sequences is a hold-over from early V0 where we fixed internal node states.
+    // Node times are what the round moves, so they are the primary convergence signal. The
+    // ancestral-state comparison is a hold-over from early v0, where internal node states were
+    // fixed; it survives only as the fallback for a tree with no comparable dated nodes.
+    let previous_times = capture_node_times(self.graph);
     let previous_states = capture_ancestral_states(self.graph, self.partitions);
     let topology = self.refine_topology(total_length)?;
     self.rebuild_inference(topology.changed())?;
+
+    // Close the loop: the times just inferred become the lengths the next round's marginal
+    // reconstruction propagates along. Damped, because each pass re-infers every time at once.
+    commit_clock_branch_lengths(
+      self.graph,
+      self.clock_model.clock_rate(),
+      CLOCK_BRANCH_LENGTH_DAMPING,
+    );
+
     let current_states = capture_ancestral_states(self.graph, self.partitions);
+    let time_change = measure_node_time_change(&previous_times, &capture_node_times(self.graph));
 
     self.update_clock_model()?;
 
     Ok(RefinementOutcome {
       sequence_changes: count_sequence_changes(&previous_states, &current_states),
+      time_change,
       topology,
     })
   }
@@ -112,6 +126,12 @@ impl Refinement<'_> {
       partition.write_arc().reconcile_topology(self.graph);
     }
 
+    // Re-parenting invalidates the committed lengths, which describe a parent-child pair that no
+    // longer exists. The sampled subtree dates every node it creates, so recommit from those
+    // times rather than falling back to ML lengths for the reconstruction that follows. Undamped:
+    // there is nothing meaningful to blend a moved edge with.
+    commit_clock_branch_lengths(self.graph, self.clock_model.clock_rate(), 1.0);
+
     Ok(TopologyOutcome::Changed { resolved_nodes })
   }
 
@@ -175,9 +195,10 @@ pub(crate) enum TopologyRefinement {
   Resolve,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct RefinementOutcome {
   pub sequence_changes: usize,
+  pub time_change: NodeTimeChange,
   pub topology: TopologyOutcome,
 }
 

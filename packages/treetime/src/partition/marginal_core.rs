@@ -171,7 +171,7 @@ where
       .read_arc()
       .payload()
       .read_arc()
-      .branch_length()
+      .profile_branch_length()
       .unwrap_or(0.0);
     let branch_length = partition.marginal_data().effective_branch_length(branch_length);
     edge.msg_from_child = DenseSeqDistribution {
@@ -243,7 +243,7 @@ where
       .read_arc()
       .payload()
       .read_arc()
-      .branch_length()
+      .profile_branch_length()
       .unwrap_or(0.0);
     let branch_length = partition.marginal_data().effective_branch_length(branch_length);
     let msg_child = partition
@@ -325,7 +325,7 @@ where
     node_data.profile.log_lh = msg_to_parent.log_lh + LogLh::new(delta_ll);
   } else {
     let edge_key = get_exactly_one(&node.parent_edge_keys).expect("Only nodes with exactly one parent are supported");
-    let branch_length = node.parent_edges[0].branch_length().unwrap_or(0.0);
+    let branch_length = node.parent_edges[0].profile_branch_length().unwrap_or(0.0);
     let branch_length = data.effective_branch_length(branch_length);
 
     let mut edge_data = data.edges.remove(edge_key).unwrap();
@@ -356,7 +356,7 @@ where
     for (_, edge_key) in &node.parent_keys {
       let edge = &data.edges[edge_key];
       let edge_payload = graph.get_edge(*edge_key).unwrap().read_arc().payload().read_arc();
-      let branch_length = edge_payload.branch_length().unwrap_or(0.0);
+      let branch_length = edge_payload.profile_branch_length().unwrap_or(0.0);
       let branch_length = data.effective_branch_length(branch_length);
       let msg_child = data.gtr.evolve(&edge.msg_to_child.dis, branch_length, false);
       log_lh += edge.msg_to_parent.log_lh + edge.msg_to_child.log_lh;
