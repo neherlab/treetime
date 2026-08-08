@@ -9,8 +9,16 @@ Two-pass message passing for time inference on the phylogenetic tree (<a id="cit
 v1: [`packages/treetime/src/timetree/inference/backward_pass.rs`](../../packages/treetime/src/timetree/inference/backward_pass.rs), [`packages/treetime/src/timetree/inference/forward_pass.rs`](../../packages/treetime/src/timetree/inference/forward_pass.rs).
 v0: [`packages/legacy/treetime/treetime/node_interpolator.py`](../../packages/legacy/treetime/treetime/node_interpolator.py).
 
-- `propagate_distributions_backward()` (`#propagate_distributions_backward`) [packages/treetime/src/timetree/inference/backward_pass.rs#L17-L31](../../packages/treetime/src/timetree/inference/backward_pass.rs#L17-L31): skips bad branches (outlier and dateless leaves) so they do not constrain parent time
+- `propagate_distributions_backward()` (`#propagate_distributions_backward`) [packages/treetime/src/timetree/inference/backward_pass.rs#L17-L31](../../packages/treetime/src/timetree/inference/backward_pass.rs#L17-L31): skips bad branches (outlier and dateless leaves) so they do not constrain parent time; multiplies each node's fixed input date constraint into the combined child messages
 - `propagate_distributions_forward()` (`#propagate_distributions_forward`) [packages/treetime/src/timetree/inference/forward_pass.rs#L11-L22](../../packages/treetime/src/timetree/inference/forward_pass.rs#L11-L22): preserves internal node times when forward pass yields `None`
+
+What separates a leaf from an internal node here is not that it is a leaf but whether its date is
+exact. A node given an exact date is pinned to it: nothing to refine, and no projection onto the
+parent time. Every other node -- internal, or a leaf whose date is uncertain, ranged, or missing --
+has its time inferred, and the forward pass refines it against the message coming down from the
+parent. The date read from the input is held separately from the time distribution and re-applied
+by every backward pass, so refining in place never consumes it. See
+[kb/decisions/timetree-uncertain-leaf-dates-are-inferred.md](../decisions/timetree-uncertain-leaf-dates-are-inferred.md).
 
 ---
 

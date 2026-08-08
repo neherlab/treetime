@@ -64,4 +64,4 @@ treetime timetree --aln data/mpox/clade-ii/1000/aln.fasta.xz \
 
 - [M-timetree-marginal-node-times-can-violate-topology.md](M-timetree-marginal-node-times-can-violate-topology.md)
 - [M-coalescent-edge-collection-nan-bypass-and-unreachable-fallback.md](M-coalescent-edge-collection-nan-bypass-and-unreachable-fallback.md)
-- [M-timetree-forward-pass-skips-uncertain-leaf-refinement.md](M-timetree-forward-pass-skips-uncertain-leaf-refinement.md)
+- [timetree-uncertain-leaf-dates-are-inferred.md](../decisions/timetree-uncertain-leaf-dates-are-inferred.md): which nodes the forward pass refines and projects onto the parent time
