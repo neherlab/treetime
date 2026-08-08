@@ -259,12 +259,20 @@ mod tests {
   /// Polytomy resolution samples; pin the stream so refinement tests stay deterministic.
   const REFINEMENT_TEST_SEED: u64 = 0xC0FFEE;
 
+  /// Timescale behind the merger rate polytomy resolution is driven with. The pipeline
+  /// estimates one from the tree when a run carries no coalescent prior; these tests pin it, so
+  /// the rate is the same however `coalescent_tc` is set.
+  const REFINEMENT_TEST_TC: f64 = 10.0;
+
   fn refine(
     graph: &mut GraphTimetree,
     partitions: &PartitionTimetreeAllVec,
     clock_model: &mut ClockModel,
     coalescent_tc: Option<&Distribution>,
   ) -> Result<RefinementOutcome, Report> {
+    let pinned_tc = Distribution::constant(REFINEMENT_TEST_TC);
+    let coalescent = compute_coalescent_model(graph, coalescent_tc.unwrap_or(&pinned_tc))?;
+
     Refinement {
       graph,
       partitions,
@@ -272,6 +280,7 @@ mod tests {
       clock_params: &ClockParams::default(),
       branch_params: &BranchPointOptimizationParams::default(),
       coalescent_tc,
+      coalescent: &coalescent,
       rng: &mut get_random_number_generator(Some(REFINEMENT_TEST_SEED)),
       options: &refinement_options(),
     }

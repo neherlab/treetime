@@ -19,6 +19,10 @@ mod tests {
   /// Expected substitutions per unit time over the whole alignment.
   const TEST_MUTATION_RATE: f64 = 0.1;
 
+  /// Per-branch coalescent merger rate. Chosen so that the fixtures' time windows comfortably
+  /// admit the mergers a full resolution needs, without making them a foregone conclusion.
+  const TEST_MERGER_RATE: f64 = 0.15;
+
   fn set_time(graph: &GraphTimetree, name: &str, time: f64) -> Result<GraphNodeKey, Report> {
     let key = find_node_key_by_name(graph, name).ok_or_else(|| make_report!("{name} not found"))?;
     graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(time);
@@ -82,6 +86,22 @@ mod tests {
     vec![]
   }
 
+  /// Resolve under a constant merger rate.
+  ///
+  /// These fixtures carry no partitions, so every branch has zero reconstructed substitutions
+  /// and the total alignment length never enters: the sampled history is shaped by the merger
+  /// rate alone.
+  fn resolve(graph: &mut GraphTimetree, rng: &mut dyn rand::RngCore) -> Result<usize, Report> {
+    resolve_polytomies(
+      graph,
+      &no_partitions(),
+      TEST_MUTATION_RATE,
+      0,
+      &|_time| Ok(TEST_MERGER_RATE),
+      rng,
+    )
+  }
+
   /// Names of the leaves reachable from `node_key`.
   fn leaf_names_under(graph: &GraphTimetree, node_key: GraphNodeKey) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
@@ -107,7 +127,7 @@ mod tests {
     let mut graph = binary_tree()?;
     let mut rng = get_random_number_generator(Some(1));
 
-    let created = resolve_polytomies(&mut graph, &no_partitions(), TEST_MUTATION_RATE, None, &mut rng)?;
+    let created = resolve(&mut graph, &mut rng)?;
 
     assert_eq!(created, 0, "a binary tree has no polytomy to resolve");
     Ok(())
@@ -119,7 +139,7 @@ mod tests {
     let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
     let mut rng = get_random_number_generator(Some(11));
 
-    let created = resolve_polytomies(&mut graph, &no_partitions(), TEST_MUTATION_RATE, None, &mut rng)?;
+    let created = resolve(&mut graph, &mut rng)?;
 
     assert_eq!(created, 1, "a 3-way polytomy needs one merger to become a bifurcation");
     let degree = graph.get_node(abc_key).expect("Node must exist").read_arc().degree_out();
@@ -135,7 +155,7 @@ mod tests {
       let before = leaf_names_under(&graph, parent_key);
       let mut rng = get_random_number_generator(Some(seed));
 
-      resolve_polytomies(&mut graph, &no_partitions(), TEST_MUTATION_RATE, None, &mut rng)?;
+      resolve(&mut graph, &mut rng)?;
 
       let after = leaf_names_under(&graph, parent_key);
       assert_eq!(before, after, "seed {seed}: resolution must not lose or duplicate leaves");
@@ -150,7 +170,7 @@ mod tests {
     let clusters = |seed: u64| -> Result<BTreeSet<Vec<String>>, Report> {
       let mut graph = wide_polytomy_tree()?;
       let mut rng = get_random_number_generator(Some(seed));
-      resolve_polytomies(&mut graph, &no_partitions(), TEST_MUTATION_RATE, None, &mut rng)?;
+      resolve(&mut graph, &mut rng)?;
       Ok(
         graph
           .get_nodes()
@@ -172,7 +192,7 @@ mod tests {
     let clusters = |seed: u64| -> Result<BTreeSet<Vec<String>>, Report> {
       let mut graph = wide_polytomy_tree()?;
       let mut rng = get_random_number_generator(Some(seed));
-      resolve_polytomies(&mut graph, &no_partitions(), TEST_MUTATION_RATE, None, &mut rng)?;
+      resolve(&mut graph, &mut rng)?;
       Ok(
         graph
           .get_nodes()
@@ -203,7 +223,7 @@ mod tests {
     let mut graph = graph;
     let mut rng = get_random_number_generator(Some(1));
 
-    let created = resolve_polytomies(&mut graph, &no_partitions(), TEST_MUTATION_RATE, None, &mut rng)?;
+    let created = resolve(&mut graph, &mut rng)?;
 
     assert_eq!(created, 0, "no window above the polytomy means no resolution");
     let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
@@ -219,7 +239,7 @@ mod tests {
     let parent_time = 1980.0;
     let mut rng = get_random_number_generator(Some(9));
 
-    resolve_polytomies(&mut graph, &no_partitions(), TEST_MUTATION_RATE, None, &mut rng)?;
+    resolve(&mut graph, &mut rng)?;
 
     for node in graph.get_nodes() {
       let node = node.read_arc();
@@ -269,7 +289,7 @@ mod tests {
     for seed in 0..25 {
       let mut graph = wide_polytomy_tree()?;
       let mut rng = get_random_number_generator(Some(seed));
-      resolve_polytomies(&mut graph, &no_partitions(), TEST_MUTATION_RATE, None, &mut rng)?;
+      resolve(&mut graph, &mut rng)?;
 
       for node in graph.get_nodes() {
         let node = node.read_arc();
@@ -285,7 +305,7 @@ mod tests {
     let mut graph = polytomy_tree()?;
     let mut rng = get_random_number_generator(Some(11));
 
-    let created = resolve_polytomies(&mut graph, &no_partitions(), TEST_MUTATION_RATE, None, &mut rng)?;
+    let created = resolve(&mut graph, &mut rng)?;
     assert_eq!(created, 1);
 
     assign_node_names(&graph)?;

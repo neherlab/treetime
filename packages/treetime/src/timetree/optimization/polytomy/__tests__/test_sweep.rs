@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::timetree::optimization::polytomy::sweep::{
-    Lineage, MergerRate, SubtreePlan, WindowMergerRate, simulate_subtree,
-  };
+  use crate::timetree::optimization::polytomy::sweep::{Lineage, SubtreePlan, simulate_subtree};
   use eyre::Report;
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
@@ -10,33 +8,16 @@ mod tests {
   use treetime_utils::sync::random::get_random_number_generator;
 
   /// A merger rate that ignores time, so tests can reason about the sweep alone.
-  struct ConstMergerRate(f64);
-
-  impl MergerRate for ConstMergerRate {
-    fn per_branch(&self, _time: f64, _n_ready: usize) -> Result<f64, Report> {
-      Ok(self.0)
-    }
+  fn const_merger_rate(rate: f64) -> impl Fn(f64) -> Result<f64, Report> {
+    move |_time| Ok(rate)
   }
 
-  /// Records the calendar time of every rate query, which is the sweep's position.
-  struct RecordingMergerRate {
-    rate: f64,
-    queries: Mutex<Vec<f64>>,
-  }
-
-  impl RecordingMergerRate {
-    fn new(rate: f64) -> Self {
-      Self {
-        rate,
-        queries: Mutex::new(Vec::new()),
-      }
-    }
-  }
-
-  impl MergerRate for RecordingMergerRate {
-    fn per_branch(&self, time: f64, _n_ready: usize) -> Result<f64, Report> {
-      self.queries.lock().push(time);
-      Ok(self.rate)
+  /// A constant merger rate that also records the calendar time of every query, which is the
+  /// sweep's position.
+  fn recording_merger_rate(rate: f64, queries: &Mutex<Vec<f64>>) -> impl Fn(f64) -> Result<f64, Report> {
+    move |time| {
+      queries.lock().push(time);
+      Ok(rate)
     }
   }
 
@@ -66,7 +47,7 @@ mod tests {
     let mut rng = get_random_number_generator(Some(1));
     let children = [lineage(10.0, 0), lineage(9.0, 0)];
 
-    let plan = simulate_subtree(&children, 0.0, 1.0, &ConstMergerRate(1.0), &mut rng)?;
+    let plan = simulate_subtree(&children, 0.0, 1.0, &const_merger_rate(1.0), &mut rng)?;
 
     assert!(plan.mergers.is_empty(), "a bifurcation is not a polytomy");
     assert_eq!(plan.roots, vec![0, 1]);
@@ -79,7 +60,7 @@ mod tests {
     // Every child is at or older than the parent, so there is nowhere to put a merger.
     let children = [lineage(5.0, 0), lineage(4.0, 0), lineage(3.0, 0)];
 
-    let plan = simulate_subtree(&children, 5.0, 1.0, &ConstMergerRate(1e6), &mut rng)?;
+    let plan = simulate_subtree(&children, 5.0, 1.0, &const_merger_rate(1e6), &mut rng)?;
 
     assert!(plan.mergers.is_empty(), "no window means no resolution");
     assert_eq!(plan.roots, vec![0, 1, 2]);
@@ -92,7 +73,7 @@ mod tests {
 
     let run = |seed: u64| -> Result<SubtreePlan, Report> {
       let mut rng = get_random_number_generator(Some(seed));
-      simulate_subtree(&children, -20.0, 0.5, &ConstMergerRate(0.4), &mut rng)
+      simulate_subtree(&children, -20.0, 0.5, &const_merger_rate(0.4), &mut rng)
     };
 
     assert_eq!(run(7)?, run(7)?, "same seed must produce the same plan");
@@ -118,7 +99,7 @@ mod tests {
 
     for seed in 0..200 {
       let mut rng = get_random_number_generator(Some(seed));
-      let plan = simulate_subtree(&children, t_stop, 0.7, &ConstMergerRate(0.3), &mut rng)?;
+      let plan = simulate_subtree(&children, t_stop, 0.7, &const_merger_rate(0.3), &mut rng)?;
 
       assert_every_child_placed_once(&plan, children.len());
 
@@ -174,7 +155,7 @@ mod tests {
 
     for seed in 0..100 {
       let mut rng = get_random_number_generator(Some(seed));
-      let plan = simulate_subtree(&children, -50.0, 0.0, &ConstMergerRate(2.0), &mut rng)?;
+      let plan = simulate_subtree(&children, -50.0, 0.0, &const_merger_rate(2.0), &mut rng)?;
 
       for mutated in [2_usize, 4] {
         assert!(
@@ -195,12 +176,12 @@ mod tests {
     // v0 resumes at the drawn time, skipping the interval between the arrival and that time.
     // Correct behaviour resumes at the arrival, so every query lands on a child's time.
     let children = [lineage(10.0, 0), lineage(9.0, 0), lineage(0.0, 0)];
-    let rate = RecordingMergerRate::new(1e-9);
+    let queries = Mutex::new(Vec::new());
     let mut rng = get_random_number_generator(Some(3));
 
-    let plan = simulate_subtree(&children, -100.0, 0.0, &rate, &mut rng)?;
+    let plan = simulate_subtree(&children, -100.0, 0.0, &recording_merger_rate(1e-9, &queries), &mut rng)?;
 
-    let queries = rate.queries.lock().clone();
+    let queries = queries.lock().clone();
     assert_eq!(
       queries,
       vec![10.0, 9.0, 0.0],
@@ -217,7 +198,7 @@ mod tests {
     let children = [lineage(3.0, 0), lineage(2.0, 1), lineage(1.0, 0)];
     let mut rng = get_random_number_generator(Some(1));
 
-    let plan = simulate_subtree(&children, 0.0, 0.0, &ConstMergerRate(0.0), &mut rng)?;
+    let plan = simulate_subtree(&children, 0.0, 0.0, &const_merger_rate(0.0), &mut rng)?;
 
     assert!(plan.mergers.is_empty());
     assert_eq!(plan.roots.len(), 3);
@@ -233,7 +214,7 @@ mod tests {
 
     for seed in 0..50 {
       let mut rng = get_random_number_generator(Some(seed));
-      let plan = simulate_subtree(&children, -1.0e6, 0.0, &ConstMergerRate(1.0), &mut rng)?;
+      let plan = simulate_subtree(&children, -1.0e6, 0.0, &const_merger_rate(1.0), &mut rng)?;
 
       assert_eq!(plan.mergers.len(), k - 2, "seed {seed}: expected full resolution");
       assert_eq!(plan.roots.len(), 2, "seed {seed}: a resolved polytomy leaves a bifurcation");
@@ -255,7 +236,7 @@ mod tests {
     let mut total = 0.0;
     for seed in 0..replicates {
       let mut rng = get_random_number_generator(Some(seed));
-      let plan = simulate_subtree(&children, -1.0e9, 0.0, &ConstMergerRate(kappa), &mut rng)?;
+      let plan = simulate_subtree(&children, -1.0e9, 0.0, &const_merger_rate(kappa), &mut rng)?;
       let first = plan.mergers.first().expect("the window is effectively unbounded");
       total += -first.time;
     }
@@ -268,28 +249,6 @@ mod tests {
       "mean first-merger wait {mean} deviates from the expected {expected_mean} by {:.1}%",
       relative_error * 100.0
     );
-    Ok(())
-  }
-
-  #[test]
-  fn test_window_merger_rate_calibrates_to_the_available_span() -> Result<(), Report> {
-    let rate = WindowMergerRate::new(4.0);
-    // kappa = 0.5 * n_ready * 2 / window
-    pretty_assertions::assert_eq!(rate.per_branch(0.0, 4)?, 1.0);
-    pretty_assertions::assert_eq!(rate.per_branch(0.0, 0)?, 0.0);
-    Ok(())
-  }
-
-  #[test]
-  fn test_window_merger_rate_rejects_a_degenerate_window() -> Result<(), Report> {
-    for window in [0.0, -1.0, f64::NAN, f64::INFINITY] {
-      let rate = WindowMergerRate::new(window);
-      pretty_assertions::assert_eq!(
-        rate.per_branch(0.0, 5)?,
-        0.0,
-        "a degenerate window must not produce a usable rate"
-      );
-    }
     Ok(())
   }
 }
