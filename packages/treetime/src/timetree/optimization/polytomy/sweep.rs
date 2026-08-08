@@ -91,46 +91,6 @@ impl SubtreePlan {
   }
 }
 
-/// Source of the per-branch coalescent merger rate $\kappa(t)$.
-///
-/// Implemented by the coalescent model when one is active, and by [`WindowMergerRate`]
-/// otherwise. Tests supply constant rates.
-pub trait MergerRate {
-  /// $\kappa(t)$ with `n_ready` lineages currently eligible to coalesce.
-  fn per_branch(&self, time: f64, n_ready: usize) -> Result<f64, Report>;
-}
-
-/// Fallback rate for runs without a coalescent model, matching v0's `dummy_coalescent_rate`.
-///
-/// Calibrated so that the lineages typically coalesce within the window available between the
-/// most recent child and the parent: with `n_ready` lineages eligible the total merger rate is
-/// `n_ready * (n_ready - 1) / window`, so the expected time to the next merger shrinks
-/// quadratically as lineages accumulate.
-#[derive(Clone, Copy, Debug)]
-pub struct WindowMergerRate {
-  per_pair: f64,
-}
-
-impl WindowMergerRate {
-  /// `window` is the span between the most recent child and the parent, in calendar units.
-  /// A non-positive or non-finite window yields a zero rate, which stops the sweep rather
-  /// than producing an unusable draw.
-  pub fn new(window: f64) -> Self {
-    let per_pair = if window.is_finite() && window > 0.0 {
-      2.0 / window
-    } else {
-      0.0
-    };
-    Self { per_pair }
-  }
-}
-
-impl MergerRate for WindowMergerRate {
-  fn per_branch(&self, _time: f64, n_ready: usize) -> Result<f64, Report> {
-    Ok(0.5 * n_ready as f64 * self.per_pair)
-  }
-}
-
 /// A lineage the sweep is tracking, live or pending.
 #[derive(Clone, Copy, Debug)]
 struct Tracked {
@@ -145,11 +105,15 @@ struct Tracked {
 /// because doing so would put a node older than its own parent. Returns early without
 /// mergers when there is nothing to resolve (fewer than three children) or no time to
 /// resolve it in (`max(child.time) <= t_stop`).
+///
+/// `merger_rate` is the per-branch coalescent merger rate $\kappa(t)$ at a calendar time. The
+/// sweep scales it by its own $\lvert R\rvert - 1$ to obtain the total; where $\kappa$ comes
+/// from is the caller's choice, so no coalescent model reaches this module.
 pub fn simulate_subtree(
   children: &[Lineage],
   t_stop: f64,
   mutation_rate: f64,
-  merger_rate: &dyn MergerRate,
+  merger_rate: &dyn Fn(f64) -> Result<f64, Report>,
   rng: &mut dyn rand::RngCore,
 ) -> Result<SubtreePlan, Report> {
   let n_children = children.len();
@@ -186,7 +150,7 @@ pub fn simulate_subtree(
     let n_ready = alive.iter().filter(|lineage| lineage.mutations == 0).count();
     let total_mutations: u64 = alive.iter().map(|lineage| u64::from(lineage.mutations)).sum();
 
-    let kappa = merger_rate.per_branch(t, n_ready)?;
+    let kappa = merger_rate(t)?;
     let rate_mut = mutation_rate * total_mutations as f64;
     let rate_coal = n_ready.saturating_sub(1) as f64 * kappa;
     let rate_total = rate_mut + rate_coal;

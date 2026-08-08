@@ -20,14 +20,13 @@ pub mod sweep;
 #[cfg(test)]
 mod __tests__;
 
-use crate::coalescent::coalescent::{CoalescentModel, compute_coalescent_model};
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
-use crate::partition::traits::{PartitionBranchOps, PartitionMarginalPasses};
+use crate::partition::traits::PartitionBranchOps;
 use crate::payload::clock_set::ClockSet;
 use crate::payload::timetree::NodeTimetree;
 use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
-use crate::timetree::optimization::polytomy::sweep::{Lineage, MergerRate, WindowMergerRate, simulate_subtree};
+use crate::timetree::optimization::polytomy::sweep::{Lineage, simulate_subtree};
 use eyre::Report;
 use log::debug;
 use std::sync::Arc;
@@ -65,10 +64,15 @@ pub fn validate_tree_before_topology_change(graph: &GraphTimetree) -> Result<(),
 
 /// Resolve every multifurcation in the tree by stochastic coalescent sampling.
 ///
-/// `mutation_rate` is the expected number of substitutions per unit time across the whole
-/// alignment (`clock_rate * sequence_length`). `coalescent_tc`, when present, supplies the
-/// per-branch merger rate; otherwise a rate calibrated to each polytomy's available time
-/// window is used, matching v0's fallback.
+/// The two rates driving the sweep are supplied by the caller, so this module holds no policy
+/// about where either comes from:
+///
+/// - `mutation_rate` is the expected number of substitutions per unit time across the whole
+///   alignment (`clock_rate * total_length`).
+/// - `merger_rate` is the per-branch coalescent merger rate $\kappa(t)$ at a calendar time.
+///
+/// `total_length` is the summed alignment length, used only to estimate a branch's
+/// substitution count when the reconstructed one cannot be read; see [`edge_mutation_count`].
 ///
 /// Returns the number of internal nodes created. Output depends on `rng`: the same tree and
 /// the same generator state produce the same topology, and different states do not.
@@ -76,7 +80,8 @@ pub fn resolve_polytomies(
   graph: &mut GraphTimetree,
   partitions: &[PartitionTimetreeRef],
   mutation_rate: f64,
-  coalescent_tc: Option<&Distribution>,
+  total_length: usize,
+  merger_rate: &dyn Fn(f64) -> Result<f64, Report>,
   rng: &mut dyn rand::RngCore,
 ) -> Result<usize, Report> {
   let polytomy_keys = find_polytomy_nodes(graph);
@@ -84,20 +89,6 @@ pub fn resolve_polytomies(
     debug!("No polytomies to resolve");
     return Ok(0);
   }
-
-  // Built once from the pre-resolution tree, as v0 does: the lineage counts it derives are a
-  // property of the tree entering the pass, not of each intermediate state within it.
-  // TODO: why not use the coalescent model from the upstream inference pass
-  let coalescent = coalescent_tc
-    .map(|tc| compute_coalescent_model(graph, tc))
-    .transpose()?;
-
-  // TODO: This is needed only for as a fall back for branch length mode input when no explicit alignments exist.
-  // In this case, there is no point to get the total length from the partitions
-  let total_length: usize = partitions
-    .iter()
-    .map(|partition| partition.read_arc().get_sequence_length())
-    .sum();
 
   let mut total_created = 0;
   let mut topology_validated = false;
@@ -108,8 +99,8 @@ pub fn resolve_polytomies(
       partitions,
       node_key,
       mutation_rate,
-      coalescent.as_ref(),
       total_length,
+      merger_rate,
       rng,
       &mut topology_validated,
     )?;
@@ -138,8 +129,8 @@ fn resolve_single_polytomy(
   partitions: &[PartitionTimetreeRef],
   node_key: GraphNodeKey,
   mutation_rate: f64,
-  coalescent: Option<&CoalescentModel>,
   total_length: usize,
+  merger_rate: &dyn Fn(f64) -> Result<f64, Report>,
   rng: &mut dyn rand::RngCore,
   topology_validated: &mut bool,
 ) -> Result<usize, Report> {
@@ -161,20 +152,6 @@ fn resolve_single_polytomy(
       mutations: child.mutations,
     })
     .collect();
-
-  let window = children
-    .iter()
-    .map(|child| child.time)
-    .fold(f64::NEG_INFINITY, f64::max)
-    - parent_time;
-
-  // window rate is a fall back when there is no global coalescent model
-  let window_rate = WindowMergerRate::new(window);
-  let coalescent_rate = coalescent.map(CoalescentMergerRate);
-  let merger_rate: &dyn MergerRate = match &coalescent_rate {
-    Some(rate) => rate,
-    None => &window_rate,
-  };
 
   let plan = simulate_subtree(&lineages, parent_time, mutation_rate, merger_rate, rng)?;
   if plan.mergers.is_empty() {
@@ -292,18 +269,6 @@ fn inferred_time(payload: &NodeTimetree, node_key: GraphNodeKey) -> Result<f64, 
     return make_error!("Polytomy resolution requires a finite inferred time for node {node_key}, but it has {time}");
   }
   Ok(time)
-}
-
-/// Adapts the tree-wide coalescent model to the sweep's rate interface.
-///
-/// The model's per-branch rate already accounts for the tree-wide lineage count, so the local
-/// ready count is not used; the sweep multiplies by its own `|R| - 1` to obtain the total.
-struct CoalescentMergerRate<'a>(&'a CoalescentModel);
-
-impl MergerRate for CoalescentMergerRate<'_> {
-  fn per_branch(&self, time: f64, _n_ready: usize) -> Result<f64, Report> {
-    self.0.branch_merger_rate(time)
-  }
 }
 
 /// Remove single-child internal nodes left by polytomy resolution.
