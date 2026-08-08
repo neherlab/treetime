@@ -41,6 +41,14 @@ pub trait Outlier {
 
 /// Provides access to time distribution and bad branch flag for date constraints.
 pub trait TimeConstraint<T> {
+  /// The date constraint given as input, held fixed for the whole run.
+  ///
+  /// [`time_distribution`](Self::time_distribution) starts as a copy of it and is then refined in
+  /// place by the inference passes, so the input has to be kept separately to stay recoverable.
+  fn date_constraint(&self) -> &Option<T>;
+  fn set_date_constraint(&mut self, dist: Option<T>);
+
+  /// The current estimate of the node's time, refined by each inference pass.
   fn time_distribution(&self) -> &Option<T>;
   fn set_time_distribution(&mut self, dist: Option<T>);
   fn bad_branch(&self) -> bool;

@@ -222,6 +222,76 @@ mod tests {
     Ok(())
   }
 
+  /// The date given as input is fixed for the whole run, so each backward pass lifts it back into
+  /// the time distribution. The forward pass refines the time distribution of a leaf whose date is
+  /// uncertain in place; without the lift that refined distribution would be sent up to the parent
+  /// on the next round as if it were an independent observation.
+  #[test]
+  fn test_backward_pass_restores_leaf_time_distribution_from_the_date_constraint() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0)I:1.0)root;")?;
+    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+
+    let constraint = Distribution::range((2014.0, 2015.0), 1.0);
+    {
+      let node = graph.get_node(leaf_key).expect("leaf A exists");
+      let mut payload = node.read_arc().payload().write_arc();
+      payload.date_constraint = Some(Arc::new(constraint.clone()));
+      // What a forward pass leaves behind: the range narrowed down by the rest of the tree.
+      payload.time_distribution = Some(Arc::new(Distribution::point(2014.2, 1.0)));
+    }
+    set_edge_branch_dist(&graph, leaf_key, 3.0);
+
+    propagate_distributions_backward(&graph, None)?;
+
+    let payload = graph
+      .get_node(leaf_key)
+      .expect("leaf A exists")
+      .read_arc()
+      .payload()
+      .read_arc();
+    let actual = payload
+      .time_distribution()
+      .as_ref()
+      .expect("leaf A should have a time distribution");
+    assert_eq!(&constraint, actual.as_ref());
+
+    Ok(())
+  }
+
+  /// A date given for an internal node constrains it the same way a leaf date does: it multiplies
+  /// what the children have to say rather than being replaced by it. Here both children put the
+  /// node somewhere in [2011, 2013] and its own date narrows that to [2012, 2013].
+  #[test]
+  fn test_backward_pass_applies_internal_node_date_constraint() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
+    let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
+    let internal_key = find_node_key_by_name(&graph, "I").expect("internal I not found");
+
+    set_date_constraint(&graph, leaf_a_key, Distribution::range((2014.0, 2016.0), 1.0));
+    set_date_constraint(&graph, leaf_b_key, Distribution::range((2013.0, 2015.0), 1.0));
+    set_date_constraint(&graph, internal_key, Distribution::range((2012.0, 2014.0), 1.0));
+    set_edge_branch_dist(&graph, leaf_a_key, 3.0);
+    set_edge_branch_dist(&graph, leaf_b_key, 2.0);
+
+    propagate_distributions_backward(&graph, None)?;
+
+    let payload = graph
+      .get_node(internal_key)
+      .expect("internal I exists")
+      .read_arc()
+      .payload()
+      .read_arc();
+    let actual = payload
+      .time_distribution()
+      .as_ref()
+      .expect("internal node should have a time distribution");
+    let expected = Distribution::range((2012.0, 2013.0), 1.0);
+    assert_eq!(&expected, actual.as_ref());
+
+    Ok(())
+  }
+
   /// Test that backward pass stores msg_to_parent on edges.
   #[test]
   fn test_backward_pass_sets_edge_messages() -> Result<(), Report> {
@@ -375,6 +445,17 @@ mod tests {
   mod helpers {
     use super::*;
     use treetime_graph::graph::Graph;
+
+    /// Give a node the date it was loaded with, and nothing else: the backward pass is what lifts
+    /// it into the node's time distribution.
+    pub(super) fn set_date_constraint(
+      graph: &Graph<NodeTimetree, EdgeTimetree, ()>,
+      key: GraphNodeKey,
+      dist: Distribution,
+    ) {
+      let node = graph.get_node(key).expect("node exists");
+      node.read_arc().payload().write_arc().date_constraint = Some(Arc::new(dist));
+    }
 
     pub(super) fn set_leaf_time(graph: &Graph<NodeTimetree, EdgeTimetree, ()>, key: GraphNodeKey, time: f64) {
       let node = graph.get_node(key).expect("node exists");

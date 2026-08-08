@@ -45,6 +45,9 @@ where
 
       let dist = Arc::new(date_constraint_to_distribution(constraint));
 
+      // The constraint is the input, kept as given for the whole run; the time distribution is the
+      // current estimate, which starts out as the input and is refined by every inference pass.
+      payload.set_date_constraint(Some(Arc::clone(&dist)));
       payload.set_time_distribution(Some(dist));
       payload.set_bad_branch(false);
       used_names.insert(name);

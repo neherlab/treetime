@@ -21,6 +21,8 @@ mod tests {
   #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
   struct TestNode {
     name: Option<String>,
+    #[serde(default)]
+    date_constraint: Option<Arc<Distribution>>,
     time_distribution: Option<Arc<Distribution>>,
     bad_branch: bool,
   }
@@ -28,6 +30,12 @@ mod tests {
   impl GraphNode for TestNode {}
 
   impl TimeConstraint<Arc<Distribution>> for TestNode {
+    fn date_constraint(&self) -> &Option<Arc<Distribution>> {
+      &self.date_constraint
+    }
+    fn set_date_constraint(&mut self, dist: Option<Arc<Distribution>>) {
+      self.date_constraint = dist;
+    }
     fn time_distribution(&self) -> &Option<Arc<Distribution>> {
       &self.time_distribution
     }
@@ -79,10 +87,21 @@ mod tests {
 
   type TestGraph = Graph<TestNode, TestEdge, ()>;
 
+  /// Node payloads sorted by name, with the fixed date constraint checked against the time
+  /// distribution and then cleared: loading writes the input to both, so spelling it out a second
+  /// time in every expected payload below would say nothing new.
   fn get_node_payloads(graph: &TestGraph) -> Vec<TestNode> {
     graph
       .get_node_payloads()
-      .map(|node| node.read_arc().clone())
+      .map(|node| {
+        let mut node = node.read_arc().clone();
+        assert_eq!(
+          node.date_constraint, node.time_distribution,
+          "the loaded date constraint must be kept as the fixed input alongside the time distribution"
+        );
+        node.date_constraint = None;
+        node
+      })
       .sorted_by_key(|n| n.name().map(|n| o!(n.as_ref())).unwrap_or_default())
       .collect_vec()
   }

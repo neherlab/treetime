@@ -93,13 +93,25 @@ where
     });
   }
 
+  // Lift the input date constraint into the time distribution. It is an independent factor of the
+  // node's posterior, so it multiplies whatever the children have to say; for a leaf, which has no
+  // children, it is the whole message. Doing this here rather than once at load time is what keeps
+  // the input recoverable: the forward pass refines the time distribution of a node whose date is
+  // uncertain in place, and sending that refined distribution back to the parent on the next round
+  // would count the parent's own message toward the node a second time.
+  if let Some(constraint) = slot.node.date_constraint().clone() {
+    result = Some(match result {
+      Some(dist) => distribution_multiplication(&dist, &constraint)?.normalize(),
+      None => constraint.as_ref().clone(),
+    });
+  }
+
   if let Some(dist) = result.as_ref() {
-    // Leaves retain their observed date distribution. Their coalescent factor
-    // belongs only to the temporary message convolved toward the parent.
-    debug_assert!(!is_leaf);
     slot.node.set_time_distribution(Some(Arc::new(dist.clone())));
   }
 
+  // A leaf's coalescent factor belongs only to the temporary message convolved toward the parent,
+  // never to the distribution stored on the node.
   let outgoing_distribution = if is_leaf {
     let distribution = slot.node.time_distribution();
     match (coalescent_model, distribution) {

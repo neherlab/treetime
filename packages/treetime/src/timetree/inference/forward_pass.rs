@@ -32,30 +32,43 @@ where
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  refine_distribution_from_parent(graph, dependencies, slot)?;
+  refine_distribution_from_parent(dependencies, slot)?;
 
-  let is_leaf = graph.is_leaf(slot.key);
+  let has_exact_date = has_exact_date(&slot.node);
 
-  // Independent marginal modes can invert even though the forward pass commits each
-  // parent before visiting its children. Current behavior projects non-leaf internal
-  // point estimates to the committed parent time; leaves retain their observed dates.
-  // This changes the point estimate without recomputing the posterior. The statistical
-  // contract remains open in kb/issues/M-timetree-marginal-node-times-can-violate-topology.md.
-  let parent_time = (!is_leaf).then(|| parent_time(dependencies, slot)).flatten();
+  // Independent marginal modes can invert even though the forward pass commits each parent before
+  // visiting its children. Current behavior projects the point estimate of a node whose time was
+  // inferred to the committed parent time; a node given an exact date keeps it, so that a date
+  // conflicting with the fitted clock stays visible to `commit_clock_branch_lengths` rather than
+  // being clamped away. This changes the point estimate without recomputing the posterior. The
+  // statistical contract remains open in
+  // kb/issues/M-timetree-marginal-node-times-can-violate-topology.md.
+  let parent_time = (!has_exact_date).then(|| parent_time(dependencies, slot)).flatten();
 
-  // An internal node whose time distribution is empty (or degenerate) yields no likely
-  // time, so no date is assigned. This signals irreconcilable inference constraints at the
-  // node (e.g. disjoint child messages). Surface it instead of dropping the date silently.
-  if set_likely_time(&mut slot.node, parent_time).is_none() && !is_leaf {
+  // A node whose time distribution is empty (or degenerate) yields no likely time, so no date is
+  // assigned. This signals irreconcilable inference constraints at the node (e.g. disjoint child
+  // messages, or a date range disjoint from what the rest of the tree implies). Surface it instead
+  // of dropping the date silently. An undated leaf under an undated parent has nothing to infer
+  // from and is not worth reporting: it was already accounted for when its date was found missing.
+  let is_dateable = !graph.is_leaf(slot.key) || slot.node.date_constraint().is_some();
+  if set_likely_time(&mut slot.node, parent_time).is_none() && is_dateable {
     let name = slot.node.name();
     let name = name.as_ref().map_or("<unnamed>", |name| name.as_ref());
     warn!(
-      "Timetree forward pass: internal node '{name}' has an empty time distribution; no date was \
+      "Timetree forward pass: node '{name}' has an empty time distribution; no date was \
        assigned. The inference constraints at this node are likely irreconcilable (e.g. conflicting \
        or disjoint date constraints from its subtree)."
     );
   }
   Ok(())
+}
+
+/// Whether the node was given an exact date, which pins it to a single time.
+///
+/// Anything else -- an uncertain or ranged date, or no date at all -- leaves the node's time to be
+/// inferred, and so to be refined by the message coming down from its parent.
+fn has_exact_date(node: &impl TimetreeNode) -> bool {
+  node.date_constraint().as_ref().is_some_and(|dist| dist.is_point())
 }
 
 /// Committed time of the slot's parent, if it has one and it is set.
@@ -82,22 +95,22 @@ fn set_likely_time(node: &mut impl TimetreeNode, parent_time: Option<f64>) -> Op
   Some(time)
 }
 
-fn refine_distribution_from_parent<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn refine_distribution_from_parent<N, E>(
   dependencies: &IndexedPassDependencies<N, E>,
   slot: &mut IndexedPassSlot<N, E>,
 ) -> Result<(), Report>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + TimetreeEdge,
-  D: Send + Sync,
 {
   if slot.parent_key.is_none() {
     return Ok(());
   }
 
-  // Do not overwrite leaf time_distribution (date constraint)
-  if graph.is_leaf(slot.key) {
+  // An exactly dated node has nothing to refine: its time is observed, not inferred. Leaves whose
+  // date is uncertain or missing are refined like any other node -- the message from the parent is
+  // the only thing that can narrow an ambiguous date down.
+  if has_exact_date(&slot.node) {
     return Ok(());
   }
 

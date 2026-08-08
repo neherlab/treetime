@@ -16,6 +16,11 @@ use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 pub struct NodeTimetree {
   pub base: NodeAncestral,
   pub time: Option<f64>,
+  /// Distribution of the date given as input, `None` for a node no date was given for. Written
+  /// once by [`load_date_constraints`](crate::clock::date_constraints::load_date_constraints) and
+  /// then held fixed: `time_distribution` is refined in place by the inference passes, and every
+  /// backward pass lifts this back into it so the input is never inferred away.
+  pub date_constraint: Option<Arc<Distribution>>,
   pub time_distribution: Option<Arc<Distribution>>,
   pub bad_branch: bool,
   pub div: f64,
@@ -72,8 +77,17 @@ impl Outlier for NodeTimetree {
 }
 
 impl ClockNode for NodeTimetree {
+  /// The observed date where there is one, the current estimate otherwise.
+  ///
+  /// The clock regression and the clock filter read this for leaves, and must see the date as
+  /// given: the forward pass refines the time distribution of a leaf whose date is uncertain, and
+  /// regressing on that refined date would feed the tree's own inference back into the clock.
   fn likely_time(&self) -> Option<f64> {
-    self.time_distribution.as_ref().and_then(|dist| dist.likely_time())
+    self
+      .date_constraint
+      .as_ref()
+      .or(self.time_distribution.as_ref())
+      .and_then(|dist| dist.likely_time())
   }
 
   fn div(&self) -> f64 {
@@ -94,6 +108,14 @@ impl ClockNode for NodeTimetree {
 }
 
 impl TimeConstraint<Arc<Distribution>> for NodeTimetree {
+  fn date_constraint(&self) -> &Option<Arc<Distribution>> {
+    &self.date_constraint
+  }
+
+  fn set_date_constraint(&mut self, dist: Option<Arc<Distribution>>) {
+    self.date_constraint = dist;
+  }
+
   fn time_distribution(&self) -> &Option<Arc<Distribution>> {
     &self.time_distribution
   }

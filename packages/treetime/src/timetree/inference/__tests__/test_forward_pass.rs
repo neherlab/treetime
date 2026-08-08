@@ -9,8 +9,12 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
-  use treetime_graph::node::TimeConstraint;
+  use treetime_graph::edge::BranchDistribution;
+  use treetime_graph::graph::Graph;
+  use treetime_graph::node::{GraphNodeKey, TimeConstraint};
   use treetime_io::nwk::nwk_read_str;
+
+  type TestGraph = Graph<NodeTimetree, EdgeTimetree, ()>;
 
   /// The forward pass must not assign a date to an internal node whose time distribution is
   /// empty (irreconcilable constraints). It leaves the node undated and warns, rather than
@@ -31,13 +35,7 @@ mod tests {
       .payload()
       .write_arc()
       .set_time_distribution(Some(Arc::new(Distribution::empty())));
-    graph
-      .get_node(leaf_key)
-      .expect("leaf A exists")
-      .read_arc()
-      .payload()
-      .write_arc()
-      .set_time_distribution(Some(Arc::new(Distribution::point(2013.0, 1.0))));
+    set_date(&graph, leaf_key, Distribution::point(2013.0, 1.0));
 
     propagate_distributions_forward(&graph)?;
 
@@ -48,18 +46,142 @@ mod tests {
       .payload()
       .read_arc()
       .time();
-    let leaf_time = graph
-      .get_node(leaf_key)
-      .expect("leaf A exists")
-      .read_arc()
-      .payload()
-      .read_arc()
-      .time();
 
     assert_eq!(None, root_time);
-    let leaf_time = leaf_time.expect("leaf A should keep its observed date");
+    let leaf_time = node_time(&graph, leaf_key).expect("leaf A should keep its observed date");
     pretty_assert_ulps_eq!(leaf_time, 2013.0, max_ulps = 4);
 
     Ok(())
   }
+
+  /// A leaf whose date is uncertain is refined from its parent exactly as an internal node is: the
+  /// date range says where the leaf can be, and the message coming down the tree says where within
+  /// that range it most likely is. Here the root sits at 2009 and the branch to the leaf takes one
+  /// year, so the leaf lands at 2010 rather than at 2011.5, the midpoint of the range it was given.
+  #[test]
+  fn test_forward_pass_refines_uncertain_leaf_date_from_parent() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?;
+    let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
+    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+
+    set_time_distribution(&graph, root_key, Distribution::point(2009.0, 1.0));
+    set_date(&graph, leaf_key, Distribution::range((2009.5, 2013.5), 1.0));
+    set_branch_length_distribution(&graph, leaf_key, 1.0);
+
+    propagate_distributions_forward(&graph)?;
+
+    let leaf_time = node_time(&graph, leaf_key).expect("leaf A should be dated");
+    pretty_assert_ulps_eq!(leaf_time, 2010.0, max_ulps = 4);
+
+    // The refinement is on the distribution, not just on the point estimate: what the leaf carries
+    // afterwards is the posterior the confidence interval is read from.
+    let leaf_dist = leaf_time_distribution(&graph, leaf_key).expect("leaf A should have a distribution");
+    assert_eq!(Distribution::point(2010.0, 1.0), leaf_dist);
+
+    Ok(())
+  }
+
+  /// A leaf given an exact date is not refined and not clamped: the date is an observation, and a
+  /// leaf dated before its parent is a conflict between that observation and the fitted clock that
+  /// `commit_clock_branch_lengths` reports. Clamping it to the parent would hide the conflict.
+  #[test]
+  fn test_forward_pass_keeps_exact_leaf_date_earlier_than_its_parent() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?;
+    let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
+    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+
+    set_time_distribution(&graph, root_key, Distribution::point(2009.0, 1.0));
+    set_date(&graph, leaf_key, Distribution::point(2008.0, 1.0));
+    set_branch_length_distribution(&graph, leaf_key, 1.0);
+
+    propagate_distributions_forward(&graph)?;
+
+    let leaf_time = node_time(&graph, leaf_key).expect("leaf A should keep its observed date");
+    pretty_assert_ulps_eq!(leaf_time, 2008.0, max_ulps = 4);
+
+    let leaf_dist = leaf_time_distribution(&graph, leaf_key).expect("leaf A should have a distribution");
+    assert_eq!(Distribution::point(2008.0, 1.0), leaf_dist);
+
+    Ok(())
+  }
+
+  /// A leaf whose date is uncertain respects the parent constraint like any inferred node. Here the
+  /// branch carries no length distribution, so there is nothing to refine the range with, and the
+  /// peak of the range alone would put the leaf 3 years before its parent.
+  #[test]
+  fn test_forward_pass_clamps_uncertain_leaf_date_to_parent_time() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?;
+    let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
+    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+
+    set_time_distribution(&graph, root_key, Distribution::point(2009.0, 1.0));
+    set_date(&graph, leaf_key, Distribution::range((2005.0, 2007.0), 1.0));
+
+    propagate_distributions_forward(&graph)?;
+
+    let leaf_time = node_time(&graph, leaf_key).expect("leaf A should be dated");
+    pretty_assert_ulps_eq!(leaf_time, 2009.0, max_ulps = 4);
+
+    Ok(())
+  }
+
+  mod helpers {
+    use super::*;
+
+    /// Give a node a date, as loading date constraints from the input does: the fixed constraint
+    /// and the time distribution it seeds.
+    pub(super) fn set_date(graph: &TestGraph, key: GraphNodeKey, dist: Distribution) {
+      let dist = Arc::new(dist);
+      let node = graph.get_node(key).expect("node exists");
+      let mut payload = node.read_arc().payload().write_arc();
+      payload.set_date_constraint(Some(Arc::clone(&dist)));
+      payload.set_time_distribution(Some(dist));
+    }
+
+    pub(super) fn set_time_distribution(graph: &TestGraph, key: GraphNodeKey, dist: Distribution) {
+      graph
+        .get_node(key)
+        .expect("node exists")
+        .read_arc()
+        .payload()
+        .write_arc()
+        .set_time_distribution(Some(Arc::new(dist)));
+    }
+
+    pub(super) fn set_branch_length_distribution(graph: &TestGraph, target_key: GraphNodeKey, branch_length: f64) {
+      for edge in graph.get_edges() {
+        let edge = edge.read_arc();
+        if edge.target() == target_key {
+          edge
+            .payload()
+            .write_arc()
+            .set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 1.0))));
+        }
+      }
+    }
+
+    pub(super) fn node_time(graph: &TestGraph, key: GraphNodeKey) -> Option<f64> {
+      graph
+        .get_node(key)
+        .expect("node exists")
+        .read_arc()
+        .payload()
+        .read_arc()
+        .time()
+    }
+
+    pub(super) fn leaf_time_distribution(graph: &TestGraph, key: GraphNodeKey) -> Option<Distribution> {
+      graph
+        .get_node(key)
+        .expect("node exists")
+        .read_arc()
+        .payload()
+        .read_arc()
+        .time_distribution()
+        .as_ref()
+        .map(|dist| dist.as_ref().clone())
+    }
+  }
+
+  use helpers::*;
 }

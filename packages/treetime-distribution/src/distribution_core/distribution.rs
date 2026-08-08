@@ -65,6 +65,11 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     Distribution::range((-TIME_LIMIT, TIME_LIMIT), amplitude)
   }
 
+  /// Whether the distribution pins its variable to a single exact value.
+  pub const fn is_point(&self) -> bool {
+    matches!(self, Self::Point(_))
+  }
+
   pub fn likely_time(&self) -> Option<f64> {
     match self {
       Self::Empty => {
