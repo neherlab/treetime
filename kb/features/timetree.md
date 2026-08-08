@@ -63,7 +63,7 @@
 - [x] Find polytomy nodes with more than two children
 - [x] Stochastic coalescent-with-mutations resolution (v0's `--stochastic-resolve`, always on in v1; design in [kb/proposals/timetree-stochastic-polytomy-resolution.md](../proposals/timetree-stochastic-polytomy-resolution.md))
 - [x] Exact per-branch substitution counts from `edge_subs`, falling back to `round(mutation_length * L)`
-- [x] Per-branch coalescent merger rate when `--coalescent` is active, window-calibrated rate otherwise
+- [x] Per-branch coalescent merger rate from the round's coalescent model; when no coalescent prior is requested the model is built from a constant $T_c$ estimated from the tree, replacing v0's per-polytomy window-calibrated dummy rate ([kb/decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md))
 - [x] `--seed` for reproducible resolution; a generated seed is logged when none is given
 - [x] Remove obsolete single-child nodes after resolution
 - [x] Reconcile partition topology after tree change
@@ -84,7 +84,9 @@
 ## Refinement Iteration Loop
 
 - [x] Loop stops on convergence or `--max-iter`
-- [x] Convergence check uses `n_diff == 0 && n_resolved == 0`
+- [x] Convergence check uses max node-time change below `NODE_TIME_TOLERANCE_YEARS` and `n_resolved == 0`, falling back to `n_diff` when no times are comparable ([kb/decisions/timetree-convergence-on-node-times.md](../decisions/timetree-convergence-on-node-times.md))
+- [x] Clock-constrained branch lengths committed after each pass and propagated by the next marginal reconstruction, damped by 0.5 ([kb/decisions/timetree-clock-constrained-profile-propagation.md](../decisions/timetree-clock-constrained-profile-propagation.md))
+- [x] Coalescent lineage counts frozen before the loop for the prior; $T_c$ and the reported likelihood estimated against the live tree
 - [x] Skyline mode suppresses early convergence exit
 - [x] Relaxed clock application
 - [x] Polytomy resolution
@@ -96,6 +98,7 @@
 
 ## Convergence Tracking
 
+- [x] Node-time movement per round (`max_time_change`, `rms_time_change`) - new in v1
 - [x] Sequence change count (n_diff)
 - [x] Polytomies resolved count (n_resolved)
 - [x] Sequence log-likelihood (`log_lh_seq`)

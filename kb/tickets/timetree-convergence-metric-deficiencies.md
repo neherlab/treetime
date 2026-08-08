@@ -2,33 +2,46 @@
 
 ## Summary
 
-Three defects in the timetree convergence tracking system: the convergence check ignores likelihood stagnation, topology changes cause undercounting of sequence diffs, and the total likelihood composition changes between iterations.
+Make the reported total log-likelihood comparable across iterations, then decide whether and how it
+enters the convergence decision. Fix sequence-diff undercounting across topology changes.
 
-## Details
+The convergence criterion itself has already been changed to node-time movement and is out of scope
+here; see
+[timetree-convergence-on-node-times.md](../decisions/timetree-convergence-on-node-times.md).
 
-### has_converged ignores likelihood stagnation
+## Scope
 
-`packages/treetime/src/timetree/convergence/metrics.rs:140-142:`
+### 1. Make `log_lh_total` a fixed composition
 
-`fn has_converged()` returns true when `n_diff==0 && n_resolved==0` (no node date changes, no newly resolved dates). It does not check whether `log_lh_total` has plateaued. The `ConvergenceMetrics` struct carries `log_lh_seq`, `log_lh_pos`, `log_lh_coal`, and `log_lh_total` fields, but none are used in the convergence decision. A tree where dates are stable but log-likelihood is still improving (or worsening) is declared converged.
+[`metrics.rs`](../../packages/treetime/src/timetree/convergence/metrics.rs) sums whichever of
+`log_lh_seq`, `log_lh_pos`, `log_lh_coal` are `Some`. Decide the contract: either the total is
+`None` unless every component is present, or the component set is fixed per run and a missing
+component is an error. A component silently dropping out mid-run must not look like a likelihood
+improvement.
 
-### count_sequence_changes underreports on topology changes
+Note that `log_lh_coal` goes missing for two different reasons — the run has no coalescent, or
+`collect_coalescent_edges` failed on an inverted edge — and only the second is a defect. Coordinate
+with
+[M-coalescent-edge-collection-nan-bypass-and-unreachable-fallback.md](../issues/M-coalescent-edge-collection-nan-bypass-and-unreachable-fallback.md).
 
-`packages/treetime/src/timetree/convergence/sequence_changes.rs:25-44:`
+### 2. Decide whether likelihood enters `has_converged`
 
-Compares per-partition sequence maps between iterations by zipping keys present in both `previous` and `current`. Nodes that exist only in `previous` (removed by topology change) or only in `current` (newly created) are counted as `prev_only` / `curr_only` but not as sequence diffs. The total diff count excludes all changes at nodes that were replaced during polytomy resolution or pruning.
+Requires a decision first, because the coalescent term is evaluated against live lineage counts
+while the times were inferred under frozen ones, so the reported total is not the maximized
+objective. Options: test only the components that are part of the objective; test the total as a
+plateau guard rather than a criterion; or leave the criterion on node times and treat likelihood as
+reporting only. Do not implement a stop rule until this is settled.
 
-### Total log-likelihood meaning changes with Some/None patterns
+### 3. Count sequence changes across topology changes
 
-`packages/treetime/src/timetree/convergence/metrics.rs:67:`
+[`sequence_changes.rs`](../../packages/treetime/src/timetree/convergence/sequence_changes.rs)
+should attribute diffs for nodes present in only one snapshot rather than logging and discarding
+them.
 
-`log_lh_total` is computed as `[log_lh_seq, log_lh_pos, log_lh_coal].into_iter().flatten().reduce(|acc, v| acc + v)`. When the coalescent prior is enabled in one iteration but not another (first iteration runs without coalescent, second adds it), the number of `Some` components changes. Comparing `log_lh_total` across iterations compares sums of different terms, making log-likelihood deltas meaningless as convergence indicators.
+## Validation
 
-## Impact
-
-- Premature convergence declaration when dates stabilize but likelihood has not plateaued
-- After polytomy resolution, convergence check undercounts actual sequence changes
-- Likelihood-based convergence criteria are unreliable when coalescent is enabled mid-run
+`data/ebola/20` and `data/mpox/clade-ii/1000`, with and without `--coalescent-opt` and
+`--resolve-polytomies`, comparing the tracelog CSV before and after. Round counts must not regress.
 
 ## Related issues
 

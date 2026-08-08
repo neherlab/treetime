@@ -57,11 +57,14 @@ The shared pipeline is:
 - `collect_tree_events()` [packages/treetime/src/coalescent/events.rs](../../packages/treetime/src/coalescent/events.rs) collects calendar-dated sample and merger events.
 - `compute_lineage_count_distribution()` [packages/treetime/src/coalescent/lineage_dynamics.rs](../../packages/treetime/src/coalescent/lineage_dynamics.rs) builds calendar-coordinate $k(t)$ with tested breakpoint sidedness.
 - `compute_integral_merger_rate()` [packages/treetime/src/coalescent/integration.rs](../../packages/treetime/src/coalescent/integration.rs) computes $H(t)$ using the existing midpoint quadrature.
-- `compute_coalescent_model()` [packages/treetime/src/coalescent/coalescent.rs](../../packages/treetime/src/coalescent/coalescent.rs) constructs one immutable model for inference and objective evaluation.
+- `compute_lineage_counts()` [packages/treetime/src/coalescent/lineage_counts.rs](../../packages/treetime/src/coalescent/lineage_counts.rs) wraps the two steps above into the fixed input $k(t)$.
+- `CoalescentModel::new()` [packages/treetime/src/coalescent/coalescent.rs](../../packages/treetime/src/coalescent/coalescent.rs) assembles a model from $k(t)$ and $T_c$, materialising $H(t)$. The three quantities enter differently: $k(t)$ is fixed, $T_c$ is estimated, $H(t)$ is a compound of the two.
 
 The backward pass combines every child message before evaluating one leaf, internal, or root cost on the completed distribution's existing coordinates. It subtracts the minimum finite cost before exponentiation and normalizes the result. Leaf factors affect only outgoing messages, so observed date distributions are not overwritten or compounded by repeated passes.
 
-The first timetree pass runs without coalescent to establish node time distributions via backward+forward belief propagation. Coalescent contributions are computed from these established times on the second pass. Refinement repeats this two-pass sequence whenever a topology change invalidates the coalescent event state.
+The first timetree pass runs without coalescent to establish node time distributions via backward+forward belief propagation. $k(t)$ is read from that tree and then held fixed for the rest of the run: it is the prior's input, and deriving it from the times it is used to infer makes the loop chase a receding target. $T_c$ and the reported coalescent likelihood keep reading the live tree. See [kb/decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md).
+
+Refinement repeats the coalescent-free pass whenever a topology change invalidates the node-time state.
 Detailed ownership and objective identities are documented in [kb/algo/coalescent-contribution-refactor.md](coalescent-contribution-refactor.md).
 
 ---
@@ -123,7 +126,7 @@ CLI: `--relax <SLACK> <COUPLING>` (defaults 1.0, 1.0).
 - Postorder pass (lines 36-81): computes quadratic penalty coefficients k1, k2 per node. The penalty function is `stiffness * (gamma * actual_len - optimal_len)^2 + slack * (gamma - 1)^2`, with a coupling term `coupling * (gamma - gamma_child)^2`.
 - Preorder pass (lines 86-114): computes optimal gamma per branch. Root: `gamma = max(0.1, -0.5 * k1 / k2)`. Non-root: `gamma = max(0.1, (coupling * parent_gamma - 0.5 * k1) / (coupling + k2))`.
 
-`actual_len` and `optimal_len` are both substitutions per site. v1 converts its year-valued edge `time_length` with `clock_rate` before evaluating the penalty, matching v0's branch-length-valued `clock_length`.
+`actual_len` and `optimal_len` are both substitutions per site. v1 converts its year-valued edge `time_length` with `clock_rate` before evaluating the penalty. That is not the contrast v0 fits: v0 compares `clock_length` against `mutation_length`, whereas both v1 inputs are ML-derived. See [kb/issues/M-timetree-consumers-read-unconstrained-branch-lengths.md](../issues/M-timetree-consumers-read-unconstrained-branch-lengths.md).
 
 The `one_mutation` parameter (sum of sequence lengths across all partitions) sets the scale for branch length penalties. Gamma values are clamped to a minimum of 0.1 to prevent degenerate solutions.
 
@@ -143,7 +146,7 @@ A polytomy (multifurcation) is a node with more than two children, arising from 
 
 v1 implements greedy deterministic resolution. v0 also supports stochastic coalescent-based resolution (not yet ported, see [unimplemented](unimplemented.md#stochastic-polytomy-resolution)).
 
-v1: [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../packages/treetime/src/timetree/optimization/polytomy.rs).
+v1: [`packages/treetime/src/timetree/optimization/polytomy/mod.rs`](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs).
 
 ### Greedy algorithm
 
@@ -151,11 +154,11 @@ The algorithm iterates over all nodes with >2 children. For each polytomy, it co
 
 This approach is deterministic and reproducible but biases toward caterpillar-like topologies: after the first merge creates a new internal node, subsequent merges preferentially attach to it (because it has the most informative branch distribution), creating an imbalanced subtree ([[3](#ref-3)], Section 2.6).
 
-- `resolve_polytomies()` (`#resolve_polytomies`) [packages/treetime/src/timetree/optimization/polytomy.rs#L27-L32](../../packages/treetime/src/timetree/optimization/polytomy.rs#L27-L32): entry point with default threshold (0.05).
-- `compute_merge_gain()` (`#compute_merge_gain`) [packages/treetime/src/timetree/optimization/polytomy.rs#L225](../../packages/treetime/src/timetree/optimization/polytomy.rs#L225): uses Brent optimization (via `argmin` crate) to find the optimal merge time and cost gain for a child pair.
-- `merge_children()` (`#merge_children`) [packages/treetime/src/timetree/optimization/polytomy.rs#L345](../../packages/treetime/src/timetree/optimization/polytomy.rs#L345): creates a new internal node, adds parent-to-new-node edge, reparents the two children.
-- `validate_tree_before_topology_change()` (`#validate_tree_before_topology_change`) [packages/treetime/src/timetree/optimization/polytomy.rs](../../packages/treetime/src/timetree/optimization/polytomy.rs): verifies that every existing internal node has a finite inferred time immediately before the first topology mutation. Polytomy scoring also rejects missing or non-finite node times at the point of use, while a resolution request that finds no merge candidate does not require complete internal times.
-- `prepare_tree_after_topology_change()` (`#prepare_tree_after_topology_change`) [packages/treetime/src/timetree/optimization/polytomy.rs](../../packages/treetime/src/timetree/optimization/polytomy.rs): reconstructs each internal-node time distribution as a point constraint at its inferred time and resets topology-dependent edge distributions, clock messages, and relaxed-clock rates; leaf date constraints, propagated `bad_branch` state, branch lengths, and time lengths are preserved.
+- `resolve_polytomies()` (`#resolve_polytomies`) [packages/treetime/src/timetree/optimization/polytomy/mod.rs#L27-L32](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs#L27-L32): entry point with default threshold (0.05).
+- `compute_merge_gain()` (`#compute_merge_gain`) [packages/treetime/src/timetree/optimization/polytomy/mod.rs#L225](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs#L225): uses Brent optimization (via `argmin` crate) to find the optimal merge time and cost gain for a child pair.
+- `merge_children()` (`#merge_children`) [packages/treetime/src/timetree/optimization/polytomy/mod.rs#L345](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs#L345): creates a new internal node, adds parent-to-new-node edge, reparents the two children.
+- `validate_tree_before_topology_change()` (`#validate_tree_before_topology_change`) [packages/treetime/src/timetree/optimization/polytomy/mod.rs](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs): verifies that every existing internal node has a finite inferred time immediately before the first topology mutation. Polytomy scoring also rejects missing or non-finite node times at the point of use, while a resolution request that finds no merge candidate does not require complete internal times.
+- `prepare_tree_after_topology_change()` (`#prepare_tree_after_topology_change`) [packages/treetime/src/timetree/optimization/polytomy/mod.rs](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs): reconstructs each internal-node time distribution as a point constraint at its inferred time and resets topology-dependent edge distributions, clock messages, and relaxed-clock rates; leaf date constraints, propagated `bad_branch` state, branch lengths, and time lengths are preserved.
 
 After resolution, partition data is reconciled via `reconcile_topology()` to add entries for new nodes/edges.
 

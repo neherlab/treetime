@@ -111,27 +111,48 @@ v1 code: [`packages/treetime/src/commands/optimize/run.rs#L275-L378`](../../../p
 ### Loop 5: v1 timetree refinement
 
 ```
+Before the loop:
+  compute_lineage_counts()                    <-- k0(t), frozen for the run
+  commit_clock_branch_lengths(damping=1.0)    <-- seed the constrained lengths
+
 Loop (convergence-controlled):
-  1. apply_relaxed_clock()
-  2. capture_ancestral_states()
-  3. resolve_polytomies(zero_branch_slope)    <-- greedy temporal
-  4. prepare_tree_after_topology_change()
-  5. run_timetree() + update_marginal()
-  6. count_sequence_changes()
-  7. re-estimate clock model
+  1. estimate Tc from the live tree           <-- statistic role, if the mode optimizes it
+  2. CoalescentModel::new(k0, Tc)             <-- prior and polytomy merger rate
+  3. apply_relaxed_clock()
+  4. capture_node_times() + capture_ancestral_states()
+  5. resolve_polytomies(mutation_rate, kappa) <-- stochastic coalescent sweep
+     prepare_tree_after_topology_change()
+     commit_clock_branch_lengths(damping=1.0) <-- from the sampled subtree's times
+  6. update_marginal()                        <-- E-step, along clock-constrained lengths
+     run_timetree(prior)                      <-- re-infer node times
+  7. commit_clock_branch_lengths(damping=0.5) <-- constrained M-step, damped
+  8. measure_node_time_change()               <-- convergence signal
+  9. re-estimate clock model
 ```
 
-v1 code: [`packages/treetime/src/timetree/refinement.rs#L23-L103`](../../../packages/treetime/src/timetree/refinement.rs#L23-L103)
+v1 code: [`packages/treetime/src/timetree/refinement.rs`](../../../packages/treetime/src/timetree/refinement.rs)
+
+The M-step is *constrained*: rather than optimizing each branch length freely, step 7 sets it to
+`mu * gamma * dt` over the inferred times, and step 6 of the next round propagates profiles along
+that. Without it nothing in the loop writes substitution-space lengths, `update_marginal` is
+idempotent across rounds, and the loop runs exactly once. See
+[timetree-clock-constrained-profile-propagation.md](../../decisions/timetree-clock-constrained-profile-propagation.md).
+
+Steps 1 and 2 keep the coalescent's two uses of $k(t)$ apart: the prior is built from counts frozen
+before the loop, while $T_c$ and the reported likelihood are estimated against the live tree.
+Deriving both from the current times makes the prior self-referential and the loop does not
+converge — see
+[timetree-frozen-lineage-counts-for-coalescent-prior.md](../../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md).
 
 ## Cross-loop comparison
 
-| Aspect                       | v0 joint    | v0 marginal     | v0 timetree                 | v1 optimize        | v1 timetree         |
-| ---------------------------- | ----------- | --------------- | --------------------------- | ------------------ | ------------------- |
-| Prune zero-length            | Inside loop | After loop      | After resolution (no prune) | Inside loop        | Not implemented     |
-| Polytomy resolution          | N/A         | N/A             | Greedy or stochastic        | Merge after prune  | Greedy only         |
-| Damping                      | None        | Inline per-edge | None                        | Post-pass blending | N/A                 |
-| Convergence                  | N_diff < 1  | delta_LH < tol  | ndiff==0 AND n_resolved==0  | delta_LH < dp      | n_diff + n_resolved |
-| Branch re-opt after topology | N/A         | N/A             | Yes                         | N/A                | No                  |
+| Aspect                       | v0 joint    | v0 marginal     | v0 timetree                 | v1 optimize        | v1 timetree                  |
+| ---------------------------- | ----------- | --------------- | --------------------------- | ------------------ | ---------------------------- |
+| Prune zero-length            | Inside loop | After loop      | After resolution (no prune) | Inside loop        | Not implemented              |
+| Polytomy resolution          | N/A         | N/A             | Greedy or stochastic        | Merge after prune  | Stochastic                   |
+| Damping                      | None        | Inline per-edge | None                        | Post-pass blending | Flat 0.5 on clock lengths    |
+| Convergence                  | N_diff < 1  | delta_LH < tol  | ndiff==0 AND n_resolved==0  | delta_LH < dp      | max node-time change + n_resolved |
+| Branch re-opt after topology | N/A         | N/A             | Yes                         | N/A                | Constrained, not free        |
 
 ## Implementation notes
 

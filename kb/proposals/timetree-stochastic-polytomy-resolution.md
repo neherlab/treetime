@@ -3,7 +3,7 @@
 ## Summary
 
 Replace the greedy pairwise merger in
-[packages/treetime/src/timetree/optimization/polytomy.rs](../../packages/treetime/src/timetree/optimization/polytomy.rs)
+[packages/treetime/src/timetree/optimization/polytomy/mod.rs](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs)
 with a stochastic coalescent-with-mutations sweep, modelled on v0's `generate_subtree`
 (reached via `--stochastic-resolve`). The sweep runs backwards in time from the most recent
 child of a polytomy toward the parent, drawing either a mutation event or a coalescence
@@ -17,7 +17,7 @@ implementation is removed rather than kept behind a flag.
 
 `fn resolve_polytomies()` scans for nodes with more than two children and merges pairs
 greedily by likelihood gain
-([packages/treetime/src/timetree/optimization/polytomy.rs#L166-L318](../../packages/treetime/src/timetree/optimization/polytomy.rs#L166-L318)).
+([packages/treetime/src/timetree/optimization/polytomy/mod.rs#L166-L318](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs#L166-L318)).
 Children are first partitioned into "stretched" (`mutation_length < clock_length`) and
 "compressed"; only stretched children are merged by default. Each candidate pair is scored by
 Brent-optimizing the merge time, and the highest-gain pair is merged until the gain falls
@@ -98,15 +98,16 @@ as `zero_branch_slope` at
 [packages/treetime/src/timetree/refinement.rs#L96](../../packages/treetime/src/timetree/refinement.rs#L96).
 Rename the parameter `mutation_rate`; no new plumbing.
 
-$\kappa(t)$ is `CoalescentModel::branch_merger_rate`, from a baseline model the pipeline builds
-once per run
-([packages/treetime/src/timetree/pipeline.rs](../../packages/treetime/src/timetree/pipeline.rs),
-`build_baseline_coalescent`) from the first time tree — the earliest point where node times
-give lineage counts, and before the optimization loop starts editing the topology. Every round
-samples against that same baseline rather than against a rate that drifts with the trees its
-own edits produce. When the run carries no coalescent prior of its own, a constant $T_c$ is
-estimated by the same one-segment analytic solve `--coalescent-opt` uses, and the model is
-built from that.
+$\kappa(t)$ is `CoalescentModel::branch_merger_rate` on the same model the round's node times are
+inferred under: lineage counts frozen before the optimization loop, $T_c$ as re-estimated for that
+round. Assembled in
+[packages/treetime/src/timetree/pipeline.rs](../../packages/treetime/src/timetree/pipeline.rs);
+see
+[kb/decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md).
+The frozen counts mean the sampler is not chasing a rate that drifts with the trees its own edits
+produce, while $T_c$ still adapts. When the run carries no coalescent prior of its own the model
+still exists, built from a constant $T_c$ estimated by the same one-segment analytic solve
+`--coalescent-opt` uses.
 
 v0 instead falls back to a dummy rate $\kappa = \tfrac12 \lvert R\rvert c$ with
 $c = 2/(t_{\text{start}} - t_{\text{stop}})$ fixed at sweep start
@@ -206,7 +207,7 @@ stated motivation for the change.
 from the old source's `outbound_mut()`, push to the new, `set_source`). The existing
 `fn merge_children()` reparents via `remove_edge` + `add_edge` with a fresh
 `EdgeTimetree { time_length, ..default }`
-([packages/treetime/src/timetree/optimization/polytomy.rs#L539-L555](../../packages/treetime/src/timetree/optimization/polytomy.rs#L539-L555)),
+([packages/treetime/src/timetree/optimization/polytomy/mod.rs#L539-L555](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs#L539-L555)),
 which discards the edge payload and changes the edge key. Under the greedy scheme a handful of
 children are reparented; under the sweep most are. Tracked separately as
 [kb/issues/M-timetree-polytomy-reparent-discards-edge-payload.md](../issues/M-timetree-polytomy-reparent-discards-edge-payload.md).
