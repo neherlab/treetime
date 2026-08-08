@@ -6,6 +6,7 @@ use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_rero
 use crate::clock::date_constraints::load_date_constraints;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
+use crate::coalescent::coalescent::{CoalescentModel, compute_coalescent_model};
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
@@ -219,36 +220,6 @@ pub fn run(
   info!("### Initializing node times from date constraints");
   initialize_clock_totals_from_time_distributions(&input.graph)?;
 
-  let skyline_params = SkylineParams {
-    n_points: params.n_skyline,
-    stiffness: params.skyline_stiffness,
-    ..SkylineParams::default()
-  };
-
-  if params.n_branches_posterior.is_some() {
-    return make_error!("--n-branches-posterior is not yet implemented");
-  }
-
-  run_timetree(&mut input.graph, &partitions, &clock_model, None, params.no_indels)?;
-
-  let coalescent = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
-
-  // Estimate the desired coalescent Tc (constant or skyline) from the first
-  // timetree — the earliest point where node times give lineage counts — then
-  // re-infer node times under that prior. There is no need to start from a
-  // constant Tc and switch to the skyline later: both are cheap analytic solves.
-  let mut coalescent_tc = estimate_coalescent_tc(&coalescent, &input.graph, &skyline_params)?;
-
-  if coalescent_tc.is_some() {
-    run_timetree(
-      &mut input.graph,
-      &partitions,
-      &clock_model,
-      coalescent_tc.as_ref(),
-      params.no_indels,
-    )?;
-  }
-
   let default_clock_params = ClockParams::default();
   let reroot_clock_params = covariation_clock_params.as_ref().unwrap_or(&default_clock_params);
 
@@ -264,20 +235,45 @@ pub fn run(
       !params.allow_negative_rate,
     )
     .wrap_err("Failed to reroot tree (post-ancestral)")?;
-
-    // Re-establish node times on the rerooted topology before the optimization loop.
-    // The reroot can leave internal-node time distributions cleared for the new
-    // topology, and the loop's first refinement builds the coalescent model (which
-    // reads node times) before its own backward/forward passes recompute them. Run
-    // without the coalescent prior: this pass only restores node times, mirroring v0,
-    // which recomputes the time tree after rerooting and only adds the merger model
-    // inside the iteration loop.
-    // packages/legacy/treetime/treetime/treetime.py#L279-L285
-    if coalescent_tc.is_some() {
-      run_timetree(&mut input.graph, &partitions, &clock_model, None, params.no_indels)
-        .wrap_err("Post-reroot timetree inference failed")?;
-    }
   }
+
+  // Initial time tree
+  run_timetree(&mut input.graph, &partitions, &clock_model, None, params.no_indels)?;
+
+  // set up coalescent parameters and inference mode
+  let skyline_params = SkylineParams {
+    n_points: params.n_skyline,
+    stiffness: params.skyline_stiffness,
+    ..SkylineParams::default()
+  };
+
+  if params.n_branches_posterior.is_some() {
+    return make_error!("--n-branches-posterior is not yet implemented");
+  }
+  let coalescent = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
+
+  // Baseline for polytomy resolution, fixed for the whole run: built from the first timetree,
+  // the earliest point where node times give lineage counts, and before the optimization loop
+  // starts editing the topology. See `build_baseline_coalescent`.
+  let baseline_coalescent = build_baseline_coalescent(coalescent, &input.graph, &skyline_params)?;
+
+  // Estimate the desired coalescent Tc (constant or skyline) from the rerooted tree, then
+  // re-infer node times under that prior. Estimated after the reroot because the lineage
+  // counts it reads are a property of the rooted tree the optimization loop starts from.
+  // There is no need to start from a constant Tc and switch to the skyline later: both are
+  // cheap analytic solves.
+  let mut coalescent_tc = estimate_coalescent_tc(coalescent, &input.graph, &skyline_params)?;
+
+  if coalescent_tc.is_some() {
+    run_timetree(
+      &mut input.graph,
+      &partitions,
+      &clock_model,
+      coalescent_tc.as_ref(),
+      params.no_indels,
+    )?;
+  }
+  // at this stage we have a consistent coalescent model and timed tree. Subsequence steps are refinement and post-processing.
 
   progress.check_cancelled()?;
   progress.report("Optimization", 0.3, "");
@@ -306,6 +302,7 @@ pub fn run(
   }
   let mut rng = get_random_number_generator(Some(seed));
 
+  // OPTIMIZATION LOOP
   while let Some(IterationContext { i }) = optimizer.next_iter() {
     progress.check_cancelled()?;
     let iter_fraction = 0.3 + 0.5 * (i as f64 / max_iter as f64);
@@ -315,8 +312,8 @@ pub fn run(
       &format!("iteration {}/{max_iter}", i + 1),
     );
 
-    if coalescent.is_optimized() && i >= 2 {
-      coalescent_tc = estimate_coalescent_tc(&coalescent, &input.graph, &skyline_params)?;
+    if coalescent.is_optimized() {
+      coalescent_tc = estimate_coalescent_tc(coalescent, &input.graph, &skyline_params)?;
     }
 
     let outcome = Refinement {
@@ -326,6 +323,7 @@ pub fn run(
       clock_params: reroot_clock_params,
       branch_params: &branch_params,
       coalescent_tc: coalescent_tc.as_ref(),
+      coalescent: &baseline_coalescent,
       rng: &mut rng,
       options: &refinement_options,
     }
@@ -438,7 +436,7 @@ fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent_sky
 /// span or no mergers); such a failure is propagated so the run stops with a clear
 /// message rather than silently substituting an invented timescale.
 fn estimate_coalescent_tc(
-  mode: &CoalescentMode,
+  mode: CoalescentMode,
   graph: &GraphTimetree,
   skyline_params: &SkylineParams,
 ) -> Result<Option<Distribution>, Report> {
@@ -446,7 +444,7 @@ fn estimate_coalescent_tc(
   // skyline. They differ only in the number of segments.
   let n_points = match mode {
     CoalescentMode::Disabled => return Ok(None),
-    CoalescentMode::Fixed(tc) => return Ok(Some(Distribution::constant(*tc))),
+    CoalescentMode::Fixed(tc) => return Ok(Some(Distribution::constant(tc))),
     CoalescentMode::Constant => 1,
     CoalescentMode::Skyline => skyline_params.n_points,
   };
@@ -458,6 +456,31 @@ fn estimate_coalescent_tc(
     },
   )?;
   Ok(Some(result.tc_distribution))
+}
+
+/// Builds the coalescent model that supplies the per-branch merger rate to polytomy resolution.
+///
+/// Immutable and built once: the lineage counts and Tc are those of the tree entering the
+/// optimization loop, so every round samples its histories against the same baseline instead of
+/// against a rate that drifts with the trees its own edits produce.
+///
+/// Resolution samples mergers at that rate, so it needs a model even for a run carrying no
+/// coalescent prior of its own. In that case a constant Tc is estimated with the same
+/// one-segment analytic solve `--coalescent-opt` uses, rather than v0's dummy rate, which is
+/// calibrated per polytomy to the very time window the sampled history has to fit into.
+fn build_baseline_coalescent(
+  mode: CoalescentMode,
+  graph: &GraphTimetree,
+  skyline_params: &SkylineParams,
+) -> Result<CoalescentModel, Report> {
+  let mode = match mode {
+    CoalescentMode::Disabled => CoalescentMode::Constant,
+    mode => mode,
+  };
+  let tc = estimate_coalescent_tc(mode, graph, skyline_params)
+    .wrap_err("Failed to estimate a coalescent timescale for polytomy resolution")?
+    .ok_or_else(|| make_report!("Polytomy resolution requires a coalescent Tc, but {mode:?} yielded none"))?;
+  compute_coalescent_model(graph, &tc).wrap_err("Failed to build the coalescent model for polytomy resolution")
 }
 
 struct PartitionInitResult {

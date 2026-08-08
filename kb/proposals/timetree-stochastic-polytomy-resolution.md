@@ -90,16 +90,31 @@ These differ from v0, which adds $\mu$ into both channels and produces branch-se
 weights inconsistent with its own mutation rate. See
 [kb/v0-errata/timetree-stochastic-resolve-rate-selection-mismatch.md](../v0-errata/timetree-stochastic-resolve-rate-selection-mismatch.md).
 
+Both rates are chosen by the caller and handed to `resolve_polytomies`, which holds no policy
+about where either comes from: $\mu$ as a scalar, $\kappa$ as a function of calendar time.
+
 $\mu$ is already computed in the caller: `clock_model.clock_rate() * total_length` is passed
 as `zero_branch_slope` at
-[packages/treetime/src/timetree/refinement.rs#L83](../../packages/treetime/src/timetree/refinement.rs#L83).
+[packages/treetime/src/timetree/refinement.rs#L96](../../packages/treetime/src/timetree/refinement.rs#L96).
 Rename the parameter `mutation_rate`; no new plumbing.
 
-$\kappa(t)$ comes from the coalescent model when one is active, otherwise from v0's dummy
-rate $\kappa = \tfrac12 \lvert R\rvert c$ with $c = 2/(t_{\text{start}} - t_{\text{stop}})$
-fixed at sweep start
-([packages/legacy/treetime/treetime/treetime.py#L896](../../packages/legacy/treetime/treetime/treetime.py#L896)).
-That calibration makes the lineages typically coalesce within the available window.
+$\kappa(t)$ is `CoalescentModel::branch_merger_rate`, from a baseline model the pipeline builds
+once per run
+([packages/treetime/src/timetree/pipeline.rs](../../packages/treetime/src/timetree/pipeline.rs),
+`build_baseline_coalescent`) from the first time tree — the earliest point where node times
+give lineage counts, and before the optimization loop starts editing the topology. Every round
+samples against that same baseline rather than against a rate that drifts with the trees its
+own edits produce. When the run carries no coalescent prior of its own, a constant $T_c$ is
+estimated by the same one-segment analytic solve `--coalescent-opt` uses, and the model is
+built from that.
+
+v0 instead falls back to a dummy rate $\kappa = \tfrac12 \lvert R\rvert c$ with
+$c = 2/(t_{\text{start}} - t_{\text{stop}})$ fixed at sweep start
+([packages/legacy/treetime/treetime/treetime.py#L896](../../packages/legacy/treetime/treetime/treetime.py#L896)),
+calibrated so the lineages typically coalesce within the window available above that one
+polytomy. v1 does not reproduce it: it depends on both the polytomy's own window and the live
+ready count, so it is not a function of time, and an estimated $T_c$ is a better-motivated
+timescale than one manufactured from the window the answer has to fit into.
 
 ### Degenerate steps
 

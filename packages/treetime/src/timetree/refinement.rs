@@ -1,5 +1,6 @@
 use crate::ancestral::marginal::update_marginal;
 use crate::clock::clock_model::ClockModel;
+use crate::coalescent::coalescent::CoalescentModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
@@ -21,6 +22,10 @@ pub(crate) struct Refinement<'a> {
   pub clock_params: &'a ClockParams,
   pub branch_params: &'a BranchPointOptimizationParams,
   pub coalescent_tc: Option<&'a Distribution>,
+  /// Baseline coalescent model, built by the caller from the tree entering the optimization
+  /// loop and shared unchanged by every round. Supplies the per-branch merger rate that drives
+  /// polytomy resolution.
+  pub coalescent: &'a CoalescentModel,
   /// Shared across refinement rounds so polytomy resolution draws from one continuous
   /// stream: re-seeding per round would correlate the sampled histories.
   pub rng: &'a mut dyn rand::RngCore,
@@ -32,6 +37,8 @@ impl Refinement<'_> {
     let total_length = self.total_sequence_length();
     self.apply_relaxed_clock(total_length)?;
 
+    // TODO: I am not sure we need to do the before after comparison. Comparing node times might be better.
+    // comparing sequences is a hold-over from early V0 where we fixed internal node states.
     let previous_states = capture_ancestral_states(self.graph, self.partitions);
     let topology = self.refine_topology(total_length)?;
     self.rebuild_inference(topology.changed())?;
@@ -81,13 +88,15 @@ impl Refinement<'_> {
     }
 
     // Expected substitutions per unit time across the whole alignment.
-    let mutation_rate = self.clock_model.clock_rate() * total_length as f64;
+    let total_mutation_rate = self.clock_model.clock_rate() * total_length as f64;
 
+    let coalescent = self.coalescent;
     let resolved_nodes = resolve_polytomies(
       self.graph,
       self.partitions,
-      mutation_rate,
-      self.coalescent_tc,
+      total_mutation_rate,
+      total_length,
+      &|time| coalescent.branch_merger_rate(time),
       self.rng,
     )
     .wrap_err("Polytomy resolution failed")?;
