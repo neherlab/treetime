@@ -17,6 +17,8 @@
 - [x] Forward pass (root to leaves, refine distributions)
   - [x] Refines every node whose date is not exact, leaves included (uncertain, ranged, and missing dates)
   - [x] Leaves a node given an exact date at that date, unrefined and unclamped
+  - [x] Keeps a given date the rest of the tree contradicts, rather than leaving the node undated
+  - [x] Cuts the parent to the times that can reach the node before convolving
 - [x] Backward pass lifts the fixed input date constraint back into the time distribution each round
 - [x] Bad branch exclusion (outliers, dateless leaves)
 - [x] Build branch distributions from partitions when present

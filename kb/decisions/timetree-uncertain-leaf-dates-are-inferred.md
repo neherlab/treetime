@@ -72,6 +72,50 @@ where it was previously left undated with a zero-length branch. It stays a bad b
 it sends no message to its parent and is excluded from the coalescent — so it still contributes
 nothing to the fit.
 
+## A date the tree contradicts is kept, not refined away
+
+The product of the message from the parent and a date range is empty when the two are disjoint, and
+a node refined onto an empty distribution is left undated. That is strictly worse than the date the
+input carries, so the refinement is abandoned for such a node and the given date stands. Nodes are
+counted and the count reported once per pass; `--verbosity=debug` names them and prints what the
+tree implied for each. A node whose distribution comes from its subtree alone is still left undated
+by an empty product, which is the older contract and a different situation: there is no input date
+there to fall back on.
+
+The disagreement is real often enough to matter. On `data/mpox/clade-ii/2000`, where 629 of 1989
+tips carry a month-precision date, two tips are contradicted this way. It is also the failure mode
+of a run whose distributions have collapsed onto single points, where every date range in a subtree
+is contradicted at once; falling back keeps such a run producing the dates it was given rather than
+an increasingly undated tree.
+
+## Cost, and the window that pays for it
+
+A node is refined by convolving the message from its parent with the branch-length distribution,
+which costs the product of the two grid sizes. Posteriors deep in a large tree carry tens of
+thousands of grid points spanning centuries -- 53 000 points over 1733-2019 on
+`data/mpox/clade-ii/2000` -- so each refinement is milliseconds, and refining the leaves as well as
+the internal nodes made the pass markedly slower.
+
+The product that follows the convolution is zero outside the node's own support, so only the parent
+times from which the branch can reach that support contribute anything. `restrict_to_reachable` cuts
+the parent to that window, snapped outwards onto the parent's own grid points, before convolving. A
+date range spans weeks, so the window is a few hundred points instead of tens of thousands. Internal
+nodes benefit too, since a subtree posterior is usually far narrower than the parent's full support.
+
+`data/mpox/clade-ii/2000`, `--max-iter 3`, three alternating runs each:
+
+| build                                          | wall clock     | undated tips |
+| ---------------------------------------------- | -------------- | ------------ |
+| before uncertain leaves were refined           | 65, 66, 68 s   | 0            |
+| refining them, without the window or fallback  | 96, 98, 99 s   | 8            |
+| refining them, with both                       | 31, 32, 38 s   | 0            |
+
+Exactly dated tips come out identical with and without the window. Uncertain tips move by at most
+0.009 y and internal nodes by at most 0.05 y: the window changes which grid the same posterior is
+sampled on, and `likely_time` is an argmax over that grid. Both are the size of the quantization the
+branch grid already imposes on node times, and below the 1e-2 y the loop calls converged
+([timetree-convergence-on-node-times.md](timetree-convergence-on-node-times.md)).
+
 ## Related
 
 - [M-timetree-marginal-node-times-can-violate-topology.md](../issues/M-timetree-marginal-node-times-can-violate-topology.md)
@@ -80,3 +124,5 @@ nothing to the fit.
   — the clock regression still weights an interval as if it were its midpoint
 - [distribution-tails-and-arithmetic.md](distribution-tails-and-arithmetic.md)
   — the tail policy the forward message carries into the leaf's posterior
+- [M-timetree-branch-grid-uniform-resolution.md](../issues/M-timetree-branch-grid-uniform-resolution.md)
+  — the grid sizes the reachable window works around rather than fixes
