@@ -32,10 +32,11 @@ where
   let contradicted = contradicted.load(Ordering::Relaxed);
   if contradicted > 0 {
     warn!(
-      "Timetree forward pass: {contradicted} node(s) were given a date that the rest of the tree \
-       puts them outside of. Each kept the date it was given, unrefined. Run with \
-       `--verbosity=debug` to see which nodes and what the tree implied for them; a large count \
-       means the dates, the clock rate, or the topology disagree."
+      "Timetree forward pass: {contradicted} node(s) carry a date that the rest of the tree gives \
+       no probability at all, so their posterior came out empty and each kept the date it was \
+       given, unrefined. The usual cause is a sequence whose divergence implies a date far from \
+       the one it is stamped with, which the clock filter reports separately. Run with \
+       `--verbosity=debug` to see which nodes and where the tree puts each of them."
     );
   }
 
@@ -69,18 +70,23 @@ where
   let parent_time = (!has_exact_date).then(|| parent_time(dependencies, slot)).flatten();
 
   // A node whose time distribution is empty (or degenerate) yields no likely time, so no date is
-  // assigned. This signals irreconcilable inference constraints at the node (e.g. disjoint child
-  // messages, or a date range disjoint from what the rest of the tree implies). Surface it instead
-  // of dropping the date silently. An undated leaf under an undated parent has nothing to infer
-  // from and is not worth reporting: it was already accounted for when its date was found missing.
+  // assigned. Under exact arithmetic that cannot happen: the messages being combined all went into
+  // the parent's own posterior, so some time always carries probability. It happens because the
+  // distributions are gridded and held as plain probabilities, so a posterior that is merely
+  // astronomically small underflows to zero and `normalize` reports it as empty (see
+  // kb/issues/M-timetree-backward-pass-plain-space-underflow.md). Surface it instead of dropping
+  // the date silently: it means the subtree below this node says something the rest of the tree
+  // gives no weight to at all. An undated leaf under an undated parent has nothing to infer from
+  // and is not worth reporting: it was already accounted for when its date was found missing.
   let is_dateable = !graph.is_leaf(slot.key) || slot.node.date_constraint().is_some();
   if set_likely_time(&mut slot.node, parent_time).is_none() && is_dateable {
     let name = slot.node.name();
     let name = name.as_ref().map_or("<unnamed>", |name| name.as_ref());
     warn!(
-      "Timetree forward pass: node '{name}' has an empty time distribution; no date was \
-       assigned. The inference constraints at this node are likely irreconcilable (e.g. conflicting \
-       or disjoint date constraints from its subtree)."
+      "Timetree forward pass: node '{name}' has an empty time distribution; no date was assigned. \
+       The messages meeting at this node leave no time with any probability, which on a gridded \
+       plain-probability posterior means the dates below it and the times the rest of the tree \
+       implies are far enough apart to underflow."
     );
   }
   Ok(())
@@ -149,7 +155,7 @@ fn log_kept_given_date<N: TimetreeNode + Named>(node: &N, dist_from_parent: &Dis
     .map_or_else(|| "none".to_owned(), |constraint| describe_grid(constraint.as_ref()));
   debug!(
     "Timetree forward pass: node '{name}' keeps the date it was given, {given}: the rest of the \
-     tree puts it at {}, which the date rules out",
+     tree puts it at {}, which leaves no probability on that date",
     describe_grid(dist_from_parent)
   );
 }
@@ -229,11 +235,12 @@ where
       let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?.normalize();
       log_refinement(&slot.node, parent_time_dist, &combined);
 
-      // A date the node was given and the time the rest of the tree implies for it can be
-      // disjoint, and then their product is empty. Refining onto it would leave the node undated,
-      // which is strictly worse than the date the input carries: keep the given date instead and
-      // let the caller report the disagreement. Only a node whose posterior comes from its subtree
-      // alone is left undated by an empty product, which is the pre-existing contract.
+      // The product is empty when the message from the parent leaves no probability on the date
+      // the node was given -- in exact arithmetic never, in plain probabilities on a grid whenever
+      // the two are far enough apart to underflow. Refining onto that would leave the node
+      // undated, which is strictly worse than the date the input carries: keep the given date and
+      // let the caller report the disagreement. A node with no given date has nothing to fall back
+      // on and is still left undated, which is the pre-existing contract.
       if combined.likely_time().is_none() && slot.node.date_constraint().is_some() {
         log_kept_given_date(&slot.node, &dist_from_parent);
         return Ok(Refinement::ContradictedGivenDate);

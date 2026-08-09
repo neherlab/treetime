@@ -72,6 +72,40 @@ where it was previously left undated with a zero-length branch. It stays a bad b
 it sends no message to its parent and is excluded from the coalescent — so it still contributes
 nothing to the fit.
 
+## Why a posterior can come out empty at all
+
+It should not be able to. Every constraint is already in the backward pass, and the forward pass
+only picks the likely time within them, so write the node's posterior as
+
+```
+P(t) = cavity(t)  x  subtree(t),      cavity = (parent posterior / message this node sent up) * branch
+```
+
+The parent's posterior is non-empty, and it is itself the product of that cavity and this node's
+message. So there is a parent time $t_p$ where both factors are positive, and the message being
+positive at $t_p$ means there is a $t$ in this node's own support that the branch can reach from it.
+At that $t$ the product above is positive. An empty posterior is therefore never a statement about
+the constraints; it is always an artifact of how the distributions are represented.
+
+Three ways the representation produces one, in falling order of how often they are hit:
+
+1. **Underflow.** The distributions are gridded plain probabilities. A posterior that is merely
+   astronomically small evaluates to `0.0`, and `normalize()` maps a maximum of zero to `Empty`.
+   This is [M-timetree-backward-pass-plain-space-underflow.md](../issues/M-timetree-backward-pass-plain-space-underflow.md)
+   seen from the forward side.
+2. **Truncation.** A grid ends where the values stopped mattering, and a `Zero` tail past its end
+   states the value there is zero rather than small. Two supports that overlap in exact arithmetic
+   can then be declared disjoint.
+3. **Collapse to a point.** When two supports meet at a single grid point the product is a `Point`.
+   A delta annihilates every range that does not contain it, so a whole subtree of dates can be
+   contradicted at once.
+
+The two nodes contradicted on `data/mpox/clade-ii/2000` are case 1, and the underflow is telling the
+truth. Both are clock-filter outliers whose divergence implies a date around 2110-2120 against a
+stamped 2022; the message reaching them spans `[2003.9, 2477.1]` on 313 points, so at their stamped
+date the density is far below what an `f64` holds. Keeping the given date is the right answer for
+such a tip, and the clock filter reports the same sequences separately.
+
 ## A date the tree contradicts is kept, not refined away
 
 The product of the message from the parent and a date range is empty when the two are disjoint, and
