@@ -6,6 +6,7 @@ mod tests {
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::forward_pass::propagate_distributions_forward;
   use eyre::Report;
+  use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
@@ -121,6 +122,97 @@ mod tests {
 
     let leaf_time = node_time(&graph, leaf_key).expect("leaf A should be dated");
     pretty_assert_ulps_eq!(leaf_time, 2009.0, max_ulps = 4);
+
+    Ok(())
+  }
+
+  /// A date the tree contradicts outright is kept, not refined away. The parent sits at 2009 and
+  /// the branch takes a year, so the message from the parent is a point at 2010 that the leaf's
+  /// range [2005, 2007] rules out entirely and their product is empty. Refining onto that would
+  /// leave the leaf undated, which is worse than the date the input gave it.
+  #[test]
+  fn test_forward_pass_keeps_uncertain_leaf_date_the_tree_contradicts() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?;
+    let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
+    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+
+    set_time_distribution(&graph, root_key, Distribution::point(2009.0, 1.0));
+    let given = Distribution::range((2005.0, 2007.0), 1.0);
+    set_date(&graph, leaf_key, given.clone());
+    set_branch_length_distribution(&graph, leaf_key, 1.0);
+
+    propagate_distributions_forward(&graph)?;
+
+    let leaf_dist = leaf_time_distribution(&graph, leaf_key).expect("leaf A should keep its given date");
+    assert_eq!(given, leaf_dist);
+
+    // Still projected onto the parent, as any node whose time the tree infers is.
+    let leaf_time = node_time(&graph, leaf_key).expect("leaf A should be dated");
+    pretty_assert_ulps_eq!(leaf_time, 2009.0, max_ulps = 4);
+
+    Ok(())
+  }
+
+  /// Cutting the parent's grid down to the window the branch can carry into the leaf's date range
+  /// is an optimization, so it must not move the answer. The parent's posterior spans a century at
+  /// a resolution that makes it far wider than the leaf's month-wide range.
+  #[test]
+  fn test_forward_pass_refinement_is_unchanged_by_the_reachable_window() -> Result<(), Report> {
+    let wide_parent = {
+      let t = Array1::linspace(1950.0, 2050.0, 4001);
+      // Peaked at 2009, so the leaf's own range is what decides where in it the leaf lands.
+      let y = t.mapv(|t: f64| (-0.5 * ((t - 2009.0) / 3.0).powi(2)).exp());
+      Distribution::function(t, y)?
+    };
+
+    let refine = |parent: Distribution| -> Result<f64, Report> {
+      let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?;
+      let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
+      let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+      set_time_distribution(&graph, root_key, parent);
+      set_date(&graph, leaf_key, Distribution::range((2010.5, 2010.6), 1.0));
+      set_branch_length_distribution(&graph, leaf_key, 1.0);
+      propagate_distributions_forward(&graph)?;
+      node_time(&graph, leaf_key).ok_or_else(|| eyre::eyre!("leaf A should be dated"))
+    };
+
+    // The same parent, once as given and once already narrowed to a window the restriction cannot
+    // cut further: both must date the leaf identically.
+    let windowed = match &wide_parent {
+      Distribution::Function(f) => Distribution::Function(f.resample_range_dx((2009.4, 2009.7), f.dx())?),
+      other => other.clone(),
+    };
+
+    pretty_assert_ulps_eq!(refine(wide_parent)?, refine(windowed)?, max_ulps = 4);
+
+    Ok(())
+  }
+
+  /// A date range narrower than the parent's own grid resolution still has to be refinable: the
+  /// window cut around it cannot be gridded at that resolution, so it is widened rather than used
+  /// as is. The parent here resolves a year, the date range a single day.
+  #[test]
+  fn test_forward_pass_refines_a_date_range_narrower_than_the_parent_grid() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?;
+    let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
+    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+
+    let coarse_parent = {
+      let t = Array1::linspace(1900.0, 2020.0, 121); // one grid point per year
+      let y = t.mapv(|t: f64| (-0.5 * ((t - 2009.0) / 5.0).powi(2)).exp());
+      Distribution::function(t, y)?
+    };
+    set_time_distribution(&graph, root_key, coarse_parent);
+    set_date(&graph, leaf_key, Distribution::range((2010.500, 2010.503), 1.0));
+    set_branch_length_distribution(&graph, leaf_key, 1.0);
+
+    propagate_distributions_forward(&graph)?;
+
+    let leaf_time = node_time(&graph, leaf_key).expect("leaf A should be dated");
+    assert!(
+      (2010.500..=2010.503).contains(&leaf_time),
+      "leaf A should be dated within the day it was given, got {leaf_time}"
+    );
 
     Ok(())
   }
