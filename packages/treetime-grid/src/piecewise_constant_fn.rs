@@ -85,7 +85,7 @@ impl PiecewiseConstantFn {
   /// `queries` must be sorted in non-decreasing order (debug-asserted).
   #[allow(dead_code)]
   pub fn eval_many(&self, queries: &Array1<f64>) -> Array1<f64> {
-    debug_assert!(queries.windows(2).into_iter().all(|w| w[0] <= w[1]));
+    debug_assert!(queries.as_slice().unwrap().is_sorted());
 
     let breakpoints = self.base.breakpoints_slice();
     let mut bp_iter = breakpoints.iter().peekable();
