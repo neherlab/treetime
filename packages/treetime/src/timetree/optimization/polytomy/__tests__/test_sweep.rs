@@ -94,6 +94,22 @@ mod tests {
     );
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::negative(-1.0,          "Polytomy merger rate must be finite and non-negative at calendar time 3.000000e0, got -1.000000e0")]
+  #[case::nan(     f64::NAN,      "Polytomy merger rate must be finite and non-negative at calendar time 3.000000e0, got NaN")]
+  #[case::infinite(f64::INFINITY, "Polytomy merger rate must be finite and non-negative at calendar time 3.000000e0, got inf")]
+  #[trace]
+  fn test_sweep_rejects_invalid_merger_rates(#[case] rate: f64, #[case] expected: &str) {
+    let children = vec![lineage(3.0, 0), lineage(2.0, 0), lineage(1.0, 0)];
+    let mut rng = get_random_number_generator(Some(1));
+
+    assert_error!(
+      simulate_subtree(&children, 0.0, 1.0, &const_merger_rate(rate), &mut rng),
+      expected
+    );
+  }
+
   #[test]
   fn test_sweep_is_reproducible_under_the_same_seed() -> Result<(), Report> {
     let children: Vec<Lineage> = (0..8_u32).map(|i| lineage(10.0 - f64::from(i), i % 3)).collect();

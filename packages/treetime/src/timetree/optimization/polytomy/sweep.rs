@@ -152,7 +152,13 @@ pub fn simulate_subtree(
     let n_ready = alive.iter().filter(|lineage| lineage.mutations == 0).count();
     let total_mutations: u64 = alive.iter().map(|lineage| u64::from(lineage.mutations)).sum();
 
+    // A model rate must be valid before it enters event-rate arithmetic.
     let kappa = merger_rate(t)?;
+    if !kappa.is_finite() || kappa < 0.0 {
+      return make_error!(
+        "Polytomy merger rate must be finite and non-negative at calendar time {t:.6e}, got {kappa:.6e}"
+      );
+    }
     let rate_mut = mutation_rate * total_mutations as f64;
     let rate_coal = n_ready.saturating_sub(1) as f64 * kappa;
     let rate_total = rate_mut + rate_coal;
