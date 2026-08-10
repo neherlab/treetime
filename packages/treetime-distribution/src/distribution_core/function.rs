@@ -343,9 +343,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   where
     T: Float,
   {
-    Ok(Self::from_grid_fn(
-      self.grid_fn.scale_y(factor.to_f64().unwrap()),
-    ))
+    Ok(Self::from_grid_fn(self.grid_fn.scale_y(factor.to_f64().unwrap())))
   }
 
   /// Create a new distribution function with a constant delta added to every y value.

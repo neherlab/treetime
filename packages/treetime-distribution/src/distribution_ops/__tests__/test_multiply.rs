@@ -5,10 +5,10 @@ mod tests {
   use crate::distribution_core::formula::DistributionFormula;
   use crate::distribution_ops::multiply::{distribution_multiplication, hard_domains_disjoint};
   use crate::policy::Plain;
+  use approx::assert_abs_diff_eq;
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
   use rstest::rstest;
-  use approx::assert_abs_diff_eq;
   use treetime_grid::{ApproachLaw, BoundaryBehavior};
   use treetime_utils::pretty_assert_ulps_eq;
 
@@ -605,8 +605,16 @@ mod tests {
   /// Function * Function composes approach laws: exponents add, coefficients multiply.
   #[test]
   fn test_multiply_function_function_composes_approach_laws() {
-    let law_a = ApproachLaw { t_hard: 0.0, coeff: 2.0, exponent: 1.0 };
-    let law_b = ApproachLaw { t_hard: 0.0, coeff: 3.0, exponent: 2.0 };
+    let law_a = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 2.0,
+      exponent: 1.0,
+    };
+    let law_b = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 3.0,
+      exponent: 2.0,
+    };
 
     let a = Distribution::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
@@ -634,7 +642,11 @@ mod tests {
   /// When only one operand has an approach law, it passes through to the result.
   #[test]
   fn test_multiply_function_function_single_approach_law_passes_through() {
-    let law = ApproachLaw { t_hard: 0.0, coeff: 2.0, exponent: 1.5 };
+    let law = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 2.0,
+      exponent: 1.5,
+    };
 
     let a = Distribution::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
@@ -657,14 +669,15 @@ mod tests {
   #[test]
   fn test_multiply_normalize_preserves_approach_law() {
     // Build a distribution with a known max > 1 so normalization visibly rescales
-    let f = DistributionFunction::<f64, Plain>::from_range_values(
-      (1.0, 5.0),
-      array![20.0, 40.0, 100.0, 40.0, 20.0],
-    )
-    .unwrap()
-    .with_left_extrap(BoundaryBehavior::Hard)
-    .unwrap()
-    .with_left_approach(Some(ApproachLaw { t_hard: 0.0, coeff: 10.0, exponent: 1.0 }));
+    let f = DistributionFunction::<f64, Plain>::from_range_values((1.0, 5.0), array![20.0, 40.0, 100.0, 40.0, 20.0])
+      .unwrap()
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .unwrap()
+      .with_left_approach(Some(ApproachLaw {
+        t_hard: 0.0,
+        coeff: 10.0,
+        exponent: 1.0,
+      }));
 
     let normalized = Distribution::Function(f).normalize();
     let Distribution::Function(f) = &normalized else {

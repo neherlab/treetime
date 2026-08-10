@@ -311,7 +311,11 @@ fn with_composed_tails_and_approaches<Y: YAxisPolicy>(
     .with_right_extrap(compose_multiplication_tail(a_tails.1, b_tails.1))?;
   let left_approach = compose_approach_laws(a_approaches.0, b_approaches.0);
   let right_approach = compose_approach_laws(a_approaches.1, b_approaches.1);
-  Ok(result.with_left_approach(left_approach).with_right_approach(right_approach))
+  Ok(
+    result
+      .with_left_approach(left_approach)
+      .with_right_approach(right_approach),
+  )
 }
 
 /// Compose approach laws from two operands on the same side under multiplication.

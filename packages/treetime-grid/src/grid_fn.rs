@@ -87,7 +87,11 @@ impl ApproachLaw {
       return None;
     }
 
-    Some(ApproachLaw { t_hard, coeff, exponent })
+    Some(ApproachLaw {
+      t_hard,
+      coeff,
+      exponent,
+    })
   }
 
   /// Evaluate the approach law at a point between `t_hard` and the nearest grid point.

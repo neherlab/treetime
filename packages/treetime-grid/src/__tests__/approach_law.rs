@@ -92,7 +92,7 @@ mod tests {
     let y = Array1::linspace(0.1, 1.0, 10).mapv(|t: f64| (-t).exp());
     let grid = GridFn::from_range_values((0.1, 1.0), y)?;
     let law = ApproachLaw::fit(&grid, 0.0, Side::Left, 5).expect("fit should succeed");
-    assert_eq!(0.0, law.exponent);
+    assert_abs_diff_eq!(0.0, law.exponent, epsilon = 1e-14);
     Ok(())
   }
 
@@ -109,7 +109,11 @@ mod tests {
   #[test]
   fn test_approach_law_mass_b0() {
     // p(t) = C, mass = C * dt
-    let law = ApproachLaw { t_hard: 0.0, coeff: 3.0, exponent: 0.0 };
+    let law = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 3.0,
+      exponent: 0.0,
+    };
     let mass = law.mass(0.5);
     // 3.0 * 0.5^1 / 1.0 = 1.5
     assert_abs_diff_eq!(1.5, mass, epsilon = 1e-14);
@@ -118,7 +122,11 @@ mod tests {
   #[test]
   fn test_approach_law_mass_b1() {
     // p(t) = C * t, mass = C * t^2 / 2
-    let law = ApproachLaw { t_hard: 0.0, coeff: 2.0, exponent: 1.0 };
+    let law = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 2.0,
+      exponent: 1.0,
+    };
     let mass = law.mass(1.0);
     // 2.0 * 1.0^2 / 2.0 = 1.0
     assert_abs_diff_eq!(1.0, mass, epsilon = 1e-14);
@@ -127,7 +135,11 @@ mod tests {
   #[test]
   fn test_approach_law_mass_b2() {
     // p(t) = C * t^2, mass = C * t^3 / 3
-    let law = ApproachLaw { t_hard: 0.0, coeff: 6.0, exponent: 2.0 };
+    let law = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 6.0,
+      exponent: 2.0,
+    };
     let mass = law.mass(1.0);
     // 6.0 * 1.0^3 / 3.0 = 2.0
     assert_abs_diff_eq!(2.0, mass, epsilon = 1e-14);
@@ -137,8 +149,16 @@ mod tests {
 
   #[test]
   fn test_approach_law_compose_multiply_exponents_add() {
-    let a = ApproachLaw { t_hard: 0.0, coeff: 2.0, exponent: 1.0 };
-    let b = ApproachLaw { t_hard: 0.0, coeff: 3.0, exponent: 2.0 };
+    let a = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 2.0,
+      exponent: 1.0,
+    };
+    let b = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 3.0,
+      exponent: 2.0,
+    };
     let result = a.compose_multiply(&b);
     assert_abs_diff_eq!(3.0, result.exponent, epsilon = 1e-14);
     assert_abs_diff_eq!(6.0, result.coeff, epsilon = 1e-14);
@@ -147,8 +167,16 @@ mod tests {
 
   #[test]
   fn test_approach_law_compose_multiply_b0_b0() {
-    let a = ApproachLaw { t_hard: 0.0, coeff: 2.0, exponent: 0.0 };
-    let b = ApproachLaw { t_hard: 0.0, coeff: 5.0, exponent: 0.0 };
+    let a = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 2.0,
+      exponent: 0.0,
+    };
+    let b = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 5.0,
+      exponent: 0.0,
+    };
     let result = a.compose_multiply(&b);
     assert_abs_diff_eq!(0.0, result.exponent, epsilon = 1e-14);
     assert_abs_diff_eq!(10.0, result.coeff, epsilon = 1e-14);
@@ -158,7 +186,11 @@ mod tests {
 
   #[test]
   fn test_approach_law_negate_arg() {
-    let law = ApproachLaw { t_hard: 5.0, coeff: 2.0, exponent: 1.0 };
+    let law = ApproachLaw {
+      t_hard: 5.0,
+      coeff: 2.0,
+      exponent: 1.0,
+    };
     let negated = law.negate_arg();
     assert_ulps_eq!(-5.0, negated.t_hard);
     assert_abs_diff_eq!(2.0, negated.coeff, epsilon = 1e-14);
@@ -172,7 +204,11 @@ mod tests {
     // Grid [1.0, 5.0], hard left boundary at t=0 with approach law p(t) = 2.0 * t^1.0
     let grid = GridFn::from_range_values((1.0, 5.0), ndarray::array![2.0, 4.0, 6.0, 8.0, 10.0])?
       .with_left_extrap(BoundaryBehavior::Hard)
-      .with_left_approach(Some(ApproachLaw { t_hard: 0.0, coeff: 2.0, exponent: 1.0 }));
+      .with_left_approach(Some(ApproachLaw {
+        t_hard: 0.0,
+        coeff: 2.0,
+        exponent: 1.0,
+      }));
 
     // Between hard boundary and grid: use approach law
     let val = grid.interp(0.5)?;
@@ -194,7 +230,11 @@ mod tests {
     // Grid [0.0, 4.0], hard right boundary at t=5.0 with approach law p(t) = 3.0 * (5-t)^2
     let grid = GridFn::from_range_values((0.0, 4.0), ndarray::array![75.0, 48.0, 27.0, 12.0, 3.0])?
       .with_right_extrap(BoundaryBehavior::Hard)
-      .with_right_approach(Some(ApproachLaw { t_hard: 5.0, coeff: 3.0, exponent: 2.0 }));
+      .with_right_approach(Some(ApproachLaw {
+        t_hard: 5.0,
+        coeff: 3.0,
+        exponent: 2.0,
+      }));
 
     // Between grid and hard boundary: use approach law
     let val = grid.interp(4.5)?;
@@ -212,7 +252,11 @@ mod tests {
     // b=0: density is constant (maximal) at boundary
     let grid = GridFn::from_range_values((0.1, 1.0), ndarray::array![5.0, 5.0, 5.0, 5.0, 5.0])?
       .with_left_extrap(BoundaryBehavior::Hard)
-      .with_left_approach(Some(ApproachLaw { t_hard: 0.0, coeff: 5.0, exponent: 0.0 }));
+      .with_left_approach(Some(ApproachLaw {
+        t_hard: 0.0,
+        coeff: 5.0,
+        exponent: 0.0,
+      }));
 
     // Between hard boundary and grid: constant value
     let val = grid.interp(0.05)?;
@@ -231,7 +275,11 @@ mod tests {
 
   #[test]
   fn test_gridfn_scale_y_preserves_approach_law() -> Result<(), Report> {
-    let law = ApproachLaw { t_hard: 0.0, coeff: 2.0, exponent: 1.5 };
+    let law = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 2.0,
+      exponent: 1.5,
+    };
     let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![1.0, 2.0, 3.0])?
       .with_left_extrap(BoundaryBehavior::Hard)
       .with_left_approach(Some(law));
@@ -246,9 +294,12 @@ mod tests {
 
   #[test]
   fn test_gridfn_mapv_clears_approach_law() -> Result<(), Report> {
-    let law = ApproachLaw { t_hard: 0.0, coeff: 2.0, exponent: 1.0 };
-    let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![1.0, 2.0, 3.0])?
-      .with_left_approach(Some(law));
+    let law = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 2.0,
+      exponent: 1.0,
+    };
+    let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![1.0, 2.0, 3.0])?.with_left_approach(Some(law));
 
     let mapped = grid.mapv(|v| v * v);
     assert_eq!(None, mapped.left_approach());
@@ -257,8 +308,16 @@ mod tests {
 
   #[test]
   fn test_gridfn_negate_arg_swaps_approach_laws() -> Result<(), Report> {
-    let left_law = ApproachLaw { t_hard: 0.0, coeff: 2.0, exponent: 1.0 };
-    let right_law = ApproachLaw { t_hard: 10.0, coeff: 3.0, exponent: 2.0 };
+    let left_law = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 2.0,
+      exponent: 1.0,
+    };
+    let right_law = ApproachLaw {
+      t_hard: 10.0,
+      coeff: 3.0,
+      exponent: 2.0,
+    };
     let grid = GridFn::from_range_values((1.0, 9.0), ndarray::array![1.0, 5.0, 9.0])?
       .with_left_approach(Some(left_law))
       .with_right_approach(Some(right_law));
@@ -282,7 +341,11 @@ mod tests {
 
   #[test]
   fn test_gridfn_resample_preserves_approach_law() -> Result<(), Report> {
-    let law = ApproachLaw { t_hard: 0.0, coeff: 2.0, exponent: 1.0 };
+    let law = ApproachLaw {
+      t_hard: 0.0,
+      coeff: 2.0,
+      exponent: 1.0,
+    };
     let grid = GridFn::from_range_values((1.0, 5.0), ndarray::array![2.0, 4.0, 6.0, 8.0, 10.0])?
       .with_left_extrap(BoundaryBehavior::Hard)
       .with_left_approach(Some(law));
