@@ -7,6 +7,8 @@ mod tests {
   use eyre::Report;
   use ndarray::array;
   use pretty_assertions::assert_eq;
+  use proptest::prelude::*;
+  use rand::RngCore;
   use std::collections::BTreeSet;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
@@ -105,7 +107,7 @@ mod tests {
   /// These fixtures carry no partitions, so every branch has zero reconstructed substitutions
   /// and the total alignment length never enters: the sampled history is shaped by the merger
   /// rate alone.
-  fn resolve(graph: &mut GraphTimetree, rng: &mut dyn rand::RngCore) -> Result<usize, Report> {
+  fn resolve(graph: &mut GraphTimetree, rng: &mut dyn RngCore) -> Result<usize, Report> {
     let merger_rate = PiecewiseConstantFn::new(array![], array![TEST_MERGER_RATE]);
     resolve_polytomies(graph, &no_partitions(), TEST_MUTATION_RATE, 0, &merger_rate, rng)
   }
@@ -159,23 +161,32 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_resolve_polytomies_preserves_every_leaf() -> Result<(), Report> {
-    for seed in 0..25 {
-      let mut graph = wide_polytomy_tree()?;
-      let parent_key = find_node_key_by_name(&graph, "P").ok_or_else(|| make_report!("P not found"))?;
+  proptest! {
+    #[test]
+    fn test_prop_resolve_polytomies_preserves_every_leaf(seed in any::<u64>()) {
+      let mut graph = wide_polytomy_tree().unwrap();
+      let parent_key = find_node_key_by_name(&graph, "P").expect("P must exist");
       let before = leaf_names_under(&graph, parent_key);
       let mut rng = get_random_number_generator(Some(seed));
 
-      resolve(&mut graph, &mut rng)?;
+      resolve(&mut graph, &mut rng).unwrap();
 
       let after = leaf_names_under(&graph, parent_key);
-      assert_eq!(
-        before, after,
-        "seed {seed}: resolution must not lose or duplicate leaves"
-      );
+      prop_assert_eq!(before, after);
     }
-    Ok(())
+
+    #[test]
+    fn test_prop_resolve_polytomies_leaves_no_single_child_nodes(seed in any::<u64>()) {
+      let mut graph = wide_polytomy_tree().unwrap();
+      let mut rng = get_random_number_generator(Some(seed));
+      resolve(&mut graph, &mut rng).unwrap();
+
+      let has_single_child_node = graph.get_nodes().into_iter().any(|node| {
+        let node = node.read_arc();
+        node.inbound().len() == 1 && node.outbound().len() == 1
+      });
+      prop_assert!(!has_single_child_node);
+    }
   }
 
   #[test]
@@ -310,22 +321,6 @@ mod tests {
       }
     }
 
-    Ok(())
-  }
-
-  #[test]
-  fn test_resolve_polytomies_leaves_no_single_child_nodes() -> Result<(), Report> {
-    for seed in 0..25 {
-      let mut graph = wide_polytomy_tree()?;
-      let mut rng = get_random_number_generator(Some(seed));
-      resolve(&mut graph, &mut rng)?;
-
-      for node in graph.get_nodes() {
-        let node = node.read_arc();
-        let trivial = node.inbound().len() == 1 && node.outbound().len() == 1;
-        assert!(!trivial, "seed {seed}: a single-child node survived cleanup");
-      }
-    }
     Ok(())
   }
 
