@@ -9,7 +9,7 @@ use crate::distribution_ops::time_bounds::{
 use crate::policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::{Array1, Zip};
-use treetime_grid::BoundaryBehavior;
+use treetime_grid::{ApproachLaw, BoundaryBehavior};
 use treetime_utils::make_internal_error;
 
 /// Grid size for discretizing Formula distributions that have no natural grid.
@@ -161,6 +161,8 @@ fn multiply_function_function<Y: YAxisPolicy>(
   let a_tails = (a.left_extrap(), a.right_extrap());
   let b_bounds = (b.x_min(), b.x_max());
   let b_tails = (b.left_extrap(), b.right_extrap());
+  let a_approaches = (a.left_approach().copied(), a.right_approach().copied());
+  let b_approaches = (b.left_approach().copied(), b.right_approach().copied());
   match multiplication_support_intersection(a_bounds, a_tails, b_bounds, b_tails) {
     SupportIntersection::Disjoint => multiplication_empty_result(a_bounds, a_tails, b_bounds, b_tails),
     SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.interp(t)?, b.interp(t)?))),
@@ -172,10 +174,12 @@ fn multiply_function_function<Y: YAxisPolicy>(
       let values = Zip::from(&values_a)
         .and(&values_b)
         .map_collect(|&value_a, &value_b| Y::multiply(value_a, value_b));
-      let function = with_composed_tails(
+      let function = with_composed_tails_and_approaches(
         DistributionFunction::from_range_values(bounds, values)?,
         a_tails,
         b_tails,
+        a_approaches,
+        b_approaches,
       )?;
       Ok(Distribution::Function(function))
     },
@@ -292,6 +296,37 @@ fn with_composed_tails<Y: YAxisPolicy>(
   function
     .with_left_extrap(compose_multiplication_tail(a_tails.0, b_tails.0))?
     .with_right_extrap(compose_multiplication_tail(a_tails.1, b_tails.1))
+}
+
+/// Attach composed tails and approach laws from both operands to a Function result.
+fn with_composed_tails_and_approaches<Y: YAxisPolicy>(
+  function: DistributionFunction<f64, Y>,
+  a_tails: (BoundaryBehavior, BoundaryBehavior),
+  b_tails: (BoundaryBehavior, BoundaryBehavior),
+  a_approaches: (Option<ApproachLaw>, Option<ApproachLaw>),
+  b_approaches: (Option<ApproachLaw>, Option<ApproachLaw>),
+) -> Result<DistributionFunction<f64, Y>, Report> {
+  let result = function
+    .with_left_extrap(compose_multiplication_tail(a_tails.0, b_tails.0))?
+    .with_right_extrap(compose_multiplication_tail(a_tails.1, b_tails.1))?;
+  let left_approach = compose_approach_laws(a_approaches.0, b_approaches.0);
+  let right_approach = compose_approach_laws(a_approaches.1, b_approaches.1);
+  Ok(result.with_left_approach(left_approach).with_right_approach(right_approach))
+}
+
+/// Compose approach laws from two operands on the same side under multiplication.
+///
+/// Both present: exponents add, coefficients multiply.
+/// One present: the operand without an approach law contributes its grid boundary
+/// value as a constant factor (exponent 0), so the single law is returned as-is
+/// (the grid boundary value is already accounted for in the product's grid values).
+/// Neither present: no approach law on the result.
+fn compose_approach_laws(a: Option<ApproachLaw>, b: Option<ApproachLaw>) -> Option<ApproachLaw> {
+  match (a, b) {
+    (Some(a), Some(b)) => Some(a.compose_multiply(&b)),
+    (Some(law), None) | (None, Some(law)) => Some(law),
+    (None, None) => None,
+  }
 }
 
 /// Compose the per-side result tail for a product from the two operands' tails on that side.
