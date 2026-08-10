@@ -4,6 +4,7 @@ mod tests {
   use eyre::Report;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
+  use proptest::prelude::*;
   use rstest::rstest;
   use std::collections::BTreeSet;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
@@ -199,21 +200,20 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_sweep_plan_invariants_hold_across_seeds() -> Result<(), Report> {
-    let children: Vec<Lineage> = vec![
-      lineage(10.0, 0),
-      lineage(9.5, 2),
-      lineage(8.0, 1),
-      lineage(7.0, 0),
-      lineage(6.0, 3),
-      lineage(2.0, 0),
-    ];
-    let t_stop = -5.0;
-
-    for seed in 0..200 {
+  proptest! {
+    #[test]
+    fn test_prop_sweep_plan_invariants(seed in any::<u64>()) {
+      let children = vec![
+        lineage(10.0, 0),
+        lineage(9.5, 2),
+        lineage(8.0, 1),
+        lineage(7.0, 0),
+        lineage(6.0, 3),
+        lineage(2.0, 0),
+      ];
+      let t_stop = -5.0;
       let mut rng = get_random_number_generator(Some(seed));
-      let plan = simulate_subtree(&children, t_stop, 0.7, &const_merger_rate(0.3), &mut rng)?;
+      let plan = simulate_subtree(&children, t_stop, 0.7, &const_merger_rate(0.3), &mut rng).unwrap();
 
       assert_every_child_placed_once(&plan, children.len());
 
@@ -221,62 +221,52 @@ mod tests {
       let mut times: Vec<f64> = children.iter().map(|child| child.time).collect();
       times.extend(plan.mergers.iter().map(|merger| merger.time));
 
-      for (index, merger) in plan.mergers.iter().enumerate() {
-        assert!(
-          merger.time > t_stop,
-          "seed {seed}: merger at {} is at or past the parent bound {t_stop}",
-          merger.time
-        );
+      let all_after_parent = plan.mergers.iter().all(|merger| merger.time > t_stop);
+      prop_assert!(all_after_parent, "seed {seed}: merger at or past the parent bound {t_stop}: {:?}", plan.mergers);
 
-        for lineage_id in [merger.left, merger.right] {
-          assert!(
-            lineage_id < children.len() + index,
-            "seed {seed}: merger {index} references lineage {lineage_id}, which does not exist yet"
-          );
-          assert!(
-            merger.time <= times[lineage_id],
-            "seed {seed}: merger at {} is more recent than its child at {}",
-            merger.time,
-            times[lineage_id]
-          );
-        }
-      }
+      let all_references_valid = plan.mergers.iter().enumerate().all(|(index, merger)| {
+        [merger.left, merger.right].into_iter().all(|lineage_id| {
+          lineage_id < children.len() + index && merger.time <= times[lineage_id]
+        })
+      });
+      prop_assert!(all_references_valid, "seed {seed}: merger references are invalid: {:?}", plan.mergers);
 
-      // Mergers are emitted oldest last.
-      assert!(
+      // Sweep order requires merger times to decrease toward the parent.
+      prop_assert!(
         plan.mergers.is_sorted_by(|first, second| first.time >= second.time),
         "seed {seed}: merger times are not monotone: {:?}",
         plan.mergers.iter().map(|m| m.time).collect::<Vec<_>>()
       );
     }
-    Ok(())
-  }
 
-  #[test]
-  fn test_sweep_never_merges_a_lineage_that_still_has_mutations() -> Result<(), Report> {
-    // With a zero mutation rate no substitution can ever be placed, so any child carrying one
-    // is permanently ineligible to coalesce and must survive as a root.
-    let children = vec![
-      lineage(10.0, 0),
-      lineage(9.0, 0),
-      lineage(8.0, 4),
-      lineage(7.0, 0),
-      lineage(6.0, 1),
-    ];
-
-    for seed in 0..100 {
+    #[test]
+    fn test_prop_sweep_preserves_mutated_lineages_when_mutation_rate_is_zero(seed in any::<u64>()) {
+      // With no mutation events, a mutated child is permanently ineligible to coalesce.
+      let children = vec![
+        lineage(10.0, 0),
+        lineage(9.0, 0),
+        lineage(8.0, 4),
+        lineage(7.0, 0),
+        lineage(6.0, 1),
+      ];
       let mut rng = get_random_number_generator(Some(seed));
-      let plan = simulate_subtree(&children, -50.0, 0.0, &const_merger_rate(2.0), &mut rng)?;
+      let plan = simulate_subtree(&children, -50.0, 0.0, &const_merger_rate(2.0), &mut rng).unwrap();
 
-      for mutated in [2_usize, 4] {
-        assert!(
-          plan.roots.contains(&mutated),
-          "seed {seed}: child {mutated} carries mutations that can never be placed, so it cannot merge"
-        );
-      }
+      let mutated_children_survive = [2_usize, 4].into_iter().all(|child| plan.roots.contains(&child));
+      prop_assert!(mutated_children_survive, "seed {seed}: a mutated child merged: {:?}", plan.mergers);
       assert_every_child_placed_once(&plan, children.len());
     }
-    Ok(())
+
+    #[test]
+    fn test_prop_sweep_resolves_fully_with_generous_window(seed in any::<u64>()) {
+      let n_children = 8;
+      let children: Vec<Lineage> = (0..n_children).map(|i| lineage(10.0 - i as f64, 0)).collect();
+      let mut rng = get_random_number_generator(Some(seed));
+      let plan = simulate_subtree(&children, -1.0e6, 0.0, &const_merger_rate(1.0), &mut rng).unwrap();
+
+      prop_assert_eq!(plan.mergers.len(), n_children - 2);
+      prop_assert_eq!(plan.roots.len(), 2);
+    }
   }
 
   #[test]
@@ -327,27 +317,6 @@ mod tests {
 
     assert!(plan.mergers.is_empty());
     assert_eq!(plan.roots.len(), 3);
-    Ok(())
-  }
-
-  #[test]
-  fn test_sweep_resolves_fully_when_the_window_is_generous() -> Result<(), Report> {
-    // k mutation-free children and ample time: the sweep should run until only two lineages
-    // remain, which for k children takes k - 2 mergers.
-    let k = 8;
-    let children: Vec<Lineage> = (0..k).map(|i| lineage(10.0 - i as f64, 0)).collect();
-
-    for seed in 0..50 {
-      let mut rng = get_random_number_generator(Some(seed));
-      let plan = simulate_subtree(&children, -1.0e6, 0.0, &const_merger_rate(1.0), &mut rng)?;
-
-      assert_eq!(plan.mergers.len(), k - 2, "seed {seed}: expected full resolution");
-      assert_eq!(
-        plan.roots.len(),
-        2,
-        "seed {seed}: a resolved polytomy leaves a bifurcation"
-      );
-    }
     Ok(())
   }
 
