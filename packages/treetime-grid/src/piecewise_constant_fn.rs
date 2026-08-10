@@ -1,4 +1,5 @@
 use crate::piecewise_fn::PiecewiseFnBase;
+use itertools::Itertools;
 use ndarray::Array1;
 
 /// Piecewise constant (step) function on non-uniform breakpoints.
@@ -72,6 +73,26 @@ impl PiecewiseConstantFn {
   pub fn eval_left(&self, t: f64) -> f64 {
     let idx = self.base.breakpoints_slice().partition_point(|&bp| bp < t);
     self.base.values()[idx]
+  }
+
+  /// Combine two step functions over the union of their breakpoints.
+  #[must_use]
+  pub fn zip_map(&self, other: &Self, f: impl Fn(f64, f64) -> f64) -> Self {
+    // Union breakpoints so the result changes wherever either input changes.
+    let mut breakpoints = self
+      .breakpoints()
+      .iter()
+      .chain(other.breakpoints())
+      .copied()
+      .sorted_by(f64::total_cmp)
+      .collect_vec();
+    breakpoints.dedup_by(|left, right| left.total_cmp(right).is_eq());
+
+    let values = std::iter::once(f(self.values()[0], other.values()[0]))
+      .chain(breakpoints.iter().map(|&t| f(self.eval(t), other.eval(t))))
+      .collect();
+
+    Self::new(Array1::from(breakpoints), values)
   }
 
   /// Evaluate at multiple points in a single sweep.
