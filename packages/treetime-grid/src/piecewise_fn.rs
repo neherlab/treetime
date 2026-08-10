@@ -15,11 +15,7 @@ pub struct PiecewiseFnBase {
 impl PiecewiseFnBase {
   pub fn new(breakpoints: Array1<f64>, values: Array1<f64>) -> Self {
     debug_assert!(
-      breakpoints
-        .as_slice()
-        .unwrap()
-        .windows(2)
-        .all(|w| matches!(w, [a, b] if a < b)),
+      breakpoints.as_slice().unwrap().is_sorted_by(|a, b| a < b),
       "breakpoints must be strictly ascending"
     );
     Self { breakpoints, values }
