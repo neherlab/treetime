@@ -31,11 +31,13 @@ use crate::timetree::refinement::{Refinement, RefinementOptions, TopologyRefinem
 use crate::timetree::utils::{initialize_clock_totals_from_time_distributions, initialize_node_divergences};
 use eyre::{Report, WrapErr};
 use log::{debug, info};
+use ndarray::array;
 use parking_lot::RwLock;
 use serde::Serialize;
 use std::io::Write;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_io::dates_csv::DatesMap;
 use treetime_io::fasta::FastaRecord;
 use treetime_utils::make_report;
@@ -271,7 +273,7 @@ pub fn run(
   let prior_wanted = coalescent != CoalescentMode::Disabled;
 
   if prior_wanted {
-    let prior = CoalescentModel::new(&lineage_counts, &coalescent_tc)?;
+    let prior = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
     run_timetree(
       &mut input.graph,
       &partitions,
@@ -329,7 +331,9 @@ pub fn run(
     if coalescent.is_optimized() {
       coalescent_tc = coalescent_timescale(coalescent, &input.graph, &skyline_params)?;
     }
-    let coalescent_model = CoalescentModel::new(&lineage_counts, &coalescent_tc)?;
+    let coalescent_model = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
+    // Preserve every k(t) and Tc(t) discontinuity for event-sampler boundaries.
+    let merger_rate = coalescent_model.branch_merger_rate_schedule(&coalescent_tc.schedule)?;
 
     let outcome = Refinement {
       graph: &mut input.graph,
@@ -337,7 +341,7 @@ pub fn run(
       clock_model: &mut clock_model,
       clock_params: reroot_clock_params,
       branch_params: &branch_params,
-      coalescent: &coalescent_model,
+      merger_rate: &merger_rate,
       prior: prior_wanted.then_some(&coalescent_model),
       rng: &mut rng,
       options: &refinement_options,
@@ -352,7 +356,7 @@ pub fn run(
         outcome.time_change,
         &input.graph,
         &partitions,
-        prior_wanted.then_some(&coalescent_tc),
+        prior_wanted.then_some(&coalescent_tc.distribution),
       )
       .wrap_err("Failed to record convergence metrics")
       .wrap_err_with(|| format!("When running round {i}"))?;
@@ -372,7 +376,7 @@ pub fn run(
   // susceptibility runs in particular perturb the clock rate, and would otherwise each rebuild
   // k(t) from their own perturbed times, confounding the sensitivity being measured with the
   // prior's reaction to it.
-  let final_model = CoalescentModel::new(&lineage_counts, &coalescent_tc)?;
+  let final_model = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
   let final_prior = prior_wanted.then_some(&final_model);
 
   if let Some(rate_std) = rate_std {
@@ -466,12 +470,12 @@ fn estimate_coalescent_tc(
   mode: CoalescentMode,
   graph: &GraphTimetree,
   skyline_params: &SkylineParams,
-) -> Result<Option<Distribution>, Report> {
+) -> Result<Option<CoalescentTimescale>, Report> {
   // Both optimizing modes are the same solve: a constant Tc is just a one-segment
   // skyline. They differ only in the number of segments.
   let n_points = match mode {
     CoalescentMode::Disabled => return Ok(None),
-    CoalescentMode::Fixed(tc) => return Ok(Some(Distribution::constant(tc))),
+    CoalescentMode::Fixed(tc) => return Ok(Some(CoalescentTimescale::constant(tc))),
     CoalescentMode::Constant => 1,
     CoalescentMode::Skyline => skyline_params.n_points,
   };
@@ -482,7 +486,10 @@ fn estimate_coalescent_tc(
       ..skyline_params.clone()
     },
   )?;
-  Ok(Some(result.tc_distribution))
+  Ok(Some(CoalescentTimescale {
+    distribution: result.tc_distribution,
+    schedule: result.tc_schedule,
+  }))
 }
 
 /// The coalescent timescale a run works at, whether or not it asked for a coalescent prior.
@@ -495,7 +502,7 @@ fn coalescent_timescale(
   mode: CoalescentMode,
   graph: &GraphTimetree,
   skyline_params: &SkylineParams,
-) -> Result<Distribution, Report> {
+) -> Result<CoalescentTimescale, Report> {
   let mode = match mode {
     CoalescentMode::Disabled => CoalescentMode::Constant,
     mode => mode,
@@ -503,6 +510,20 @@ fn coalescent_timescale(
   estimate_coalescent_tc(mode, graph, skyline_params)
     .wrap_err("Failed to estimate the coalescent timescale")?
     .ok_or_else(|| make_report!("A coalescent Tc is required, but {mode:?} yielded none"))
+}
+
+struct CoalescentTimescale {
+  distribution: Distribution,
+  schedule: PiecewiseConstantFn,
+}
+
+impl CoalescentTimescale {
+  fn constant(tc: f64) -> Self {
+    Self {
+      distribution: Distribution::constant(tc),
+      schedule: PiecewiseConstantFn::new(array![], array![tc]),
+    }
+  }
 }
 
 struct PartitionInitResult {

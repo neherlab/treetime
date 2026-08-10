@@ -14,6 +14,7 @@ use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
 use eyre::{Report, WrapErr};
 use log::info;
 use treetime_graph::assign_node_names::assign_node_names;
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
 pub(crate) struct Refinement<'a> {
   pub graph: &'a mut GraphTimetree,
@@ -21,10 +22,8 @@ pub(crate) struct Refinement<'a> {
   pub clock_model: &'a mut ClockModel,
   pub clock_params: &'a ClockParams,
   pub branch_params: &'a BranchPointOptimizationParams,
-  /// This round's coalescent model: lineage counts frozen at the tree entering the optimization
-  /// loop, `Tc` as re-estimated for this round. Supplies the per-branch merger rate polytomy
-  /// resolution samples against.
-  pub coalescent: &'a CoalescentModel,
+  /// This round's per-branch coalescent merger-rate schedule.
+  pub merger_rate: &'a PiecewiseConstantFn,
   /// The same model, as the prior imposed on node times -- `None` for a run that carries no
   /// coalescent prior, where the model exists only to give polytomy resolution a merger rate.
   pub prior: Option<&'a CoalescentModel>,
@@ -101,13 +100,13 @@ impl Refinement<'_> {
     // Expected substitutions per unit time across the whole alignment.
     let total_mutation_rate = self.clock_model.clock_rate() * total_length as f64;
 
-    let coalescent = self.coalescent;
+    let merger_rate = self.merger_rate;
     let resolved_nodes = resolve_polytomies(
       self.graph,
       self.partitions,
       total_mutation_rate,
       total_length,
-      &|time| coalescent.branch_merger_rate(time),
+      &|time| Ok(merger_rate.eval(time)),
       self.rng,
     )
     .wrap_err("Polytomy resolution failed")?;

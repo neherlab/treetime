@@ -23,12 +23,13 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
-  use ndarray::Array1;
+  use ndarray::{Array1, array};
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::edge::{BranchDistribution, HasBranchLength};
+  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
@@ -268,6 +269,8 @@ mod tests {
   ) -> Result<RefinementOutcome, Report> {
     let pinned_tc = Distribution::constant(REFINEMENT_TEST_TC);
     let coalescent = CoalescentModel::new(&compute_lineage_counts(graph)?, coalescent_tc.unwrap_or(&pinned_tc))?;
+    let merger_rate =
+      coalescent.branch_merger_rate_schedule(&PiecewiseConstantFn::new(array![], array![REFINEMENT_TEST_TC]))?;
 
     Refinement {
       graph,
@@ -275,7 +278,7 @@ mod tests {
       clock_model,
       clock_params: &ClockParams::default(),
       branch_params: &BranchPointOptimizationParams::default(),
-      coalescent: &coalescent,
+      merger_rate: &merger_rate,
       prior: coalescent_tc.is_some().then_some(&coalescent),
       rng: &mut get_random_number_generator(Some(REFINEMENT_TEST_SEED)),
       options: &refinement_options(),
