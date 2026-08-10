@@ -9,7 +9,8 @@ mod tests {
   use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_utils::{make_report, pretty_assert_abs_diff_eq};
+  use treetime_utils::io::json::{JsonPretty, json_write_str};
+  use treetime_utils::{assert_error, make_report, pretty_assert_abs_diff_eq};
 
   /// `((A,B,C)P)root` with times set and each child edge carrying a distinct mutation length.
   fn polytomy_graph() -> Result<(GraphTimetree, GraphNodeKey, Vec<ChildRef>), Report> {
@@ -296,12 +297,14 @@ mod tests {
       ],
       roots: vec![3],
     };
+    let before = json_write_str(&graph, JsonPretty(false))?;
 
-    let result = apply_plan(&mut graph, parent_key, 2000.0, &children, &plan);
-    assert!(
-      result.is_err(),
-      "a forward reference must be rejected, not silently dropped"
+    assert_error!(
+      apply_plan(&mut graph, parent_key, 2000.0, &children, &plan),
+      "Polytomy plan merger 0 referenced lineage 4 before it was created. This is an internal error. Please report it to developers."
     );
+    let after = json_write_str(&graph, JsonPretty(false))?;
+    assert_eq!(before, after, "plan validation must finish before graph mutation");
     Ok(())
   }
 }

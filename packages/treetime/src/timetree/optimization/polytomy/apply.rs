@@ -40,9 +40,8 @@ pub fn apply_plan(
   children: &[ChildRef],
   plan: &SubtreePlan,
 ) -> Result<usize, Report> {
-  // Calendar time of every lineage the plan can name: children first, then merger nodes.
-  let mut times: Vec<f64> = children.iter().map(|child| child.time).collect();
-  times.extend(plan.mergers.iter().map(|merger| merger.time));
+  // Validate the complete forest before graph mutation so plan application is atomic.
+  let times = validate_plan(parent_time, children, plan)?;
 
   let mut merger_nodes: Vec<GraphNodeKey> = Vec::with_capacity(plan.mergers.len());
 
@@ -74,6 +73,76 @@ pub fn apply_plan(
   Ok(plan.mergers.len())
 }
 
+fn validate_plan(parent_time: f64, children: &[ChildRef], plan: &SubtreePlan) -> Result<Vec<f64>, Report> {
+  if !parent_time.is_finite() {
+    return make_internal_error!("Polytomy plan parent time must be finite, got {parent_time}");
+  }
+
+  let n_children = children.len();
+  let n_lineages = n_children + plan.mergers.len();
+  let mut times = Vec::with_capacity(n_lineages);
+  for (index, child) in children.iter().enumerate() {
+    if !child.time.is_finite() || child.time < parent_time {
+      return make_internal_error!(
+        "Polytomy plan child {index} time must be finite and not older than its parent at {parent_time:.6e}, got {:.6e}",
+        child.time
+      );
+    }
+    times.push(child.time);
+  }
+
+  let mut consumed = vec![false; n_lineages];
+  for (index, merger) in plan.mergers.iter().enumerate() {
+    if !merger.time.is_finite() || merger.time <= parent_time {
+      return make_internal_error!(
+        "Polytomy plan merger {index} time must be finite and more recent than its parent at {parent_time:.6e}, got {:.6e}",
+        merger.time
+      );
+    }
+
+    let merger_id = n_children + index;
+    for lineage in [merger.left, merger.right] {
+      if lineage >= merger_id {
+        return make_internal_error!("Polytomy plan merger {index} referenced lineage {lineage} before it was created");
+      }
+      if consumed[lineage] {
+        return make_internal_error!("Polytomy plan consumed lineage {lineage} more than once");
+      }
+      if times[lineage] < merger.time {
+        return make_internal_error!(
+          "Polytomy plan merger {index} at {:.6e} is more recent than lineage {lineage} at {:.6e}",
+          merger.time,
+          times[lineage]
+        );
+      }
+      consumed[lineage] = true;
+    }
+    times.push(merger.time);
+  }
+
+  for &lineage in &plan.roots {
+    if lineage >= n_lineages {
+      return make_internal_error!("Polytomy plan referenced unknown root lineage {lineage}");
+    }
+    if consumed[lineage] {
+      return make_internal_error!("Polytomy plan consumed lineage {lineage} more than once");
+    }
+    if times[lineage] < parent_time {
+      return make_internal_error!(
+        "Polytomy plan root lineage {lineage} at {:.6e} is older than its parent at {parent_time:.6e}",
+        times[lineage]
+      );
+    }
+    consumed[lineage] = true;
+  }
+
+  if let Some(lineage) = consumed.iter().position(|consumed| !consumed) {
+    return make_internal_error!("Polytomy plan omitted lineage {lineage}");
+  }
+
+  Ok(times)
+}
+
 /// Place one lineage under `new_parent_key`, setting the connecting edge's `time_length`.
 fn attach(
   graph: &mut GraphTimetree,
@@ -89,31 +158,28 @@ fn attach(
   };
   let time_length = lineage_time - new_parent_time;
 
-  match children.get(lineage) {
+  if let Some(child) = children.get(lineage) {
     // An original child: relocate its existing edge, keeping key and payload.
-    Some(child) => {
-      graph.reparent_edge(child.edge_key, new_parent_key)?;
-      let edge = graph
-        .get_edge(child.edge_key)
-        .ok_or_else(|| make_internal_report!("Edge {} vanished while applying polytomy plan", child.edge_key))?;
-      edge.write_arc().payload().write_arc().time_length = Some(time_length);
-    },
+    graph.reparent_edge(child.edge_key, new_parent_key)?;
+    let edge = graph
+      .get_edge(child.edge_key)
+      .ok_or_else(|| make_internal_report!("Edge {} vanished while applying polytomy plan", child.edge_key))?;
+    edge.write_arc().payload().write_arc().time_length = Some(time_length);
+  } else {
     // A node the sweep created: it has no parent edge yet.
-    None => {
-      let Some(&node_key) = merger_nodes.get(lineage - children.len()) else {
-        return make_internal_error!(
-          "Polytomy plan referenced merger node {lineage} before it was created; mergers must only reference earlier mergers"
-        );
-      };
-      let mut payload = EdgeTimetree {
-        time_length: Some(time_length),
-        ..EdgeTimetree::default()
-      };
-      // The sweep only merges lineages that have placed every substitution, so the branch
-      // above a merger node carries none.
-      payload.set_branch_length(Some(0.0));
-      graph.add_edge(new_parent_key, node_key, payload)?;
-    },
+    let Some(&node_key) = merger_nodes.get(lineage - children.len()) else {
+      return make_internal_error!(
+        "Polytomy plan referenced merger node {lineage} before it was created; mergers must only reference earlier mergers"
+      );
+    };
+    let mut payload = EdgeTimetree {
+      time_length: Some(time_length),
+      ..EdgeTimetree::default()
+    };
+    // The sweep only merges lineages that have placed every substitution, so the branch
+    // above a merger node carries none.
+    payload.set_branch_length(Some(0.0));
+    graph.add_edge(new_parent_key, node_key, payload)?;
   }
 
   Ok(())
