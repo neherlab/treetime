@@ -5,6 +5,7 @@ mod tests {
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
   use eyre::Report;
+  use ndarray::array;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeSet;
   use std::sync::Arc;
@@ -12,6 +13,7 @@ mod tests {
   use treetime_graph::assign_node_names::assign_node_names;
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::node::{GraphNodeKey, Named};
+  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::sync::random::get_random_number_generator;
   use treetime_utils::{make_report, pretty_assert_abs_diff_eq};
@@ -104,14 +106,8 @@ mod tests {
   /// and the total alignment length never enters: the sampled history is shaped by the merger
   /// rate alone.
   fn resolve(graph: &mut GraphTimetree, rng: &mut dyn rand::RngCore) -> Result<usize, Report> {
-    resolve_polytomies(
-      graph,
-      &no_partitions(),
-      TEST_MUTATION_RATE,
-      0,
-      &|_time| Ok(TEST_MERGER_RATE),
-      rng,
-    )
+    let merger_rate = PiecewiseConstantFn::new(array![], array![TEST_MERGER_RATE]);
+    resolve_polytomies(graph, &no_partitions(), TEST_MUTATION_RATE, 0, &merger_rate, rng)
   }
 
   /// Names of the leaves reachable from `node_key`.

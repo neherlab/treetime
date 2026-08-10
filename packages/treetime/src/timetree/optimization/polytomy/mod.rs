@@ -34,6 +34,7 @@ use treetime_distribution::Distribution;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::remove_node_if_trivial;
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::make_error;
 
 /// Validate state required to rebuild inference after a topology change.
@@ -81,7 +82,7 @@ pub fn resolve_polytomies(
   partitions: &[PartitionTimetreeRef],
   mutation_rate: f64,
   total_length: usize,
-  merger_rate: &dyn Fn(f64) -> Result<f64, Report>,
+  merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn rand::RngCore,
 ) -> Result<usize, Report> {
   let polytomy_keys = find_polytomy_nodes(graph);
@@ -133,7 +134,7 @@ fn resolve_single_polytomy(
   node_key: GraphNodeKey,
   mutation_rate: f64,
   total_length: usize,
-  merger_rate: &dyn Fn(f64) -> Result<f64, Report>,
+  merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn rand::RngCore,
   topology_validated: &mut bool,
 ) -> Result<usize, Report> {

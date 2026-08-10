@@ -22,9 +22,10 @@
 //!
 //! $$R_{\text{mut}} = \mu M, \qquad R_{\text{coal}} = \max(0, \lvert R\rvert - 1)\,\kappa(t)$$
 //!
-//! The waiting time is $\operatorname{Exp}(R_{\text{mut}} + R_{\text{coal}})$; the event is a
-//! mutation with probability $R_{\text{mut}}/(R_{\text{mut}} + R_{\text{coal}})$; the mutating
-//! branch is drawn $\propto m_b$ and the coalescing pair uniformly from $R$.
+//! A unit-exponential hazard threshold is integrated across every interval where these rates
+//! are constant. The event is a mutation with probability
+//! $R_{\text{mut}}/(R_{\text{mut}} + R_{\text{coal}})$; the mutating branch is drawn
+//! $\propto m_b$ and the coalescing pair uniformly from $R$.
 //!
 //! # Divergence from v0
 //!
@@ -44,8 +45,9 @@
 
 use eyre::Report;
 use rand::Rng;
-use rand_distr::{Distribution as _, Exp};
+use rand_distr::{Distribution as _, Exp1};
 use std::collections::VecDeque;
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::{make_error, make_internal_error};
 
 /// One child branch of the polytomy, as seen by the sweep.
@@ -97,11 +99,11 @@ struct Tracked {
   mutations: u32,
 }
 
-/// A lineage that becomes live when the sweep reaches `time`.
+/// A lineage that becomes live when the sweep reaches `elapsed`.
 #[derive(Clone, Copy, Debug)]
 struct Pending {
   lineage: Tracked,
-  time: f64,
+  elapsed: f64,
 }
 
 /// Run the sweep over one polytomy's children.
@@ -111,14 +113,14 @@ struct Pending {
 /// mergers when there is nothing to resolve (fewer than three children) or no time to
 /// resolve it in (`max(child.time) <= t_stop`).
 ///
-/// `merger_rate` is the per-branch coalescent merger rate $\kappa(t)$ at a calendar time. The
-/// sweep scales it by its own $\lvert R\rvert - 1$ to obtain the total; where $\kappa$ comes
-/// from is the caller's choice, so no coalescent model reaches this module.
+/// `merger_rate` is the piecewise-constant per-branch coalescent merger rate $\kappa(t)$ in
+/// calendar time. The sweep scales it by its own $\lvert R\rvert - 1$ to obtain the total and
+/// integrates across every schedule breakpoint.
 pub fn simulate_subtree(
   children: &[Lineage],
   t_stop: f64,
   mutation_rate: f64,
-  merger_rate: &dyn Fn(f64) -> Result<f64, Report>,
+  merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn rand::RngCore,
 ) -> Result<SubtreePlan, Report> {
   // Finite inputs make every time comparison a total-order comparison.
@@ -131,99 +133,78 @@ pub fn simulate_subtree(
 
   // Most recent first. Ties break by id so the sweep is a deterministic function of the RNG
   // stream rather than of the input ordering.
-  let mut ordered: Vec<Pending> = children
-    .iter()
-    .enumerate()
+  let mut ordered: Vec<(usize, &Lineage)> = children.iter().enumerate().collect();
+  ordered.sort_by(|(left_id, left), (right_id, right)| right.time.total_cmp(&left.time).then(left_id.cmp(right_id)));
+
+  let t_start = ordered[0].1.time;
+  if t_start <= t_stop {
+    return Ok(SubtreePlan::unresolved(n_children));
+  }
+
+  let mut to_come: VecDeque<Pending> = ordered
+    .into_iter()
     .map(|(id, child)| Pending {
       lineage: Tracked {
         id,
         mutations: child.mutations,
       },
-      time: child.time,
+      elapsed: t_start - child.time,
     })
     .collect();
-  ordered.sort_by(|a, b| b.time.total_cmp(&a.time).then(a.lineage.id.cmp(&b.lineage.id)));
-
-  let t_start = ordered[0].time;
-  if t_start <= t_stop {
-    return Ok(SubtreePlan::unresolved(n_children));
-  }
-
-  let mut to_come: VecDeque<Pending> = ordered.into_iter().collect();
   let mut alive: Vec<Tracked> = Vec::with_capacity(n_children);
-  let mut t = t_start;
-  admit_arrivals(&mut alive, &mut to_come, t);
+  let mut elapsed = 0.0;
+  let stop_elapsed = t_start - t_stop;
+  admit_arrivals(&mut alive, &mut to_come, elapsed);
+
+  // Descending calendar breakpoints become ascending elapsed-time boundaries.
+  let mut rate_boundaries: VecDeque<f64> = merger_rate
+    .breakpoints()
+    .iter()
+    .rev()
+    .copied()
+    .filter(|&time| t_stop < time && time < t_start)
+    .map(|time| t_start - time)
+    .collect();
 
   let mut mergers: Vec<Merger> = Vec::new();
 
-  while alive.len() + to_come.len() > 2 && t > t_stop {
-    let n_ready = alive.iter().filter(|lineage| lineage.mutations == 0).count();
-    let total_mutations: u64 = alive.iter().map(|lineage| u64::from(lineage.mutations)).sum();
+  'sweep: while alive.len() + to_come.len() > 2 && elapsed < stop_elapsed {
+    // One threshold must survive every deterministic boundary before the next event.
+    let mut hazard_left: f64 = Exp1.sample(rng);
 
-    // A model rate must be valid before it enters event-rate arithmetic.
-    let kappa = merger_rate(t)?;
-    if !kappa.is_finite() || kappa < 0.0 {
-      return make_error!(
-        "Polytomy merger rate must be finite and non-negative at calendar time {t:.6e}, got {kappa:.6e}"
-      );
-    }
-    let rate_mut = mutation_rate * total_mutations as f64;
-    let rate_coal = n_ready.saturating_sub(1) as f64 * kappa;
-    // Finite component rates prevent overflow from becoming zero-hazard control flow.
-    if !rate_mut.is_finite() || !rate_coal.is_finite() {
-      return make_error!(
-        "Polytomy event rates must be finite at calendar time {t:.6e}, got mutation rate {rate_mut:.6e} and merger rate {rate_coal:.6e}"
-      );
-    }
-    let rate_total = rate_mut + rate_coal;
-    if !rate_total.is_finite() {
-      return make_error!("Polytomy total event rate must be finite at calendar time {t:.6e}, got {rate_total:.6e}");
-    }
+    loop {
+      let boundary = next_boundary(elapsed, stop_elapsed, &to_come, &rate_boundaries);
+      let rate_time = t_start - f64::midpoint(elapsed, boundary);
+      let (rate_mut, rate_total, total_mutations) =
+        event_rates(&alive, mutation_rate, merger_rate.eval(rate_time), rate_time)?;
+      let interval_hazard = rate_total * (boundary - elapsed);
 
-    // No event can occur in the current configuration: a single ready lineage cannot merge
-    // and mutation-free lineages cannot mutate. Advance to the next arrival, which changes
-    // the configuration, or stop if there is none. v0 instead relies on `Exp(0)` returning
-    // infinity and the loop condition catching it on the next pass.
-    if rate_total == 0.0 {
-      let Some(next) = to_come.front().copied() else {
-        break;
-      };
-      t = next.time;
-      admit_arrivals(&mut alive, &mut to_come, t);
-      continue;
-    }
-
-    let dt = Exp::new(rate_total)?.sample(rng);
-    let t_event = t - dt;
-
-    // The rate is only valid until the next lineage becomes available. If the draw crosses
-    // that boundary no event occurred before it, so resume there and redraw under the new
-    // rate -- the exponential is memoryless, so discarding the draw is unbiased. Resuming at
-    // `t_event` instead (as v0 does) would skip the interval between the arrival and the
-    // drawn time.
-    if let Some(next) = to_come.front().copied() {
-      if next.time >= t_event {
-        t = next.time;
-        admit_arrivals(&mut alive, &mut to_come, t);
+      if hazard_left >= interval_hazard {
+        if interval_hazard.is_finite() {
+          hazard_left -= interval_hazard;
+        }
+        elapsed = boundary;
+        if elapsed >= stop_elapsed {
+          break 'sweep;
+        }
+        while rate_boundaries.front().is_some_and(|&next| next <= elapsed) {
+          rate_boundaries.pop_front();
+        }
+        admit_arrivals(&mut alive, &mut to_come, elapsed);
         continue;
       }
-    }
 
-    // The draw ran past the parent: no event occurred within the available window. Stop
-    // without committing it. v0 commits the event first and lets the loop condition notice
-    // afterwards, which places a node older than its parent and yields a negative branch
-    // length.
-    if t_event <= t_stop {
-      break;
-    }
-    t = t_event;
+      elapsed += hazard_left / rate_total;
+      let event_time = t_start - elapsed;
 
-    // Valid component rates make this ratio a probability without clamping.
-    if rng.gen_bool(rate_mut / rate_total) {
-      place_mutation(&mut alive, total_mutations, rng)?;
-    } else {
-      let merger = coalesce_pair(&mut alive, t, n_children + mergers.len(), rng)?;
-      mergers.push(merger);
+      // Valid component rates make this ratio a probability without clamping.
+      if rng.gen_bool(rate_mut / rate_total) {
+        place_mutation(&mut alive, total_mutations, rng)?;
+      } else {
+        let merger = coalesce_pair(&mut alive, event_time, n_children + mergers.len(), rng)?;
+        mergers.push(merger);
+      }
+      continue 'sweep;
     }
   }
 
@@ -234,6 +215,38 @@ pub fn simulate_subtree(
     .collect();
 
   Ok(SubtreePlan { mergers, roots })
+}
+
+fn event_rates(alive: &[Tracked], mutation_rate: f64, kappa: f64, time: f64) -> Result<(f64, f64, u64), Report> {
+  // A model rate must be valid before it enters event-rate arithmetic.
+  if !kappa.is_finite() || kappa < 0.0 {
+    return make_error!(
+      "Polytomy merger rate must be finite and non-negative at calendar time {time:.6e}, got {kappa:.6e}"
+    );
+  }
+
+  let n_ready = alive.iter().filter(|lineage| lineage.mutations == 0).count();
+  let total_mutations = alive.iter().map(|lineage| u64::from(lineage.mutations)).sum();
+  let rate_mut = mutation_rate * total_mutations as f64;
+  let rate_coal = n_ready.saturating_sub(1) as f64 * kappa;
+  // Finite component rates prevent overflow from becoming zero-hazard control flow.
+  if !rate_mut.is_finite() || !rate_coal.is_finite() {
+    return make_error!(
+      "Polytomy event rates must be finite at calendar time {time:.6e}, got mutation rate {rate_mut:.6e} and merger rate {rate_coal:.6e}"
+    );
+  }
+  let rate_total = rate_mut + rate_coal;
+  if !rate_total.is_finite() {
+    return make_error!("Polytomy total event rate must be finite at calendar time {time:.6e}, got {rate_total:.6e}");
+  }
+
+  Ok((rate_mut, rate_total, total_mutations))
+}
+
+fn next_boundary(elapsed: f64, stop_elapsed: f64, to_come: &VecDeque<Pending>, rate_boundaries: &VecDeque<f64>) -> f64 {
+  let arrival = to_come.front().map_or(stop_elapsed, |pending| pending.elapsed);
+  let rate_change = rate_boundaries.front().copied().unwrap_or(stop_elapsed);
+  f64::min(stop_elapsed, f64::min(arrival, rate_change)).max(elapsed)
 }
 
 fn validate_inputs(children: &[Lineage], t_stop: f64, mutation_rate: f64) -> Result<(), Report> {
@@ -249,11 +262,11 @@ fn validate_inputs(children: &[Lineage], t_stop: f64, mutation_rate: f64) -> Res
   Ok(())
 }
 
-/// Move every lineage whose node is at or more recent than `t` into the live set.
+/// Move every lineage whose arrival is at or before `elapsed` into the live set.
 ///
 /// `to_come` is ordered most-recent-first, so this is a prefix pop.
-fn admit_arrivals(alive: &mut Vec<Tracked>, to_come: &mut VecDeque<Pending>, t: f64) {
-  while to_come.front().is_some_and(|next| next.time >= t) {
+fn admit_arrivals(alive: &mut Vec<Tracked>, to_come: &mut VecDeque<Pending>, elapsed: f64) {
+  while to_come.front().is_some_and(|next| next.elapsed <= elapsed) {
     let arrived = to_come.pop_front().expect("front was just inspected");
     alive.push(arrived.lineage);
   }

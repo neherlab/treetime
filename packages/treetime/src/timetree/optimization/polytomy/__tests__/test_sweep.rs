@@ -2,25 +2,17 @@
 mod tests {
   use crate::timetree::optimization::polytomy::sweep::{Lineage, SubtreePlan, simulate_subtree};
   use eyre::Report;
-  use parking_lot::Mutex;
+  use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeSet;
+  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_utils::assert_error;
   use treetime_utils::sync::random::get_random_number_generator;
 
   /// A merger rate that ignores time, so tests can reason about the sweep alone.
-  fn const_merger_rate(rate: f64) -> impl Fn(f64) -> Result<f64, Report> {
-    move |_time| Ok(rate)
-  }
-
-  /// A constant merger rate that also records the calendar time of every query, which is the
-  /// sweep's position.
-  fn recording_merger_rate(rate: f64, queries: &Mutex<Vec<f64>>) -> impl Fn(f64) -> Result<f64, Report> {
-    move |time| {
-      queries.lock().push(time);
-      Ok(rate)
-    }
+  fn const_merger_rate(rate: f64) -> PiecewiseConstantFn {
+    PiecewiseConstantFn::new(array![], array![rate])
   }
 
   fn lineage(time: f64, mutations: u32) -> Lineage {
@@ -96,9 +88,9 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::negative(-1.0,          "Polytomy merger rate must be finite and non-negative at calendar time 3.000000e0, got -1.000000e0")]
-  #[case::nan(     f64::NAN,      "Polytomy merger rate must be finite and non-negative at calendar time 3.000000e0, got NaN")]
-  #[case::infinite(f64::INFINITY, "Polytomy merger rate must be finite and non-negative at calendar time 3.000000e0, got inf")]
+  #[case::negative(-1.0,          "Polytomy merger rate must be finite and non-negative at calendar time 2.500000e0, got -1.000000e0")]
+  #[case::nan(     f64::NAN,      "Polytomy merger rate must be finite and non-negative at calendar time 2.500000e0, got NaN")]
+  #[case::infinite(f64::INFINITY, "Polytomy merger rate must be finite and non-negative at calendar time 2.500000e0, got inf")]
   #[trace]
   fn test_sweep_rejects_invalid_merger_rates(#[case] rate: f64, #[case] expected: &str) {
     let children = vec![lineage(3.0, 0), lineage(2.0, 0), lineage(1.0, 0)];
@@ -117,7 +109,7 @@ mod tests {
 
     assert_error!(
       simulate_subtree(&children, 0.0, f64::MAX, &const_merger_rate(1.0), &mut rng,),
-      "Polytomy event rates must be finite at calendar time 3.000000e0, got mutation rate inf and merger rate 1.000000e0"
+      "Polytomy event rates must be finite at calendar time 1.500000e0, got mutation rate inf and merger rate 1.000000e0"
     );
   }
 
@@ -135,7 +127,7 @@ mod tests {
         &const_merger_rate(component_rate),
         &mut rng,
       ),
-      "Polytomy total event rate must be finite at calendar time 3.000000e0, got inf"
+      "Polytomy total event rate must be finite at calendar time 1.500000e0, got inf"
     );
   }
 
@@ -238,25 +230,39 @@ mod tests {
   }
 
   #[test]
-  fn test_sweep_resumes_at_the_arrival_time_rather_than_the_drawn_time() -> Result<(), Report> {
-    // A merger rate small enough that every draw overshoots the remaining window, so the sweep
-    // is driven entirely by arrivals. The recorded query times are the sweep's positions.
-    //
-    // v0 resumes at the drawn time, skipping the interval between the arrival and that time.
-    // Correct behaviour resumes at the arrival, so every query lands on a child's time.
-    let children = [lineage(10.0, 0), lineage(9.0, 0), lineage(0.0, 0)];
-    let queries = Mutex::new(Vec::new());
+  fn test_sweep_integrates_from_lineage_arrival_boundary() -> Result<(), Report> {
+    let children = [lineage(10.0, 0), lineage(5.0, 0), lineage(0.0, 0)];
     let mut rng = get_random_number_generator(Some(3));
 
-    let plan = simulate_subtree(&children, -100.0, 0.0, &recording_merger_rate(1e-9, &queries), &mut rng)?;
+    let plan = simulate_subtree(&children, -100.0, 0.0, &const_merger_rate(1e6), &mut rng)?;
 
-    let queries = queries.lock().clone();
-    assert_eq!(
-      queries,
-      vec![10.0, 9.0, 0.0],
-      "the sweep must step from arrival to arrival, not to the overshooting draw"
+    let merger = plan.mergers.first().expect("two ready lineages must merge");
+    assert!(
+      4.99 < merger.time && merger.time < 5.0,
+      "merger at {} must occur immediately after the second lineage arrives",
+      merger.time
     );
-    assert!(plan.mergers.is_empty(), "the rate is too low for a merger to fit");
+    Ok(())
+  }
+
+  #[test]
+  fn test_sweep_integrates_across_merger_rate_boundary() -> Result<(), Report> {
+    let children = [lineage(10.0, 0), lineage(10.0, 0), lineage(10.0, 0)];
+    // No merger hazard above year 5; a high hazard starts immediately below it.
+    let merger_rate = PiecewiseConstantFn::new(array![5.0], array![1e6, 0.0]);
+    let mut rng = get_random_number_generator(Some(3));
+
+    let plan = simulate_subtree(&children, 0.0, 0.0, &merger_rate, &mut rng)?;
+
+    let merger = plan
+      .mergers
+      .first()
+      .expect("high post-boundary hazard must merge a pair");
+    assert!(
+      4.99 < merger.time && merger.time < 5.0,
+      "merger at {} must occur immediately after crossing below year 5",
+      merger.time
+    );
     Ok(())
   }
 

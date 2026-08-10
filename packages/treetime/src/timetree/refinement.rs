@@ -100,13 +100,12 @@ impl Refinement<'_> {
     // Expected substitutions per unit time across the whole alignment.
     let total_mutation_rate = self.clock_model.clock_rate() * total_length as f64;
 
-    let merger_rate = self.merger_rate;
     let resolved_nodes = resolve_polytomies(
       self.graph,
       self.partitions,
       total_mutation_rate,
       total_length,
-      &|time| Ok(merger_rate.eval(time)),
+      self.merger_rate,
       self.rng,
     )
     .wrap_err("Polytomy resolution failed")?;
