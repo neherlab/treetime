@@ -45,9 +45,8 @@
 use eyre::Report;
 use rand::Rng;
 use rand_distr::{Distribution as _, Exp};
-use std::cmp::Ordering;
 use std::collections::VecDeque;
-use treetime_utils::make_internal_error;
+use treetime_utils::{make_error, make_internal_error};
 
 /// One child branch of the polytomy, as seen by the sweep.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -116,6 +115,9 @@ pub fn simulate_subtree(
   merger_rate: &dyn Fn(f64) -> Result<f64, Report>,
   rng: &mut dyn rand::RngCore,
 ) -> Result<SubtreePlan, Report> {
+  // Finite inputs make every time comparison a total-order comparison.
+  validate_inputs(children, t_stop, mutation_rate)?;
+
   let n_children = children.len();
   if n_children < 3 {
     return Ok(SubtreePlan::unresolved(n_children));
@@ -132,15 +134,10 @@ pub fn simulate_subtree(
       mutations: child.mutations,
     })
     .collect();
-  ordered.sort_by(|a, b| {
-    b.time
-      .partial_cmp(&a.time)
-      .unwrap_or(Ordering::Equal)
-      .then(a.id.cmp(&b.id))
-  });
+  ordered.sort_by(|a, b| b.time.total_cmp(&a.time).then(a.id.cmp(&b.id)));
 
   let t_start = ordered[0].time;
-  if !(t_start > t_stop) {
+  if t_start <= t_stop {
     return Ok(SubtreePlan::unresolved(n_children));
   }
 
@@ -209,6 +206,19 @@ pub fn simulate_subtree(
   let roots = alive.iter().chain(to_come.iter()).map(|lineage| lineage.id).collect();
 
   Ok(SubtreePlan { mergers, roots })
+}
+
+fn validate_inputs(children: &[Lineage], t_stop: f64, mutation_rate: f64) -> Result<(), Report> {
+  if !t_stop.is_finite() {
+    return make_error!("Polytomy parent time must be finite, got {t_stop}");
+  }
+  if !mutation_rate.is_finite() || mutation_rate < 0.0 {
+    return make_error!("Polytomy mutation rate must be finite and non-negative, got {mutation_rate}");
+  }
+  if let Some((index, child)) = children.iter().enumerate().find(|(_, child)| !child.time.is_finite()) {
+    return make_error!("Polytomy child {index} time must be finite, got {}", child.time);
+  }
+  Ok(())
 }
 
 /// Move every lineage whose node is at or more recent than `t` into the live set.

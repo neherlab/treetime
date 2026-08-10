@@ -4,7 +4,9 @@ mod tests {
   use eyre::Report;
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::collections::BTreeSet;
+  use treetime_utils::assert_error;
   use treetime_utils::sync::random::get_random_number_generator;
 
   /// A merger rate that ignores time, so tests can reason about the sweep alone.
@@ -71,6 +73,27 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::parent_nan(       f64::NAN,       1.0, vec![lineage(3.0, 0),       lineage(2.0, 0), lineage(1.0, 0)], "Polytomy parent time must be finite, got NaN")]
+  #[case::mutation_negative(0.0,            -1.0, vec![lineage(3.0, 0),       lineage(2.0, 0), lineage(1.0, 0)], "Polytomy mutation rate must be finite and non-negative, got -1")]
+  #[case::mutation_nan(     0.0,        f64::NAN, vec![lineage(3.0, 0),       lineage(2.0, 0), lineage(1.0, 0)], "Polytomy mutation rate must be finite and non-negative, got NaN")]
+  #[case::child_nan(        0.0,             1.0, vec![lineage(3.0, 0), lineage(f64::NAN, 0), lineage(1.0, 0)], "Polytomy child 1 time must be finite, got NaN")]
+  #[trace]
+  fn test_sweep_rejects_invalid_inputs(
+    #[case] t_stop: f64,
+    #[case] mutation_rate: f64,
+    #[case] children: Vec<Lineage>,
+    #[case] expected: &str,
+  ) {
+    let mut rng = get_random_number_generator(Some(1));
+
+    assert_error!(
+      simulate_subtree(&children, t_stop, mutation_rate, &const_merger_rate(1.0), &mut rng),
+      expected
+    );
+  }
+
   #[test]
   fn test_sweep_is_reproducible_under_the_same_seed() -> Result<(), Report> {
     let children: Vec<Lineage> = (0..8_u32).map(|i| lineage(10.0 - f64::from(i), i % 3)).collect();
@@ -133,14 +156,11 @@ mod tests {
       }
 
       // Mergers are emitted oldest last.
-      for pair in plan.mergers.windows(2) {
-        assert!(
-          pair[0].time >= pair[1].time,
-          "seed {seed}: merger times are not monotone: {} then {}",
-          pair[0].time,
-          pair[1].time
-        );
-      }
+      assert!(
+        plan.mergers.is_sorted_by(|first, second| first.time >= second.time),
+        "seed {seed}: merger times are not monotone: {:?}",
+        plan.mergers.iter().map(|m| m.time).collect::<Vec<_>>()
+      );
     }
     Ok(())
   }
@@ -238,6 +258,7 @@ mod tests {
     let kappa = 0.25;
     let expected_mean = 1.0 / ((k - 1) as f64 * kappa);
 
+    #[allow(clippy::map_with_unused_argument_over_ranges)]
     let children: Vec<Lineage> = (0..k).map(|_| lineage(0.0, 0)).collect();
     let replicates = 20_000;
 
