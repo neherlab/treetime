@@ -100,6 +100,27 @@ impl CoalescentModel {
     Ok(compute_merger_rate_per_lineage_scalar(k, tc))
   }
 
+  /// Piecewise-constant per-branch merger rate over all lineage-count and Tc changes.
+  pub fn branch_merger_rate_schedule(&self, tc_schedule: &PiecewiseConstantFn) -> Result<PiecewiseConstantFn, Report> {
+    for (index, &k) in self.lineage_counts.values().iter().enumerate() {
+      if !k.is_finite() {
+        return make_error!("Coalescent lineage count region {index} must be finite, got {k:.6e}");
+      }
+    }
+    for (index, &tc) in tc_schedule.values().iter().enumerate() {
+      if !tc.is_finite() || tc <= 0.0 {
+        return make_error!("Coalescent Tc region {index} must be finite and positive, got {tc:.6e}");
+      }
+    }
+
+    // The breakpoint union keeps every rate discontinuity visible to event sampling.
+    Ok(
+      self
+        .lineage_counts
+        .zip_map(tc_schedule, compute_merger_rate_per_lineage_scalar),
+    )
+  }
+
   fn lineage_count_and_tc(&self, time: f64) -> Result<(f64, f64), Report> {
     // Calendar right-continuity gives the number of lineages immediately on
     // the sampled-tree side of a merger, equivalent to TBP eval_left().
