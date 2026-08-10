@@ -94,8 +94,14 @@ impl SubtreePlan {
 #[derive(Clone, Copy, Debug)]
 struct Tracked {
   id: usize,
-  time: f64,
   mutations: u32,
+}
+
+/// A lineage that becomes live when the sweep reaches `time`.
+#[derive(Clone, Copy, Debug)]
+struct Pending {
+  lineage: Tracked,
+  time: f64,
 }
 
 /// Run the sweep over one polytomy's children.
@@ -125,23 +131,25 @@ pub fn simulate_subtree(
 
   // Most recent first. Ties break by id so the sweep is a deterministic function of the RNG
   // stream rather than of the input ordering.
-  let mut ordered: Vec<Tracked> = children
+  let mut ordered: Vec<Pending> = children
     .iter()
     .enumerate()
-    .map(|(id, child)| Tracked {
-      id,
+    .map(|(id, child)| Pending {
+      lineage: Tracked {
+        id,
+        mutations: child.mutations,
+      },
       time: child.time,
-      mutations: child.mutations,
     })
     .collect();
-  ordered.sort_by(|a, b| b.time.total_cmp(&a.time).then(a.id.cmp(&b.id)));
+  ordered.sort_by(|a, b| b.time.total_cmp(&a.time).then(a.lineage.id.cmp(&b.lineage.id)));
 
   let t_start = ordered[0].time;
   if t_start <= t_stop {
     return Ok(SubtreePlan::unresolved(n_children));
   }
 
-  let mut to_come: VecDeque<Tracked> = ordered.into_iter().collect();
+  let mut to_come: VecDeque<Pending> = ordered.into_iter().collect();
   let mut alive: Vec<Tracked> = Vec::with_capacity(n_children);
   let mut t = t_start;
   admit_arrivals(&mut alive, &mut to_come, t);
@@ -219,7 +227,11 @@ pub fn simulate_subtree(
     }
   }
 
-  let roots = alive.iter().chain(to_come.iter()).map(|lineage| lineage.id).collect();
+  let roots = alive
+    .iter()
+    .map(|lineage| lineage.id)
+    .chain(to_come.iter().map(|pending| pending.lineage.id))
+    .collect();
 
   Ok(SubtreePlan { mergers, roots })
 }
@@ -240,10 +252,10 @@ fn validate_inputs(children: &[Lineage], t_stop: f64, mutation_rate: f64) -> Res
 /// Move every lineage whose node is at or more recent than `t` into the live set.
 ///
 /// `to_come` is ordered most-recent-first, so this is a prefix pop.
-fn admit_arrivals(alive: &mut Vec<Tracked>, to_come: &mut VecDeque<Tracked>, t: f64) {
+fn admit_arrivals(alive: &mut Vec<Tracked>, to_come: &mut VecDeque<Pending>, t: f64) {
   while to_come.front().is_some_and(|next| next.time >= t) {
     let arrived = to_come.pop_front().expect("front was just inspected");
-    alive.push(arrived);
+    alive.push(arrived.lineage);
   }
 }
 
@@ -311,7 +323,6 @@ fn coalesce_pair(
 
   alive.push(Tracked {
     id: new_id,
-    time,
     mutations: 0,
   });
 
