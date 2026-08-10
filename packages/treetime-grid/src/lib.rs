@@ -14,7 +14,7 @@ pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy {}
 impl InterpElem for f64 {}
 
 pub use grid::Grid;
-pub use grid_fn::{BoundaryBehavior, GridFn};
+pub use grid_fn::{ApproachLaw, BoundaryBehavior, GridFn, Side};
 pub type GridFnF64 = GridFn<f64>;
 
 #[cfg(test)]

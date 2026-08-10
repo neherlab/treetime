@@ -6,10 +6,10 @@ use ndarray_stats::QuantileExt;
 use num::Float;
 use serde::{Deserialize, Serialize};
 use treetime_grid::grid::Grid;
-use treetime_grid::{BoundaryBehavior, GridFn, InterpElem};
+use treetime_grid::{ApproachLaw, BoundaryBehavior, GridFn, InterpElem};
 use treetime_utils::make_error;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
   grid_fn: GridFn<T>,
   #[serde(skip)]
@@ -177,6 +177,24 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.right_extrap()
   }
 
+  pub fn left_approach(&self) -> Option<&ApproachLaw> {
+    self.grid_fn.left_approach()
+  }
+
+  pub fn right_approach(&self) -> Option<&ApproachLaw> {
+    self.grid_fn.right_approach()
+  }
+
+  #[must_use]
+  pub fn with_left_approach(self, law: Option<ApproachLaw>) -> Self {
+    Self::from_grid_fn(self.grid_fn.with_left_approach(law))
+  }
+
+  #[must_use]
+  pub fn with_right_approach(self, law: Option<ApproachLaw>) -> Self {
+    Self::from_grid_fn(self.grid_fn.with_right_approach(law))
+  }
+
   /// Set the left (below `x_min`) out-of-support tail policy.
   ///
   /// Rejects a [`BoundaryBehavior::Hard`] tail when the representation cannot express zero
@@ -312,15 +330,18 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   /// Create a new distribution function with y values scaled by factor.
   ///
-  /// Preserves the grid parameters exactly (via `fn GridFn.mapv()`), avoiding floating point
-  /// issues that can occur when regenerating the x array, and preserves the per-side tail
-  /// policies. Scaling by a positive factor does not change out-of-support behavior, so the
-  /// tails carry through. This makes `fn Distribution.normalize()` tail-preserving.
+  /// Preserves the grid parameters, per-side tail policies, and approach laws
+  /// (via `fn GridFn.scale_y()`). Scaling by a positive factor does not change
+  /// out-of-support behavior or the power-law exponent, so both tails and
+  /// approach law coefficients carry through. This makes `fn Distribution.normalize()`
+  /// preserve approach laws.
   pub fn scale_y(&self, factor: T) -> Result<Self, Report>
   where
     T: Float,
   {
-    Ok(Self::from_grid_fn(self.grid_fn.mapv(|v| v * factor)))
+    Ok(Self::from_grid_fn(
+      self.grid_fn.scale_y(factor.to_f64().unwrap()),
+    ))
   }
 
   /// Create a new distribution function with a constant delta added to every y value.
