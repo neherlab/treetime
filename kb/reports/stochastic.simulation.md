@@ -28,7 +28,7 @@ If $q(x) > 0$, the process holds in $x$ for an exponentially distributed time wi
 
 Applied to reacting systems, this skeleton is the Gillespie stochastic simulation algorithm <a id="cite-2"></a>[Gillespie 1976](<https://doi.org/10.1016/0021-9991(76)90041-3>) [[2](#ref-2)]; <a id="cite-3"></a>[Gillespie 1977](https://doi.org/10.1021/j100540a008) [[3](#ref-3)]. Each event channel $j$ has a <a id="gloss-use-7"></a>**propensity** <sup>[7](#gloss-7)</sup> $a_j(x)$ -- its instantaneous rate given the current state. One step of the _direct method_ is:
 
-$$a_0 = \sum_j a_j(x), \qquad \tau = -\frac{\ln r_1}{a_0}, \qquad \mu = \min\Big\{ k : \sum_{j=1}^{k} a_j \ge r_2\, a_0 \Big\},$$
+$$a_0 = \sum_j a_j(x), \qquad \tau = -\frac{\ln r_1}{a_0}, \qquad \mu = \min\left\{ k : \sum_{j=1}^{k} a_j \ge r_2\, a_0 \right\},$$
 
 where $a_0$ is the total propensity, $\tau$ is the next-event waiting time, $\mu$ is the selected channel, and $r_1, r_2$ are independent uniforms on $(0,1)$. The state advances by $\mu$'s state-change, the clock advances by $\tau$, and the propensities are recomputed. The result is an _exact_ sample of the process trajectory, with no time-discretisation error.
 
@@ -130,9 +130,9 @@ Sequence evolution is a finite-state CTMC on the nucleotide or amino-acid alphab
 
 $P(t)$ is obtained by eigendecomposition, reusing the reversibility structure. Detailed balance $\pi_i Q_{ij} = \pi_j Q_{ji}$ permits symmetrisation $S = \Pi^{1/2} Q\, \Pi^{-1/2}$ into a real symmetric matrix with real eigenvalues $\lambda_i$ and orthogonal eigenvectors $V$, so that
 
-$$P(t) = \Pi^{-1/2}\, V\, \operatorname{diag}\!\big(e^{\mu\,\lambda_i t}\big)\, V^{\top}\, \Pi^{1/2},$$
+$$P(t) = \Pi^{-1/2}\, V\, \mathrm{diag}\!\big(e^{\mu\,\lambda_i t}\big)\, V^{\top}\, \Pi^{1/2},$$
 
-where $\Pi=\operatorname{diag}(\pi)$ holds the equilibrium frequencies $\pi_i$, $\mu$ is the overall rate scale, and $\lambda_i$ are the eigenvalues (one is always $0$, the rest negative, guaranteeing convergence to $\pi$). The eigendecomposition is done once per model in `packages/treetime/src/gtr/gtr.rs` [packages/treetime/src/gtr/gtr.rs#L74-L105](../../packages/treetime/src/gtr/gtr.rs#L74-L105); each branch then costs $O(k^2)$ via `fn Gtr.expQt()` [packages/treetime/src/gtr/gtr.rs#L453-L463](../../packages/treetime/src/gtr/gtr.rs#L453-L463). The model hierarchy (JC69 through GTR) is documented in [kb/algo/gtr.md](../algo/gtr.md).
+where $\Pi=\mathrm{diag}(\pi)$ holds the equilibrium frequencies $\pi_i$, $\mu$ is the overall rate scale, and $\lambda_i$ are the eigenvalues (one is always $0$, the rest negative, guaranteeing convergence to $\pi$). The eigendecomposition is done once per model in `packages/treetime/src/gtr/gtr.rs` [packages/treetime/src/gtr/gtr.rs#L74-L105](../../packages/treetime/src/gtr/gtr.rs#L74-L105); each branch then costs $O(k^2)$ via `fn Gtr.expQt()` [packages/treetime/src/gtr/gtr.rs#L453-L463](../../packages/treetime/src/gtr/gtr.rs#L453-L463). The model hierarchy (JC69 through GTR) is documented in [kb/algo/gtr.md](../algo/gtr.md).
 
 ### 4.2 Substitution is computed, not simulated
 
