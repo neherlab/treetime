@@ -41,6 +41,11 @@ jobs:
     name: "Run unit tests"
     runs-on: ubuntu-24.04
 
+    env:
+      RUSTC_WRAPPER: kache
+      KACHE_BASE_DIR: /workdir
+      KACHE_CACHE_DIR: ${{ github.workspace }}/.cache/docker-native/kache
+
     steps:
       - name: "Checkout code"
         uses: actions/checkout@v4
@@ -57,14 +62,21 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            .cache/docker-native/cargo/registry/index/
-            .cache/docker-native/cargo/registry/cache/
-            .cache/docker-native/cargo/git/db/
-          key: neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+            .cache/cargo/registry/index/
+            .cache/cargo/registry/cache/
+            .cache/cargo/git/db/
+          key: neherlab-treetime-cargo-v3-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
-            neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-
-            neherlab-treetime-cli-cache-v2-${{ runner.os }}-
+            neherlab-treetime-cargo-v3-${{ runner.os }}-
+
+      - name: "Setup kache compiler cache"
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/docker-native/kache/
+          key: neherlab-treetime-kache-v1-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            neherlab-treetime-kache-v1-${{ runner.os }}-native-
 
       - name: "Login to Docker Hub"
         uses: docker/login-action@v3
@@ -91,6 +103,11 @@ jobs:
     name: "Run lints"
     runs-on: ubuntu-24.04
 
+    env:
+      RUSTC_WRAPPER: kache
+      KACHE_BASE_DIR: /workdir
+      KACHE_CACHE_DIR: ${{ github.workspace }}/.cache/docker-native/kache
+
     steps:
       - name: "Checkout code"
         uses: actions/checkout@v4
@@ -107,14 +124,21 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            .cache/docker-native/cargo/registry/index/
-            .cache/docker-native/cargo/registry/cache/
-            .cache/docker-native/cargo/git/db/
-          key: neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+            .cache/cargo/registry/index/
+            .cache/cargo/registry/cache/
+            .cache/cargo/git/db/
+          key: neherlab-treetime-cargo-v3-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
-            neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-
-            neherlab-treetime-cli-cache-v2-${{ runner.os }}-
+            neherlab-treetime-cargo-v3-${{ runner.os }}-
+
+      - name: "Setup kache compiler cache"
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/docker-native/kache/
+          key: neherlab-treetime-kache-v1-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            neherlab-treetime-kache-v1-${{ runner.os }}-native-
 
       - name: "Login to Docker Hub"
         uses: docker/login-action@v3

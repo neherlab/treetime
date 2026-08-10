@@ -70,6 +70,9 @@ RUN /install-iqtree
 COPY --link "dev/docker/files/install-kache" "/"
 RUN /install-kache
 
+COPY --link "dev/docker/files/install-mold" "/"
+RUN /install-mold
+
 COPY --link "dev/docker/files/install-nodejs" "/"
 RUN /install-nodejs
 
