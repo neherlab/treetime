@@ -133,10 +133,7 @@ mod tests {
     let result = compose_indels(&parent, &child);
     assert_eq!(result, vec![ins(1, 5, "TTTT"), del(3, 7, "ACGT")]);
     assert!(
-      result.windows(2).all(|w| match w {
-        [a, b] => a.range.0 <= b.range.0,
-        _ => true,
-      }),
+      result.is_sorted_by_key(|x| x.range.0),
       "output must be sorted by range.0"
     );
   }
@@ -183,13 +180,10 @@ mod tests {
   #[trace]
   fn test_indel_compose_output_sorted_invariant(#[case] parent: Vec<InDel>, #[case] child: Vec<InDel>) {
     let result = compose_indels(&parent, &child);
-    for w in result.windows(2) {
-      let [a, b] = w else { continue };
-      assert!(
-        a.range.0 <= b.range.0,
-        "output not sorted: result={result:?}"
-      );
-    }
+    assert!(
+      result.is_sorted_by_key(|x| x.range.0),
+      "output not sorted: result={result:?}"
+    );
   }
 
   #[rustfmt::skip]
