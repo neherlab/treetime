@@ -13,7 +13,8 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::LazyLock;
 use treetime::clock::date_constraints::load_date_constraints;
-use treetime::coalescent::coalescent::compute_coalescent_model;
+use treetime::coalescent::coalescent::CoalescentModel;
+use treetime::coalescent::lineage_counts::compute_lineage_counts;
 use treetime::o;
 use treetime::partition::timetree::GraphTimetree;
 use treetime_distribution::Distribution;
@@ -289,7 +290,8 @@ fn run_coalescent_test(_snapshot_filename: &str, snapshot: Snapshot) -> Result<T
   let tc_value = snapshot.inputs.tc;
   let tc = Distribution::constant(tc_value);
 
-  let model = compute_coalescent_model(&graph, &tc)?;
+  let lineage_counts = compute_lineage_counts(&graph)?;
+  let model = CoalescentModel::new(&lineage_counts, &tc)?;
 
   let t_grid = Grid::from_range_n_points(
     snapshot.tbp_grid.start,
