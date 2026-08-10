@@ -1,8 +1,8 @@
 use crate::ancestral::marginal::update_marginal;
 use crate::clock::clock_model::ClockModel;
-use crate::coalescent::coalescent::CoalescentModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::coalescent::coalescent::CoalescentModel;
 use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::{PartitionMarginalPasses, PartitionTimetreeOps};
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
@@ -49,11 +49,7 @@ impl Refinement<'_> {
 
     // Close the loop: the times just inferred become the lengths the next round's marginal
     // reconstruction propagates along. Damped, because each pass re-infers every time at once.
-    commit_clock_branch_lengths(
-      self.graph,
-      self.clock_model.clock_rate(),
-      CLOCK_BRANCH_LENGTH_DAMPING,
-    );
+    commit_clock_branch_lengths(self.graph, self.clock_model.clock_rate(), CLOCK_BRANCH_LENGTH_DAMPING);
 
     let current_states = capture_ancestral_states(self.graph, self.partitions);
     let time_change = measure_node_time_change(&previous_times, &capture_node_times(self.graph));

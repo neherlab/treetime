@@ -35,7 +35,11 @@ mod tests {
     }
 
     let unique: BTreeSet<usize> = seen.iter().copied().collect();
-    assert_eq!(unique.len(), seen.len(), "a lineage was placed more than once: {seen:?}");
+    assert_eq!(
+      unique.len(),
+      seen.len(),
+      "a lineage was placed more than once: {seen:?}"
+    );
 
     let total = n_children + plan.mergers.len();
     let expected: BTreeSet<usize> = (0..total).collect();
@@ -217,7 +221,11 @@ mod tests {
       let plan = simulate_subtree(&children, -1.0e6, 0.0, &const_merger_rate(1.0), &mut rng)?;
 
       assert_eq!(plan.mergers.len(), k - 2, "seed {seed}: expected full resolution");
-      assert_eq!(plan.roots.len(), 2, "seed {seed}: a resolved polytomy leaves a bifurcation");
+      assert_eq!(
+        plan.roots.len(),
+        2,
+        "seed {seed}: a resolved polytomy leaves a bifurcation"
+      );
     }
     Ok(())
   }

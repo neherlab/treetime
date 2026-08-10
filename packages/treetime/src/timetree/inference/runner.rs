@@ -98,7 +98,11 @@ where
   E: GraphEdge + TimetreeEdge,
   D: Sync + Send,
 {
-  let node_time = |key| graph.get_node(key).and_then(|node| node.read_arc().payload().read_arc().time());
+  let node_time = |key| {
+    graph
+      .get_node(key)
+      .and_then(|node| node.read_arc().payload().read_arc().time())
+  };
 
   let inverted: usize = graph
     .get_edges()

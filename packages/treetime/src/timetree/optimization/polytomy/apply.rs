@@ -53,7 +53,15 @@ pub fn apply_plan(
     });
 
     for lineage in [merger.left, merger.right] {
-      attach(graph, children, &merger_nodes, &times, lineage, new_node_key, merger.time)?;
+      attach(
+        graph,
+        children,
+        &merger_nodes,
+        &times,
+        lineage,
+        new_node_key,
+        merger.time,
+      )?;
     }
 
     merger_nodes.push(new_node_key);

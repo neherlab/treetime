@@ -123,7 +123,10 @@ pub fn resolve_polytomies(
   Ok(total_created)
 }
 
-#[allow(clippy::too_many_arguments, reason = "one call site; splitting would only shuffle the arguments")]
+#[allow(
+  clippy::too_many_arguments,
+  reason = "one call site; splitting would only shuffle the arguments"
+)]
 fn resolve_single_polytomy(
   graph: &mut GraphTimetree,
   partitions: &[PartitionTimetreeRef],
@@ -155,7 +158,10 @@ fn resolve_single_polytomy(
 
   let plan = simulate_subtree(&lineages, parent_time, mutation_rate, merger_rate, rng)?;
   if plan.mergers.is_empty() {
-    debug!("Polytomy at node {node_key}: {} children, sampled history merged none", children.len());
+    debug!(
+      "Polytomy at node {node_key}: {} children, sampled history merged none",
+      children.len()
+    );
     return Ok(0);
   }
 

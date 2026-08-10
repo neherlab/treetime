@@ -28,13 +28,13 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
-  use treetime_utils::sync::random::get_random_number_generator;
   use treetime_graph::edge::{BranchDistribution, HasBranchLength};
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
+  use treetime_utils::sync::random::get_random_number_generator;
 
   const CLOCK_RATE: f64 = 0.001;
 
@@ -267,10 +267,7 @@ mod tests {
     coalescent_tc: Option<&Distribution>,
   ) -> Result<RefinementOutcome, Report> {
     let pinned_tc = Distribution::constant(REFINEMENT_TEST_TC);
-    let coalescent = CoalescentModel::new(
-      &compute_lineage_counts(graph)?,
-      coalescent_tc.unwrap_or(&pinned_tc),
-    )?;
+    let coalescent = CoalescentModel::new(&compute_lineage_counts(graph)?, coalescent_tc.unwrap_or(&pinned_tc))?;
 
     Refinement {
       graph,

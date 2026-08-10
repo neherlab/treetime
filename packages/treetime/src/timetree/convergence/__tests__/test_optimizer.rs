@@ -31,10 +31,24 @@ mod tests {
     let mut optimizer = TimetreeOptimizer::new(5, false);
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, helpers::moved_by(10.0 * NODE_TIME_TOLERANCE_YEARS), &graph, &[], None)?;
+    optimizer.record(
+      0,
+      0,
+      helpers::moved_by(10.0 * NODE_TIME_TOLERANCE_YEARS),
+      &graph,
+      &[],
+      None,
+    )?;
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, helpers::moved_by(0.1 * NODE_TIME_TOLERANCE_YEARS), &graph, &[], None)?;
+    optimizer.record(
+      0,
+      0,
+      helpers::moved_by(0.1 * NODE_TIME_TOLERANCE_YEARS),
+      &graph,
+      &[],
+      None,
+    )?;
 
     assert!(optimizer.next_iter().is_none());
     assert_eq!(2, optimizer.iteration_count());

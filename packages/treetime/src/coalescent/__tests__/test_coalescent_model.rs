@@ -122,6 +122,9 @@ mod tests {
     values: ndarray::Array1<f64>,
     tc: f64,
   ) -> Result<CoalescentModel, Report> {
-    CoalescentModel::new(&PiecewiseConstantFn::new(breakpoints, values), &Distribution::constant(tc))
+    CoalescentModel::new(
+      &PiecewiseConstantFn::new(breakpoints, values),
+      &Distribution::constant(tc),
+    )
   }
 }

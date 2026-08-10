@@ -390,8 +390,14 @@ pub fn run(
 
   if time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
-    run_timetree(&mut input.graph, &partitions, &clock_model, final_prior, params.no_indels)
-      .wrap_err("Final timetree inference failed")?;
+    run_timetree(
+      &mut input.graph,
+      &partitions,
+      &clock_model,
+      final_prior,
+      params.no_indels,
+    )
+    .wrap_err("Final timetree inference failed")?;
 
     // Undamped: this reconstruction reports the final tree, so it runs on the lengths these
     // final times imply rather than on a blend with the loop's last round.

@@ -305,11 +305,21 @@ mod tests {
   }
 
   fn outbound(graph: &TestGraph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
-    graph.get_node(node_key).expect("node exists").read_arc().outbound().to_vec()
+    graph
+      .get_node(node_key)
+      .expect("node exists")
+      .read_arc()
+      .outbound()
+      .to_vec()
   }
 
   fn inbound(graph: &TestGraph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
-    graph.get_node(node_key).expect("node exists").read_arc().inbound().to_vec()
+    graph
+      .get_node(node_key)
+      .expect("node exists")
+      .read_arc()
+      .inbound()
+      .to_vec()
   }
 
   #[test]
@@ -321,11 +331,19 @@ mod tests {
     let edge = graph.get_edge(a_to_c).expect("edge survives reparenting");
     assert_eq!(edge.read_arc().source(), b);
     assert_eq!(edge.read_arc().target(), c);
-    assert_eq!(*edge.read_arc().payload().read_arc(), TestEdge(3.0), "payload must survive");
+    assert_eq!(
+      *edge.read_arc().payload().read_arc(),
+      TestEdge(3.0),
+      "payload must survive"
+    );
 
     assert!(!outbound(&graph, a).contains(&a_to_c), "old source must drop the edge");
     assert!(outbound(&graph, b).contains(&a_to_c), "new source must gain the edge");
-    assert_eq!(inbound(&graph, c), vec![a_to_c], "the target's inbound list is untouched");
+    assert_eq!(
+      inbound(&graph, c),
+      vec![a_to_c],
+      "the target's inbound list is untouched"
+    );
     assert_eq!(outbound(&graph, root).len(), 2, "unrelated nodes are untouched");
     Ok(())
   }
@@ -357,8 +375,14 @@ mod tests {
 
     assert!(graph.reparent_edge(a_to_c, root).is_err());
 
-    let edge = graph.get_edge(a_to_c).expect("a rejected reparent must leave the edge in place");
-    assert_eq!(edge.read_arc().source(), fixture()?.1[1], "the edge must not have moved");
+    let edge = graph
+      .get_edge(a_to_c)
+      .expect("a rejected reparent must leave the edge in place");
+    assert_eq!(
+      edge.read_arc().source(),
+      fixture()?.1[1],
+      "the edge must not have moved"
+    );
     Ok(())
   }
 

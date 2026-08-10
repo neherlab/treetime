@@ -7,9 +7,9 @@ mod tests {
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
   use crate::clock::date_constraints::load_date_constraints;
+  use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
-  use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};

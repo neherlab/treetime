@@ -15,10 +15,22 @@ mod tests {
   fn polytomy_graph() -> Result<(GraphTimetree, GraphNodeKey, Vec<ChildRef>), Report> {
     let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)P:0.05)root;")?;
 
-    let times = [("A", 2020.0), ("B", 2018.0), ("C", 2016.0), ("P", 2000.0), ("root", 1990.0)];
+    let times = [
+      ("A", 2020.0),
+      ("B", 2018.0),
+      ("C", 2016.0),
+      ("P", 2000.0),
+      ("root", 1990.0),
+    ];
     for (name, time) in times {
       let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
-      graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(time);
+      graph
+        .get_node(key)
+        .expect("Node must exist")
+        .write_arc()
+        .payload()
+        .write_arc()
+        .time = Some(time);
     }
 
     let parent_key = find_node_key_by_name(&graph, "P").ok_or_else(|| make_report!("P not found"))?;
@@ -28,7 +40,11 @@ mod tests {
       let node_key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
       let edge_key = find_edge_key(&graph, "P", name).ok_or_else(|| make_report!("P->{name} not found"))?;
       let edge = graph.get_edge(edge_key).expect("Edge must exist");
-      edge.write_arc().payload().write_arc().set_branch_length(Some(mutation_length));
+      edge
+        .write_arc()
+        .payload()
+        .write_arc()
+        .set_branch_length(Some(mutation_length));
       children.push(ChildRef {
         node_key,
         edge_key,
@@ -110,7 +126,10 @@ mod tests {
       merger_key,
       "both merged children must hang off the same new node"
     );
-    assert_ne!(merger_key, parent_key, "the merged pair must not stay under the polytomy");
+    assert_ne!(
+      merger_key, parent_key,
+      "the merged pair must not stay under the polytomy"
+    );
     assert_eq!(
       parent_of(&graph, children[2].node_key),
       parent_key,
@@ -118,8 +137,15 @@ mod tests {
     );
     assert_eq!(parent_of(&graph, merger_key), parent_key);
 
-    let parent_degree = graph.get_node(parent_key).expect("Node must exist").read_arc().degree_out();
-    assert_eq!(parent_degree, 2, "a 3-way polytomy with one merger becomes a bifurcation");
+    let parent_degree = graph
+      .get_node(parent_key)
+      .expect("Node must exist")
+      .read_arc()
+      .degree_out();
+    assert_eq!(
+      parent_degree, 2,
+      "a 3-way polytomy with one merger becomes a bifurcation"
+    );
 
     pretty_assert_abs_diff_eq!(
       graph
@@ -237,8 +263,15 @@ mod tests {
     assert_eq!(parent_of(&graph, children[2].node_key), outer);
     assert_eq!(parent_of(&graph, outer), parent_key);
 
-    let parent_degree = graph.get_node(parent_key).expect("Node must exist").read_arc().degree_out();
-    assert_eq!(parent_degree, 1, "a fully consumed polytomy leaves one child for cleanup");
+    let parent_degree = graph
+      .get_node(parent_key)
+      .expect("Node must exist")
+      .read_arc()
+      .degree_out();
+    assert_eq!(
+      parent_degree, 1,
+      "a fully consumed polytomy leaves one child for cleanup"
+    );
 
     Ok(())
   }
@@ -265,7 +298,10 @@ mod tests {
     };
 
     let result = apply_plan(&mut graph, parent_key, 2000.0, &children, &plan);
-    assert!(result.is_err(), "a forward reference must be rejected, not silently dropped");
+    assert!(
+      result.is_err(),
+      "a forward reference must be rejected, not silently dropped"
+    );
     Ok(())
   }
 }

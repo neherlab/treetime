@@ -132,7 +132,12 @@ pub fn simulate_subtree(
       mutations: child.mutations,
     })
     .collect();
-  ordered.sort_by(|a, b| b.time.partial_cmp(&a.time).unwrap_or(Ordering::Equal).then(a.id.cmp(&b.id)));
+  ordered.sort_by(|a, b| {
+    b.time
+      .partial_cmp(&a.time)
+      .unwrap_or(Ordering::Equal)
+      .then(a.id.cmp(&b.id))
+  });
 
   let t_start = ordered[0].time;
   if !(t_start > t_stop) {
@@ -201,11 +206,7 @@ pub fn simulate_subtree(
     }
   }
 
-  let roots = alive
-    .iter()
-    .chain(to_come.iter())
-    .map(|lineage| lineage.id)
-    .collect();
+  let roots = alive.iter().chain(to_come.iter()).map(|lineage| lineage.id).collect();
 
   Ok(SubtreePlan { mergers, roots })
 }

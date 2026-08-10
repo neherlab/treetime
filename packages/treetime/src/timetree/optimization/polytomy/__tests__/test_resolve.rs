@@ -25,14 +25,26 @@ mod tests {
 
   fn set_time(graph: &GraphTimetree, name: &str, time: f64) -> Result<GraphNodeKey, Report> {
     let key = find_node_key_by_name(graph, name).ok_or_else(|| make_report!("{name} not found"))?;
-    graph.get_node(key).expect("Node must exist").write_arc().payload().write_arc().time = Some(time);
+    graph
+      .get_node(key)
+      .expect("Node must exist")
+      .write_arc()
+      .payload()
+      .write_arc()
+      .time = Some(time);
     Ok(key)
   }
 
   /// `((A,B,C)ABC)root` with a wide time window above the polytomy.
   fn polytomy_tree() -> Result<GraphTimetree, Report> {
     let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
-    for (name, time) in [("A", 2020.0), ("B", 2015.0), ("C", 2018.0), ("ABC", 1990.0), ("root", 1980.0)] {
+    for (name, time) in [
+      ("A", 2020.0),
+      ("B", 2015.0),
+      ("C", 2018.0),
+      ("ABC", 1990.0),
+      ("root", 1980.0),
+    ] {
       set_time(&graph, name, time)?;
     }
     for edge in graph.get_edges() {
@@ -142,7 +154,11 @@ mod tests {
     let created = resolve(&mut graph, &mut rng)?;
 
     assert_eq!(created, 1, "a 3-way polytomy needs one merger to become a bifurcation");
-    let degree = graph.get_node(abc_key).expect("Node must exist").read_arc().degree_out();
+    let degree = graph
+      .get_node(abc_key)
+      .expect("Node must exist")
+      .read_arc()
+      .degree_out();
     assert_eq!(degree, 2);
     Ok(())
   }
@@ -158,7 +174,10 @@ mod tests {
       resolve(&mut graph, &mut rng)?;
 
       let after = leaf_names_under(&graph, parent_key);
-      assert_eq!(before, after, "seed {seed}: resolution must not lose or duplicate leaves");
+      assert_eq!(
+        before, after,
+        "seed {seed}: resolution must not lose or duplicate leaves"
+      );
     }
     Ok(())
   }
@@ -183,7 +202,11 @@ mod tests {
       )
     };
 
-    assert_eq!(clusters(4)?, clusters(4)?, "the same seed must produce the same topology");
+    assert_eq!(
+      clusters(4)?,
+      clusters(4)?,
+      "the same seed must produce the same topology"
+    );
     Ok(())
   }
 
@@ -217,7 +240,13 @@ mod tests {
   fn test_resolve_polytomies_without_a_time_window_is_a_noop() -> Result<(), Report> {
     // The polytomy sits at the same time as its children, so no merger fits above them.
     let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
-    for (name, time) in [("A", 2010.0), ("B", 2010.0), ("C", 2010.0), ("ABC", 2010.0), ("root", 2000.0)] {
+    for (name, time) in [
+      ("A", 2010.0),
+      ("B", 2010.0),
+      ("C", 2010.0),
+      ("ABC", 2010.0),
+      ("root", 2000.0),
+    ] {
       set_time(&graph, name, time)?;
     }
     let mut graph = graph;
@@ -227,7 +256,11 @@ mod tests {
 
     assert_eq!(created, 0, "no window above the polytomy means no resolution");
     let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
-    let degree = graph.get_node(abc_key).expect("Node must exist").read_arc().degree_out();
+    let degree = graph
+      .get_node(abc_key)
+      .expect("Node must exist")
+      .read_arc()
+      .degree_out();
     assert_eq!(degree, 3, "the multifurcation must survive intact");
     Ok(())
   }
@@ -313,7 +346,14 @@ mod tests {
     let mut names: Vec<String> = graph
       .get_nodes()
       .iter()
-      .filter_map(|node| node.read_arc().payload().read_arc().name().map(|n| n.as_ref().to_owned()))
+      .filter_map(|node| {
+        node
+          .read_arc()
+          .payload()
+          .read_arc()
+          .name()
+          .map(|n| n.as_ref().to_owned())
+      })
       .collect();
     names.sort();
 
