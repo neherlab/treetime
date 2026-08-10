@@ -42,6 +42,12 @@ mod tests {
 
     assert_eq!(result.segment_boundaries.len(), 6);
     assert_eq!(result.tc_values.len(), 5);
+    pretty_assert_ulps_eq!(
+      result.tc_schedule.breakpoints().view(),
+      result.segment_boundaries.slice(ndarray::s![1..5]),
+      max_ulps = 4
+    );
+    pretty_assert_ulps_eq!(result.tc_schedule.values(), &result.tc_values, max_ulps = 4);
     assert!(result.log_likelihood.value().is_finite());
 
     Ok(())

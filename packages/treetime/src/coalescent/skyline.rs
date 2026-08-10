@@ -44,6 +44,8 @@ impl Default for SkylineParams {
 pub struct SkylineResult {
   /// Optimized piecewise-constant Tc(t).
   pub tc_distribution: Distribution,
+  /// Exact step schedule for consumers that integrate across every Tc change.
+  pub tc_schedule: PiecewiseConstantFn,
   /// Segment boundaries in calendar time (length `n_points + 1`, ascending).
   pub segment_boundaries: Array1<f64>,
   /// Optimized Tc value per segment (length `n_points`).
@@ -136,6 +138,11 @@ where
 
   let tc_values = Array1::from_iter(z.iter().map(|&zi| zi.exp()));
   let tc_distribution = build_tc_distribution(&boundaries, &tc_values);
+  // Internal segment boundaries are the exact discontinuities of the clamped Tc schedule.
+  let tc_schedule = PiecewiseConstantFn::new(
+    Array1::from(boundaries[1..boundaries.len() - 1].to_vec()),
+    tc_values.clone(),
+  );
 
   // Report the likelihood via the shared model so it matches `compute_coalescent_total_lh`.
   let model = CoalescentModel::new(&lineage_counts, &tc_distribution)?;
@@ -156,6 +163,7 @@ where
 
   Ok(SkylineResult {
     tc_distribution,
+    tc_schedule,
     segment_boundaries: Array1::from(boundaries),
     tc_values,
     log_likelihood,
