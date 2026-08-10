@@ -2,13 +2,13 @@
 mod tests {
   use crate::timetree::optimization::polytomy::sweep::{Lineage, SubtreePlan, simulate_subtree};
   use eyre::Report;
-  use ndarray::array;
+  use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeSet;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
-  use treetime_utils::assert_error;
   use treetime_utils::sync::random::get_random_number_generator;
+  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
   /// A merger rate that ignores time, so tests can reason about the sweep alone.
   fn const_merger_rate(rate: f64) -> PiecewiseConstantFn {
@@ -146,6 +146,56 @@ mod tests {
       run(8)?,
       "different seeds must produce different plans for this configuration"
     );
+    Ok(())
+  }
+
+  #[test]
+  fn test_sweep_preserves_elapsed_events_under_calendar_translation() -> Result<(), Report> {
+    let children = vec![
+      lineage(10.0, 0),
+      lineage(9.5, 2),
+      lineage(8.0, 1),
+      lineage(7.0, 0),
+      lineage(6.0, 3),
+      lineage(2.0, 0),
+    ];
+    let merger_rate = PiecewiseConstantFn::new(array![3.0, 8.0], array![0.2, 0.5, 0.1]);
+    let offset = 2048.0;
+    let shifted_children: Vec<Lineage> = children
+      .iter()
+      .map(|child| lineage(child.time + offset, child.mutations))
+      .collect();
+    let shifted_merger_rate = PiecewiseConstantFn::new(array![3.0 + offset, 8.0 + offset], array![0.2, 0.5, 0.1]);
+
+    let mut base_rng = get_random_number_generator(Some(17));
+    let base = simulate_subtree(&children, -5.0, 0.7, &merger_rate, &mut base_rng)?;
+    let mut shifted_rng = get_random_number_generator(Some(17));
+    let shifted = simulate_subtree(
+      &shifted_children,
+      -5.0 + offset,
+      0.7,
+      &shifted_merger_rate,
+      &mut shifted_rng,
+    )?;
+
+    // Translation oracle: all hazards and branch lengths depend only on time differences.
+    let base_pairs: Vec<(usize, usize)> = base.mergers.iter().map(|merger| (merger.left, merger.right)).collect();
+    let shifted_pairs: Vec<(usize, usize)> = shifted
+      .mergers
+      .iter()
+      .map(|merger| (merger.left, merger.right))
+      .collect();
+    assert_eq!(base_pairs, shifted_pairs);
+    assert_eq!(base.roots, shifted.roots);
+
+    let base_elapsed = Array1::from_iter(base.mergers.iter().map(|merger| children[0].time - merger.time));
+    let shifted_elapsed = Array1::from_iter(
+      shifted
+        .mergers
+        .iter()
+        .map(|merger| shifted_children[0].time - merger.time),
+    );
+    pretty_assert_abs_diff_eq!(base_elapsed, shifted_elapsed, epsilon = 1e-10);
     Ok(())
   }
 
