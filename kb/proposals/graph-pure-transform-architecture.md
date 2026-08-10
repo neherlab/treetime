@@ -84,7 +84,7 @@ graph.par_iter_breadth_first_backward(|node| {
 
 ### Topology mutations
 
-Reroot (`fn split_edge` [packages/treetime/src/timetree/optimization/reroot.rs#L68](../../packages/treetime/src/timetree/optimization/reroot.rs#L68), `fn apply_reroot_topology` [packages/treetime/src/timetree/optimization/reroot.rs#L112](../../packages/treetime/src/timetree/optimization/reroot.rs#L112), `fn invert_edge` [packages/treetime-graph/src/edge.rs#L102](../../packages/treetime-graph/src/edge.rs#L102)), polytomy resolution (`fn resolve_polytomies_with_options` [packages/treetime/src/timetree/optimization/polytomy.rs#L51](../../packages/treetime/src/timetree/optimization/polytomy.rs#L51)), and edge collapse (`fn collapse_edge` [packages/treetime/src/optimize/topology/collapse.rs#L34](../../packages/treetime/src/optimize/topology/collapse.rs#L34)) mutate graph topology mid-pipeline via `graph.add_node()`, `graph.remove_edge()`, `graph.add_edge()`, `graph.collapse_edge()`. After topology changes, `fn reconcile_topology` patches partition maps with default entries for new nodes/edges.
+Reroot (`fn split_edge` [packages/treetime/src/timetree/optimization/reroot.rs#L68](../../packages/treetime/src/timetree/optimization/reroot.rs#L68), `fn apply_reroot_topology` [packages/treetime/src/timetree/optimization/reroot.rs#L112](../../packages/treetime/src/timetree/optimization/reroot.rs#L112), `fn invert_edge` [packages/treetime-graph/src/edge.rs#L102](../../packages/treetime-graph/src/edge.rs#L102)), polytomy resolution (`fn apply_plan` [packages/treetime/src/timetree/optimization/polytomy/apply.rs](../../packages/treetime/src/timetree/optimization/polytomy/apply.rs)), and edge collapse (`fn collapse_edge` [packages/treetime/src/optimize/topology/collapse.rs#L34](../../packages/treetime/src/optimize/topology/collapse.rs#L34)) mutate graph topology mid-pipeline. After topology changes, `fn reconcile_topology` adds partition entries for new nodes and edges.
 
 ### EM loop data flow
 
@@ -158,7 +158,7 @@ Current: `BTreeMap<GraphNodeKey, _>` with O(log n) lookup per access.
 
 Alternatives:
 
-- Dense `Vec` indexed by `GraphNodeKey.as_usize()`. O(1) lookup, cache-friendly sequential access during traversals. Tombstones for removed nodes (matching the graph's existing `Vec<Option<>>` pattern).
+- Dense `Vec` indexed by `GraphNodeKey.as_usize()`. O(1) lookup, cache-friendly sequential access during traversals. Empty slots represent absent nodes, matching the graph's existing `Vec<Option<>>` pattern.
 - Flat arrays per field instead of per node. Structure-of-arrays layout for vectorizable traversal kernels.
 
 ### D6: Parallel BFS without locks

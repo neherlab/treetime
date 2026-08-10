@@ -12,8 +12,8 @@ A related Python report found that a marginal-sequence option was translated cor
 
 ## Related issues
 
-- [Dead CLI flags in timetree](N-timetree-dead-cli-flags.md) lists other dead
-  flags in the same pipeline
+- [N-timetree-unused-cli-flags.md](N-timetree-unused-cli-flags.md) lists other unused flags in
+  the same pipeline
 
 ## Related tickets
 

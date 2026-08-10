@@ -26,7 +26,7 @@ Related: [H-timetree-tree-inference-unimplemented.md](H-timetree-tree-inference-
 
 `clock` command: `--prune-short` renders with no description at all (no doc comment on `commands/clock/args.rs:76`). It is a `bool` flag. In `prune`, the same name takes an `Option<f64>` threshold (`--prune-short <THRESHOLD>`). Same flag name, different types, different semantics.
 
-Related: [M-clock-dead-cli-arguments.md](M-clock-dead-cli-arguments.md) tracks that `--prune-short` in `clock` is parsed but never wired.
+Related: [M-clock-unused-cli-arguments.md](M-clock-unused-cli-arguments.md) tracks that `--prune-short` in `clock` is parsed but never wired.
 
 ### D4: `clock` command description has `--keep_root` typo
 
@@ -48,7 +48,7 @@ Description: "The output consists of a file 'ancestral.fasta' with ancestral seq
 
 Defined at `commands/timetree/args.rs:184` but never read or used anywhere. The `--clock-filter` flag already controls interquartile-based outlier detection. The relationship between the two is unexplained.
 
-Related: [N-timetree-dead-cli-flags.md](N-timetree-dead-cli-flags.md) lists `--n-iqd`.
+Related: [N-timetree-unused-cli-flags.md](N-timetree-unused-cli-flags.md) lists `--n-iqd`.
 
 ### D9: `homoplasy` and `arg` show full help for unimplemented commands
 
@@ -160,7 +160,7 @@ Usage lines show all output flags as optional (`[OPTIONS]`), but `output.rs:562`
 
 The macro still adds the full tree-format superset to every command, while a separate availability matrix rejects unsupported values later. For example, `prune --help` advertises Auspice and MAT selections that prune cannot produce. Per-file flags have the same drift when their writer is absent from the command matrix.
 
-Generate each command’s parseable enum and visible per-file flags from its actual format set, then add parse-level rejection tests.
+Generate each command-specific parseable enum and visible per-file flags from its actual format set, then add parse-level rejection tests.
 
 ### W3: `--alignment` says "multiple FASTA files" but does not show repeat syntax
 
@@ -222,13 +222,13 @@ Use O1. Parser behavior such as `joint`, dense/sparse mode, required outputs, an
 
 ## Ticket readiness
 
-No aggregate ticket is ready. Each behavioral item must first select its parse/runtime contract, and already-owned dead or unimplemented flags remain with their domain issues.
+No aggregate ticket is ready. Each behavioral item must first select its parse/runtime contract, and already-owned unused or unimplemented flags remain with their domain issues.
 
 ## Related issues
 
-- [N-timetree-dead-cli-flags.md](N-timetree-dead-cli-flags.md): unused flags in timetree (overlaps D8)
-- [M-clock-dead-cli-arguments.md](M-clock-dead-cli-arguments.md): unused flags in clock (overlaps D3)
+- [N-timetree-unused-cli-flags.md](N-timetree-unused-cli-flags.md): unused flags in timetree (overlaps D8)
+- [M-clock-unused-cli-arguments.md](M-clock-unused-cli-arguments.md): unused flags in clock (overlaps D3)
 - [H-timetree-tree-inference-unimplemented.md](H-timetree-tree-inference-unimplemented.md): tree inference fallback not implemented (overlaps D2)
 - [H-homoplasy-command-unimplemented.md](H-homoplasy-command-unimplemented.md): homoplasy unimplemented (overlaps D9)
 - [N-timetree-polytomy-flags-no-conflict.md](N-timetree-polytomy-flags-no-conflict.md): polytomy flag conflict (overlaps U7)
-- [M-timetree-method-anc-ignored.md](M-timetree-method-anc-ignored.md): `--method-anc` dead in timetree (related to D1)
+- [M-timetree-method-anc-ignored.md](M-timetree-method-anc-ignored.md): `--method-anc` is unused in timetree (related to D1)

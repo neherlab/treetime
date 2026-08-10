@@ -49,10 +49,10 @@ likelihood threshold.
 
 At a polytomy with parent $P$ and children $c_1 \dots c_k$:
 
-- $m_b$ — substitutions remaining to be placed on branch $b$, initially the count on the
+- $m_b$ -- substitutions remaining to be placed on branch $b$, initially the count on the
   child edge
-- `alive` — branches the sweep has reached; `to_come` — those it has not
-- `ready` $= \{b \in \text{alive} : m_b = 0\}$ — the only branches eligible to coalesce
+- `alive` -- branches the sweep has reached; `to_come` -- those it has not
+- `ready` $= \{b \in \text{alive} : m_b = 0\}$ -- the only branches eligible to coalesce
 
 The sweep starts at the most recent child and moves toward the parent. At each step it draws
 a waiting time from the total event rate, then either removes one mutation from a branch or
@@ -119,8 +119,8 @@ timescale than one manufactured from the window the answer has to fit into.
 
 ### Degenerate steps
 
-When $R_{\text{mut}} + R_{\text{coal}} = 0$ — no mutations among the alive branches and fewer
-than two ready to coalesce — no event can occur. If `to_come` is non-empty, advance `t` to the
+When $R_{\text{mut}} + R_{\text{coal}} = 0$ -- no mutations among the alive branches and fewer
+than two ready to coalesce -- no event can occur. If `to_come` is non-empty, advance `t` to the
 next arrival time and re-enter. If it is empty, terminate; v0 relies on `Exp(0)` returning
 infinity and the loop condition catching it
 ([packages/legacy/treetime/treetime/treetime.py#L922-L926](../../packages/legacy/treetime/treetime/treetime.py#L922-L926)),
@@ -128,10 +128,10 @@ which v1 should make explicit.
 
 ### Defects not reproduced
 
-- Events committed past the parent bound, yielding negative branch lengths —
+- Events committed past the parent bound, yielding negative branch lengths --
   [kb/v0-errata/timetree-stochastic-resolve-event-past-parent.md](../v0-errata/timetree-stochastic-resolve-event-past-parent.md).
   v1 tests the candidate time against `t_stop` before committing.
-- The interval between a branch arrival and an overshooting draw is skipped —
+- The interval between a branch arrival and an overshooting draw is skipped --
   [kb/v0-errata/timetree-stochastic-resolve-skipped-arrival-interval.md](../v0-errata/timetree-stochastic-resolve-skipped-arrival-interval.md).
   v1 resumes at the arrival time.
 - The rate/selection mismatch above.
@@ -154,11 +154,11 @@ outcome without coupling two nodes' times inside the sweep.
 
 `timetree/optimization/polytomy/` (a directory, keeping `refinement.rs`'s import path valid):
 
-- `mod.rs` — public `resolve_polytomies`, plus the retained
+- `mod.rs` -- public `resolve_polytomies`, plus the retained
   `validate_tree_before_topology_change`, `prepare_tree_after_topology_change`,
   `remove_single_child_nodes`, `inferred_time`
-- `sweep.rs` — the pure simulation
-- `apply.rs` — graph surgery
+- `sweep.rs` -- the pure simulation
+- `apply.rs` -- graph surgery
 
 ### Pure simulation
 
@@ -208,14 +208,13 @@ from the old source's `outbound_mut()`, push to the new, `set_source`). The exis
 `fn merge_children()` reparents via `remove_edge` + `add_edge` with a fresh
 `EdgeTimetree { time_length, ..default }`
 ([packages/treetime/src/timetree/optimization/polytomy/mod.rs#L539-L555](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs#L539-L555)),
-which discards the edge payload and changes the edge key. Under the greedy scheme a handful of
-children are reparented; under the sweep most are. Tracked separately as
-[kb/issues/M-timetree-polytomy-reparent-discards-edge-payload.md](../issues/M-timetree-polytomy-reparent-discards-edge-payload.md).
+which discards the edge payload and changes the edge key. The graph operation must preserve the
+edge key and payload because the sweep can reparent most children of a polytomy.
 
 New edges get `time_length = child_time - parent_time`, `branch_length = Some(0.0)`,
 `gamma = 1.0`.
 
-**`CoalescentModel::branch_merger_rate(t)`** — `compute_merger_rate_per_lineage_scalar`
+**`CoalescentModel::branch_merger_rate(t)`** -- `compute_merger_rate_per_lineage_scalar`
 ([packages/treetime/src/coalescent/integration.rs#L12](../../packages/treetime/src/coalescent/integration.rs#L12))
 is `pub(super)`. Expose it as a method mirroring the existing private `total_merger_rate`,
 with the same finiteness and positivity guards
@@ -229,34 +228,28 @@ so the generator must be created before the loop from `params.seed` via
 `&'a mut dyn RngCore` on the struct. That matches v0's single `self.rng` and keeps one
 continuous stream across iterations.
 
-`--seed` already exists at
-[packages/treetime/src/commands/timetree/args.rs#L320](../../packages/treetime/src/commands/timetree/args.rs#L320)
-but never reaches `TimetreeParams`; it is tracked as dead in
-[kb/issues/N-timetree-dead-cli-flags.md](../issues/N-timetree-dead-cli-flags.md) and this
-proposal is what gives it a purpose. When it is `None`, generate a seed, use it, and log it at
-`info` so a stochastic run can be reproduced after the fact.
+`--seed` reaches `TimetreeParams` from
+[packages/treetime/src/commands/timetree/args.rs](../../packages/treetime/src/commands/timetree/args.rs).
+When it is `None`, the pipeline generates a seed, uses it, and logs it at `info` so the run can
+be reproduced.
 
 **Signature.** `resolve_polytomies` loses `resolution_threshold`, `merge_compressed` and
 `clock_rate`; `zero_branch_slope` is renamed `mutation_rate`. `keep_polytomies` reaches
 `TimetreeParams`
 ([packages/treetime/src/timetree/pipeline.rs#L61](../../packages/treetime/src/timetree/pipeline.rs#L61))
-and is then unused — also tracked in the dead-flags issue; delete or wire it while the module
-is open.
+and is then unused, as tracked in
+[kb/issues/N-timetree-unused-cli-flags.md](../issues/N-timetree-unused-cli-flags.md).
 
-### Removed
+### Strategy selection
 
-`resolve_single_polytomy`, `merge_child_group`, `compute_merge_gain`, `MergeCostFunction`,
-`MergeCandidate`, `gain_key`, `ChildInfo::is_stretched`, `DEFAULT_RESOLUTION_THRESHOLD`, the
-`merge_compressed` axis, and this module's use of `argmin`/Brent.
-
-The greedy path is not retained behind a flag. v0 keeps it under `--greedy-resolve`, but v0
+v1 has one stochastic path. v0 keeps a greedy path under `--greedy-resolve`, but v0
 also deprecates it; carrying two resolution strategies would mean maintaining the scoring
 machinery and its eight tests for a mode that is documented as unsuitable for the case it is
 most often applied to.
 
 ## Consequences
 
-- **Output becomes stochastic.** Runs without an explicit `--seed` are irreproducible; the
+- **Output is stochastic.** Runs without an explicit `--seed` are irreproducible; the
   logged seed is the recovery path.
 - **No event-level v0 comparison.** Different RNG streams and corrected rates mean validation
   against v0 can only be distributional.
@@ -291,20 +284,18 @@ Surgery and integration:
   converges, and leaves a sane node count
 
 Datasets: ebola/20 and sc2/4500. Compare against v0 `--stochastic-resolve` distributionally
-over replicates — resulting child-count distribution per polytomy, tree-shape summaries,
-final likelihood — and against the current greedy implementation on the same trees to
+over replicates -- resulting child-count distribution per polytomy, tree-shape summaries,
+final likelihood -- and against the current greedy implementation on the same trees to
 characterise the change in resolved topology.
 
 ## Related
 
+- [kb/decisions/timetree-stochastic-polytomy-resolution.md](../decisions/timetree-stochastic-polytomy-resolution.md)
 - [kb/v0-errata/timetree-stochastic-resolve-rate-selection-mismatch.md](../v0-errata/timetree-stochastic-resolve-rate-selection-mismatch.md)
 - [kb/v0-errata/timetree-stochastic-resolve-event-past-parent.md](../v0-errata/timetree-stochastic-resolve-event-past-parent.md)
 - [kb/v0-errata/timetree-stochastic-resolve-skipped-arrival-interval.md](../v0-errata/timetree-stochastic-resolve-skipped-arrival-interval.md)
-- [kb/issues/M-timetree-polytomy-reparent-discards-edge-payload.md](../issues/M-timetree-polytomy-reparent-discards-edge-payload.md)
-- [kb/issues/N-timetree-stochastic-polytomy-unimplemented.md](../issues/N-timetree-stochastic-polytomy-unimplemented.md) —
-  the parity gap this proposal closes
-- [kb/issues/N-timetree-dead-cli-flags.md](../issues/N-timetree-dead-cli-flags.md) —
-  `--seed` and `--keep-polytomies`
-- [kb/features/timetree.md](../features/timetree.md) — polytomy resolution checklist
-- [kb/proposals/optimize-polytomy-reversion-resolution.md](optimize-polytomy-reversion-resolution.md) —
+- [kb/issues/N-timetree-unused-cli-flags.md](../issues/N-timetree-unused-cli-flags.md) --
+  `--keep-polytomies`
+- [kb/features/timetree.md](../features/timetree.md) -- polytomy resolution checklist
+- [kb/proposals/optimize-polytomy-reversion-resolution.md](optimize-polytomy-reversion-resolution.md) --
   the `optimize` loop's polytomy handling, which also wants `Graph::reparent_edge`

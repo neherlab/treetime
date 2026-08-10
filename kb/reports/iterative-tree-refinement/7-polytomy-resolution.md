@@ -41,7 +41,7 @@ Arbitrary binary resolutions cause: inflated apparent tree resolution, confounde
 
 ## Strategy 1: Neighbor-joining
 
-The neighbor-joining (NJ) algorithm (Saitou and Nei 1987) starts from a star tree (complete polytomy) and iteratively joins the closest pair of taxa, creating binary structure. At each step, NJ selects the pair `(i,j)` minimizing the total tree length -- not just the two closest taxa, but accounting for distances to all other taxa via the Q-criterion:
+The neighbor-joining (NJ) algorithm (Saitou and Nei 1987) starts from a star tree (complete polytomy) and iteratively joins the pair `(i,j)` that minimizes total tree length. Its Q-criterion includes the distances from each candidate to all other taxa:
 
 ```
 Q(i,j) = (n-2) * d(i,j) - sum_k d(i,k) - sum_k d(j,k)
@@ -53,9 +53,9 @@ NJ is guaranteed to recover the correct tree from additive distances (Studier an
 
 NJ runs in O(n^3) time and is a natural fit for polytomy resolution because it starts from a star topology. Frederick Matsen proposed NJ-based resolution in [treetime issue #109](https://github.com/neherlab/treetime/issues/109) as an O(n^1.5) alternative. Not implemented in v0 or v1.
 
-## Strategy 2: Greedy likelihood-based merging (temporal)
+## Strategy 2: v0 greedy likelihood-based merging
 
-This is what TreeTime uses in the `timetree` command. For each polytomy, the algorithm evaluates every pair of children and computes the likelihood gain from merging them under a new internal node.
+v0 can evaluate every pair of children and compute the likelihood gain from merging them under a new internal node. v1 does not include this method.
 
 Given a polytomy node P with children, merging A and B creates a new node N:
 
@@ -79,13 +79,11 @@ The penalty `mu * L * dt` discourages long zero-mutation branches: longer branch
 
 The algorithm greedily picks the best pair above the **resolution threshold** (default 0.05), creates the new node, updates the pairwise gain matrix, and repeats until no pair exceeds the threshold.
 
-**Stretched vs compressed:** v0 separates children into "stretched" (`mutation_length < clock_length` -- fewer mutations than the clock predicts, candidates for artifacts) and "compressed" (at least as many mutations as predicted -- genuine divergence). By default only stretched children are merged. v1 does not implement this distinction.
+**Stretched vs compressed:** v0 separates children into "stretched" (`mutation_length < clock_length` -- fewer mutations than the clock predicts, candidates for artifacts) and "compressed" (at least as many mutations as predicted -- genuine divergence). By default only stretched children are merged.
 
 **Complexity:** O(n^2) pairwise comparisons per polytomy. Acceptable for small polytomies (3-10 children) but impractical for large ones.
 
 v0 code: `_poly()` at [`packages/legacy/treetime/treetime/treetime.py#L713-L870`](../../../packages/legacy/treetime/treetime/treetime.py#L713-L870).
-
-v1 code: `resolve_polytomies()` at [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../../packages/treetime/src/timetree/optimization/polytomy.rs).
 
 ## Strategy 3: Stochastic coalescent resolution
 
@@ -96,16 +94,14 @@ For large polytomies, greedy merging produces "caterpillar-like" subtrees (long 
 3. Simulate backward in time. At each step:
    - Branches with zero remaining mutations are "ready to coalesce."
    - A random event occurs: either a mutation is removed from a branch (making it closer to ready) or two ready branches merge under a new node.
-   - Coalescence rate comes from the population model or a dummy rate.
+   - Coalescence rate comes from the population model. When the user does not request a coalescent prior, v1 estimates a constant time scale from the tree.
 4. Remaining uncoalesced branches stay as direct children of the parent.
 
 The process is stochastic -- different runs produce different topologies. This reflects genuine uncertainty about the branching order within the polytomy.
 
-**Complexity:** O(n) per polytomy.
-
 v0 code: `generate_subtree()` at [`packages/legacy/treetime/treetime/treetime.py#L872-L1010`](../../../packages/legacy/treetime/treetime/treetime.py#L872-L1010). v0 has deprecated greedy mode with a warning recommending stochastic resolution.
 
-v1: not implemented. Tracked as `N-timetree-stochastic-polytomy-unimplemented`.
+v1: implemented in [`packages/treetime/src/timetree/optimization/polytomy/`](../../../packages/treetime/src/timetree/optimization/polytomy/). The pure sweep returns a merger plan, and graph mutation applies the complete validated plan. v1 corrects the v0 rate-selection, parent-bound, and arrival-boundary defects recorded in [`kb/v0-errata/`](../../v0-errata/README.md).
 
 ## Strategy 4: Shared-mutation merging (sequence-based)
 

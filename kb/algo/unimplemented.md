@@ -127,44 +127,6 @@ v1: `GTR.is_site_specific` (`#is_site_specific`) field exists (always false); no
 
 ---
 
-## Stochastic Polytomy Resolution
-
-Mutation-conditioned stochastic topology refinement as an alternative to the greedy deterministic method. The v0 generator combines mutation-removal and branch-merger events; it is not an ordinary <a id="cite-3"></a>[Kingman 1982](https://doi.org/10.1016/0304-4149(82)90011-4) [[3](#ref-3)] sampler and can leave a multifurcation unresolved.
-
-v0: `generate_subtree()` (`#generate_subtree`) in [`packages/legacy/treetime/treetime/treetime.py#L872-L1011`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011), dispatched by `resolve_polytomies()` (`#resolve_polytomies`).
-v1: not ported - v1 has greedy deterministic approach only. Known issue: [kb/issues/N-timetree-stochastic-polytomy-unimplemented.md](../issues/N-timetree-stochastic-polytomy-unimplemented.md). CLI: `--stochastic-resolve` (v0), `--greedy-resolve` (v0 inverse). v0 prints a deprecation warning for greedy mode, intending to make stochastic the default ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
-
-### Background
-
-The greedy method (`_poly()` in v0, `resolve_polytomies()` in v1) repeatedly merges the pair with the highest estimated likelihood gain (<a id="cite-4"></a>[Sagulenko et al. 2018](https://doi.org/10.1093/ve/vex042) [[4](#ref-4)], Section 2.6). After a merge, the new internal node re-enters the candidate set, so repeated attachment can produce a caterpillar-like topology; the paper does not establish a general statistical bias toward that shape. The stochastic method instead samples from v0's specialized event generator. v0 intended to make stochastic the default: "Stochastic resolution will become the default in future versions" ([packages/legacy/treetime/treetime/treetime.py#L682-L685](../../packages/legacy/treetime/treetime/treetime.py#L682-L685)).
-
-### Algorithm (`generate_subtree()`, [packages/legacy/treetime/treetime/treetime.py#L872-L1011](../../packages/legacy/treetime/treetime/treetime.py#L872-L1011))
-
-The function models polytomy resolution as a joint mutation-coalescence process within the time window between the polytomy node and its children:
-
-1. Sort children by `time_before_present` (most recent first)
-2. Initialize `branches_alive` with the most recent child. Remaining children wait in `branches_to_come`.
-3. Compute pending mutations per branch: `round(mutation_length * L)` where L = sequence length
-4. Loop until two or fewer branches remain or time reaches the parent:
-   - Identify branches "ready to coalesce" (zero pending mutations)
-   - Compute rates: mutation rate = `gtr.mu * L * total_mutations`, coalescent rate from `merger_model.branch_merger_rate(t)` if available or dummy `2/(tmax-t)` otherwise
-   - Sample waiting time: `dt = Exp(1/total_rate)` using `self.rng.exponential`
-   - If a `branches_to_come` child appears in the interval, add it and restart
-   - Sample event type proportional to rates (`self.rng.random`)
-   - Mutation event: pick branch proportional to mutation count, decrement by one
-   - Coalescent event: pick two ready branches uniformly (`self.rng.choice`), create new internal node at current time, reparent them, build `BranchLenInterpolator` for the new node
-5. Remaining branches become direct children of the parent
-
-### RNG
-
-Uses `self.rng` (`numpy.random.default_rng(seed=rng_seed)`) from `TreeAnc.__init__()` ([packages/legacy/treetime/treetime/treeanc.py#L163](../../packages/legacy/treetime/treetime/treeanc.py#L163)). CLI flag is `--rng-seed` (v0), `--seed` (v1). Without a seed, results are non-deterministic.
-
-### Dispatch
-
-`resolve_polytomies(stochastic_resolve=True)` ([packages/legacy/treetime/treetime/treetime.py#L694](../../packages/legacy/treetime/treetime/treetime.py#L694)) calls `generate_subtree(n)` for each polytomy. `resolve_polytomies(stochastic_resolve=False)` calls `_poly(n)` (greedy).
-
----
-
 ## FFT Convolution with Delta Approximation
 
 v0's FFT convolution with two domain-specific optimizations: delta function approximation for narrow distributions (skips FFT entirely) and linear tail extrapolation beyond the FFT valid region.
@@ -351,7 +313,7 @@ v1: `compute_branch_length_distribution()` is implemented at [`packages/treetime
 
 ## ~~Iterative GTR for Discrete Traits~~ (Ported)
 
-Iterative parameter estimation for discrete-trait GTR models following the expectation-maximization framework (<a id="cite-5"></a>[Dempster, Laird, and Rubin 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x) [[5](#ref-5)]). The E-step computes posterior joint parent-child state distributions through Felsenstein's pruning algorithm (<a id="cite-6"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[6](#ref-6)]), counting expected transitions and dwell times across all edges. The M-step re-estimates the symmetric exchangeability matrix $W$, equilibrium frequencies $\pi$, and scalar rate $\mu$ from these sufficient statistics. Rate optimization uses Brent's method with bracket validation.
+Iterative parameter estimation for discrete-trait GTR models following the expectation-maximization framework (<a id="cite-3"></a>[Dempster, Laird, and Rubin 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x) [[3](#ref-3)]). The E-step computes posterior joint parent-child state distributions through Felsenstein's pruning algorithm (<a id="cite-4"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[4](#ref-4)]), counting expected transitions and dwell times across all edges. The M-step re-estimates the symmetric exchangeability matrix $W$, equilibrium frequencies $\pi$, and scalar rate $\mu$ from these sufficient statistics. Rate optimization uses Brent's method with bracket validation.
 
 v0: `reconstruct_discrete_traits()` in [`packages/legacy/treetime/treetime/wrappers.py#L785-L809`](../../packages/legacy/treetime/treetime/wrappers.py#L785-L809), `TreeAnc.infer_gtr()` in [`packages/legacy/treetime/treetime/treeanc.py#L1500-L1632`](../../packages/legacy/treetime/treetime/treeanc.py#L1500-L1632).
 v1: `refine_gtr_iterative()` in [`packages/treetime/src/gtr/refinement.rs`](../../packages/treetime/src/gtr/refinement.rs). Remaining parity gap tracked in [Mugration golden master parity with v0](../issues/M-mugration-iterative-gtr.md). Full forward-backward per iteration proposed in [mugration-full-reconstruction-per-iteration](../proposals/mugration-full-reconstruction-per-iteration.md).
@@ -362,7 +324,5 @@ v1: `refine_gtr_iterative()` in [`packages/treetime/src/gtr/refinement.rs`](../.
 
 - <a id="ref-1"></a>Pupko, Tal, Itsik Pe'er, Ron Shamir, and Dan Graur. 2000. "A Fast Algorithm for Joint Reconstruction of Ancestral Amino Acid Sequences." _Molecular Biology and Evolution_ 17(6):890-896. https://doi.org/10.1093/oxfordjournals.molbev.a026369 [↩](#cite-1)
 - <a id="ref-2"></a>Yang, Ziheng. 1994. "Maximum Likelihood Phylogenetic Estimation from DNA Sequences with Variable Rates over Sites: Approximate Methods." _Journal of Molecular Evolution_ 39(3):306-314. https://doi.org/10.1007/BF00160154 [↩](#cite-2)
-- <a id="ref-3"></a>Kingman, J. F. C. 1982. "The Coalescent." _Stochastic Processes and their Applications_ 13(3):235-248. https://doi.org/10.1016/0304-4149(82)90011-4 [↩](#cite-3)
-- <a id="ref-4"></a>Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-4)
-- <a id="ref-5"></a>Dempster, Arthur P., Nan M. Laird, and Donald B. Rubin. 1977. "Maximum Likelihood from Incomplete Data via the EM Algorithm." _Journal of the Royal Statistical Society: Series B_ 39(1):1-38. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x [↩](#cite-5)
-- <a id="ref-6"></a>Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-6)
+- <a id="ref-3"></a>Dempster, Arthur P., Nan M. Laird, and Donald B. Rubin. 1977. "Maximum Likelihood from Incomplete Data via the EM Algorithm." _Journal of the Royal Statistical Society: Series B_ 39(1):1-38. https://doi.org/10.1111/j.2517-6161.1977.tb01600.x [↩](#cite-3)
+- <a id="ref-4"></a>Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-4)

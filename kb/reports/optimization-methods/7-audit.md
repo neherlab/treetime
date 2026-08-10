@@ -8,7 +8,7 @@ A detailed item-by-item audit with code locations, callers, callees, and converg
 
 ## Inventory
 
-### Existing argmin usage (E1-E6)
+### Existing argmin usage (E1-E4)
 
 | ID  | Location                                                                                                                          | Solver                    | Objective              |
 | :-- | :-------------------------------------------------------------------------------------------------------------------------------- | :------------------------ | :--------------------- |
@@ -16,8 +16,6 @@ A detailed item-by-item audit with code locations, callers, callees, and converg
 | E2  | [method_golden_section.rs#L36-L81](../../../packages/treetime/src/clock/find_best_root/method_golden_section.rs#L36-L81) | `GoldenSectionSearch`     | Root-split chi-squared |
 | E3  | [method_grid_search.rs#L10-L58](../../../packages/treetime/src/clock/find_best_root/method_grid_search.rs#L10-L58)       | Grid search (hand-rolled) | Root-split chi-squared |
 | E4  | [optimize_tc.rs#L47-L87](../../../packages/treetime/src/coalescent/optimize_tc.rs#L47-L87)                      | `BrentOpt`                | Coalescent Tc          |
-| E5  | [skyline.rs#L68-L157](../../../packages/treetime/src/coalescent/skyline.rs#L68-L157)                            | `NelderMead`              | Skyline Tc(t)          |
-| E6  | [polytomy.rs#L239-L289](../../../packages/treetime/src/timetree/optimization/polytomy.rs#L239-L289)                      | `BrentOpt`                | Polytomy merge time    |
 
 ### Hand-rolled optimization (H1-H11)
 
@@ -51,19 +49,11 @@ E1, E2, E4 each define a near-identical `Observer` struct that logs every 10th i
 
 ### I4. Hardcoded vs configurable parameters
 
-Root-split optimization has full CLI configurability. Coalescent Tc (max_iters=100), polytomy (max_iters=50), and branch length (max_iter=10) are hardcoded. **Make convergence params configurable** (P7).
+Root-split optimization has full CLI configurability. Coalescent Tc (max_iters=100) and branch length (max_iter=10) are hardcoded. **Make convergence params configurable** (P7).
 
 ### I5. Non-concave fallback divergence
 
 H1 uses grid search (100 points) as fallback. All other optimizations use bracket-based methods that handle non-concavity natively. **Replace grid fallback with `BrentOpt`** (P5).
-
-### I6. Skyline: NelderMead (v1) vs SLSQP (v0)
-
-NelderMead has no convergence guarantee above 2D. The skyline cost function has analytically tractable gradients. **Upgrade to `LBFGS`** (P8).
-
-### I7. `&CostFunction` vs `CostFunction` trait pattern
-
-E1/E2/E4/E5 use `impl CostFunction for &Type`. E6 uses `impl CostFunction for Type`. **Standardize** on one pattern.
 
 ## Proposals (prioritized)
 
@@ -89,17 +79,13 @@ Wrap the branch length Newton-Raphson as a custom `argmin::core::Solver`. The ma
 
 Replace hand-rolled bisection in HPD computation with argmin `BrentRoot`. Primarily for consistency - the current bisection works and is not a performance bottleneck.
 
-### P8. Skyline LBFGS (medium risk)
-
-Replace NelderMead with LBFGS for skyline optimization. Requires deriving and validating analytical gradients of the coalescent likelihood + GMRF penalty + boundary penalty. The gradient is tractable (see [Chapter 3](3-coalescent-skyline.md)) but incorrect gradients cause LBFGS to diverge.
-
 ### P6. Shared optimization module (depends on P1/P3)
 
 Create a shared module for generic observer, cost function patterns, optimization parameter types, and argmin utilities.
 
 ### P7. Configurable convergence parameters
 
-Add CLI flags for Tc, branch-length, and polytomy convergence parameters with current hardcoded values as defaults.
+Add CLI flags for Tc and branch-length convergence parameters with current hardcoded values as defaults.
 
 ## TreeTime v0 optimization inventory
 
@@ -112,10 +98,10 @@ Complete `scipy.optimize` call sites in v0 for comparison:
 | `merger_models.py:310`  | `minimize` (SLSQP)          | Skyline Tc(t)       | NelderMead (E5)     |
 | `treeregression.py:340` | `minimize_scalar` (bounded) | Root position       | BrentOpt (E1)       |
 | `clock_tree.py:1187`    | `minimize_scalar` (brent)   | HPD interval        | Bisection (H5)      |
-| `treetime.py:748`       | `minimize_scalar` (bounded) | Polytomy merge time | BrentOpt (E6)       |
+| `treetime.py:748`       | `minimize_scalar` (bounded) | Polytomy merge time | Stochastic sampler  |
 | `treeanc.py:1683`       | `minimize_scalar` (brent)   | GTR rate mu         | Not ported          |
 
-v0 features not in v1 (optimization-related): `optimize_gtr_rate()`, `infer_gtr_iterative()`, `generate_subtree()` (stochastic polytomy), incremental gain matrix update in polytomy resolution, stretched vs compressed branch separation, skyline confidence via numerical second derivatives.
+v0 features not in v1 (optimization-related): `optimize_gtr_rate()`, `infer_gtr_iterative()`, incremental gain matrix update in greedy polytomy resolution, stretched vs compressed branch separation, skyline confidence via numerical second derivatives.
 
 ## References
 

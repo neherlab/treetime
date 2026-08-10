@@ -51,7 +51,7 @@ lineages that become eligible to coalesce but leaves no invalid value behind.
 
 The overshoot means no event occurred within the window. The candidate time must be tested
 against the bound before the event is committed; when it crosses, the sweep terminates and
-the surviving lineages attach to the parent as a residual polytomy — which is the same
+the surviving lineages attach to the parent as a residual polytomy -- which is the same
 outcome the loop condition produces one iteration later, minus the invalid node.
 
 ## Evidence
@@ -68,11 +68,9 @@ outcome the loop condition produces one iteration later, minus the invalid node.
 - The affected node's subtree is dated inconsistently until the next timetree inference pass
   reassigns node times
 - Probability of occurrence per sweep is $e^{-r\,(t_{\max}-t)}$ evaluated at the last event,
-  so it rises as the remaining window shrinks — i.e. it is most likely exactly when the sweep
+  so it rises as the remaining window shrinks -- i.e. it is most likely exactly when the sweep
   is about to terminate normally
 
 ## v1 status
 
-Not implemented. Planned as part of
-[kb/proposals/timetree-stochastic-polytomy-resolution.md](../proposals/timetree-stochastic-polytomy-resolution.md),
-which tests the candidate time against the parent bound before committing an event.
+Implemented with the correction in [`simulate_subtree()`](../../packages/treetime/src/timetree/optimization/polytomy/sweep.rs). The parent time is an explicit deterministic hazard boundary. Crossing it ends the sweep without an event, and [`apply_plan()`](../../packages/treetime/src/timetree/optimization/polytomy/apply.rs) rejects any merger at or before the parent before graph mutation.

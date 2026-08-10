@@ -30,7 +30,7 @@
 | prune_short / --prune-short | True (default)       | False after resolution | Inside loop        | Yes (threshold) | Not implemented                                 |
 | --merge-shared-mutations    | N/A                  | N/A                    | Inside loop        | Yes             | N/A                                             |
 | --resolve-polytomies        | N/A                  | True (default)         | N/A                | N/A             | Yes                                             |
-| --keep-polytomies           | N/A                  | Available              | N/A                | N/A             | Parsed, not wired (`N-timetree-dead-cli-flags`) |
+| --keep-polytomies           | N/A                  | Available              | N/A                | N/A             | Parsed, not wired (`N-timetree-unused-cli-flags`) |
 | --stochastic-resolve        | N/A                  | Available              | N/A                | N/A             | Not implemented                                 |
 | --damping                   | N/A (hardcoded 0.75) | N/A                    | Yes (default 0.75) | N/A             | N/A                                             |
 
@@ -46,10 +46,6 @@
 
 **Shared-mutation merging ignores shared indels.** Indels on child edges are preserved without merging identical indels to the parent edge. Conservative behavior.
 
-**O(n^2) complexity for large polytomies.** Both greedy algorithms use pairwise comparison. Impractical for SARS-CoV-2-scale polytomies.
-
-**Stochastic polytomy resolution not implemented.** Tracked: `N-timetree-stochastic-polytomy-unimplemented`. Greedy mode is deprecated in v0.
-
 ## Positive points
 
 **Zero-length detection is mathematically sound.** v1's derivative-sign method is the local optimality condition at the boundary (exact for unimodal models such as JC69). See [Chapter 6](6-zero-length-branches.md). No heuristic thresholds.
@@ -58,24 +54,13 @@
 
 **Shared-mutation merging is correct and well-tested.** 515 lines of tests, smoke tests. Matches the design document specification.
 
-**Timetree polytomy resolution uses proper likelihood criterion.** Brent optimization with `zero_branch_slope = mu * L`, matching v0.
+**Timetree polytomy resolution separates simulation from graph mutation.** The stochastic sweep returns a seeded merger plan, and graph mutation validates the full plan before applying it.
 
 **Convergence monitoring is more sophisticated.** `TimetreeOptimizer` tracks multiple metrics.
 
 **Partition reconciliation after topology changes.** `reconcile_topology()` ensures data consistency for new nodes and edges.
 
 ## Recommendations
-
-### R5 (low): Implement stochastic polytomy resolution
-
-For SARS-CoV-2-scale datasets. Priority depends on target dataset scale.
-
-## Ledger cross-references
-
-| Issue                     | File                                           | Status |
-| ------------------------- | ---------------------------------------------- | ------ |
-| Stochastic resolution     | `N-timetree-stochastic-polytomy-unimplemented` | Open   |
-| Polytomy numerical issues | `N-timetree-polytomy-numerical-robustness`     | Open   |
 
 ## References
 

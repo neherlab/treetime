@@ -16,7 +16,7 @@ v1: [`packages/treetime/src/optimize/method_newton.rs`](../../packages/treetime/
 
 v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in $\sqrt{t}$ space with a Hamming-distance bracket. v1 ships six methods (Newton and Brent in $t$, $\sqrt{t}$, and $\ln(t)$ coordinates) selectable via `--opt-method`; `brent-sqrt` is the default. It uses the same square-root parameterization and corresponding substitution-likelihood objective form as v0, but the solver, bounds, tolerances, regularization, indel term, and resulting branch lengths are not exactly equivalent. The Newton variants compute analytical derivatives from cached eigenvalue-space coefficients. The implementation evaluates the second derivative in a centered eigenvalue form to reduce cancellation relative to subtracting two independently accumulated moments; its signed weights are not a posterior distribution or Welford recurrence. See [feature inventory](../features/optimize.md) for parity evidence and [intentional change](../decisions/optimize-newton-raphson-per-edge.md) for the per-method rationale.
 
-The method is described in <a id="cite-1"></a>[Nocedal and Wright 2006](https://doi.org/10.1007/978-0-387-40065-5) [[1](#ref-1)], Chapter 2, and <a id="cite-2"></a>[Felsenstein 2003](https://doi.org/10.1007/978-0-387-21337-7) [[2](#ref-2)], Chapter 16.
+The method is described in <a id="cite-1"></a>[Nocedal and Wright 2006](https://doi.org/10.1007/978-0-387-40065-5) [[1](#ref-1)], Chapter 2, and <a id="cite-2"></a>[Felsenstein 2003](https://www.oup.com.au/books/higher-education/biology/9780878931774) [[2](#ref-2)], Chapter 16.
 
 ---
 
@@ -32,7 +32,7 @@ v1: [`packages/treetime/src/optimize/method_brent.rs`](../../packages/treetime/s
 
 v0: `optimal_t_compressed()` at [`packages/legacy/treetime/treetime/gtr.py#L816-L920`](../../packages/legacy/treetime/treetime/gtr.py#L816-L920). Uses `scipy.optimize.minimize_scalar(method='brent')` in sqrt(t) space with bracket `[-sqrt(MAX_BRANCH_LENGTH), sqrt(hamming_distance), sqrt(MAX_BRANCH_LENGTH)]`.
 
-Distinct from existing Brent entries for clock root optimization, coalescent Tc optimization, and polytomy resolution. Those are different optimization targets using the same `BrentOpt` solver.
+Distinct from existing Brent entries for clock root optimization and coalescent Tc optimization. Those are different optimization targets using the same `BrentOpt` solver.
 
 See also <a id="cite-4"></a>[Press et al. 2007](https://doi.org/10.1017/CBO9780511811340) [[4](#ref-4)], Section 10.3.
 
@@ -61,7 +61,7 @@ The eigendecomposition approach follows <a id="cite-5"></a>[Felsenstein 1981](ht
 
 ## Poisson Indel Contribution
 
-Adds a Poisson term to branch-length optimization. Here $k$ is the current number of net contiguous indel annotation records on one edge, $t$ is that edge's branch length, $\mu$ is the global record rate, and $e$ indexes tree edges. The per-edge contribution is $\ell(t) = k \ln(\mu t) - \mu t - \ln(k!)$. Derivatives $k/t - \mu$ and $-k/t^2$ enter the Newton step alongside substitution derivatives. Because annotation composition can merge or cancel records, $k$ is not generally a count of historical indel events. The estimate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is computed before the internal iterations of one `run_optimize_loop()` invocation and then held fixed for its tree-level objective and edge updates.
+Adds a Poisson term to branch-length optimization. Here $k$ is the current number of net contiguous indel annotation records on one edge, $t$ is that edge's branch length, $\mu$ is the global record rate, and $e$ indexes tree edges. The per-edge contribution is $\ell(t) = k \ln(\mu t) - \mu t - \ln(k!)$. Derivatives $k/t - \mu$ and $-k/t^2$ enter the Newton step alongside substitution derivatives. Annotation composition can merge or cancel records, so $k$ counts current records instead of historical indel events. The estimate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is computed before the internal iterations of one `run_optimize_loop()` invocation and then held fixed for its tree-level objective and edge updates.
 
 v1: [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/optimize/indel.rs).
 
@@ -176,23 +176,13 @@ v0: No formal implementation. Design doc describes "ad-hoc scripts" in nextstrai
 
 ---
 
-## Greedy Temporal Polytomy Resolution
-
-For each polytomy, computes pairwise likelihood gain from merging children under a new intermediate node. Uses Brent optimization over the time domain with `zero_branch_slope = mu * L` penalty for the new zero-mutation branch. Greedily picks the best pair above `resolution_threshold` (0.05). O(n^2) per polytomy.
-
-v1: [`packages/treetime/src/timetree/optimization/polytomy.rs`](../../packages/treetime/src/timetree/optimization/polytomy.rs) `resolve_polytomies()`.
-
-v0: `_poly()` at [`packages/legacy/treetime/treetime/treetime.py#L713-L870`](../../packages/legacy/treetime/treetime/treetime.py#L713-L870). v0 distinguishes "stretched" (`mutation_length < clock_length`) from "compressed" children and by default only resolves stretched ones.
-
----
-
 ## Stochastic Coalescent Polytomy Resolution
 
-Simulates a backward-in-time coalescent process. Branches without mutations are "ready to coalesce"; branches with mutations must have mutations removed stochastically. Randomly pairs ready branches for merging. Recommended for large polytomies where greedy mode produces caterpillar-like subtrees.
+Simulates a backward-in-time coalescent process. Branches without remaining substitutions are ready to coalesce. Other branches must receive mutation events before they can coalesce. The event hazard is integrated across lineage arrivals and changes in the piecewise-constant coalescent rate.
 
 v0: `generate_subtree()` at [`packages/legacy/treetime/treetime/treetime.py#L872-L1010`](../../packages/legacy/treetime/treetime/treetime.py#L872-L1010).
 
-v1: Not implemented. Tracked: `N-timetree-stochastic-polytomy-unimplemented.md`.
+v1: [`packages/treetime/src/timetree/optimization/polytomy/`](../../packages/treetime/src/timetree/optimization/polytomy/). v1 uses consistent mutation weights and stops at the parent bound. See [kb/algo/timetree.md](timetree.md#polytomy-resolution) for the rates and state transitions.
 
 ---
 
@@ -217,7 +207,7 @@ v1: Not implemented. Tracked: `N-timetree-stochastic-polytomy-unimplemented.md`.
 | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | [`packages/treetime/src/optimize/`](../../packages/treetime/src/optimize/)                                       | Newton-Raphson, Brent, grid search, likelihood eval, damping, convergence, zero-detect |
 | [`packages/treetime/src/prune/`](../../packages/treetime/src/prune/)                                             | Shared-mutation merging                                                                |
-| [`packages/treetime/src/timetree/optimization/`](../../packages/treetime/src/timetree/optimization/)             | Greedy temporal polytomy resolution                                                    |
+| [`packages/treetime/src/timetree/optimization/`](../../packages/treetime/src/timetree/optimization/)             | Stochastic temporal polytomy resolution                                                |
 | [`packages/treetime/src/optimize/topology/`](../../packages/treetime/src/optimize/topology/) | Edge collapse (shared)                                                                 |
 | [`packages/treetime/src/partition/`](../../packages/treetime/src/partition/)                         | Forward-pass zero-divisor clamping, normalize_inplace                                  |
 | [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                                                                 | Interpolation (uniform, non-uniform)                                                   |

@@ -22,12 +22,6 @@ Convention violations across the codebase: fully qualified paths, inconsistent d
 
 Two decimal places gives ~3.6 days resolution, insufficient for fast-evolving pathogens sampled days apart.
 
-### BrentOpt absolute epsilon on calendar time
-
-Polytomy merge-time bracket [packages/treetime/src/timetree/optimization/polytomy.rs#L265](../../packages/treetime/src/timetree/optimization/polytomy.rs#L265)
-
-`BrentOpt::new(parent_time + 1e-10, child_min_time - 1e-10)` uses absolute epsilon. For calendar times (e.g., 2020.5), 1e-10 is below f64 precision at that magnitude.
-
 ### edge_effective_length saturating_sub clamps to 0
 
 - Sparse `fn edge_effective_length()` [packages/treetime/src/partition/marginal_sparse.rs#L255](../../packages/treetime/src/partition/marginal_sparse.rs#L255)
@@ -40,12 +34,6 @@ Returns 0 when non-char positions exceed sequence length. Used as denominator in
 `mod method_brent` [packages/treetime/src/optimize/method_brent.rs](../../packages/treetime/src/optimize/method_brent.rs)
 
 When multiple `OptimizationContribution` entries share the same GTR eigvals at the same branch length, the `exp_ev` vector is redundantly computed per contribution.
-
-### Distribution::Empty fallback prevents polytomy merges
-
-Polytomy distribution evaluation [packages/treetime/src/timetree/optimization/polytomy.rs#L216](../../packages/treetime/src/timetree/optimization/polytomy.rs#L216)
-
-Silently prevents merges when branch-length distributions are Empty. Should log or error.
 
 ### TODO comments
 

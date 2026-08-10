@@ -11,8 +11,6 @@
 7. `prune_short` -- short-branch pruning threshold
 8. `seed` -- random seed
 
-Previously dead flags now wired or removed: `reroot` (now used in `RerootParams`), `tip_slack` (now used in variance calculation), `plot_rtt` (removed from CLI).
-
 These flags are exposed via clap and accepted by the CLI parser, so users set them expecting an effect. No warning is emitted when these flags are provided.
 
 ## Impact
@@ -32,4 +30,4 @@ For each flag, either wire it to the appropriate behavior or remove it from the 
 ## Related
 
 - [M-clock-covariation-overdispersion.md](M-clock-covariation-overdispersion.md): `--tip-slack` default divergence from v0
-- [N-timetree-dead-cli-flags.md](N-timetree-dead-cli-flags.md): similar dead-flag issue in the timetree command
+- [N-timetree-unused-cli-flags.md](N-timetree-unused-cli-flags.md): similar unused-argument issue in the timetree command

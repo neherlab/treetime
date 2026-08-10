@@ -18,11 +18,9 @@ Finding the constant coalescent time scale Tc that maximizes the total coalescen
 
 ## Polytomy resolution
 
-Greedy pairwise merging of children under new internal nodes. For each candidate pair, BrentOpt finds the optimal merge time (E6). The outer loop picks the best pair and repeats until no pair exceeds the resolution threshold (default 0.05).
+Mutation-conditioned stochastic coalescent sampling creates internal nodes without a scalar optimizer. The sampler integrates event hazard across lineage arrivals and changes in the coalescent rate. It can leave a residual polytomy when the available time window ends. v0 also has a greedy Brent path, which it deprecates.
 
-v0 deprecated greedy resolution in favor of stochastic coalescent resolution (`generate_subtree()`), which produces coalescent-typical tree shapes instead of caterpillar-biased ones. v1 has not ported the stochastic method (`N-timetree-stochastic-polytomy-unimplemented`).
-
-<a id="cite-1"></a>[Lewis, Holder, and Holsinger 2005](https://doi.org/10.1080/10635150590924208) [[1](#ref-1)] showed that Bayesian MCMC assigns near-1.0 posterior probability to arbitrary binary resolutions of true star trees (the star tree paradox). TreeTime's `resolution_threshold` serves an analogous role to their polytomy prior: preventing commitment to unsupported resolutions.
+<a id="cite-1"></a>[Lewis, Holder, and Holsinger 2005](https://doi.org/10.1080/10635150590924208) [[1](#ref-1)] describe the star tree paradox for Bayesian resolution. TreeTime's stochastic event generator is not a calibrated posterior over resolved and unresolved topologies; such a model requires a separate target distribution.
 
 ## HPD interval computation
 

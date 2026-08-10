@@ -105,7 +105,7 @@ cost = -log_likelihood + stiffness * sum(diff(log_Tc)^2) + regularization * boun
 
 The stiffness term penalizes rapid changes in log(Tc) between adjacent grid points (analogous to the GMRF precision). The boundary penalty discourages log(Tc) values outside [-100, 0].
 
-`build_tc_distribution()` (`#build_tc_distribution`) [packages/treetime/src/coalescent/skyline.rs#L214-L256](../../packages/treetime/src/coalescent/skyline.rs#L214-L256) creates a `Distribution::Formula` with piecewise linear interpolation via binary search, producing a lazy Tc(t) function for the backward pass.
+`build_tc_distribution()` (`#build_tc_distribution`) [packages/treetime/src/coalescent/skyline.rs](../../packages/treetime/src/coalescent/skyline.rs) creates a piecewise-constant `Distribution::Formula` for coalescent scoring. `SkylineResult::tc_schedule` preserves the same step boundaries for consumers that integrate hazards.
 
 v1: [`packages/treetime/src/coalescent/skyline.rs`](../../packages/treetime/src/coalescent/skyline.rs).
 v0: [`packages/legacy/treetime/treetime/merger_models.py#L281`](../../packages/legacy/treetime/treetime/merger_models.py#L281).
@@ -152,27 +152,23 @@ The `one_mutation` parameter (sum of sequence lengths across all partitions) set
 
 A polytomy (multifurcation) is a node with more than two children, arising from insufficient phylogenetic signal to resolve the true bifurcating topology (soft polytomy) or from genuine simultaneous divergence (hard polytomy, rare). Tree builders (IQ-TREE, FastTree, RAxML) resolve zero-length branches into arbitrary bifurcations. TreeTime collapses these back into polytomies and re-resolves them in a way consistent with the temporal ordering of nodes.
 
-v1 implements greedy deterministic resolution. v0 also supports stochastic coalescent-based resolution (not yet ported, see [unimplemented](unimplemented.md#stochastic-polytomy-resolution)).
+v1 uses mutation-conditioned stochastic coalescent sampling. v0 provides stochastic and greedy generators, but v1 corrects three documented v0 defects in the stochastic rate selection, parent bound, and arrival handling.
 
-v1: [`packages/treetime/src/timetree/optimization/polytomy/mod.rs`](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs).
+v1: [`packages/treetime/src/timetree/optimization/polytomy/`](../../packages/treetime/src/timetree/optimization/polytomy/).
+v0: `generate_subtree()` in [`packages/legacy/treetime/treetime/treetime.py`](../../packages/legacy/treetime/treetime/treetime.py).
 
-### Greedy algorithm
+For live lineages, let $M$ be the remaining substitution count and let $R$ be the mutation-free lineages. The competing event rates are
 
-The algorithm iterates over all nodes with >2 children. For each polytomy, it computes pairwise likelihood gains for merging each pair of children under a new internal node, selects the pair with the highest gain, and merges them. This repeats until no pair exceeds the resolution threshold (default 0.05 log-likelihood units) or the node becomes binary.
+$$R_{\mathrm{mut}}=\mu M, \qquad R_{\mathrm{coal}}=\max(0, |R|-1)\kappa(t),$$
 
-This approach is deterministic and reproducible but biases toward caterpillar-like topologies: after the first merge creates a new internal node, subsequent merges preferentially attach to it (because it has the most informative branch distribution), creating an imbalanced subtree ([[3](#ref-3)], Section 2.6).
+where $\mu$ is the whole-alignment mutation rate and $\kappa(t)$ is the per-branch merger-rate schedule from the active coalescent model. One unit-exponential hazard threshold is integrated across lineage arrivals, merger-rate breakpoints, and the parent bound. A mutation event selects a lineage in exact proportion to its integer remaining count. A coalescent event selects two mutation-free lineages uniformly.
 
-- `resolve_polytomies()` (`#resolve_polytomies`) [packages/treetime/src/timetree/optimization/polytomy/mod.rs#L27-L32](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs#L27-L32): entry point with default threshold (0.05).
-- `compute_merge_gain()` (`#compute_merge_gain`) [packages/treetime/src/timetree/optimization/polytomy/mod.rs#L225](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs#L225): uses Brent optimization (via `argmin` crate) to find the optimal merge time and cost gain for a child pair.
-- `merge_children()` (`#merge_children`) [packages/treetime/src/timetree/optimization/polytomy/mod.rs#L345](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs#L345): creates a new internal node, adds parent-to-new-node edge, reparents the two children.
-- `validate_tree_before_topology_change()` (`#validate_tree_before_topology_change`) [packages/treetime/src/timetree/optimization/polytomy/mod.rs](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs): verifies that every existing internal node has a finite inferred time immediately before the first topology mutation. Polytomy scoring also rejects missing or non-finite node times at the point of use, while a resolution request that finds no merge candidate does not require complete internal times.
-- `prepare_tree_after_topology_change()` (`#prepare_tree_after_topology_change`) [packages/treetime/src/timetree/optimization/polytomy/mod.rs](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs): reconstructs each internal-node time distribution as a point constraint at its inferred time and resets topology-dependent edge distributions, clock messages, and relaxed-clock rates; leaf date constraints, propagated `bad_branch` state, branch lengths, and time lengths are preserved.
+- `simulate_subtree()` in [packages/treetime/src/timetree/optimization/polytomy/sweep.rs](../../packages/treetime/src/timetree/optimization/polytomy/sweep.rs) performs pure seeded simulation and returns a validated merger plan. It rejects non-finite times and rates, rejects rate overflow, and leaves residual polytomies when the parent bound stops the sweep.
+- `apply_plan()` in [packages/treetime/src/timetree/optimization/polytomy/apply.rs](../../packages/treetime/src/timetree/optimization/polytomy/apply.rs) validates the complete plan before graph mutation, then creates internal nodes and reparents children.
+- `resolve_polytomies()` in [packages/treetime/src/timetree/optimization/polytomy/mod.rs](../../packages/treetime/src/timetree/optimization/polytomy/mod.rs) collects exact reconstructed substitution counts when available, applies the plan, removes obsolete single-child nodes, and rebuilds the graph.
+- `validate_tree_before_topology_change()` and `prepare_tree_after_topology_change()` preserve the refinement loop's complete-state boundary around topology mutation.
 
-After resolution, partition data is reconciled via `reconcile_topology()` to add entries for new nodes/edges.
-
-### Known issues
-
-The zero-branch penalty for newly created internal branches differs from v0: v1 uses bare time difference, v0 scales by `gtr.mu * data.full_length`.
+After resolution, partition data is reconciled with the new topology before inference resumes. The same seed and input state produce the same sampled plan. See [kb/decisions/timetree-stochastic-polytomy-resolution.md](../decisions/timetree-stochastic-polytomy-resolution.md) and the three `timetree-stochastic-resolve-*` entries in [kb/v0-errata/](../v0-errata/README.md).
 
 ---
 

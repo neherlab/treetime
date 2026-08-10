@@ -13,5 +13,5 @@ A related Python report found that a marginal-sequence option was translated cor
 ## Related issues
 
 - Source: [kb/issues/M-timetree-method-anc-ignored.md](../issues/M-timetree-method-anc-ignored.md) -- delete after full resolution
-- [Dead CLI flags in timetree](../issues/N-timetree-dead-cli-flags.md) lists other dead
-  flags in the same pipeline
+- [kb/issues/N-timetree-unused-cli-flags.md](../issues/N-timetree-unused-cli-flags.md) lists other
+  unused flags in the same pipeline

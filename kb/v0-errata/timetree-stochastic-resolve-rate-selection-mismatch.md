@@ -63,13 +63,13 @@ self.logger('TreeTime.generate_subtree: did not find a mutation to remove -- err
 
 The failure is not rare. The misallocated fraction is
 $(\kappa + \mu)\lvert W\rvert / R_{\text{mut}}$, which approaches 1 whenever the alive
-branches carry few remaining mutations each — the ordinary state late in a sweep, and the
+branches carry few remaining mutations each -- the ordinary state late in a sweep, and the
 normal state throughout for a polytomy whose children carry one or two mutations.
 
 Separately, the three added $\mu$ terms have no stated derivation. The comment at
 [packages/legacy/treetime/treetime/treetime.py#L916-L918](../../packages/legacy/treetime/treetime/treetime.py#L916-L918)
-motivates the *structure* — branches with mutations may only mutate, mutation-free branches
-may only coalesce — but that structure is already expressed by partitioning the branches
+motivates the *structure* -- branches with mutations may only mutate, mutation-free branches
+may only coalesce -- but that structure is already expressed by partitioning the branches
 into $W$ and $R$. It does not explain adding a coalescent rate to the mutation channel, nor
 adding $\mu$ to the coalescent channel twice.
 
@@ -103,8 +103,4 @@ has an event behind it, so the selection loop cannot fall through.
 
 ## v1 status
 
-Not implemented. Planned as part of
-[kb/proposals/timetree-stochastic-polytomy-resolution.md](../proposals/timetree-stochastic-polytomy-resolution.md),
-which adopts the corrected two-channel rates. This means v1's stochastic resolution cannot be
-compared to v0 event-for-event; the proposal's validation plan uses distributional comparison
-instead.
+Implemented with the correction in [`simulate_subtree()`](../../packages/treetime/src/timetree/optimization/polytomy/sweep.rs). v1 uses the two rates above, selects the mutation channel from those rates, and selects a branch with an exact integer draw over the same mutation counts. Event-for-event v0 comparison is not valid because the corrected process has a different event distribution.

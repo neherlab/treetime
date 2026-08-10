@@ -29,7 +29,7 @@ the feedback to matter.
 Before this change `compute_coalescent_model` derived both from the current times. Each pass moved
 the times, which moved $k(t)$, which moved the prior the next pass was inferred under: the loop
 chased a receding target. Isolating the blocks on `data/ebola/20` showed the destabilizer is not
-$T_c$ estimation — holding $T_c$ fixed at a hand-picked constant still failed to settle.
+$T_c$ estimation -- holding $T_c$ fixed at a hand-picked constant still failed to settle.
 
 ## Structure
 
@@ -58,12 +58,12 @@ modes turn out to drift, and is a one-line change in `refine_topology`.
 
 Polytomy resolution samples mergers at the per-branch coalescent rate, so it needs a model even for
 a run that asked for no coalescent prior. When the coalescent is enabled it gets the identical
-object the prior does — frozen $k_0$, the round's $T_c$ — so the rate the sampler draws against is
+object the prior does -- frozen $k_0$, the round's $T_c$ -- so the rate the sampler draws against is
 consistent with the prior the times are inferred under. When the coalescent is disabled, `prior` is
 `None` while the model still exists, built from a constant $T_c$ estimated by the same one-segment
 analytic solve `--coalescent-opt` uses. That replaces v0's `dummy_coalescent_rate`, which is
 calibrated per polytomy to the very time window the sampled history has to fit into; see
-[timetree-stochastic-polytomy-resolution.md](../proposals/timetree-stochastic-polytomy-resolution.md).
+[timetree-stochastic-polytomy-resolution.md](timetree-stochastic-polytomy-resolution.md).
 
 ## The reported coalescent likelihood is a diagnostic
 
@@ -83,7 +83,7 @@ actually have.
 | 3 | 0.055 | 0.038 | 0.100 | 0.043 |
 | 4 | 0.155 | 0.015 | 0.115 | 0.036 |
 | 5 | 0.146 | **0.0022** converged | 0.035 | **0.0019** converged |
-| 6-10 | 0.072-0.184, no decay | — | 0.045-0.152, no decay | — |
+| 6-10 | 0.072-0.184, no decay | -- | 0.045-0.152, no decay | -- |
 
 `log_lh_coal` also stops drifting: 26.5 to 27.1 across the run, against 26.2 to 28.6 under live
 $k(t)$. Under live $k(t)$ the loop walked downhill on its own reported total, trading sequence
@@ -96,8 +96,8 @@ being measured with the prior's reaction to it.
 ## Related
 
 - [timetree-clock-constrained-profile-propagation.md](timetree-clock-constrained-profile-propagation.md)
-  — the feedback that made this instability observable
-- [coalescent-analytic-tc-optimization.md](coalescent-analytic-tc-optimization.md) — the solve
+  -- the feedback that made this instability observable
+- [coalescent-analytic-tc-optimization.md](coalescent-analytic-tc-optimization.md) -- the solve
   behind the estimated $T_c$
 - [N-coalescent-smoothing-frozen-lineage-counts.md](../issues/N-coalescent-smoothing-frozen-lineage-counts.md)
-  — $k_0$ is a step function and is not smoothed
+  -- $k_0$ is a step function and is not smoothed

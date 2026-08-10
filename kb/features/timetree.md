@@ -66,14 +66,16 @@
 ## Polytomy Resolution
 
 - [x] Find polytomy nodes with more than two children
-- [x] Stochastic coalescent-with-mutations resolution (v0's `--stochastic-resolve`, always on in v1; design in [kb/proposals/timetree-stochastic-polytomy-resolution.md](../proposals/timetree-stochastic-polytomy-resolution.md))
+- [x] Stochastic coalescent-with-mutations resolution (v0's `--stochastic-resolve`, always on in v1; [kb/decisions/timetree-stochastic-polytomy-resolution.md](../decisions/timetree-stochastic-polytomy-resolution.md))
 - [x] Exact per-branch substitution counts from `edge_subs`, falling back to `round(mutation_length * L)`
 - [x] Per-branch coalescent merger rate from the round's coalescent model; when no coalescent prior is requested the model is built from a constant $T_c$ estimated from the tree, replacing v0's per-polytomy window-calibrated dummy rate ([kb/decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md))
+- [x] Exact hazard integration across lineage arrivals and piecewise-constant merger-rate breakpoints
+- [x] Finite input, rate, event-plan, and parent-bound validation before graph mutation
 - [x] `--seed` for reproducible resolution; a generated seed is logged when none is given
 - [x] Remove obsolete single-child nodes after resolution
 - [x] Reconcile partition topology after tree change
-- [/] `--keep-polytomies` (parsed but never read - [kb/issues/N-timetree-dead-cli-flags.md](../issues/N-timetree-dead-cli-flags.md))
-- [ ] Greedy pairwise merging (v0's `--greedy-resolve`; removed in v1, which v0 deprecates as unsuitable for large polytomies)
+- [/] `--keep-polytomies` (parsed but never read - [kb/issues/N-timetree-unused-cli-flags.md](../issues/N-timetree-unused-cli-flags.md))
+- [ ] Greedy pairwise merging (v0's `--greedy-resolve`; v1 does not provide this method, and v0 deprecates it as unsuitable for large polytomies)
 
 ## Relaxed Clock
 

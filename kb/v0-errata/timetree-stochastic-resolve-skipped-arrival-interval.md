@@ -51,7 +51,7 @@ breakpoints is then evaluated exactly once, at its own rate.
 
 ## Evidence
 
-- The comment at [L931-L932](../../packages/legacy/treetime/treetime/treetime.py#L931-L932) states the intent as "add this branch to branches alive and re-renter the loop", i.e. treat the crossing as a rate change rather than as elapsed time — which is what resuming at $t_a$ accomplishes and resuming at `t + dt` does not
+- The comment at [L931-L932](../../packages/legacy/treetime/treetime/treetime.py#L931-L932) states the intent as "add this branch to branches alive and re-renter the loop", i.e. treat the crossing as a rate change rather than as elapsed time -- which is what resuming at $t_a$ accomplishes and resuming at `t + dt` does not
 - The event is correctly discarded rather than applied, showing the author recognised the drawn time as invalid beyond the breakpoint; the position update is not rolled back to match
 - `dummy_coalescent_rate` at [L896](../../packages/legacy/treetime/treetime/treetime.py#L896) is calibrated as $2/(t_{\max} - t)$ so that the lineages "typically coalesce" within the available window ([L894-L895](../../packages/legacy/treetime/treetime/treetime.py#L894-L895)); systematically overestimating waiting times works against that stated calibration
 - The rate recomputation at the top of the loop ([L908-L920](../../packages/legacy/treetime/treetime/treetime.py#L908-L920)) is unconditional, confirming the design treats the rate as piecewise constant between arrivals
@@ -68,6 +68,4 @@ breakpoints is then evaluated exactly once, at its own rate.
 
 ## v1 status
 
-Not implemented. Planned as part of
-[kb/proposals/timetree-stochastic-polytomy-resolution.md](../proposals/timetree-stochastic-polytomy-resolution.md),
-which resumes the sweep at the arrival time.
+Implemented with the correction in [`simulate_subtree()`](../../packages/treetime/src/timetree/optimization/polytomy/sweep.rs). One unit-exponential hazard threshold is carried across every lineage-arrival and merger-rate boundary. The sweep evaluates each interval under its own constant rate and resumes exactly at the crossed boundary.
