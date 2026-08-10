@@ -1,3 +1,4 @@
+mod approach_law;
 mod grid;
 mod grid_fn;
 mod piecewise_constant_fn;
