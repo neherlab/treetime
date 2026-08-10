@@ -135,7 +135,7 @@ where
     // child's sampling date is a hard upper bound on the parent's age, so the right tail is Hard.
     let parent_message = distribution_convolution(node_time_dist.as_ref(), &negated_branch_dist)?
       .with_left_extrap(BoundaryBehavior::Constant)?
-      .with_right_extrap(BoundaryBehavior::Hard)?;
+      .with_right_extrap(BoundaryBehavior::Hard(None))?;
     edge.set_msg_to_parent(Some(Arc::new(parent_message)));
   }
 

@@ -6,7 +6,7 @@ use ndarray_stats::QuantileExt;
 use num::Float;
 use serde::{Deserialize, Serialize};
 use treetime_grid::grid::Grid;
-use treetime_grid::{ApproachLaw, BoundaryBehavior, GridFn, InterpElem};
+use treetime_grid::{BoundaryBehavior, GridFn, InterpElem};
 use treetime_utils::make_error;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -181,24 +181,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.right_extrap()
   }
 
-  pub fn left_approach(&self) -> Option<&ApproachLaw> {
-    self.grid_fn.left_approach()
-  }
-
-  pub fn right_approach(&self) -> Option<&ApproachLaw> {
-    self.grid_fn.right_approach()
-  }
-
-  #[must_use]
-  pub fn with_left_approach(self, law: Option<ApproachLaw>) -> Self {
-    Self::from_grid_fn(self.grid_fn.with_left_approach(law))
-  }
-
-  #[must_use]
-  pub fn with_right_approach(self, law: Option<ApproachLaw>) -> Self {
-    Self::from_grid_fn(self.grid_fn.with_right_approach(law))
-  }
-
   /// Set the left (below `x_min`) out-of-support tail policy.
   ///
   /// Rejects a [`BoundaryBehavior::Hard`] tail when the representation cannot express zero
@@ -220,7 +202,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   }
 
   fn check_hard_boundary(behavior: BoundaryBehavior) -> Result<(), Report> {
-    if behavior == BoundaryBehavior::Hard && !Y::supports_hard_boundary() {
+    if matches!(behavior, BoundaryBehavior::Hard(_)) && !Y::supports_hard_boundary() {
       return make_error!(
         "Refusing a Hard boundary tail: it writes 0.0 outside support, which is the multiplicative identity (probability one), not zero probability, under this distribution's negative-log representation"
       );

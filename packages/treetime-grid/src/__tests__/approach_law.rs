@@ -203,12 +203,11 @@ mod tests {
   fn test_gridfn_approach_law_left_interpolation() -> Result<(), Report> {
     // Grid [1.0, 5.0], hard left boundary at t=0 with approach law p(t) = 2.0 * t^1.0
     let grid = GridFn::from_range_values((1.0, 5.0), ndarray::array![2.0, 4.0, 6.0, 8.0, 10.0])?
-      .with_left_extrap(BoundaryBehavior::Hard)
-      .with_left_approach(Some(ApproachLaw {
+      .with_left_extrap(BoundaryBehavior::Hard(Some(ApproachLaw {
         t_hard: 0.0,
         coeff: 2.0,
         exponent: 1.0,
-      }));
+      })));
 
     // Between hard boundary and grid: use approach law
     let val = grid.interp(0.5)?;
@@ -229,12 +228,11 @@ mod tests {
   fn test_gridfn_approach_law_right_interpolation() -> Result<(), Report> {
     // Grid [0.0, 4.0], hard right boundary at t=5.0 with approach law p(t) = 3.0 * (5-t)^2
     let grid = GridFn::from_range_values((0.0, 4.0), ndarray::array![75.0, 48.0, 27.0, 12.0, 3.0])?
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .with_right_approach(Some(ApproachLaw {
+      .with_right_extrap(BoundaryBehavior::Hard(Some(ApproachLaw {
         t_hard: 5.0,
         coeff: 3.0,
         exponent: 2.0,
-      }));
+      })));
 
     // Between grid and hard boundary: use approach law
     let val = grid.interp(4.5)?;
@@ -251,12 +249,11 @@ mod tests {
   fn test_gridfn_approach_law_b0_step_at_boundary() -> Result<(), Report> {
     // b=0: density is constant (maximal) at boundary
     let grid = GridFn::from_range_values((0.1, 1.0), ndarray::array![5.0, 5.0, 5.0, 5.0, 5.0])?
-      .with_left_extrap(BoundaryBehavior::Hard)
-      .with_left_approach(Some(ApproachLaw {
+      .with_left_extrap(BoundaryBehavior::Hard(Some(ApproachLaw {
         t_hard: 0.0,
         coeff: 5.0,
         exponent: 0.0,
-      }));
+      })));
 
     // Between hard boundary and grid: constant value
     let val = grid.interp(0.05)?;
@@ -281,11 +278,10 @@ mod tests {
       exponent: 1.5,
     };
     let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![1.0, 2.0, 3.0])?
-      .with_left_extrap(BoundaryBehavior::Hard)
-      .with_left_approach(Some(law));
+      .with_left_extrap(BoundaryBehavior::Hard(Some(law)));
 
     let scaled = grid.scale_y(3.0);
-    let scaled_law = scaled.left_approach().expect("approach law should be preserved");
+    let scaled_law = scaled.left_extrap().approach_law().expect("approach law should be preserved");
     assert_abs_diff_eq!(6.0, scaled_law.coeff, epsilon = 1e-14); // 2.0 * 3.0
     assert_abs_diff_eq!(1.5, scaled_law.exponent, epsilon = 1e-14);
     assert_ulps_eq!(0.0, scaled_law.t_hard);
@@ -299,10 +295,11 @@ mod tests {
       coeff: 2.0,
       exponent: 1.0,
     };
-    let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![1.0, 2.0, 3.0])?.with_left_approach(Some(law));
+    let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![1.0, 2.0, 3.0])?
+      .with_left_extrap(BoundaryBehavior::Hard(Some(law)));
 
     let mapped = grid.mapv(|v| v * v);
-    assert_eq!(None, mapped.left_approach());
+    assert_eq!(None, mapped.left_extrap().approach_law());
     Ok(())
   }
 
@@ -319,12 +316,12 @@ mod tests {
       exponent: 2.0,
     };
     let grid = GridFn::from_range_values((1.0, 9.0), ndarray::array![1.0, 5.0, 9.0])?
-      .with_left_approach(Some(left_law))
-      .with_right_approach(Some(right_law));
+      .with_left_extrap(BoundaryBehavior::Hard(Some(left_law)))
+      .with_right_extrap(BoundaryBehavior::Hard(Some(right_law)));
 
     let negated = grid.negate_arg()?;
-    let new_left = negated.left_approach().expect("should have left approach");
-    let new_right = negated.right_approach().expect("should have right approach");
+    let new_left = negated.left_extrap().approach_law().expect("should have left approach");
+    let new_right = negated.right_extrap().approach_law().expect("should have right approach");
 
     // Right law (t_hard=10) becomes left law (t_hard=-10)
     assert_ulps_eq!(-10.0, new_left.t_hard);
@@ -347,11 +344,10 @@ mod tests {
       exponent: 1.0,
     };
     let grid = GridFn::from_range_values((1.0, 5.0), ndarray::array![2.0, 4.0, 6.0, 8.0, 10.0])?
-      .with_left_extrap(BoundaryBehavior::Hard)
-      .with_left_approach(Some(law));
+      .with_left_extrap(BoundaryBehavior::Hard(Some(law)));
 
     let resampled = grid.resample_range_dx((1.0, 5.0), 0.5)?;
-    let resampled_law = resampled.left_approach().expect("approach law should be preserved");
+    let resampled_law = resampled.left_extrap().approach_law().expect("approach law should be preserved");
     assert_abs_diff_eq!(2.0, resampled_law.coeff, epsilon = 1e-14);
     assert_abs_diff_eq!(1.0, resampled_law.exponent, epsilon = 1e-14);
     Ok(())

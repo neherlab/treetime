@@ -18,7 +18,7 @@ mod tests {
   fn test_boundary_neglog_hard_left_rejected() -> Result<(), Report> {
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
     assert_error!(
-      f.with_left_extrap(BoundaryBehavior::Hard),
+      f.with_left_extrap(BoundaryBehavior::Hard(None)),
       "Refusing a Hard boundary tail: it writes 0.0 outside support, which is the multiplicative identity (probability one), not zero probability, under this distribution's negative-log representation"
     );
     Ok(())
@@ -28,7 +28,7 @@ mod tests {
   fn test_boundary_neglog_hard_right_rejected() -> Result<(), Report> {
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
     assert_error!(
-      f.with_right_extrap(BoundaryBehavior::Hard),
+      f.with_right_extrap(BoundaryBehavior::Hard(None)),
       "Refusing a Hard boundary tail: it writes 0.0 outside support, which is the multiplicative identity (probability one), not zero probability, under this distribution's negative-log representation"
     );
     Ok(())
@@ -47,7 +47,7 @@ mod tests {
   #[test]
   fn test_boundary_plain_hard_allowed() -> Result<(), Report> {
     let f: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
-    let f = f.with_extrap(BoundaryBehavior::Hard)?;
+    let f = f.with_extrap(BoundaryBehavior::Hard(None))?;
     assert_ulps_eq!(0.0, f.interp(-1.0)?, max_ulps = 4);
     assert_ulps_eq!(0.0, f.interp(3.0)?, max_ulps = 4);
     Ok(())
@@ -69,7 +69,7 @@ mod tests {
     // Non-Function variants have no interpolated tail, so setting a tail policy is a no-op
     // and never rejects (even the Hard tail that a Function would reject under NegLog).
     let point: DistributionPlain = Distribution::point(1.0, 2.0);
-    let unchanged = point.clone().with_left_extrap(BoundaryBehavior::Hard)?;
+    let unchanged = point.clone().with_left_extrap(BoundaryBehavior::Hard(None))?;
     assert_eq!(point, unchanged);
     Ok(())
   }
@@ -78,8 +78,8 @@ mod tests {
   #[rstest]
   #[case::error_left(    (-1.0, BoundaryBehavior::Error,    BoundaryBehavior::Error),    None)]
   #[case::error_right(   ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Error),    None)]
-  #[case::hard_left(     (-1.0, BoundaryBehavior::Hard,     BoundaryBehavior::Error),    None)]
-  #[case::hard_right(    ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Hard),     None)]
+  #[case::hard_left(     (-1.0, BoundaryBehavior::Hard(None),     BoundaryBehavior::Error),    None)]
+  #[case::hard_right(    ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Hard(None)),     None)]
   #[case::constant_left( (-1.0, BoundaryBehavior::Constant, BoundaryBehavior::Error),    Some(2.0))]
   #[case::constant_right(( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Constant), Some(6.0))]
   #[trace]

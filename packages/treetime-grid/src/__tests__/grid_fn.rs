@@ -103,7 +103,7 @@ mod tests {
     #[case] y: Array1<f64>,
     #[case] query: f64,
   ) -> Result<(), Report> {
-    let grid_fn = GridFn::from_range_values(x_range, y)?.with_extrap(BoundaryBehavior::Hard);
+    let grid_fn = GridFn::from_range_values(x_range, y)?.with_extrap(BoundaryBehavior::Hard(None));
     let actual = grid_fn.interp(query)?;
     assert_ulps_eq!(0.0, actual, max_ulps = 4);
     Ok(())
@@ -135,9 +135,9 @@ mod tests {
   fn test_gridfn_negate_arg_swaps_extrap_sides() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
       .with_left_extrap(BoundaryBehavior::Constant)
-      .with_right_extrap(BoundaryBehavior::Hard);
+      .with_right_extrap(BoundaryBehavior::Hard(None));
     let negated = grid_fn.negate_arg()?;
-    assert_eq!(BoundaryBehavior::Hard, negated.left_extrap());
+    assert_eq!(BoundaryBehavior::Hard(None), negated.left_extrap());
     assert_eq!(BoundaryBehavior::Constant, negated.right_extrap());
     Ok(())
   }
@@ -145,10 +145,10 @@ mod tests {
   #[test]
   fn test_gridfn_resample_preserves_extrap() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?
-      .with_left_extrap(BoundaryBehavior::Hard)
+      .with_left_extrap(BoundaryBehavior::Hard(None))
       .with_right_extrap(BoundaryBehavior::Constant);
     let resampled = grid_fn.resample_range_dx((0.0, 2.0), 0.5)?;
-    assert_eq!(BoundaryBehavior::Hard, resampled.left_extrap());
+    assert_eq!(BoundaryBehavior::Hard(None), resampled.left_extrap());
     assert_eq!(BoundaryBehavior::Constant, resampled.right_extrap());
     Ok(())
   }
@@ -213,7 +213,7 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::constant(BoundaryBehavior::Constant, true)]
-  #[case::hard(    BoundaryBehavior::Hard,     false)]
+  #[case::hard(    BoundaryBehavior::Hard(None),     false)]
   #[case::error(   BoundaryBehavior::Error,    false)]
   #[trace]
   fn test_boundary_behavior_is_soft(#[case] behavior: BoundaryBehavior, #[case] expected: bool) {

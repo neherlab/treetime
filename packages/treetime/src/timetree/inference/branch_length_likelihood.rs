@@ -6,7 +6,7 @@ use ndarray_stats::QuantileExt;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
-use treetime_grid::{ApproachLaw, Side};
+use treetime_grid::{ApproachLaw, BoundaryBehavior, Side};
 
 /// Number of innermost grid points used to fit the approach law near a hard boundary.
 const N_APPROACH_FIT_POINTS: usize = 5;
@@ -65,10 +65,8 @@ pub fn compute_branch_length_distribution(
   // follows p(t) ~ t^n near t=0 where n is the number of mutations. The grid
   // starts at min_bl / clock_rate > 0, so the approach law covers the gap
   // between t_hard=0 and the first grid point.
-  let distribution_fn = match ApproachLaw::fit(distribution_fn.grid_fn(), 0.0, Side::Left, N_APPROACH_FIT_POINTS) {
-    Some(law) => distribution_fn.with_left_approach(Some(law)),
-    None => distribution_fn,
-  };
+  let approach = ApproachLaw::fit(distribution_fn.grid_fn(), 0.0, Side::Left, N_APPROACH_FIT_POINTS);
+  let distribution_fn = distribution_fn.with_left_extrap(BoundaryBehavior::Hard(approach))?;
 
   Ok(Arc::new(Distribution::Function(distribution_fn)))
 }

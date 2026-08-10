@@ -174,16 +174,17 @@ fn least_squares_fit(xs: &[f64], ys: &[f64]) -> (f64, f64) {
 /// unless the caller has declared how the tail should behave. The two non-default variants
 /// are explicit opt-ins used by finite-support distributions and by the timetree message
 /// passes, which assign a per-side tail policy to each message.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub enum BoundaryBehavior {
   /// Out-of-support evaluation is an error.
   #[default]
   Error,
-  /// Hard boundary: the domain terminates and probability is zero beyond the grid edge. In
-  /// plain-probability space this is realized as the literal `0.0`; a negative-log
-  /// representation cannot express it (zero probability is `+inf`), so that combination is
-  /// rejected at the distribution layer.
-  Hard,
+  /// Hard boundary: the domain terminates and probability is zero beyond the grid edge.
+  /// An optional [`ApproachLaw`] provides power-law interpolation between the hard boundary
+  /// and the nearest grid point. In plain-probability space a bare `Hard(None)` returns
+  /// `0.0`; a negative-log representation cannot express zero probability as `0.0` (it
+  /// would be `+inf`), so that combination is rejected at the distribution layer.
+  Hard(Option<ApproachLaw>),
   /// Return the nearest boundary value (`y[0]` to the left, `y[n-1]` to the right),
   /// i.e. a flat tail. Use when the function is genuinely uninformative beyond the edge.
   Constant,
@@ -203,6 +204,13 @@ impl BoundaryBehavior {
   /// rule keys off, so a future soft tail law extends the domain without touching that rule.
   pub fn is_soft(self) -> bool {
     matches!(self, BoundaryBehavior::Constant)
+  }
+
+  pub fn approach_law(self) -> Option<ApproachLaw> {
+    match self {
+      BoundaryBehavior::Hard(law) => law,
+      _ => None,
+    }
   }
 }
 
@@ -232,10 +240,6 @@ pub struct GridFn<T: InterpElem> {
   left_extrap: BoundaryBehavior,
   #[serde(skip)]
   right_extrap: BoundaryBehavior,
-  #[serde(skip)]
-  left_approach: Option<ApproachLaw>,
-  #[serde(skip)]
-  right_approach: Option<ApproachLaw>,
 }
 
 impl<T: InterpElem> GridFn<T> {
@@ -252,8 +256,6 @@ impl<T: InterpElem> GridFn<T> {
       y,
       left_extrap: BoundaryBehavior::default(),
       right_extrap: BoundaryBehavior::default(),
-      left_approach: None,
-      right_approach: None,
     })
   }
 
@@ -283,26 +285,6 @@ impl<T: InterpElem> GridFn<T> {
 
   pub fn right_extrap(&self) -> BoundaryBehavior {
     self.right_extrap
-  }
-
-  #[must_use]
-  pub fn with_left_approach(mut self, law: Option<ApproachLaw>) -> Self {
-    self.left_approach = law;
-    self
-  }
-
-  #[must_use]
-  pub fn with_right_approach(mut self, law: Option<ApproachLaw>) -> Self {
-    self.right_approach = law;
-    self
-  }
-
-  pub fn left_approach(&self) -> Option<&ApproachLaw> {
-    self.left_approach.as_ref()
-  }
-
-  pub fn right_approach(&self) -> Option<&ApproachLaw> {
-    self.right_approach.as_ref()
   }
 
   pub fn from_grid_fn<F>(grid: Grid<T>, y_fn: F) -> Result<Self, Report>
@@ -588,24 +570,16 @@ impl<T: InterpElem> GridFn<T> {
   {
     match behavior {
       BoundaryBehavior::Constant => Ok(boundary_value),
-      BoundaryBehavior::Hard => {
-        let approach = match side {
-          "below" => &self.left_approach,
-          _ => &self.right_approach,
-        };
-        if let Some(law) = approach {
-          let xi_f64 = xi.to_f64().unwrap();
-          let t_hard = law.t_hard;
-          // Beyond the hard boundary: zero probability
-          if (side == "below" && xi_f64 < t_hard) || (side != "below" && xi_f64 > t_hard) {
-            return Ok(T::zero());
-          }
-          // Between hard boundary and grid edge: use approach law
-          Ok(T::from(law.eval(xi_f64)).unwrap())
-        } else {
-          Ok(T::zero())
+      BoundaryBehavior::Hard(Some(law)) => {
+        let xi_f64 = xi.to_f64().unwrap();
+        // Beyond the hard boundary: zero probability
+        if (side == "below" && xi_f64 < law.t_hard) || (side != "below" && xi_f64 > law.t_hard) {
+          return Ok(T::zero());
         }
+        // Between hard boundary and grid edge: use approach law
+        Ok(T::from(law.eval(xi_f64)).unwrap())
       },
+      BoundaryBehavior::Hard(None) => Ok(T::zero()),
       BoundaryBehavior::Error => make_error!(
         "GridFn evaluated at {xi:?}, {side} the support boundary {bound:?}, but no extrapolation policy is set for that side"
       ),
@@ -635,12 +609,10 @@ impl<T: InterpElem> GridFn<T> {
     Self {
       grid: self.grid,
       y: self.y.mapv(f),
-      left_extrap: self.left_extrap,
-      right_extrap: self.right_extrap,
       // Arbitrary y-transforms invalidate approach laws because the coefficient
       // cannot be updated without knowing the transform's structure.
-      left_approach: None,
-      right_approach: None,
+      left_extrap: strip_approach_law(self.left_extrap),
+      right_extrap: strip_approach_law(self.right_extrap),
     }
   }
 
@@ -657,16 +629,8 @@ impl<T: InterpElem> GridFn<T> {
     Self {
       grid: self.grid,
       y: self.y.mapv(|v| v * T::from(factor).unwrap()),
-      left_extrap: self.left_extrap,
-      right_extrap: self.right_extrap,
-      left_approach: self.left_approach.map(|law| ApproachLaw {
-        coeff: law.coeff * factor,
-        ..law
-      }),
-      right_approach: self.right_approach.map(|law| ApproachLaw {
-        coeff: law.coeff * factor,
-        ..law
-      }),
+      left_extrap: scale_approach_law(self.left_extrap, factor),
+      right_extrap: scale_approach_law(self.right_extrap, factor),
     }
   }
 
@@ -710,14 +674,10 @@ impl<T: InterpElem> GridFn<T> {
     }
 
     // Negating the argument reflects the domain, so the left and right tails swap sides.
+    // Approach laws inside Hard variants also need their t_hard negated.
+    self.left_extrap = negate_approach_law(self.left_extrap);
+    self.right_extrap = negate_approach_law(self.right_extrap);
     std::mem::swap(&mut self.left_extrap, &mut self.right_extrap);
-
-    let swapped = (
-      self.right_approach.map(|law| law.negate_arg()),
-      self.left_approach.map(|law| law.negate_arg()),
-    );
-    self.left_approach = swapped.0;
-    self.right_approach = swapped.1;
     Ok(())
   }
 
@@ -745,9 +705,7 @@ impl<T: InterpElem> GridFn<T> {
     Ok(
       resampled
         .with_left_extrap(self.left_extrap)
-        .with_right_extrap(self.right_extrap)
-        .with_left_approach(self.left_approach)
-        .with_right_approach(self.right_approach),
+        .with_right_extrap(self.right_extrap),
     )
   }
 
@@ -816,6 +774,30 @@ impl<T: InterpElem> GridFn<T> {
     let (x_min, x_max) = x_range;
     let grid = Grid::from_range_dx(x_min, x_max, dx)?;
     self.resample(&grid)
+  }
+}
+
+fn strip_approach_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
+  match behavior {
+    BoundaryBehavior::Hard(_) => BoundaryBehavior::Hard(None),
+    other => other,
+  }
+}
+
+fn scale_approach_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
+  match behavior {
+    BoundaryBehavior::Hard(Some(law)) => BoundaryBehavior::Hard(Some(ApproachLaw {
+      coeff: law.coeff * factor,
+      ..law
+    })),
+    other => other,
+  }
+}
+
+fn negate_approach_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
+  match behavior {
+    BoundaryBehavior::Hard(Some(law)) => BoundaryBehavior::Hard(Some(law.negate_arg())),
+    other => other,
   }
 }
 
