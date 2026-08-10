@@ -255,13 +255,15 @@ fn admit_arrivals(alive: &mut Vec<Tracked>, to_come: &mut VecDeque<Tracked>, t: 
 /// rate carries a term with no branch behind it; it then silently mutates an arbitrary
 /// branch. An unreachable state here is reported instead.
 fn place_mutation(alive: &mut [Tracked], total_mutations: u64, rng: &mut dyn rand::RngCore) -> Result<(), Report> {
-  let mut remaining = rng.gen_range(0.0..total_mutations as f64);
+  // Integer draws preserve exact branch weights above f64's integer precision limit.
+  let mut remaining = rng.gen_range(0..total_mutations);
   for lineage in alive.iter_mut() {
-    remaining -= f64::from(lineage.mutations);
-    if remaining < 0.0 {
+    let mutations = u64::from(lineage.mutations);
+    if remaining < mutations {
       lineage.mutations -= 1;
       return Ok(());
     }
+    remaining -= mutations;
   }
   make_internal_error!(
     "Polytomy sweep drew a mutation event but no branch carried it: {total_mutations} mutations were expected across {} live branches",
