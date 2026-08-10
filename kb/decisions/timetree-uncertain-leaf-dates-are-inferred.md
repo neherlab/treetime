@@ -93,7 +93,7 @@ Three ways the representation produces one, in falling order of how often they a
    astronomically small evaluates to `0.0`, and `normalize()` maps a maximum of zero to `Empty`.
    This is [M-timetree-backward-pass-plain-space-underflow.md](../issues/M-timetree-backward-pass-plain-space-underflow.md)
    seen from the forward side.
-2. **Truncation.** A grid ends where the values stopped mattering, and a `Zero` tail past its end
+2. **Truncation.** A grid ends where the values stopped mattering, and a `Hard` tail past its end
    states the value there is zero rather than small. Two supports that overlap in exact arithmetic
    can then be declared disjoint.
 3. **Collapse to a point.** When two supports meet at a single grid point the product is a `Point`.

@@ -25,7 +25,7 @@ The failure is in the inference output itself. The tests reach the value-compari
 The backward pass multiplies child parent-time messages at each internal node. Two issues caused the product to collapse to `Empty`, leaving internal time distributions unset:
 
 1. `distribution_multiplication` ignored operand `Constant` tails, producing `Empty` when child messages had disjoint finite grids. Fixed: multiplication now extends evaluable domain on sides with `Constant` tails.
-2. `normalize()` between successive child multiplications reset tails to `Error`, so the accumulated result lost its `Constant` left tail before the next multiplication. Fixed: backward pass re-applies `Constant` left / `Zero` right after each normalize.
+2. `normalize()` between successive child multiplications reset tails to `Error`, so the accumulated result lost its `Constant` left tail before the next multiplication. Fixed: backward pass re-applies `Constant` left / `Hard` right after each normalize.
 
 Both fixes are in the `fix/multiply-honor-tails` branch. End-to-end verification on flu/h3n2/20 (36/36 nodes dated) and mpox/hmpxv1 (1451/1451 nodes dated) confirms internal times are now produced under `--keep-root`.
 

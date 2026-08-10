@@ -8,11 +8,11 @@ This document specifies how grid functions behave outside their support and how 
 
 `GridFn<T>` represents a piecewise-linear function on a finite uniform grid `[x_min, x_max]`. Two policies are needed depending on context:
 
-- **`Zero`** -- return `0.0` for any query outside `[x_min, x_max]`. This is the correct default for any bounded probability distribution: leaf date constraints, branch-length likelihoods, and their products are zero outside their stated support.
+- **`Hard`** -- return `0.0` for any query outside `[x_min, x_max]`. This is the correct default for any bounded probability distribution: leaf date constraints, branch-length likelihoods, and their products are zero outside their stated support.
 
 - **`Constant`** -- return the nearest boundary value (`y[0]` to the left, `y[n-1]` to the right). Use this when the distribution is genuinely uninformative beyond the grid edge, i.e. the tail should be treated as flat rather than absent.
 
-Add a `BoundaryBehavior` enum with these two variants and store independent `left_extrap` / `right_extrap` fields on `GridFn`. Default both to `Zero`. Expose builder methods `with_left_extrap` / `with_right_extrap` that return `Self`. Propagate these fields in `mapv`, `resample`, and `negate_arg_inplace` (the last must swap left<->right because negating the argument reflects the domain).
+Add a `BoundaryBehavior` enum with these two variants and store independent `left_extrap` / `right_extrap` fields on `GridFn`. Default both to `Hard`. Expose builder methods `with_left_extrap` / `with_right_extrap` that return `Self`. Propagate these fields in `mapv`, `resample`, and `negate_arg_inplace` (the last must swap left<->right because negating the argument reflects the domain).
 
 Expose the same builder methods on `DistributionFunction` (delegating to the inner `GridFn`) and on `Distribution<Y>` (no-op for non-Function variants).
 
@@ -22,8 +22,8 @@ The backward and forward passes require different tail behaviour on each side:
 
 | Pass                          | Left tail (far past) | Right tail (far future) |
 | ----------------------------- | -------------------- | ----------------------- |
-| **Backward** (leaves -> root) | `Constant`           | `Zero`                  |
-| **Forward** (root -> leaves)  | `Zero`               | `Constant`              |
+| **Backward** (leaves -> root) | `Constant`           | `Hard`                  |
+| **Forward** (root -> leaves)  | `Hard`               | `Constant`              |
 
 **Rationale:**
 
@@ -33,7 +33,7 @@ In the backward pass, each `parent_message` is computed as
 parent_message = child_time_dist ⊛ (-branch_dist)
 ```
 
-This message represents "when could the parent be, given this child?" The parent could be arbitrarily far in the past -- there is no upper bound on ancestral age imposed by the child alone. The left tail must therefore be `Constant`, not `Zero`. The right tail is `Zero` because the child's sampling date provides a hard upper bound: the parent cannot be more recent than the child.
+This message represents "when could the parent be, given this child?" The parent could be arbitrarily far in the past -- there is no upper bound on ancestral age imposed by the child alone. The left tail must therefore be `Constant`, not `Hard`. The right tail is `Hard` because the child's sampling date provides a hard upper bound: the parent cannot be more recent than the child.
 
 In the forward pass, `dist_from_parent` is computed as
 
@@ -41,7 +41,7 @@ In the forward pass, `dist_from_parent` is computed as
 dist_from_parent = parent_except_subtree ⊛ branch_dist
 ```
 
-This message represents "when could this node be, given its parent and branch?" The node must be after the parent (branch lengths are non-negative) but there is no lower bound from the parent side alone on how far in the future the child could be. The right tail must be `Constant`. The left tail is `Zero` because the parent's time provides a hard lower bound.
+This message represents "when could this node be, given its parent and branch?" The node must be after the parent (branch lengths are non-negative) but there is no lower bound from the parent side alone on how far in the future the child could be. The right tail must be `Constant`. The left tail is `Hard` because the parent's time provides a hard lower bound.
 
 Apply the policy immediately after computing each message, before storing or using it further.
 
@@ -51,7 +51,7 @@ Apply the policy immediately after computing each message, before storing or usi
 
 Range-Function, Function-Function, and Formula-Function multiplication are defined on the exact intersection of their operand supports. Range-Function and Function-Function division use the same intersection while the divisor has the default `Error` boundary behavior. A positive-width result grid spans exactly `[max(a.x_min, b.x_min), min(a.x_max, b.x_max)]`. An intersection is empty when `overlap_min > overlap_max`; exact endpoint contact produces a Point distribution evaluated at the shared endpoint, matching v0.
 
-An explicit divisor tail changes the divisor's evaluable domain on that side. `Zero` and `Constant` tails extend division to the dividend boundary; an `Error` side remains constrained by the nominal divisor grid. Left and right sides are resolved independently before intersecting the resulting divisor domain with the dividend. [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) defines these boundary behaviors and their use by inference messages.
+An explicit divisor tail changes the divisor's evaluable domain on that side. `Hard` and `Constant` tails extend division to the dividend boundary; an `Error` side remains constrained by the nominal divisor grid. Left and right sides are resolved independently before intersecting the resulting divisor domain with the dividend. [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) defines these boundary behaviors and their use by inference messages.
 
 **Do not** filter the existing grid points of either input to those falling inside the overlap, then use the closest existing point as the boundary. This snaps the boundary to the nearest grid point and loses the fractional part of the intersection. When a range boundary falls between two grid points of a function, the snapped boundary produces a result that is either too wide (including a region where one factor is zero) or too narrow (excluding a region where both are non-zero).
 
@@ -64,7 +64,7 @@ dx       = min(a.dx, b.dx)  # Function-Function; use function.dx for Range-Funct
 n_points = clamp(round((overlap_max - overlap_min) / dx) + 1, 2, 1_000_000)
 ```
 
-Both multiplication and division honor operand tails when computing the support intersection. A `Constant` tail extends the evaluable domain on that side to the other operand's grid boundary. `Zero` and `Error` tails keep the grid boundary as-is (intersection is correct when the value outside support is zero or undefined). This keeps generic `GridFn` evaluation erroring by default and makes every extrapolated arithmetic path explicit. See [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) for the per-side extension rules.
+Both multiplication and division honor operand tails when computing the support intersection. A `Constant` tail extends the evaluable domain on that side to the other operand's grid boundary. `Hard` and `Error` tails keep the grid boundary as-is (intersection is correct when the value outside support is zero or undefined). This keeps generic `GridFn` evaluation erroring by default and makes every extrapolated arithmetic path explicit. See [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) for the per-side extension rules.
 
 ---
 
