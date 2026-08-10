@@ -54,8 +54,14 @@ fi
 
 _BUILD_DIR="$(get_build_dir)"
 _TEST_DIR="$(get_test_dir)"
-_BUILD_RUSTFLAGS="-C linker-features=-lld ${RUSTFLAGS:-}"
-_TEST_RUSTFLAGS="${HOSTCC:+-C linker=${HOSTCC}} -C link-arg=-pthread -C link-arg=-lopenblas -C link-arg=-lgfortran -C link-arg=-static-libgfortran -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ ${RUSTFLAGS:-}"
+# Link native builds with mold when it is available (ELF only); without mold
+# the build falls back to the default linker, so plain host builds still work.
+_MOLD_RUSTFLAGS=""
+if command -v mold >/dev/null 2>&1; then
+  _MOLD_RUSTFLAGS="-C link-arg=-fuse-ld=mold"
+fi
+_BUILD_RUSTFLAGS="-C linker-features=-lld ${_MOLD_RUSTFLAGS} ${RUSTFLAGS:-}"
+_TEST_RUSTFLAGS="${HOSTCC:+-C linker=${HOSTCC}} ${_MOLD_RUSTFLAGS} -C link-arg=-pthread -C link-arg=-lopenblas -C link-arg=-lgfortran -C link-arg=-static-libgfortran -C link-arg=-static-libgcc -C link-arg=-static-libstdc++ ${RUSTFLAGS:-}"
 _BUILD_ENV=("CARGO_TARGET_DIR=${_BUILD_DIR}" "RUSTFLAGS=${_BUILD_RUSTFLAGS}")
 _TEST_ENV=("CARGO_TARGET_DIR=${_TEST_DIR}" "RUSTFLAGS=${_TEST_RUSTFLAGS}")
 _BENCH_ENV=("CARGO_TARGET_DIR=${_BUILD_DIR}" "RUSTFLAGS=${_TEST_RUSTFLAGS}")

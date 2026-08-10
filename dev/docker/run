@@ -13,6 +13,10 @@ USER="user"
 GROUP="user"
 
 cache_dir="$(get_cache_dir "${CROSS_COMPILE}")"
+# Cargo downloads (registry, git deps, installed host tools) are architecture
+# independent, so share one directory across all cross targets instead of
+# duplicating them per target.
+cargo_dir="$(project_root)/.cache/cargo"
 
 HOST_TUPLE_DEBIAN="x86_64-linux-gnu"
 HOST_TUPLE="x86_64-unknown-linux-gnu"
@@ -168,11 +172,11 @@ declare -A volumes=(
   ["${build_dirs[target]}"]="/workdir/target"
   ["${build_dirs[.build]}"]="/workdir/.build"
   ["${build_dirs[.cache]}"]="/workdir/.cache"
-  ["${cache_dir}/cargo/git"]="/home/${USER}/.cargo/git"
-  ["${cache_dir}/cargo/install"]="/home/${USER}/.cargo/install"
-  ["${cache_dir}/cargo/registry/cache"]="/home/${USER}/.cargo/registry/cache"
-  ["${cache_dir}/cargo/registry/index"]="/home/${USER}/.cargo/registry/index"
-  ["${cache_dir}/cargo/registry/src"]="/home/${USER}/.cargo/registry/src"
+  ["${cargo_dir}/git"]="/home/${USER}/.cargo/git"
+  ["${cargo_dir}/install"]="/home/${USER}/.cargo/install"
+  ["${cargo_dir}/registry/cache"]="/home/${USER}/.cargo/registry/cache"
+  ["${cargo_dir}/registry/index"]="/home/${USER}/.cargo/registry/index"
+  ["${cargo_dir}/registry/src"]="/home/${USER}/.cargo/registry/src"
   ["${cache_dir}/jupyter"]="/home/${USER}/.jupyter"
 )
 
