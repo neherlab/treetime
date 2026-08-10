@@ -125,6 +125,10 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     }
   }
 
+  pub fn grid_fn(&self) -> &GridFn<T> {
+    &self.grid_fn
+  }
+
   pub fn t(&self) -> Array1<T>
   where
     T: Float,

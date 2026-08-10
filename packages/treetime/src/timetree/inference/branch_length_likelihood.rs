@@ -6,6 +6,10 @@ use ndarray_stats::QuantileExt;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
+use treetime_grid::{ApproachLaw, Side};
+
+/// Number of innermost grid points used to fit the approach law near a hard boundary.
+const N_APPROACH_FIT_POINTS: usize = 5;
 
 /// Compute the branch-length likelihood distribution used for time inference.
 ///
@@ -56,6 +60,16 @@ pub fn compute_branch_length_distribution(
   let time_max = grid[grid.len() - 1] / effective_clock_rate;
 
   let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), normalized_prob)?;
+
+  // Fit the approach law on the left side (near t=0). The branch-length density
+  // follows p(t) ~ t^n near t=0 where n is the number of mutations. The grid
+  // starts at min_bl / clock_rate > 0, so the approach law covers the gap
+  // between t_hard=0 and the first grid point.
+  let distribution_fn = match ApproachLaw::fit(distribution_fn.grid_fn(), 0.0, Side::Left, N_APPROACH_FIT_POINTS) {
+    Some(law) => distribution_fn.with_left_approach(Some(law)),
+    None => distribution_fn,
+  };
+
   Ok(Arc::new(Distribution::Function(distribution_fn)))
 }
 
