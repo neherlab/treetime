@@ -111,6 +111,35 @@ mod tests {
   }
 
   #[test]
+  fn test_sweep_rejects_overflowing_component_rate() {
+    let children = vec![lineage(3.0, u32::MAX), lineage(3.0, 0), lineage(3.0, 0)];
+    let mut rng = get_random_number_generator(Some(1));
+
+    assert_error!(
+      simulate_subtree(&children, 0.0, f64::MAX, &const_merger_rate(1.0), &mut rng,),
+      "Polytomy event rates must be finite at calendar time 3.000000e0, got mutation rate inf and merger rate 1.000000e0"
+    );
+  }
+
+  #[test]
+  fn test_sweep_rejects_overflowing_total_rate() {
+    let children = vec![lineage(3.0, 1), lineage(3.0, 0), lineage(3.0, 0)];
+    let component_rate = f64::MAX * 0.75;
+    let mut rng = get_random_number_generator(Some(1));
+
+    assert_error!(
+      simulate_subtree(
+        &children,
+        0.0,
+        component_rate,
+        &const_merger_rate(component_rate),
+        &mut rng,
+      ),
+      "Polytomy total event rate must be finite at calendar time 3.000000e0, got inf"
+    );
+  }
+
+  #[test]
   fn test_sweep_is_reproducible_under_the_same_seed() -> Result<(), Report> {
     let children: Vec<Lineage> = (0..8_u32).map(|i| lineage(10.0 - f64::from(i), i % 3)).collect();
 

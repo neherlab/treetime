@@ -161,13 +161,22 @@ pub fn simulate_subtree(
     }
     let rate_mut = mutation_rate * total_mutations as f64;
     let rate_coal = n_ready.saturating_sub(1) as f64 * kappa;
+    // Finite component rates prevent overflow from becoming zero-hazard control flow.
+    if !rate_mut.is_finite() || !rate_coal.is_finite() {
+      return make_error!(
+        "Polytomy event rates must be finite at calendar time {t:.6e}, got mutation rate {rate_mut:.6e} and merger rate {rate_coal:.6e}"
+      );
+    }
     let rate_total = rate_mut + rate_coal;
+    if !rate_total.is_finite() {
+      return make_error!("Polytomy total event rate must be finite at calendar time {t:.6e}, got {rate_total:.6e}");
+    }
 
     // No event can occur in the current configuration: a single ready lineage cannot merge
     // and mutation-free lineages cannot mutate. Advance to the next arrival, which changes
     // the configuration, or stop if there is none. v0 instead relies on `Exp(0)` returning
     // infinity and the loop condition catching it on the next pass.
-    if !(rate_total > 0.0) {
+    if rate_total == 0.0 {
       let Some(next) = to_come.front().copied() else {
         break;
       };
@@ -201,7 +210,8 @@ pub fn simulate_subtree(
     }
     t = t_event;
 
-    if rng.gen_bool((rate_mut / rate_total).clamp(0.0, 1.0)) {
+    // Valid component rates make this ratio a probability without clamping.
+    if rng.gen_bool(rate_mut / rate_total) {
       place_mutation(&mut alive, total_mutations, rng)?;
     } else {
       let merger = coalesce_pair(&mut alive, t, n_children + mergers.len(), rng)?;
