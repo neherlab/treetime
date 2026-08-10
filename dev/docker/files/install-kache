@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+dest="${1:-/usr/local}"
+mkdir -p "${dest}/bin"
+
+KACHE_VERSION="0.13.0"
+curl -fsSL "https://github.com/kunobi-ninja/kache/releases/download/v${KACHE_VERSION}/kache-x86_64-unknown-linux-musl.tar.gz" \
+  | tar -C "${dest}/bin" -xz "kache"
+
+"${dest}/bin/kache" --version
