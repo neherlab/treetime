@@ -181,26 +181,21 @@ if [[ "${git_common_dir}" != "$(pwd)/.git" ]]; then
   volumes["${git_common_dir}"]="${git_common_dir}"
 fi
 
-# Compiler cache (optional). Forward standard sccache and cargo cache variables
+# Compiler cache (optional). Forward kache and standard cargo cache variables
 # from the environment (see .env) into the container. Set none of them and the
-# build compiles directly, exactly as before. A local-disk (SCCACHE_DIR) or
-# Unix-socket (SCCACHE_SERVER_UDS) path is bind-mounted at the same location
-# inside the container; networked backends (S3, Redis, WebDAV, memcached) need
-# only variables, since the container shares the host network. Values containing
-# spaces (e.g. CC="sccache cc") survive because each becomes a single --env arg.
+# build compiles directly, exactly as before. The local-disk store
+# (KACHE_CACHE_DIR) is bind-mounted at the same location inside the container.
+# Values containing spaces (e.g. CC="kache cc") survive because each becomes a
+# single --env arg.
 cache_env_flags=()
-for name in RUSTC_WRAPPER RUSTC_WORKSPACE_WRAPPER CARGO_INCREMENTAL CC CXX "${!SCCACHE_@}"; do
+for name in RUSTC_WRAPPER RUSTC_WORKSPACE_WRAPPER CARGO_INCREMENTAL CC CXX "${!KACHE_@}"; do
   if [[ -n "${!name+x}" ]]; then
     cache_env_flags+=(--env="${name}=${!name}")
   fi
 done
 
-if [[ -n "${SCCACHE_DIR:-}" ]]; then
-  volumes["${SCCACHE_DIR}"]="${SCCACHE_DIR}"
-fi
-if [[ "${SCCACHE_SERVER_UDS:-}" == /* ]]; then
-  sccache_uds_dir="$(dirname "${SCCACHE_SERVER_UDS}")"
-  volumes["${sccache_uds_dir}"]="${sccache_uds_dir}"
+if [[ "${KACHE_CACHE_DIR:-}" == /* ]]; then
+  volumes["${KACHE_CACHE_DIR}"]="${KACHE_CACHE_DIR}"
 fi
 
 mkdir -p "${!volumes[@]}"

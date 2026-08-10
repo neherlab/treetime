@@ -60,7 +60,6 @@ jobs:
             .cache/docker-native/cargo/registry/index/
             .cache/docker-native/cargo/registry/cache/
             .cache/docker-native/cargo/git/db/
-            .cache/docker-native/sccache/
           key: neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
@@ -111,7 +110,6 @@ jobs:
             .cache/docker-native/cargo/registry/index/
             .cache/docker-native/cargo/registry/cache/
             .cache/docker-native/cargo/git/db/
-            .cache/docker-native/sccache/
           key: neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             neherlab-treetime-cli-cache-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}

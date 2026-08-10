@@ -67,8 +67,8 @@ RUN /install-seqkit
 COPY --link "dev/docker/files/install-iqtree" "/"
 RUN /install-iqtree
 
-COPY --link "dev/docker/files/install-sccache" "/"
-RUN /install-sccache
+COPY --link "dev/docker/files/install-kache" "/"
+RUN /install-kache
 
 COPY --link "dev/docker/files/install-nodejs" "/"
 RUN /install-nodejs
