@@ -175,11 +175,11 @@ impl Sub {
 /// position. The output is sorted by position.
 pub fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<Vec<Sub>, Report> {
   debug_assert!(
-    parent_subs.windows(2).all(|w| matches!(w, [a, b] if a.pos() < b.pos())),
+    parent_subs.is_sorted_by(|a, b| a.pos() < b.pos()),
     "parent_subs not sorted by unique position"
   );
   debug_assert!(
-    child_subs.windows(2).all(|w| matches!(w, [a, b] if a.pos() < b.pos())),
+    child_subs.is_sorted_by(|a, b| a.pos() < b.pos()),
     "child_subs not sorted by unique position"
   );
 
