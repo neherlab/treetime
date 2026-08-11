@@ -12,6 +12,10 @@ use treetime_graph::edge::{BranchDistribution, EdgeOptimizeOps, GraphEdge, HasBr
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 
+/// Grid floor as a fraction of one mutation's worth of time. Keeps the first grid point strictly
+/// above the hard boundary at `t = 0`, so the divergent `-ln p` there is never stored on the grid.
+const MIN_TIME_MUTATION_FRACTION: f64 = 0.01;
+
 pub fn initialize_node_divergences<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
 where
   N: GraphNode + Named + ClockNode,
@@ -94,24 +98,23 @@ where
     if let Some(branch_length) = edge.branch_length() {
       let expected_time = branch_length / mu;
       let max_time = 3.0 * expected_time.max(1.0);
-      let dx = max_time / (n_points - 1) as f64;
 
-      // Log-likelihood on the grid; `-inf` where the density is zero (`dt -> 0`).
-      let log_p = Array1::from_shape_fn(n_points, |i| {
-        let dt = i as f64 * dx;
-        if dt < 1e-10 {
-          f64::NEG_INFINITY
-        } else {
-          -dt * mu * seq_len_f64 + branch_length * seq_len_f64 * (dt * mu * seq_len_f64).ln()
-        }
-      });
+      // Floor the grid strictly above the hard boundary at `t = 0`. The Poisson density
+      // `p(t) ~ (t * mu * L)^(b * L)` vanishes as `t -> 0` for a branch with mutations, so `-ln p`
+      // diverges there; gridding from zero would store `+inf`. Start the first grid point a small
+      // fraction of one mutation's worth of time above zero instead, as
+      // `compute_branch_length_distribution` does, so every stored ordinate is finite.
+      let min_time = MIN_TIME_MUTATION_FRACTION / (mu * seq_len_f64);
+      let grid = Array1::linspace(min_time, max_time, n_points);
+
+      // Log-likelihood on the grid. Every point is strictly positive, so the density is finite.
+      let log_p = grid.mapv(|dt| -dt * mu * seq_len_f64 + branch_length * seq_len_f64 * (dt * mu * seq_len_f64).ln());
 
       // Negative-log ordinates peak-normalized to `0`: `-ln(p / p_peak) = ln(p_peak) - ln(p)`.
-      // The zero-density grid point maps to `+inf`, the `NegLog` encoding of zero probability.
       let log_p_max = log_p.iter().copied().map(OrderedFloat).max().map_or(0.0, |x| x.0);
       let neg_log = log_p.mapv(|value| log_p_max - value);
 
-      let distribution_fn = DistributionFunction::from_start_dx_values(0.0, dx, neg_log)?;
+      let distribution_fn = DistributionFunction::from_range_values((min_time, max_time), neg_log)?;
       let distribution = Distribution::Function(distribution_fn);
       edge.set_branch_length_distribution(Some(Arc::new(distribution)));
     }
