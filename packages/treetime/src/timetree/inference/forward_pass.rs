@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use treetime_distribution::BoundaryBehavior;
 use treetime_distribution::Distribution;
+use treetime_distribution::NegLog;
 use treetime_distribution::distribution_convolution;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
@@ -129,7 +130,7 @@ fn set_likely_time(node: &mut impl TimetreeNode, parent_time: Option<f64>) -> Op
 /// The grid a node ends up on is set by the operands it was built from, so a grid that grows or a
 /// support that drifts is read off the pair: `parent` is the distribution the message came from and
 /// `refined` is what the node now carries.
-fn log_refinement<N: TimetreeNode + Named>(node: &N, parent: &Distribution, refined: &Distribution) {
+fn log_refinement<N: TimetreeNode + Named>(node: &N, parent: &Distribution<NegLog>, refined: &Distribution<NegLog>) {
   if !log_enabled!(Level::Debug) {
     return;
   }
@@ -143,7 +144,7 @@ fn log_refinement<N: TimetreeNode + Named>(node: &N, parent: &Distribution, refi
 }
 
 /// Name the node whose given date the rest of the tree contradicts, and what the tree implied.
-fn log_kept_given_date<N: TimetreeNode + Named>(node: &N, dist_from_parent: &Distribution) {
+fn log_kept_given_date<N: TimetreeNode + Named>(node: &N, dist_from_parent: &Distribution<NegLog>) {
   if !log_enabled!(Level::Debug) {
     return;
   }
@@ -164,7 +165,7 @@ fn log_kept_given_date<N: TimetreeNode + Named>(node: &N, dist_from_parent: &Dis
 ///
 /// The point count is what the distribution would be evaluated on: one for a point date, two for a
 /// range or a formula's end points, and the full grid for a function.
-fn describe_grid(dist: &Distribution) -> String {
+fn describe_grid(dist: &Distribution<NegLog>) -> String {
   let n_points = dist.t().len();
   match dist.time_bounds() {
     Some((t_min, t_max)) => format!("n={n_points}, [{t_min:.6}, {t_max:.6}]"),
@@ -277,10 +278,10 @@ where
 /// untouched when it is not gridded, when either support is unbounded, or when the window would cut
 /// little enough that the resampling would cost more than it saves.
 fn restrict_to_reachable(
-  parent: Distribution,
-  target: &Distribution,
-  branch: &Distribution,
-) -> Result<Distribution, Report> {
+  parent: Distribution<NegLog>,
+  target: &Distribution<NegLog>,
+  branch: &Distribution<NegLog>,
+) -> Result<Distribution<NegLog>, Report> {
   /// Fraction of the parent's support the window has to get under to be worth resampling.
   const WORTHWHILE: f64 = 0.9;
   /// Grid steps the window is widened to when the node's support is narrower than the parent's
@@ -382,7 +383,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub(super) fn node_with_distribution(distribution: Option<Distribution>) -> NodeTimetree {
+    pub(super) fn node_with_distribution(distribution: Option<Distribution<NegLog>>) -> NodeTimetree {
       NodeTimetree {
         time_distribution: distribution.map(Arc::new),
         ..NodeTimetree::default()

@@ -326,7 +326,8 @@ pub fn prepare_tree_after_topology_change(graph: &GraphTimetree) -> Result<(), R
         node.key()
       );
     };
-    payload.time_distribution = Some(Arc::new(Distribution::point(time, 1.0)));
+    // Negative-log ordinate `0` is the `NegLog` multiplicative identity (probability 1).
+    payload.time_distribution = Some(Arc::new(Distribution::point(time, 0.0)));
   }
 
   // Reset fields whose meaning depends on the previous edge topology. Keep the

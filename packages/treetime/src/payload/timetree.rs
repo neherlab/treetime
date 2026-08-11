@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_distribution::Distribution;
+use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::{BranchDistribution, ClockMessages, GraphEdge, HasBranchLength, TimeLength};
 use treetime_graph::node::{Described, Divergence, GraphNode, Named, Outlier, TimeConstraint};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
@@ -20,8 +20,8 @@ pub struct NodeTimetree {
   /// once by [`load_date_constraints`](crate::clock::date_constraints::load_date_constraints) and
   /// then held fixed: `time_distribution` is refined in place by the inference passes, and every
   /// backward pass lifts this back into it so the input is never inferred away.
-  pub date_constraint: Option<Arc<Distribution>>,
-  pub time_distribution: Option<Arc<Distribution>>,
+  pub date_constraint: Option<Arc<Distribution<NegLog>>>,
+  pub time_distribution: Option<Arc<Distribution<NegLog>>>,
   pub bad_branch: bool,
   pub div: f64,
   pub is_outlier: bool,
@@ -107,20 +107,20 @@ impl ClockNode for NodeTimetree {
   }
 }
 
-impl TimeConstraint<Arc<Distribution>> for NodeTimetree {
-  fn date_constraint(&self) -> &Option<Arc<Distribution>> {
+impl TimeConstraint<Arc<Distribution<NegLog>>> for NodeTimetree {
+  fn date_constraint(&self) -> &Option<Arc<Distribution<NegLog>>> {
     &self.date_constraint
   }
 
-  fn set_date_constraint(&mut self, dist: Option<Arc<Distribution>>) {
+  fn set_date_constraint(&mut self, dist: Option<Arc<Distribution<NegLog>>>) {
     self.date_constraint = dist;
   }
 
-  fn time_distribution(&self) -> &Option<Arc<Distribution>> {
+  fn time_distribution(&self) -> &Option<Arc<Distribution<NegLog>>> {
     &self.time_distribution
   }
 
-  fn set_time_distribution(&mut self, dist: Option<Arc<Distribution>>) {
+  fn set_time_distribution(&mut self, dist: Option<Arc<Distribution<NegLog>>>) {
     self.time_distribution = dist;
   }
 
@@ -189,8 +189,8 @@ pub struct EdgeTimetree {
   /// is what sequence profiles propagate along. v0 keeps the same two-length split as
   /// `branch_length` and `mutation_length`.
   pub clock_branch_length: Option<f64>,
-  pub branch_length_distribution: Option<Arc<Distribution>>,
-  pub msg_to_parent: Option<Arc<Distribution>>,
+  pub branch_length_distribution: Option<Arc<Distribution<NegLog>>>,
+  pub msg_to_parent: Option<Arc<Distribution<NegLog>>>,
   /// Branch-specific rate multiplier for relaxed molecular clock.
   /// Default 1.0 means branch evolves at the average clock rate.
   /// Values > 1.0 indicate faster evolution, < 1.0 slower.
@@ -254,20 +254,20 @@ impl ClockMessages<ClockSet> for EdgeTimetree {
   }
 }
 
-impl BranchDistribution<Arc<Distribution>> for EdgeTimetree {
-  fn branch_length_distribution(&self) -> &Option<Arc<Distribution>> {
+impl BranchDistribution<Arc<Distribution<NegLog>>> for EdgeTimetree {
+  fn branch_length_distribution(&self) -> &Option<Arc<Distribution<NegLog>>> {
     &self.branch_length_distribution
   }
 
-  fn set_branch_length_distribution(&mut self, dist: Option<Arc<Distribution>>) {
+  fn set_branch_length_distribution(&mut self, dist: Option<Arc<Distribution<NegLog>>>) {
     self.branch_length_distribution = dist;
   }
 
-  fn msg_to_parent(&self) -> &Option<Arc<Distribution>> {
+  fn msg_to_parent(&self) -> &Option<Arc<Distribution<NegLog>>> {
     &self.msg_to_parent
   }
 
-  fn set_msg_to_parent(&mut self, msg: Option<Arc<Distribution>>) {
+  fn set_msg_to_parent(&mut self, msg: Option<Arc<Distribution<NegLog>>>) {
     self.msg_to_parent = msg;
   }
 }

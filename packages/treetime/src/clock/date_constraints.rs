@@ -6,15 +6,18 @@ use itertools::Itertools;
 use log::{info, warn};
 use std::collections::BTreeSet;
 use std::sync::Arc;
-use treetime_distribution::Distribution;
+use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_io::dates_csv::{DateConstraint, DateValue, DatesMap};
 
-pub fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution {
+pub fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution<NegLog> {
+  // A certain date carries probability 1, whose negative-log ordinate is `-ln(1) = 0`, the
+  // multiplicative identity under `NegLog`. Storing `1.0` here would add a spurious constant offset
+  // on every multiplication, so the ordinate is `0.0`.
   match &constraint.value {
-    DateValue::Exact(d) => Distribution::point(d.value, 1.0),
-    DateValue::Uncertain(r) | DateValue::Range(r) => Distribution::range((r.start, r.end), 1.0),
+    DateValue::Exact(d) => Distribution::point(d.value, 0.0),
+    DateValue::Uncertain(r) | DateValue::Range(r) => Distribution::range((r.start, r.end), 0.0),
   }
 }
 

@@ -6,6 +6,7 @@ use ndarray_stats::QuantileExt;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
+use treetime_distribution::NegLog;
 use treetime_grid::{BoundaryBehavior, HardApproachLaw, Side};
 
 /// Number of innermost grid points used to fit the approach law near a hard boundary.
@@ -33,7 +34,7 @@ pub fn compute_branch_length_distribution(
   n_grid_points: usize,
   clock_rate: f64,
   gamma: f64,
-) -> Result<Arc<Distribution>, Report> {
+) -> Result<Arc<Distribution<NegLog>>, Report> {
   debug_assert!(clock_rate > 0.0, "clock_rate must be positive, got {clock_rate:.6e}");
   debug_assert!(gamma > 0.0);
 
@@ -49,9 +50,12 @@ pub fn compute_branch_length_distribution(
       evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, branch_len).map(|log_lh| log_lh.value())
     })
     .collect::<Result<_, _>>()?;
-  let max_log_lh = log_lh.max()?;
+  let max_log_lh = *log_lh.max()?;
 
-  let normalized_prob = (&log_lh - *max_log_lh).exp();
+  // Store negative-log ordinates directly: `-ln(p / p_peak) = ln(p_peak) - ln(p) = max_log_lh -
+  // log_lh`. The peak ordinate is `0`, matching the `NegLog` peak-normalization convention, and no
+  // `exp` round-trip is taken.
+  let neg_log = log_lh.mapv(|value| max_log_lh - value);
 
   // Convert branch length grid to time grid: time = branch_length / (clock_rate * gamma)
   // gamma > 1 means faster evolution, so same substitutions correspond to shorter time
@@ -59,7 +63,7 @@ pub fn compute_branch_length_distribution(
   let time_min = grid[0] / effective_clock_rate;
   let time_max = grid[grid.len() - 1] / effective_clock_rate;
 
-  let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), normalized_prob)?;
+  let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), neg_log)?;
 
   // Fit the approach law on the left side (near t=0). The branch-length density
   // follows p(t) ~ t^n near t=0 where n is the number of mutations. The grid

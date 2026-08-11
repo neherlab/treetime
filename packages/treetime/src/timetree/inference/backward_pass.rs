@@ -5,7 +5,8 @@ use eyre::Report;
 use std::sync::Arc;
 use treetime_distribution::BoundaryBehavior;
 use treetime_distribution::Distribution;
-use treetime_distribution::distribution_apply_neg_log_weight;
+use treetime_distribution::NegLog;
+use treetime_distribution::distribution_add_neg_log_weight;
 use treetime_distribution::distribution_convolution;
 use treetime_distribution::distribution_multiplication;
 use treetime_graph::edge::GraphEdge;
@@ -52,7 +53,7 @@ where
     .read_arc()
     .outbound()
     .len();
-  let mut result: Option<Distribution> = None;
+  let mut result: Option<Distribution<NegLog>> = None;
 
   for (child, _) in graph.children_of(&graph.get_node(slot.key).expect("Indexed node must exist").read_arc()) {
     let child_key = child.read_arc().key();
@@ -87,9 +88,9 @@ where
 
   if let (Some(model), Some(distribution)) = (coalescent_model, result.as_ref()) {
     result = Some(if is_root {
-      distribution_apply_neg_log_weight(distribution, |time| model.root_contribution(time, n_children))?
+      distribution_add_neg_log_weight(distribution, |time| model.root_contribution(time, n_children))?
     } else {
-      distribution_apply_neg_log_weight(distribution, |time| model.internal_contribution(time, n_children))?
+      distribution_add_neg_log_weight(distribution, |time| model.internal_contribution(time, n_children))?
     });
   }
 
@@ -115,7 +116,7 @@ where
   let outgoing_distribution = if is_leaf {
     let distribution = slot.node.time_distribution();
     match (coalescent_model, distribution) {
-      (Some(model), Some(distribution)) => Some(Arc::new(distribution_apply_neg_log_weight(
+      (Some(model), Some(distribution)) => Some(Arc::new(distribution_add_neg_log_weight(
         distribution.as_ref(),
         |time| Ok(model.leaf_contribution(time)),
       )?)),

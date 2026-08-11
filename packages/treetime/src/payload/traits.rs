@@ -1,6 +1,6 @@
 use crate::payload::clock_set::ClockSet;
 use std::sync::Arc;
-use treetime_distribution::Distribution;
+use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::{BranchDistribution, ClockMessages, GraphEdge, HasBranchLength, TimeLength};
 use treetime_graph::node::{GraphNode, Named, Outlier, TimeConstraint};
 
@@ -22,18 +22,18 @@ pub trait ClockEdge: ClockMessages<ClockSet> + HasBranchLength + TimeLength + Se
   }
 }
 
-pub trait DateConstraintNode: GraphNode + Named + TimeConstraint<Arc<Distribution>> {}
+pub trait DateConstraintNode: GraphNode + Named + TimeConstraint<Arc<Distribution<NegLog>>> {}
 
 /// Trait for node types that support timetree inference.
 /// Provides access to time distribution and estimated time fields.
-pub trait TimetreeNode: GraphNode + TimeConstraint<Arc<Distribution>> {
+pub trait TimetreeNode: GraphNode + TimeConstraint<Arc<Distribution<NegLog>>> {
   fn time(&self) -> Option<f64>;
   fn set_time(&mut self, time: Option<f64>);
 }
 
 /// Trait for edge types that support timetree inference.
 /// Combines clock edge capabilities with branch distribution and time length.
-pub trait TimetreeEdge: GraphEdge + ClockEdge + BranchDistribution<Arc<Distribution>> + TimeLength {
+pub trait TimetreeEdge: GraphEdge + ClockEdge + BranchDistribution<Arc<Distribution<NegLog>>> + TimeLength {
   fn set_gamma(&mut self, gamma: f64);
 
   /// Clock-constrained branch length, `clock_rate * gamma * (t_child - t_parent)`, as committed

@@ -256,7 +256,8 @@ where
     };
 
     if let Some(time_duration) = time_duration {
-      let distribution = Distribution::point(time_duration, 1.0);
+      // Negative-log ordinate `0` is the `NegLog` multiplicative identity (probability 1).
+      let distribution = Distribution::point(time_duration, 0.0);
       edge.set_time_length(Some(time_duration));
       edge.set_branch_length_distribution(Some(Arc::new(distribution)));
     }

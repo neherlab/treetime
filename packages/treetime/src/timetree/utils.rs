@@ -7,7 +7,7 @@ use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_distribution::{Distribution, DistributionFunction};
+use treetime_distribution::{Distribution, DistributionFunction, NegLog};
 use treetime_graph::edge::{BranchDistribution, EdgeOptimizeOps, GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
@@ -83,7 +83,7 @@ pub fn create_poisson_branch_distributions<N, E, D>(
 ) -> Result<(), Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength + BranchDistribution<Arc<Distribution>>,
+  E: GraphEdge + HasBranchLength + BranchDistribution<Arc<Distribution<NegLog>>>,
   D: Send + Sync,
 {
   let seq_len_f64 = seq_len as f64;
@@ -96,20 +96,22 @@ where
       let max_time = 3.0 * expected_time.max(1.0);
       let dx = max_time / (n_points - 1) as f64;
 
-      let y = Array1::from_shape_fn(n_points, |i| {
+      // Log-likelihood on the grid; `-inf` where the density is zero (`dt -> 0`).
+      let log_p = Array1::from_shape_fn(n_points, |i| {
         let dt = i as f64 * dx;
         if dt < 1e-10 {
-          0.0
+          f64::NEG_INFINITY
         } else {
-          let log_p = -dt * mu * seq_len_f64 + branch_length * seq_len_f64 * (dt * mu * seq_len_f64).ln();
-          log_p.exp()
+          -dt * mu * seq_len_f64 + branch_length * seq_len_f64 * (dt * mu * seq_len_f64).ln()
         }
       });
 
-      let y_max = y.iter().copied().map(OrderedFloat).max().map_or(1.0, |x| x.0);
-      let y_normalized = y.mapv(|v| v / y_max);
+      // Negative-log ordinates peak-normalized to `0`: `-ln(p / p_peak) = ln(p_peak) - ln(p)`.
+      // The zero-density grid point maps to `+inf`, the `NegLog` encoding of zero probability.
+      let log_p_max = log_p.iter().copied().map(OrderedFloat).max().map_or(0.0, |x| x.0);
+      let neg_log = log_p.mapv(|value| log_p_max - value);
 
-      let distribution_fn = DistributionFunction::from_start_dx_values(0.0, dx, y_normalized)?;
+      let distribution_fn = DistributionFunction::from_start_dx_values(0.0, dx, neg_log)?;
       let distribution = Distribution::Function(distribution_fn);
       edge.set_branch_length_distribution(Some(Arc::new(distribution)));
     }
