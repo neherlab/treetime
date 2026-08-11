@@ -29,9 +29,9 @@ pub enum BoundaryBehavior {
   Error,
   /// Hard boundary: the domain terminates and probability is zero beyond the grid edge.
   /// An optional [`HardApproachLaw`] provides power-law interpolation between the hard boundary
-  /// and the nearest grid point. In plain-probability space a bare `Hard(None)` returns
-  /// `0.0`; a negative-log representation cannot express zero probability as `0.0` (it
-  /// would be `+inf`), so that combination is rejected at the distribution layer.
+  /// and the nearest grid point. The raw `GridFn` returns `T::zero()` outside support;
+  /// the distribution layer maps this to the policy-correct zero-probability value
+  /// (e.g. `+inf` under negative-log representation).
   Hard(Option<HardApproachLaw>),
   /// Return the nearest boundary value (`y[0]` to the left, `y[n-1]` to the right),
   /// i.e. a flat tail. Use when the function is genuinely uninformative beyond the edge.

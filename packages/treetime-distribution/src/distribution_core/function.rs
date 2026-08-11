@@ -7,7 +7,6 @@ use num::Float;
 use serde::{Deserialize, Serialize};
 use treetime_grid::grid::Grid;
 use treetime_grid::{BoundaryBehavior, GridFn, InterpElem};
-use treetime_utils::make_error;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
@@ -163,14 +162,42 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   where
     T: Float + UlpsEq,
   {
-    self.grid_fn.interp(x)
+    let val = self.grid_fn.interp(x)?;
+    let prob_zero = T::from(Y::probability_zero()).unwrap();
+    if prob_zero != T::zero() && val == T::zero() && self.is_beyond_hard_boundary(x) {
+      return Ok(prob_zero);
+    }
+    Ok(val)
   }
 
   pub fn interp_many(&self, xs: &Array1<T>) -> Result<Array1<T>, Report>
   where
     T: Float + UlpsEq,
   {
-    self.grid_fn.interp_many(xs)
+    let values = xs.iter().map(|&q| self.interp(q)).collect::<Result<Vec<T>, Report>>()?;
+    Ok(Array1::from_vec(values))
+  }
+
+  fn is_beyond_hard_boundary(&self, x: T) -> bool
+  where
+    T: Float,
+  {
+    let x_f64 = x.to_f64().unwrap();
+    if x_f64 < self.x_min().to_f64().unwrap() {
+      return match self.left_extrap() {
+        BoundaryBehavior::Hard(None) => true,
+        BoundaryBehavior::Hard(Some(law)) => x_f64 < law.t_hard,
+        _ => false,
+      };
+    }
+    if x_f64 > self.x_max().to_f64().unwrap() {
+      return match self.right_extrap() {
+        BoundaryBehavior::Hard(None) => true,
+        BoundaryBehavior::Hard(Some(law)) => x_f64 > law.t_hard,
+        _ => false,
+      };
+    }
+    false
   }
 
   pub fn left_extrap(&self) -> BoundaryBehavior {
@@ -182,32 +209,16 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   }
 
   /// Set the left (below `x_min`) out-of-support tail policy.
-  ///
-  /// Rejects a [`BoundaryBehavior::Hard`] tail when the representation cannot express zero
-  /// probability as `0.0` (negative-log), where zero probability is `+inf`.
   pub fn with_left_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
-    Self::check_hard_boundary(behavior)?;
     Ok(Self::from_grid_fn(self.grid_fn.with_left_extrap(behavior)))
   }
 
-  /// Set the right (above `x_max`) out-of-support tail policy. See [`Self::with_left_extrap`].
   pub fn with_right_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
-    Self::check_hard_boundary(behavior)?;
     Ok(Self::from_grid_fn(self.grid_fn.with_right_extrap(behavior)))
   }
 
-  /// Set the same out-of-support tail policy on both sides.
   pub fn with_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
     self.with_left_extrap(behavior)?.with_right_extrap(behavior)
-  }
-
-  fn check_hard_boundary(behavior: BoundaryBehavior) -> Result<(), Report> {
-    if matches!(behavior, BoundaryBehavior::Hard(_)) && !Y::supports_hard_boundary() {
-      return make_error!(
-        "Refusing a Hard boundary tail: it writes 0.0 outside support, which is the multiplicative identity (probability one), not zero probability, under this distribution's negative-log representation"
-      );
-    }
-    Ok(())
   }
 
   pub fn resample(&self, grid: &Grid<T>) -> Result<Self, Report>

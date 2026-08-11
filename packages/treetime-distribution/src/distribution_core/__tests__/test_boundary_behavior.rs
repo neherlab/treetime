@@ -15,22 +15,25 @@ mod tests {
   type DistFnNegLog = DistributionFunction<f64, NegLog>;
 
   #[test]
-  fn test_boundary_neglog_hard_left_rejected() -> Result<(), Report> {
+  fn test_boundary_neglog_hard_left_returns_infinity() -> Result<(), Report> {
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
-    assert_error!(
-      f.with_left_extrap(BoundaryBehavior::Hard(None)),
-      "Refusing a Hard boundary tail: it writes 0.0 outside support, which is the multiplicative identity (probability one), not zero probability, under this distribution's negative-log representation"
-    );
+    let f = f.with_left_extrap(BoundaryBehavior::Hard(None))?;
+    // Infinity is exact -- no floating-point precision concern
+    #[allow(clippy::float_cmp)]
+    {
+      assert_eq!(f64::INFINITY, f.interp(-1.0)?);
+    }
     Ok(())
   }
 
   #[test]
-  fn test_boundary_neglog_hard_right_rejected() -> Result<(), Report> {
+  fn test_boundary_neglog_hard_right_returns_infinity() -> Result<(), Report> {
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
-    assert_error!(
-      f.with_right_extrap(BoundaryBehavior::Hard(None)),
-      "Refusing a Hard boundary tail: it writes 0.0 outside support, which is the multiplicative identity (probability one), not zero probability, under this distribution's negative-log representation"
-    );
+    let f = f.with_right_extrap(BoundaryBehavior::Hard(None))?;
+    #[allow(clippy::float_cmp)]
+    {
+      assert_eq!(f64::INFINITY, f.interp(3.0)?);
+    }
     Ok(())
   }
 
@@ -66,8 +69,7 @@ mod tests {
 
   #[test]
   fn test_boundary_with_extrap_noop_on_point() -> Result<(), Report> {
-    // Non-Function variants have no interpolated tail, so setting a tail policy is a no-op
-    // and never rejects (even the Hard tail that a Function would reject under NegLog).
+    // Non-Function variants have no interpolated tail, so setting a tail policy is a no-op.
     let point: DistributionPlain = Distribution::point(1.0, 2.0);
     let unchanged = point.clone().with_left_extrap(BoundaryBehavior::Hard(None))?;
     assert_eq!(point, unchanged);

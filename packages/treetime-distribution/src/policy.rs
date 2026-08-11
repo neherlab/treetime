@@ -11,13 +11,13 @@ pub trait YAxisPolicy: Clone + Copy + Debug + Default + PartialEq + Send + Sync 
   fn is_defined(val: f64) -> bool;
   fn safe_divisor(val: f64) -> f64;
 
-  /// Whether a `Hard` boundary tail is representable under this policy.
+  /// The stored ordinate that represents zero probability under this policy.
   ///
-  /// A `Hard` boundary tail writes the literal `0.0` outside support. That is zero
-  /// probability under [`Plain`], but the multiplicative identity (probability one) under
-  /// [`NegLog`], where zero probability is `+inf`. The distribution layer rejects a `Hard`
-  /// tail on a policy that returns `false` here.
-  fn supports_hard_boundary() -> bool;
+  /// Under [`Plain`] zero probability is `0.0`. Under [`NegLog`] zero probability is
+  /// `+inf` (`-ln(0)`). The distribution layer uses this to map hard-boundary
+  /// extrapolation values, because the underlying [`GridFn`](treetime_grid::GridFn)
+  /// always returns `0.0` outside a hard boundary regardless of policy.
+  fn probability_zero() -> f64;
 
   /// Whether the most likely time sits at the maximum stored ordinate.
   ///
@@ -94,8 +94,8 @@ impl YAxisPolicy for Plain {
     val.max(TINY_NUMBER)
   }
 
-  fn supports_hard_boundary() -> bool {
-    true
+  fn probability_zero() -> f64 {
+    0.0
   }
 
   fn likely_is_maximum() -> bool {
@@ -140,8 +140,8 @@ impl YAxisPolicy for NegLog {
     val
   }
 
-  fn supports_hard_boundary() -> bool {
-    false
+  fn probability_zero() -> f64 {
+    f64::INFINITY
   }
 
   fn likely_is_maximum() -> bool {
