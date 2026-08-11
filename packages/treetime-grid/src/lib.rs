@@ -1,3 +1,4 @@
+pub mod boundary_behavior;
 pub mod grid;
 pub mod grid_fn;
 pub mod grid_iter;
@@ -14,8 +15,9 @@ pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy {}
 
 impl InterpElem for f64 {}
 
+pub use boundary_behavior::BoundaryBehavior;
 pub use grid::Grid;
-pub use grid_fn::{BoundaryBehavior, GridFn};
+pub use grid_fn::GridFn;
 pub use hard_approach_law::{HardApproachLaw, Side};
 pub type GridFnF64 = GridFn<f64>;
 
