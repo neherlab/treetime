@@ -9,7 +9,7 @@ mod tests {
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
   use rstest::rstest;
-  use treetime_grid::{ApproachLaw, BoundaryBehavior};
+  use treetime_grid::{BoundaryBehavior, HardApproachLaw};
   use treetime_utils::pretty_assert_ulps_eq;
 
   /// Formula * Function returns a Function with correct pointwise products.
@@ -605,12 +605,12 @@ mod tests {
   /// Function * Function composes approach laws: exponents add, coefficients multiply.
   #[test]
   fn test_multiply_function_function_composes_approach_laws() {
-    let law_a = ApproachLaw {
+    let law_a = HardApproachLaw {
       t_hard: 0.0,
       coeff: 2.0,
       exponent: 1.0,
     };
-    let law_b = ApproachLaw {
+    let law_b = HardApproachLaw {
       t_hard: 0.0,
       coeff: 3.0,
       exponent: 2.0,
@@ -631,7 +631,10 @@ mod tests {
     let Distribution::Function(f) = &result else {
       panic!("Expected Function")
     };
-    let composed = f.left_extrap().approach_law().expect("result should have left approach law");
+    let composed = f
+      .left_extrap()
+      .approach_law()
+      .expect("result should have left approach law");
     assert_abs_diff_eq!(3.0, composed.exponent, epsilon = 1e-14);
     assert_abs_diff_eq!(6.0, composed.coeff, epsilon = 1e-14);
     assert_ulps_eq!(0.0, composed.t_hard);
@@ -640,7 +643,7 @@ mod tests {
   /// When only one operand has an approach law, it passes through to the result.
   #[test]
   fn test_multiply_function_function_single_approach_law_passes_through() {
-    let law = ApproachLaw {
+    let law = HardApproachLaw {
       t_hard: 0.0,
       coeff: 2.0,
       exponent: 1.5,
@@ -651,13 +654,20 @@ mod tests {
         .with_left_extrap(BoundaryBehavior::Hard(Some(law)))
         .unwrap(),
     );
-    let b = Distribution::Function(make_function(1.0, 10.0, 91, 5.0, 2.0));
+    let b = Distribution::Function(
+      make_function(1.0, 10.0, 91, 5.0, 2.0)
+        .with_left_extrap(BoundaryBehavior::Hard(None))
+        .unwrap(),
+    );
 
     let result = distribution_multiplication(&a, &b).unwrap();
     let Distribution::Function(f) = &result else {
       panic!("Expected Function")
     };
-    let passed = f.left_extrap().approach_law().expect("result should inherit approach law");
+    let passed = f
+      .left_extrap()
+      .approach_law()
+      .expect("result should inherit approach law");
     assert_abs_diff_eq!(1.5, passed.exponent, epsilon = 1e-14);
     assert_abs_diff_eq!(2.0, passed.coeff, epsilon = 1e-14);
   }
@@ -668,7 +678,7 @@ mod tests {
     // Build a distribution with a known max > 1 so normalization visibly rescales
     let f = DistributionFunction::<f64, Plain>::from_range_values((1.0, 5.0), array![20.0, 40.0, 100.0, 40.0, 20.0])
       .unwrap()
-      .with_left_extrap(BoundaryBehavior::Hard(Some(ApproachLaw {
+      .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw {
         t_hard: 0.0,
         coeff: 10.0,
         exponent: 1.0,
@@ -679,7 +689,10 @@ mod tests {
     let Distribution::Function(f) = &normalized else {
       panic!("Expected Function")
     };
-    let preserved = f.left_extrap().approach_law().expect("approach law should survive normalization");
+    let preserved = f
+      .left_extrap()
+      .approach_law()
+      .expect("approach law should survive normalization");
     assert_abs_diff_eq!(1.0, preserved.exponent, epsilon = 1e-14);
     // max was 100.0 -> scale factor 1/100 -> coeff becomes 10/100 = 0.1
     assert_abs_diff_eq!(0.1, preserved.coeff, epsilon = 1e-14);

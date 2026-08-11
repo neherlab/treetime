@@ -1,6 +1,7 @@
 pub mod grid;
 pub mod grid_fn;
 pub mod grid_iter;
+pub mod hard_approach_law;
 pub mod interp_nonuniform;
 pub mod piecewise_constant_fn;
 pub mod piecewise_fn;
@@ -14,7 +15,8 @@ pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy {}
 impl InterpElem for f64 {}
 
 pub use grid::Grid;
-pub use grid_fn::{ApproachLaw, BoundaryBehavior, GridFn, Side};
+pub use grid_fn::{BoundaryBehavior, GridFn};
+pub use hard_approach_law::{HardApproachLaw, Side};
 pub type GridFnF64 = GridFn<f64>;
 
 #[cfg(test)]
