@@ -640,9 +640,11 @@ mod tests {
     assert_ulps_eq!(0.0, composed.t_hard);
   }
 
-  /// When only one operand has an approach law, it passes through to the result.
+  /// When only one operand has an approach law, the result carries none. The operand without a
+  /// law declares zero density in the sub-grid gap `[t_hard, t_first)`, so the product vanishes
+  /// there and the present law must not survive.
   #[test]
-  fn test_multiply_function_function_single_approach_law_passes_through() {
+  fn test_multiply_function_function_single_approach_law_drops_to_none() {
     let law = HardApproachLaw {
       t_hard: 0.0,
       coeff: 2.0,
@@ -664,12 +666,7 @@ mod tests {
     let Distribution::Function(f) = &result else {
       panic!("Expected Function")
     };
-    let passed = f
-      .left_extrap()
-      .approach_law()
-      .expect("result should inherit approach law");
-    assert_abs_diff_eq!(1.5, passed.exponent, epsilon = 1e-14);
-    assert_abs_diff_eq!(2.0, passed.coeff, epsilon = 1e-14);
+    assert_eq!(BoundaryBehavior::Hard(None), f.left_extrap());
   }
 
   /// normalize() preserves approach laws alongside tail policies.

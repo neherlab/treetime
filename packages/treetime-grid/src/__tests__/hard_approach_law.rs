@@ -86,13 +86,16 @@ mod tests {
 
   #[test]
   fn test_approach_law_fit_clamps_negative_exponent_to_zero() -> Result<(), Report> {
-    // Density that increases toward the boundary (like exp(-t) near t=0):
-    // log(p) vs log(t) has negative slope, so fit would give b < 0.
-    // The approach law clamps to b=0.
+    // Density that increases toward the boundary (like exp(-t) near t=0): log(p) vs log(t)
+    // has negative slope, so the raw fit gives b < 0 and clamps to b = 0. With b = 0 the
+    // coefficient must be the horizontal least-squares fit exp(mean(log p)) = exp(mean(-t)),
+    // not the sloped-line intercept. The 5 leftmost points of linspace(0.1, 1.0, 10) are
+    // t = 0.1..0.5, so mean(t) = 0.3 and coeff = exp(-0.3).
     let y = Array1::linspace(0.1, 1.0, 10).mapv(|t: f64| (-t).exp());
     let grid = GridFn::from_range_values((0.1, 1.0), y)?;
     let law = HardApproachLaw::fit(&grid, 0.0, Side::Left, 5).expect("fit should succeed");
     assert_abs_diff_eq!(0.0, law.exponent, epsilon = 1e-14);
+    assert_abs_diff_eq!((-0.3_f64).exp(), law.coeff, epsilon = 1e-12);
     Ok(())
   }
 

@@ -301,17 +301,20 @@ fn with_composed_tails<Y: YAxisPolicy>(
 /// (`Hard`); only when both operands are flat non-zero constants is the product a flat constant
 /// (`Constant`). This is the maximum over the precedence `Constant` < `Hard` < `Error`.
 ///
-/// Approach laws inside `Hard` variants compose: both present -> exponents add and coefficients
-/// multiply; one present -> passes through (the other operand contributes its grid boundary
-/// value as a constant factor already in the product's grid values).
+/// Approach laws inside `Hard` variants compose only when *both* operands carry one: exponents
+/// add and coefficients multiply. When exactly one operand carries an approach law the result
+/// carries none (`Hard(None)`): a `None` operand declares zero density in the sub-grid gap
+/// `[t_hard, t_first)`, so the product vanishes there and the present law must not survive.
 fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> BoundaryBehavior {
   match (a, b) {
     (BoundaryBehavior::Error, _) | (_, BoundaryBehavior::Error) => BoundaryBehavior::Error,
     (BoundaryBehavior::Hard(a_law), BoundaryBehavior::Hard(b_law)) => {
       let composed = match (a_law, b_law) {
         (Some(a), Some(b)) => Some(a.compose_multiply(&b)),
-        (Some(law), None) | (None, Some(law)) => Some(law),
-        (None, None) => None,
+        // NOTE: a `None` operand contributes zero density in the sub-grid gap
+        // `[t_hard, t_first)`, so the product is zero there. Never propagate the present
+        // law -- that would fabricate density the `None` operand forbids.
+        (Some(_) | None, None) | (None, Some(_)) => None,
       };
       BoundaryBehavior::Hard(composed)
     },
