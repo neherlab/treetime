@@ -74,9 +74,9 @@ jobs:
         with:
           path: |
             .cache/docker-native/kache/
-          key: neherlab-treetime-kache-v1-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+          key: neherlab-treetime-kache-unit-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            neherlab-treetime-kache-v1-${{ runner.os }}-native-
+            neherlab-treetime-kache-unit-v2-${{ runner.os }}-native-
 
       - name: "Login to Docker Hub"
         uses: docker/login-action@v3
@@ -135,10 +135,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            .cache/docker-native/kache/
-          key: neherlab-treetime-kache-v1-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
+            .cache/docker-native/kache/lint-ci/
+          key: neherlab-treetime-kache-lint-ci-v2-${{ runner.os }}-native-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            neherlab-treetime-kache-v1-${{ runner.os }}-native-
+            neherlab-treetime-kache-lint-ci-v2-${{ runner.os }}-native-
 
       - name: "Login to Docker Hub"
         uses: docker/login-action@v3
