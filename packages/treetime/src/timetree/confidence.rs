@@ -186,10 +186,13 @@ pub fn extract_confidence_intervals(graph: &GraphTimetree) -> Vec<NodeConfidence
       // For symmetric distributions this equals equal-tailed CI; for skewed
       // distributions (nodes near tree boundaries) HPD is narrower and
       // centered on the peak.
-      let mutation_contribution = payload
-        .time_distribution()
-        .as_ref()
-        .and_then(|dist| dist.hpd_region(CI_FRACTION));
+      // TODO: hpd_region is Plain-only; re-enable once a NegLog-aware HPD lands (proposal Part B/D).
+      // Temporarily disabled to unblock the neg-log build; CI falls back to the rate contribution.
+      // let mutation_contribution = payload
+      //   .time_distribution()
+      //   .as_ref()
+      //   .and_then(|dist| dist.hpd_region(CI_FRACTION));
+      let mutation_contribution: Option<(f64, f64)> = None;
 
       // Source 2: clock rate uncertainty from rate susceptibility analysis
       let rate_contribution = payload
