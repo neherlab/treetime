@@ -94,9 +94,11 @@ fn multiply_point_function<Y: YAxisPolicy>(
     None
   };
   if let Some(tail) = tail {
-    match tail {
-      BoundaryBehavior::Constant => {},
-      BoundaryBehavior::Error | BoundaryBehavior::Hard(_) => return Ok(Distribution::empty()),
+    // Beyond a soft boundary (`Constant` or `Linear`) the function continues under its tail law,
+    // so the point picks up a finite value. Beyond a hard boundary (`Hard`) or an undeclared one
+    // (`Error`) the function carries no probability there and the product is empty.
+    if !tail.is_soft() {
+      return Ok(Distribution::empty());
     }
   }
   let func_value = func.interp(t)?;
@@ -296,15 +298,21 @@ fn with_composed_tails<Y: YAxisPolicy>(
 
 /// Compose the per-side result tail for a product from the two operands' tails on that side.
 ///
-/// Beyond a boundary the product is evaluated pointwise: if either operand is undefined there
-/// the product is undefined (`Error`); otherwise if either operand is zero the product is zero
-/// (`Hard`); only when both operands are flat non-zero constants is the product a flat constant
-/// (`Constant`). This is the maximum over the precedence `Constant` < `Hard` < `Error`.
+/// The product is pointwise, so the result class is the strongest of soft < `Hard` < `Error`:
+/// `Error` if either operand is undefined beyond the edge; `Hard` if either operand ends the
+/// domain (a hard bound restricts the product regardless of the other side); soft only when both
+/// operands continue softly.
 ///
-/// Approach laws inside `Hard` variants compose only when *both* operands carry one: exponents
-/// add and coefficients multiply. When exactly one operand carries an approach law the result
-/// carries none (`Hard(None)`): a `None` operand declares zero density in the sub-grid gap
-/// `[t_hard, t_first)`, so the product vanishes there and the present law must not survive.
+/// Fitted laws compose in closed form:
+///
+/// - Two `Hard` approach laws compose (exponents add, coefficients multiply). If only one operand
+///   carries a law, the result carries none (`Hard(None)`): the `None` operand declares zero
+///   density in the sub-grid gap `[t_hard, t_first)`, so the product is zero there and the present
+///   law must not survive.
+/// - Two `Linear` soft tails compose by adding their neg-log slopes (multiplication is addition in
+///   neg-log space). A `Linear` tail times a flat `Constant` keeps the `Linear` slope, because a
+///   flat tail contributes slope zero. `Linear(None)` times anything yields `Linear(None)`: the
+///   product is soft but its slope is unknown until refit.
 fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> BoundaryBehavior {
   match (a, b) {
     (BoundaryBehavior::Error, _) | (_, BoundaryBehavior::Error) => BoundaryBehavior::Error,
@@ -319,6 +327,16 @@ fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> Boun
       BoundaryBehavior::Hard(composed)
     },
     (BoundaryBehavior::Hard(law), _) | (_, BoundaryBehavior::Hard(law)) => BoundaryBehavior::Hard(law),
+    (BoundaryBehavior::Linear(a_law), BoundaryBehavior::Linear(b_law)) => {
+      let composed = match (a_law, b_law) {
+        (Some(a), Some(b)) => Some(a.compose_multiply(&b)),
+        _ => None,
+      };
+      BoundaryBehavior::Linear(composed)
+    },
+    // A flat `Constant` contributes slope zero, so it leaves the `Linear` slope unchanged.
+    (BoundaryBehavior::Linear(law), BoundaryBehavior::Constant)
+    | (BoundaryBehavior::Constant, BoundaryBehavior::Linear(law)) => BoundaryBehavior::Linear(law),
     (BoundaryBehavior::Constant, BoundaryBehavior::Constant) => BoundaryBehavior::Constant,
   }
 }
