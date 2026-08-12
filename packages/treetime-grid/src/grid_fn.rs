@@ -311,7 +311,8 @@ impl<T: InterpElem> GridFn<T> {
   ///
   /// Uses piecewise linear interpolation within the grid bounds. Outside the bounds the
   /// per-side [`BoundaryBehavior`] applies: `Error` (default) rejects the query, `Hard`
-  /// returns `0.0`, `Constant` returns the nearest boundary value.
+  /// returns `0.0`, `Constant` returns the nearest boundary value, and `Linear` continues the
+  /// density along its fitted log-linear tail.
   ///
   /// # Arguments
   ///
@@ -372,6 +373,17 @@ impl<T: InterpElem> GridFn<T> {
   {
     match behavior {
       BoundaryBehavior::Constant => Ok(boundary_value),
+      // Soft log-linear tail: an exponential probability tail anchored on the live grid edge, so
+      // it meets the grid continuously at `boundary_value`. `None` falls back to the flat edge.
+      BoundaryBehavior::Linear(Some(law)) => {
+        let value = law.eval(
+          boundary_value.to_f64().unwrap(),
+          bound.to_f64().unwrap(),
+          xi.to_f64().unwrap(),
+        );
+        Ok(T::from(value).unwrap())
+      },
+      BoundaryBehavior::Linear(None) => Ok(boundary_value),
       BoundaryBehavior::Hard(Some(law)) => {
         let xi_f64 = xi.to_f64().unwrap();
         // Beyond the hard boundary: zero probability
@@ -411,18 +423,19 @@ impl<T: InterpElem> GridFn<T> {
     Self {
       grid: self.grid,
       y: self.y.mapv(f),
-      // Arbitrary y-transforms invalidate approach laws because the coefficient
-      // cannot be updated without knowing the transform's structure.
-      left_extrap: strip_approach_law(self.left_extrap),
-      right_extrap: strip_approach_law(self.right_extrap),
+      // An arbitrary y-transform makes a fitted boundary law wrong, so drop the law and keep the
+      // side's hard/soft class.
+      left_extrap: strip_tail_law(self.left_extrap),
+      right_extrap: strip_tail_law(self.right_extrap),
     }
   }
 
-  /// Scale all y-values by a multiplicative factor, preserving approach laws.
+  /// Scale all y-values by a multiplicative factor, preserving boundary laws.
   ///
-  /// Unlike [`Self::mapv`] with an arbitrary function, multiplication by a constant
-  /// preserves the power-law shape: `(s * C) * dt^b` is still a power law with the
-  /// same exponent. The approach law coefficient is scaled by the same factor.
+  /// Scaling every ordinate by a constant preserves each law's shape. A power-law approach keeps
+  /// its exponent and scales its coefficient (`(s * C) * dt^b`). A soft tail keeps its slope
+  /// unchanged: scaling probability by a constant shifts `-ln p` by a constant, which does not
+  /// change the slope, and the edge-relative tail reads the already-scaled edge value.
   #[must_use]
   pub fn scale_y(&self, factor: f64) -> Self
   where
@@ -431,8 +444,8 @@ impl<T: InterpElem> GridFn<T> {
     Self {
       grid: self.grid,
       y: self.y.mapv(|v| v * T::from(factor).unwrap()),
-      left_extrap: scale_approach_law(self.left_extrap, factor),
-      right_extrap: scale_approach_law(self.right_extrap, factor),
+      left_extrap: scale_tail_law(self.left_extrap, factor),
+      right_extrap: scale_tail_law(self.right_extrap, factor),
     }
   }
 
@@ -475,10 +488,10 @@ impl<T: InterpElem> GridFn<T> {
       self.y.swap(i, n - 1 - i);
     }
 
-    // Negating the argument reflects the domain, so the left and right tails swap sides.
-    // Approach laws inside Hard variants also need their t_hard negated.
-    self.left_extrap = negate_approach_law(self.left_extrap);
-    self.right_extrap = negate_approach_law(self.right_extrap);
+    // The reflection swaps the left and right tails and reflects each fitted law's argument: a
+    // hard approach law negates its `t_hard`, a soft-tail slope flips sign.
+    self.left_extrap = negate_tail_law(self.left_extrap);
+    self.right_extrap = negate_tail_law(self.right_extrap);
     std::mem::swap(&mut self.left_extrap, &mut self.right_extrap);
     Ok(())
   }
@@ -579,26 +592,35 @@ impl<T: InterpElem> GridFn<T> {
   }
 }
 
-fn strip_approach_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
+/// Drop a fitted boundary law after an arbitrary y-transform, keeping the side's hard/soft class.
+/// The transform makes a fitted coefficient or slope wrong, and it cannot be updated without
+/// knowing the transform's structure.
+fn strip_tail_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
   match behavior {
     BoundaryBehavior::Hard(_) => BoundaryBehavior::Hard(None),
+    BoundaryBehavior::Linear(_) => BoundaryBehavior::Linear(None),
     other => other,
   }
 }
 
-fn scale_approach_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
+/// Scale a fitted boundary law when every ordinate is multiplied by `factor`. A power-law
+/// coefficient scales directly; a soft-tail slope is invariant (see [`GridFn::scale_y`]).
+fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   match behavior {
     BoundaryBehavior::Hard(Some(law)) => BoundaryBehavior::Hard(Some(HardApproachLaw {
       coeff: law.coeff * factor,
       ..law
     })),
+    BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(law),
     other => other,
   }
 }
 
-fn negate_approach_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
+/// Reflect a fitted boundary law for `f(x) -> f(-x)`.
+fn negate_tail_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
   match behavior {
     BoundaryBehavior::Hard(Some(law)) => BoundaryBehavior::Hard(Some(law.negate_arg())),
+    BoundaryBehavior::Linear(Some(law)) => BoundaryBehavior::Linear(Some(law.negate_arg())),
     other => other,
   }
 }

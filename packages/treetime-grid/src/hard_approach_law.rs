@@ -156,7 +156,7 @@ pub enum Side {
 }
 
 /// Simple least-squares linear regression: y = slope * x + intercept.
-fn least_squares_fit(xs: &[f64], ys: &[f64]) -> (f64, f64) {
+pub(crate) fn least_squares_fit(xs: &[f64], ys: &[f64]) -> (f64, f64) {
   let n = xs.len() as f64;
   let sum_x: f64 = xs.iter().sum();
   let sum_y: f64 = ys.iter().sum();

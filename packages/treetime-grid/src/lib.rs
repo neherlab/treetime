@@ -7,6 +7,7 @@ pub mod interp_nonuniform;
 pub mod piecewise_constant_fn;
 pub mod piecewise_fn;
 pub mod piecewise_linear_fn;
+pub mod soft_tail_law;
 
 use num_traits::{Num, NumCast};
 use std::fmt::Debug;
@@ -19,6 +20,7 @@ pub use boundary_behavior::BoundaryBehavior;
 pub use grid::Grid;
 pub use grid_fn::GridFn;
 pub use hard_approach_law::{HardApproachLaw, Side};
+pub use soft_tail_law::SoftTailLaw;
 pub type GridFnF64 = GridFn<f64>;
 
 #[cfg(test)]
