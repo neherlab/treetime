@@ -72,22 +72,21 @@ where
 
   // A node whose time distribution is empty (or degenerate) yields no likely time, so no date is
   // assigned. Under exact arithmetic that cannot happen: the messages being combined all went into
-  // the parent's own posterior, so some time always carries probability. It happens because the
-  // distributions are gridded and held as plain probabilities, so a posterior that is merely
-  // astronomically small underflows to zero and `normalize` reports it as empty (see
-  // kb/issues/M-timetree-backward-pass-plain-space-underflow.md). Surface it instead of dropping
-  // the date silently: it means the subtree below this node says something the rest of the tree
-  // gives no weight to at all. An undated leaf under an undated parent has nothing to infer from
-  // and is not worth reporting: it was already accounted for when its date was found missing.
+  // the parent's own posterior, so some time always carries probability. Under NegLog the ordinate
+  // is -ln(probability), so even astronomically small posteriors are represented exactly and never
+  // collapse to zero; an empty result therefore means the messages meeting here have genuinely
+  // disjoint support (their hard domains do not overlap). Surface it instead of dropping the date
+  // silently: it means the subtree below this node says something the rest of the tree gives no
+  // weight to at all. An undated leaf under an undated parent has nothing to infer from and is not
+  // worth reporting: it was already accounted for when its date was found missing.
   let is_dateable = !graph.is_leaf(slot.key) || slot.node.date_constraint().is_some();
   if set_likely_time(&mut slot.node, parent_time).is_none() && is_dateable {
     let name = slot.node.name();
     let name = name.as_ref().map_or("<unnamed>", |name| name.as_ref());
     warn!(
       "Timetree forward pass: node '{name}' has an empty time distribution; no date was assigned. \
-       The messages meeting at this node leave no time with any probability, which on a gridded \
-       plain-probability posterior means the dates below it and the times the rest of the tree \
-       implies are far enough apart to underflow."
+       The messages meeting at this node leave no time with any probability: the dates below it \
+       and the times the rest of the tree implies have disjoint support."
     );
   }
   Ok(())
@@ -230,18 +229,18 @@ where
       let dist_from_parent = distribution_convolution(&parent_except_subtree, branch_dist)?
         .with_left_extrap(BoundaryBehavior::Hard(None))?
         .with_right_extrap(BoundaryBehavior::Constant)?;
-      // Normalize to prevent numerical underflow: the backward pass stores normalized
-      // distributions (max=1.0), and the convolution/division can produce arbitrary scales.
-      // Without normalization, values accumulate downward across tree depth.
+      // Re-anchor the peak to 0. Under NegLog normalize() subtracts the minimum ordinate (an exact
+      // shift): the backward pass stores peak-at-0 distributions, while convolution and division
+      // leave an arbitrary ordinate offset, so this restores the convention without changing shape.
       let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?.normalize();
       log_refinement(&slot.node, parent_time_dist, &combined);
 
       // The product is empty when the message from the parent leaves no probability on the date
-      // the node was given -- in exact arithmetic never, in plain probabilities on a grid whenever
-      // the two are far enough apart to underflow. Refining onto that would leave the node
-      // undated, which is strictly worse than the date the input carries: keep the given date and
-      // let the caller report the disagreement. A node with no given date has nothing to fall back
-      // on and is still left undated, which is the pre-existing contract.
+      // the node was given -- in exact arithmetic never, and under NegLog only when the parent
+      // message and the subtree distribution have disjoint support. Refining onto that would leave
+      // the node undated, which is strictly worse than the date the input carries: keep the given
+      // date and let the caller report the disagreement. A node with no given date has nothing to
+      // fall back on and is still left undated, which is the pre-existing contract.
       if combined.likely_time().is_none() && slot.node.date_constraint().is_some() {
         log_kept_given_date(&slot.node, &dist_from_parent);
         return Ok(Refinement::ContradictedGivenDate);

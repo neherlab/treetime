@@ -68,10 +68,11 @@ where
       .1;
     if let Some(parent_message) = edge.msg_to_parent() {
       // Combine messages from all children using multiplication (intersection of constraints).
-      // Normalize after each step to prevent numerical underflow in plain probability space:
-      // without normalization, the peak decays as ~(peak)^N across N children, underflowing
-      // to zero for large trees. Normalization (max=1.0) is safe because all downstream
-      // consumers (likely_time, quantile, hpd_region) are scale-invariant.
+      // Under NegLog, multiplication is addition of ordinates and normalize() is an exact shift
+      // that subtracts the minimum ordinate (peak -> 0), so it cannot underflow. It is retained as
+      // a per-step canonicalization that keeps the accumulator's peak at 0 across children, which
+      // is safe because all downstream consumers (likely_time, quantile, hpd_region) are
+      // shift-invariant.
       //
       // Each parent message carries Constant left / Hard right tails. Multiplication composes
       // the result tails from its operands and normalize() preserves them, so the accumulator
