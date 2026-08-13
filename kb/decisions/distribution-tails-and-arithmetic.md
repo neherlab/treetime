@@ -12,15 +12,18 @@ v1 discretizes probability distributions on finite uniform grids. Two questions 
 
 `GridFn` carries an independent tail policy on each side via `enum BoundaryBehavior` in `left_extrap` and `right_extrap`, defaulting to `Error`:
 
-| Variant    | Class | Out-of-support value     | Use case                                                                                                                |
-| ---------- | ----- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `Error`    | hard  | returns an error         | Default. A bare grid function is a generic interpolant; querying outside support is a programming error                 |
-| `Hard`     | hard  | returns $0.0$            | Bounded probability density: zero probability outside support. Matches v0's result on the plain-probability axis        |
-| `Constant` | soft  | returns the boundary $y$ | Flat tail: the distribution is genuinely uninformative beyond the grid edge, so the boundary value extends indefinitely |
+| Variant    | Class | Out-of-support value                                 | Use case                                                                                                                                                                                                                     |
+| ---------- | ----- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Error`    | hard  | returns an error                                     | Default. A bare grid function is a generic interpolant; querying outside support is a programming error                                                                                                                      |
+| `Hard`     | hard  | returns $0.0$                                        | Bounded probability density: zero probability outside support. Matches v0's result on the plain-probability axis                                                                                                             |
+| `Constant` | soft  | returns the boundary $y$                             | Flat tail: the distribution is genuinely uninformative beyond the grid edge, so the boundary value extends indefinitely                                                                                                      |
+| `Linear`   | soft  | returns $p_{\text{edge}}\,e^{-k(t-t_{\text{edge}})}$ | Log-linear tail: a decaying exponential fitted from the edge points, a straight line in $-\ln p$. Carries the single slope $k$, has finite mass, and does not corrupt the quantile and HPD integrals the way `Constant` does |
 
-A boundary is **hard** when the grid edge is a fact about the distribution -- probability is zero beyond (`Hard`), or evaluation beyond is undefined (`Error`). A boundary is **soft** when the grid edge is only where interpolation stopped and the distribution continues past it under a declared tail law (`Constant`). `fn BoundaryBehavior.is_soft()` is the predicate the arithmetic keys off: a soft boundary extends the evaluable domain, a hard boundary terminates it. Adding a future soft tail law extends the domain without touching the arithmetic rules.
+A boundary is **hard** when the grid edge is a fact about the distribution -- probability is zero beyond (`Hard`), or evaluation beyond is undefined (`Error`). A boundary is **soft** when the grid edge is only where interpolation stopped and the distribution continues past it under a declared tail law (`Constant` or `Linear`). `fn BoundaryBehavior.is_soft()` is the predicate the arithmetic keys off: a soft boundary extends the evaluable domain, a hard boundary terminates it. Both soft tails route through this one predicate, so they share the arithmetic rules below.
 
-`GridFn` is representation-agnostic: `Hard` writes the literal $0.0$. Under a neg-log representation, zero probability is $+\infty$, not $0.0$, so `fn DistributionFunction.with_left_extrap()` and `fn DistributionFunction.with_right_extrap()` reject `Hard` when the representation does not support it (guarded by `fn YAxisPolicy::supports_hard_boundary()`). The plain-probability path used by the timetree passes accepts all three variants.
+`Linear` stores only the neg-log slope $k$ and re-reads the live grid edge on evaluation. A soft edge is a movable representation choice -- re-windowing and resampling shift it -- so anchoring the tail to the current edge keeps it valid across regridding, where a stored absolute anchor would go stale. This is the opposite of the `Hard` approach law, whose boundary is an immovable physical fact that carries an absolute anchor. The tail is amplitude-invariant: scaling every probability by a constant shifts $-\ln p$ without changing $k$.
+
+`GridFn` is representation-agnostic: `Hard` writes the literal $0.0$. Under a neg-log representation, zero probability is $+\infty$, not $0.0$, so `fn DistributionFunction.with_left_extrap()` and `fn DistributionFunction.with_right_extrap()` reject `Hard` when the representation does not support it (guarded by `fn YAxisPolicy::supports_hard_boundary()`). The plain-probability path used by the timetree passes accepts all four variants.
 
 Builder methods `fn GridFn.with_left_extrap()`, `fn GridFn.with_right_extrap()`, and `fn GridFn.with_extrap()` set the policy. `fn GridFn.resample()` propagates it. `fn GridFn.negate_arg_inplace()` swaps left and right (negating the argument reflects the domain).
 
@@ -77,17 +80,20 @@ Both multiplication and division compute the intersection after extending each o
 
 Each operand extends its own domain symmetrically. The extension limit is the other operand's grid bound on the same side:
 
-| Operand tail | Behavior                                 | Rationale                                                                                                                                      |
-| ------------ | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Constant`   | Extend to the other operand's grid bound | The operand is evaluable at its boundary value beyond the grid; the product reflects the informative operand's shape scaled by a flat constant |
-| `Hard`       | Keep grid boundary                       | The value outside support is zero; $0 \cdot f(x) = 0$, so the product carries no information in the extension region                           |
-| `Error`      | Keep grid boundary                       | Out-of-support evaluation is undefined; strict finite-grid intersection                                                                        |
+| Operand tail | Behavior                                 | Rationale                                                                                                                                                |
+| ------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Constant`   | Extend to the other operand's grid bound | The operand is evaluable at its boundary value beyond the grid; the product reflects the informative operand's shape scaled by a flat constant           |
+| `Linear`     | Extend to the other operand's grid bound | The operand is evaluable at its exponential tail value beyond the grid; the product reflects the informative operand's shape scaled by the decaying tail |
+| `Hard`       | Keep grid boundary                       | The value outside support is zero; $0 \cdot f(x) = 0$, so the product carries no information in the extension region                                     |
+| `Error`      | Keep grid boundary                       | Out-of-support evaluation is undefined; strict finite-grid intersection                                                                                  |
 
 Equivalently, per side the result takes the tightest (innermost) hard bound and the loosest (outermost) soft bound; a hard bound dominates a soft bound on the same side. Extending each soft side to the other operand's grid bound and intersecting selects this automatically.
 
-When both operands have `Error` or `Hard` tails (the default), the result is identical to strict intersection. When operands carry `Constant` tails -- as backward parent messages do (see [tail assignments](#tail-assignments-in-the-timetree-pipeline)) -- disjoint finite grids overlap via the tails. This prevents the product from collapsing to `Empty` when temporal signals conflict, for example under `--keep-root` where rerooting cannot resolve the tension between subtrees.
+The composed result tail per side is the strongest class of the two operands, `soft < Hard < Error`. Two `Linear` tails compose in closed form: multiplication is addition in $-\ln p$, so their slopes add ($k = k_a + k_b$). A `Linear` tail times a flat `Constant` keeps the `Linear` slope, since a flat tail contributes slope zero. An unfitted `Linear` (no slope yet) propagates as unfitted for a later refit.
 
-Point * Function follows the same per-side rule without constructing a result grid. A point in a `Constant` tail evaluates against the Function's boundary value. A point beyond an `Error` or `Hard` boundary produces `Empty`.
+When both operands have `Error` or `Hard` tails (the default), the result is identical to strict intersection. When operands carry soft (`Constant` or `Linear`) tails -- as backward parent messages do (see [tail assignments](#tail-assignments-in-the-timetree-pipeline)) -- disjoint finite grids overlap via the tails. This prevents the product from collapsing to `Empty` when temporal signals conflict, for example under `--keep-root` where rerooting cannot resolve the tension between subtrees.
+
+Point * Function follows the same per-side rule without constructing a result grid. A point in a `Constant` tail evaluates against the Function's boundary value, and a point in a `Linear` tail against the tail's exponential value. A point beyond an `Error` or `Hard` boundary produces `Empty`.
 
 ##### Empty invariant
 
