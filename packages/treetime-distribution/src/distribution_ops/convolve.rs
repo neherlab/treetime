@@ -6,7 +6,7 @@ use crate::policy::SupportsConvolution;
 use approx::ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, array, s};
-use treetime_ops::convolve;
+use treetime_ops::convolve_fft;
 use treetime_utils::array::ndarray::{has_uniform_spacing, max_or, min_or};
 use treetime_utils::make_error;
 
@@ -198,19 +198,28 @@ fn convolution_function_function<Y: SupportsConvolution>(
     return Ok(Distribution::empty());
   }
 
-  let conv = convolve(dx, &pa, &pb)?;
-  let x_min = a.x_min() + b.x_min();
+  let conv = convolve_fft(dx, &pa, &pb)?;
 
   // The FFT is trustworthy only in the bulk; below the roundoff floor the far tails are
   // reconstructed by log-linear extrapolation (v0 `NodeInterpolator.convolve_fft`).
-  let Some(nl) = reconstruct_neg_log_tails(&conv, x_min, dx)? else {
+  let Some(reconstructed) = reconstruct_neg_log_tails(&conv, dx)? else {
     return Ok(Distribution::empty());
   };
+
+  // The raw convolution starts at `a.x_min() + b.x_min()`; the reconstruction crops leading
+  // untrusted samples, so the kept grid starts `start_offset` cells later.
+  let x_min = a.x_min() + b.x_min() + (reconstructed.start_offset as f64) * dx;
 
   // Restore the peak offsets (negative-log units) and convert to the storage policy. `from_neg_log`
   // keeps NegLog's dynamic range and collapses sub-underflow values to zero under Plain.
   let offset = peak_a + peak_b;
-  let y = nl.mapv(|v| Y::from_neg_log(v + offset));
+  let y = reconstructed.neg_log.mapv(|v| Y::from_neg_log(v + offset));
+
+  // A convolution whose trusted region collapses to a single cell is a point mass.
+  if y.len() == 1 {
+    return Ok(Distribution::point(x_min, y[0]));
+  }
+
   let conv_distr = DistributionFunction::<f64, Y>::from_start_dx_values(x_min, dx, y)?;
 
   let coarse_dx = dx_a.max(dx_b);
@@ -236,15 +245,29 @@ fn to_peak_normalized_plain<Y: SupportsConvolution>(y: &Array1<f64>) -> (Array1<
   (plain, peak)
 }
 
+/// Trusted-bulk reconstruction of a plain-space convolution in peak-relative negative-log space.
+///
+/// `neg_log` holds the reconstructed ordinates starting at grid index `start_offset` of the raw
+/// convolution: the trusted bulk (`-ln conv` where `conv` sits above the roundoff floor) plus the
+/// log-linearly extrapolated decaying tails. Non-decaying tail regions are cropped rather than
+/// stored, so no `+inf` ordinate is ever produced (which would zero a whole interpolation cell).
+struct ReconstructedConv {
+  /// Index of the first kept sample within the raw convolution grid.
+  start_offset: usize,
+  /// Reconstructed negative-log ordinates over the kept range.
+  neg_log: Array1<f64>,
+}
+
 /// Reconstruct the convolution result in peak-relative negative-log space, rebuilding the tails that
 /// fall below the FFT roundoff floor by log-linear extrapolation.
 ///
-/// Uses v0's two-point secant slope over the outermost [`CONV_TAIL_MARGIN`] trusted points, extended
-/// only where the tail decays away from support (negative-log rising outward: left slope negative
-/// toward smaller `t`, right slope positive toward larger `t`). Non-decaying regions carry no mass
-/// (+inf negative-log = zero probability). Returns `None` when no trusted signal survives.
-#[allow(clippy::many_single_char_names)]
-fn reconstruct_neg_log_tails(conv: &Array1<f64>, x_min: f64, dx: f64) -> Result<Option<Array1<f64>>, Report> {
+/// Mirrors v0's `NodeInterpolator.convolve_fft`: crop to the trusted region (`conv > peak · 1e-13`),
+/// then extend each side by the two-point secant slope over the outermost [`CONV_TAIL_MARGIN`]
+/// trusted points, but only where the tail decays away from support (negative-log rising outward:
+/// left slope negative toward smaller `t`, right slope positive toward larger `t`). A non-decaying
+/// side is cropped at the bulk edge; the caller's boundary policy governs the domain beyond it.
+/// Returns `None` when no trusted signal survives.
+fn reconstruct_neg_log_tails(conv: &Array1<f64>, dx: f64) -> Result<Option<ReconstructedConv>, Report> {
   let peak = max_or(conv, 0.0);
   if peak <= 0.0 {
     return Ok(None);
@@ -257,8 +280,6 @@ fn reconstruct_neg_log_tails(conv: &Array1<f64>, x_min: f64, dx: f64) -> Result<
     return Ok(None);
   };
 
-  let t = Array1::from_shape_fn(conv.len(), |i| x_min + (i as f64) * dx);
-  let trusted_t = t.slice(s![first..=last]).to_owned();
   let trusted_y = conv.slice(s![first..=last]).mapv(|c| -c.ln());
   let n = trusted_y.len();
   let margin = CONV_TAIL_MARGIN.min(n / 3);
@@ -266,22 +287,33 @@ fn reconstruct_neg_log_tails(conv: &Array1<f64>, x_min: f64, dx: f64) -> Result<
     return make_error!("Convolution left too few trusted points to reconstruct tails");
   }
 
-  let left_slope = (trusted_y[margin] - trusted_y[0]) / (trusted_t[margin] - trusted_t[0]);
-  let right_slope = (trusted_y[n - 1] - trusted_y[n - 1 - margin]) / (trusted_t[n - 1] - trusted_t[n - 1 - margin]);
+  // Slopes need only coordinate differences, so the relative grid origin is immaterial: adjacent
+  // trusted points are `dx` apart and the secant spans `margin` cells.
+  let left_slope = (trusted_y[margin] - trusted_y[0]) / (margin as f64 * dx);
+  let right_slope = (trusted_y[n - 1] - trusted_y[n - 1 - margin]) / (margin as f64 * dx);
 
-  let mut nl = Array1::from_elem(conv.len(), f64::INFINITY);
+  // Extend a side only where the tail decays away from support and untrusted samples remain to
+  // cover; otherwise crop at the bulk edge.
+  let left_start = if first > 0 && left_slope < 0.0 { 0 } else { first };
+  let right_end = if last + 1 < conv.len() && right_slope > 0.0 {
+    conv.len() - 1
+  } else {
+    last
+  };
+
+  let mut neg_log = Array1::<f64>::zeros(right_end - left_start + 1);
   for i in first..=last {
-    nl[i] = -conv[i].ln();
+    neg_log[i - left_start] = trusted_y[i - first];
   }
-  if left_slope < 0.0 {
-    for i in 0..first {
-      nl[i] = trusted_y[0] + left_slope * (t[i] - trusted_t[0]);
-    }
+  for i in left_start..first {
+    neg_log[i - left_start] = trusted_y[0] + left_slope * ((i as f64 - first as f64) * dx);
   }
-  if right_slope > 0.0 {
-    for i in (last + 1)..conv.len() {
-      nl[i] = trusted_y[n - 1] + right_slope * (t[i] - trusted_t[n - 1]);
-    }
+  for i in (last + 1)..=right_end {
+    neg_log[i - left_start] = trusted_y[n - 1] + right_slope * ((i as f64 - last as f64) * dx);
   }
-  Ok(Some(nl))
+
+  Ok(Some(ReconstructedConv {
+    start_offset: left_start,
+    neg_log,
+  }))
 }

@@ -237,11 +237,12 @@ mod tests {
 
     let actual = distribution_convolution(&a, &b).unwrap();
 
-    let expected_x = array![0.0, 1.0, 2.0, 3.0];
+    // Shared log-space peak-normalization and the plain-space FFT add ULP-level round-trip noise to
+    // the plain result. Compare the grid exactly and the amplitudes at a tight tolerance.
+    let expected_t = array![0.0, 1.0, 2.0, 3.0];
     let expected_y = array![0.5, 2.0, 2.0, 0.5];
-    let expected = Distribution::function(expected_x, expected_y).unwrap();
-
-    assert_eq!(expected, actual);
+    assert_eq!(expected_t, actual.t());
+    pretty_assert_abs_diff_eq!(expected_y, actual.y(), epsilon = 1e-12);
   }
 
   #[test]
