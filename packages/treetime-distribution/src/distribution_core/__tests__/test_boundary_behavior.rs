@@ -8,7 +8,7 @@ mod tests {
   use eyre::Report;
   use ndarray::array;
   use rstest::rstest;
-  use treetime_grid::BoundaryBehavior;
+  use treetime_grid::{BoundaryBehavior, SoftTailLaw};
   use treetime_utils::assert_error;
 
   type DistFnPlain = DistributionFunction<f64, Plain>;
@@ -84,6 +84,10 @@ mod tests {
   #[case::hard_right(    ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Hard(None)),     None)]
   #[case::constant_left( (-1.0, BoundaryBehavior::Constant, BoundaryBehavior::Error),    Some(2.0))]
   #[case::constant_right(( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Constant), Some(6.0))]
+  // Soft Linear tail: the function continues, so the product is non-empty. The right edge value
+  // is 3.0 at x_max=2.0, so the tail at t=3.0 is 3.0*exp(-slope) and the product is 2.0 times it.
+  #[case::linear_some_right(( 3.0, BoundaryBehavior::Error, BoundaryBehavior::Linear(Some(SoftTailLaw { slope: 1.0 }))), Some(6.0 * std::f64::consts::E.powf(-1.0)))]
+  #[case::linear_none_right(( 3.0, BoundaryBehavior::Error, BoundaryBehavior::Linear(None)), Some(6.0))]
   #[trace]
   fn test_boundary_multiply_point_function_outside_support(
     #[case] (t, left, right): (f64, BoundaryBehavior, BoundaryBehavior),
@@ -96,10 +100,31 @@ mod tests {
     let point = Distribution::point(t, 2.0);
 
     let actual = distribution_multiplication(&point, &function)?;
-    // Oracle: kb/decisions/distribution-tails-and-arithmetic.md#L74-L84 defines Constant
-    // as evaluable outside the grid and Hard/Error as carrying no product there.
+    // Oracle: kb/decisions/distribution-tails-and-arithmetic.md defines soft tails as evaluable
+    // outside the grid and Hard/Error as carrying no product there. Linear is a soft tail, so it
+    // extends; its value is SoftTailLaw's exponential p_edge*exp(-slope*(t-t_edge)).
     let expected = expected_amplitude.map_or_else(Distribution::empty, |amplitude| Distribution::point(t, amplitude));
     assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_boundary_multiply_composes_linear_tail_slopes() -> Result<(), Report> {
+    // Two functions on the same support, each with a right soft tail. Multiplication is addition
+    // in neg-log space, so the product's right tail decays with the sum of the two slopes,
+    // anchored on the product's own right edge value.
+    let (slope_a, slope_b) = (0.6, 0.9);
+    let fa: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![4.0, 3.0, 2.0])?
+      .with_right_extrap(BoundaryBehavior::Linear(Some(SoftTailLaw { slope: slope_a })))?;
+    let fb: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 1.5, 2.5])?
+      .with_right_extrap(BoundaryBehavior::Linear(Some(SoftTailLaw { slope: slope_b })))?;
+
+    let product = distribution_multiplication(&Distribution::Function(fa), &Distribution::Function(fb))?;
+
+    // The product's right edge value is 2.0 * 2.5 = 5.0 at x_max = 2.0. Evaluated 0.5 beyond the
+    // edge, the composed tail is 5.0 * exp(-(slope_a + slope_b) * 0.5).
+    let expected = 5.0 * (-(slope_a + slope_b) * 0.5_f64).exp();
+    assert_ulps_eq!(expected, product.eval(2.5)?, max_ulps = 8);
     Ok(())
   }
 
