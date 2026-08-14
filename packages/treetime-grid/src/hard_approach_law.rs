@@ -113,7 +113,12 @@ impl HardApproachLaw {
         return None;
       }
 
-      Some(HardApproachLaw { t_hard, a, b, slope: 0.0 })
+      Some(HardApproachLaw {
+        t_hard,
+        a,
+        b,
+        slope: 0.0,
+      })
     } else {
       // Linear case (n = 0 mutations). Refit on (t, y_stored) to recover the exact linear form.
       let (ts, ys): (Vec<f64>, Vec<f64>) = points.into_iter().unzip();
@@ -124,7 +129,12 @@ impl HardApproachLaw {
         return None;
       }
 
-      Some(HardApproachLaw { t_hard, a, b: 0.0, slope })
+      Some(HardApproachLaw {
+        t_hard,
+        a,
+        b: 0.0,
+        slope,
+      })
     }
   }
 

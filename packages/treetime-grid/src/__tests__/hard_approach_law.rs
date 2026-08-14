@@ -293,16 +293,13 @@ mod tests {
   #[test]
   fn test_gridfn_hard_approach_linear_left() -> Result<(), Report> {
     // Grid [0.1, 0.5], left hard boundary at t=0, linear approach y = 2*t.
-    let grid = GridFn::from_range_values(
-      (0.1, 0.5),
-      ndarray::array![0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-    )?
-    .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw {
-      t_hard: 0.0,
-      a: 0.0,
-      b: 0.0,
-      slope: 2.0,
-    })));
+    let grid = GridFn::from_range_values((0.1, 0.5), ndarray::array![0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])?
+      .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw {
+        t_hard: 0.0,
+        a: 0.0,
+        b: 0.0,
+        slope: 2.0,
+      })));
 
     // In the gap: y(0.05) = 0 + 2*0.05 = 0.1
     assert_abs_diff_eq!(0.1, grid.interp(0.05)?, epsilon = 1e-14);
