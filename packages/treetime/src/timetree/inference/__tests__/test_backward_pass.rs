@@ -6,6 +6,7 @@ mod tests {
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use eyre::Report;
+  use ndarray::Array1;
   use ndarray::array;
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
@@ -442,6 +443,129 @@ mod tests {
     Ok(())
   }
 
+  /// Three children whose backward messages are gridded `Function` distributions on a shared grid.
+  /// A zero-length branch makes each message equal to its child's distribution, so the fold reduces
+  /// to a pure sum and the result can be checked against a hand-computed elementwise sum -- an
+  /// independent oracle, not the previous per-child implementation. The fold must (1) resample onto
+  /// one common working grid (the shared grid here) and (2) add the neg-log ordinates, then
+  /// re-window once by subtracting the peak ordinate.
+  #[test]
+  fn test_backward_pass_sums_function_children_on_common_grid() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.0,B:0.0,C:0.0)I:1.0)root;")?;
+    let a = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    let b = find_node_key_by_name(&graph, "B").expect("leaf B not found");
+    let c = find_node_key_by_name(&graph, "C").expect("leaf C not found");
+
+    let x = Array1::linspace(2000.0, 2010.0, 11);
+    let ya = gaussian_neglog(&x, 2002.0, 1.0);
+    let yb = gaussian_neglog(&x, 2008.0, 1.0);
+    let yc = gaussian_neglog(&x, 2005.0, 2.0);
+    set_leaf_function(&graph, a, &x, ya.clone())?;
+    set_leaf_function(&graph, b, &x, yb.clone())?;
+    set_leaf_function(&graph, c, &x, yc.clone())?;
+    set_edge_branch_dist(&graph, a, 0.0);
+    set_edge_branch_dist(&graph, b, 0.0);
+    set_edge_branch_dist(&graph, c, 0.0);
+
+    propagate_distributions_backward(&graph, None)?;
+
+    let internal = find_node_key_by_name(&graph, "I").expect("internal node I not found");
+    let node = graph.get_node(internal).expect("internal I exists");
+    let payload = node.read_arc().payload().read_arc();
+    let dist = payload
+      .time_distribution()
+      .as_ref()
+      .expect("internal node should have a time distribution");
+
+    // The stored distribution lives on the single common working grid (the shared child grid).
+    pretty_assert_ulps_eq!(dist.t(), x, max_ulps = 4);
+
+    // Oracle: the neg-log fold is the elementwise sum of the messages, canonicalized by subtracting
+    // its own minimum (the single re-window). Hand-computed, independent of the folded code path.
+    let summed = &ya + &yb + &yc;
+    let peak = summed.iter().copied().fold(f64::INFINITY, f64::min);
+    let expected = summed.mapv(|v| v - peak);
+    pretty_assert_ulps_eq!(dist.y(), expected, max_ulps = 8);
+
+    Ok(())
+  }
+
+  /// A fan-out node's folded distribution must not depend on the order its children are visited.
+  /// The same three Function messages folded from two different child orderings must agree; the old
+  /// per-child multiply-and-resample fold did not, because each step resampled the accumulator.
+  #[test]
+  fn test_backward_pass_fan_out_result_independent_of_child_order() -> Result<(), Report> {
+    let x = Array1::linspace(2000.0, 2010.0, 11);
+    let ya = gaussian_neglog(&x, 2002.0, 1.0);
+    let yb = gaussian_neglog(&x, 2008.0, 1.0);
+    let yc = gaussian_neglog(&x, 2005.0, 2.0);
+
+    let fold_in_order = |newick: &str| -> Result<(Array1<f64>, f64), Report> {
+      let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>(newick)?;
+      for (name, y) in [("A", &ya), ("B", &yb), ("C", &yc)] {
+        let key = find_node_key_by_name(&graph, name).expect("leaf not found");
+        set_leaf_function(&graph, key, &x, y.clone())?;
+        set_edge_branch_dist(&graph, key, 0.0);
+      }
+      propagate_distributions_backward(&graph, None)?;
+      let internal = find_node_key_by_name(&graph, "I").expect("internal node I not found");
+      let node = graph.get_node(internal).expect("internal I exists");
+      let payload = node.read_arc().payload().read_arc();
+      let dist = payload
+        .time_distribution()
+        .as_ref()
+        .expect("internal node should have a time distribution");
+      Ok((
+        dist.y(),
+        dist.likely_time().expect("distribution should have a likely_time"),
+      ))
+    };
+
+    let (y_abc, peak_abc) = fold_in_order("((A:0.0,B:0.0,C:0.0)I:1.0)root;")?;
+    let (y_cab, peak_cab) = fold_in_order("((C:0.0,A:0.0,B:0.0)I:1.0)root;")?;
+
+    pretty_assert_ulps_eq!(y_abc, y_cab, max_ulps = 8);
+    pretty_assert_ulps_eq!(peak_abc, peak_cab, max_ulps = 4);
+
+    Ok(())
+  }
+
+  /// The product of Gaussian likelihoods is Gaussian with the precision-weighted mean of the
+  /// operands. In neg-log space each message is a parabola, and the folded peak must sit at that
+  /// weighted mean -- an independent analytic oracle for the summed fold.
+  #[test]
+  fn test_backward_pass_function_children_peak_at_precision_weighted_mean() -> Result<(), Report> {
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.0,B:0.0,C:0.0)I:1.0)root;")?;
+    let a = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    let b = find_node_key_by_name(&graph, "B").expect("leaf B not found");
+    let c = find_node_key_by_name(&graph, "C").expect("leaf C not found");
+
+    let x = Array1::linspace(2000.0, 2010.0, 11);
+    // means 2002, 2008, 2005 with precisions 1, 1, 2:
+    // weighted mean = (2002 + 2008 + 2*2005) / 4 = 2005, which is a grid point.
+    set_leaf_function(&graph, a, &x, gaussian_neglog(&x, 2002.0, 1.0))?;
+    set_leaf_function(&graph, b, &x, gaussian_neglog(&x, 2008.0, 1.0))?;
+    set_leaf_function(&graph, c, &x, gaussian_neglog(&x, 2005.0, 2.0))?;
+    set_edge_branch_dist(&graph, a, 0.0);
+    set_edge_branch_dist(&graph, b, 0.0);
+    set_edge_branch_dist(&graph, c, 0.0);
+
+    propagate_distributions_backward(&graph, None)?;
+
+    let internal = find_node_key_by_name(&graph, "I").expect("internal node I not found");
+    let node = graph.get_node(internal).expect("internal I exists");
+    let payload = node.read_arc().payload().read_arc();
+    let likely_time = payload
+      .time_distribution()
+      .as_ref()
+      .and_then(|dist| dist.likely_time())
+      .expect("internal node should have a time distribution with a likely_time");
+
+    pretty_assert_ulps_eq!(likely_time, 2005.0, max_ulps = 4);
+
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
     use treetime_graph::graph::Graph;
@@ -476,6 +600,27 @@ mod tests {
             .set_branch_length_distribution(Some(Arc::new(Distribution::point(bl, 0.0))));
         }
       }
+    }
+
+    /// A Gaussian likelihood stored in neg-log space is a parabola: `y(t) = precision*(t-mean)^2/2`.
+    /// Its peak (the smallest ordinate) sits at `mean`, and a product of such messages is Gaussian
+    /// with the precision-weighted mean.
+    pub(super) fn gaussian_neglog(x: &Array1<f64>, mean: f64, precision: f64) -> Array1<f64> {
+      x.mapv(|t| 0.5 * precision * (t - mean).powi(2))
+    }
+
+    /// Give a leaf a gridded `Function` time distribution so that its backward message is a
+    /// `Function` (the operand kind that the common-grid fold must resample and add).
+    pub(super) fn set_leaf_function(
+      graph: &Graph<NodeTimetree, EdgeTimetree, ()>,
+      key: GraphNodeKey,
+      x: &Array1<f64>,
+      y: Array1<f64>,
+    ) -> Result<(), Report> {
+      let dist = Distribution::function(x.clone(), y)?;
+      let node = graph.get_node(key).expect("node exists");
+      node.read_arc().payload().write_arc().time_distribution = Some(Arc::new(dist));
+      Ok(())
     }
 
     pub(super) fn coalescent_model(tc: f64) -> Result<CoalescentModel, Report> {
