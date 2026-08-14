@@ -1,6 +1,7 @@
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
+use crate::timetree::inference::tail_fit::fit_message_soft_tail;
 use eyre::Report;
 use std::cmp::Ordering;
 use std::sync::Arc;
@@ -131,10 +132,14 @@ where
   {
     let negated_branch_dist = branch_dist.negate()?;
     // Tail policy for the backward message (kb/decisions/distribution-tails-and-arithmetic.md).
-    // The parent could be arbitrarily far in the past, so the left tail is Constant; the
-    // child's sampling date is a hard upper bound on the parent's age, so the right tail is Hard.
-    let parent_message = distribution_convolution(node_time_dist.as_ref(), &negated_branch_dist)?
-      .with_left_extrap(BoundaryBehavior::Constant)?
+    // The parent could be arbitrarily far in the past, so the left side is soft: a fitted log-linear
+    // Linear tail that decays with finite mass. A flat Constant tail is non-integrable and corrupts
+    // the quantile and HPD integrals, so it is retired here. The child's sampling date is a hard
+    // upper bound on the parent's age, so the right tail stays Hard.
+    let message = distribution_convolution(node_time_dist.as_ref(), &negated_branch_dist)?;
+    let left_tail = fit_message_soft_tail(&message, Side::Left)?;
+    let parent_message = message
+      .with_left_extrap(left_tail)?
       .with_right_extrap(BoundaryBehavior::Hard)?;
     edge.set_msg_to_parent(Some(Arc::new(parent_message)));
   }
@@ -314,8 +319,9 @@ fn is_restricting(tail: BoundaryBehavior) -> bool {
 /// which is fit from the summed data on `side` -- a grid too degenerate to fit is an error rather
 /// than a silent flat fallback.
 ///
-/// Today's backward messages are `Constant` on the left and `Hard` on the right, so the soft-fit
-/// branch is not reached; it is the correct behavior once the passes attach `Linear` tails.
+/// Backward messages carry a fitted `Linear` tail on the left (soft) side and `Hard` on the right,
+/// so a fan-in of such messages reaches the soft-fit branch here and re-fits the summed left tail
+/// from the combined grid; the right side stays `Hard`.
 fn derive_summed_tail(
   tails: impl Iterator<Item = BoundaryBehavior>,
   summed: &GridFn<f64>,

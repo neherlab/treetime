@@ -1,5 +1,6 @@
 use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
+use crate::timetree::inference::tail_fit::fit_message_soft_tail;
 use eyre::Report;
 use log::{Level, debug, log_enabled, warn};
 use std::sync::Arc;
@@ -13,6 +14,7 @@ use treetime_distribution::distribution_multiplication;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
+use treetime_grid::Side;
 
 pub fn propagate_distributions_forward<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
 where
@@ -224,11 +226,14 @@ where
       let parent_except_subtree = restrict_to_reachable(parent_except_subtree, subtree_dist, branch_dist)?;
 
       // Tail policy for the forward message (kb/decisions/distribution-tails-and-arithmetic.md).
-      // The parent's time is a hard lower bound (left tail Hard); there is no upper bound from
-      // the parent side on how far in the future the node could be (right tail Constant).
-      let dist_from_parent = distribution_convolution(&parent_except_subtree, branch_dist)?
+      // The parent's time is a hard lower bound (left tail Hard). There is no upper bound from the
+      // parent side on how far in the future the node could be, so the right side is soft: a fitted
+      // log-linear Linear tail with finite mass, replacing the non-integrable flat Constant.
+      let forward_message = distribution_convolution(&parent_except_subtree, branch_dist)?;
+      let right_tail = fit_message_soft_tail(&forward_message, Side::Right)?;
+      let dist_from_parent = forward_message
         .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Constant)?;
+        .with_right_extrap(right_tail)?;
       // Re-anchor the peak to 0. Under NegLog normalize() subtracts the minimum ordinate (an exact
       // shift): the backward pass stores peak-at-0 distributions, while convolution and division
       // leave an arbitrary ordinate offset, so this restores the convention without changing shape.
@@ -249,13 +254,14 @@ where
     } else if let (Some(parent_time_dist), Some(branch_dist)) =
       (parent.time_distribution(), edge.branch_length_distribution())
     {
-      // Same forward tail policy as the two-parent-message branch above. The forward message
-      // needs Hard left / Constant right regardless of the convolution's own tails, so apply
-      // them explicitly after normalize() (which preserves whatever tails it received).
-      let dist_from_parent = distribution_convolution(parent_time_dist, branch_dist)?
-        .normalize()
+      // Same forward tail policy as the two-parent-message branch above: Hard left, fitted Linear
+      // right. Fit after normalize(), a pure ordinate shift that preserves the grid the fit reads
+      // and leaves the slope unchanged (the soft-tail slope is shift-invariant).
+      let forward_message = distribution_convolution(parent_time_dist, branch_dist)?.normalize();
+      let right_tail = fit_message_soft_tail(&forward_message, Side::Right)?;
+      let dist_from_parent = forward_message
         .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(BoundaryBehavior::Constant)?;
+        .with_right_extrap(right_tail)?;
       log_refinement(&slot.node, parent_time_dist, &dist_from_parent);
       slot.node.set_time_distribution(Some(Arc::new(dist_from_parent)));
     }
