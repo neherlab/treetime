@@ -2,6 +2,9 @@ use crate::Distribution;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
+use crate::distribution_ops::multiply::{
+  HardDomain, distribution_hard_domain, guarded_empty_result, point_hard_domain, range_hard_domain,
+};
 use crate::distribution_ops::time_bounds::{
   SupportIntersection, distribution_support_intersection, distribution_support_n_points,
 };
@@ -43,9 +46,11 @@ pub fn distribution_division<Y: YAxisPolicy>(
     (Distribution::Function(_), Distribution::Formula(_)) => {
       make_error!("Cannot divide Function by Formula: operation not implemented")
     },
-    (Distribution::Empty, _) => {
-      Ok(Distribution::Empty) //
-    },
+    (Distribution::Empty, _) => guarded_empty_result(
+      "division",
+      distribution_hard_domain(dividend),
+      distribution_hard_domain(divisor),
+    ),
     (_, Distribution::Empty) => {
       make_error!("Cannot divide by empty distribution") //
     },
@@ -90,7 +95,11 @@ fn divide_point_by_function<Y: YAxisPolicy>(
   let result_value = Y::divide(dividend_value, safe_divisor_value);
 
   if !Y::is_defined(result_value) {
-    return Ok(Distribution::empty());
+    return guarded_empty_result(
+      "division",
+      Some(point_hard_domain(point)),
+      Some(division_divisor_domain(divisor)),
+    );
   }
 
   Ok(Distribution::point(t, result_value))
@@ -101,7 +110,11 @@ fn divide_range_by_function<Y: YAxisPolicy>(
   divisor: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
   match division_support_intersection((range.start(), range.end()), divisor) {
-    SupportIntersection::Disjoint => Ok(Distribution::empty()),
+    SupportIntersection::Disjoint => guarded_empty_result(
+      "division",
+      Some(range_hard_domain(range)),
+      Some(division_divisor_domain(divisor)),
+    ),
     SupportIntersection::Point(t) => Ok(Distribution::point(
       t,
       Y::divide(range.amplitude(), Y::safe_divisor(divisor.interp(t)?)),
@@ -123,7 +136,14 @@ fn divide_function_by_function<Y: YAxisPolicy>(
   divisor: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
   match division_support_intersection((dividend.x_min(), dividend.x_max()), divisor) {
-    SupportIntersection::Disjoint => Ok(Distribution::empty()),
+    SupportIntersection::Disjoint => guarded_empty_result(
+      "division",
+      Some((
+        (dividend.x_min(), dividend.x_max()),
+        (BoundaryBehavior::Error, BoundaryBehavior::Error),
+      )),
+      Some(division_divisor_domain(divisor)),
+    ),
     SupportIntersection::Point(t) => Ok(Distribution::point(
       t,
       Y::divide(dividend.interp(t)?, Y::safe_divisor(divisor.interp(t)?)),
@@ -159,4 +179,25 @@ fn division_support_intersection<Y: YAxisPolicy>(
     },
   );
   distribution_support_intersection(dividend_bounds, divisor_bounds)
+}
+
+/// The divisor's hard domain as division treats it, so [`guarded_empty_result`] reproduces exactly
+/// the disjointness decided by [`division_support_intersection`].
+///
+/// A side bounds the quotient only where the divisor is undefined beyond the grid edge (`Error`).
+/// Any other tail leaves the divisor defined-or-zero beyond (`Y::safe_divisor` absorbs the zero), so
+/// the quotient continues under the dividend and that side does not separate the domains -- modelled
+/// here as a soft (unbounded) boundary.
+fn division_divisor_domain<Y: YAxisPolicy>(divisor: &DistributionFunction<f64, Y>) -> HardDomain {
+  let bounding = |tail: BoundaryBehavior| {
+    if tail == BoundaryBehavior::Error {
+      BoundaryBehavior::Error
+    } else {
+      BoundaryBehavior::Constant
+    }
+  };
+  (
+    (divisor.x_min(), divisor.x_max()),
+    (bounding(divisor.left_extrap()), bounding(divisor.right_extrap())),
+  )
 }

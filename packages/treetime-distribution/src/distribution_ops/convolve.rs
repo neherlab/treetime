@@ -2,10 +2,12 @@ use crate::Distribution;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
+use crate::distribution_ops::multiply::{HardDomain, distribution_hard_domain, guarded_empty_result};
 use crate::policy::SupportsConvolution;
 use approx::ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, array, s};
+use treetime_grid::BoundaryBehavior;
 use treetime_ops::convolve_fft;
 use treetime_utils::array::ndarray::{has_uniform_spacing, max_or, min_or};
 use treetime_utils::make_error;
@@ -39,7 +41,7 @@ pub fn distribution_convolution<Y: SupportsConvolution>(
       make_error!("Cannot convolve Formula with Formula: operation not implemented")
     },
     (Distribution::Empty, _) | (_, Distribution::Empty) => {
-      Ok(Distribution::Empty) //
+      guarded_empty_result("convolution", distribution_hard_domain(a), distribution_hard_domain(b))
     },
     (Distribution::Point(a), Distribution::Point(b)) => {
       Ok(convolution_point_point::<Y>(a, b)) //
@@ -158,6 +160,21 @@ fn convolution_range_function<Y: SupportsConvolution>(
     .map(Distribution::Function)
 }
 
+/// Hard domain of a convolution operand for the empty-result guard: `None` when the operand carries
+/// no mass (a legitimately empty convolution), otherwise the whole real line.
+///
+/// Convolution is a Minkowski sum, not an intersection: it translates an operand's mass across the
+/// other operand's entire support, so two mass-bearing operands always jointly produce mass and are
+/// never disjoint. Modelling a mass-bearing operand as unbounded (soft on both sides) makes
+/// [`guarded_empty_result`] permit an empty result only when an operand itself is empty, and flag
+/// any other empty convolution as the numerical collapse it is.
+fn conv_operand_domain(has_mass: bool) -> Option<HardDomain> {
+  has_mass.then_some((
+    (f64::NEG_INFINITY, f64::INFINITY),
+    (BoundaryBehavior::Constant, BoundaryBehavior::Constant),
+  ))
+}
+
 // Numerical routine: `a`/`b` operands, `t` grid, `n` trusted-point count follow the
 // convolution/interpolation conventions used throughout this module.
 #[allow(clippy::many_single_char_names)]
@@ -166,7 +183,11 @@ fn convolution_function_function<Y: SupportsConvolution>(
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
   if a.is_empty() || b.is_empty() {
-    return Ok(Distribution::empty());
+    return guarded_empty_result(
+      "convolution",
+      conv_operand_domain(!a.is_empty()),
+      conv_operand_domain(!b.is_empty()),
+    );
   }
 
   let dx_a = a.dx();
@@ -179,7 +200,11 @@ fn convolution_function_function<Y: SupportsConvolution>(
   let a = a.resample_dx(dx)?;
   let b = b.resample_dx(dx)?;
   if a.is_empty() || b.is_empty() {
-    return Ok(Distribution::empty());
+    return guarded_empty_result(
+      "convolution",
+      conv_operand_domain(!a.is_empty()),
+      conv_operand_domain(!b.is_empty()),
+    );
   }
 
   if a.len() == 1 && b.len() == 1 {
@@ -195,7 +220,13 @@ fn convolution_function_function<Y: SupportsConvolution>(
   let (pa, peak_a) = to_peak_normalized_plain::<Y>(a.y());
   let (pb, peak_b) = to_peak_normalized_plain::<Y>(b.y());
   if !(peak_a.is_finite() && peak_b.is_finite()) {
-    return Ok(Distribution::empty());
+    // A non-finite peak means that operand has no mass (all ordinates underflow to zero), so the
+    // convolution is legitimately empty; the guard permits it via the massless operand.
+    return guarded_empty_result(
+      "convolution",
+      conv_operand_domain(peak_a.is_finite()),
+      conv_operand_domain(peak_b.is_finite()),
+    );
   }
 
   let conv = convolve_fft(dx, &pa, &pb)?;
@@ -203,7 +234,10 @@ fn convolution_function_function<Y: SupportsConvolution>(
   // The FFT is trustworthy only in the bulk; below the roundoff floor the far tails are
   // reconstructed by log-linear extrapolation (v0 `NodeInterpolator.convolve_fft`).
   let Some(reconstructed) = reconstruct_neg_log_tails(&conv, dx)? else {
-    return Ok(Distribution::empty());
+    // Both operands carry mass (finite peaks), so their convolution has mass: a collapse to empty
+    // here is numerical, never structural. Both operands are present (unbounded for the sum), so the
+    // guard reports the internal error rather than silently returning empty.
+    return guarded_empty_result("convolution", conv_operand_domain(true), conv_operand_domain(true));
   };
 
   // The raw convolution starts at `a.x_min() + b.x_min()`; the reconstruction crops leading

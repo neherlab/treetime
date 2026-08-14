@@ -20,9 +20,11 @@ pub fn distribution_multiplication<Y: YAxisPolicy>(
   b: &Distribution<Y>,
 ) -> Result<Distribution<Y>, Report> {
   match (a, b) {
-    (Distribution::Empty, _) | (_, Distribution::Empty) => {
-      Ok(Distribution::empty()) //
-    },
+    (Distribution::Empty, _) | (_, Distribution::Empty) => guarded_empty_result(
+      "multiplication",
+      distribution_hard_domain(a),
+      distribution_hard_domain(b),
+    ),
     (Distribution::Point(a), Distribution::Point(b)) => {
       multiply_point_point::<Y>(a, b) //
     },
@@ -62,7 +64,7 @@ fn multiply_point_point<Y: YAxisPolicy>(
 ) -> Result<Distribution<Y>, Report> {
   const EPS: f64 = 1e-9;
   if (a.t() - b.t()).abs() > EPS {
-    return Ok(Distribution::empty());
+    return guarded_empty_result("multiplication", Some(point_hard_domain(a)), Some(point_hard_domain(b)));
   }
   let amplitude = Y::multiply(a.amplitude(), b.amplitude());
   Ok(Distribution::point(a.t(), amplitude))
@@ -75,7 +77,11 @@ fn multiply_point_range<Y: YAxisPolicy>(
   const EPS: f64 = 1e-9;
   let t = point.t();
   if t < range.start() - EPS || t > range.end() + EPS {
-    return Ok(Distribution::empty());
+    return guarded_empty_result(
+      "multiplication",
+      Some(point_hard_domain(point)),
+      Some(range_hard_domain(range)),
+    );
   }
   let amplitude = Y::multiply(point.amplitude(), range.amplitude());
   Ok(Distribution::point(t, amplitude))
@@ -98,13 +104,21 @@ fn multiply_point_function<Y: YAxisPolicy>(
     // so the point picks up a finite value. Beyond a hard boundary (`Hard`) or an undeclared one
     // (`Error`) the function carries no probability there and the product is empty.
     if !tail.is_soft() {
-      return Ok(Distribution::empty());
+      return guarded_empty_result(
+        "multiplication",
+        Some(point_hard_domain(point)),
+        Some(function_hard_domain(func)),
+      );
     }
   }
   let func_value = func.interp(t)?;
   let amplitude = Y::multiply(point.amplitude(), func_value);
   if !Y::is_defined(amplitude) {
-    return Ok(Distribution::empty());
+    return guarded_empty_result(
+      "multiplication",
+      Some(point_hard_domain(point)),
+      Some(function_hard_domain(func)),
+    );
   }
   Ok(Distribution::point(t, amplitude))
 }
@@ -117,7 +131,7 @@ fn multiply_range_range<Y: YAxisPolicy>(
   let overlap_end = a.end().min(b.end());
 
   if overlap_start >= overlap_end {
-    return Ok(Distribution::empty());
+    return guarded_empty_result("multiplication", Some(range_hard_domain(a)), Some(range_hard_domain(b)));
   }
 
   let amplitude = Y::multiply(a.amplitude(), b.amplitude());
@@ -133,7 +147,9 @@ fn multiply_range_function<Y: YAxisPolicy>(
   let b_bounds = (func.x_min(), func.x_max());
   let b_tails = (func.left_extrap(), func.right_extrap());
   match multiplication_support_intersection(a_bounds, a_tails, b_bounds, b_tails) {
-    SupportIntersection::Disjoint => multiplication_empty_result(a_bounds, a_tails, b_bounds, b_tails),
+    SupportIntersection::Disjoint => {
+      guarded_empty_result("multiplication", Some((a_bounds, a_tails)), Some((b_bounds, b_tails)))
+    },
     SupportIntersection::Point(t) => {
       let amplitude = Y::multiply(range.amplitude(), func.interp(t)?);
       Ok(Distribution::point(t, amplitude))
@@ -164,7 +180,9 @@ fn multiply_function_function<Y: YAxisPolicy>(
   let b_bounds = (b.x_min(), b.x_max());
   let b_tails = (b.left_extrap(), b.right_extrap());
   match multiplication_support_intersection(a_bounds, a_tails, b_bounds, b_tails) {
-    SupportIntersection::Disjoint => multiplication_empty_result(a_bounds, a_tails, b_bounds, b_tails),
+    SupportIntersection::Disjoint => {
+      guarded_empty_result("multiplication", Some((a_bounds, a_tails)), Some((b_bounds, b_tails)))
+    },
     SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.interp(t)?, b.interp(t)?))),
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, a.dx().min(b.dx()))?;
@@ -192,7 +210,11 @@ fn multiply_formula_formula<Y: YAxisPolicy>(
   let overlap_max = a.t_max().min(b.t_max());
 
   if overlap_min >= overlap_max {
-    return Ok(Distribution::empty());
+    return guarded_empty_result(
+      "multiplication",
+      Some(formula_hard_domain(a)),
+      Some(formula_hard_domain(b)),
+    );
   }
 
   let n_points = FORMULA_GRID_SIZE;
@@ -218,7 +240,9 @@ fn multiply_formula_function<Y: YAxisPolicy>(
   let b_bounds = (b.x_min(), b.x_max());
   let b_tails = (b.left_extrap(), b.right_extrap());
   match multiplication_support_intersection(a_bounds, a_tails, b_bounds, b_tails) {
-    SupportIntersection::Disjoint => multiplication_empty_result(a_bounds, a_tails, b_bounds, b_tails),
+    SupportIntersection::Disjoint => {
+      guarded_empty_result("multiplication", Some((a_bounds, a_tails)), Some((b_bounds, b_tails)))
+    },
     SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.eval_single(t)?, b.interp(t)?))),
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, b.dx())?;
@@ -247,14 +271,22 @@ fn multiply_formula_point<Y: YAxisPolicy>(
   let t = b.t();
 
   if t < a.t_min() - EPS || t > a.t_max() + EPS {
-    return Ok(Distribution::empty());
+    return guarded_empty_result(
+      "multiplication",
+      Some(formula_hard_domain(a)),
+      Some(point_hard_domain(b)),
+    );
   }
 
   let va = a.eval_single(t)?;
   let amplitude = Y::multiply(va, b.amplitude());
 
   if !Y::is_defined(amplitude) {
-    return Ok(Distribution::empty());
+    return guarded_empty_result(
+      "multiplication",
+      Some(formula_hard_domain(a)),
+      Some(point_hard_domain(b)),
+    );
   }
 
   Ok(Distribution::point(t, amplitude))
@@ -268,7 +300,11 @@ fn multiply_formula_range<Y: YAxisPolicy>(
   let overlap_max = a.t_max().min(b.end());
 
   if overlap_min >= overlap_max {
-    return Ok(Distribution::empty());
+    return guarded_empty_result(
+      "multiplication",
+      Some(formula_hard_domain(a)),
+      Some(range_hard_domain(b)),
+    );
   }
 
   let b_amplitude = b.amplitude();
@@ -393,37 +429,77 @@ fn multiplication_support_intersection(
   distribution_support_intersection(a_eval, b_eval)
 }
 
-/// Produce the `Empty` result of a Function-producing multiplication, checking that it is
-/// legitimate.
+/// A distribution's hard support domain: grid bounds `(lo, hi)` and the boundary behavior on each
+/// side. `None` (see [`distribution_hard_domain`]) denotes an empty support -- the empty set, which
+/// is disjoint from every domain.
+pub type HardDomain = ((f64, f64), (BoundaryBehavior, BoundaryBehavior));
+
+/// Hard domain of a point mass: the single point `t`, hard on both sides.
+pub fn point_hard_domain<Y: YAxisPolicy>(p: &DistributionPoint<f64, Y>) -> HardDomain {
+  ((p.t(), p.t()), (BoundaryBehavior::Error, BoundaryBehavior::Error))
+}
+
+/// Hard domain of a range: its finite support, hard on both sides.
+pub fn range_hard_domain<Y: YAxisPolicy>(r: &DistributionRange<f64, Y>) -> HardDomain {
+  ((r.start(), r.end()), (BoundaryBehavior::Error, BoundaryBehavior::Error))
+}
+
+/// Hard domain of a function: its grid bounds and the declared per-side tail behavior.
+pub fn function_hard_domain<Y: YAxisPolicy>(f: &DistributionFunction<f64, Y>) -> HardDomain {
+  ((f.x_min(), f.x_max()), (f.left_extrap(), f.right_extrap()))
+}
+
+/// Hard domain of a formula: its evaluable range, hard on both sides.
+pub fn formula_hard_domain<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> HardDomain {
+  (
+    (f.t_min(), f.t_max()),
+    (BoundaryBehavior::Error, BoundaryBehavior::Error),
+  )
+}
+
+/// Hard support domain of a distribution, or `None` when its support is empty.
 ///
-/// A product is `Empty` only when the operands' *hard* domains are genuinely disjoint: a hard
-/// boundary is a fact about a distribution (probability is zero, or evaluation undefined, beyond
-/// it), so two distributions whose hard domains do not overlap cannot both be non-zero anywhere.
-/// A soft boundary never separates domains -- the distribution continues past it under its tail
-/// law -- so an `Empty` that disjoint hard domains do not explain is a numerical or logic
-/// collapse. In the timetree passes such an `Empty` silently poisons every ancestor to the root
-/// (the original motivating defect), so it is reported as an internal error rather than returned.
-fn multiplication_empty_result<Y: YAxisPolicy>(
-  a_bounds: (f64, f64),
-  a_tails: (BoundaryBehavior, BoundaryBehavior),
-  b_bounds: (f64, f64),
-  b_tails: (BoundaryBehavior, BoundaryBehavior),
+/// An empty support has no bounds and is disjoint from every other domain, so `None` marks the
+/// legitimate-empty case for [`guarded_empty_result`].
+pub fn distribution_hard_domain<Y: YAxisPolicy>(d: &Distribution<Y>) -> Option<HardDomain> {
+  match d {
+    Distribution::Empty => None,
+    Distribution::Point(p) => Some(point_hard_domain(p)),
+    Distribution::Range(r) => Some(range_hard_domain(r)),
+    Distribution::Formula(f) => Some(formula_hard_domain(f)),
+    Distribution::Function(f) => (!f.is_empty()).then(|| function_hard_domain(f)),
+  }
+}
+
+/// Produce a guarded `Empty` result, verifying that the emptiness is legitimate.
+///
+/// `Distribution::Empty` must be reachable only from genuinely disjoint hard domains, or from an
+/// operand whose support is already empty (`None`). A hard boundary is a fact about a distribution
+/// (probability is zero, or evaluation undefined, beyond it), so two distributions whose hard
+/// domains do not overlap cannot both carry mass anywhere; a soft boundary never separates domains,
+/// because the distribution continues past it under its tail law. An `Empty` that disjoint hard
+/// domains do not explain is a numerical or logic collapse. In the timetree passes such an `Empty`
+/// silently poisons every ancestor to the root (the original motivating defect), so it is reported
+/// as an internal error rather than returned. `operation` names the operation for the diagnostic.
+pub fn guarded_empty_result<Y: YAxisPolicy>(
+  operation: &str,
+  a: Option<HardDomain>,
+  b: Option<HardDomain>,
 ) -> Result<Distribution<Y>, Report> {
-  if hard_domains_disjoint(a_bounds, a_tails, b_bounds, b_tails) {
+  let disjoint = match (a, b) {
+    // An operand with empty support contributes the empty set, disjoint from every domain.
+    (None, _) | (_, None) => true,
+    (Some((a_bounds, a_tails)), Some((b_bounds, b_tails))) => {
+      hard_domains_disjoint(a_bounds, a_tails, b_bounds, b_tails)
+    },
+  };
+  if disjoint {
     Ok(Distribution::empty())
   } else {
     make_internal_error!(
-      "Multiplication produced an empty result, but the operands' hard domains overlap: \
-       operand A grid [{}, {}] tails ({:?}, {:?}), operand B grid [{}, {}] tails ({:?}, {:?}). \
-       An empty product must arise only from genuinely disjoint hard domains, never from numerical collapse",
-      a_bounds.0,
-      a_bounds.1,
-      a_tails.0,
-      a_tails.1,
-      b_bounds.0,
-      b_bounds.1,
-      b_tails.0,
-      b_tails.1
+      "{operation} produced an empty result, but the operands' hard domains overlap: \
+       operand A {a:?}, operand B {b:?}. An empty result must arise only from genuinely disjoint \
+       hard domains, never from numerical collapse"
     )
   }
 }
