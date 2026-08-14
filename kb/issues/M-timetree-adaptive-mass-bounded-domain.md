@@ -23,7 +23,7 @@ The soft-tail and hard-approach mass integrals are closed form, so the quantile 
 
 ## Impact
 
-The finite window was never the correctness bug (the boundary semantics were), but a mass-bounded domain removes the tuned `5 *` multiple and makes the grid a deliberate mass target rather than a support. This is proposal step 7 and depends on the common-grid backward pass ([M-timetree-backward-pass-common-grid-addition.md](M-timetree-backward-pass-common-grid-addition.md)) and the integrable soft tail ([N-timetree-passes-omit-integrable-linear-soft-tail.md](N-timetree-passes-omit-integrable-linear-soft-tail.md)).
+The finite window was never the correctness bug (the boundary semantics were), but a mass-bounded domain removes the tuned `5 *` multiple and makes the grid a deliberate mass target rather than a support. This is proposal step 7. The common-grid backward pass it builds on is implemented; it still depends on the integrable soft tail ([N-timetree-passes-omit-integrable-linear-soft-tail.md](N-timetree-passes-omit-integrable-linear-soft-tail.md)).
 
 ## Related
 
