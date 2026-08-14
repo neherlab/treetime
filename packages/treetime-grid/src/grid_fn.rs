@@ -46,6 +46,19 @@ pub struct GridFn<T: InterpElem> {
 }
 
 impl<T: InterpElem> GridFn<T> {
+  /// Construct a fresh grid function from a grid and matching y-array.
+  ///
+  /// Both tails default to [`BoundaryBehavior::Error`]: a raw grid and y-array carry no declared
+  /// out-of-support policy, so evaluating beyond the grid is a programming error until a caller
+  /// opts in with [`Self::with_left_extrap`] / [`Self::with_right_extrap`]. Defaulting to a soft
+  /// tail here would fabricate a boundary law the data never declared and silently corrupt the
+  /// quantile and HPD integrals that depend on the declared tail.
+  ///
+  /// This is the *fresh-construction* entry point. Regridding an existing function is different:
+  /// the per-side policy and any fitted boundary law are properties of the distribution, not of
+  /// the grid, so they must survive every regrid. That carry lives in [`Self::regridded`], which
+  /// every regridding method routes through, so a regrid can never silently drop the policy by
+  /// forgetting to re-apply it.
   pub fn from_grid_array(grid: Grid<T>, y: Array1<T>) -> Result<Self, Report> {
     if grid.n_points() != y.len() {
       return make_error!(
@@ -60,6 +73,28 @@ impl<T: InterpElem> GridFn<T> {
       left_extrap: BoundaryBehavior::default(),
       right_extrap: BoundaryBehavior::default(),
     })
+  }
+
+  /// Rebuild this function on a new grid and y-array, carrying the per-side boundary policy and
+  /// any fitted boundary law across the regrid.
+  ///
+  /// [`Self::from_grid_array`] deliberately resets both tails to [`BoundaryBehavior::Error`]
+  /// because it constructs a fresh function. Regridding is the opposite case: the declared domain
+  /// (hard versus soft) and the fitted [`SoftTailLaw`] / [`HardApproachLaw`] describe the
+  /// distribution, not the grid, so they must be preserved. Centralizing the carry here makes
+  /// preservation structural: every regridding method (`resample`, and any future addition)
+  /// builds through this helper and therefore cannot lose the policy.
+  ///
+  /// A hard approach law carries an absolute anchor, so it stays valid verbatim across a regrid.
+  /// A soft-tail law is anchored to the live grid edge and reads the resampled edge ordinate on
+  /// evaluation, so it too stays valid without refitting. Refitting is required only after
+  /// operations that change the tail's shape (convolution), never after a pure regrid.
+  fn regridded(&self, grid: Grid<T>, y: Array1<T>) -> Result<Self, Report> {
+    Ok(
+      Self::from_grid_array(grid, y)?
+        .with_left_extrap(self.left_extrap)
+        .with_right_extrap(self.right_extrap),
+    )
   }
 
   /// Set the out-of-support behavior for the left (below `x_min`) tail.
@@ -518,12 +553,7 @@ impl<T: InterpElem> GridFn<T> {
     let y_new = (0..n_points)
       .map(|i| self.interp(grid.x_at(i)))
       .collect::<Result<Vec<T>, Report>>()?;
-    let resampled = Self::from_grid_array(*grid, Array1::from_vec(y_new))?;
-    Ok(
-      resampled
-        .with_left_extrap(self.left_extrap)
-        .with_right_extrap(self.right_extrap),
-    )
+    self.regridded(*grid, Array1::from_vec(y_new))
   }
 
   /// Resamples function to a new uniform grid with specified start, spacing, and length
