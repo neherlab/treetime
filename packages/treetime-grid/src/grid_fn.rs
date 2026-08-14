@@ -85,10 +85,10 @@ impl<T: InterpElem> GridFn<T> {
   /// preservation structural: every regridding method (`resample`, and any future addition)
   /// builds through this helper and therefore cannot lose the policy.
   ///
-  /// A hard approach law carries an absolute anchor, so it stays valid verbatim across a regrid.
-  /// A soft-tail law is anchored to the live grid edge and reads the resampled edge ordinate on
-  /// evaluation, so it too stays valid without refitting. Refitting is required only after
-  /// operations that change the tail's shape (convolution), never after a pure regrid.
+  /// Both the hard approach law and the soft-tail law are edge-relative: they store only shape (the
+  /// exponent `b`, the slope) and read the resampled edge ordinate on evaluation, so both stay valid
+  /// across a regrid without refitting. Refitting is required only after operations that change the
+  /// tail's shape (convolution), never after a pure regrid.
   fn regridded(&self, grid: Grid<T>, y: Array1<T>) -> Result<Self, Report> {
     Ok(
       Self::from_grid_array(grid, y)?
@@ -427,8 +427,10 @@ impl<T: InterpElem> GridFn<T> {
         if (side == "below" && xi_f64 < law.t_hard) || (side != "below" && xi_f64 > law.t_hard) {
           return Ok(T::zero());
         }
-        // Between hard boundary and grid edge: use approach law
-        Ok(T::from(law.eval(xi_f64)).unwrap())
+        // Between hard boundary and grid edge: use the edge-relative approach law, anchored on the
+        // live grid edge (`boundary_value` at `bound`), exactly like the soft-tail arm above.
+        let value = law.eval(boundary_value.to_f64().unwrap(), bound.to_f64().unwrap(), xi_f64);
+        Ok(T::from(value).unwrap())
       },
       BoundaryBehavior::Hard(None) => Ok(T::zero()),
       BoundaryBehavior::Error => make_error!(
@@ -470,9 +472,9 @@ impl<T: InterpElem> GridFn<T> {
   /// Scale all y-values by a multiplicative factor, preserving boundary laws.
   ///
   /// Under NegLog storage, multiplying stored ordinates by `factor` is a pointwise scale of the
-  /// neg-log values. The hard approach anchor `a` and slope scale by `factor`. A soft-tail slope
-  /// scales by `factor` too: the stored ordinates steepen by `factor`, so the neg-log tail line
-  /// does as well, while the edge-relative tail reads the already-scaled edge value.
+  /// neg-log values (`p -> p^factor`). The hard approach exponent `b` scales by `factor`, and a
+  /// soft-tail slope scales by `factor`: the stored ordinates steepen by `factor`, so both neg-log
+  /// laws do as well, while the edge-relative tails read the already-scaled edge value.
   #[must_use]
   pub fn scale_y(&self, factor: f64) -> Self
   where
@@ -492,11 +494,10 @@ impl<T: InterpElem> GridFn<T> {
   /// `-ln(probability)`, so adding a constant is normalization by a pure shift (subtracting the
   /// peak ordinate moves the mode to zero): exact, no scaling, and it preserves likelihood ratios.
   ///
-  /// Both fitted laws carry through:
-  /// - A hard approach law `y = a - b·ln|Δt| + slope·Δt` shifts only its anchor `a` by `delta`; the
-  ///   exponent `b` and slope are shape parameters, invariant under a vertical shift.
-  /// - A soft-tail law is edge-relative and its slope `d(-ln p)/dt` is shift-invariant, so it
-  ///   carries through unchanged while evaluation reads the shifted edge ordinate.
+  /// Both fitted laws carry through unchanged. They are edge-relative: a hard approach law
+  /// `y = y_edge - b·ln|Δt/Δt_edge|` and a soft-tail law both store only shape (the exponent `b`,
+  /// the slope `d(-ln p)/dt`), which is invariant under a vertical shift, while evaluation reads the
+  /// shifted edge ordinate.
   ///
   /// Unlike the arbitrary [`Self::mapv`], a shift is a known transform whose effect on both laws is
   /// closed form, so the law is updated rather than dropped.
@@ -663,15 +664,16 @@ fn strip_tail_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
   }
 }
 
-/// Scale a fitted boundary law when every ordinate is multiplied by `factor`. The hard approach
-/// anchor and slope scale together with the ordinates; the exponent is invariant (it depends on
-/// the log-distance shape, not amplitude). A soft-tail slope scales with the ordinates: the
-/// neg-log tail line `y_edge + slope*(t - t_edge)` steepens by `factor` (see [`GridFn::scale_y`]).
+/// Scale a fitted boundary law when every ordinate is multiplied by `factor`. Scaling every neg-log
+/// ordinate by `factor` raises the probability to a power (`p -> p^factor`), so both shape terms of
+/// the hard approach law scale by `factor`: `y = y_edge - b*ln|dt/dt_edge| + slope*(t - t_edge)`
+/// becomes `factor*y = factor*y_edge - (factor*b)*ln|dt/dt_edge| + (factor*slope)*(t - t_edge)`, with
+/// the edge read live. A soft-tail slope scales with the ordinates the same way: the neg-log tail
+/// line `y_edge + slope*(t - t_edge)` steepens by `factor` (see [`GridFn::scale_y`]).
 fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   match behavior {
     BoundaryBehavior::Hard(Some(law)) => BoundaryBehavior::Hard(Some(HardApproachLaw {
-      a: law.a * factor,
-      b: law.b,
+      b: law.b * factor,
       slope: law.slope * factor,
       ..law
     })),
@@ -682,16 +684,13 @@ fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   }
 }
 
-/// Shift a fitted boundary law when a constant `delta` is added to every ordinate. A hard approach
-/// law shifts its anchor by `delta` (its exponent and slope are shape parameters, invariant under a
-/// vertical shift; see [`HardApproachLaw::shift_anchor`]). A soft-tail law is edge-relative and its
-/// slope is shift-invariant, so it carries through unchanged while evaluation reads the shifted edge
-/// ordinate (see [`GridFn::shift_y`]).
-fn shift_tail_law(behavior: BoundaryBehavior, delta: f64) -> BoundaryBehavior {
-  match behavior {
-    BoundaryBehavior::Hard(Some(law)) => BoundaryBehavior::Hard(Some(law.shift_anchor(delta))),
-    other => other,
-  }
+/// Shift a fitted boundary law when a constant `delta` is added to every ordinate. Both the hard
+/// approach law and the soft-tail law are edge-relative: they read the shifted edge ordinate on
+/// evaluation and store only shape (the exponent `b`, the slope), which is invariant under a
+/// vertical shift. So both carry through unchanged (see [`GridFn::shift_y`]); the `delta` argument
+/// is retained for symmetry with [`scale_tail_law`].
+fn shift_tail_law(behavior: BoundaryBehavior, _delta: f64) -> BoundaryBehavior {
+  behavior
 }
 
 /// Reflect a fitted boundary law for `f(x) -> f(-x)`.

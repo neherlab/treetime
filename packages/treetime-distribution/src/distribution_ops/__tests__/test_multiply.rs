@@ -602,22 +602,12 @@ mod tests {
     assert_eq!(expected_left, fba.left_extrap());
   }
 
-  /// Function * Function composes approach laws: all parameters add (multiplication is addition
-  /// in neg-log space).
+  /// Function * Function composes approach laws: both shape parameters (`b` and `slope`) add
+  /// (multiplication is addition in neg-log space).
   #[test]
   fn test_multiply_function_function_composes_approach_laws() {
-    let law_a = HardApproachLaw {
-      t_hard: 0.0,
-      a: 2.0,
-      b: 1.0,
-      slope: 0.0,
-    };
-    let law_b = HardApproachLaw {
-      t_hard: 0.0,
-      a: 3.0,
-      b: 2.0,
-      slope: 0.5,
-    };
+    let law_a = HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 0.5 };
+    let law_b = HardApproachLaw { t_hard: 0.0, b: 2.0, slope: 1.5 };
 
     let a = Distribution::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
@@ -638,12 +628,7 @@ mod tests {
       .left_extrap()
       .approach_law()
       .expect("result should have left approach law");
-    let expected = HardApproachLaw {
-      t_hard: 0.0,
-      a: 5.0,
-      b: 3.0,
-      slope: 0.5,
-    };
+    let expected = HardApproachLaw { t_hard: 0.0, b: 3.0, slope: 2.0 };
     assert_eq!(expected, composed);
   }
 
@@ -652,12 +637,7 @@ mod tests {
   /// there and the present law must not survive.
   #[test]
   fn test_multiply_function_function_single_approach_law_drops_to_none() {
-    let law = HardApproachLaw {
-      t_hard: 0.0,
-      a: 2.0,
-      b: 1.5,
-      slope: 0.0,
-    };
+    let law = HardApproachLaw { t_hard: 0.0, b: 1.5, slope: 0.5 };
 
     let a = Distribution::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
@@ -677,18 +657,16 @@ mod tests {
     assert_eq!(BoundaryBehavior::Hard(None), f.left_extrap());
   }
 
-  /// normalize() preserves approach laws alongside tail policies.
+  /// normalize() preserves approach laws alongside tail policies. Under `Plain` policy normalize
+  /// rescales every ordinate by `1/max`, which scales both edge-relative shape terms by that factor
+  /// so that evaluating the law on the rescaled ordinates matches rescaling the original law's
+  /// output.
   #[test]
   fn test_multiply_normalize_preserves_approach_law() {
     // Build a distribution with a known max > 1 so normalization visibly rescales
     let f = DistributionFunction::<f64, Plain>::from_range_values((1.0, 5.0), array![20.0, 40.0, 100.0, 40.0, 20.0])
       .unwrap()
-      .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw {
-        t_hard: 0.0,
-        a: 10.0,
-        b: 1.0,
-        slope: 0.0,
-      })))
+      .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 2.0 })))
       .unwrap();
 
     let normalized = Distribution::Function(f).normalize();
@@ -699,9 +677,10 @@ mod tests {
       .left_extrap()
       .approach_law()
       .expect("approach law should survive normalization");
-    assert_abs_diff_eq!(1.0, preserved.b, epsilon = 1e-14);
-    // max was 100.0 -> scale factor 1/100 -> anchor becomes 10/100 = 0.1
-    assert_abs_diff_eq!(0.1, preserved.a, epsilon = 1e-14);
+    // max was 100.0 -> scale factor 1/100 -> both shape terms scale by 1/100
+    assert_abs_diff_eq!(0.01, preserved.b, epsilon = 1e-14);
+    assert_abs_diff_eq!(0.02, preserved.slope, epsilon = 1e-14);
+    assert_abs_diff_eq!(0.0, preserved.t_hard, epsilon = 1e-14);
   }
 
   /// An empty product is legitimate only when the operands' hard domains are genuinely disjoint.

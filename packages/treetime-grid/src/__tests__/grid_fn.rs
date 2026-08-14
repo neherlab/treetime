@@ -233,16 +233,11 @@ mod tests {
     Ok(())
   }
 
-  /// Regridding must carry the fitted `HardApproachLaw`, not only the hard/soft class. The law
-  /// carries an absolute anchor, so a pure resample preserves it verbatim.
+  /// Regridding must carry the fitted `HardApproachLaw`, not only the hard/soft class. The law is
+  /// edge-relative (stores only the exponent), so a pure resample preserves it verbatim.
   #[test]
   fn test_gridfn_resample_preserves_fitted_hard_law() -> Result<(), Report> {
-    let law = HardApproachLaw {
-      t_hard: 0.0,
-      a: 2.5,
-      b: 1.0,
-      slope: 0.3,
-    };
+    let law = HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 0.5 };
     let grid_fn =
       GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?.with_left_extrap(BoundaryBehavior::Hard(Some(law)));
 
@@ -274,17 +269,12 @@ mod tests {
     Ok(())
   }
 
-  /// Scaling every neg-log ordinate by a factor scales the hard approach anchor and slope by the
-  /// same factor and leaves the power-law exponent (a shape parameter) and boundary location
-  /// unchanged. The hard class must survive the scale.
+  /// Scaling every neg-log ordinate by a factor raises the probability to a power (`p -> p^factor`),
+  /// so both shape terms of the hard approach law (the exponent `b` and the linear `slope`) scale by
+  /// the same factor while the boundary location is unchanged. The hard class must survive the scale.
   #[test]
   fn test_gridfn_scale_y_preserves_hard_class_and_scales_law() -> Result<(), Report> {
-    let law = HardApproachLaw {
-      t_hard: 0.0,
-      a: 2.5,
-      b: 1.0,
-      slope: 0.3,
-    };
+    let law = HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 2.0 };
     let grid_fn =
       GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?.with_left_extrap(BoundaryBehavior::Hard(Some(law)));
 
@@ -292,9 +282,8 @@ mod tests {
 
     let expected = HardApproachLaw {
       t_hard: 0.0,
-      a: 2.5 * 3.0,
-      b: 1.0,
-      slope: 0.3 * 3.0,
+      b: 1.0 * 3.0,
+      slope: 2.0 * 3.0,
     };
     assert_eq!(BoundaryBehavior::Hard(Some(expected)), scaled.left_extrap());
     Ok(())
@@ -315,29 +304,18 @@ mod tests {
     Ok(())
   }
 
-  /// Adding a constant to every neg-log ordinate (a `NegLog` normalize shift) shifts the hard
-  /// approach anchor by the same constant and leaves the exponent, slope, and boundary location
-  /// unchanged. The hard class must survive the shift.
+  /// Adding a constant to every neg-log ordinate (a `NegLog` normalize shift) leaves the hard
+  /// approach law unchanged: it is edge-relative and stores only the shift-invariant exponent, so
+  /// it reads the shifted edge ordinate on evaluation. The hard class must survive the shift.
   #[test]
-  fn test_gridfn_shift_y_preserves_hard_class_and_shifts_anchor() -> Result<(), Report> {
-    let law = HardApproachLaw {
-      t_hard: 0.0,
-      a: 2.5,
-      b: 1.0,
-      slope: 0.3,
-    };
+  fn test_gridfn_shift_y_preserves_hard_law_unchanged() -> Result<(), Report> {
+    let law = HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 0.5 };
     let grid_fn =
       GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?.with_left_extrap(BoundaryBehavior::Hard(Some(law)));
 
     let shifted = grid_fn.shift_y(-3.0);
 
-    let expected = HardApproachLaw {
-      t_hard: 0.0,
-      a: 2.5 - 3.0,
-      b: 1.0,
-      slope: 0.3,
-    };
-    assert_eq!(BoundaryBehavior::Hard(Some(expected)), shifted.left_extrap());
+    assert_eq!(BoundaryBehavior::Hard(Some(law)), shifted.left_extrap());
     Ok(())
   }
 
@@ -361,12 +339,7 @@ mod tests {
   /// `scale_y(1.0)` is the identity, so every coefficient is preserved exactly across the trip.
   #[test]
   fn test_gridfn_boundary_law_survives_regrid_round_trip() -> Result<(), Report> {
-    let hard = HardApproachLaw {
-      t_hard: 0.0,
-      a: 2.5,
-      b: 1.0,
-      slope: 0.3,
-    };
+    let hard = HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 0.5 };
     let soft = SoftTailLaw { slope: 0.7 };
     let grid_fn = GridFn::from_range_values((1.0, 3.0), array![3.0, 2.5, 2.0])?
       .with_left_extrap(BoundaryBehavior::Hard(Some(hard)))
