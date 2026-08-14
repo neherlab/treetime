@@ -486,6 +486,34 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
+  /// Add a constant `delta` to every y-value, preserving boundary policy and fitted laws.
+  ///
+  /// This is the additive counterpart of [`Self::scale_y`]. Under `NegLog` storage the ordinate is
+  /// `-ln(probability)`, so adding a constant is normalization by a pure shift (subtracting the
+  /// peak ordinate moves the mode to zero): exact, no scaling, and it preserves likelihood ratios.
+  ///
+  /// Both fitted laws carry through:
+  /// - A hard approach law `y = a - b·ln|Δt| + slope·Δt` shifts only its anchor `a` by `delta`; the
+  ///   exponent `b` and slope are shape parameters, invariant under a vertical shift.
+  /// - A soft-tail law is edge-relative and its slope `d(-ln p)/dt` is shift-invariant, so it
+  ///   carries through unchanged while evaluation reads the shifted edge ordinate.
+  ///
+  /// Unlike the arbitrary [`Self::mapv`], a shift is a known transform whose effect on both laws is
+  /// closed form, so the law is updated rather than dropped.
+  #[must_use]
+  pub fn shift_y(&self, delta: T) -> Self
+  where
+    T: Float,
+  {
+    let delta_f64 = delta.to_f64().unwrap();
+    Self {
+      grid: self.grid,
+      y: self.y.mapv(|v| v + delta),
+      left_extrap: shift_tail_law(self.left_extrap, delta_f64),
+      right_extrap: shift_tail_law(self.right_extrap, delta_f64),
+    }
+  }
+
   pub fn mapv_inplace<F>(&mut self, f: F)
   where
     F: Fn(T) -> T,
@@ -650,6 +678,18 @@ fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
     BoundaryBehavior::Linear(Some(law)) => BoundaryBehavior::Linear(Some(SoftTailLaw {
       slope: law.slope * factor,
     })),
+    other => other,
+  }
+}
+
+/// Shift a fitted boundary law when a constant `delta` is added to every ordinate. A hard approach
+/// law shifts its anchor by `delta` (its exponent and slope are shape parameters, invariant under a
+/// vertical shift; see [`HardApproachLaw::shift_anchor`]). A soft-tail law is edge-relative and its
+/// slope is shift-invariant, so it carries through unchanged while evaluation reads the shifted edge
+/// ordinate (see [`GridFn::shift_y`]).
+fn shift_tail_law(behavior: BoundaryBehavior, delta: f64) -> BoundaryBehavior {
+  match behavior {
+    BoundaryBehavior::Hard(Some(law)) => BoundaryBehavior::Hard(Some(law.shift_anchor(delta))),
     other => other,
   }
 }
