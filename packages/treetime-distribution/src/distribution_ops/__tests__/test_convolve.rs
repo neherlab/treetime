@@ -225,6 +225,19 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
+  /// Convolution is a Minkowski sum, so two mass-bearing operands on disjoint grids still produce a
+  /// non-empty result whose support is the sum of the grids. This is why the empty-result guard
+  /// models a mass-bearing convolution operand as unbounded: only an actually empty operand may
+  /// yield `Empty`, never disjoint grids (which would be legitimate empties under multiplication).
+  #[test]
+  fn test_convolution_disjoint_grids_is_not_empty() {
+    let a = Distribution::function(array![0.0, 1.0], array![1.0, 1.0]).unwrap();
+    let b = Distribution::function(array![10.0, 11.0], array![1.0, 1.0]).unwrap();
+
+    let actual = distribution_convolution(&a, &b).unwrap();
+    assert!(!matches!(actual, Distribution::Empty));
+  }
+
   #[test]
   fn test_convolution_function_function_different_spacing() {
     // Test with different grid spacings to ensure proper resampling

@@ -3,7 +3,7 @@ mod tests {
   use crate::DistributionFunction;
   use crate::DistributionPlain as Distribution;
   use crate::distribution_core::formula::DistributionFormula;
-  use crate::distribution_ops::multiply::{distribution_multiplication, hard_domains_disjoint};
+  use crate::distribution_ops::multiply::{distribution_multiplication, guarded_empty_result, hard_domains_disjoint};
   use crate::policy::Plain;
   use approx::assert_abs_diff_eq;
   use approx::assert_ulps_eq;
@@ -726,5 +726,71 @@ mod tests {
   ) {
     let actual = hard_domains_disjoint((a_lo, a_hi), (a_left, a_right), (b_lo, b_hi), (b_left, b_right));
     assert_eq!(expected, actual);
+  }
+
+  /// A multiplication that collapses to empty while the operands' hard domains overlap is a
+  /// numerical failure, not a structural one, so it raises an internal error instead of silently
+  /// returning `Empty`. Here the point sits inside the function's domain but lands on a zero
+  /// ordinate, so the product underflows to an undefined amplitude (`Plain::is_defined` rejects it).
+  #[test]
+  fn test_multiply_point_on_function_zero_raises_internal_error() {
+    let point = Distribution::point(1.0, 5.0);
+    let func = Distribution::function(array![0.0, 1.0, 2.0], array![1.0, 0.0, 1.0]).unwrap();
+    let error = distribution_multiplication(&point, &func).unwrap_err().to_string();
+    assert!(error.contains("hard domains overlap"), "unexpected error: {error}");
+  }
+
+  /// Two point masses at distinct times have genuinely disjoint hard domains, so their product is a
+  /// legitimate `Empty`.
+  #[test]
+  fn test_multiply_disjoint_points_return_empty() {
+    let a = Distribution::point(1.0, 2.0);
+    let b = Distribution::point(5.0, 3.0);
+    assert_eq!(Distribution::Empty, distribution_multiplication(&a, &b).unwrap());
+  }
+
+  /// The single empty-result guard, shared by multiplication, convolution, and division, permits
+  /// `Empty` only when the operands' hard domains are genuinely disjoint (or an operand is already
+  /// empty). Overlapping hard domains mean the empty result is a numerical collapse, which raises an
+  /// internal error for every operation. This is the see-red half of the invariant.
+  #[rstest]
+  #[case::multiplication("multiplication")]
+  #[case::convolution("convolution")]
+  #[case::division("division")]
+  fn test_guarded_empty_result_overlap_raises_internal_error(#[case] operation: &str) {
+    let a = Some(((0.0, 10.0), (BoundaryBehavior::Error, BoundaryBehavior::Error)));
+    let b = Some(((5.0, 15.0), (BoundaryBehavior::Error, BoundaryBehavior::Error)));
+    let error = guarded_empty_result::<Plain>(operation, a, b).unwrap_err().to_string();
+    assert!(error.contains(operation), "message should name the operation: {error}");
+    assert!(error.contains("hard domains overlap"), "unexpected error: {error}");
+  }
+
+  /// Genuinely disjoint hard domains yield a legitimate `Empty` for every operation.
+  #[rstest]
+  #[case::multiplication("multiplication")]
+  #[case::convolution("convolution")]
+  #[case::division("division")]
+  fn test_guarded_empty_result_disjoint_returns_empty(#[case] operation: &str) {
+    let a = Some(((0.0, 8.0), (BoundaryBehavior::Error, BoundaryBehavior::Error)));
+    let b = Some(((10.0, 20.0), (BoundaryBehavior::Error, BoundaryBehavior::Error)));
+    assert_eq!(
+      Distribution::Empty,
+      guarded_empty_result::<Plain>(operation, a, b).unwrap()
+    );
+  }
+
+  /// An operand with empty support (`None`) is disjoint from anything, so the result is a legitimate
+  /// `Empty` even when the other operand covers an overlapping range.
+  #[test]
+  fn test_guarded_empty_result_empty_operand_returns_empty() {
+    let present = Some(((0.0, 10.0), (BoundaryBehavior::Error, BoundaryBehavior::Error)));
+    assert_eq!(
+      Distribution::Empty,
+      guarded_empty_result::<Plain>("multiplication", None, present).unwrap()
+    );
+    assert_eq!(
+      Distribution::Empty,
+      guarded_empty_result::<Plain>("multiplication", present, None).unwrap()
+    );
   }
 }
