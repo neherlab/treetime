@@ -19,5 +19,5 @@ The `Linear` multiplication composition already exists and is correct, so the bo
 
 ## Related
 
-- [M-distribution-soft-tail-law-plain-space-under-neglog.md](M-distribution-soft-tail-law-plain-space-under-neglog.md): the soft-tail law must first evaluate on the negative-log axis. This issue is blocked on it.
+- `fn SoftTailLaw::fit()` and `fn SoftTailLaw::eval()` already evaluate on the negative-log axis, so the soft-tail law is ready to fit and attach. The remaining work is to attach a fitted `Linear` tail in the passes and to carry the convolution's refit tail through to the passes.
 - [kb/proposals/distribution-log-space-and-hard-soft-boundaries.md](../proposals/distribution-log-space-and-hard-soft-boundaries.md): Part B retires `Constant`; the convolution accuracy constraint requires a refit tail from the trusted points.
