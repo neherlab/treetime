@@ -12,7 +12,7 @@ The passes set `Constant` on the unbounded side and `Hard(None)` on the bounded 
 
 - Fit and attach a `Linear` soft tail on the soft side of each message, keeping the hard side hard.
 - Retire `Constant` from the inference passes; keep it only for genuinely uninformative edges outside inference.
-- The attached tail must survive normalization, which depends on the boundary law surviving regridding.
+- The attached tail must survive normalization. The grid layer now preserves the fitted law across regridding and provides the law-preserving primitives `GridFn::scale_y` (plain normalize) and `GridFn::shift_y` (neg-log normalize). The remaining wiring is that `DistributionFunction::shift_y` [`packages/treetime-distribution/src/distribution_core/function.rs#L349`](../../packages/treetime-distribution/src/distribution_core/function.rs#L349) still calls `GridFn::mapv`, which strips the fitted law; the neg-log `normalize` path [`packages/treetime-distribution/src/distribution_core/distribution.rs#L527-L532`](../../packages/treetime-distribution/src/distribution_core/distribution.rs#L527-L532) uses it. Switch `DistributionFunction::shift_y` to `GridFn::shift_y` so an attached `Linear(Some(..))` tail survives a neg-log normalize.
 
 ## Impact
 
@@ -20,6 +20,5 @@ No demonstrated runtime effect today: the confidence path that a `Constant` tail
 
 ## Related
 
-- [M-grid-from-grid-array-discards-boundary-law.md](M-grid-from-grid-array-discards-boundary-law.md): prerequisite so the fitted tail survives normalization.
 - [N-distribution-convolution-tail-not-refit-as-law.md](N-distribution-convolution-tail-not-refit-as-law.md): the convolution must produce a refit tail for the passes to consume.
 - [kb/proposals/distribution-log-space-and-hard-soft-boundaries.md](../proposals/distribution-log-space-and-hard-soft-boundaries.md): Part B retires `Constant`; design axis 4.
