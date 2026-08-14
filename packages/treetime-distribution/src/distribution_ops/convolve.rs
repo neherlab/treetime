@@ -221,13 +221,29 @@ fn convolution_function_function<Y: SupportsConvolution>(
   }
 
   let conv_distr = DistributionFunction::<f64, Y>::from_start_dx_values(x_min, dx, y)?;
+  coarsen_convolution(conv_distr, dx_a.max(dx_b))
+}
 
-  let coarse_dx = dx_a.max(dx_b);
-  let final_distr = conv_distr.resample_dx(coarse_dx)?;
-  if final_distr.len() < 2 {
-    return make_error!("Final distribution after convolution has less than two points");
+/// Coarsen the fine-grid convolution result back to the coarser operand spacing.
+///
+/// The FFT runs on the finest operand spacing; coarsening the result to the coarser operand spacing
+/// keeps the point count near operand resolution. A trusted bulk narrower than half a coarse cell
+/// would resample to a single point, which `Grid::from_range_dx` (and thus `resample_dx`) rejects.
+/// In that degenerate case keep the fine-grid result unchanged: it is already a valid `>= 2`-point
+/// Function, and returning it preserves the full shape instead of failing. This matches v0, whose
+/// `convolve_fft` never coarsens and always returns the fine interpolation object.
+pub(super) fn coarsen_convolution<Y: SupportsConvolution>(
+  conv_distr: DistributionFunction<f64, Y>,
+  coarse_dx: f64,
+) -> Result<Distribution<Y>, Report> {
+  // Point count of a spacing-`coarse_dx` grid over the result range, matching `Grid::from_range_dx`
+  // (`round(range / dx) + 1`). The caller guarantees `y.len() >= 2`, so the range is positive.
+  let range = conv_distr.x_max() - conv_distr.x_min();
+  let coarse_points = (range / coarse_dx).round() as usize + 1;
+  if coarse_points < 2 {
+    return Ok(Distribution::Function(conv_distr));
   }
-  Ok(Distribution::Function(final_distr))
+  Ok(Distribution::Function(conv_distr.resample_dx(coarse_dx)?))
 }
 
 /// Convert stored ordinates to peak-normalized plain probability for the convolution integral.

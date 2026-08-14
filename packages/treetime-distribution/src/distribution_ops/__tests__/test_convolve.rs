@@ -3,12 +3,13 @@ mod tests {
   use crate::DistributionNegLog;
   use crate::DistributionPlain as Distribution;
   use crate::distribution_core::function::DistributionFunction;
-  use crate::distribution_ops::convolve::distribution_convolution;
+  use crate::distribution_ops::convolve::{coarsen_convolution, distribution_convolution};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_grid::grid::Grid;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
   use self::helpers::{DistributionVariant, distribution};
@@ -358,6 +359,60 @@ mod tests {
     };
     assert_eq!(n, f.len());
     assert_abs_diff_eq!(dx, f.dx(), epsilon = 1e-15);
+    Ok(())
+  }
+
+  /// The fine-grid convolution result is coarsened to the coarser operand spacing. When the trusted
+  /// bulk is narrower than half a coarse cell, `Grid::from_range_dx` cannot build a `>= 2`-point
+  /// coarse grid, so `coarsen_convolution` must keep the fine-grid result unchanged rather than fail.
+  ///
+  /// Oracle: `Grid::from_range_dx(0.0, 0.02, 1.0)` rejects a single-point grid, so the coarse
+  /// spacing is unrepresentable and the fine result is the only valid output.
+  #[test]
+  fn test_coarsen_convolution_narrow_range_keeps_fine_grid() -> Result<(), Report> {
+    let fine = DistributionFunction::<f64, _>::from_start_dx_values(0.0, 0.01, array![1.0, 2.0, 1.0])?;
+    assert_error!(
+      Grid::from_range_dx(0.0, 0.02, 1.0),
+      "Grid must have at least 2 points, got 1"
+    );
+
+    let actual: Distribution = coarsen_convolution(fine.clone(), 1.0)?;
+
+    assert_eq!(Distribution::Function(fine), actual);
+    Ok(())
+  }
+
+  /// A trusted bulk exactly `0.5 * coarse_dx` wide rounds up to a two-point coarse grid, so it
+  /// coarsens rather than staying fine. Oracle: `Grid::from_range_dx(0.0, 0.5, 1.0)` yields two points.
+  #[test]
+  fn test_coarsen_convolution_half_cell_range_resamples_to_two_points() -> Result<(), Report> {
+    let fine = DistributionFunction::<f64, _>::from_start_dx_values(0.0, 0.25, array![1.0, 2.0, 1.0])?;
+    let expected_points = Grid::from_range_dx(0.0, 0.5, 1.0)?.n_points();
+    assert_eq!(2, expected_points);
+
+    let Distribution::Function(actual) = coarsen_convolution(fine, 1.0)? else {
+      return Err(eyre::eyre!("expected Function variant"));
+    };
+
+    assert_eq!(expected_points, actual.len());
+    assert_abs_diff_eq!(1.0, actual.dx(), epsilon = 1e-15);
+    Ok(())
+  }
+
+  /// A wide trusted bulk coarsens to the coarse operand spacing. Oracle: `Grid::from_range_dx(0.0,
+  /// 4.0, 1.0)` yields five points at spacing `1.0`, the grid `resample_dx(1.0)` targets.
+  #[test]
+  fn test_coarsen_convolution_wide_range_resamples_to_coarse_spacing() -> Result<(), Report> {
+    let fine = DistributionFunction::<f64, _>::from_start_dx_values(0.0, 0.5, Array1::from_elem(9, 1.0))?;
+    let expected_points = Grid::from_range_dx(0.0, 4.0, 1.0)?.n_points();
+    assert_eq!(5, expected_points);
+
+    let Distribution::Function(actual) = coarsen_convolution(fine, 1.0)? else {
+      return Err(eyre::eyre!("expected Function variant"));
+    };
+
+    assert_eq!(expected_points, actual.len());
+    assert_abs_diff_eq!(1.0, actual.dx(), epsilon = 1e-15);
     Ok(())
   }
 
