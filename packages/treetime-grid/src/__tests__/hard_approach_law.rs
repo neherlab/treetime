@@ -164,9 +164,21 @@ mod tests {
   #[test]
   fn test_hard_approach_law_compose_multiply_shape_params_add() {
     // A product of a divergent (b>0) and a finite (slope>0) message carries both terms.
-    let a = HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 0.5 };
-    let b = HardApproachLaw { t_hard: 0.0, b: 2.0, slope: 1.5 };
-    let expected = HardApproachLaw { t_hard: 0.0, b: 3.0, slope: 2.0 };
+    let a = HardApproachLaw {
+      t_hard: 0.0,
+      b: 1.0,
+      slope: 0.5,
+    };
+    let b = HardApproachLaw {
+      t_hard: 0.0,
+      b: 2.0,
+      slope: 1.5,
+    };
+    let expected = HardApproachLaw {
+      t_hard: 0.0,
+      b: 3.0,
+      slope: 2.0,
+    };
     assert_eq!(expected, a.compose_multiply(&b));
   }
 
@@ -174,8 +186,16 @@ mod tests {
 
   #[test]
   fn test_hard_approach_law_negate_arg() {
-    let law = HardApproachLaw { t_hard: 5.0, b: 1.0, slope: 2.0 };
-    let expected = HardApproachLaw { t_hard: -5.0, b: 1.0, slope: -2.0 };
+    let law = HardApproachLaw {
+      t_hard: 5.0,
+      b: 1.0,
+      slope: 2.0,
+    };
+    let expected = HardApproachLaw {
+      t_hard: -5.0,
+      b: 1.0,
+      slope: -2.0,
+    };
     assert_eq!(expected, law.negate_arg());
   }
 
@@ -190,7 +210,11 @@ mod tests {
       (1.0, 5.0),
       ndarray::array![0.0, -(2.0_f64.ln()), -(3.0_f64.ln()), -(4.0_f64.ln()), -(5.0_f64.ln())],
     )?
-    .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 0.0 })));
+    .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw {
+      t_hard: 0.0,
+      b: 1.0,
+      slope: 0.0,
+    })));
 
     // In the gap: y(0.5) = -ln(0.5) = ln(2)
     assert_abs_diff_eq!(2.0_f64.ln(), grid.interp(0.5)?, epsilon = 1e-14);
@@ -208,8 +232,13 @@ mod tests {
     // b = 0, slope > 0: the finite line carries the mode to the boundary. Grid [1.0, 3.0] with a
     // live edge y[0] = 4.0 at t_edge = 1.0 and slope = 2.0. In the gap the law is the line
     // y = 4.0 + 2.0*(t - 1.0); at the boundary t = 0 it reaches the finite value 2.0 (not y_edge).
-    let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![4.0, 6.0, 8.0])?
-      .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw { t_hard: 0.0, b: 0.0, slope: 2.0 })));
+    let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![4.0, 6.0, 8.0])?.with_left_extrap(
+      BoundaryBehavior::Hard(Some(HardApproachLaw {
+        t_hard: 0.0,
+        b: 0.0,
+        slope: 2.0,
+      })),
+    );
 
     assert_abs_diff_eq!(3.0, grid.interp(0.5)?, epsilon = 1e-14);
     assert_abs_diff_eq!(2.0, grid.interp(0.0)?, epsilon = 1e-14);
@@ -220,8 +249,13 @@ mod tests {
   #[test]
   fn test_gridfn_hard_approach_flat_preserves_boundary() -> Result<(), Report> {
     // b = 0, slope = 0: the law is flat at the live edge ordinate across the whole gap and boundary.
-    let grid = GridFn::from_range_values((0.1, 1.0), ndarray::array![5.0, 5.0, 5.0, 5.0, 5.0])?
-      .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw { t_hard: 0.0, b: 0.0, slope: 0.0 })));
+    let grid = GridFn::from_range_values((0.1, 1.0), ndarray::array![5.0, 5.0, 5.0, 5.0, 5.0])?.with_left_extrap(
+      BoundaryBehavior::Hard(Some(HardApproachLaw {
+        t_hard: 0.0,
+        b: 0.0,
+        slope: 0.0,
+      })),
+    );
 
     assert_abs_diff_eq!(5.0, grid.interp(0.05)?, epsilon = 1e-14);
     assert_abs_diff_eq!(5.0, grid.interp(0.0)?, epsilon = 1e-14);
@@ -233,13 +267,24 @@ mod tests {
   fn test_gridfn_shift_y_preserves_gap_shape() -> Result<(), Report> {
     // Edge-relative invariance: a vertical shift of every ordinate shifts the extrapolated gap
     // value by the same delta, with the law object unchanged (it reads the shifted edge).
-    let grid = GridFn::from_range_values((1.0, 5.0), ndarray::array![0.0, -(2.0_f64.ln()), -(3.0_f64.ln()), -(4.0_f64.ln()), -(5.0_f64.ln())],)?
-      .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 0.0 })));
+    let grid = GridFn::from_range_values(
+      (1.0, 5.0),
+      ndarray::array![0.0, -(2.0_f64.ln()), -(3.0_f64.ln()), -(4.0_f64.ln()), -(5.0_f64.ln())],
+    )?
+    .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw {
+      t_hard: 0.0,
+      b: 1.0,
+      slope: 0.0,
+    })));
 
     let before = grid.interp(0.5)?;
     let shifted = grid.shift_y(10.0);
     assert_eq!(
-      BoundaryBehavior::Hard(Some(HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 0.0 })),
+      BoundaryBehavior::Hard(Some(HardApproachLaw {
+        t_hard: 0.0,
+        b: 1.0,
+        slope: 0.0
+      })),
       shifted.left_extrap()
     );
     assert_abs_diff_eq!(before + 10.0, shifted.interp(0.5)?, epsilon = 1e-13);
@@ -248,7 +293,11 @@ mod tests {
 
   #[test]
   fn test_gridfn_scale_y_scales_approach_law() -> Result<(), Report> {
-    let law = HardApproachLaw { t_hard: 0.0, b: 1.5, slope: 2.0 };
+    let law = HardApproachLaw {
+      t_hard: 0.0,
+      b: 1.5,
+      slope: 2.0,
+    };
     let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![1.0, 2.0, 3.0])?
       .with_left_extrap(BoundaryBehavior::Hard(Some(law)));
 
@@ -258,13 +307,24 @@ mod tests {
       .approach_law()
       .expect("approach law should be preserved");
     // Scaling ordinates raises probability to a power, so both shape terms scale by the factor.
-    assert_eq!(HardApproachLaw { t_hard: 0.0, b: 4.5, slope: 6.0 }, scaled_law);
+    assert_eq!(
+      HardApproachLaw {
+        t_hard: 0.0,
+        b: 4.5,
+        slope: 6.0
+      },
+      scaled_law
+    );
     Ok(())
   }
 
   #[test]
   fn test_gridfn_mapv_clears_approach_law() -> Result<(), Report> {
-    let law = HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 0.0 };
+    let law = HardApproachLaw {
+      t_hard: 0.0,
+      b: 1.0,
+      slope: 0.0,
+    };
     let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![1.0, 2.0, 3.0])?
       .with_left_extrap(BoundaryBehavior::Hard(Some(law)));
 
@@ -275,8 +335,16 @@ mod tests {
 
   #[test]
   fn test_gridfn_negate_arg_swaps_approach_laws() -> Result<(), Report> {
-    let left_law = HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 2.0 };
-    let right_law = HardApproachLaw { t_hard: 10.0, b: 2.0, slope: -1.0 };
+    let left_law = HardApproachLaw {
+      t_hard: 0.0,
+      b: 1.0,
+      slope: 2.0,
+    };
+    let right_law = HardApproachLaw {
+      t_hard: 10.0,
+      b: 2.0,
+      slope: -1.0,
+    };
     let grid = GridFn::from_range_values((1.0, 9.0), ndarray::array![1.0, 5.0, 9.0])?
       .with_left_extrap(BoundaryBehavior::Hard(Some(left_law)))
       .with_right_extrap(BoundaryBehavior::Hard(Some(right_law)));
@@ -289,15 +357,33 @@ mod tests {
       .expect("should have right approach");
 
     // Right law (t_hard=10) reflects to the left: t_hard=-10, exponent unchanged, slope flips.
-    assert_eq!(HardApproachLaw { t_hard: -10.0, b: 2.0, slope: 1.0 }, new_left);
+    assert_eq!(
+      HardApproachLaw {
+        t_hard: -10.0,
+        b: 2.0,
+        slope: 1.0
+      },
+      new_left
+    );
     // Left law (t_hard=0) reflects to the right: t_hard=0, exponent unchanged, slope flips.
-    assert_eq!(HardApproachLaw { t_hard: 0.0, b: 1.0, slope: -2.0 }, new_right);
+    assert_eq!(
+      HardApproachLaw {
+        t_hard: 0.0,
+        b: 1.0,
+        slope: -2.0
+      },
+      new_right
+    );
     Ok(())
   }
 
   #[test]
   fn test_gridfn_resample_preserves_approach_law() -> Result<(), Report> {
-    let law = HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 0.5 };
+    let law = HardApproachLaw {
+      t_hard: 0.0,
+      b: 1.0,
+      slope: 0.5,
+    };
     let grid = GridFn::from_range_values((1.0, 5.0), ndarray::array![2.0, 4.0, 6.0, 8.0, 10.0])?
       .with_left_extrap(BoundaryBehavior::Hard(Some(law)));
 

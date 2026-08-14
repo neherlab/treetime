@@ -606,8 +606,16 @@ mod tests {
   /// (multiplication is addition in neg-log space).
   #[test]
   fn test_multiply_function_function_composes_approach_laws() {
-    let law_a = HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 0.5 };
-    let law_b = HardApproachLaw { t_hard: 0.0, b: 2.0, slope: 1.5 };
+    let law_a = HardApproachLaw {
+      t_hard: 0.0,
+      b: 1.0,
+      slope: 0.5,
+    };
+    let law_b = HardApproachLaw {
+      t_hard: 0.0,
+      b: 2.0,
+      slope: 1.5,
+    };
 
     let a = Distribution::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
@@ -628,7 +636,11 @@ mod tests {
       .left_extrap()
       .approach_law()
       .expect("result should have left approach law");
-    let expected = HardApproachLaw { t_hard: 0.0, b: 3.0, slope: 2.0 };
+    let expected = HardApproachLaw {
+      t_hard: 0.0,
+      b: 3.0,
+      slope: 2.0,
+    };
     assert_eq!(expected, composed);
   }
 
@@ -637,7 +649,11 @@ mod tests {
   /// there and the present law must not survive.
   #[test]
   fn test_multiply_function_function_single_approach_law_drops_to_none() {
-    let law = HardApproachLaw { t_hard: 0.0, b: 1.5, slope: 0.5 };
+    let law = HardApproachLaw {
+      t_hard: 0.0,
+      b: 1.5,
+      slope: 0.5,
+    };
 
     let a = Distribution::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
@@ -666,7 +682,11 @@ mod tests {
     // Build a distribution with a known max > 1 so normalization visibly rescales
     let f = DistributionFunction::<f64, Plain>::from_range_values((1.0, 5.0), array![20.0, 40.0, 100.0, 40.0, 20.0])
       .unwrap()
-      .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw { t_hard: 0.0, b: 1.0, slope: 2.0 })))
+      .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw {
+        t_hard: 0.0,
+        b: 1.0,
+        slope: 2.0,
+      })))
       .unwrap();
 
     let normalized = Distribution::Function(f).normalize();
