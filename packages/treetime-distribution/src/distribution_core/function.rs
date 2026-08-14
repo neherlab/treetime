@@ -328,9 +328,9 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   /// Create a new distribution function with y values scaled by factor.
   ///
   /// Preserves the grid parameters, per-side tail policies, and approach laws
-  /// (via `fn GridFn.scale_y()`). Scaling by a positive factor does not change
-  /// out-of-support behavior or the power-law exponent, so both tails and
-  /// approach law coefficients carry through. This makes `fn Distribution.normalize()`
+  /// (via `fn GridFn.scale_y()`). Scaling every ordinate by a constant scales the approach
+  /// law anchor and slope together and leaves the power-law exponent and soft-tail slope
+  /// unchanged, so both tails carry through. This makes `fn Distribution.normalize()`
   /// preserve approach laws.
   pub fn scale_y(&self, factor: T) -> Result<Self, Report>
   where

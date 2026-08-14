@@ -42,10 +42,9 @@ impl SoftTailLaw {
   /// points trend back toward the peak; clamping to `0` yields a flat tail rather than one that
   /// manufactures probability outward. This reproduces v0's tail guard (`node_interpolator.py`).
   ///
-  /// Precondition: `grid_fn.y()` holds *plain-probability* values, matching
-  /// [`HardApproachLaw::fit`](crate::HardApproachLaw::fit). The fit takes their natural log, so
-  /// it is valid under the `Plain` y-axis policy; under `NegLog` storage the caller converts to
-  /// plain probability first.
+  /// Precondition: `grid_fn.y()` holds *plain-probability* values. The fit takes their natural
+  /// log, so it is valid under the `Plain` y-axis policy; under `NegLog` storage the caller
+  /// converts to plain probability first.
   ///
   /// Returns `None` when fewer than two positive points are available near the edge.
   pub fn fit(grid_fn: &GridFn<f64>, side: Side, n_fit: usize) -> Option<Self> {

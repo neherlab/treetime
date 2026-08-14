@@ -602,18 +602,21 @@ mod tests {
     assert_eq!(expected_left, fba.left_extrap());
   }
 
-  /// Function * Function composes approach laws: exponents add, coefficients multiply.
+  /// Function * Function composes approach laws: all parameters add (multiplication is addition
+  /// in neg-log space).
   #[test]
   fn test_multiply_function_function_composes_approach_laws() {
     let law_a = HardApproachLaw {
       t_hard: 0.0,
-      coeff: 2.0,
-      exponent: 1.0,
+      a: 2.0,
+      b: 1.0,
+      slope: 0.0,
     };
     let law_b = HardApproachLaw {
       t_hard: 0.0,
-      coeff: 3.0,
-      exponent: 2.0,
+      a: 3.0,
+      b: 2.0,
+      slope: 0.5,
     };
 
     let a = Distribution::Function(
@@ -635,9 +638,13 @@ mod tests {
       .left_extrap()
       .approach_law()
       .expect("result should have left approach law");
-    assert_abs_diff_eq!(3.0, composed.exponent, epsilon = 1e-14);
-    assert_abs_diff_eq!(6.0, composed.coeff, epsilon = 1e-14);
-    assert_ulps_eq!(0.0, composed.t_hard);
+    let expected = HardApproachLaw {
+      t_hard: 0.0,
+      a: 5.0,
+      b: 3.0,
+      slope: 0.5,
+    };
+    assert_eq!(expected, composed);
   }
 
   /// When only one operand has an approach law, the result carries none. The operand without a
@@ -647,8 +654,9 @@ mod tests {
   fn test_multiply_function_function_single_approach_law_drops_to_none() {
     let law = HardApproachLaw {
       t_hard: 0.0,
-      coeff: 2.0,
-      exponent: 1.5,
+      a: 2.0,
+      b: 1.5,
+      slope: 0.0,
     };
 
     let a = Distribution::Function(
@@ -677,8 +685,9 @@ mod tests {
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw {
         t_hard: 0.0,
-        coeff: 10.0,
-        exponent: 1.0,
+        a: 10.0,
+        b: 1.0,
+        slope: 0.0,
       })))
       .unwrap();
 
@@ -690,9 +699,9 @@ mod tests {
       .left_extrap()
       .approach_law()
       .expect("approach law should survive normalization");
-    assert_abs_diff_eq!(1.0, preserved.exponent, epsilon = 1e-14);
-    // max was 100.0 -> scale factor 1/100 -> coeff becomes 10/100 = 0.1
-    assert_abs_diff_eq!(0.1, preserved.coeff, epsilon = 1e-14);
+    assert_abs_diff_eq!(1.0, preserved.b, epsilon = 1e-14);
+    // max was 100.0 -> scale factor 1/100 -> anchor becomes 10/100 = 0.1
+    assert_abs_diff_eq!(0.1, preserved.a, epsilon = 1e-14);
   }
 
   /// An empty product is legitimate only when the operands' hard domains are genuinely disjoint.

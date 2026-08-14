@@ -65,10 +65,10 @@ pub fn compute_branch_length_distribution(
 
   let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), neg_log)?;
 
-  // Fit the approach law on the left side (near t=0). The branch-length density
-  // follows p(t) ~ t^n near t=0 where n is the number of mutations. The grid
-  // starts at min_bl / clock_rate > 0, so the approach law covers the gap
-  // between t_hard=0 and the first grid point.
+  // Fit the hard-boundary approach law on the left side (near t=0). The grid stores neg-log
+  // ordinates and starts at min_bl / clock_rate > 0. The fit detects the regime from the data:
+  // for n >= 1 mutations the neg-log density diverges logarithmically (power-law approach),
+  // for n = 0 mutations it is exactly linear (the mode sits on the boundary).
   let approach = HardApproachLaw::fit(distribution_fn.grid_fn(), 0.0, Side::Left, N_APPROACH_FIT_POINTS);
   let distribution_fn = distribution_fn.with_left_extrap(BoundaryBehavior::Hard(approach))?;
 

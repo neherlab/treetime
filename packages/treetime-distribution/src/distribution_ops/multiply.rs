@@ -305,7 +305,8 @@ fn with_composed_tails<Y: YAxisPolicy>(
 ///
 /// Fitted laws compose in closed form:
 ///
-/// - Two `Hard` approach laws compose (exponents add, coefficients multiply). If only one operand
+/// - Two `Hard` approach laws compose by adding all parameters (anchors, exponents, and slopes
+///   add under multiplication in neg-log space). If only one operand
 ///   carries a law, the result carries none (`Hard(None)`): the `None` operand declares zero
 ///   density in the sub-grid gap `[t_hard, t_first)`, so the product is zero there and the present
 ///   law must not survive.

@@ -432,10 +432,10 @@ impl<T: InterpElem> GridFn<T> {
 
   /// Scale all y-values by a multiplicative factor, preserving boundary laws.
   ///
-  /// Scaling every ordinate by a constant preserves each law's shape. A power-law approach keeps
-  /// its exponent and scales its coefficient (`(s * C) * dt^b`). A soft tail keeps its slope
-  /// unchanged: scaling probability by a constant shifts `-ln p` by a constant, which does not
-  /// change the slope, and the edge-relative tail reads the already-scaled edge value.
+  /// Under NegLog storage, multiplying stored ordinates by `factor` is a pointwise scale of the
+  /// neg-log values. The hard approach anchor `a` scales by `factor`; the exponent `b` and slope
+  /// are shape parameters and scale together with `a`. A soft tail keeps its slope unchanged:
+  /// the edge-relative tail reads the already-scaled edge value.
   #[must_use]
   pub fn scale_y(&self, factor: f64) -> Self
   where
@@ -603,12 +603,15 @@ fn strip_tail_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
   }
 }
 
-/// Scale a fitted boundary law when every ordinate is multiplied by `factor`. A power-law
-/// coefficient scales directly; a soft-tail slope is invariant (see [`GridFn::scale_y`]).
+/// Scale a fitted boundary law when every ordinate is multiplied by `factor`. The hard approach
+/// anchor and slope scale together with the ordinates; the exponent is invariant (it depends on
+/// the log-distance shape, not amplitude). A soft-tail slope is invariant (see [`GridFn::scale_y`]).
 fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   match behavior {
     BoundaryBehavior::Hard(Some(law)) => BoundaryBehavior::Hard(Some(HardApproachLaw {
-      coeff: law.coeff * factor,
+      a: law.a * factor,
+      b: law.b,
+      slope: law.slope * factor,
       ..law
     })),
     BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(law),
