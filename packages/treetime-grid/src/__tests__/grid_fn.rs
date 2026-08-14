@@ -315,6 +315,47 @@ mod tests {
     Ok(())
   }
 
+  /// Adding a constant to every neg-log ordinate (a `NegLog` normalize shift) shifts the hard
+  /// approach anchor by the same constant and leaves the exponent, slope, and boundary location
+  /// unchanged. The hard class must survive the shift.
+  #[test]
+  fn test_gridfn_shift_y_preserves_hard_class_and_shifts_anchor() -> Result<(), Report> {
+    let law = HardApproachLaw {
+      t_hard: 0.0,
+      a: 2.5,
+      b: 1.0,
+      slope: 0.3,
+    };
+    let grid_fn =
+      GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?.with_left_extrap(BoundaryBehavior::Hard(Some(law)));
+
+    let shifted = grid_fn.shift_y(-3.0);
+
+    let expected = HardApproachLaw {
+      t_hard: 0.0,
+      a: 2.5 - 3.0,
+      b: 1.0,
+      slope: 0.3,
+    };
+    assert_eq!(BoundaryBehavior::Hard(Some(expected)), shifted.left_extrap());
+    Ok(())
+  }
+
+  /// Adding a constant to every neg-log ordinate leaves a soft-tail slope unchanged: the slope is
+  /// shift-invariant and the edge-relative tail reads the shifted edge ordinate on evaluation. The
+  /// soft class and the fitted law must survive the shift verbatim.
+  #[test]
+  fn test_gridfn_shift_y_preserves_soft_law_unchanged() -> Result<(), Report> {
+    let law = SoftTailLaw { slope: 0.7 };
+    let grid_fn = GridFn::from_range_values((1.0, 3.0), array![4.0, 3.0, 2.0])?
+      .with_right_extrap(BoundaryBehavior::Linear(Some(law)));
+
+    let shifted = grid_fn.shift_y(1.5);
+
+    assert_eq!(BoundaryBehavior::Linear(Some(law)), shifted.right_extrap());
+    Ok(())
+  }
+
   /// End-to-end round trip through `from_grid_array`-based regridding (`resample`) and `scale_y`:
   /// a hard boundary stays hard, a soft boundary stays soft, and both fitted laws survive intact.
   /// `scale_y(1.0)` is the identity, so every coefficient is preserved exactly across the trip.
