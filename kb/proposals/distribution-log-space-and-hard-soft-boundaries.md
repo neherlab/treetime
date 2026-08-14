@@ -1,6 +1,6 @@
 # Log-space time distributions with hard/soft support boundaries
 
-Move timetree time distributions to a logarithmic y-axis and replace the current single-meaning support boundary with an explicit distinction between **hard** boundaries (a fact about the distribution: probability is zero beyond) and **soft** boundaries (a choice of representation: an analytic tail continues beyond). The explicit grid becomes a *sensible domain* holding a target fraction of the probability mass, re-derived once per operation, rather than the distribution's support.
+Move timetree time distributions to a logarithmic y-axis and replace the current single-meaning support boundary with an explicit distinction between **hard** boundaries (a fact about the distribution: probability is zero beyond) and **soft** boundaries (a choice of representation: an analytic tail continues beyond). The explicit grid becomes a _sensible domain_ holding a target fraction of the probability mass, re-derived once per operation, rather than the distribution's support.
 
 **Type**: New v1 design. Supersedes part of [kb/decisions/timetree-inference-pass-boundary-tails.md](../decisions/timetree-inference-pass-boundary-tails.md) and amends [kb/decisions/distribution-intersection-grid-resolution.md](../decisions/distribution-intersection-grid-resolution.md).
 
@@ -23,15 +23,15 @@ Confirmed by experiment: flooring `max_bl` at 1e-3 subs/site eliminates all 943 
 
 The mass actually contained in the current window, integrating the Gamma likelihood `L(t) ∝ (μt)^n e^{-μt}`:
 
-| branch | grid extent | mass outside |
-| ------ | ----------- | ------------ |
-| n=0 (the `10 · one_mutation` floor) | 10 mut | 4.5e-5 |
-| n=1 (`5 · center`) | 5 mut | 4.0e-2 |
-| n=2 | 10 mut | 2.8e-3 |
-| n=3 | 15 mut | 2.1e-4 |
-| n≥5 | ≥25 mut | <1.4e-6 |
+| branch                              | grid extent | mass outside |
+| ----------------------------------- | ----------- | ------------ |
+| n=0 (the `10 · one_mutation` floor) | 10 mut      | 4.5e-5       |
+| n=1 (`5 · center`)                  | 5 mut       | 4.0e-2       |
+| n=2                                 | 10 mut      | 2.8e-3       |
+| n=3                                 | 15 mut      | 2.1e-4       |
+| n≥5                                 | ≥25 mut     | <1.4e-6      |
 
-For the zero-length branches that dominate this dataset the existing window already holds 99.9955% of the mass. It is a good *sensible domain*; it was only ever wrong as a *support*. Two consequences:
+For the zero-length branches that dominate this dataset the existing window already holds 99.9955% of the mass. It is a good _sensible domain_; it was only ever wrong as a _support_. Two consequences:
 
 - The fix is boundary semantics, not a wider grid. [kb/tickets/timetree-switch-branch-grid-to-nonuniform-spacing.md](../tickets/timetree-switch-branch-grid-to-nonuniform-spacing.md) drops from correctness to accuracy.
 - The `5 ·` peak multiple is the one genuinely tight case (4% of mass outside at n=1). It should be replaced by the same mass criterion used for re-windowing, not tuned.
@@ -51,9 +51,9 @@ v1 kept the finite grid but dropped both the log axis and the analytic tails. Th
 > A **hard** boundary is a fact about the distribution. It is immovable and probability is zero beyond it.
 > A **soft** boundary is a choice of representation. It is freely movable and an analytic law continues beyond it.
 
-Everything else follows mechanically. Multiplication intersects the facts and re-chooses the representation. Re-windowing never *drops* a tail, it re-derives one, so no mass leaks however many operations a distribution passes through.
+Everything else follows mechanically. Multiplication intersects the facts and re-chooses the representation. Re-windowing never _drops_ a tail, it re-derives one, so no mass leaks however many operations a distribution passes through.
 
-Critically, **a hard boundary is not necessarily a zero of the density**. For a zero-mutation branch `L(t) = e^{-μt}` is *maximal* at `t = 0`. In the node-603 collapse the correct answer places the parent exactly at its earlier child's date — the mode sits on the hard boundary. Any rule that assumes "hard ⇒ density → 0", or that trims a hard edge inward, destroys precisely the case this proposal exists to fix.
+Critically, **a hard boundary is not necessarily a zero of the density**. For a zero-mutation branch `L(t) = e^{-μt}` is _maximal_ at `t = 0`. In the node-603 collapse the correct answer places the parent exactly at its earlier child's date — the mode sits on the hard boundary. Any rule that assumes "hard ⇒ density → 0", or that trims a hard edge inward, destroys precisely the case this proposal exists to fix.
 
 ## Part A — logarithmic y-axis
 
@@ -76,11 +76,11 @@ The coalescent contribution also stops round-tripping: `distribution_apply_neg_l
 
 ### Prerequisite
 
-`Distribution::likely_time()` selects the maximum stored ordinate for both policies, which under `NegLog` is the *least* likely time ([M-distribution-neglog-likely-time-selects-maximum.md](../issues/M-distribution-neglog-likely-time-selects-maximum.md), `function.rs:297-306`). This is latent today because every inference path is `Plain`. The switch makes it load-bearing on every node, so [kb/tickets/distribution-make-likely-time-policy-aware.md](../tickets/distribution-make-likely-time-policy-aware.md) must land first.
+`Distribution::likely_time()` must select the likelihood peak per policy: under `NegLog` the peak is the _least_ stored ordinate, not the greatest. Every inference node depends on this once the switch lands. This prerequisite landed: `likely_time` is now policy-aware (`function.rs`).
 
 ### Normalization
 
-Under `NegLog`, normalization is *subtraction of the minimum ordinate* (peak → 0): a shift, exactly representable, no scaling. `max_value()` / `scale_by()` / `normalize()` (`distribution.rs:214-243`) need policy-aware replacements.
+Under `NegLog`, normalization is _subtraction of the minimum ordinate_ (peak → 0): a shift, exactly representable, no scaling. `max_value()` / `scale_by()` / `normalize()` (`distribution.rs:214-243`) need policy-aware replacements.
 
 ### Convolution stays in plain space
 
@@ -90,12 +90,12 @@ Under `NegLog`, normalization is *subtraction of the minimum ordinate* (peak →
 
 ### Classification
 
-| Behavior | Class | Meaning |
-| -------- | ----- | ------- |
-| `Zero` (rename: `Hard`) | hard | Domain terminates. p = 0 beyond. Restricts the result domain. |
-| `Linear` (new) | soft | Log-linear law continues beyond. Extends the result domain. |
-| `Constant` | soft | Flat tail. Retained only for genuinely uninformative edges. |
-| `Error` | undeclared | Restricts, and evaluation beyond is a programming error. Must never be silently treated as soft. |
+| Behavior                | Class      | Meaning                                                                                          |
+| ----------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
+| `Zero` (rename: `Hard`) | hard       | Domain terminates. p = 0 beyond. Restricts the result domain.                                    |
+| `Linear` (new)          | soft       | Log-linear law continues beyond. Extends the result domain.                                      |
+| `Constant`              | soft       | Flat tail. Retained only for genuinely uninformative edges.                                      |
+| `Error`                 | undeclared | Restricts, and evaluation beyond is a programming error. Must never be silently treated as soft. |
 
 `Constant` should be retired from the inference passes. It is non-integrable, so it silently corrupts `quantile()` and `hpd_region()` — the confidence-interval path. `Linear` is integrable in closed form.
 
@@ -113,10 +113,10 @@ Each operand is then evaluated over the result domain, using its declared law wh
 
 Applied to node 603:
 
-| side | accumulator `[2021.5501, 2022.4197]` | message `[2024.6816, 2025.5703]` | result |
-| ---- | ------------------------------------ | -------------------------------- | ------ |
-| right | hard (child's date) | hard | tightest → **2022.4197** |
-| left | soft | soft | loosest → **2021.5501** |
+| side  | accumulator `[2021.5501, 2022.4197]` | message `[2024.6816, 2025.5703]` | result                   |
+| ----- | ------------------------------------ | -------------------------------- | ------------------------ |
+| right | hard (child's date)                  | hard                             | tightest → **2022.4197** |
+| left  | soft                                 | soft                             | loosest → **2021.5501**  |
 
 Non-empty. Both operands decay leftward, so the product peaks at the hard right edge: the parent is placed at its earlier child's date and the 2025 child absorbs a ~3.15 yr branch. That is the correct MAP for data that genuinely conflicts with a 5.7e-5 clock.
 
@@ -135,7 +135,7 @@ Multiplication is addition, and the sum of two linear functions is linear in the
 
 ### Policy must survive regridding
 
-`GridFn::from_grid_array()` resets both sides to `Error` (`grid_fn.rs:67-80`), so every path through `scale_y` / `normalize` currently discards the tails. In the backward child fold the accumulator is normalized after every multiply, so the new rule would never fire from the second child onward. Regridding must carry the policy *and* the fitted law. `resample()` already does this (`grid_fn.rs:485-497`); `from_grid_array` callers do not.
+`GridFn::from_grid_array()` resets both sides to `Error` (`grid_fn.rs:67-80`), so every path through `scale_y` / `normalize` currently discards the tails. In the backward child fold the accumulator is normalized after every multiply, so the new rule would never fire from the second child onward. Regridding must carry the policy _and_ the fitted law. `resample()` already does this (`grid_fn.rs:485-497`); `from_grid_array` callers do not.
 
 ## Part C — interpolation between the first grid point and a hard boundary
 
@@ -153,7 +153,7 @@ For `n ≥ 1` this **diverges logarithmically** as `t → t_hard`. Three failure
 
 1. **Storing the boundary ordinate.** `y(t_hard) = +∞` for `n ≥ 1`. Any linear interpolation into a cell with an infinite endpoint returns `+∞` across the whole cell, wrongly zeroing a finite region of density. `to_plain(+∞) = 0` hides this rather than erroring.
 2. **Linear-in-`t` interpolation across the first cell.** The true `y` is convex-divergent, so linear-in-`t` is a poor approximation exactly where the density is changing fastest.
-3. **Assuming the ordinate diverges at all.** For `n = 0`, `y(t) = μt + C` is *finite* at the boundary and the density is *maximal* there. The edge is a genuine step discontinuity, not a zero. This is the common case for the zero-length branches in the motivating dataset, and it is the case whose mode must be preserved exactly.
+3. **Assuming the ordinate diverges at all.** For `n = 0`, `y(t) = μt + C` is _finite_ at the boundary and the density is _maximal_ there. The edge is a genuine step discontinuity, not a zero. This is the common case for the zero-length branches in the motivating dataset, and it is the case whose mode must be preserved exactly.
 
 ### Proposed law
 
@@ -166,7 +166,7 @@ y(t) = a − b·log(t − t_hard),   b ≥ 0
 - `b = 0` recovers the finite/step case (`n = 0`) exactly.
 - `b > 0` recovers the power-law vanishing case (`n ≥ 1`) exactly.
 
-One law covers both; no branching on `n`, which is not available after convolution anyway. Constrain `b ≥ 0`: a negative fit means the density *increases* into the boundary faster than any power law, which is unphysical here and indicates noise in the innermost points — clamp to `b = 0`.
+One law covers both; no branching on `n`, which is not available after convolution anyway. Constrain `b ≥ 0`: a negative fit means the density _increases_ into the boundary faster than any power law, which is unphysical here and indicates noise in the innermost points — clamp to `b = 0`.
 
 ### Grid placement rule
 
@@ -188,7 +188,7 @@ Both boundary regions therefore contribute analytically to the mass integral use
 ### Composition
 
 - **Multiplication**: exponents add (`b_result = b_a + b_b`), which is exactly the addition of the two log-space laws. Closed form, no refit — consistent with Part B.
-- **Convolution**: exponents add *and gain one* (`t^m ⊛ t^n ∼ t^{m+n+1}` near the combined edge), and the edge itself is the sum of the operand edges. This must be refit from the result, not propagated.
+- **Convolution**: exponents add _and gain one_ (`t^m ⊛ t^n ∼ t^{m+n+1}` near the combined edge), and the edge itself is the sum of the operand edges. This must be refit from the result, not propagated.
 - **Quantile / HPD**: integration must not smooth across a `b = 0` step. The discontinuity is real.
 
 ## Part D — adaptive sensible domain
@@ -220,19 +220,19 @@ Fixed `n` with adaptive `dx`, plus a resolution floor so that multiplying a narr
 
 ## Design axes
 
-| # | Axis | Options | Recommendation |
-| - | ---- | ------- | -------------- |
-| 1 | Domain criterion | mass-based ε-quantile / magnitude-based `δ·y_max` | mass-based; tail mass is closed-form on both sides |
-| 2 | ε | 1e-3 / 1e-4 / configurable | single named constant, 5e-4 per side |
-| 3 | Tail slope estimation | last two points / least squares over outermost window / analytic seed at construction | least-squares window, with decay guard; analytic seed where the family is known |
-| 4 | `Constant` retention | retire entirely / keep for non-inference uses | retire from inference passes; non-integrable |
-| 5 | `Zero` naming | keep / rename to `Hard` | rename — under this design it is a domain declaration, not a written y-value |
-| 6 | Point budget | fixed n / adaptive n | fixed n with a `dx` floor |
-| 7 | Empty invariant | documented / debug-asserted / checked error | checked error; this is the original defect |
+| #   | Axis                  | Options                                                                               | Recommendation                                                                  |
+| --- | --------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 1   | Domain criterion      | mass-based ε-quantile / magnitude-based `δ·y_max`                                     | mass-based; tail mass is closed-form on both sides                              |
+| 2   | ε                     | 1e-3 / 1e-4 / configurable                                                            | single named constant, 5e-4 per side                                            |
+| 3   | Tail slope estimation | last two points / least squares over outermost window / analytic seed at construction | least-squares window, with decay guard; analytic seed where the family is known |
+| 4   | `Constant` retention  | retire entirely / keep for non-inference uses                                         | retire from inference passes; non-integrable                                    |
+| 5   | `Zero` naming         | keep / rename to `Hard`                                                               | rename — under this design it is a domain declaration, not a written y-value    |
+| 6   | Point budget          | fixed n / adaptive n                                                                  | fixed n with a `dx` floor                                                       |
+| 7   | Empty invariant       | documented / debug-asserted / checked error                                           | checked error; this is the original defect                                      |
 
 ## Coupling
 
-`YAxisPolicy::supports_zero_boundary()` rejects a `Zero` tail under `NegLog`, because literal `0.0` is the multiplicative identity there. That guard alone blocks Part A. Under Part B "hard" is a *domain* declaration and no value is written outside the grid, so the guard has nothing left to protect and is removed. **Parts A and B must land together; neither works alone.**
+`YAxisPolicy::supports_zero_boundary()` rejects a `Zero` tail under `NegLog`, because literal `0.0` is the multiplicative identity there. That guard alone blocks Part A. Under Part B "hard" is a _domain_ declaration and no value is written outside the grid, so the guard has nothing left to protect and is removed. **Parts A and B must land together; neither works alone.**
 
 ## Accuracy constraint on convolution
 
@@ -240,11 +240,11 @@ The FFT operates in plain space, so its output is trustworthy only in the bulk �
 
 Reproduce v0's guard: extend a tail only where it decays away from support; otherwise clamp.
 
-Note also that log-linear extrapolation from the grid edge slightly *over*-estimates the far tail, because the true log-slope `n/t − μ` steepens toward `−μ`. The error is conservative — it can never manufacture a spurious zero — and can be removed where the family is known by seeding the law analytically at construction.
+Note also that log-linear extrapolation from the grid edge slightly _over_-estimates the far tail, because the true log-slope `n/t − μ` steepens toward `−μ`. The error is conservative — it can never manufacture a spurious zero — and can be removed where the family is known by seeding the law analytically at construction.
 
 ## Sequencing
 
-1. `distribution-make-likely-time-policy-aware` — prerequisite, already ticketed.
+1. Policy-aware `likely_time` -- prerequisite, landed.
 2. `BoundaryBehavior::Linear` + hard/soft classification on `GridFn`; policy and fitted law survive `from_grid_array` / `normalize`.
 3. Hard-boundary approach law (Part C) with the grid-placement rule.
 4. Multiplication rule (Part B) + common-grid addition in the backward pass.
