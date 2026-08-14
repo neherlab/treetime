@@ -1,6 +1,6 @@
 # Hard-approach fit misclassifies a falling linear neg-log density as a power law
 
-`fn HardApproachLaw::fit()` on a strictly decreasing linear neg-log grid returns a power-law exponent `b > 0` instead of the linear case `b = 0`, which corrupts the recovered anchor `a` and slope.
+`fn HardApproachLaw::fit()` on a strictly decreasing linear neg-log grid returns a power-law exponent `b > 0` instead of the linear case `b = 0`, so the linear refit that would recover the `slope` never runs and the boundary shape is misrepresented.
 
 ## Symptom and reproduction
 

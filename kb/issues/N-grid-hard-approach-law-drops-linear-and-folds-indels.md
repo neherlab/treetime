@@ -18,13 +18,13 @@
 
 - **code** (`struct HardApproachLaw`):
 
-  $y = a - b\ln\delta + m\,\delta$
+  $y = y_\text{edge} - b\ln(\delta/\delta_\text{edge}) + m\,\delta$
 
   where:
-  - $a$: neg-log anchor
+  - $y_\text{edge}$: the live neg-log grid edge ordinate, read on evaluation (edge-relative; no stored anchor, only the fixed boundary location $t_\text{hard}$)
   - $m$: fitted linear coefficient (field `slope`); $m = 0$ when $b > 0$, $m = s$ when $b = 0$
 
-  Fitted from the innermost grid points [`packages/treetime-grid/src/hard_approach_law.rs#L65-L139`](../../packages/treetime-grid/src/hard_approach_law.rs#L65-L139). Same functional form as truth.
+  Fitted from the innermost grid points [`packages/treetime-grid/src/hard_approach_law.rs`](../../packages/treetime-grid/src/hard_approach_law.rs). Same functional form as truth.
 
 - **Part C** ([`kb/proposals/distribution-log-space-and-hard-soft-boundaries.md#L158-L169`](../proposals/distribution-log-space-and-hard-soft-boundaries.md#L158-L169)):
 
