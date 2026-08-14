@@ -644,11 +644,11 @@ mod tests {
     assert_eq!(expected, composed);
   }
 
-  /// When only one operand has an approach law, the result carries none. The operand without a
-  /// law declares zero density in the sub-grid gap `[t_hard, t_first)`, so the product vanishes
-  /// there and the present law must not survive.
+  /// A nullary `Hard` operand absorbs the other side's approach law. It declares zero density in the
+  /// sub-grid gap `[t_hard, t_first)`, so the product vanishes there and the present law must not
+  /// survive: the result is a nullary `Hard`, not `HardApproach`.
   #[test]
-  fn test_multiply_function_function_single_approach_law_drops_to_none() {
+  fn test_multiply_function_function_nullary_hard_absorbs_approach_law() {
     let law = HardApproachLaw {
       t_hard: 0.0,
       b: 1.5,
