@@ -9,7 +9,7 @@ mod tests {
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
-  use treetime_distribution::Distribution;
+  use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::edge::BranchDistribution;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::{GraphNodeKey, TimeConstraint};
@@ -36,7 +36,7 @@ mod tests {
       .payload()
       .write_arc()
       .set_time_distribution(Some(Arc::new(Distribution::empty())));
-    set_date(&graph, leaf_key, Distribution::point(2013.0, 1.0));
+    set_date(&graph, leaf_key, Distribution::point(2013.0, 0.0));
 
     propagate_distributions_forward(&graph)?;
 
@@ -65,8 +65,8 @@ mod tests {
     let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
 
-    set_time_distribution(&graph, root_key, Distribution::point(2009.0, 1.0));
-    set_date(&graph, leaf_key, Distribution::range((2009.5, 2013.5), 1.0));
+    set_time_distribution(&graph, root_key, Distribution::point(2009.0, 0.0));
+    set_date(&graph, leaf_key, Distribution::range((2009.5, 2013.5), 0.0));
     set_branch_length_distribution(&graph, leaf_key, 1.0);
 
     propagate_distributions_forward(&graph)?;
@@ -77,7 +77,7 @@ mod tests {
     // The refinement is on the distribution, not just on the point estimate: what the leaf carries
     // afterwards is the posterior the confidence interval is read from.
     let leaf_dist = leaf_time_distribution(&graph, leaf_key).expect("leaf A should have a distribution");
-    assert_eq!(Distribution::point(2010.0, 1.0), leaf_dist);
+    assert_eq!(Distribution::point(2010.0, 0.0), leaf_dist);
 
     Ok(())
   }
@@ -91,8 +91,8 @@ mod tests {
     let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
 
-    set_time_distribution(&graph, root_key, Distribution::point(2009.0, 1.0));
-    set_date(&graph, leaf_key, Distribution::point(2008.0, 1.0));
+    set_time_distribution(&graph, root_key, Distribution::point(2009.0, 0.0));
+    set_date(&graph, leaf_key, Distribution::point(2008.0, 0.0));
     set_branch_length_distribution(&graph, leaf_key, 1.0);
 
     propagate_distributions_forward(&graph)?;
@@ -101,7 +101,7 @@ mod tests {
     pretty_assert_ulps_eq!(leaf_time, 2008.0, max_ulps = 4);
 
     let leaf_dist = leaf_time_distribution(&graph, leaf_key).expect("leaf A should have a distribution");
-    assert_eq!(Distribution::point(2008.0, 1.0), leaf_dist);
+    assert_eq!(Distribution::point(2008.0, 0.0), leaf_dist);
 
     Ok(())
   }
@@ -115,8 +115,8 @@ mod tests {
     let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
 
-    set_time_distribution(&graph, root_key, Distribution::point(2009.0, 1.0));
-    set_date(&graph, leaf_key, Distribution::range((2005.0, 2007.0), 1.0));
+    set_time_distribution(&graph, root_key, Distribution::point(2009.0, 0.0));
+    set_date(&graph, leaf_key, Distribution::range((2005.0, 2007.0), 0.0));
 
     propagate_distributions_forward(&graph)?;
 
@@ -136,8 +136,8 @@ mod tests {
     let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
 
-    set_time_distribution(&graph, root_key, Distribution::point(2009.0, 1.0));
-    let given = Distribution::range((2005.0, 2007.0), 1.0);
+    set_time_distribution(&graph, root_key, Distribution::point(2009.0, 0.0));
+    let given = Distribution::range((2005.0, 2007.0), 0.0);
     set_date(&graph, leaf_key, given.clone());
     set_branch_length_distribution(&graph, leaf_key, 1.0);
 
@@ -160,17 +160,19 @@ mod tests {
   fn test_forward_pass_refinement_is_unchanged_by_the_reachable_window() -> Result<(), Report> {
     let wide_parent = {
       let t = Array1::linspace(1950.0, 2050.0, 4001);
-      // Peaked at 2009, so the leaf's own range is what decides where in it the leaf lands.
-      let y = t.mapv(|t: f64| (-0.5 * ((t - 2009.0) / 3.0).powi(2)).exp());
+      // A Gaussian peaked at 2009 stored on the neg-log axis: the ordinate is `-ln p = 0.5 z^2`, a
+      // parabola whose minimum (the peak) sits at 2009, so the leaf's own range decides where in it
+      // the leaf lands.
+      let y = t.mapv(|t: f64| 0.5 * ((t - 2009.0) / 3.0).powi(2));
       Distribution::function(t, y)?
     };
 
-    let refine = |parent: Distribution| -> Result<f64, Report> {
+    let refine = |parent: Distribution<NegLog>| -> Result<f64, Report> {
       let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?;
       let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
       let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
       set_time_distribution(&graph, root_key, parent);
-      set_date(&graph, leaf_key, Distribution::range((2010.5, 2010.6), 1.0));
+      set_date(&graph, leaf_key, Distribution::range((2010.5, 2010.6), 0.0));
       set_branch_length_distribution(&graph, leaf_key, 1.0);
       propagate_distributions_forward(&graph)?;
       node_time(&graph, leaf_key).ok_or_else(|| eyre::eyre!("leaf A should be dated"))
@@ -199,11 +201,12 @@ mod tests {
 
     let coarse_parent = {
       let t = Array1::linspace(1900.0, 2020.0, 121); // one grid point per year
-      let y = t.mapv(|t: f64| (-0.5 * ((t - 2009.0) / 5.0).powi(2)).exp());
+      // Gaussian peaked at 2009 on the neg-log axis (`-ln p = 0.5 z^2`); see the wide-parent case.
+      let y = t.mapv(|t: f64| 0.5 * ((t - 2009.0) / 5.0).powi(2));
       Distribution::function(t, y)?
     };
     set_time_distribution(&graph, root_key, coarse_parent);
-    set_date(&graph, leaf_key, Distribution::range((2010.500, 2010.503), 1.0));
+    set_date(&graph, leaf_key, Distribution::range((2010.500, 2010.503), 0.0));
     set_branch_length_distribution(&graph, leaf_key, 1.0);
 
     propagate_distributions_forward(&graph)?;
@@ -222,7 +225,7 @@ mod tests {
 
     /// Give a node a date, as loading date constraints from the input does: the fixed constraint
     /// and the time distribution it seeds.
-    pub(super) fn set_date(graph: &TestGraph, key: GraphNodeKey, dist: Distribution) {
+    pub(super) fn set_date(graph: &TestGraph, key: GraphNodeKey, dist: Distribution<NegLog>) {
       let dist = Arc::new(dist);
       let node = graph.get_node(key).expect("node exists");
       let mut payload = node.read_arc().payload().write_arc();
@@ -230,7 +233,7 @@ mod tests {
       payload.set_time_distribution(Some(dist));
     }
 
-    pub(super) fn set_time_distribution(graph: &TestGraph, key: GraphNodeKey, dist: Distribution) {
+    pub(super) fn set_time_distribution(graph: &TestGraph, key: GraphNodeKey, dist: Distribution<NegLog>) {
       graph
         .get_node(key)
         .expect("node exists")
@@ -247,7 +250,7 @@ mod tests {
           edge
             .payload()
             .write_arc()
-            .set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 1.0))));
+            .set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 0.0))));
         }
       }
     }
@@ -262,7 +265,7 @@ mod tests {
         .time()
     }
 
-    pub(super) fn leaf_time_distribution(graph: &TestGraph, key: GraphNodeKey) -> Option<Distribution> {
+    pub(super) fn leaf_time_distribution(graph: &TestGraph, key: GraphNodeKey) -> Option<Distribution<NegLog>> {
       graph
         .get_node(key)
         .expect("node exists")

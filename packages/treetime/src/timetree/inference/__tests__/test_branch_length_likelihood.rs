@@ -6,12 +6,15 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_distribution::Distribution;
+  use treetime_distribution::{Distribution, NegLog};
   use treetime_utils::array::ndarray::has_uniform_spacing;
 
   /// With `current_branch_length = 0.1` the grid spans `[1e-5, 0.5]`; the test
   /// points stay inside that support so the assertion exercises grid values
   /// rather than constant extrapolation beyond the last point.
+  ///
+  /// A flat likelihood is probability one at every point, whose neg-log ordinate is `-ln(1) = 0`,
+  /// so `eval` (which returns the stored ordinate) reads `0.0`, not `1.0`.
   #[rustfmt::skip]
   #[rstest]
   #[case::t_0_001( 0.001)]
@@ -32,7 +35,7 @@ mod tests {
       /* gamma */ 1.0,
     )?;
 
-    assert_abs_diff_eq!(helpers::eval(&distribution, t), 1.0, epsilon = 1e-12);
+    assert_abs_diff_eq!(helpers::eval(&distribution, t), 0.0, epsilon = 1e-12);
     Ok(())
   }
 
@@ -56,16 +59,14 @@ mod tests {
 
   /// With no substitution contributions and no observed indels but a positive
   /// indel rate, the normalized probability in branch-length space is
-  /// $\exp(-\mu (t - t_{\min}))$.
+  /// $\exp(-\mu (t - t_{\min}))$, whose neg-log ordinate is $\mu (t - t_{\min})$.
   ///
-  /// With `clock_rate = gamma = 1.0`, branch-length and time axes coincide, so
-  /// interpolated distribution values agree with the closed-form Poisson
-  /// expression up to linear interpolation error $\lesssim h^2 |f''| / 8$. For
-  /// `current_branch_length = 1.0` the grid spans `[1e-5, 5]` with `h ≈ 0.017`,
-  /// and `|f''| = \exp(-(t - t_{\min})) \le 1`, giving an error bound ~4e-5.
+  /// With `clock_rate = gamma = 1.0`, branch-length and time axes coincide. On the neg-log axis the
+  /// stored ordinate is exactly linear in $t$, so grid interpolation reproduces it with no
+  /// second-order error: `eval` returns $\mu (t - t_{\min})$ to machine precision.
   ///
   /// The test points stay inside the support so the assertion exercises the
-  /// interpolated Poisson shape rather than constant extrapolation.
+  /// interpolated grid rather than constant extrapolation.
   #[rustfmt::skip]
   #[rstest]
   #[case::t_0_5(  0.5)]
@@ -77,8 +78,8 @@ mod tests {
 
     let indel_rate = 1.0;
     let t_min = 1e-3 * 0.01;
-    let expected = (-indel_rate * (t - t_min)).exp();
-    assert_abs_diff_eq!(helpers::eval(&distribution, t), expected, epsilon = 1e-4);
+    let expected = indel_rate * (t - t_min);
+    assert_abs_diff_eq!(helpers::eval(&distribution, t), expected, epsilon = 1e-10);
 
     Ok(())
   }
@@ -173,7 +174,7 @@ mod tests {
       /* gamma */ 1.0,
     )?;
 
-    assert_abs_diff_eq!(helpers::eval(&with_zero_indels, t), 1.0, epsilon = 1e-12);
+    assert_abs_diff_eq!(helpers::eval(&with_zero_indels, t), 0.0, epsilon = 1e-12);
     Ok(())
   }
 
@@ -272,11 +273,11 @@ mod tests {
 
     use super::*;
 
-    pub fn eval(distribution: &Distribution, t: f64) -> f64 {
+    pub fn eval(distribution: &Distribution<NegLog>, t: f64) -> f64 {
       distribution.eval(t).unwrap_or(0.0)
     }
 
-    pub fn build_indel_rate_only_distribution() -> Result<Arc<Distribution>, Report> {
+    pub fn build_indel_rate_only_distribution() -> Result<Arc<Distribution<NegLog>>, Report> {
       let contributions: Vec<OptimizationContribution> = vec![];
       compute_branch_length_distribution(
         &contributions,

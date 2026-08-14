@@ -8,7 +8,7 @@ mod tests {
   use eyre::Report;
   use ndarray::array;
   use std::sync::Arc;
-  use treetime_distribution::Distribution;
+  use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::edge::BranchDistribution;
   use treetime_graph::node::{GraphNodeKey, TimeConstraint};
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
@@ -26,7 +26,7 @@ mod tests {
     {
       let leaf_node = graph.get_node(leaf_key).expect("leaf A exists");
       let mut payload = leaf_node.read_arc().payload().write_arc();
-      payload.time_distribution = Some(Arc::new(Distribution::point(2013.0, 1.0)));
+      payload.time_distribution = Some(Arc::new(Distribution::point(2013.0, 0.0)));
     }
 
     // Set branch length distribution on edge from I to A (branch length 2.5 years)
@@ -34,7 +34,7 @@ mod tests {
       let edge_read = edge.read_arc();
       if edge_read.target() == leaf_key {
         let mut payload = edge_read.payload().write_arc();
-        payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(2.5, 1.0))));
+        payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(2.5, 0.0))));
       }
     }
 
@@ -76,12 +76,12 @@ mod tests {
     {
       let node_a = graph.get_node(leaf_a_key).expect("leaf A exists");
       let mut payload = node_a.read_arc().payload().write_arc();
-      payload.time_distribution = Some(Arc::new(Distribution::point(2015.0, 1.0)));
+      payload.time_distribution = Some(Arc::new(Distribution::point(2015.0, 0.0)));
     }
     {
       let node_b = graph.get_node(leaf_b_key).expect("leaf B exists");
       let mut payload = node_b.read_arc().payload().write_arc();
-      payload.time_distribution = Some(Arc::new(Distribution::point(2014.0, 1.0)));
+      payload.time_distribution = Some(Arc::new(Distribution::point(2014.0, 0.0)));
     }
 
     // Set branch length distributions
@@ -96,7 +96,7 @@ mod tests {
         continue;
       };
       let mut payload = edge_read.payload().write_arc();
-      payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 1.0))));
+      payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 0.0))));
     }
 
     propagate_distributions_backward(&graph, None)?;
@@ -136,12 +136,12 @@ mod tests {
     {
       let node_a = graph.get_node(leaf_a_key).expect("leaf A exists");
       let mut payload = node_a.read_arc().payload().write_arc();
-      payload.time_distribution = Some(Arc::new(Distribution::point(date_a, 1.0)));
+      payload.time_distribution = Some(Arc::new(Distribution::point(date_a, 0.0)));
     }
     {
       let node_b = graph.get_node(leaf_b_key).expect("leaf B exists");
       let mut payload = node_b.read_arc().payload().write_arc();
-      payload.time_distribution = Some(Arc::new(Distribution::point(date_b, 1.0)));
+      payload.time_distribution = Some(Arc::new(Distribution::point(date_b, 0.0)));
     }
 
     // Set branch length distributions
@@ -156,7 +156,7 @@ mod tests {
         continue;
       };
       let mut payload = edge_read.payload().write_arc();
-      payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 1.0))));
+      payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 0.0))));
     }
 
     let coalescent_model = coalescent_model(0.01)?;
@@ -172,7 +172,7 @@ mod tests {
         .time_distribution()
         .as_ref()
         .expect("leaf A should have time distribution");
-      let expected = Distribution::point(date_a, 1.0);
+      let expected = Distribution::point(date_a, 0.0);
       assert_eq!(&expected, time_dist.as_ref());
     }
 
@@ -184,7 +184,7 @@ mod tests {
         .time_distribution()
         .as_ref()
         .expect("leaf B should have time distribution");
-      let expected = Distribution::point(date_b, 1.0);
+      let expected = Distribution::point(date_b, 0.0);
       assert_eq!(&expected, time_dist.as_ref());
     }
 
@@ -231,13 +231,13 @@ mod tests {
     let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0)I:1.0)root;")?;
     let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
 
-    let constraint = Distribution::range((2014.0, 2015.0), 1.0);
+    let constraint = Distribution::range((2014.0, 2015.0), 0.0);
     {
       let node = graph.get_node(leaf_key).expect("leaf A exists");
       let mut payload = node.read_arc().payload().write_arc();
       payload.date_constraint = Some(Arc::new(constraint.clone()));
       // What a forward pass leaves behind: the range narrowed down by the rest of the tree.
-      payload.time_distribution = Some(Arc::new(Distribution::point(2014.2, 1.0)));
+      payload.time_distribution = Some(Arc::new(Distribution::point(2014.2, 0.0)));
     }
     set_edge_branch_dist(&graph, leaf_key, 3.0);
 
@@ -268,9 +268,9 @@ mod tests {
     let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal I not found");
 
-    set_date_constraint(&graph, leaf_a_key, Distribution::range((2014.0, 2016.0), 1.0));
-    set_date_constraint(&graph, leaf_b_key, Distribution::range((2013.0, 2015.0), 1.0));
-    set_date_constraint(&graph, internal_key, Distribution::range((2012.0, 2014.0), 1.0));
+    set_date_constraint(&graph, leaf_a_key, Distribution::range((2014.0, 2016.0), 0.0));
+    set_date_constraint(&graph, leaf_b_key, Distribution::range((2013.0, 2015.0), 0.0));
+    set_date_constraint(&graph, internal_key, Distribution::range((2012.0, 2014.0), 0.0));
     set_edge_branch_dist(&graph, leaf_a_key, 3.0);
     set_edge_branch_dist(&graph, leaf_b_key, 2.0);
 
@@ -286,7 +286,7 @@ mod tests {
       .time_distribution()
       .as_ref()
       .expect("internal node should have a time distribution");
-    let expected = Distribution::range((2012.0, 2013.0), 1.0);
+    let expected = Distribution::range((2012.0, 2013.0), 0.0);
     assert_eq!(&expected, actual.as_ref());
 
     Ok(())
@@ -303,7 +303,7 @@ mod tests {
     {
       let leaf_node = graph.get_node(leaf_key).expect("leaf A exists");
       let mut payload = leaf_node.read_arc().payload().write_arc();
-      payload.time_distribution = Some(Arc::new(Distribution::point(2013.0, 1.0)));
+      payload.time_distribution = Some(Arc::new(Distribution::point(2013.0, 0.0)));
     }
 
     // Set branch length distribution
@@ -311,7 +311,7 @@ mod tests {
       let edge_read = edge.read_arc();
       if edge_read.target() == leaf_key {
         let mut payload = edge_read.payload().write_arc();
-        payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(2.5, 1.0))));
+        payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(2.5, 0.0))));
       }
     }
 
@@ -451,7 +451,7 @@ mod tests {
     pub(super) fn set_date_constraint(
       graph: &Graph<NodeTimetree, EdgeTimetree, ()>,
       key: GraphNodeKey,
-      dist: Distribution,
+      dist: Distribution<NegLog>,
     ) {
       let node = graph.get_node(key).expect("node exists");
       node.read_arc().payload().write_arc().date_constraint = Some(Arc::new(dist));
@@ -459,7 +459,7 @@ mod tests {
 
     pub(super) fn set_leaf_time(graph: &Graph<NodeTimetree, EdgeTimetree, ()>, key: GraphNodeKey, time: f64) {
       let node = graph.get_node(key).expect("node exists");
-      node.read_arc().payload().write_arc().time_distribution = Some(Arc::new(Distribution::point(time, 1.0)));
+      node.read_arc().payload().write_arc().time_distribution = Some(Arc::new(Distribution::point(time, 0.0)));
     }
 
     pub(super) fn set_edge_branch_dist(
@@ -473,7 +473,7 @@ mod tests {
           edge_read
             .payload()
             .write_arc()
-            .set_branch_length_distribution(Some(Arc::new(Distribution::point(bl, 1.0))));
+            .set_branch_length_distribution(Some(Arc::new(Distribution::point(bl, 0.0))));
         }
       }
     }

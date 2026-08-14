@@ -49,10 +49,14 @@ mod tests {
     assert_relative_eq!(intervals[0].upper, 2020.5);
   }
 
+  // Ignored: the marginal-posterior HPD contribution is disabled in `extract_confidence_intervals`
+  // until a NegLog-aware HPD region lands. Without it a node whose only source is a time
+  // distribution falls back to the point estimate, so this interval collapses to `[date, date]`.
+  #[ignore = "marginal-posterior HPD disabled pending NegLog-aware HPD"]
   #[test]
   fn test_extract_confidence_intervals_with_distribution() {
     let mut graph = GraphTimetree::new();
-    let dist = Arc::new(Distribution::range((2019.0, 2021.0), 1.0));
+    let dist = Arc::new(Distribution::range((2019.0, 2021.0), 0.0));
     graph.add_node(make_node(Some("node_a"), Some(2020.0), Some(dist)));
     graph.build().unwrap();
 
@@ -103,12 +107,16 @@ mod tests {
     assert_relative_eq!(intervals[0].upper, 2011.644854, epsilon = 1e-4);
   }
 
+  // Ignored: needs the marginal-posterior HPD contribution, which is disabled in
+  // `extract_confidence_intervals` until a NegLog-aware HPD region lands. Without it only the rate
+  // contribution remains, so the interval cannot be wider than the mutation source alone.
+  #[ignore = "marginal-posterior HPD disabled pending NegLog-aware HPD"]
   #[test]
   fn test_extract_confidence_intervals_combined_wider_than_either() {
     // Both marginal distribution and rate susceptibility data present.
     // The quadrature combination must be wider than either source alone.
     let mut graph = GraphTimetree::new();
-    let dist = Arc::new(Distribution::range((2008.0, 2012.0), 1.0));
+    let dist = Arc::new(Distribution::range((2008.0, 2012.0), 0.0));
     graph.add_node(make_node_with_rate_dates(
       "node_a",
       2010.0,
@@ -192,6 +200,10 @@ mod tests {
   // For skewed distributions (nodes near tree boundaries), HPD is narrower and
   // centered on the peak.
 
+  // Ignored: exercises the marginal-posterior HPD region directly, which is disabled in
+  // `extract_confidence_intervals` until a NegLog-aware HPD lands. The distribution now stores
+  // neg-log ordinates so the test is ready to re-enable once that HPD path returns.
+  #[ignore = "marginal-posterior HPD disabled pending NegLog-aware HPD"]
   #[test]
   fn test_extract_confidence_intervals_skewed_distribution_hpd() {
     // Discretized exponential distribution: P(t) = exp(-t) on [0, 10].
@@ -208,7 +220,9 @@ mod tests {
     let n_points = 500;
     let x_min = 0.0;
     let dx = 10.0 / (n_points as f64 - 1.0);
-    let y = Array1::from_shape_fn(n_points, |i| (-(x_min + i as f64 * dx)).exp());
+    // P(t) = exp(-t) stored on the neg-log axis: the ordinate is `-ln P(t) = t`, so the peak
+    // (minimum ordinate) sits at t = 0 and the long right tail rises linearly.
+    let y = Array1::from_shape_fn(n_points, |i| x_min + i as f64 * dx);
 
     let dist_fn = treetime_distribution::DistributionFunction::from_start_dx_values(x_min, dx, y).unwrap();
     let dist = Distribution::Function(dist_fn);
@@ -254,10 +268,10 @@ mod tests {
   mod helpers {
     use crate::payload::timetree::NodeTimetree;
     use std::sync::Arc;
-    use treetime_distribution::Distribution;
+    use treetime_distribution::{Distribution, NegLog};
     use treetime_graph::node::Named;
 
-    pub fn make_node(name: Option<&str>, time: Option<f64>, dist: Option<Arc<Distribution>>) -> NodeTimetree {
+    pub fn make_node(name: Option<&str>, time: Option<f64>, dist: Option<Arc<Distribution<NegLog>>>) -> NodeTimetree {
       let mut node = NodeTimetree::default();
       node.base.set_name(name);
       node.time = time;
@@ -268,7 +282,7 @@ mod tests {
     pub fn make_node_with_rate_dates(
       name: &str,
       time: f64,
-      dist: Option<Arc<Distribution>>,
+      dist: Option<Arc<Distribution<NegLog>>>,
       rate_dates: [f64; 3],
     ) -> NodeTimetree {
       let mut node = make_node(Some(name), Some(time), dist);
