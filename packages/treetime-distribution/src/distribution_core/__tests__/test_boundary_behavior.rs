@@ -84,9 +84,10 @@ mod tests {
   #[case::hard_right(    ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Hard(None)),     None)]
   #[case::constant_left( (-1.0, BoundaryBehavior::Constant, BoundaryBehavior::Error),    Some(2.0))]
   #[case::constant_right(( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Constant), Some(6.0))]
-  // Soft Linear tail: the function continues, so the product is non-empty. The right edge value
-  // is 3.0 at x_max=2.0, so the tail at t=3.0 is 3.0*exp(-slope) and the product is 2.0 times it.
-  #[case::linear_some_right(( 3.0, BoundaryBehavior::Error, BoundaryBehavior::Linear(Some(SoftTailLaw { slope: 1.0 }))), Some(6.0 * std::f64::consts::E.powf(-1.0)))]
+  // Soft Linear tail: the function continues, so the product is non-empty. The right edge ordinate
+  // is 3.0 at x_max=2.0, so the neg-log tail at t=3.0 is 3.0 + slope*(3.0-2.0) = 4.0 and the
+  // product is 2.0 times it.
+  #[case::linear_some_right(( 3.0, BoundaryBehavior::Error, BoundaryBehavior::Linear(Some(SoftTailLaw { slope: 1.0 }))), Some(8.0))]
   #[case::linear_none_right(( 3.0, BoundaryBehavior::Error, BoundaryBehavior::Linear(None)), Some(6.0))]
   #[trace]
   fn test_boundary_multiply_point_function_outside_support(
@@ -102,7 +103,7 @@ mod tests {
     let actual = distribution_multiplication(&point, &function)?;
     // Oracle: kb/decisions/distribution-tails-and-arithmetic.md defines soft tails as evaluable
     // outside the grid and Hard/Error as carrying no product there. Linear is a soft tail, so it
-    // extends; its value is SoftTailLaw's exponential p_edge*exp(-slope*(t-t_edge)).
+    // extends; its value is SoftTailLaw's neg-log line y_edge + slope*(t-t_edge).
     let expected = expected_amplitude.map_or_else(Distribution::empty, |amplitude| Distribution::point(t, amplitude));
     assert_eq!(expected, actual);
     Ok(())
@@ -121,9 +122,9 @@ mod tests {
 
     let product = distribution_multiplication(&Distribution::Function(fa), &Distribution::Function(fb))?;
 
-    // The product's right edge value is 2.0 * 2.5 = 5.0 at x_max = 2.0. Evaluated 0.5 beyond the
-    // edge, the composed tail is 5.0 * exp(-(slope_a + slope_b) * 0.5).
-    let expected = 5.0 * (-(slope_a + slope_b) * 0.5_f64).exp();
+    // The product's right edge ordinate is 2.0 * 2.5 = 5.0 at x_max = 2.0. Evaluated 0.5 beyond the
+    // edge, the composed neg-log tail is 5.0 + (slope_a + slope_b) * 0.5.
+    let expected = 5.0 + (slope_a + slope_b) * 0.5;
     assert_ulps_eq!(expected, product.eval(2.5)?, max_ulps = 8);
     Ok(())
   }

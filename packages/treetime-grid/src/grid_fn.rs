@@ -5,6 +5,7 @@ use crate::boundary_behavior::BoundaryBehavior;
 use crate::grid::Grid;
 use crate::hard_approach_law::HardApproachLaw;
 use crate::interp_nonuniform::interp_nonuniform;
+use crate::soft_tail_law::SoftTailLaw;
 use approx::{UlpsEq, ulps_eq};
 use eyre::Report;
 use itertools::{Itertools, izip};
@@ -373,8 +374,9 @@ impl<T: InterpElem> GridFn<T> {
   {
     match behavior {
       BoundaryBehavior::Constant => Ok(boundary_value),
-      // Soft log-linear tail: an exponential probability tail anchored on the live grid edge, so
-      // it meets the grid continuously at `boundary_value`. `None` falls back to the flat edge.
+      // Soft log-linear tail: a straight neg-log line anchored on the live grid edge, evaluated on
+      // the stored ordinate axis so it meets the grid continuously at `boundary_value`. `None`
+      // falls back to the flat edge.
       BoundaryBehavior::Linear(Some(law)) => {
         let value = law.eval(
           boundary_value.to_f64().unwrap(),
@@ -433,9 +435,9 @@ impl<T: InterpElem> GridFn<T> {
   /// Scale all y-values by a multiplicative factor, preserving boundary laws.
   ///
   /// Under NegLog storage, multiplying stored ordinates by `factor` is a pointwise scale of the
-  /// neg-log values. The hard approach anchor `a` scales by `factor`; the exponent `b` and slope
-  /// are shape parameters and scale together with `a`. A soft tail keeps its slope unchanged:
-  /// the edge-relative tail reads the already-scaled edge value.
+  /// neg-log values. The hard approach anchor `a` and slope scale by `factor`. A soft-tail slope
+  /// scales by `factor` too: the stored ordinates steepen by `factor`, so the neg-log tail line
+  /// does as well, while the edge-relative tail reads the already-scaled edge value.
   #[must_use]
   pub fn scale_y(&self, factor: f64) -> Self
   where
@@ -605,7 +607,8 @@ fn strip_tail_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
 
 /// Scale a fitted boundary law when every ordinate is multiplied by `factor`. The hard approach
 /// anchor and slope scale together with the ordinates; the exponent is invariant (it depends on
-/// the log-distance shape, not amplitude). A soft-tail slope is invariant (see [`GridFn::scale_y`]).
+/// the log-distance shape, not amplitude). A soft-tail slope scales with the ordinates: the
+/// neg-log tail line `y_edge + slope*(t - t_edge)` steepens by `factor` (see [`GridFn::scale_y`]).
 fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   match behavior {
     BoundaryBehavior::Hard(Some(law)) => BoundaryBehavior::Hard(Some(HardApproachLaw {
@@ -614,7 +617,9 @@ fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
       slope: law.slope * factor,
       ..law
     })),
-    BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(law),
+    BoundaryBehavior::Linear(Some(law)) => BoundaryBehavior::Linear(Some(SoftTailLaw {
+      slope: law.slope * factor,
+    })),
     other => other,
   }
 }

@@ -15,7 +15,8 @@ use serde::{Deserialize, Serialize};
 /// ```
 ///
 /// equivalently `p(t) = p_edge * exp(-slope * (t - t_edge))` in plain-probability space, where
-/// `p_edge` and `t_edge` are the grid's own edge ordinate and coordinate.
+/// `p_edge = exp(-y_edge)` is recovered from the grid's own stored edge ordinate `y_edge` and
+/// `t_edge` is its coordinate.
 ///
 /// The law stores only `slope` and re-reads the current edge on evaluation. This is deliberate:
 /// a soft edge is *movable* -- re-windowing and resampling shift it -- so anchoring the law to
@@ -36,17 +37,17 @@ pub struct SoftTailLaw {
 impl SoftTailLaw {
   /// Fit a soft-tail slope from the outermost grid points adjacent to an edge.
   ///
-  /// Least-squares regression of `(t, -ln p(t))` over the `n_fit` points nearest the edge gives
-  /// the neg-log slope. The slope is clamped so the tail decays (never grows) away from support:
-  /// `slope <= 0` on the left, `slope >= 0` on the right. A wrong-sign fit means the outermost
-  /// points trend back toward the peak; clamping to `0` yields a flat tail rather than one that
-  /// manufactures probability outward. This reproduces v0's tail guard (`node_interpolator.py`).
+  /// Least-squares regression of `(t, y)` over the `n_fit` points nearest the edge, where `y` is
+  /// the stored neg-log ordinate, gives the neg-log slope directly. The slope is clamped so the
+  /// tail decays (never grows) away from support: `slope <= 0` on the left, `slope >= 0` on the
+  /// right. A wrong-sign fit means the outermost points trend back toward the peak; clamping to
+  /// `0` yields a flat tail rather than one that manufactures probability outward. This reproduces
+  /// v0's tail guard (`node_interpolator.py`).
   ///
-  /// Precondition: `grid_fn.y()` holds *plain-probability* values. The fit takes their natural
-  /// log, so it is valid under the `Plain` y-axis policy; under `NegLog` storage the caller
-  /// converts to plain probability first.
+  /// The fit reads stored ordinates directly, so it is valid under `NegLog` storage with no
+  /// conversion, exactly like [`HardApproachLaw::fit`](crate::HardApproachLaw::fit).
   ///
-  /// Returns `None` when fewer than two positive points are available near the edge.
+  /// Returns `None` when fewer than two finite points are available near the edge.
   pub fn fit(grid_fn: &GridFn<f64>, side: Side, n_fit: usize) -> Option<Self> {
     let n = grid_fn.n_points();
     let n_fit = n_fit.min(n);
@@ -58,14 +59,14 @@ impl SoftTailLaw {
 
     // Regress against `t - t_edge` rather than `t`: the slope is shift-invariant, and centering on
     // the edge keeps the normal-equation terms well conditioned when `t_edge` is large.
-    let (ts, neg_logs): (Vec<f64>, Vec<f64>) = (0..n_fit)
+    let (ts, ys): (Vec<f64>, Vec<f64>) = (0..n_fit)
       .map(|i| match side {
         Side::Left => i,
         Side::Right => n - 1 - i,
       })
       .filter_map(|idx| {
-        let p = grid_fn.y()[idx];
-        (p > 0.0).then(|| (grid_fn.grid().x_at(idx) - t_edge, -p.ln()))
+        let y = grid_fn.y()[idx];
+        y.is_finite().then(|| (grid_fn.grid().x_at(idx) - t_edge, y))
       })
       .collect();
 
@@ -73,7 +74,7 @@ impl SoftTailLaw {
       return None;
     }
 
-    let (slope_raw, _intercept) = least_squares_fit(&ts, &neg_logs);
+    let (slope_raw, _intercept) = least_squares_fit(&ts, &ys);
 
     // Decay guard: keep only a slope that decays away from support.
     let slope = match side {
@@ -84,22 +85,24 @@ impl SoftTailLaw {
     Some(SoftTailLaw { slope })
   }
 
-  /// Evaluate the tail in plain probability at `t`, anchored on the live grid edge.
+  /// Evaluate the tail in neg-log at `t`, anchored on the live grid edge.
   ///
-  /// `p_edge` is the grid's edge ordinate (`y[0]` on the left, `y[n-1]` on the right) and
-  /// `t_edge` its coordinate. Returns `p_edge * exp(-slope * (t - t_edge))`, so the tail meets
-  /// the grid continuously at the edge.
-  pub fn eval(&self, p_edge: f64, t_edge: f64, t: f64) -> f64 {
-    p_edge * (-self.slope * (t - t_edge)).exp()
+  /// `y_edge` is the grid's stored neg-log edge ordinate (`y[0]` on the left, `y[n-1]` on the
+  /// right) and `t_edge` its coordinate. Returns `y_edge + slope * (t - t_edge)`, the straight
+  /// line that a decaying exponential tail becomes in neg-log space, so the tail meets the grid
+  /// continuously at the edge.
+  pub fn eval(&self, y_edge: f64, t_edge: f64, t: f64) -> f64 {
+    y_edge + self.slope * (t - t_edge)
   }
 
-  /// Tail mass beyond the edge, `p_edge / |slope|`, in plain probability.
+  /// Tail mass beyond the edge, `exp(-y_edge) / |slope|`, in plain probability.
   ///
-  /// Closed form of the half-line integral `∫ p_edge exp(-slope (t - t_edge)) dt`. A flat tail
-  /// (`slope == 0`) is non-integrable and returns `+inf`; a genuine decaying tail is finite,
+  /// Closed form of the half-line integral `∫ p_edge exp(-slope (t - t_edge)) dt`, with the edge
+  /// probability recovered from its stored neg-log ordinate as `p_edge = exp(-y_edge)`. A flat
+  /// tail (`slope == 0`) is non-integrable and returns `+inf`; a genuine decaying tail is finite,
   /// unlike a [`BoundaryBehavior::Constant`](crate::BoundaryBehavior::Constant) tail.
-  pub fn mass(&self, p_edge: f64) -> f64 {
-    p_edge / self.slope.abs()
+  pub fn mass(&self, y_edge: f64) -> f64 {
+    (-y_edge).exp() / self.slope.abs()
   }
 
   /// Compose two soft tails under multiplication: the neg-log slopes add.

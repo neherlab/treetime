@@ -7,95 +7,100 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 
-  /// Build a GridFn whose y-values follow a pure exponential `p(t) = exp(rate * t)`, for testing
-  /// that `SoftTailLaw::fit` recovers the known neg-log slope. The neg-log ordinate `-ln p` is
-  /// exactly `-rate * t`, so a least-squares fit against `t` recovers `slope = -rate` exactly.
-  fn make_exponential_grid(rate: f64, x_min: f64, x_max: f64, n: usize) -> GridFn<f64> {
-    let y = Array1::linspace(x_min, x_max, n).mapv(|t| (rate * t).exp());
+  /// Build a GridFn whose stored neg-log ordinates follow a straight line `y(t) = slope * t`, for
+  /// testing that `SoftTailLaw::fit` recovers the known neg-log slope. The fit regresses the
+  /// stored ordinates against `t` directly, so it recovers `slope` exactly (subject to the decay
+  /// guard).
+  fn make_neglog_linear_grid(slope: f64, x_min: f64, x_max: f64, n: usize) -> GridFn<f64> {
+    let y = Array1::linspace(x_min, x_max, n).mapv(|t| slope * t);
     GridFn::from_range_values((x_min, x_max), y).unwrap()
   }
 
   // --- SoftTailLaw::eval ---
+  // Oracle: neg-log line `y(t) = y_edge + slope * (t - t_edge)`, evaluated by hand.
 
   #[rustfmt::skip]
   #[rstest]
   // Continuity: at the edge the tail equals the edge ordinate for any slope.
   #[case::at_edge_flat(    0.0, 2.0, 3.0, 3.0,  2.0)]
   #[case::at_edge_decaying(0.8, 2.0, 3.0, 3.0,  2.0)]
-  // Right tail decays away from support (slope > 0): p_edge * exp(-slope * (t - t_edge)).
-  #[case::right_decay_unit(1.0, 2.0, 0.0, 1.0,  2.0 * std::f64::consts::E.powf(-1.0))]
-  #[case::right_decay_two( 0.5, 4.0, 0.0, 2.0,  4.0 * std::f64::consts::E.powf(-1.0))]
+  // Right tail decays away from support (slope > 0): y_edge + slope * (t - t_edge).
+  #[case::right_decay_unit(1.0, 2.0, 0.0, 1.0,  3.0)]
+  #[case::right_decay_two( 0.5, 4.0, 0.0, 2.0,  5.0)]
   // Left tail decays away from support (slope < 0): outward is decreasing t.
-  #[case::left_decay_unit(-1.0, 2.0, 0.0, -1.0, 2.0 * std::f64::consts::E.powf(-1.0))]
+  #[case::left_decay_unit(-1.0, 2.0, 0.0, -1.0, 3.0)]
   #[trace]
   fn test_soft_tail_law_eval(
     #[case] slope: f64,
-    #[case] p_edge: f64,
+    #[case] y_edge: f64,
     #[case] t_edge: f64,
     #[case] t: f64,
     #[case] expected: f64,
   ) {
     let law = SoftTailLaw { slope };
-    assert_abs_diff_eq!(expected, law.eval(p_edge, t_edge, t), epsilon = 1e-14);
+    assert_abs_diff_eq!(expected, law.eval(y_edge, t_edge, t), epsilon = 1e-14);
   }
 
   // --- SoftTailLaw::fit ---
 
   #[rustfmt::skip]
   #[rstest]
-  // Right tail: p = exp(rate * t) with rate < 0 decays rightward, recovered slope = -rate > 0.
-  #[case::right_decay_slow(-0.8, Side::Right,  0.8)]
-  #[case::right_decay_fast(-2.5, Side::Right,  2.5)]
-  // Left tail: p = exp(rate * t) with rate > 0 decays leftward, recovered slope = -rate < 0.
-  #[case::left_decay_slow(  0.6, Side::Left,  -0.6)]
-  #[case::left_decay_fast(  3.1, Side::Left,  -3.1)]
+  // Right tail: stored neg-log line rises rightward (slope > 0), so p decays rightward. Recovered.
+  #[case::right_decay_slow( 0.8, Side::Right,  0.8)]
+  #[case::right_decay_fast( 2.5, Side::Right,  2.5)]
+  // Left tail: stored neg-log line falls rightward (slope < 0), so p decays leftward. Recovered.
+  #[case::left_decay_slow( -0.6, Side::Left,  -0.6)]
+  #[case::left_decay_fast( -3.1, Side::Left,  -3.1)]
   #[trace]
   fn test_soft_tail_law_fit_recovers_exact_slope(
-    #[case] rate: f64,
+    #[case] slope: f64,
     #[case] side: Side,
     #[case] expected_slope: f64,
   ) {
-    let grid = make_exponential_grid(rate, 0.1, 2.0, 20);
+    let grid = make_neglog_linear_grid(slope, 0.1, 2.0, 20);
     let law = SoftTailLaw::fit(&grid, side, 10).expect("fit should succeed");
     assert_abs_diff_eq!(expected_slope, law.slope, epsilon = 1e-10);
   }
 
   #[test]
   fn test_soft_tail_law_fit_clamps_growing_right_tail_to_flat() {
-    // p = exp(t) grows toward the right edge, so the density does not decay away from support.
-    // The raw neg-log slope is negative; the right-side decay guard clamps it to zero.
-    let grid = make_exponential_grid(1.0, 0.1, 2.0, 20);
+    // A neg-log line that falls rightward (slope < 0) means p grows toward the right edge, so the
+    // density does not decay away from support. The right-side decay guard clamps the slope to zero.
+    let grid = make_neglog_linear_grid(-1.0, 0.1, 2.0, 20);
     let law = SoftTailLaw::fit(&grid, Side::Right, 10).expect("fit should succeed");
     assert_abs_diff_eq!(0.0, law.slope, epsilon = 1e-14);
   }
 
   #[test]
   fn test_soft_tail_law_fit_clamps_growing_left_tail_to_flat() {
-    // p = exp(-t) grows toward the left edge; the left-side decay guard clamps the slope to zero.
-    let grid = make_exponential_grid(-1.0, 0.1, 2.0, 20);
+    // A neg-log line that rises rightward (slope > 0) means p grows toward the left edge; the
+    // left-side decay guard clamps the slope to zero.
+    let grid = make_neglog_linear_grid(1.0, 0.1, 2.0, 20);
     let law = SoftTailLaw::fit(&grid, Side::Left, 10).expect("fit should succeed");
     assert_abs_diff_eq!(0.0, law.slope, epsilon = 1e-14);
   }
 
   #[test]
-  fn test_soft_tail_law_fit_returns_none_for_all_zeros() -> Result<(), Report> {
-    let grid = GridFn::from_range_values((0.1, 1.0), Array1::zeros(10))?;
+  fn test_soft_tail_law_fit_returns_none_for_non_finite() -> Result<(), Report> {
+    // Zero-probability points store as +inf under NegLog; a fit needs two finite ordinates.
+    let grid = GridFn::from_range_values((0.1, 1.0), Array1::from_elem(10, f64::INFINITY))?;
     assert_eq!(None, SoftTailLaw::fit(&grid, Side::Right, 5));
     Ok(())
   }
 
   // --- SoftTailLaw::mass ---
+  // Oracle: half-line integral exp(-y_edge) / |slope|, with p_edge = exp(-y_edge).
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::unit_slope(       1.0, 2.0, 2.0)]
-  #[case::half_slope(       0.5, 3.0, 6.0)]
-  #[case::negative_slope(  -0.5, 3.0, 6.0)]
+  #[case::unit_slope_unit_edge( 1.0,  0.0,                    1.0)]
+  #[case::half_slope(           0.5,  0.0,                    2.0)]
+  #[case::negative_slope_abs(  -0.5,  0.0,                    2.0)]
+  #[case::nonzero_edge(         1.0,  std::f64::consts::LN_2, 0.5)]
   #[trace]
-  fn test_soft_tail_law_mass(#[case] slope: f64, #[case] p_edge: f64, #[case] expected: f64) {
-    // Half-line integral of p_edge * exp(-slope * dt) is p_edge / |slope|.
+  fn test_soft_tail_law_mass(#[case] slope: f64, #[case] y_edge: f64, #[case] expected: f64) {
     let law = SoftTailLaw { slope };
-    assert_abs_diff_eq!(expected, law.mass(p_edge), epsilon = 1e-14);
+    assert_abs_diff_eq!(expected, law.mass(y_edge), epsilon = 1e-14);
   }
 
   #[test]
@@ -147,8 +152,8 @@ mod tests {
 
     // At the edge: continuous with the grid.
     assert_abs_diff_eq!(2.0, grid.interp(2.0)?, epsilon = 1e-14);
-    // Beyond the edge: p_edge * exp(-slope * (t - x_max)) = 2.0 * exp(-0.5).
-    assert_abs_diff_eq!(2.0 * (-0.5_f64).exp(), grid.interp(2.5)?, epsilon = 1e-14);
+    // Beyond the edge: y_edge + slope * (t - x_max) = 2.0 + 1.0 * 0.5.
+    assert_abs_diff_eq!(2.5, grid.interp(2.5)?, epsilon = 1e-14);
     Ok(())
   }
 
@@ -159,8 +164,8 @@ mod tests {
       .with_left_extrap(BoundaryBehavior::Linear(Some(SoftTailLaw { slope: -1.0 })));
 
     assert_abs_diff_eq!(2.0, grid.interp(0.0)?, epsilon = 1e-14);
-    // Beyond the left edge: p_edge * exp(-slope * (t - x_min)) = 2.0 * exp(-(-1.0) * (-0.5)).
-    assert_abs_diff_eq!(2.0 * (-0.5_f64).exp(), grid.interp(-0.5)?, epsilon = 1e-14);
+    // Beyond the left edge: y_edge + slope * (t - x_min) = 2.0 + (-1.0) * (-0.5).
+    assert_abs_diff_eq!(2.5, grid.interp(-0.5)?, epsilon = 1e-14);
     Ok(())
   }
 
@@ -174,17 +179,17 @@ mod tests {
   }
 
   #[test]
-  fn test_gridfn_scale_y_preserves_soft_tail_slope() -> Result<(), Report> {
-    // Amplitude scaling shifts -ln p by a constant, so the slope is invariant; the extrapolated
-    // value scales with the edge value.
+  fn test_gridfn_scale_y_scales_soft_tail_slope() -> Result<(), Report> {
+    // scale_y multiplies every stored neg-log ordinate by the factor, so the tail line steepens by
+    // the factor: the slope scales and the extrapolated value uses the scaled edge and slope.
     let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![4.0, 3.0, 2.0])?
       .with_right_extrap(BoundaryBehavior::Linear(Some(SoftTailLaw { slope: 1.0 })));
 
     let scaled = grid.scale_y(3.0);
     let law = scaled.right_extrap().soft_law().expect("soft tail preserved");
-    assert_abs_diff_eq!(1.0, law.slope, epsilon = 1e-14);
-    // Edge value 2.0 -> 6.0, so the tail at t=2.5 is 6.0 * exp(-0.5).
-    assert_abs_diff_eq!(6.0 * (-0.5_f64).exp(), scaled.interp(2.5)?, epsilon = 1e-14);
+    assert_abs_diff_eq!(3.0, law.slope, epsilon = 1e-14);
+    // Edge value 2.0 -> 6.0, slope 1.0 -> 3.0, so the tail at t=2.5 is 6.0 + 3.0 * 0.5.
+    assert_abs_diff_eq!(7.5, scaled.interp(2.5)?, epsilon = 1e-14);
     Ok(())
   }
 
@@ -220,14 +225,14 @@ mod tests {
     // tail is anchored to the live edge (not an absolute coordinate), extrapolation past the new
     // edge uses the new edge value, staying continuous. An absolutely anchored law would extend
     // from the stale original edge and be discontinuous here.
-    let grid = make_exponential_grid(-1.0, 0.0, 5.0, 51)
+    let grid = make_neglog_linear_grid(-1.0, 0.0, 5.0, 51)
       .with_right_extrap(BoundaryBehavior::Linear(Some(SoftTailLaw { slope: 1.0 })));
 
     // Re-window to [0, 4]: the right edge moves from 5.0 to 4.0.
     let rewindowed = grid.resample_range_dx((0.0, 4.0), 0.1)?;
     let edge_value = rewindowed.interp(4.0)?;
-    // Extrapolation just past the new edge equals edge_value * exp(-slope * 0.5).
-    assert_abs_diff_eq!(edge_value * (-0.5_f64).exp(), rewindowed.interp(4.5)?, epsilon = 1e-12);
+    // Extrapolation just past the new edge equals edge_value + slope * 0.5.
+    assert_abs_diff_eq!(edge_value + 0.5, rewindowed.interp(4.5)?, epsilon = 1e-12);
     Ok(())
   }
 }
