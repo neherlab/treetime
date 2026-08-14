@@ -23,5 +23,4 @@ No demonstrated wrong result today; this is accuracy and structure, not a crash.
 
 ## Related
 
-- [kb/proposals/distribution-log-space-and-hard-soft-boundaries.md](../proposals/distribution-log-space-and-hard-soft-boundaries.md): Part D, "Backward pass restructuring".
-- [M-timetree-backward-pass-plain-space-underflow.md](M-timetree-backward-pass-plain-space-underflow.md): the plain-space underflow that motivated per-step normalization, closed by the negative-log switch.
+- [kb/proposals/distribution-log-space-and-hard-soft-boundaries.md](../proposals/distribution-log-space-and-hard-soft-boundaries.md): Part D, "Backward pass restructuring". The per-step normalization it removes was the plain-space underflow guard, now closed by the negative-log switch.

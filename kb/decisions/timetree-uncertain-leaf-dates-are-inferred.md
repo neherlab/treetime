@@ -57,10 +57,10 @@ printed digits by this change.
 `data/ebola/20` with two dates coarsened to the year (`2014-XX-XX`, `2015-XX-XX`), marginal branch
 lengths, `--time-marginal only-final`:
 
-| leaf             | true date | before        | after         | 90% CI after        |
-| ---------------- | --------- | ------------- | ------------- | ------------------- |
-| `J0037`          | 2014.75   | 2014.50       | 2014.75       | [2014.57, 2015.00]  |
-| `0205_C2_PL6086` | 2015.28   | 2015.50       | 2015.14       | [2015.00, 2015.58]  |
+| leaf             | true date | before  | after   | 90% CI after       |
+| ---------------- | --------- | ------- | ------- | ------------------ |
+| `J0037`          | 2014.75   | 2014.50 | 2014.75 | [2014.57, 2015.00] |
+| `0205_C2_PL6086` | 2015.28   | 2015.50 | 2015.14 | [2015.00, 2015.58] |
 
 Before, both sat at the midpoint of their year with a confidence interval spanning the whole year,
 which is what the input said and nothing more. After, they sit where the rest of the tree puts them
@@ -87,24 +87,26 @@ positive at $t_p$ means there is a $t$ in this node's own support that the branc
 At that $t$ the product above is positive. An empty posterior is therefore never a statement about
 the constraints; it is always an artifact of how the distributions are represented.
 
-Three ways the representation produces one, in falling order of how often they are hit:
+Two ways the representation still produces one, plus a third that the neg-log switch closed:
 
-1. **Underflow.** The distributions are gridded plain probabilities. A posterior that is merely
-   astronomically small evaluates to `0.0`, and `normalize()` maps a maximum of zero to `Empty`.
-   This is [M-timetree-backward-pass-plain-space-underflow.md](../issues/M-timetree-backward-pass-plain-space-underflow.md)
-   seen from the forward side.
-2. **Truncation.** A grid ends where the values stopped mattering, and a `Hard` tail past its end
+1. **Truncation.** A grid ends where the values stopped mattering, and a `Hard` tail past its end
    states the value there is zero rather than small. Two supports that overlap in exact arithmetic
    can then be declared disjoint.
-3. **Collapse to a point.** When two supports meet at a single grid point the product is a `Point`.
+2. **Collapse to a point.** When two supports meet at a single grid point the product is a `Point`.
    A delta annihilates every range that does not contain it, so a whole subtree of dates can be
    contradicted at once.
+3. **Underflow (closed).** Under the earlier plain-probability storage a posterior that was merely
+   astronomically small evaluated to `0.0`, and `normalize()` mapped a maximum of zero to `Empty`.
+   The timetree passes now store negative-log ordinates, where a tiny posterior is a large finite
+   ordinate and `normalize()` is a subtraction, so this route no longer forces `Empty`.
 
-The two nodes contradicted on `data/mpox/clade-ii/2000` are case 1, and the underflow is telling the
-truth. Both are clock-filter outliers whose divergence implies a date around 2110-2120 against a
-stamped 2022; the message reaching them spans `[2003.9, 2477.1]` on 313 points, so at their stamped
-date the density is far below what an `f64` holds. Keeping the given date is the right answer for
-such a tip, and the clock filter reports the same sequences separately.
+The two nodes contradicted on `data/mpox/clade-ii/2000` were observed under the earlier
+plain-probability storage as case 3 above, and the underflow was telling the truth. Both are
+clock-filter outliers whose divergence implies a date around 2110-2120 against a stamped 2022; the
+message reaching them spans `[2003.9, 2477.1]` on 313 points, so at their stamped date the density is
+far below what an `f64` holds. Neg-log storage closes that specific route, so whether these tips now
+resolve via truncation (case 1) instead should be re-confirmed. Keeping the given date is the right
+answer for such a tip either way, and the clock filter reports the same sequences separately.
 
 ## A date the tree contradicts is kept, not refined away
 
@@ -138,11 +140,11 @@ nodes benefit too, since a subtree posterior is usually far narrower than the pa
 
 `data/mpox/clade-ii/2000`, `--max-iter 3`, three alternating runs each:
 
-| build                                          | wall clock     | undated tips |
-| ---------------------------------------------- | -------------- | ------------ |
-| before uncertain leaves were refined           | 65, 66, 68 s   | 0            |
-| refining them, without the window or fallback  | 96, 98, 99 s   | 8            |
-| refining them, with both                       | 31, 32, 38 s   | 0            |
+| build                                         | wall clock   | undated tips |
+| --------------------------------------------- | ------------ | ------------ |
+| before uncertain leaves were refined          | 65, 66, 68 s | 0            |
+| refining them, without the window or fallback | 96, 98, 99 s | 8            |
+| refining them, with both                      | 31, 32, 38 s | 0            |
 
 Exactly dated tips come out identical with and without the window. Uncertain tips move by at most
 0.009 y and internal nodes by at most 0.05 y: the window changes which grid the same posterior is

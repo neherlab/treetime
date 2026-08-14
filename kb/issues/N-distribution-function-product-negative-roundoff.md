@@ -25,5 +25,4 @@ Benign for current consumers. The magnitude is 25+ orders below the unit peak. T
 
 ## Related issues
 
-- [M-timetree-backward-pass-plain-space-underflow.md](M-timetree-backward-pass-plain-space-underflow.md): the same product path underflows tail mass to zero; a separate scientific-accuracy concern.
 - [N-distribution-mixed-nan-policy-undecided.md](N-distribution-mixed-nan-policy-undecided.md): whether `NaN` amplitudes are rejected at construction; this issue removes one source of downstream `NaN`.

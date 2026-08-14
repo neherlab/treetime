@@ -68,7 +68,7 @@ Switch timetree time distributions from `Plain` to `NegLog` (`packages/treetime-
 
 ### What it closes
 
-- [M-timetree-backward-pass-plain-space-underflow.md](../issues/M-timetree-backward-pass-plain-space-underflow.md) — the per-step `normalize()` in the child fold exists only to stop `(peak)^N` underflow. It disappears.
+- Backward-pass child fold: the per-step `normalize()` existed only to stop `(peak)^N` plain-space underflow. Under `NegLog` the fold is addition, so the underflow and the per-step normalize both disappear.
 - [M-distribution-plain-division-fixed-floor.md](../issues/M-distribution-plain-division-fixed-floor.md) — division is subtraction; `NegLog::safe_divisor` is already the identity.
 - [N-distribution-function-product-negative-roundoff.md](../issues/N-distribution-function-product-negative-roundoff.md) — linear interpolation of a log-density cannot produce a negative amplitude, so the `~-1e-26 → ln → NaN` path cannot recur.
 
