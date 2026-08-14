@@ -74,7 +74,7 @@ mod tests {
           return Err(TestCaseError::fail(format!("fold collapsed to {result:?}")));
         };
         prop_assert_eq!(BoundaryBehavior::Constant, f.left_extrap());
-        prop_assert_eq!(BoundaryBehavior::Hard(None), f.right_extrap());
+        prop_assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
       }
     }
   }
@@ -134,7 +134,7 @@ mod tests {
       .unwrap()
       .with_left_extrap(BoundaryBehavior::Constant)
       .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard(None))
+      .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
     Distribution::Function(f)
   }

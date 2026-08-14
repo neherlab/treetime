@@ -185,15 +185,15 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     let x_f64 = x.to_f64().unwrap();
     if x_f64 < self.x_min().to_f64().unwrap() {
       return match self.left_extrap() {
-        BoundaryBehavior::Hard(None) => true,
-        BoundaryBehavior::Hard(Some(law)) => x_f64 < law.t_hard,
+        BoundaryBehavior::Hard => true,
+        BoundaryBehavior::HardApproach(law) => x_f64 < law.t_hard,
         _ => false,
       };
     }
     if x_f64 > self.x_max().to_f64().unwrap() {
       return match self.right_extrap() {
-        BoundaryBehavior::Hard(None) => true,
-        BoundaryBehavior::Hard(Some(law)) => x_f64 > law.t_hard,
+        BoundaryBehavior::Hard => true,
+        BoundaryBehavior::HardApproach(law) => x_f64 > law.t_hard,
         _ => false,
       };
     }
@@ -341,15 +341,17 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   /// Create a new distribution function with a constant delta added to every y value.
   ///
-  /// Preserves the grid parameters and per-side tail policies exactly (via `fn GridFn.mapv()`),
-  /// the additive counterpart of [`Self::scale_y`]. Under [`crate::policy::NegLog`] the ordinate
-  /// is `-ln(probability)`, so adding `-min` shifts the peak ordinate to zero: this is
-  /// normalization by a pure shift, which keeps likelihood ratios and out-of-support tails intact.
+  /// Preserves the grid parameters and per-side tail policies exactly, including any fitted boundary
+  /// law (via `fn GridFn.shift_y()`), the additive counterpart of [`Self::scale_y`]. Under
+  /// [`crate::policy::NegLog`] the ordinate is `-ln(probability)`, so adding `-min` shifts the peak
+  /// ordinate to zero: this is normalization by a pure shift, which keeps likelihood ratios and
+  /// out-of-support tails intact. Both boundary laws are edge-relative and shift-invariant, so they
+  /// carry through unchanged while evaluation reads the shifted edge ordinate.
   #[must_use]
   pub fn shift_y(&self, delta: T) -> Self
   where
     T: Float,
   {
-    Self::from_grid_fn(self.grid_fn.mapv(|v| v + delta))
+    Self::from_grid_fn(self.grid_fn.shift_y(delta))
   }
 }

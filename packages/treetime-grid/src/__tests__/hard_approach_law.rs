@@ -210,11 +210,11 @@ mod tests {
       (1.0, 5.0),
       ndarray::array![0.0, -(2.0_f64.ln()), -(3.0_f64.ln()), -(4.0_f64.ln()), -(5.0_f64.ln())],
     )?
-    .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw {
+    .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw {
       t_hard: 0.0,
       b: 1.0,
       slope: 0.0,
-    })));
+    }));
 
     // In the gap: y(0.5) = -ln(0.5) = ln(2)
     assert_abs_diff_eq!(2.0_f64.ln(), grid.interp(0.5)?, epsilon = 1e-14);
@@ -233,11 +233,11 @@ mod tests {
     // live edge y[0] = 4.0 at t_edge = 1.0 and slope = 2.0. In the gap the law is the line
     // y = 4.0 + 2.0*(t - 1.0); at the boundary t = 0 it reaches the finite value 2.0 (not y_edge).
     let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![4.0, 6.0, 8.0])?.with_left_extrap(
-      BoundaryBehavior::Hard(Some(HardApproachLaw {
+      BoundaryBehavior::HardApproach(HardApproachLaw {
         t_hard: 0.0,
         b: 0.0,
         slope: 2.0,
-      })),
+      }),
     );
 
     assert_abs_diff_eq!(3.0, grid.interp(0.5)?, epsilon = 1e-14);
@@ -250,11 +250,11 @@ mod tests {
   fn test_gridfn_hard_approach_flat_preserves_boundary() -> Result<(), Report> {
     // b = 0, slope = 0: the law is flat at the live edge ordinate across the whole gap and boundary.
     let grid = GridFn::from_range_values((0.1, 1.0), ndarray::array![5.0, 5.0, 5.0, 5.0, 5.0])?.with_left_extrap(
-      BoundaryBehavior::Hard(Some(HardApproachLaw {
+      BoundaryBehavior::HardApproach(HardApproachLaw {
         t_hard: 0.0,
         b: 0.0,
         slope: 0.0,
-      })),
+      }),
     );
 
     assert_abs_diff_eq!(5.0, grid.interp(0.05)?, epsilon = 1e-14);
@@ -271,20 +271,20 @@ mod tests {
       (1.0, 5.0),
       ndarray::array![0.0, -(2.0_f64.ln()), -(3.0_f64.ln()), -(4.0_f64.ln()), -(5.0_f64.ln())],
     )?
-    .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw {
+    .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw {
       t_hard: 0.0,
       b: 1.0,
       slope: 0.0,
-    })));
+    }));
 
     let before = grid.interp(0.5)?;
     let shifted = grid.shift_y(10.0);
     assert_eq!(
-      BoundaryBehavior::Hard(Some(HardApproachLaw {
+      BoundaryBehavior::HardApproach(HardApproachLaw {
         t_hard: 0.0,
         b: 1.0,
         slope: 0.0
-      })),
+      }),
       shifted.left_extrap()
     );
     assert_abs_diff_eq!(before + 10.0, shifted.interp(0.5)?, epsilon = 1e-13);
@@ -299,7 +299,7 @@ mod tests {
       slope: 2.0,
     };
     let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![1.0, 2.0, 3.0])?
-      .with_left_extrap(BoundaryBehavior::Hard(Some(law)));
+      .with_left_extrap(BoundaryBehavior::HardApproach(law));
 
     let scaled = grid.scale_y(3.0);
     let scaled_law = scaled
@@ -326,7 +326,7 @@ mod tests {
       slope: 0.0,
     };
     let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![1.0, 2.0, 3.0])?
-      .with_left_extrap(BoundaryBehavior::Hard(Some(law)));
+      .with_left_extrap(BoundaryBehavior::HardApproach(law));
 
     let mapped = grid.mapv(|v| v * v);
     assert_eq!(None, mapped.left_extrap().approach_law());
@@ -346,8 +346,8 @@ mod tests {
       slope: -1.0,
     };
     let grid = GridFn::from_range_values((1.0, 9.0), ndarray::array![1.0, 5.0, 9.0])?
-      .with_left_extrap(BoundaryBehavior::Hard(Some(left_law)))
-      .with_right_extrap(BoundaryBehavior::Hard(Some(right_law)));
+      .with_left_extrap(BoundaryBehavior::HardApproach(left_law))
+      .with_right_extrap(BoundaryBehavior::HardApproach(right_law));
 
     let negated = grid.negate_arg()?;
     let new_left = negated.left_extrap().approach_law().expect("should have left approach");
@@ -385,7 +385,7 @@ mod tests {
       slope: 0.5,
     };
     let grid = GridFn::from_range_values((1.0, 5.0), ndarray::array![2.0, 4.0, 6.0, 8.0, 10.0])?
-      .with_left_extrap(BoundaryBehavior::Hard(Some(law)));
+      .with_left_extrap(BoundaryBehavior::HardApproach(law));
 
     let resampled = grid.resample_range_dx((1.0, 5.0), 0.5)?;
     let resampled_law = resampled

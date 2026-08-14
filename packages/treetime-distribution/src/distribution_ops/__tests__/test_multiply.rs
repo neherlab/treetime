@@ -313,14 +313,14 @@ mod tests {
       make_function(2001.0, 2007.0, 61, 2004.0, 2.0)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard(None))
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let subtree_msg = Distribution::Function(
       make_function(1970.0, 2000.0, 301, 1990.0, 5.0)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard(None))
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let result = distribution_multiplication(&leaf_msg, &subtree_msg).unwrap();
@@ -342,7 +342,7 @@ mod tests {
   fn test_multiply_tail_c5_disjoint_hard_tail() {
     let a = Distribution::Function(
       make_function(10.0, 20.0, 101, 15.0, 3.0)
-        .with_left_extrap(BoundaryBehavior::Hard(None))
+        .with_left_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let b = Distribution::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
@@ -400,14 +400,14 @@ mod tests {
       make_function(0.0, 10.0, 101, 5.0, 2.0)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard(None))
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let b = Distribution::Function(
       make_function(3.0, 8.0, 51, 5.5, 1.5)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard(None))
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let result = distribution_multiplication(&a, &b).unwrap();
@@ -454,21 +454,21 @@ mod tests {
       make_function(2000.0, 2010.0, 101, 2005.0, 2.0)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard(None))
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let msg2 = Distribution::Function(
       make_function(2001.0, 2008.0, 71, 2004.0, 1.5)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard(None))
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let msg3 = Distribution::Function(
       make_function(2003.0, 2009.0, 61, 2006.0, 1.5)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard(None))
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     // Fourth message: disjoint from the narrowed accumulator but reachable via Constant left tail.
@@ -476,7 +476,7 @@ mod tests {
       make_function(1970.0, 1999.0, 291, 1990.0, 5.0)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard(None))
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
 
@@ -491,7 +491,7 @@ mod tests {
     };
     // The composed tails survive normalization across every step.
     assert_eq!(BoundaryBehavior::Constant, f.left_extrap());
-    assert_eq!(BoundaryBehavior::Hard(None), f.right_extrap());
+    assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
     assert!(
       accum.likely_time().is_some(),
       "Accumulated result must have a likely_time"
@@ -511,21 +511,21 @@ mod tests {
       make_function(2024.0, 2026.0, 21, 2025.0, 0.5)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard(None))
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let msg_recent_2 = Distribution::Function(
       make_function(2024.5, 2025.5, 11, 2025.0, 0.3)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard(None))
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let msg_old = Distribution::Function(
       make_function(1970.0, 1999.0, 291, 1990.0, 5.0)
         .with_left_extrap(BoundaryBehavior::Constant)
         .unwrap()
-        .with_right_extrap(BoundaryBehavior::Hard(None))
+        .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
 
@@ -554,14 +554,14 @@ mod tests {
     let f = make_function(2000.0, 2010.0, 101, 2005.0, 2.0)
       .with_left_extrap(BoundaryBehavior::Constant)
       .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard(None))
+      .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
     let normalized = Distribution::Function(f).normalize();
     let Distribution::Function(f) = &normalized else {
       panic!("Expected Function, got {normalized:?}")
     };
     assert_eq!(BoundaryBehavior::Constant, f.left_extrap());
-    assert_eq!(BoundaryBehavior::Hard(None), f.right_extrap());
+    assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
     // Peak scaled to 1.0, tails unchanged.
     assert_ulps_eq!(1.0, f.y().iter().copied().fold(f64::MIN, f64::max), max_ulps = 4);
   }
@@ -571,10 +571,10 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::constant_constant(BoundaryBehavior::Constant, BoundaryBehavior::Constant, BoundaryBehavior::Constant)]
-  #[case::constant_hard(    BoundaryBehavior::Constant, BoundaryBehavior::Hard(None),     BoundaryBehavior::Hard(None))]
+  #[case::constant_hard(    BoundaryBehavior::Constant, BoundaryBehavior::Hard,     BoundaryBehavior::Hard)]
   #[case::constant_error(   BoundaryBehavior::Constant, BoundaryBehavior::Error,    BoundaryBehavior::Error)]
-  #[case::hard_hard(        BoundaryBehavior::Hard(None),     BoundaryBehavior::Hard(None),     BoundaryBehavior::Hard(None))]
-  #[case::hard_error(       BoundaryBehavior::Hard(None),     BoundaryBehavior::Error,    BoundaryBehavior::Error)]
+  #[case::hard_hard(        BoundaryBehavior::Hard,     BoundaryBehavior::Hard,     BoundaryBehavior::Hard)]
+  #[case::hard_error(       BoundaryBehavior::Hard,     BoundaryBehavior::Error,    BoundaryBehavior::Error)]
   #[case::error_error(      BoundaryBehavior::Error,    BoundaryBehavior::Error,    BoundaryBehavior::Error)]
   #[trace]
   fn test_multiply_function_function_composes_result_tails(
@@ -619,12 +619,12 @@ mod tests {
 
     let a = Distribution::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::Hard(Some(law_a)))
+        .with_left_extrap(BoundaryBehavior::HardApproach(law_a))
         .unwrap(),
     );
     let b = Distribution::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::Hard(Some(law_b)))
+        .with_left_extrap(BoundaryBehavior::HardApproach(law_b))
         .unwrap(),
     );
 
@@ -657,12 +657,12 @@ mod tests {
 
     let a = Distribution::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::Hard(Some(law)))
+        .with_left_extrap(BoundaryBehavior::HardApproach(law))
         .unwrap(),
     );
     let b = Distribution::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::Hard(None))
+        .with_left_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
 
@@ -670,7 +670,7 @@ mod tests {
     let Distribution::Function(f) = &result else {
       panic!("Expected Function")
     };
-    assert_eq!(BoundaryBehavior::Hard(None), f.left_extrap());
+    assert_eq!(BoundaryBehavior::Hard, f.left_extrap());
   }
 
   /// normalize() preserves approach laws alongside tail policies. Under `Plain` policy normalize
@@ -682,11 +682,11 @@ mod tests {
     // Build a distribution with a known max > 1 so normalization visibly rescales
     let f = DistributionFunction::<f64, Plain>::from_range_values((1.0, 5.0), array![20.0, 40.0, 100.0, 40.0, 20.0])
       .unwrap()
-      .with_left_extrap(BoundaryBehavior::Hard(Some(HardApproachLaw {
+      .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw {
         t_hard: 0.0,
         b: 1.0,
         slope: 2.0,
-      })))
+      }))
       .unwrap();
 
     let normalized = Distribution::Function(f).normalize();
@@ -716,7 +716,7 @@ mod tests {
   #[case::endpoint_contact(           ( 0.0, 10.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    (10.0, 20.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    false)]
   #[case::soft_left_bridges_gap(      (10.0, 20.0, BoundaryBehavior::Constant, BoundaryBehavior::Error), ( 0.0,  8.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    false)]
   #[case::facing_bounds_hard_far_soft((10.0, 20.0, BoundaryBehavior::Error, BoundaryBehavior::Constant), ( 0.0,  8.0, BoundaryBehavior::Constant, BoundaryBehavior::Error), true)]
-  #[case::backward_messages_never(    (2001.0, 2007.0, BoundaryBehavior::Constant, BoundaryBehavior::Hard(None)), (1970.0, 2000.0, BoundaryBehavior::Constant, BoundaryBehavior::Hard(None)), false)]
+  #[case::backward_messages_never(    (2001.0, 2007.0, BoundaryBehavior::Constant, BoundaryBehavior::Hard), (1970.0, 2000.0, BoundaryBehavior::Constant, BoundaryBehavior::Hard), false)]
   #[trace]
   fn test_multiply_hard_domains_disjoint(
     #[case] (a_lo, a_hi, a_left, a_right): (f64, f64, BoundaryBehavior, BoundaryBehavior),

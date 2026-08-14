@@ -7,10 +7,8 @@ use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
 use treetime_distribution::NegLog;
-use treetime_grid::{BoundaryBehavior, HardApproachLaw, Side};
-
-/// Number of innermost grid points used to fit the approach law near a hard boundary.
-const N_APPROACH_FIT_POINTS: usize = 5;
+use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side};
+use treetime_utils::make_report;
 
 /// Compute the branch-length likelihood distribution used for time inference.
 ///
@@ -69,8 +67,19 @@ pub fn compute_branch_length_distribution(
   // ordinates and starts at min_bl / clock_rate > 0. The fit detects the regime from the data:
   // for n >= 1 mutations the neg-log density diverges logarithmically (power-law approach),
   // for n = 0 mutations it is exactly linear (the mode sits on the boundary).
-  let approach = HardApproachLaw::fit(distribution_fn.grid_fn(), 0.0, Side::Left, N_APPROACH_FIT_POINTS);
-  let distribution_fn = distribution_fn.with_left_extrap(BoundaryBehavior::Hard(approach))?;
+  //
+  // A grid too degenerate to fit the law (fewer than two finite innermost points) is an error, not
+  // a silent flat boundary: the gap `[0, t_first)` carries real density (maximal at t=0 for a
+  // zero-mutation branch), so a missing law would zero it and lose that mass -- the class of defect
+  // that motivated the hard-approach law.
+  let approach =
+    HardApproachLaw::fit(distribution_fn.grid_fn(), 0.0, Side::Left, DEFAULT_TAIL_FIT_POINTS).ok_or_else(|| {
+      make_report!(
+        "Branch-length likelihood grid over [{time_min}, {time_max}] is too degenerate to fit a \
+         hard-boundary approach law near t=0 (fewer than two finite innermost points)"
+      )
+    })?;
+  let distribution_fn = distribution_fn.with_left_extrap(BoundaryBehavior::HardApproach(approach))?;
 
   Ok(Arc::new(Distribution::Function(distribution_fn)))
 }

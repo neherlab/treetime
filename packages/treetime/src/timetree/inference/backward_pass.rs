@@ -14,7 +14,8 @@ use treetime_distribution::distribution_multiplication;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
-use treetime_utils::make_internal_error;
+use treetime_grid::{DEFAULT_TAIL_FIT_POINTS, GridFn, Side, SoftTailLaw};
+use treetime_utils::{make_internal_error, make_internal_report};
 
 /// Propagates time distributions backward from leaves to root.
 ///
@@ -134,7 +135,7 @@ where
     // child's sampling date is a hard upper bound on the parent's age, so the right tail is Hard.
     let parent_message = distribution_convolution(node_time_dist.as_ref(), &negated_branch_dist)?
       .with_left_extrap(BoundaryBehavior::Constant)?
-      .with_right_extrap(BoundaryBehavior::Hard(None))?;
+      .with_right_extrap(BoundaryBehavior::Hard)?;
     edge.set_msg_to_parent(Some(Arc::new(parent_message)));
   }
 
@@ -239,12 +240,14 @@ fn sum_function_messages(functions: &[&DistributionFunction<f64, NegLog>]) -> Re
     summed += function.y();
   }
 
-  let left_tail = combine_side_tail(functions.iter().map(|f| f.left_extrap()));
-  let right_tail = combine_side_tail(functions.iter().map(|f| f.right_extrap()));
-
-  let summed = DistributionFunction::from_range_values((left, right), summed)?
-    .with_left_extrap(left_tail)?
-    .with_right_extrap(right_tail)?;
+  let summed = DistributionFunction::from_range_values((left, right), summed)?;
+  let left_tail = derive_summed_tail(functions.iter().map(|f| f.left_extrap()), summed.grid_fn(), Side::Left)?;
+  let right_tail = derive_summed_tail(
+    functions.iter().map(|f| f.right_extrap()),
+    summed.grid_fn(),
+    Side::Right,
+  )?;
+  let summed = summed.with_left_extrap(left_tail)?.with_right_extrap(right_tail)?;
   Ok(Distribution::Function(summed))
 }
 
@@ -294,28 +297,55 @@ fn combine_upper_bound(operands: impl Iterator<Item = (f64, BoundaryBehavior)>) 
   hard.or(soft).expect("at least one function message")
 }
 
-/// Whether a tail terminates the evaluable domain on its side. `Hard` is zero probability beyond
-/// the edge and `Error` is undefined beyond it, so both restrict the working grid; the soft laws
-/// (`Constant`, `Linear`) continue past the edge and do not.
+/// Whether a tail terminates the evaluable domain on its side. `Hard`/`HardApproach` is zero
+/// probability beyond the edge and `Error` is undefined beyond it, so all restrict the working grid;
+/// the soft laws (`Constant`, `Linear`) continue past the edge and do not.
 fn is_restricting(tail: BoundaryBehavior) -> bool {
-  matches!(tail, BoundaryBehavior::Hard(_) | BoundaryBehavior::Error)
+  tail.is_hard()
 }
 
-/// Neg-log tail class of a product on one side, composed from the operands' tails on that side.
+/// Derive the concrete tail policy of a summed message on one side from the operands' tail classes.
 ///
-/// Mirrors the multiplication tail rule (`treetime_distribution::distribution_ops::multiply`): the
-/// product is soft only when every operand is soft; a hard bound dominates any soft one, and an
-/// undeclared (`Error`) bound dominates all. Fitted laws are dropped to `None` because the backward
-/// messages carry none and only the class governs the domain choices made here.
-fn combine_side_tail(tails: impl Iterator<Item = BoundaryBehavior>) -> BoundaryBehavior {
-  let mut strongest = BoundaryBehavior::Constant;
+/// Mirrors the multiplication tail rule (`treetime_distribution::distribution_ops::multiply`) as a
+/// class lattice `Error > Hard > Linear > Constant`: the product is soft only when every operand is
+/// soft, a hard bound dominates any soft one, and an undeclared (`Error`) bound dominates all. The
+/// backward messages carry no fitted law, so the hard and undeclared classes need none here
+/// (`Hard`, `Error`); the flat class stays `Constant`. Only the soft log-linear class needs a law,
+/// which is fit from the summed data on `side` -- a grid too degenerate to fit is an error rather
+/// than a silent flat fallback.
+///
+/// Today's backward messages are `Constant` on the left and `Hard` on the right, so the soft-fit
+/// branch is not reached; it is the correct behavior once the passes attach `Linear` tails.
+fn derive_summed_tail(
+  tails: impl Iterator<Item = BoundaryBehavior>,
+  summed: &GridFn<f64>,
+  side: Side,
+) -> Result<BoundaryBehavior, Report> {
+  let mut any_error = false;
+  let mut any_hard = false;
+  let mut any_linear = false;
   for tail in tails {
-    strongest = match (strongest, tail) {
-      (BoundaryBehavior::Error, _) | (_, BoundaryBehavior::Error) => BoundaryBehavior::Error,
-      (BoundaryBehavior::Hard(_), _) | (_, BoundaryBehavior::Hard(_)) => BoundaryBehavior::Hard(None),
-      (BoundaryBehavior::Linear(_), _) | (_, BoundaryBehavior::Linear(_)) => BoundaryBehavior::Linear(None),
-      (BoundaryBehavior::Constant, BoundaryBehavior::Constant) => BoundaryBehavior::Constant,
-    };
+    match tail {
+      BoundaryBehavior::Error => any_error = true,
+      BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) => any_hard = true,
+      BoundaryBehavior::Linear(_) => any_linear = true,
+      BoundaryBehavior::Constant => {},
+    }
   }
-  strongest
+
+  if any_error {
+    return Ok(BoundaryBehavior::Error);
+  }
+  if any_hard {
+    return Ok(BoundaryBehavior::Hard);
+  }
+  if any_linear {
+    let law = SoftTailLaw::fit(summed, side, DEFAULT_TAIL_FIT_POINTS).ok_or_else(|| {
+      make_internal_report!(
+        "Backward child fold cannot fit a soft tail on the {side:?} side: the summed grid is degenerate"
+      )
+    })?;
+    return Ok(BoundaryBehavior::Linear(law));
+  }
+  Ok(BoundaryBehavior::Constant)
 }

@@ -103,7 +103,7 @@ mod tests {
     #[case] y: Array1<f64>,
     #[case] query: f64,
   ) -> Result<(), Report> {
-    let grid_fn = GridFn::from_range_values(x_range, y)?.with_extrap(BoundaryBehavior::Hard(None));
+    let grid_fn = GridFn::from_range_values(x_range, y)?.with_extrap(BoundaryBehavior::Hard);
     let actual = grid_fn.interp(query)?;
     assert_ulps_eq!(0.0, actual, max_ulps = 4);
     Ok(())
@@ -135,9 +135,9 @@ mod tests {
   fn test_gridfn_negate_arg_swaps_extrap_sides() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
       .with_left_extrap(BoundaryBehavior::Constant)
-      .with_right_extrap(BoundaryBehavior::Hard(None));
+      .with_right_extrap(BoundaryBehavior::Hard);
     let negated = grid_fn.negate_arg()?;
-    assert_eq!(BoundaryBehavior::Hard(None), negated.left_extrap());
+    assert_eq!(BoundaryBehavior::Hard, negated.left_extrap());
     assert_eq!(BoundaryBehavior::Constant, negated.right_extrap());
     Ok(())
   }
@@ -145,10 +145,10 @@ mod tests {
   #[test]
   fn test_gridfn_resample_preserves_extrap() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?
-      .with_left_extrap(BoundaryBehavior::Hard(None))
+      .with_left_extrap(BoundaryBehavior::Hard)
       .with_right_extrap(BoundaryBehavior::Constant);
     let resampled = grid_fn.resample_range_dx((0.0, 2.0), 0.5)?;
-    assert_eq!(BoundaryBehavior::Hard(None), resampled.left_extrap());
+    assert_eq!(BoundaryBehavior::Hard, resampled.left_extrap());
     assert_eq!(BoundaryBehavior::Constant, resampled.right_extrap());
     Ok(())
   }
@@ -213,7 +213,7 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::constant(BoundaryBehavior::Constant, true)]
-  #[case::hard(    BoundaryBehavior::Hard(None),     false)]
+  #[case::hard(    BoundaryBehavior::Hard,     false)]
   #[case::error(   BoundaryBehavior::Error,    false)]
   #[trace]
   fn test_boundary_behavior_is_soft(#[case] behavior: BoundaryBehavior, #[case] expected: bool) {
@@ -242,12 +242,12 @@ mod tests {
       b: 1.0,
       slope: 0.5,
     };
-    let grid_fn =
-      GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?.with_left_extrap(BoundaryBehavior::Hard(Some(law)));
+    let grid_fn = GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?
+      .with_left_extrap(BoundaryBehavior::HardApproach(law));
 
     let resampled = grid_fn.resample_range_dx((1.0, 3.0), 0.25)?;
 
-    assert_eq!(BoundaryBehavior::Hard(Some(law)), resampled.left_extrap());
+    assert_eq!(BoundaryBehavior::HardApproach(law), resampled.left_extrap());
     assert!(
       !resampled.left_extrap().is_soft(),
       "a hard boundary must stay hard across regridding"
@@ -260,12 +260,12 @@ mod tests {
   #[test]
   fn test_gridfn_resample_preserves_fitted_soft_law() -> Result<(), Report> {
     let law = SoftTailLaw { slope: 0.7 };
-    let grid_fn = GridFn::from_range_values((1.0, 3.0), array![4.0, 3.0, 2.0])?
-      .with_right_extrap(BoundaryBehavior::Linear(Some(law)));
+    let grid_fn =
+      GridFn::from_range_values((1.0, 3.0), array![4.0, 3.0, 2.0])?.with_right_extrap(BoundaryBehavior::Linear(law));
 
     let resampled = grid_fn.resample_range_dx((1.0, 3.0), 0.25)?;
 
-    assert_eq!(BoundaryBehavior::Linear(Some(law)), resampled.right_extrap());
+    assert_eq!(BoundaryBehavior::Linear(law), resampled.right_extrap());
     assert!(
       resampled.right_extrap().is_soft(),
       "a soft boundary must stay soft across regridding"
@@ -283,8 +283,8 @@ mod tests {
       b: 1.0,
       slope: 2.0,
     };
-    let grid_fn =
-      GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?.with_left_extrap(BoundaryBehavior::Hard(Some(law)));
+    let grid_fn = GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?
+      .with_left_extrap(BoundaryBehavior::HardApproach(law));
 
     let scaled = grid_fn.scale_y(3.0);
 
@@ -293,7 +293,7 @@ mod tests {
       b: 1.0 * 3.0,
       slope: 2.0 * 3.0,
     };
-    assert_eq!(BoundaryBehavior::Hard(Some(expected)), scaled.left_extrap());
+    assert_eq!(BoundaryBehavior::HardApproach(expected), scaled.left_extrap());
     Ok(())
   }
 
@@ -302,13 +302,13 @@ mod tests {
   #[test]
   fn test_gridfn_scale_y_preserves_soft_class_and_scales_law() -> Result<(), Report> {
     let law = SoftTailLaw { slope: 0.7 };
-    let grid_fn = GridFn::from_range_values((1.0, 3.0), array![4.0, 3.0, 2.0])?
-      .with_right_extrap(BoundaryBehavior::Linear(Some(law)));
+    let grid_fn =
+      GridFn::from_range_values((1.0, 3.0), array![4.0, 3.0, 2.0])?.with_right_extrap(BoundaryBehavior::Linear(law));
 
     let scaled = grid_fn.scale_y(2.0);
 
     let expected = SoftTailLaw { slope: 0.7 * 2.0 };
-    assert_eq!(BoundaryBehavior::Linear(Some(expected)), scaled.right_extrap());
+    assert_eq!(BoundaryBehavior::Linear(expected), scaled.right_extrap());
     Ok(())
   }
 
@@ -322,12 +322,12 @@ mod tests {
       b: 1.0,
       slope: 0.5,
     };
-    let grid_fn =
-      GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?.with_left_extrap(BoundaryBehavior::Hard(Some(law)));
+    let grid_fn = GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?
+      .with_left_extrap(BoundaryBehavior::HardApproach(law));
 
     let shifted = grid_fn.shift_y(-3.0);
 
-    assert_eq!(BoundaryBehavior::Hard(Some(law)), shifted.left_extrap());
+    assert_eq!(BoundaryBehavior::HardApproach(law), shifted.left_extrap());
     Ok(())
   }
 
@@ -337,12 +337,12 @@ mod tests {
   #[test]
   fn test_gridfn_shift_y_preserves_soft_law_unchanged() -> Result<(), Report> {
     let law = SoftTailLaw { slope: 0.7 };
-    let grid_fn = GridFn::from_range_values((1.0, 3.0), array![4.0, 3.0, 2.0])?
-      .with_right_extrap(BoundaryBehavior::Linear(Some(law)));
+    let grid_fn =
+      GridFn::from_range_values((1.0, 3.0), array![4.0, 3.0, 2.0])?.with_right_extrap(BoundaryBehavior::Linear(law));
 
     let shifted = grid_fn.shift_y(1.5);
 
-    assert_eq!(BoundaryBehavior::Linear(Some(law)), shifted.right_extrap());
+    assert_eq!(BoundaryBehavior::Linear(law), shifted.right_extrap());
     Ok(())
   }
 
@@ -358,16 +358,16 @@ mod tests {
     };
     let soft = SoftTailLaw { slope: 0.7 };
     let grid_fn = GridFn::from_range_values((1.0, 3.0), array![3.0, 2.5, 2.0])?
-      .with_left_extrap(BoundaryBehavior::Hard(Some(hard)))
-      .with_right_extrap(BoundaryBehavior::Linear(Some(soft)));
+      .with_left_extrap(BoundaryBehavior::HardApproach(hard))
+      .with_right_extrap(BoundaryBehavior::Linear(soft));
 
     let round_tripped = grid_fn
       .resample_range_dx((1.0, 3.0), 0.25)?
       .scale_y(1.0)
       .resample_range_dx((1.0, 3.0), 0.5)?;
 
-    assert_eq!(BoundaryBehavior::Hard(Some(hard)), round_tripped.left_extrap());
-    assert_eq!(BoundaryBehavior::Linear(Some(soft)), round_tripped.right_extrap());
+    assert_eq!(BoundaryBehavior::HardApproach(hard), round_tripped.left_extrap());
+    assert_eq!(BoundaryBehavior::Linear(soft), round_tripped.right_extrap());
     assert!(!round_tripped.left_extrap().is_soft(), "hard boundary must stay hard");
     assert!(round_tripped.right_extrap().is_soft(), "soft boundary must stay soft");
     Ok(())

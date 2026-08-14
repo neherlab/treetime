@@ -341,35 +341,29 @@ fn with_composed_tails<Y: YAxisPolicy>(
 ///
 /// Fitted laws compose in closed form:
 ///
-/// - Two `Hard` approach laws compose by adding their exponents (multiplication is addition in
-///   neg-log space, and both laws read the same live grid edge). If only one operand
-///   carries a law, the result carries none (`Hard(None)`): the `None` operand declares zero
-///   density in the sub-grid gap `[t_hard, t_first)`, so the product is zero there and the present
-///   law must not survive.
+/// - Two `HardApproach` laws compose by adding their shape parameters (multiplication is addition in
+///   neg-log space, and both laws read the same live grid edge). A nullary `Hard` operand declares
+///   zero density in the sub-grid gap `[t_hard, t_first)`, so the product is zero there: it absorbs a
+///   `HardApproach` law rather than propagating it, which would fabricate density the `Hard` operand
+///   forbids.
 /// - Two `Linear` soft tails compose by adding their neg-log slopes (multiplication is addition in
 ///   neg-log space). A `Linear` tail times a flat `Constant` keeps the `Linear` slope, because a
-///   flat tail contributes slope zero. `Linear(None)` times anything yields `Linear(None)`: the
-///   product is soft but its slope is unknown until refit.
+///   flat tail contributes slope zero.
 fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> BoundaryBehavior {
   match (a, b) {
     (BoundaryBehavior::Error, _) | (_, BoundaryBehavior::Error) => BoundaryBehavior::Error,
-    (BoundaryBehavior::Hard(a_law), BoundaryBehavior::Hard(b_law)) => {
-      let composed = match (a_law, b_law) {
-        (Some(a), Some(b)) => Some(a.compose_multiply(&b)),
-        // NOTE: a `None` operand contributes zero density in the sub-grid gap
-        // `[t_hard, t_first)`, so the product is zero there. Never propagate the present
-        // law -- that would fabricate density the `None` operand forbids.
-        (Some(_) | None, None) | (None, Some(_)) => None,
-      };
-      BoundaryBehavior::Hard(composed)
+    // Both sides hard: a nullary `Hard` zeroes the sub-grid gap and so absorbs a `HardApproach`
+    // law; two approach laws compose by adding their shape parameters.
+    (BoundaryBehavior::Hard, BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_))
+    | (BoundaryBehavior::HardApproach(_), BoundaryBehavior::Hard) => BoundaryBehavior::Hard,
+    (BoundaryBehavior::HardApproach(a_law), BoundaryBehavior::HardApproach(b_law)) => {
+      BoundaryBehavior::HardApproach(a_law.compose_multiply(&b_law))
     },
-    (BoundaryBehavior::Hard(law), _) | (_, BoundaryBehavior::Hard(law)) => BoundaryBehavior::Hard(law),
+    // A hard bound restricts the product regardless of the soft other side, so keep the hard side.
+    (hard @ (BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_)), _) => hard,
+    (_, hard @ (BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_))) => hard,
     (BoundaryBehavior::Linear(a_law), BoundaryBehavior::Linear(b_law)) => {
-      let composed = match (a_law, b_law) {
-        (Some(a), Some(b)) => Some(a.compose_multiply(&b)),
-        _ => None,
-      };
-      BoundaryBehavior::Linear(composed)
+      BoundaryBehavior::Linear(a_law.compose_multiply(&b_law))
     },
     // A flat `Constant` contributes slope zero, so it leaves the `Linear` slope unchanged.
     (BoundaryBehavior::Linear(law), BoundaryBehavior::Constant)

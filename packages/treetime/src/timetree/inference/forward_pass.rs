@@ -227,7 +227,7 @@ where
       // The parent's time is a hard lower bound (left tail Hard); there is no upper bound from
       // the parent side on how far in the future the node could be (right tail Constant).
       let dist_from_parent = distribution_convolution(&parent_except_subtree, branch_dist)?
-        .with_left_extrap(BoundaryBehavior::Hard(None))?
+        .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Constant)?;
       // Re-anchor the peak to 0. Under NegLog normalize() subtracts the minimum ordinate (an exact
       // shift): the backward pass stores peak-at-0 distributions, while convolution and division
@@ -254,7 +254,7 @@ where
       // them explicitly after normalize() (which preserves whatever tails it received).
       let dist_from_parent = distribution_convolution(parent_time_dist, branch_dist)?
         .normalize()
-        .with_left_extrap(BoundaryBehavior::Hard(None))?
+        .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Constant)?;
       log_refinement(&slot.node, parent_time_dist, &dist_from_parent);
       slot.node.set_time_distribution(Some(Arc::new(dist_from_parent)));

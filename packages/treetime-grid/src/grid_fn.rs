@@ -410,9 +410,8 @@ impl<T: InterpElem> GridFn<T> {
     match behavior {
       BoundaryBehavior::Constant => Ok(boundary_value),
       // Soft log-linear tail: a straight neg-log line anchored on the live grid edge, evaluated on
-      // the stored ordinate axis so it meets the grid continuously at `boundary_value`. `None`
-      // falls back to the flat edge.
-      BoundaryBehavior::Linear(Some(law)) => {
+      // the stored ordinate axis so it meets the grid continuously at `boundary_value`.
+      BoundaryBehavior::Linear(law) => {
         let value = law.eval(
           boundary_value.to_f64().unwrap(),
           bound.to_f64().unwrap(),
@@ -420,8 +419,7 @@ impl<T: InterpElem> GridFn<T> {
         );
         Ok(T::from(value).unwrap())
       },
-      BoundaryBehavior::Linear(None) => Ok(boundary_value),
-      BoundaryBehavior::Hard(Some(law)) => {
+      BoundaryBehavior::HardApproach(law) => {
         let xi_f64 = xi.to_f64().unwrap();
         // Beyond the hard boundary: zero probability
         if (side == "below" && xi_f64 < law.t_hard) || (side != "below" && xi_f64 > law.t_hard) {
@@ -432,7 +430,7 @@ impl<T: InterpElem> GridFn<T> {
         let value = law.eval(boundary_value.to_f64().unwrap(), bound.to_f64().unwrap(), xi_f64);
         Ok(T::from(value).unwrap())
       },
-      BoundaryBehavior::Hard(None) => Ok(T::zero()),
+      BoundaryBehavior::Hard => Ok(T::zero()),
       BoundaryBehavior::Error => make_error!(
         "GridFn evaluated at {xi:?}, {side} the support boundary {bound:?}, but no extrapolation policy is set for that side"
       ),
@@ -462,10 +460,13 @@ impl<T: InterpElem> GridFn<T> {
     Self {
       grid: self.grid,
       y: self.y.mapv(f),
-      // An arbitrary y-transform makes a fitted boundary law wrong, so drop the law and keep the
-      // side's hard/soft class.
-      left_extrap: strip_tail_law(self.left_extrap),
-      right_extrap: strip_tail_law(self.right_extrap),
+      // An arbitrary y-transform invalidates any fitted boundary law and can move the tail off the
+      // log-linear family the laws describe, so the result carries no declared tail: both sides
+      // reset to `Error`, exactly as a fresh `from_grid_array` does. A caller that still wants a tail
+      // re-declares it (and refits) with a known transform (`scale_y`, `shift_y`) or an explicit
+      // `with_*_extrap`. Structure-preserving transforms keep their law through their own methods.
+      left_extrap: BoundaryBehavior::default(),
+      right_extrap: BoundaryBehavior::default(),
     }
   }
 
@@ -653,17 +654,6 @@ impl<T: InterpElem> GridFn<T> {
   }
 }
 
-/// Drop a fitted boundary law after an arbitrary y-transform, keeping the side's hard/soft class.
-/// The transform makes a fitted coefficient or slope wrong, and it cannot be updated without
-/// knowing the transform's structure.
-fn strip_tail_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
-  match behavior {
-    BoundaryBehavior::Hard(_) => BoundaryBehavior::Hard(None),
-    BoundaryBehavior::Linear(_) => BoundaryBehavior::Linear(None),
-    other => other,
-  }
-}
-
 /// Scale a fitted boundary law when every ordinate is multiplied by `factor`. Scaling every neg-log
 /// ordinate by `factor` raises the probability to a power (`p -> p^factor`), so both shape terms of
 /// the hard approach law scale by `factor`: `y = y_edge - b*ln|dt/dt_edge| + slope*(t - t_edge)`
@@ -672,14 +662,14 @@ fn strip_tail_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
 /// line `y_edge + slope*(t - t_edge)` steepens by `factor` (see [`GridFn::scale_y`]).
 fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   match behavior {
-    BoundaryBehavior::Hard(Some(law)) => BoundaryBehavior::Hard(Some(HardApproachLaw {
+    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(HardApproachLaw {
       b: law.b * factor,
       slope: law.slope * factor,
       ..law
-    })),
-    BoundaryBehavior::Linear(Some(law)) => BoundaryBehavior::Linear(Some(SoftTailLaw {
+    }),
+    BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(SoftTailLaw {
       slope: law.slope * factor,
-    })),
+    }),
     other => other,
   }
 }
@@ -696,8 +686,8 @@ fn shift_tail_law(behavior: BoundaryBehavior, _delta: f64) -> BoundaryBehavior {
 /// Reflect a fitted boundary law for `f(x) -> f(-x)`.
 fn negate_tail_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
   match behavior {
-    BoundaryBehavior::Hard(Some(law)) => BoundaryBehavior::Hard(Some(law.negate_arg())),
-    BoundaryBehavior::Linear(Some(law)) => BoundaryBehavior::Linear(Some(law.negate_arg())),
+    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.negate_arg()),
+    BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(law.negate_arg()),
     other => other,
   }
 }
