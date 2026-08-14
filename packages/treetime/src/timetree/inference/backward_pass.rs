@@ -2,6 +2,7 @@ use crate::coalescent::coalescent::CoalescentModel;
 use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
+use std::cmp::Ordering;
 use std::sync::Arc;
 use treetime_distribution::BoundaryBehavior;
 use treetime_distribution::Distribution;
@@ -211,7 +212,7 @@ fn sum_function_messages(functions: &[&DistributionFunction<f64, NegLog>]) -> Re
     .reduce(f64::min)
     .expect("at least one function message");
 
-  if !(left < right) {
+  if left.partial_cmp(&right) != Some(Ordering::Less) {
     // A soft boundary never separates domains, so with the backward messages' soft-left tails this
     // is unreachable; only genuinely disjoint hard domains could reach it. Guarding it keeps an
     // empty product from silently poisoning every ancestor to the root (the motivating defect).
