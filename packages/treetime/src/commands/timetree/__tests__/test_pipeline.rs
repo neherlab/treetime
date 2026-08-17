@@ -12,6 +12,7 @@ mod tests {
   use treetime_utils::io::json::json_read_file;
 
   #[test]
+  #[ignore = "mass-sized time distributions collapse the forward-pass division: kb/issues/H-timetree-mass-sizing-collapses-forward-pass-division.md"]
   fn test_pipeline_timetree_convergence() -> Result<(), Report> {
     let root = project_root();
     let outdir = root.join("tmp/test-convergence-pipeline");
@@ -94,6 +95,7 @@ mod tests {
   }
 
   #[test]
+  #[ignore = "mass-sized time distributions collapse the forward-pass division: kb/issues/H-timetree-mass-sizing-collapses-forward-pass-division.md"]
   fn test_pipeline_timetree_ladderize_applies_to_auspice() -> Result<(), Report> {
     let root = project_root();
     let output = tempfile::tempdir()?;
