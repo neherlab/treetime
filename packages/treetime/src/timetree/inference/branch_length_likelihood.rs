@@ -1,4 +1,4 @@
-use crate::optimize::likelihood::{branch_length_boundary_ordinate, evaluate_with_indels_log_lh_only};
+use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
 use crate::partition::optimization_contribution::OptimizationContribution;
 use eyre::Report;
 use ndarray::Array1;
@@ -148,6 +148,29 @@ fn branch_length_grid_to_time_range(grid: &Array1<f64>, clock_rate: f64, gamma: 
     time_min: first(grid) / effective_clock_rate,
     time_max: last(grid) / effective_clock_rate,
   }
+}
+
+/// Boundary neg-log ordinate at `t = 0`, peak-normalized against `max_log_lh`.
+///
+/// Classifies the hard boundary of the branch-length density: `Some(max_log_lh - log_lh(0))` when
+/// the density is finite there (a zero-mutation branch, whose neg-log approaches the boundary as a
+/// straight line), and `None` when it diverges (a forced substitution or an indel, whose neg-log
+/// approaches as a power law). This is exactly the boundary ordinate a straight-line
+/// `HardApproachLaw::fit` needs; the `None` case selects the power-law fit instead.
+///
+/// An indel branch cannot be evaluated at `t = 0` (`k*ln(0) = -inf`, and `poisson_indel_log_lh`
+/// rejects `t = 0` for `k > 0`), so `indel_count > 0` diverges without evaluation.
+fn branch_length_boundary_ordinate(
+  contributions: &[OptimizationContribution],
+  indel_count: usize,
+  indel_rate: f64,
+  max_log_lh: f64,
+) -> Result<Option<f64>, Report> {
+  if indel_count > 0 {
+    return Ok(None);
+  }
+  let boundary_log_lh = evaluate_with_indels_log_lh_only(contributions, 0, indel_rate, 0.0)?.value();
+  Ok(boundary_log_lh.is_finite().then_some(max_log_lh - boundary_log_lh))
 }
 
 struct TimeRange {
