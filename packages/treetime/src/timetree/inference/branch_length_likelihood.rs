@@ -48,13 +48,19 @@ pub fn compute_branch_length_distribution(
   let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), log_lh)?;
 
   let y_hard = branch_length_boundary_ordinate(contributions, indel_count, indel_rate, max_log_lh)?;
-  let approach = HardApproachLaw::fit(distribution_fn.grid_fn(), 0.0, Side::Left, y_hard, DEFAULT_TAIL_FIT_POINTS)
-    .ok_or_else(|| {
-      make_report!(
-        "Branch-length likelihood grid over [{time_min}, {time_max}] is too degenerate to build a \
+  let approach = HardApproachLaw::fit(
+    distribution_fn.grid_fn(),
+    0.0,
+    Side::Left,
+    y_hard,
+    DEFAULT_TAIL_FIT_POINTS,
+  )
+  .ok_or_else(|| {
+    make_report!(
+      "Branch-length likelihood grid over [{time_min}, {time_max}] is too degenerate to build a \
          hard-boundary approach law near t=0"
-      )
-    })?;
+    )
+  })?;
 
   let distribution_fn = distribution_fn.with_left_extrap(BoundaryBehavior::HardApproach(approach))?;
 

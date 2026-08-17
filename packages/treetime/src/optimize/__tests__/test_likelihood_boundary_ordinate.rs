@@ -51,7 +51,10 @@ mod tests {
     let contributions = [dense_jc69_contribution([0.0, 2.0, 0.0, 0.0])];
 
     let finite = branch_length_boundary_ordinate(&contributions, 0, 0.0, 3.5)?;
-    assert!(finite.is_some(), "precondition: this contribution is finite at the boundary");
+    assert!(
+      finite.is_some(),
+      "precondition: this contribution is finite at the boundary"
+    );
 
     let with_indel = branch_length_boundary_ordinate(&contributions, 1, 44.4, 3.5)?;
     assert_eq!(None, with_indel);
