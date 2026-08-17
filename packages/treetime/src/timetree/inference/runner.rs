@@ -19,7 +19,23 @@ use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 
-pub const BRANCH_GRID_SIZE: usize = 300;
+/// Target resolution of every *stored* timetree time-distribution grid (design D3, proposal Part D).
+///
+/// This is a minimum point count, not a fixed one: the mass re-window
+/// ([`rewindow_to_mass`](treetime_distribution::rewindow_to_mass)) resamples the mass domain at
+/// spacing `min(mass_width / (GRID_POINTS - 1), source_dx)`, so a stored grid holds at least this many
+/// points and is never coarser than the distribution it was re-windowed from. Changing this one
+/// constant changes the baseline stored-grid resolution everywhere (construction, backward fold,
+/// forward refinement).
+pub const GRID_POINTS: usize = 300;
+
+/// Per-side tail mass fraction trimmed when sizing a soft grid edge by probability mass (design D4,
+/// proposal Axis 2).
+///
+/// A soft side's grid edge is placed so that `EPS` of the total mass lies beyond it; the already-fitted
+/// tail law carries that mass rather than discarding it, so accuracy is bounded by tail-law fidelity,
+/// not by `EPS`. A grid therefore holds at least `1 - 2*EPS` of the mass across its two soft sides.
+pub const EPS: f64 = 5e-4;
 
 /// Infer node times.
 ///
@@ -190,7 +206,7 @@ where
         indel_rate,
         branch_length,
         one_mutation,
-        BRANCH_GRID_SIZE,
+        GRID_POINTS,
         clock_rate,
         gamma,
       )?;
