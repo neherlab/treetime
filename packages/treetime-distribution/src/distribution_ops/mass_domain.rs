@@ -113,12 +113,17 @@ pub fn rewindow_to_mass(
   Ok(Distribution::Function(resampled))
 }
 
-/// Refit the soft (`Linear`) tail on each moved edge from the resampled outermost points.
+/// Refit the soft (`Linear`) tail on each moved edge from the outermost grid points.
 ///
 /// Only soft tails are refit: their slope is recovered by least squares from the grid, so moving the
-/// edge is a genuine accuracy improvement. A `HardApproach` law needs the producer-supplied boundary
-/// ordinate that the grid does not carry, so it is left as resampled (edge-relative and already valid).
-fn refit_soft_tails(f: DistributionFunction<f64, NegLog>) -> Result<DistributionFunction<f64, NegLog>, Report> {
+/// edge (or changing the ordinates by a non-constant amount) is a genuine accuracy improvement. A
+/// `HardApproach` law needs the producer-supplied boundary ordinate that the grid does not carry, so
+/// it is left unchanged (edge-relative and already valid); `Hard`, `Constant`, and `Error` carry no
+/// fittable slope and are left unchanged too.
+///
+/// Shared with [`distribution_add_neg_log_weight`](crate::distribution_add_neg_log_weight), which adds
+/// a per-point cost to the ordinates and re-fits the soft tail whose slope the cost changed.
+pub fn refit_soft_tails(f: DistributionFunction<f64, NegLog>) -> Result<DistributionFunction<f64, NegLog>, Report> {
   let f = if matches!(f.left_extrap(), BoundaryBehavior::Linear(_)) {
     let law = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
     f.with_left_extrap(BoundaryBehavior::Linear(law))?
