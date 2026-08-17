@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 
 /// Number of edge grid points a boundary law is fit from by default.
 ///
-/// Both [`HardApproachLaw::fit`] and [`SoftTailLaw::fit`] read the innermost/outermost points
-/// nearest an edge; this is the shared count so the branch-length approach fit and the regrid refit
-/// use one value rather than drifting copies.
+/// Both [`HardApproachLaw::fit_log_power_law`] and [`SoftTailLaw::fit`] read the innermost/outermost
+/// points nearest an edge; this is the shared count so the branch-length approach fit and the regrid
+/// refit use one value rather than drifting copies.
 pub const DEFAULT_TAIL_FIT_POINTS: usize = 5;
 
 /// Behavior of a [`GridFn`](crate::GridFn) when evaluated outside its grid support.

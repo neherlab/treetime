@@ -44,49 +44,45 @@ use serde::{Deserialize, Serialize};
 pub struct HardApproachLaw {
   /// Location of the hard boundary (e.g. `t = 0` for branch lengths).
   pub t_hard: f64,
-  /// Power-law exponent `b >= 0`: a fitted continuous approximation of the mutation-count exponent,
-  /// not an integer. `b > 0`: density vanishes at the boundary (`y -> +inf`); `b = 0`: finite.
+  /// Power-law exponent `b >= 0`. `b > 0`: density vanishes at the boundary (`y -> +inf`), a power
+  /// law fitted from the grid; a fitted continuous approximation of the mutation count, not an
+  /// integer. `b = 0`: finite boundary, the law is a straight line.
   pub b: f64,
-  /// Linear slope `d(-ln p)/dt` near the boundary; carries the `n = 0` mode. Boundary-to-edge slope
-  /// when `b = 0`, else `0`. Composition adds slopes.
+  /// Linear slope of the neg-log law near the boundary. Finite boundary: the slope of the line from
+  /// the boundary to the grid edge. Divergent boundary: `0`. Composition adds slopes.
   pub slope: f64,
 }
 
 impl HardApproachLaw {
-  /// Construct the approach law from the boundary ordinate `y_hard` (neg-log density at `t_hard`,
-  /// evaluated by the producer; the grid is sampled inside `min_bl > 0`, so it cannot supply it).
-  /// `y_hard` classifies the regime exactly, no heuristic threshold:
+  /// Fit the straight-line approach for a finite boundary density (`n = 0`) over `[t_hard, t_edge)`.
   ///
-  /// - finite (`n = 0`): density finite at the boundary. `b = 0`, `slope` is the exact line from
-  ///   `(t_hard, y_hard)` to the grid edge.
-  /// - infinite (`n >= 1`, or indels): density vanishes. Fit `b >= 0` from the innermost points by
-  ///   log-distance regression on `(ln|t - t_hard|, y)`; `slope = 0`. `b` clamped to `>= 0`.
+  /// A zero-mutation branch has a finite, maximal density at the boundary, so the neg-log is a
+  /// straight line. The law is that exact line through the boundary point `(t_hard, y_hard)` and the
+  /// grid edge -- two points, no regression: `b = 0`, `slope = (y_edge - y_hard) / (t_edge -
+  /// t_hard)`. `y_hard = -ln p(t_hard)` is the boundary neg-log ordinate, supplied by the producer
+  /// (the grid samples strictly inside `min_bl > 0`, so no grid point sits at `t_hard`).
   ///
-  /// `Side` selects the grid end nearest the boundary. `None` on empty grid, finite `y_hard` with a
-  /// non-finite edge, divergent boundary with fewer than two finite points, or non-finite result.
-  pub fn fit(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, y_hard: f64, n_fit: usize) -> Option<Self> {
+  /// `Side` selects the grid end nearest the boundary. `None` on an empty grid, a non-finite edge
+  /// ordinate, or a non-finite slope.
+  pub fn fit_linear(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, y_hard: f64) -> Option<Self> {
+    let (t_edge, y_edge) = edge_ordinate(grid_fn, side)?;
+    let slope = (y_edge - y_hard) / (t_edge - t_hard);
+    slope.is_finite().then_some(HardApproachLaw { t_hard, b: 0.0, slope })
+  }
+
+  /// Fit the power-law approach for a divergent boundary density (`n >= 1`, or an indel) over
+  /// `[t_hard, t_edge)`.
+  ///
+  /// The density vanishes at the boundary, so `-ln p` diverges. Fit `b >= 0` from the innermost
+  /// `n_fit` points by one log-distance regression on `(ln|t - t_hard|, y)`: `y = a - b*ln|dt|` is
+  /// linear in `ln|dt|` with slope `-b`; `slope = 0`. The intercept is discarded (edge-relative).
+  ///
+  /// `Side` selects the grid end nearest the boundary. `None` on an empty grid, a non-finite edge
+  /// ordinate, fewer than two finite innermost points, or a non-finite result.
+  pub fn fit_log_power_law(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, n_fit: usize) -> Option<Self> {
     let n = grid_fn.n_points();
-    if n == 0 {
-      return None;
-    }
-    let edge_idx = match side {
-      Side::Left => 0,
-      Side::Right => n - 1,
-    };
-    let t_edge = grid_fn.grid().x_at(edge_idx);
-    let y_edge = grid_fn.y()[edge_idx];
+    edge_ordinate(grid_fn, side)?;
 
-    if y_hard.is_finite() {
-      // Finite boundary: the exact line from the boundary point to the grid edge.
-      if !y_edge.is_finite() {
-        return None;
-      }
-      let slope = (y_edge - y_hard) / (t_edge - t_hard);
-      return slope.is_finite().then_some(HardApproachLaw { t_hard, b: 0.0, slope });
-    }
-
-    // Divergent boundary: y = a - b*ln|dt| is linear in ln|dt| with slope -b; fit b from the
-    // innermost points. Intercept discarded (edge-relative).
     let n_fit = n_fit.min(n);
     let (xs, ys): (Vec<f64>, Vec<f64>) = (0..n_fit)
       .map(|i| match side {
@@ -184,6 +180,23 @@ impl HardApproachLaw {
 pub enum Side {
   Left,
   Right,
+}
+
+/// Grid edge nearest the boundary as `(t_edge, y_edge)`.
+///
+/// `None` on an empty grid or a non-finite edge ordinate, which cannot anchor an edge-relative law.
+fn edge_ordinate(grid_fn: &GridFn<f64>, side: Side) -> Option<(f64, f64)> {
+  let n = grid_fn.n_points();
+  if n == 0 {
+    return None;
+  }
+  let edge_idx = match side {
+    Side::Left => 0,
+    Side::Right => n - 1,
+  };
+  let t_edge = grid_fn.grid().x_at(edge_idx);
+  let y_edge = grid_fn.y()[edge_idx];
+  y_edge.is_finite().then_some((t_edge, y_edge))
 }
 
 /// Simple least-squares linear regression: y = slope * x + intercept.

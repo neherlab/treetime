@@ -56,35 +56,31 @@ pub fn compute_branch_length_distribution(
 
   let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), log_lh)?;
 
-  // Neg-log density at the boundary (branch length 0); the grid samples inside `min_bl > 0`, so it
-  // cannot supply it. The substitution likelihood is evaluated there directly: finite for a
-  // zero-mutation branch (density maximal at the boundary), `-inf` when a forced substitution drives
-  // a site likelihood to zero (divergent). The indel term is `k*ln(0) = -inf` at t=0, but
-  // `poisson_indel_log_lh` returns an error there instead, so an indel branch (`k > 0`) is
-  // short-circuited to divergent rather than evaluated.
-  let boundary_log_lh = if indel_count > 0 {
-    f64::NEG_INFINITY
+  // The boundary neg-log value at `t = 0`, `Some` when the density is finite (a zero-mutation
+  // branch, a straight-line approach) and `None` when it diverges (a forced substitution or an
+  // indel, a power-law approach). Indels cannot be evaluated at `t = 0` (`k*ln(0) = -inf`, and the
+  // evaluator rejects `t = 0` for `k > 0`), so `indel_count > 0` diverges without evaluation.
+  let y_hard = if indel_count > 0 {
+    None
   } else {
-    evaluate_with_indels_log_lh_only(contributions, 0, indel_rate, 0.0)?.value()
+    let boundary_log_lh = evaluate_with_indels_log_lh_only(contributions, 0, indel_rate, 0.0)?.value();
+    boundary_log_lh.is_finite().then_some(max_log_lh - boundary_log_lh)
   };
-  let boundary_neg_log = max_log_lh - boundary_log_lh;
 
-  // The gap `[0, t_first)` carries real density (maximal at t=0 for a zero-mutation branch); a
-  // degenerate grid that cannot build the law is an error, not a silent flat boundary that would
-  // zero that mass.
-  let approach = HardApproachLaw::fit(
-    distribution_fn.grid_fn(),
-    0.0,
-    Side::Left,
-    boundary_neg_log,
-    DEFAULT_TAIL_FIT_POINTS,
-  )
-  .ok_or_else(|| {
+  let grid_fn = distribution_fn.grid_fn();
+  let approach = if let Some(y_hard) = y_hard {
+    HardApproachLaw::fit_linear(grid_fn, 0.0, Side::Left, y_hard)
+  } else {
+    HardApproachLaw::fit_log_power_law(grid_fn, 0.0, Side::Left, DEFAULT_TAIL_FIT_POINTS)
+  };
+
+  let approach = approach.ok_or_else(|| {
     make_report!(
       "Branch-length likelihood grid over [{time_min}, {time_max}] is too degenerate to build a \
-         hard-boundary approach law near t=0"
+       hard-boundary approach law near t=0"
     )
   })?;
+
   let distribution_fn = distribution_fn.with_left_extrap(BoundaryBehavior::HardApproach(approach))?;
 
   Ok(Arc::new(Distribution::Function(distribution_fn)))
