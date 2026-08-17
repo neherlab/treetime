@@ -96,3 +96,28 @@ pub fn evaluate_with_indels_log_lh_only(
   let indel_lh = poisson_indel_log_lh(indel_count, indel_rate, branch_length)?.log_lh;
   Ok(sub_lh + indel_lh)
 }
+
+/// Boundary neg-log ordinate of the branch-length likelihood at `t = 0`, peak-normalized against
+/// `max_log_lh`.
+///
+/// Classifies the hard boundary from the likelihood model: `Some(max_log_lh - log_lh(0))` when the
+/// density is finite there (a zero-mutation branch, whose neg-log approaches the boundary as a
+/// straight line), and `None` when it diverges (a forced substitution or an indel, whose neg-log
+/// approaches as a power law). The returned value is the input a straight-line
+/// [`HardApproachLaw`](treetime_grid::HardApproachLaw) fit needs; the `None` case selects the
+/// power-law fit instead.
+///
+/// An indel branch cannot be evaluated at `t = 0` (`k*ln(0) = -inf`, and `poisson_indel_log_lh`
+/// rejects `t = 0` for `k > 0`), so `indel_count > 0` diverges without evaluation.
+pub fn branch_length_boundary_ordinate(
+  contributions: &[OptimizationContribution],
+  indel_count: usize,
+  indel_rate: f64,
+  max_log_lh: f64,
+) -> Result<Option<f64>, Report> {
+  if indel_count > 0 {
+    return Ok(None);
+  }
+  let boundary_log_lh = evaluate_with_indels_log_lh_only(contributions, 0, indel_rate, 0.0)?.value();
+  Ok(boundary_log_lh.is_finite().then_some(max_log_lh - boundary_log_lh))
+}

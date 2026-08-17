@@ -1,4 +1,4 @@
-use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
+use crate::optimize::likelihood::{branch_length_boundary_ordinate, evaluate_with_indels_log_lh_only};
 use crate::partition::optimization_contribution::OptimizationContribution;
 use eyre::Report;
 use ndarray::Array1;
@@ -47,30 +47,14 @@ pub fn compute_branch_length_distribution(
 
   let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), log_lh)?;
 
-  // The boundary neg-log value at `t = 0`, `Some` when the density is finite (a zero-mutation
-  // branch, a straight-line approach) and `None` when it diverges (a forced substitution or an
-  // indel, a power-law approach). Indels cannot be evaluated at `t = 0` (`k*ln(0) = -inf`, and the
-  // evaluator rejects `t = 0` for `k > 0`), so `indel_count > 0` diverges without evaluation.
-  let y_hard = if indel_count > 0 {
-    None
-  } else {
-    let boundary_log_lh = evaluate_with_indels_log_lh_only(contributions, 0, indel_rate, 0.0)?.value();
-    boundary_log_lh.is_finite().then_some(max_log_lh - boundary_log_lh)
-  };
-
-  let grid_fn = distribution_fn.grid_fn();
-  let approach = if let Some(y_hard) = y_hard {
-    HardApproachLaw::fit_linear(grid_fn, 0.0, Side::Left, y_hard)
-  } else {
-    HardApproachLaw::fit_log_power_law(grid_fn, 0.0, Side::Left, DEFAULT_TAIL_FIT_POINTS)
-  };
-
-  let approach = approach.ok_or_else(|| {
-    make_report!(
-      "Branch-length likelihood grid over [{time_min}, {time_max}] is too degenerate to build a \
-       hard-boundary approach law near t=0"
-    )
-  })?;
+  let y_hard = branch_length_boundary_ordinate(contributions, indel_count, indel_rate, max_log_lh)?;
+  let approach = HardApproachLaw::fit(distribution_fn.grid_fn(), 0.0, Side::Left, y_hard, DEFAULT_TAIL_FIT_POINTS)
+    .ok_or_else(|| {
+      make_report!(
+        "Branch-length likelihood grid over [{time_min}, {time_max}] is too degenerate to build a \
+         hard-boundary approach law near t=0"
+      )
+    })?;
 
   let distribution_fn = distribution_fn.with_left_extrap(BoundaryBehavior::HardApproach(approach))?;
 
