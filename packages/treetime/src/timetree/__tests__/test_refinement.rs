@@ -40,7 +40,7 @@ mod tests {
   const CLOCK_RATE: f64 = 0.001;
 
   #[test]
-  #[ignore = "mass-sized time distributions collapse the forward-pass division: kb/issues/H-timetree-mass-sizing-collapses-forward-pass-division.md"]
+  #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_refinement_rebuilds_complete_coalescent_state_after_topology_change() -> Result<(), Report> {
     let (mut graph, partitions, mut clock_model) = create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
@@ -154,7 +154,7 @@ mod tests {
   }
 
   #[test]
-  #[ignore = "mass-sized time distributions collapse the forward-pass division: kb/issues/H-timetree-mass-sizing-collapses-forward-pass-division.md"]
+  #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_refinement_unchanged_topology_recomputes_missing_time() -> Result<(), Report> {
     let (mut graph, partitions, mut clock_model) = create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
