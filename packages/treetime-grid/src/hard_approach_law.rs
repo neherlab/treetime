@@ -1,5 +1,7 @@
 use crate::GridFn;
+use eyre::Report;
 use serde::{Deserialize, Serialize};
+use treetime_utils::make_error;
 
 /// Approach law for a *hard* grid boundary, in negative-log space.
 ///
@@ -64,9 +66,10 @@ impl HardApproachLaw {
   /// for the divergent case; `n_fit` is the innermost-point count for the power-law regression and is
   /// unused when `y_hard` is `Some`.
   ///
-  /// `Side` selects the grid end nearest the boundary. `None` when the selected constructor cannot
-  /// fit (see [`fit_linear`](Self::fit_linear) and [`fit_log_power_law`](Self::fit_log_power_law)).
-  pub fn fit(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, y_hard: Option<f64>, n_fit: usize) -> Option<Self> {
+  /// `Side` selects the grid end nearest the boundary. Returns an error when the selected
+  /// constructor cannot fit (see [`fit_linear`](Self::fit_linear) and
+  /// [`fit_log_power_law`](Self::fit_log_power_law)).
+  pub fn fit(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, y_hard: Option<f64>, n_fit: usize) -> Result<Self, Report> {
     match y_hard {
       Some(y_hard) => Self::fit_linear(grid_fn, t_hard, side, y_hard),
       None => Self::fit_log_power_law(grid_fn, t_hard, side, n_fit),
@@ -81,12 +84,18 @@ impl HardApproachLaw {
   /// t_hard)`. `y_hard = -ln p(t_hard)` is the boundary neg-log ordinate, supplied by the producer
   /// (the grid samples strictly inside `min_bl > 0`, so no grid point sits at `t_hard`).
   ///
-  /// `Side` selects the grid end nearest the boundary. `None` on an empty grid, a non-finite edge
-  /// ordinate, or a non-finite slope.
-  pub fn fit_linear(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, y_hard: f64) -> Option<Self> {
+  /// `Side` selects the grid end nearest the boundary. Returns an error on an empty grid, a
+  /// non-finite edge ordinate, or a non-finite slope.
+  pub fn fit_linear(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, y_hard: f64) -> Result<Self, Report> {
     let (t_edge, y_edge) = edge_ordinate(grid_fn, side)?;
     let slope = (y_edge - y_hard) / (t_edge - t_hard);
-    slope.is_finite().then_some(HardApproachLaw { t_hard, b: 0.0, slope })
+    if !slope.is_finite() {
+      return make_error!(
+        "Hard-boundary linear fit on the {side:?} side produced a non-finite slope from grid edge \
+         (t={t_edge}, y={y_edge}) and boundary (t={t_hard}, y={y_hard})"
+      );
+    }
+    Ok(HardApproachLaw { t_hard, b: 0.0, slope })
   }
 
   /// Fit the power-law approach for a divergent boundary density (`n >= 1`, or an indel) over
@@ -96,9 +105,9 @@ impl HardApproachLaw {
   /// `n_fit` points by one log-distance regression on `(ln|t - t_hard|, y)`: `y = a - b*ln|dt|` is
   /// linear in `ln|dt|` with slope `-b`; `slope = 0`. The intercept is discarded (edge-relative).
   ///
-  /// `Side` selects the grid end nearest the boundary. `None` on an empty grid, a non-finite edge
-  /// ordinate, fewer than two finite innermost points, or a non-finite result.
-  pub fn fit_log_power_law(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, n_fit: usize) -> Option<Self> {
+  /// `Side` selects the grid end nearest the boundary. Returns an error on an empty grid, a
+  /// non-finite edge ordinate, fewer than two finite innermost points, or a non-finite result.
+  pub fn fit_log_power_law(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, n_fit: usize) -> Result<Self, Report> {
     let n = grid_fn.n_points();
     edge_ordinate(grid_fn, side)?;
 
@@ -116,12 +125,19 @@ impl HardApproachLaw {
       .collect();
 
     if xs.len() < 2 {
-      return None;
+      return make_error!(
+        "Hard-boundary power-law fit on the {side:?} side needs at least two finite grid points off \
+         the boundary t_hard={t_hard}, found {}",
+        xs.len()
+      );
     }
 
     let (neg_b_raw, _) = least_squares_fit(&xs, &ys);
     let b = (-neg_b_raw).max(0.0);
-    b.is_finite().then_some(HardApproachLaw { t_hard, b, slope: 0.0 })
+    if !b.is_finite() {
+      return make_error!("Hard-boundary power-law fit on the {side:?} side produced a non-finite exponent");
+    }
+    Ok(HardApproachLaw { t_hard, b, slope: 0.0 })
   }
 
   /// Evaluate the approach law in neg-log at `t`, anchored on the live grid edge.
@@ -203,11 +219,12 @@ pub enum Side {
 
 /// Grid edge nearest the boundary as `(t_edge, y_edge)`.
 ///
-/// `None` on an empty grid or a non-finite edge ordinate, which cannot anchor an edge-relative law.
-fn edge_ordinate(grid_fn: &GridFn<f64>, side: Side) -> Option<(f64, f64)> {
+/// Returns an error on an empty grid or a non-finite edge ordinate, neither of which can anchor an
+/// edge-relative law.
+fn edge_ordinate(grid_fn: &GridFn<f64>, side: Side) -> Result<(f64, f64), Report> {
   let n = grid_fn.n_points();
   if n == 0 {
-    return None;
+    return make_error!("Cannot anchor an edge-relative law on an empty grid");
   }
   let edge_idx = match side {
     Side::Left => 0,
@@ -215,7 +232,13 @@ fn edge_ordinate(grid_fn: &GridFn<f64>, side: Side) -> Option<(f64, f64)> {
   };
   let t_edge = grid_fn.grid().x_at(edge_idx);
   let y_edge = grid_fn.y()[edge_idx];
-  y_edge.is_finite().then_some((t_edge, y_edge))
+  if !y_edge.is_finite() {
+    return make_error!(
+      "Grid {side:?} edge ordinate is non-finite (y={y_edge} at t={t_edge}); cannot anchor an \
+       edge-relative law"
+    );
+  }
+  Ok((t_edge, y_edge))
 }
 
 /// Simple least-squares linear regression: y = slope * x + intercept.

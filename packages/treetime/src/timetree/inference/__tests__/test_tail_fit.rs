@@ -86,7 +86,7 @@ mod tests {
       Distribution::function(array![0.0, 1.0], array![f64::INFINITY, 0.0]).expect("two-point function");
     assert_error!(
       fit_message_soft_tail(&message, Side::Right),
-      "Timetree message cannot fit a soft tail on the Right side: the convolved grid is degenerate. This is an internal error. Please report it to developers."
+      "Timetree message cannot fit a soft tail on the Right side from the convolved grid. This is an internal error. Please report it to developers.: Soft-tail fit on the Right side needs at least two finite grid points near the edge, found 1"
     );
   }
 }

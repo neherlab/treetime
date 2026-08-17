@@ -1,15 +1,15 @@
 use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
 use crate::partition::optimization_contribution::OptimizationContribution;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
 use treetime_distribution::NegLog;
+use treetime_grid::GridFn;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
 use treetime_utils::array::ndarray::{first, last};
-use treetime_utils::make_report;
 
 /// Compute the branch-length likelihood distribution used for time inference.
 ///
@@ -45,39 +45,21 @@ pub fn compute_branch_length_distribution(
 
   let TimeRange { time_min, time_max } = branch_length_grid_to_time_range(&grid, clock_rate, gamma);
 
-  let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), log_lh)?;
+  let f = GridFn::from_range_values((time_min, time_max), log_lh)?;
 
   let y_hard = branch_length_boundary_ordinate(contributions, indel_count, indel_rate, max_log_lh)?;
-  let approach = HardApproachLaw::fit(
-    distribution_fn.grid_fn(),
-    0.0,
-    Side::Left,
-    y_hard,
-    DEFAULT_TAIL_FIT_POINTS,
-  )
-  .ok_or_else(|| {
-    make_report!(
-      "Branch-length likelihood grid over [{time_min}, {time_max}] is too degenerate to build a \
-         hard-boundary approach law near t=0"
-    )
-  })?;
-
-  // Past the grid's right edge the likelihood `L(t) ~ (mu*t)^n e^{-mu*t}` keeps decaying (the
-  // exponential dominates for large `t`; the Poisson indel term adds a linear neg-log slope). A
-  // log-linear `SoftTailLaw` fitted from the outermost points continues that decay with finite mass.
-  // Under the `Error` default `eval` fails past `t_max`, which drops longer-than-grid edges from
-  // `compute_positional_log_lh`.
-  let right_tail =
-    SoftTailLaw::fit(distribution_fn.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).ok_or_else(|| {
-      make_report!(
-        "Branch-length likelihood grid over [{time_min}, {time_max}] is too degenerate to fit a \
-       soft-boundary tail law near t_max"
-      )
+  let left_boundary =
+    HardApproachLaw::fit(&f, 0.0, Side::Left, y_hard, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
+      format!("When building the branch-length likelihood hard boundary near t=0 over [{time_min}, {time_max}]")
     })?;
 
-  let distribution_fn = distribution_fn
-    .with_left_extrap(BoundaryBehavior::HardApproach(approach))?
-    .with_right_extrap(BoundaryBehavior::Linear(right_tail))?;
+  let right_boundary = SoftTailLaw::fit(&f, Side::Right, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
+    format!("When fitting the branch-length likelihood soft tail near t_max over [{time_min}, {time_max}]")
+  })?;
+
+  let distribution_fn = DistributionFunction::from_grid_fn(f)
+    .with_left_extrap(BoundaryBehavior::HardApproach(left_boundary))?
+    .with_right_extrap(BoundaryBehavior::Linear(right_boundary))?;
 
   Ok(Arc::new(Distribution::Function(distribution_fn)))
 }

@@ -6,6 +6,7 @@ mod tests {
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_utils::assert_error;
 
   /// Build a GridFn whose stored neg-log ordinates follow a straight line `y(t) = slope * t`, for
   /// testing that `SoftTailLaw::fit` recovers the known neg-log slope. The fit regresses the
@@ -81,10 +82,14 @@ mod tests {
   }
 
   #[test]
-  fn test_soft_tail_law_fit_returns_none_for_non_finite() -> Result<(), Report> {
+  fn test_soft_tail_law_fit_err_for_non_finite() -> Result<(), Report> {
     // Zero-probability points store as +inf under NegLog; a fit needs two finite ordinates.
     let grid = GridFn::from_range_values((0.1, 1.0), Array1::from_elem(10, f64::INFINITY))?;
-    assert_eq!(None, SoftTailLaw::fit(&grid, Side::Right, 5));
+    let law = SoftTailLaw::fit(&grid, Side::Right, 5);
+    assert_error!(
+      law,
+      "Soft-tail fit on the Right side needs at least two finite grid points near the edge, found 0"
+    );
     Ok(())
   }
 

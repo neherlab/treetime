@@ -1,4 +1,4 @@
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use treetime_distribution::{BoundaryBehavior, Distribution, NegLog};
 use treetime_grid::{DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
 use treetime_utils::make_internal_report;
@@ -25,10 +25,8 @@ pub fn fit_message_soft_tail(message: &Distribution<NegLog>, side: Side) -> Resu
   let Distribution::Function(function) = message else {
     return Ok(BoundaryBehavior::Constant);
   };
-  let law = SoftTailLaw::fit(function.grid_fn(), side, DEFAULT_TAIL_FIT_POINTS).ok_or_else(|| {
-    make_internal_report!(
-      "Timetree message cannot fit a soft tail on the {side:?} side: the convolved grid is degenerate"
-    )
+  let law = SoftTailLaw::fit(function.grid_fn(), side, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
+    make_internal_report!("Timetree message cannot fit a soft tail on the {side:?} side from the convolved grid")
   })?;
   Ok(BoundaryBehavior::Linear(law))
 }

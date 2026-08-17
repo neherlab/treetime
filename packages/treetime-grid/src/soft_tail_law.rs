@@ -1,6 +1,8 @@
 use crate::GridFn;
 use crate::hard_approach_law::{Side, least_squares_fit};
+use eyre::Report;
 use serde::{Deserialize, Serialize};
+use treetime_utils::make_error;
 
 /// Log-linear approach for a *soft* grid boundary: an exponential probability tail that
 /// continues the distribution past the grid edge.
@@ -47,8 +49,8 @@ impl SoftTailLaw {
   /// The fit reads stored ordinates directly, so it is valid under `NegLog` storage with no
   /// conversion, exactly like [`HardApproachLaw::fit_log_power_law`](crate::HardApproachLaw::fit_log_power_law).
   ///
-  /// Returns `None` when fewer than two finite points are available near the edge.
-  pub fn fit(grid_fn: &GridFn<f64>, side: Side, n_fit: usize) -> Option<Self> {
+  /// Returns an error when fewer than two finite points are available near the edge.
+  pub fn fit(grid_fn: &GridFn<f64>, side: Side, n_fit: usize) -> Result<Self, Report> {
     let n = grid_fn.n_points();
     let n_fit = n_fit.min(n);
 
@@ -71,7 +73,10 @@ impl SoftTailLaw {
       .collect();
 
     if ts.len() < 2 {
-      return None;
+      return make_error!(
+        "Soft-tail fit on the {side:?} side needs at least two finite grid points near the edge, found {}",
+        ts.len()
+      );
     }
 
     let (slope_raw, _intercept) = least_squares_fit(&ts, &ys);
@@ -82,7 +87,7 @@ impl SoftTailLaw {
       Side::Right => slope_raw.max(0.0),
     };
 
-    Some(SoftTailLaw { slope })
+    Ok(SoftTailLaw { slope })
   }
 
   /// Evaluate the tail in neg-log at `t`, anchored on the live grid edge.

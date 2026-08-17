@@ -6,6 +6,7 @@ mod tests {
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_utils::assert_error;
 
   /// Build a GridFn whose stored ordinates follow neg-log of a power law:
   /// `y(t) = a - b * ln|t - t_hard|`, for testing that the fit recovers the exponent `b`.
@@ -126,20 +127,29 @@ mod tests {
   }
 
   #[test]
-  fn test_hard_approach_law_fit_none_divergent_without_finite_points() -> Result<(), Report> {
-    // Divergent boundary (y_hard = +inf) but no finite innermost points to regress: no law.
-    let grid = GridFn::from_range_values((0.1, 1.0), Array1::from_elem(10, f64::INFINITY))?;
+  fn test_hard_approach_law_fit_err_divergent_without_finite_points() -> Result<(), Report> {
+    // Divergent boundary (y_hard = +inf): the left edge is finite but every interior point is +inf,
+    // so the regression window has only one finite point and cannot fit an exponent.
+    let mut y = Array1::from_elem(10, f64::INFINITY);
+    y[0] = 0.0;
+    let grid = GridFn::from_range_values((0.1, 1.0), y)?;
     let law = HardApproachLaw::fit_log_power_law(&grid, 0.0, Side::Left, 5);
-    assert_eq!(None, law);
+    assert_error!(
+      law,
+      "Hard-boundary power-law fit on the Left side needs at least two finite grid points off the boundary t_hard=0, found 1"
+    );
     Ok(())
   }
 
   #[test]
-  fn test_hard_approach_law_fit_none_finite_boundary_with_nonfinite_edge() -> Result<(), Report> {
-    // Finite boundary (y_hard = 0.5) but a non-finite edge ordinate cannot anchor a line: no law.
+  fn test_hard_approach_law_fit_err_finite_boundary_with_nonfinite_edge() -> Result<(), Report> {
+    // Finite boundary (y_hard = 0.5) but a non-finite edge ordinate cannot anchor a line.
     let grid = GridFn::from_range_values((0.1, 1.0), Array1::from_elem(10, f64::INFINITY))?;
     let law = HardApproachLaw::fit_linear(&grid, 0.0, Side::Left, 0.5);
-    assert_eq!(None, law);
+    assert_error!(
+      law,
+      "Grid Left edge ordinate is non-finite (y=inf at t=0.1); cannot anchor an edge-relative law"
+    );
     Ok(())
   }
 
@@ -153,10 +163,10 @@ mod tests {
     // and carry the finite marker `b = 0`. The unused `n_fit` argument does not affect the result.
     let y = Array1::linspace(0.1, 1.0, 20).mapv(|t: f64| 0.5 * t + 1.0);
     let grid = GridFn::from_range_values((0.1, 1.0), y)?;
-    let dispatched = HardApproachLaw::fit(&grid, 0.0, Side::Left, Some(1.0), 10);
-    let direct = HardApproachLaw::fit_linear(&grid, 0.0, Side::Left, 1.0);
+    let dispatched = HardApproachLaw::fit(&grid, 0.0, Side::Left, Some(1.0), 10)?;
+    let direct = HardApproachLaw::fit_linear(&grid, 0.0, Side::Left, 1.0)?;
     assert_eq!(direct, dispatched);
-    assert_abs_diff_eq!(0.0, dispatched.expect("fit should succeed").b, epsilon = 1e-14);
+    assert_abs_diff_eq!(0.0, dispatched.b, epsilon = 1e-14);
     Ok(())
   }
 
@@ -166,10 +176,10 @@ mod tests {
     // `fit_log_power_law` with the same innermost-point count and carry the divergent marker
     // `slope = 0`.
     let grid = make_neglog_power_law_grid(0.0, 1.0, 1.5, 0.1, 1.0, 20);
-    let dispatched = HardApproachLaw::fit(&grid, 0.0, Side::Left, None, 10);
-    let direct = HardApproachLaw::fit_log_power_law(&grid, 0.0, Side::Left, 10);
+    let dispatched = HardApproachLaw::fit(&grid, 0.0, Side::Left, None, 10)?;
+    let direct = HardApproachLaw::fit_log_power_law(&grid, 0.0, Side::Left, 10)?;
     assert_eq!(direct, dispatched);
-    assert_abs_diff_eq!(0.0, dispatched.expect("fit should succeed").slope, epsilon = 1e-14);
+    assert_abs_diff_eq!(0.0, dispatched.slope, epsilon = 1e-14);
     Ok(())
   }
 

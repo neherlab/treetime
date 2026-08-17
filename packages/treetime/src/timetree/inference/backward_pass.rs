@@ -2,7 +2,7 @@ use crate::coalescent::coalescent::CoalescentModel;
 use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use crate::timetree::inference::tail_fit::fit_message_soft_tail;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use std::cmp::Ordering;
 use std::sync::Arc;
 use treetime_distribution::BoundaryBehavior;
@@ -346,10 +346,8 @@ fn derive_summed_tail(
     return Ok(BoundaryBehavior::Hard);
   }
   if any_linear {
-    let law = SoftTailLaw::fit(summed, side, DEFAULT_TAIL_FIT_POINTS).ok_or_else(|| {
-      make_internal_report!(
-        "Backward child fold cannot fit a soft tail on the {side:?} side: the summed grid is degenerate"
-      )
+    let law = SoftTailLaw::fit(summed, side, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
+      make_internal_report!("Backward child fold cannot fit a soft tail on the {side:?} side from the summed grid")
     })?;
     return Ok(BoundaryBehavior::Linear(law));
   }
