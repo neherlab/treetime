@@ -69,7 +69,13 @@ impl HardApproachLaw {
   /// `Side` selects the grid end nearest the boundary. Returns an error when the selected
   /// constructor cannot fit (see [`fit_linear`](Self::fit_linear) and
   /// [`fit_log_power_law`](Self::fit_log_power_law)).
-  pub fn fit(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, y_hard: Option<f64>, n_fit: usize) -> Result<Self, Report> {
+  pub fn fit(
+    grid_fn: &GridFn<f64>,
+    t_hard: f64,
+    side: Side,
+    y_hard: Option<f64>,
+    n_fit: usize,
+  ) -> Result<Self, Report> {
     match y_hard {
       Some(y_hard) => Self::fit_linear(grid_fn, t_hard, side, y_hard),
       None => Self::fit_log_power_law(grid_fn, t_hard, side, n_fit),
