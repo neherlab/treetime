@@ -62,14 +62,11 @@ pub fn compute_branch_length_distribution(
     )
   })?;
 
-  // The right edge `t = t_max` is not a fact about the distribution, only where gridding stopped: the
-  // substitution likelihood `L(t) ~ (mu*t)^n e^{-mu*t}` keeps decaying past it (the exponential
-  // dominates for large `t`), and the Poisson indel term adds only a further linear neg-log slope.
-  // So the right side is a *soft* exponential tail, the mirror of the left hard approach. Fitting a
-  // log-linear `SoftTailLaw` from the outermost grid points continues that decay with finite mass, so
-  // an inferred branch longer than the grid evaluates to the extrapolated tail rather than failing
-  // the `Error` default: `compute_positional_log_lh` then counts such an edge's likelihood instead of
-  // dropping it. This restores v0's slope-based `convolve_fft` tail behavior.
+  // Past the grid's right edge the likelihood `L(t) ~ (mu*t)^n e^{-mu*t}` keeps decaying (the
+  // exponential dominates for large `t`; the Poisson indel term adds a linear neg-log slope). A
+  // log-linear `SoftTailLaw` fitted from the outermost points continues that decay with finite mass.
+  // Under the `Error` default `eval` fails past `t_max`, which drops longer-than-grid edges from
+  // `compute_positional_log_lh`.
   let right_tail =
     SoftTailLaw::fit(distribution_fn.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).ok_or_else(|| {
       make_report!(
