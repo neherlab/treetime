@@ -60,9 +60,11 @@ mod tests {
   }
 
   // --- HardApproachLaw::fit ---
-  // Power-law case: exact neg-log power-law data, fit must recover the exponent `b` (the discarded
-  // intercept `a` does not affect the edge-relative law) with `slope = 0`.
+  // Regime is set by the boundary ordinate `y_hard`: `+inf` is divergent (power-law, fit `b`),
+  // finite is the boundary-anchored line (`b = 0`, exact slope to the grid edge).
 
+  // Divergent case: exact neg-log power-law data with `y_hard = +inf`, fit must recover the exponent
+  // `b` (the discarded intercept `a` does not affect the edge-relative law) with `slope = 0`.
   #[rustfmt::skip]
   #[rstest]
   #[case::b1(  0.0, 1.0, 1.0)]
@@ -76,7 +78,7 @@ mod tests {
     #[case] b: f64,
   ) -> Result<(), Report> {
     let grid = make_neglog_power_law_grid(t_hard, a, b, 0.1, 1.0, 20);
-    let law = HardApproachLaw::fit(&grid, t_hard, Side::Left, 10).expect("fit should succeed");
+    let law = HardApproachLaw::fit(&grid, t_hard, Side::Left, f64::INFINITY, 10).expect("fit should succeed");
     assert_abs_diff_eq!(b, law.b, epsilon = 1e-10);
     assert_abs_diff_eq!(0.0, law.slope, epsilon = 1e-14);
     assert_abs_diff_eq!(t_hard, law.t_hard, epsilon = 1e-14);
@@ -85,47 +87,58 @@ mod tests {
 
   #[test]
   fn test_hard_approach_law_fit_right_side() -> Result<(), Report> {
-    // y(t) = 2.0 - 1.5 * ln(10 - t), right boundary at t_hard = 10.0, fit from rightmost points.
+    // y(t) = 2.0 - 1.5 * ln(10 - t), divergent right boundary at t_hard = 10.0 (y_hard = +inf), fit
+    // from rightmost points.
     let t_hard = 10.0;
     let b = 1.5;
     let y = Array1::linspace(8.0, 9.9, 20).mapv(|t: f64| 2.0 - b * (t_hard - t).ln());
     let grid = GridFn::from_range_values((8.0, 9.9), y)?;
-    let law = HardApproachLaw::fit(&grid, t_hard, Side::Right, 10).expect("fit should succeed");
+    let law = HardApproachLaw::fit(&grid, t_hard, Side::Right, f64::INFINITY, 10).expect("fit should succeed");
     assert_abs_diff_eq!(b, law.b, epsilon = 1e-10);
     assert_abs_diff_eq!(0.0, law.slope, epsilon = 1e-14);
     Ok(())
   }
 
   #[test]
-  fn test_hard_approach_law_fit_finite_line_recovers_slope() -> Result<(), Report> {
-    // A zero-mutation branch has a finite, maximal density at the boundary: the neg-log ordinate is
-    // the increasing line `y = slope * t + c`. The log-distance stage detects `b = 0`, then the
-    // linear refit recovers the exact slope, which carries the mode on the boundary.
-    let slope = 0.5;
-    let y = Array1::linspace(0.1, 1.0, 20).mapv(|t: f64| slope * t + 1.0);
+  fn test_hard_approach_law_fit_finite_recovers_slope() -> Result<(), Report> {
+    // A zero-mutation branch has a finite, maximal density at the boundary. The neg-log curve is the
+    // line `y = 0.5 t + 1`, so the boundary value is `y_hard = 1.0`. The slope is the exact line from
+    // the boundary to the grid edge: (1.05 - 1.0) / (0.1 - 0) = 0.5.
+    let y = Array1::linspace(0.1, 1.0, 20).mapv(|t: f64| 0.5 * t + 1.0);
     let grid = GridFn::from_range_values((0.1, 1.0), y)?;
-    let law = HardApproachLaw::fit(&grid, 0.0, Side::Left, 10).expect("fit should succeed");
+    let law = HardApproachLaw::fit(&grid, 0.0, Side::Left, 1.0, 10).expect("fit should succeed");
     assert_abs_diff_eq!(0.0, law.b, epsilon = 1e-14);
-    assert_abs_diff_eq!(slope, law.slope, epsilon = 1e-10);
+    assert_abs_diff_eq!(0.5, law.slope, epsilon = 1e-10);
     Ok(())
   }
 
   #[test]
-  fn test_hard_approach_law_fit_clamps_negative_exponent_to_zero() -> Result<(), Report> {
-    // A rising line (density growing into the boundary faster than any power law) yields a negative
-    // raw exponent; it clamps to b = 0, then the linear refit recovers its slope.
-    let y = Array1::linspace(0.1, 1.0, 20).mapv(|t: f64| 2.0 * t + 1.0);
-    let grid = GridFn::from_range_values((0.1, 1.0), y)?;
-    let law = HardApproachLaw::fit(&grid, 0.0, Side::Left, 10).expect("fit should succeed");
+  fn test_hard_approach_law_fit_finite_anchors_line_at_boundary() -> Result<(), Report> {
+    // The finite case draws the exact line between the boundary `(t_hard, y_hard)` and the grid
+    // edge, independent of the interior points. Edge is y = 2.0 at t = 0.2, y_hard = 0.5, so the
+    // slope is (2.0 - 0.5) / (0.2 - 0) = 7.5. `eval` at the boundary returns y_hard exactly.
+    let grid = GridFn::from_range_values((0.2, 1.0), ndarray::array![2.0, 3.0, 4.0, 5.0, 6.0])?;
+    let law = HardApproachLaw::fit(&grid, 0.0, Side::Left, 0.5, 10).expect("fit should succeed");
     assert_abs_diff_eq!(0.0, law.b, epsilon = 1e-14);
-    assert_abs_diff_eq!(2.0, law.slope, epsilon = 1e-10);
+    assert_abs_diff_eq!(7.5, law.slope, epsilon = 1e-10);
+    assert_abs_diff_eq!(0.5, law.eval(2.0, 0.2, 0.0), epsilon = 1e-12);
     Ok(())
   }
 
   #[test]
-  fn test_hard_approach_law_fit_returns_none_for_non_finite() -> Result<(), Report> {
+  fn test_hard_approach_law_fit_none_divergent_without_finite_points() -> Result<(), Report> {
+    // Divergent boundary (y_hard = +inf) but no finite innermost points to regress: no law.
     let grid = GridFn::from_range_values((0.1, 1.0), Array1::from_elem(10, f64::INFINITY))?;
-    let law = HardApproachLaw::fit(&grid, 0.0, Side::Left, 5);
+    let law = HardApproachLaw::fit(&grid, 0.0, Side::Left, f64::INFINITY, 5);
+    assert_eq!(None, law);
+    Ok(())
+  }
+
+  #[test]
+  fn test_hard_approach_law_fit_none_finite_boundary_with_nonfinite_edge() -> Result<(), Report> {
+    // Finite boundary (y_hard = 0.5) but a non-finite edge ordinate cannot anchor a line: no law.
+    let grid = GridFn::from_range_values((0.1, 1.0), Array1::from_elem(10, f64::INFINITY))?;
+    let law = HardApproachLaw::fit(&grid, 0.0, Side::Left, 0.5, 5);
     assert_eq!(None, law);
     Ok(())
   }

@@ -1,10 +1,6 @@
 use crate::GridFn;
 use serde::{Deserialize, Serialize};
 
-/// Log-distance regression slope above which the boundary is treated as divergent (power-law,
-/// `b > 0`, `slope = 0`); at or below it the branch is finite (`b = 0`) and the slope is refit.
-const B_THRESHOLD: f64 = 0.01;
-
 /// Approach law for a *hard* grid boundary, in negative-log space.
 ///
 /// Between a hard boundary at `t_hard` and the nearest grid point, the branch-length density
@@ -48,66 +44,61 @@ const B_THRESHOLD: f64 = 0.01;
 pub struct HardApproachLaw {
   /// Location of the hard boundary (e.g. `t = 0` for branch lengths).
   pub t_hard: f64,
-  /// Power-law exponent `b >= 0`. Equals the mutation count `n` for a Gamma branch-length density.
-  /// `b > 0` means the density vanishes at the boundary (`y -> +inf`); `b = 0` means it is finite.
+  /// Power-law exponent `b >= 0`: a fitted continuous approximation of the mutation-count exponent,
+  /// not an integer. `b > 0`: density vanishes at the boundary (`y -> +inf`); `b = 0`: finite.
   pub b: f64,
-  /// Linear slope `d(-ln p)/dt` near the boundary. Carries the `n = 0` mode (`slope = mu`). The
-  /// initial fit sets it from a linear regression when `b = 0`, and to `0` when `b > 0` (the log
-  /// term dominates the narrow sub-grid gap). Composition adds slopes, so a product of zero- and
-  /// nonzero-mutation messages carries both `b > 0` and `slope > 0`.
+  /// Linear slope `d(-ln p)/dt` near the boundary; carries the `n = 0` mode. Boundary-to-edge slope
+  /// when `b = 0`, else `0`. Composition adds slopes.
   pub slope: f64,
 }
 
 impl HardApproachLaw {
-  /// Fit a hard-boundary approach law from the innermost grid points.
+  /// Construct the approach law from the boundary ordinate `y_hard` (neg-log density at `t_hard`,
+  /// evaluated by the producer; the grid is sampled inside `min_bl > 0`, so it cannot supply it).
+  /// `y_hard` classifies the regime exactly, no heuristic threshold:
   ///
-  /// The fit reads stored ordinates directly (neg-log values under `NegLog` storage). Two-stage:
+  /// - finite (`n = 0`): density finite at the boundary. `b = 0`, `slope` is the exact line from
+  ///   `(t_hard, y_hard)` to the grid edge.
+  /// - infinite (`n >= 1`, or indels): density vanishes. Fit `b >= 0` from the innermost points by
+  ///   log-distance regression on `(ln|t - t_hard|, y)`; `slope = 0`. `b` clamped to `>= 0`.
   ///
-  /// 1. Log-distance regression on `(ln|t - t_hard|, y)` gives `-b` as the slope. If `b >
-  ///    threshold`, the power-law form applies and `slope` is set to `0` (the log term dominates the
-  ///    narrow sub-grid gap).
-  /// 2. If `b <= threshold` (clamped to `0`), the density is finite at the boundary: refit linearly
-  ///    on `(t, y)` to recover the exact `slope`, which carries the mode on the boundary.
-  ///
-  /// The intercept is discarded in both stages because the law is edge-relative; only the shape
-  /// parameters `b` and `slope` are retained. `b` is clamped to `b >= 0` (a negative fit means the
-  /// density grows into the boundary faster than any power law, which is unphysical here).
-  ///
-  /// `side` selects which end of the grid is near the hard boundary:
-  /// - `Side::Left`: the hard boundary is to the left of `x_min`, fit from the leftmost points
-  /// - `Side::Right`: the hard boundary is to the right of `x_max`, fit from the rightmost points
-  ///
-  /// Returns `None` when fewer than two finite points are available near the boundary, or when the
-  /// fit is not finite.
-  pub fn fit(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, n_fit: usize) -> Option<Self> {
+  /// `Side` selects the grid end nearest the boundary. `None` on empty grid, finite `y_hard` with a
+  /// non-finite edge, divergent boundary with fewer than two finite points, or non-finite result.
+  pub fn fit(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, y_hard: f64, n_fit: usize) -> Option<Self> {
     let n = grid_fn.n_points();
-    let n_fit = n_fit.min(n);
+    if n == 0 {
+      return None;
+    }
+    let edge_idx = match side {
+      Side::Left => 0,
+      Side::Right => n - 1,
+    };
+    let t_edge = grid_fn.grid().x_at(edge_idx);
+    let y_edge = grid_fn.y()[edge_idx];
 
-    let points: Vec<(f64, f64)> = (0..n_fit)
+    if y_hard.is_finite() {
+      // Finite boundary: the exact line from the boundary point to the grid edge.
+      if !y_edge.is_finite() {
+        return None;
+      }
+      let slope = (y_edge - y_hard) / (t_edge - t_hard);
+      return slope.is_finite().then_some(HardApproachLaw { t_hard, b: 0.0, slope });
+    }
+
+    // Divergent boundary: y = a - b*ln|dt| is linear in ln|dt| with slope -b; fit b from the
+    // innermost points. Intercept discarded (edge-relative).
+    let n_fit = n_fit.min(n);
+    let (xs, ys): (Vec<f64>, Vec<f64>) = (0..n_fit)
       .map(|i| match side {
         Side::Left => i,
         Side::Right => n - 1 - i,
       })
       .filter_map(|idx| {
         let y = grid_fn.y()[idx];
-        y.is_finite().then(|| (grid_fn.grid().x_at(idx), y))
+        let dt = (grid_fn.grid().x_at(idx) - t_hard).abs();
+        (y.is_finite() && dt > 0.0).then(|| (dt.ln(), y))
       })
       .collect();
-
-    if points.len() < 2 {
-      return None;
-    }
-
-    // Stage 1: log-distance regression to detect the power-law exponent. Transform to
-    // (ln|t - t_hard|, y); the neg-log power law y = a - b*ln|dt| is linear in ln|dt| with slope
-    // = -b. The intercept is discarded (edge-relative).
-    let (xs, ys): (Vec<f64>, Vec<f64>) = points
-      .iter()
-      .filter_map(|&(t, y)| {
-        let dt = (t - t_hard).abs();
-        (dt > 0.0).then(|| (dt.ln(), y))
-      })
-      .unzip();
 
     if xs.len() < 2 {
       return None;
@@ -115,27 +106,7 @@ impl HardApproachLaw {
 
     let (neg_b_raw, _) = least_squares_fit(&xs, &ys);
     let b = (-neg_b_raw).max(0.0);
-
-    if !b.is_finite() {
-      return None;
-    }
-
-    if b > B_THRESHOLD {
-      // Power-law case (n >= 1 mutations): the log term dominates the narrow gap, so drop the
-      // linear correction.
-      Some(HardApproachLaw { t_hard, b, slope: 0.0 })
-    } else {
-      // Linear case (n = 0 mutations): refit on (t, y) to recover the exact slope, which carries
-      // the mode on the boundary.
-      let (ts, ys): (Vec<f64>, Vec<f64>) = points.into_iter().unzip();
-      let (slope, _intercept) = least_squares_fit(&ts, &ys);
-
-      if !slope.is_finite() {
-        return None;
-      }
-
-      Some(HardApproachLaw { t_hard, b: 0.0, slope })
-    }
+    b.is_finite().then_some(HardApproachLaw { t_hard, b, slope: 0.0 })
   }
 
   /// Evaluate the approach law in neg-log at `t`, anchored on the live grid edge.

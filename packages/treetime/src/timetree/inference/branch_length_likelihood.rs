@@ -63,22 +63,35 @@ pub fn compute_branch_length_distribution(
 
   let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), neg_log)?;
 
-  // Fit the hard-boundary approach law on the left side (near t=0). The grid stores neg-log
-  // ordinates and starts at min_bl / clock_rate > 0. The fit detects the regime from the data:
-  // for n >= 1 mutations the neg-log density diverges logarithmically (power-law approach),
-  // for n = 0 mutations it is exactly linear (the mode sits on the boundary).
-  //
-  // A grid too degenerate to fit the law (fewer than two finite innermost points) is an error, not
-  // a silent flat boundary: the gap `[0, t_first)` carries real density (maximal at t=0 for a
-  // zero-mutation branch), so a missing law would zero it and lose that mass -- the class of defect
-  // that motivated the hard-approach law.
-  let approach =
-    HardApproachLaw::fit(distribution_fn.grid_fn(), 0.0, Side::Left, DEFAULT_TAIL_FIT_POINTS).ok_or_else(|| {
-      make_report!(
-        "Branch-length likelihood grid over [{time_min}, {time_max}] is too degenerate to fit a \
-         hard-boundary approach law near t=0 (fewer than two finite innermost points)"
-      )
-    })?;
+  // Neg-log density at the boundary (branch length 0); the grid samples inside `min_bl > 0`, so it
+  // cannot supply it. The substitution likelihood is evaluated there directly: finite for a
+  // zero-mutation branch (density maximal at the boundary), `-inf` when a forced substitution drives
+  // a site likelihood to zero (divergent). The indel term is `k*ln(0) = -inf` at t=0, but
+  // `poisson_indel_log_lh` returns an error there instead, so an indel branch (`k > 0`) is
+  // short-circuited to divergent rather than evaluated.
+  let boundary_log_lh = if indel_count > 0 {
+    f64::NEG_INFINITY
+  } else {
+    evaluate_with_indels_log_lh_only(contributions, 0, indel_rate, 0.0)?.value()
+  };
+  let boundary_neg_log = max_log_lh - boundary_log_lh;
+
+  // The gap `[0, t_first)` carries real density (maximal at t=0 for a zero-mutation branch); a
+  // degenerate grid that cannot build the law is an error, not a silent flat boundary that would
+  // zero that mass.
+  let approach = HardApproachLaw::fit(
+    distribution_fn.grid_fn(),
+    0.0,
+    Side::Left,
+    boundary_neg_log,
+    DEFAULT_TAIL_FIT_POINTS,
+  )
+  .ok_or_else(|| {
+    make_report!(
+      "Branch-length likelihood grid over [{time_min}, {time_max}] is too degenerate to build a \
+         hard-boundary approach law near t=0"
+    )
+  })?;
   let distribution_fn = distribution_fn.with_left_extrap(BoundaryBehavior::HardApproach(approach))?;
 
   Ok(Arc::new(Distribution::Function(distribution_fn)))
