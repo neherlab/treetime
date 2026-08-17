@@ -14,7 +14,8 @@ mod tests {
   // an exact line is exact. Oracle: the constructed slope.
   #[test]
   fn test_tail_fit_right_side_fits_positive_slope() -> Result<(), Report> {
-    let message: Distribution<NegLog> = Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![0.0, 1.0, 2.0, 3.0, 4.0])?;
+    let message: Distribution<NegLog> =
+      Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![0.0, 1.0, 2.0, 3.0, 4.0])?;
     let BoundaryBehavior::Linear(law) = fit_message_soft_tail(&message, Side::Right)? else {
       panic!("expected a fitted Linear soft tail");
     };
@@ -26,7 +27,8 @@ mod tests {
   // recovers a slope of -1. Oracle: the constructed slope.
   #[test]
   fn test_tail_fit_left_side_fits_negative_slope() -> Result<(), Report> {
-    let message: Distribution<NegLog> = Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![4.0, 3.0, 2.0, 1.0, 0.0])?;
+    let message: Distribution<NegLog> =
+      Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![4.0, 3.0, 2.0, 1.0, 0.0])?;
     let BoundaryBehavior::Linear(law) = fit_message_soft_tail(&message, Side::Left)? else {
       panic!("expected a fitted Linear soft tail");
     };
@@ -38,7 +40,8 @@ mod tests {
   // tail has infinite mass; the Linear tail's half-line integral exp(-y_edge)/|slope| is finite.
   #[test]
   fn test_tail_fit_fitted_tail_has_finite_mass() -> Result<(), Report> {
-    let message: Distribution<NegLog> = Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![0.0, 1.0, 2.0, 3.0, 4.0])?;
+    let message: Distribution<NegLog> =
+      Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![0.0, 1.0, 2.0, 3.0, 4.0])?;
     let BoundaryBehavior::Linear(law) = fit_message_soft_tail(&message, Side::Right)? else {
       panic!("expected a fitted Linear soft tail");
     };
@@ -60,7 +63,10 @@ mod tests {
   #[test]
   fn test_tail_fit_range_message_is_inert_constant() -> Result<(), Report> {
     let message: Distribution<NegLog> = Distribution::range((2014.0, 2015.0), 0.0);
-    assert_eq!(BoundaryBehavior::Constant, fit_message_soft_tail(&message, Side::Right)?);
+    assert_eq!(
+      BoundaryBehavior::Constant,
+      fit_message_soft_tail(&message, Side::Right)?
+    );
     Ok(())
   }
 
