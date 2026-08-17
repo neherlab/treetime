@@ -188,33 +188,55 @@ fn division_support_intersection<Y: YAxisPolicy>(
   divisor: &DistributionFunction<f64, Y>,
 ) -> SupportIntersection {
   let divisor_bounds = (
-    if divisor.left_extrap() == BoundaryBehavior::Error {
-      divisor.x_min()
-    } else {
+    if divisor_tail_extends_quotient(divisor.left_extrap()) {
       dividend_bounds.0
-    },
-    if divisor.right_extrap() == BoundaryBehavior::Error {
-      divisor.x_max()
     } else {
+      divisor.x_min()
+    },
+    if divisor_tail_extends_quotient(divisor.right_extrap()) {
       dividend_bounds.1
+    } else {
+      divisor.x_max()
     },
   );
   distribution_support_intersection(dividend_bounds, divisor_bounds)
 }
 
+/// Whether a divisor tail lets the quotient continue past the divisor's grid edge on that side.
+///
+/// Only a `Constant` tail does: it is flat and finite, so dividing by it beyond the grid is
+/// well-defined and does not inflate the quotient, and the cavity legitimately continues under the
+/// dividend. Every other tail bounds the quotient at the divisor's real, grid-backed edge, so the
+/// divisor is never sampled past its own support:
+///
+/// - `Hard` / `HardApproach`: probability is zero beyond the boundary. Under `NegLog` zero
+///   probability is `+inf`, and `dividend - (+inf) = -inf` -- a spurious infinite-probability spike
+///   that makes the downstream convolution peak non-finite and collapses the forward message to
+///   `Empty`. `Y::safe_divisor` cannot rescue it: it floors small divisors under `Plain` but is the
+///   identity under `NegLog`.
+/// - `Linear`: the divisor decays beyond the grid, so dividing by its extrapolated tail inflates the
+///   quotient into a spurious spike.
+/// - `Error`: the divisor is undefined beyond the grid.
+///
+/// The dividend's own tails carry the cavity beyond the divisor's support. See
+/// `kb/decisions/distribution-tails-and-arithmetic.md` (Division).
+fn divisor_tail_extends_quotient(tail: BoundaryBehavior) -> bool {
+  matches!(tail, BoundaryBehavior::Constant)
+}
+
 /// The divisor's hard domain as division treats it, so [`guarded_empty_result`] reproduces exactly
 /// the disjointness decided by [`division_support_intersection`].
 ///
-/// A side bounds the quotient only where the divisor is undefined beyond the grid edge (`Error`).
-/// Any other tail leaves the divisor defined-or-zero beyond (`Y::safe_divisor` absorbs the zero), so
-/// the quotient continues under the dividend and that side does not separate the domains -- modelled
-/// here as a soft (unbounded) boundary.
+/// A `Constant` side leaves the divisor evaluable (at a flat, finite value) beyond the grid, so the
+/// quotient continues under the dividend and that side does not separate the domains -- modelled here
+/// as a soft (unbounded) boundary. Every other tail bounds the quotient at the divisor's grid edge
+/// (see [`divisor_tail_extends_quotient`]), so it is modelled as a hard boundary there.
 fn division_divisor_domain<Y: YAxisPolicy>(divisor: &DistributionFunction<f64, Y>) -> HardDomain {
   let bounding = |tail: BoundaryBehavior| {
-    if tail == BoundaryBehavior::Error {
-      BoundaryBehavior::Error
-    } else {
+    if divisor_tail_extends_quotient(tail) {
       BoundaryBehavior::Constant
+    } else {
+      BoundaryBehavior::Error
     }
   };
   (

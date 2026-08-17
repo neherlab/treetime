@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::DistributionNegLog;
   use crate::DistributionPlain as Distribution;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::divide::distribution_division;
@@ -192,6 +193,36 @@ mod tests {
 
     let expected = Distribution::function(t1, array![5.0, 20.0 / 3.5, 6.0, 40.0 / 7.5, 5.0]).unwrap();
     assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_divide_function_by_function_neglog_bounds_quotient_to_hard_divisor() {
+    // A NegLog dividend wider than its hard-bounded divisor. Under NegLog a hard boundary reads +inf
+    // (zero probability) beyond the edge, so extending the quotient into the divisor's tail would
+    // compute `dividend - (+inf) = -inf` and spike the result, collapsing the downstream forward
+    // message. The quotient must be bounded to the divisor's real grid support and stay finite.
+    // Oracle: kb/decisions/distribution-tails-and-arithmetic.md (Division).
+    let dividend =
+      DistributionNegLog::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![0.4, 0.2, 0.0, 0.2, 0.4]).unwrap();
+    let divisor = DistributionNegLog::function(array![1.0, 2.0, 3.0], array![0.1, 0.0, 0.1])
+      .unwrap()
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .unwrap()
+      .with_right_extrap(BoundaryBehavior::Hard)
+      .unwrap();
+
+    let actual = distribution_division(&dividend, &divisor).unwrap();
+
+    let crate::Distribution::Function(function) = actual else {
+      panic!("expected Function, got {actual:?}");
+    };
+    pretty_assert_ulps_eq!(1.0, function.x_min(), max_ulps = 4);
+    pretty_assert_ulps_eq!(3.0, function.x_max(), max_ulps = 4);
+    assert!(
+      function.y().iter().all(|value| value.is_finite()),
+      "quotient must stay finite, got {:?}",
+      function.y()
+    );
   }
 
   #[test]
