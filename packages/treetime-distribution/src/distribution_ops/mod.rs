@@ -2,6 +2,7 @@ pub mod convolve;
 pub mod divide;
 pub mod log_cost;
 pub mod map;
+pub mod mass_domain;
 pub mod multiply;
 pub mod negate;
 pub mod scalar_multiply;

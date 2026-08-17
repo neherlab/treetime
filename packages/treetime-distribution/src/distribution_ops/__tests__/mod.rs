@@ -2,6 +2,7 @@ mod test_convolve;
 mod test_divide;
 mod test_log_cost;
 mod test_map;
+mod test_mass_domain;
 mod test_multiply;
 mod test_negation;
 mod test_prop_multiply_child_order;
