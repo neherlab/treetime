@@ -7,7 +7,7 @@ use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
 use treetime_distribution::NegLog;
-use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side};
+use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
 use treetime_utils::array::ndarray::{first, last};
 use treetime_utils::make_report;
 
@@ -62,7 +62,25 @@ pub fn compute_branch_length_distribution(
     )
   })?;
 
-  let distribution_fn = distribution_fn.with_left_extrap(BoundaryBehavior::HardApproach(approach))?;
+  // The right edge `t = t_max` is not a fact about the distribution, only where gridding stopped: the
+  // substitution likelihood `L(t) ~ (mu*t)^n e^{-mu*t}` keeps decaying past it (the exponential
+  // dominates for large `t`), and the Poisson indel term adds only a further linear neg-log slope.
+  // So the right side is a *soft* exponential tail, the mirror of the left hard approach. Fitting a
+  // log-linear `SoftTailLaw` from the outermost grid points continues that decay with finite mass, so
+  // an inferred branch longer than the grid evaluates to the extrapolated tail rather than failing
+  // the `Error` default: `compute_positional_log_lh` then counts such an edge's likelihood instead of
+  // dropping it. This restores v0's slope-based `convolve_fft` tail behavior.
+  let right_tail =
+    SoftTailLaw::fit(distribution_fn.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).ok_or_else(|| {
+      make_report!(
+        "Branch-length likelihood grid over [{time_min}, {time_max}] is too degenerate to fit a \
+       soft-boundary tail law near t_max"
+      )
+    })?;
+
+  let distribution_fn = distribution_fn
+    .with_left_extrap(BoundaryBehavior::HardApproach(approach))?
+    .with_right_extrap(BoundaryBehavior::Linear(right_tail))?;
 
   Ok(Arc::new(Distribution::Function(distribution_fn)))
 }

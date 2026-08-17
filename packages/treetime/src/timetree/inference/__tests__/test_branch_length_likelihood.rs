@@ -6,7 +6,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_distribution::{Distribution, NegLog};
+  use treetime_distribution::{BoundaryBehavior, Distribution, NegLog};
   use treetime_utils::array::ndarray::has_uniform_spacing;
 
   /// With `current_branch_length = 0.1` the grid spans `[1e-5, 0.5]`; the test
@@ -81,6 +81,57 @@ mod tests {
     let expected = indel_rate * (t - t_min);
     assert_abs_diff_eq!(helpers::eval(&distribution, t), expected, epsilon = 1e-10);
 
+    Ok(())
+  }
+
+  /// The right boundary is a *soft* `Linear` tail, not the `Error` default: the branch-length
+  /// likelihood keeps decaying past the grid's `t_max`, so that edge is where gridding stopped, not
+  /// a hard cutoff. A pure indel-rate likelihood decreases rightward, so the fitted neg-log slope is
+  /// strictly positive (a genuine, finite-mass decaying tail rather than a flat clamp).
+  #[test]
+  fn test_branch_length_likelihood_right_boundary_is_soft_linear() -> Result<(), Report> {
+    let distribution = helpers::build_indel_rate_only_distribution()?;
+
+    let Distribution::Function(function) = distribution.as_ref() else {
+      panic!("branch-length distribution must be a Function");
+    };
+    let right = function.grid_fn().right_extrap();
+    assert!(
+      matches!(right, BoundaryBehavior::Linear(_)),
+      "right boundary must be a soft Linear tail, got {right:?}"
+    );
+
+    let slope = right.soft_law().expect("a soft Linear tail carries a law").slope;
+    assert!(
+      slope > 0.0,
+      "a decaying right tail must have positive neg-log slope, got {slope}"
+    );
+    Ok(())
+  }
+
+  /// Evaluating an inferred branch longer than the grid returns the soft tail's extrapolated neg-log
+  /// ordinate instead of failing the `Error` default. Under the `Error` default `eval` would error
+  /// and `compute_positional_log_lh` would silently drop the edge; the soft tail keeps it evaluable.
+  ///
+  /// For the pure indel-rate likelihood the neg-log ordinate is exactly linear, `mu * (t - t_min)`
+  /// (the closed-form Poisson decay), so the tail fit reproduces it past `t_max`. The oracle is that
+  /// analytic Poisson ordinate, not the system under test.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::just_past_tmax( 6.0)]
+  #[case::far_past_tmax( 10.0)]
+  #[trace]
+  fn test_branch_length_likelihood_right_soft_tail_extrapolates_poisson_decay(#[case] t: f64) -> Result<(), Report> {
+    let distribution = helpers::build_indel_rate_only_distribution()?;
+
+    // t_max = min(max(1.0 * 5, 1e-3 * 10), 5.0) = 5.0; both query points sit beyond it.
+    let (_t_min, t_max) = distribution.time_bounds().unwrap();
+    assert!(t > t_max, "query {t} must be beyond t_max {t_max}");
+
+    let indel_rate = 1.0;
+    let t_min = 1e-3 * 0.01;
+    let expected = indel_rate * (t - t_min);
+    assert_abs_diff_eq!(distribution.eval(t)?, expected, epsilon = 1e-10);
     Ok(())
   }
 
