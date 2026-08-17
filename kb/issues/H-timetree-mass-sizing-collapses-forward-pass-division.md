@@ -1,5 +1,11 @@
 # Mass-sized time distributions collapse the forward-pass division to empty
 
+## Status
+
+The division-sampling cause below is fixed: `divide_function_by_function` now bounds the quotient to the divisor's real, grid-backed support (a divisor side bounds unless its tail is `Constant`), so the divisor is never sampled beyond its support and the quotient never picks up the `+inf`/`-inf` spike that collapsed the forward message. The empty-distribution collapse via division no longer occurs.
+
+Restoring the four `#[ignore]`d integration tests is still blocked: bounding the division exposes a downstream layer where mass-sized node times break invariants (positional log-likelihood `+inf`, seeded polytomy resolution flips). Tracked in [H-timetree-mass-sizing-node-times-break-downstream-invariants.md](H-timetree-mass-sizing-node-times-break-downstream-invariants.md).
+
 ## Symptom and reproduction
 
 With probability-mass grid sizing enabled for timetree distributions
