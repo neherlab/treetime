@@ -6,24 +6,27 @@ v1 discretizes probability distributions on finite uniform grids. Two questions 
 
 ## Out-of-support evaluation
 
-`GridFn` is a piecewise-linear interpolant on a finite uniform grid $[x_{\min}, x_{\max}]$. `Distribution::Function` reuses it as a probability density. These two roles disagree outside the grid: a generic interpolant has no defined value there, while a bounded probability density is zero. Convolution results in the timetree passes have a third behavior -- one side may be genuinely uninformative (the parent could be arbitrarily older), so the distribution is flat, not zero, beyond the grid edge.
+`GridFn` is a piecewise-linear interpolant on a finite uniform grid $[x_{\min}, x_{\max}]$. `Distribution::Function` reuses it as a probability density. These two roles disagree outside the grid: a generic interpolant has no defined value there, while a bounded probability density is zero. Convolution results in the timetree passes have a third behavior -- one side is unbounded but not zero (the parent could be arbitrarily older), so the density continues past the grid edge under a fitted decaying tail law.
 
 ### `BoundaryBehavior`
 
 `GridFn` carries an independent tail policy on each side via `enum BoundaryBehavior` in `left_extrap` and `right_extrap`, defaulting to `Error`:
 
-| Variant    | Class | Out-of-support value                                 | Use case                                                                                                                                                                                                                     |
-| ---------- | ----- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Error`    | hard  | returns an error                                     | Default. A bare grid function is a generic interpolant; querying outside support is a programming error                                                                                                                      |
-| `Hard`     | hard  | returns $0.0$                                        | Bounded probability density: zero probability outside support. Matches v0's result on the plain-probability axis                                                                                                             |
-| `Constant` | soft  | returns the boundary $y$                             | Flat tail: the distribution is genuinely uninformative beyond the grid edge, so the boundary value extends indefinitely                                                                                                      |
-| `Linear`   | soft  | returns $p_{\text{edge}}\,e^{-k(t-t_{\text{edge}})}$ | Log-linear tail: a decaying exponential fitted from the edge points, a straight line in $-\ln p$. Carries the single slope $k$, has finite mass, and does not corrupt the quantile and HPD integrals the way `Constant` does |
+| Variant        | Class | Out-of-support value                                        | Use case                                                                                                                                                                                                                     |
+| -------------- | ----- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Error`        | hard  | returns an error                                            | Default. A bare grid function is a generic interpolant; querying outside support is a programming error                                                                                                                      |
+| `Hard`         | hard  | zero probability ($0$ under plain, $+\infty$ under neg-log) | The grid edge is the hard boundary: probability is zero beyond it, with no sub-grid gap to interpolate                                                                                                                       |
+| `HardApproach` | hard  | fitted `HardApproachLaw` across the sub-grid gap            | The hard boundary lies below the first grid point; between them the density follows an edge-relative power-law-plus-linear approach law. Probability is still zero past the boundary itself                                  |
+| `Constant`     | soft  | returns the boundary $y$                                    | Flat tail: genuinely uninformative beyond the edge. Non-integrable (infinite mass), so retained only for edges outside inference                                                                                             |
+| `Linear`       | soft  | returns $p_{\text{edge}}\,e^{-k(t-t_{\text{edge}})}$        | Log-linear tail: a decaying exponential fitted from the edge points, a straight line in $-\ln p$. Carries the single slope $k$, has finite mass, and does not corrupt the quantile and HPD integrals the way `Constant` does |
 
-A boundary is **hard** when the grid edge is a fact about the distribution -- probability is zero beyond (`Hard`), or evaluation beyond is undefined (`Error`). A boundary is **soft** when the grid edge is only where interpolation stopped and the distribution continues past it under a declared tail law (`Constant` or `Linear`). `fn BoundaryBehavior.is_soft()` is the predicate the arithmetic keys off: a soft boundary extends the evaluable domain, a hard boundary terminates it. Both soft tails route through this one predicate, so they share the arithmetic rules below.
+Every variant is a complete value: the two law-carrying variants (`HardApproach`, `Linear`) always hold a fitted law, and the nullary variants (`Error`, `Hard`, `Constant`) declare a tail that needs none. A grid too small to fit a required law is an error at the fitting site, never a silent flat fallback, so no variant stands for "a law was wanted here but is missing".
+
+A boundary is **hard** when the grid edge is a fact about the distribution -- probability is zero beyond (`Hard`, `HardApproach`), or evaluation beyond is undefined (`Error`). A boundary is **soft** when the grid edge is only where interpolation stopped and the distribution continues past it under a declared tail law (`Constant` or `Linear`). `fn BoundaryBehavior.is_soft()` is the predicate the arithmetic keys off: a soft boundary extends the evaluable domain, a hard boundary terminates it. Both soft tails route through this one predicate, so they share the arithmetic rules below.
 
 `Linear` stores only the neg-log slope $k$ and re-reads the live grid edge on evaluation. A soft edge is a movable representation choice -- re-windowing and resampling shift it -- so anchoring the tail to the current edge keeps it valid across regridding, where a stored absolute anchor would go stale. The `Hard` approach law is edge-relative in the same way: only its boundary _location_ $t_\text{hard}$ is an immovable physical fact, while the ordinate is read from the live grid edge and the law stores only its shape (the power-law exponent and the linear slope), so it too survives regridding without a stored anchor. Both laws are shift-invariant: adding a constant to every $-\ln p$ leaves $k$, and the hard law's exponent and slope, unchanged.
 
-`GridFn` is representation-agnostic: `Hard` writes the literal $0.0$. Under a neg-log representation, zero probability is $+\infty$, not $0.0$, so `fn DistributionFunction.with_left_extrap()` and `fn DistributionFunction.with_right_extrap()` reject `Hard` when the representation does not support it (guarded by `fn YAxisPolicy::supports_hard_boundary()`). The plain-probability path used by the timetree passes accepts all four variants.
+`GridFn` is representation-agnostic: `Hard` writes the literal $0.0$, and the distribution layer maps that to the policy-correct zero-probability value ($0$ under plain, $+\infty$ under negative-log). Every variant is therefore valid under both axes. The timetree passes store distributions on the negative-log axis (`Distribution<NegLog>`), where the ordinate is $-\ln p$ and normalization is a pure ordinate shift.
 
 Builder methods `fn GridFn.with_left_extrap()`, `fn GridFn.with_right_extrap()`, and `fn GridFn.with_extrap()` set the policy. `fn GridFn.resample()` propagates it. `fn GridFn.negate_arg_inplace()` swaps left and right (negating the argument reflects the domain).
 
@@ -31,30 +34,30 @@ Builder methods `fn GridFn.with_left_extrap()`, `fn GridFn.with_right_extrap()`,
 
 The inference pipeline produces several distribution types. Each carries per-side tails that downstream operations use when computing support intersections. Tails are metadata set on the convolution result; they are consumed by the next operation in the pipeline (multiplication or division).
 
-| Distribution            | Left tail (past) | Right tail (future) | Where set                                                                                               | Consumed by                                                    |
-| ----------------------- | ---------------- | ------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Leaf time constraint    | `Error`          | `Error`             | default                                                                                                 | backward convolution input                                     |
-| Branch length           | `Error`          | `Error`             | default                                                                                                 | convolution input (negated for backward)                       |
-| Backward parent message | `Constant`       | `Hard`              | [backward_pass.rs#L125-L126](../../packages/treetime/src/timetree/inference/backward_pass.rs#L125-L126) | multiplication (combining children), division (forward cavity) |
-| Internal node time dist | `Constant`       | `Hard`              | multiplication result (composed from child messages, preserved by normalize)                            | forward convolution input, division dividend                   |
-| Forward message         | `Hard`           | `Constant`          | [forward_pass.rs#L126-L127](../../packages/treetime/src/timetree/inference/forward_pass.rs#L126-L127)   | multiplication (refining node dist)                            |
-| Refined node time dist  | `Hard`           | `Hard`              | multiplication result (composed from forward message and subtree dist, preserved by normalize)          | `fn Distribution.likely_time()` extraction                     |
+| Distribution            | Left tail (past)  | Right tail (future) | Where set                                                                                      | Consumed by                                                    |
+| ----------------------- | ----------------- | ------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Leaf time constraint    | `Error`           | `Error`             | default                                                                                        | backward convolution input                                     |
+| Branch length           | `Error`           | `Error`             | default                                                                                        | convolution input (negated for backward)                       |
+| Backward parent message | `Linear` (fitted) | `Hard`              | `fn fit_message_soft_tail()` on the left, `with_right_extrap(Hard)` (backward_pass)            | multiplication (combining children), division (forward cavity) |
+| Internal node time dist | `Linear` (fitted) | `Hard`              | multiplication result (left tail re-fit by `fn derive_summed_tail()`, preserved by normalize)  | forward convolution input, division dividend                   |
+| Forward message         | `Hard`            | `Linear` (fitted)   | `with_left_extrap(Hard)`, `fn fit_message_soft_tail()` on the right (forward_pass)             | multiplication (refining node dist)                            |
+| Refined node time dist  | `Hard`            | `Hard`              | multiplication result (composed from forward message and subtree dist, preserved by normalize) | `fn Distribution.likely_time()` extraction                     |
 
-### Why backward messages have `Constant` left / `Hard` right
+### Why backward messages have `Linear` left / `Hard` right
 
-The backward parent message is the convolution $\text{parent\_message} = \text{child\_time\_dist} \circledast (-\text{branch\_dist})$. It represents "when could the parent have existed, given this child?" The parent can be arbitrarily far in the past -- no child constrains how old its ancestor might be. The left tail is therefore `Constant`: the message is flat (uninformative) to the left of its grid. The child's sampling date provides a hard upper bound on the parent's age (a parent cannot be more recent than its child), so the right tail is `Hard`.
+The backward parent message is the convolution $\text{parent\_message} = \text{child\_time\_dist} \circledast (-\text{branch\_dist})$. It represents "when could the parent have existed, given this child?" The parent can be arbitrarily far in the past -- no child constrains how old its ancestor might be. The left side is therefore soft. It carries a fitted `Linear` tail rather than a flat `Constant`: the message genuinely decays away from its peak, and a log-linear tail captures that decay with finite mass, whereas a flat tail has infinite mass and corrupts the quantile and HPD integrals. The child's sampling date provides a hard upper bound on the parent's age (a parent cannot be more recent than its child), so the right tail is `Hard`.
 
-### Why forward messages have `Hard` left / `Constant` right
+### Why forward messages have `Hard` left / `Linear` right
 
-The forward message is the convolution $\text{dist\_from\_parent} = \text{parent\_except\_subtree} \circledast \text{branch\_dist}$. It represents "when could this node have existed, given its parent and branch?" The parent's committed time provides a hard lower bound (branch lengths are non-negative), so the left tail is `Hard`. There is no upper bound from the parent side on how far in the future the node could be, so the right tail is `Constant`.
+The forward message is the convolution $\text{dist\_from\_parent} = \text{parent\_except\_subtree} \circledast \text{branch\_dist}$. It represents "when could this node have existed, given its parent and branch?" The parent's committed time provides a hard lower bound (branch lengths are non-negative), so the left tail is `Hard`. There is no upper bound from the parent side on how far in the future the node could be, so the right side is soft: a fitted `Linear` tail, for the same integrability reason as the backward left tail.
 
 ### `normalize()` preserves tails
 
-`fn Distribution.normalize()` calls `fn Distribution.scale_by()`, which calls `fn DistributionFunction.scale_y()`. `fn DistributionFunction.scale_y()` scales the y values with `fn GridFn.mapv()`, which copies both tail policies. Scaling by a positive factor does not change out-of-support behavior, so the tails survive normalization.
+Under the negative-log axis, `fn Distribution.normalize()` subtracts the minimum ordinate via `fn DistributionFunction.shift_y()`. A shift is closed form on both fitted laws -- the soft-tail slope and the hard approach law's shape are shift-invariant -- so `shift_y` carries the laws through unchanged rather than dropping them. Every regrid also preserves the per-side policy and fitted law through the centralized `fn GridFn.regridded()` helper, and `fn GridFn.scale_y()` rescales the fitted laws rather than discarding them. Only an arbitrary `fn GridFn.mapv()` drops the law (keeping the side's class), which no normalization path uses.
 
-This lets the backward pass combine child messages with multiplication and normalization alone: multiplication composes the result tails (see [multiplication tails](#multiplication)) and normalization preserves them, so a chain of multiplications keeps its `Constant` left tail and can still extend to reach a child with a disjoint finite grid. No manual re-application is needed.
+This lets the backward pass combine child messages with multiplication and normalization alone: multiplication composes the result tails (see [multiplication tails](#multiplication)) and normalization preserves them, so a chain of multiplications keeps its fitted `Linear` left tail and can still extend to reach a child with a disjoint finite grid. The child fold re-fits the summed left tail once from the combined grid (`fn derive_summed_tail()`).
 
-The forward pass still applies its own tail policies _after_ normalization ([forward_pass.rs#L126-L127](../../packages/treetime/src/timetree/inference/forward_pass.rs#L126-L127), [forward_pass.rs#L141-L142](../../packages/treetime/src/timetree/inference/forward_pass.rs#L141-L142)) because the forward message needs `Hard` left / `Constant` right regardless of the tails the multiplication produced. This explicit application overwrites the preserved tails, which is correct.
+The forward pass applies its own tail policies _after_ normalization because the forward message needs `Hard` left and a fitted `Linear` right regardless of the tails the multiplication produced. It fits the right soft tail from the normalized grid; the shift left the slope unchanged, so fitting before or after normalization gives the same law.
 
 ## Grid intersection contract
 
@@ -89,7 +92,7 @@ Each operand extends its own domain symmetrically. The extension limit is the ot
 
 Equivalently, per side the result takes the tightest (innermost) hard bound and the loosest (outermost) soft bound; a hard bound dominates a soft bound on the same side. Extending each soft side to the other operand's grid bound and intersecting selects this automatically.
 
-The composed result tail per side is the strongest class of the two operands, `soft < Hard < Error`. Two `Linear` tails compose in closed form: multiplication is addition in $-\ln p$, so their slopes add ($k = k_a + k_b$). A `Linear` tail times a flat `Constant` keeps the `Linear` slope, since a flat tail contributes slope zero. An unfitted `Linear` (no slope yet) propagates as unfitted for a later refit.
+The composed result tail per side is the strongest class of the two operands, `soft < hard < Error`, where the hard class covers both `Hard` and `HardApproach`. Two `Linear` tails compose in closed form: multiplication is addition in $-\ln p$, so their slopes add ($k = k_a + k_b$). A `Linear` tail times a flat `Constant` keeps the `Linear` slope, since a flat tail contributes slope zero. Two `HardApproach` laws compose their approach shapes likewise. `Linear` always carries a fitted slope; the total enum has no unfitted `Linear`, so no composition step defers a refit.
 
 When both operands have `Error` or `Hard` tails (the default), the result is identical to strict intersection. When operands carry soft (`Constant` or `Linear`) tails -- as backward parent messages do (see [tail assignments](#tail-assignments-in-the-timetree-pipeline)) -- disjoint finite grids overlap via the tails. This prevents the product from collapsing to `Empty` when temporal signals conflict, for example under `--keep-root` where rerooting cannot resolve the tension between subtrees.
 
@@ -101,16 +104,16 @@ A Function-producing multiplication returns `Empty` only when the operands' hard
 
 ##### Result tails
 
-A `Function` result carries per-side tails composed from the two operands' tails on that side. Beyond a boundary the product is evaluated pointwise: if either operand is undefined there the product is undefined (`Error`); otherwise if either operand is zero the product is zero (`Hard`); only when both operands are flat non-zero constants is the product a flat constant (`Constant`). This is the maximum over the precedence `Constant` < `Hard` < `Error` (the more restrictive tail wins):
+A `Function` result carries per-side tails composed from the two operands' tails on that side. Beyond a boundary the product is evaluated pointwise: if either operand is undefined there the product is undefined (`Error`); otherwise if either operand is zero the product is zero (a hard class); only when both operands continue softly is the product soft. This is the maximum over the precedence `soft` < `hard` < `Error`, where soft covers `Constant`/`Linear` and hard covers `Hard`/`HardApproach` (the more restrictive tail wins):
 
-| A tail     | B tail     | Result tail |
-| ---------- | ---------- | ----------- |
-| `Constant` | `Constant` | `Constant`  |
-| `Constant` | `Hard`     | `Hard`      |
-| `Constant` | `Error`    | `Error`     |
-| `Hard`     | `Hard`     | `Hard`      |
-| `Hard`     | `Error`    | `Error`     |
-| `Error`    | `Error`    | `Error`     |
+| A tail  | B tail  | Result tail                                            |
+| ------- | ------- | ------------------------------------------------------ |
+| soft    | soft    | soft (`Linear` if either is `Linear`, else `Constant`) |
+| soft    | hard    | hard                                                   |
+| soft    | `Error` | `Error`                                                |
+| hard    | hard    | hard                                                   |
+| hard    | `Error` | `Error`                                                |
+| `Error` | `Error` | `Error`                                                |
 
 A `Range` or `Formula` operand has no interpolated tail (it is `Error` on both sides), so Range * Function and Formula * Function results carry `Error` tails. Only Function * Function can produce non-`Error` result tails, and only when both operands opt in. Combined with tail-preserving normalization, this is what lets the backward pass accumulate child messages without re-applying tails.
 
@@ -130,11 +133,13 @@ Coalescent contributions do not introduce another grid. The backward pass multip
 
 Two specific divergences from v0's distribution handling:
 
-1. **Convolution tail reconstruction.** v0 rebuilds convolution tails inside `fn NodeInterpolator.convolve_fft()` ([node_interpolator.py#L231-L256](../../packages/legacy/treetime/treetime/node_interpolator.py#L231-L256)) as slope-based extrapolation (linear in neg-log, exponential in probability) from the outermost trusted points. v1 now reconstructs the same tails in `fn convolution_function_function()`: the FFT runs in plain probability space and is trusted only above a peak-relative floor (`1e-13`, matching v0), and the sub-floor tail is rebuilt by a two-point secant slope in negative-log space, extended only where it decays away from support. The reconstruction is policy-generic (`Plain` and `NegLog`) because each operand is converted to peak-normalized plain probability around the FFT via `fn YAxisPolicy::to_neg_log()` / `fn YAxisPolicy::from_neg_log()` and back. Separately, the inference passes still attach a per-message `Constant`/`Hard` out-of-support policy; that policy governs how the _following_ multiplication or division extends the support intersection and is independent of the on-grid tail values the convolution reconstructs.
+1. **Convolution tail reconstruction.** v0 rebuilds convolution tails inside `fn NodeInterpolator.convolve_fft()` ([node_interpolator.py#L231-L256](../../packages/legacy/treetime/treetime/node_interpolator.py#L231-L256)) as slope-based extrapolation (linear in neg-log, exponential in probability) from the outermost trusted points. v1 now reconstructs the same tails in `fn convolution_function_function()`: the FFT runs in plain probability space and is trusted only above a peak-relative floor (`1e-13`, matching v0), and the sub-floor tail is rebuilt by a two-point secant slope in negative-log space, extended only where it decays away from support. The reconstruction is policy-generic (`Plain` and `NegLog`) because each operand is converted to peak-normalized plain probability around the FFT via `fn YAxisPolicy::to_neg_log()` / `fn YAxisPolicy::from_neg_log()` and back. The inference passes then fit a per-message soft tail from the reconstructed grid (`fn fit_message_soft_tail()`) and attach it as the message's out-of-support policy on the soft side, keeping the hard side `Hard`. That policy governs how the _following_ multiplication or division extends the support intersection.
 
-2. **Default out-of-support handling.** v0 returns effectively zero probability outside support as a soft value (`fill_value=1e10` in neg-log, i.e. $\exp(-10^{10})$). v1 returns `Error` by default, requiring an explicit `Hard` or `Constant` opt-in.
+2. **Default out-of-support handling.** v0 returns effectively zero probability outside support as a soft value (`fill_value=1e10` in neg-log, i.e. $\exp(-10^{10})$). v1 returns `Error` by default, requiring an explicit tail opt-in.
 
-The v1 pass tails are motivated by node-time monotonicity: without a `Constant` left tail on the backward message, a parent's inferred time can be truncated too recent, producing negative branch lengths. The `Constant` left tail lets the combined distribution place the parent appropriately older. A separate forward-pass projection currently clamps committed internal-node point estimates; the statistical contract for that projection remains open in [kb/issues/M-timetree-marginal-node-times-can-violate-topology.md](../issues/M-timetree-marginal-node-times-can-violate-topology.md).
+The v1 pass soft tails serve two ends. They preserve node-time monotonicity -- without a soft left tail on the backward message a parent's inferred time can be truncated too recent, producing negative branch lengths, and the soft tail lets the combined distribution place the parent appropriately older. The fitted `Linear` tail also has finite mass, so it does not corrupt the quantile and HPD integrals the way the earlier flat `Constant` tail did; because log-linear extrapolation slightly over-estimates the far tail it can never manufacture a spurious zero, so the monotonicity guarantee is retained. A separate forward-pass projection currently clamps committed internal-node point estimates; the statistical contract for that projection remains open in [kb/issues/M-timetree-marginal-node-times-can-violate-topology.md](../issues/M-timetree-marginal-node-times-can-violate-topology.md).
+
+The hard side of each message currently uses the nullary `Hard` variant, which places zero probability past the grid edge. Fitting a `HardApproach` law there (to carry a mode sitting on the hard boundary, as for a zero-mutation branch) is a separate, unresolved modeling decision tracked in [kb/issues/N-grid-hard-approach-law-drops-linear-and-folds-indels.md](../issues/N-grid-hard-approach-law-drops-linear-and-folds-indels.md).
 
 ## Accepted limitations
 
@@ -148,10 +153,10 @@ Scientific workflows requiring posterior peak, normalization, or integrated-prob
 
 ### Tail policy
 
-- [packages/treetime-grid/src/grid_fn.rs](../../packages/treetime-grid/src/grid_fn.rs): `enum BoundaryBehavior` (`Error`/`Hard`/`Constant`), `fn BoundaryBehavior.is_soft()` (hard/soft classification), `left_extrap`/`right_extrap` fields, `fn GridFn.with_left_extrap()`/`fn GridFn.with_right_extrap()`/`fn GridFn.with_extrap()`, `fn GridFn.interp()` (fallible, dispatches by tail), `fn GridFn.resample()` (propagates policy), `fn GridFn.negate_arg_inplace()` (swaps sides)
-- [packages/treetime-distribution/src/policy.rs](../../packages/treetime-distribution/src/policy.rs): `fn YAxisPolicy::supports_hard_boundary()` (`Plain` true, `NegLog` false)
-- [packages/treetime-distribution/src/distribution_core/function.rs](../../packages/treetime-distribution/src/distribution_core/function.rs): builder rejection of `Hard` under neg-log; `fn DistributionFunction.scale_y()` (preserves tails via `fn GridFn.mapv()`); `fn DistributionFunction.resample_dx()` regrid boundary handling
-- [packages/treetime-distribution/src/distribution_core/distribution.rs](../../packages/treetime-distribution/src/distribution_core/distribution.rs): `fn Distribution.with_left_extrap()`/`fn Distribution.with_right_extrap()` (no-op for non-Function variants); `fn Distribution.normalize()` (preserves tails via `fn Distribution.scale_by()`)
+- [packages/treetime-grid/src/boundary_behavior.rs](../../packages/treetime-grid/src/boundary_behavior.rs): `enum BoundaryBehavior` (`Error`/`Hard`/`HardApproach`/`Constant`/`Linear`, every variant a complete value), `fn BoundaryBehavior.is_soft()`/`is_hard()`, `const DEFAULT_TAIL_FIT_POINTS`
+- [packages/treetime-grid/src/soft_tail_law.rs](../../packages/treetime-grid/src/soft_tail_law.rs): `struct SoftTailLaw` (single neg-log slope), `fn SoftTailLaw::fit()`, `fn SoftTailLaw::mass()`, `fn SoftTailLaw::compose_multiply()`
+- [packages/treetime-grid/src/grid_fn.rs](../../packages/treetime-grid/src/grid_fn.rs): `left_extrap`/`right_extrap` fields, `fn GridFn.with_left_extrap()`/`fn GridFn.with_right_extrap()`/`fn GridFn.with_extrap()`, `fn GridFn.interp()` (fallible, dispatches by tail), `fn GridFn.regridded()` (centralized policy/law carry across every regrid), `fn GridFn.resample()`, `fn GridFn.scale_y()` (rescales fitted laws), `fn GridFn.shift_y()` (shift-invariant, carries laws), `fn GridFn.mapv()` (drops the law, keeps the class), `fn GridFn.negate_arg_inplace()` (swaps sides)
+- [packages/treetime-distribution/src/distribution_core/distribution.rs](../../packages/treetime-distribution/src/distribution_core/distribution.rs): `fn Distribution.with_left_extrap()`/`fn Distribution.with_right_extrap()` (no-op for non-Function variants); `fn Distribution.normalize()` (subtracts the minimum ordinate via `fn DistributionFunction.shift_y()` under `NegLog`)
 
 ### Tail-aware arithmetic
 
@@ -160,14 +165,16 @@ Scientific workflows requiring posterior peak, normalization, or integrated-prob
 
 ### Inference pass tail application
 
-- [packages/treetime/src/timetree/inference/backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs): backward message tail assignment (lines 125-126). Child combination is multiply + normalize only; tail composition and preservation remove the former manual re-application.
-- [packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs): forward message tail assignment (lines 126-127, 141-142)
+- [packages/treetime/src/timetree/inference/tail_fit.rs](../../packages/treetime/src/timetree/inference/tail_fit.rs): `fn fit_message_soft_tail()` -- fits the soft-side `Linear` tail of a message, errors on a degenerate grid, inert on non-Function messages. Shared by both passes.
+- [packages/treetime/src/timetree/inference/backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs): backward message soft-left / hard-right assignment; `fn derive_summed_tail()` re-fits the summed left tail in the child fold.
+- [packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs): forward message hard-left / soft-right assignment, fit after `normalize()`.
 
 ### Tests
 
 - [packages/treetime-distribution/src/distribution_ops/**tests**/test_multiply.rs](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply.rs): tail combinations (overlapping, disjoint, mixed `Constant`/`Hard`/`Error`, commutativity)
 - [packages/treetime-distribution/src/distribution_ops/**tests**/test_divide.rs](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_divide.rs): exact intersection under default boundaries, extension under explicit divisor tails
-- [packages/treetime-distribution/src/distribution_core/**tests**/test_boundary_behavior.rs](../../packages/treetime-distribution/src/distribution_core/__tests__/test_boundary_behavior.rs): representation constraints (`Hard` accepted by plain, rejected by neg-log; `Constant` accepted by both)
+- [packages/treetime-distribution/src/distribution_core/**tests**/test_boundary_behavior.rs](../../packages/treetime-distribution/src/distribution_core/__tests__/test_boundary_behavior.rs): boundary-variant evaluation and composition
+- [packages/treetime/src/timetree/inference/**tests**/test_tail_fit.rs](../../packages/treetime/src/timetree/inference/__tests__/test_tail_fit.rs): `fn fit_message_soft_tail()` -- slope recovery, finite tail mass, inert on non-Function, error on degenerate grid
 
 ## Related knowledge base items
 
