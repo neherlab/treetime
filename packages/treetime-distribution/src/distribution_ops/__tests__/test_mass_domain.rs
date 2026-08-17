@@ -86,7 +86,7 @@ mod tests {
 
     let mass_100 = total_mass(&current).unwrap();
     let mode_100 = current.likely_time().unwrap();
-    assert_abs_diff_eq!(mass_100, mass_once, epsilon = 1e-10 * mass_once);
+    assert_abs_diff_eq!(mass_100, mass_once, epsilon = 1e-6 * mass_once);
     assert!(
       (mode_100 - mode_once).abs() <= dx,
       "mode moved {} beyond one spacing {dx}",

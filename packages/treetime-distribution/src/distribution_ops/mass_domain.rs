@@ -102,7 +102,13 @@ pub fn rewindow_to_mass(
   let target_dx = mass_width / (grid_points.saturating_sub(1).max(1) as f64);
   let dx = target_dx.min(floor_dx);
 
-  let resampled = normalized.resample_range_dx((lo, hi), dx)?;
+  // Resample over the exact `[lo, hi]` endpoints rather than a `dx`-stepped grid whose final point
+  // can round a fraction of a cell past the bound. A hard edge must land exactly on its bound, so a
+  // downstream division by a hard-bounded message never samples it beyond support (which would read
+  // `+inf` and collapse the message to empty). The point count is at least `grid_points`, and the
+  // `ceil` keeps the resulting spacing `mass_width / (n - 1) <= dx`, so the resolution floor holds.
+  let n_points = ((mass_width / dx).ceil() as usize + 1).max(grid_points).max(2);
+  let resampled = normalized.resample_range_n_points((lo, hi), n_points)?;
   let resampled = refit_soft_tails(resampled)?;
   Ok(Distribution::Function(resampled))
 }
