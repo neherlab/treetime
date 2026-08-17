@@ -147,6 +147,11 @@ fn branch_length_grid_to_time_range(grid: &Array1<f64>, clock_rate: f64, gamma: 
   }
 }
 
+struct TimeRange {
+  time_min: f64,
+  time_max: f64,
+}
+
 /// Boundary neg-log ordinate at `t = 0`, peak-normalized against `max_log_lh`.
 ///
 /// Classifies the hard boundary of the branch-length density: `Some(max_log_lh - log_lh(0))` when
@@ -168,9 +173,4 @@ fn branch_length_boundary_ordinate(
   }
   let boundary_log_lh = evaluate_with_indels_log_lh_only(contributions, 0, indel_rate, 0.0)?.value();
   Ok(boundary_log_lh.is_finite().then_some(max_log_lh - boundary_log_lh))
-}
-
-struct TimeRange {
-  time_min: f64,
-  time_max: f64,
 }
