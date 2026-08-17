@@ -68,7 +68,8 @@ pub fn compute_branch_length_distribution(
   // rather than by heuristic multiples of the branch length (design D1). A zero-mutation branch keeps
   // its lower edge on the finite hard bound at t = 0.
   let distribution = Distribution::Function(distribution_fn);
-  Ok(Arc::new(rewindow_to_mass(&distribution, EPS, n_grid_points)?))
+  let distribution = rewindow_to_mass(&distribution, EPS, n_grid_points)?;
+  Ok(Arc::new(distribution))
 }
 
 fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize) -> Array1<f64> {

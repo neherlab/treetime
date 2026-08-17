@@ -110,9 +110,8 @@ where
     // Every downstream consumer (likely_time, quantile, hpd_region, and the outgoing convolution via
     // to_plain_normalized) is shift-invariant, so the peak offset removed here has no effect on
     // inferred times or likelihoods.
-    slot
-      .node
-      .set_time_distribution(Some(Arc::new(rewindow_to_mass(dist, EPS, GRID_POINTS)?)));
+    let dist = rewindow_to_mass(dist, EPS, GRID_POINTS)?;
+    slot.node.set_time_distribution(Some(Arc::new(dist)));
   }
 
   // A leaf's coalescent factor belongs only to the temporary message convolved toward the parent,

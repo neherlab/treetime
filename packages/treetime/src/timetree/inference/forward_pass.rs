@@ -239,11 +239,8 @@ where
       // Size the refined posterior's grid by probability mass (design D3). The multiplication product
       // already carries composed tails; `rewindow_to_mass` peak-normalizes as its first step,
       // subsuming the shift-only normalize the backward pass and this site previously applied.
-      let combined = rewindow_to_mass(
-        &distribution_multiplication(&dist_from_parent, subtree_dist)?,
-        EPS,
-        GRID_POINTS,
-      )?;
+      let product = distribution_multiplication(&dist_from_parent, subtree_dist)?;
+      let combined = rewindow_to_mass(&product, EPS, GRID_POINTS)?;
       log_refinement(&slot.node, parent_time_dist, &combined);
 
       // The product is empty when the message from the parent leaves no probability on the date
