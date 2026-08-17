@@ -22,9 +22,9 @@
 
   where:
   - $y_\text{edge}$: the live neg-log grid edge ordinate, read on evaluation (edge-relative; no stored anchor, only the fixed boundary location $t_\text{hard}$)
-  - $m$: fitted linear coefficient (field `slope`); $m = 0$ when $b > 0$, $m = s$ when $b = 0$
+  - $m$: linear coefficient (field `slope`); $m = 0$ when $b > 0$ (divergent), $m = (y_\text{edge} - y_\text{hard}) / (t_\text{edge} - t_\text{hard})$ when $b = 0$ (finite)
 
-  Fitted from the innermost grid points [`packages/treetime-grid/src/hard_approach_law.rs`](../../packages/treetime-grid/src/hard_approach_law.rs). Same functional form as truth.
+  The regime is set by the evaluated boundary ordinate $y_\text{hard}$: infinite is divergent (fit $b$ from the innermost grid points, $m = 0$); finite is the boundary-anchored line ($b = 0$, exact $m$ from the boundary to the grid edge) [`packages/treetime-grid/src/hard_approach_law.rs`](../../packages/treetime-grid/src/hard_approach_law.rs). Same functional form as truth.
 
 - **Part C** ([`kb/proposals/distribution-log-space-and-hard-soft-boundaries.md#L158-L169`](../proposals/distribution-log-space-and-hard-soft-boundaries.md#L158-L169)):
 
@@ -34,12 +34,11 @@
 
 ## Choice 1: drop the linear term for divergent branches ($b > 0$)
 
-- The fit sets $m = 0$ [`packages/treetime-grid/src/hard_approach_law.rs#L105-L121`](../../packages/treetime-grid/src/hard_approach_law.rs#L105-L121), omitting $s\,\delta$.
+- The divergent branch sets $m = 0$ [`packages/treetime-grid/src/hard_approach_law.rs`](../../packages/treetime-grid/src/hard_approach_law.rs), omitting $s\,\delta$.
 - Bounded: over the sub-grid gap $\delta < 0.01\,\ell$ (with $\ell$ one mutation's branch length), so $|s\,\delta| < 0.01$ in neg-log.
-- Fitting a slope next to a $\ln\delta$ divergence from five points is numerically unstable.
-- The $b = 0$ case keeps $m = s$ (linear), reproducing the mode on the boundary.
+- The finite branch ($b = 0$) is boundary-anchored: $m$ is the exact line from the evaluated boundary ordinate to the grid edge, reproducing the mode on the boundary without a fit.
 
-**Open question**: accept the dropped term as a bounded approximation, or seed $m = s$ analytically at construction (the rate is known there), making the law exact without a fit.
+**Open question**: for the divergent branch, accept the dropped linear term as a bounded approximation, or seed $m = s$ analytically at construction (the rate is known there), making the law exact.
 
 ## Choice 2: fold indel counts into one exponent
 
@@ -56,5 +55,4 @@
 
 ## Related
 
-- [M-grid-hard-approach-fit-misclassifies-falling-linear.md](M-grid-hard-approach-fit-misclassifies-falling-linear.md): separate fit-robustness concern for the same law.
 - [kb/proposals/distribution-log-space-and-hard-soft-boundaries.md#L140](../proposals/distribution-log-space-and-hard-soft-boundaries.md#L140): Part C, which omits the linear term in both regimes.
