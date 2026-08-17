@@ -1,6 +1,7 @@
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
+use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use crate::timetree::inference::tail_fit::fit_message_soft_tail;
 use eyre::{Report, WrapErr};
 use std::cmp::Ordering;
@@ -12,6 +13,7 @@ use treetime_distribution::NegLog;
 use treetime_distribution::distribution_add_neg_log_weight;
 use treetime_distribution::distribution_convolution;
 use treetime_distribution::distribution_multiplication;
+use treetime_distribution::rewindow_to_mass;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
@@ -103,12 +105,14 @@ where
   }
 
   if let Some(dist) = result.as_ref() {
-    // Re-window once at the end. Under NegLog, normalize() subtracts the peak ordinate (a pure,
-    // exact shift), canonicalizing the accumulated sum without the per-child normalization the old
-    // left-to-right fold applied. Every downstream consumer (likely_time, quantile, hpd_region,
-    // and the outgoing convolution via to_plain_normalized) is shift-invariant, so the offset
-    // removed here has no effect on inferred times or likelihoods.
-    slot.node.set_time_distribution(Some(Arc::new(dist.normalize())));
+    // Re-window once at the end: size the combined posterior's grid by probability mass (design D3),
+    // which peak-normalizes as its first step (subsuming the shift-only normalize this replaces).
+    // Every downstream consumer (likely_time, quantile, hpd_region, and the outgoing convolution via
+    // to_plain_normalized) is shift-invariant, so the peak offset removed here has no effect on
+    // inferred times or likelihoods.
+    slot
+      .node
+      .set_time_distribution(Some(Arc::new(rewindow_to_mass(dist, EPS, GRID_POINTS)?)));
   }
 
   // A leaf's coalescent factor belongs only to the temporary message convolved toward the parent,
@@ -227,25 +231,27 @@ fn sum_function_messages(functions: &[&DistributionFunction<f64, NegLog>]) -> Re
     );
   }
 
-  // Discretize `[left, right]` with the finest operand spacing, matching how
-  // `multiply_function_function` builds its intersection grid (`round(range / dx) + 1` points over
-  // an inclusive `linspace`). Using the same grid convention as the distribution crate keeps a
-  // fan-out fold consistent with a pairwise product and avoids handing the downstream convolution a
-  // grid shape it never sees from ordinary multiplication.
-  let n_points = working_grid_points(left, right, dx);
-
+  // Discretize `[left, right]` at the finest operand spacing `dx`, matching how
+  // `multiply_function_function` builds its intersection grid (`round(range / dx) + 1` points over an
+  // inclusive grid). This intermediate fold grid is a transient fidelity grid, not a stored
+  // distribution: it stays at least as fine as its sharpest operand so no operand loses resolution
+  // before the sum (design D3). The mass re-window to `GRID_POINTS` happens once on the combined
+  // posterior after the fold.
   let resampled = functions
     .iter()
-    .map(|f| f.resample_range_n_points((left, right), n_points))
+    .map(|f| f.resample_range_dx((left, right), dx))
     .collect::<Result<Vec<_>, Report>>()?;
 
-  // Every resampled message shares the [left, right] / n_points grid, so the fold is elementwise.
+  // Every resampled message shares the same [left, x_max] / dx grid, so the fold is elementwise.
   let mut summed = resampled[0].y().clone();
   for function in &resampled[1..] {
     summed += function.y();
   }
 
-  let summed = DistributionFunction::from_range_values((left, right), summed)?;
+  // Rebuild on the resampled grid's own extent (`resample_range_dx` ends at `left + (n - 1) * dx`,
+  // which can fall a rounding step short of `right`), not on the nominal `[left, right]`, so the fold
+  // result keeps the exact grid the operands were resampled onto.
+  let summed = DistributionFunction::from_range_values((resampled[0].x_min(), resampled[0].x_max()), summed)?;
   let left_tail = derive_summed_tail(functions.iter().map(|f| f.left_extrap()), summed.grid_fn(), Side::Left)?;
   let right_tail = derive_summed_tail(
     functions.iter().map(|f| f.right_extrap()),
@@ -254,22 +260,6 @@ fn sum_function_messages(functions: &[&DistributionFunction<f64, NegLog>]) -> Re
   )?;
   let summed = summed.with_left_extrap(left_tail)?.with_right_extrap(right_tail)?;
   Ok(Distribution::Function(summed))
-}
-
-/// Number of points on the working grid over `[left, right]` at the finest operand spacing `dx`.
-///
-/// Matches the discretization `multiply_function_function` uses (`round(range / dx) + 1`), held to
-/// at least two points and capped at the distribution crate's grid-size ceiling so a pathologically
-/// wide domain cannot request an unbounded allocation.
-fn working_grid_points(left: f64, right: f64, dx: f64) -> usize {
-  // Mirror of `treetime_distribution::distribution_ops::time_bounds::MAX_GRID_POINTS`, which is not
-  // re-exported.
-  const MAX_GRID_POINTS: usize = 1_000_000;
-  let intervals = ((right - left) / dx).round();
-  if !intervals.is_finite() || intervals < 1.0 {
-    return 2;
-  }
-  ((intervals as usize) + 1).clamp(2, MAX_GRID_POINTS)
 }
 
 /// Lower (left) working-grid bound: the tightest hard bound when any operand terminates the domain

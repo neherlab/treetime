@@ -1,5 +1,6 @@
 use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
+use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use crate::timetree::inference::tail_fit::fit_message_soft_tail;
 use eyre::Report;
 use log::{Level, debug, log_enabled, warn};
@@ -11,6 +12,7 @@ use treetime_distribution::NegLog;
 use treetime_distribution::distribution_convolution;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
+use treetime_distribution::rewindow_to_mass;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
@@ -234,10 +236,14 @@ where
       let dist_from_parent = forward_message
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(right_tail)?;
-      // Re-anchor the peak to 0. Under NegLog normalize() subtracts the minimum ordinate (an exact
-      // shift): the backward pass stores peak-at-0 distributions, while convolution and division
-      // leave an arbitrary ordinate offset, so this restores the convention without changing shape.
-      let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?.normalize();
+      // Size the refined posterior's grid by probability mass (design D3). The multiplication product
+      // already carries composed tails; `rewindow_to_mass` peak-normalizes as its first step,
+      // subsuming the shift-only normalize the backward pass and this site previously applied.
+      let combined = rewindow_to_mass(
+        &distribution_multiplication(&dist_from_parent, subtree_dist)?,
+        EPS,
+        GRID_POINTS,
+      )?;
       log_refinement(&slot.node, parent_time_dist, &combined);
 
       // The product is empty when the message from the parent leaves no probability on the date
@@ -262,6 +268,9 @@ where
       let dist_from_parent = forward_message
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(right_tail)?;
+      // Size the refined posterior's grid by probability mass (design D3), now that it is
+      // tail-complete (Hard left, fitted Linear right).
+      let dist_from_parent = rewindow_to_mass(&dist_from_parent, EPS, GRID_POINTS)?;
       log_refinement(&slot.node, parent_time_dist, &dist_from_parent);
       slot.node.set_time_distribution(Some(Arc::new(dist_from_parent)));
     }

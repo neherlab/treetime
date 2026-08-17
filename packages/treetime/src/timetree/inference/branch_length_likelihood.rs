@@ -1,5 +1,6 @@
 use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
 use crate::partition::optimization_contribution::OptimizationContribution;
+use crate::timetree::inference::runner::EPS;
 use eyre::{Report, WrapErr};
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
@@ -7,6 +8,7 @@ use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
 use treetime_distribution::NegLog;
+use treetime_distribution::rewindow_to_mass;
 use treetime_grid::GridFn;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
 use treetime_utils::array::ndarray::{first, last};
@@ -61,7 +63,12 @@ pub fn compute_branch_length_distribution(
     .with_left_extrap(BoundaryBehavior::HardApproach(left_boundary))?
     .with_right_extrap(BoundaryBehavior::Linear(right_boundary))?;
 
-  Ok(Arc::new(Distribution::Function(distribution_fn)))
+  // The heuristic pilot grid above is tail-complete (left HardApproach, right Linear). Re-window it by
+  // probability mass so the stored grid holds >= 1 - 2*EPS of the evaluated likelihood, sized by mass
+  // rather than by heuristic multiples of the branch length (design D1). A zero-mutation branch keeps
+  // its lower edge on the finite hard bound at t = 0.
+  let distribution = Distribution::Function(distribution_fn);
+  Ok(Arc::new(rewindow_to_mass(&distribution, EPS, n_grid_points)?))
 }
 
 fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize) -> Array1<f64> {

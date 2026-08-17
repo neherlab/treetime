@@ -5,6 +5,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
+  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
   use ndarray::array;
@@ -445,24 +446,23 @@ mod tests {
 
   /// Three children whose backward messages are gridded `Function` distributions on a shared grid.
   /// A zero-length branch makes each message equal to its child's distribution, so the fold reduces
-  /// to a pure sum and the result can be checked against a hand-computed elementwise sum -- an
-  /// independent oracle, not the previous per-child implementation. The fold must (1) resample onto
-  /// one common working grid (the shared grid here) and (2) add the neg-log ordinates, then
-  /// re-window once by subtracting the peak ordinate.
+  /// to a pure sum of neg-log ordinates. The product of the three Gaussians is itself Gaussian, with
+  /// precision `1 + 1 + 2 = 4` and mean `(2002 + 2008 + 2*2005)/4 = 2005`, so its peak-normalized
+  /// neg-log is the parabola `2*(t - 2005)^2` -- an independent analytic oracle for the fold. Mass
+  /// re-windowing then regrids that posterior onto its mass domain, so the check is against the
+  /// analytic function rather than the child grid.
   #[test]
-  fn test_backward_pass_sums_function_children_on_common_grid() -> Result<(), Report> {
+  fn test_backward_pass_sums_function_children_to_gaussian_product() -> Result<(), Report> {
     let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.0,B:0.0,C:0.0)I:1.0)root;")?;
     let a = find_node_key_by_name(&graph, "A").expect("leaf A not found");
     let b = find_node_key_by_name(&graph, "B").expect("leaf B not found");
     let c = find_node_key_by_name(&graph, "C").expect("leaf C not found");
 
-    let x = Array1::linspace(2000.0, 2010.0, 11);
-    let ya = gaussian_neglog(&x, 2002.0, 1.0);
-    let yb = gaussian_neglog(&x, 2008.0, 1.0);
-    let yc = gaussian_neglog(&x, 2005.0, 2.0);
-    set_leaf_function(&graph, a, &x, ya.clone())?;
-    set_leaf_function(&graph, b, &x, yb.clone())?;
-    set_leaf_function(&graph, c, &x, yc.clone())?;
+    // A fine child grid keeps the re-window's linear resampling faithful to the analytic parabola.
+    let x = Array1::linspace(2000.0, 2010.0, 2001);
+    set_leaf_function(&graph, a, &x, gaussian_neglog(&x, 2002.0, 1.0))?;
+    set_leaf_function(&graph, b, &x, gaussian_neglog(&x, 2008.0, 1.0))?;
+    set_leaf_function(&graph, c, &x, gaussian_neglog(&x, 2005.0, 2.0))?;
     set_edge_branch_dist(&graph, a, 0.0);
     set_edge_branch_dist(&graph, b, 0.0);
     set_edge_branch_dist(&graph, c, 0.0);
@@ -477,15 +477,19 @@ mod tests {
       .as_ref()
       .expect("internal node should have a time distribution");
 
-    // The stored distribution lives on the single common working grid (the shared child grid).
-    pretty_assert_ulps_eq!(dist.t(), x, max_ulps = 4);
+    // Peak sits at the precision-weighted mean, within one grid spacing after re-windowing.
+    let grid = dist.t();
+    let spacing = grid[1] - grid[0];
+    let peak = dist.likely_time().expect("distribution should have a likely_time");
+    assert_abs_diff_eq!(peak, 2005.0, epsilon = spacing);
 
-    // Oracle: the neg-log fold is the elementwise sum of the messages, canonicalized by subtracting
-    // its own minimum (the single re-window). Hand-computed, independent of the folded code path.
-    let summed = &ya + &yb + &yc;
-    let peak = summed.iter().copied().fold(f64::INFINITY, f64::min);
-    let expected = summed.mapv(|v| v - peak);
-    pretty_assert_ulps_eq!(dist.y(), expected, max_ulps = 8);
+    // Peak-normalized neg-log matches the analytic Gaussian-product parabola at interior points. The
+    // tolerance covers the O(dx^2) linear-resampling error and the peak-normalization offset (the
+    // stored minimum sits within dx/2 of the true mode 2005); both are ~1e-5 at this resolution.
+    for t in [2004.0_f64, 2005.0, 2006.0] {
+      let expected = 2.0 * (t - 2005.0).powi(2);
+      assert_abs_diff_eq!(dist.eval(t)?, expected, epsilon = 1e-4);
+    }
 
     Ok(())
   }
@@ -555,13 +559,17 @@ mod tests {
     let internal = find_node_key_by_name(&graph, "I").expect("internal node I not found");
     let node = graph.get_node(internal).expect("internal I exists");
     let payload = node.read_arc().payload().read_arc();
-    let likely_time = payload
+    let dist = payload
       .time_distribution()
       .as_ref()
-      .and_then(|dist| dist.likely_time())
-      .expect("internal node should have a time distribution with a likely_time");
+      .expect("internal node should have a time distribution");
+    let likely_time = dist.likely_time().expect("distribution should have a likely_time");
 
-    pretty_assert_ulps_eq!(likely_time, 2005.0, max_ulps = 4);
+    // Mass re-windowing regrids the folded posterior, so 2005 need not be a stored grid point: the
+    // discrete peak snaps to the nearest grid point, within one spacing of the analytic mean.
+    let grid = dist.t();
+    let spacing = grid[1] - grid[0];
+    assert_abs_diff_eq!(likely_time, 2005.0, epsilon = spacing);
 
     Ok(())
   }

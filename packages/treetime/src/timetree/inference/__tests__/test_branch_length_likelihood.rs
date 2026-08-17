@@ -2,7 +2,7 @@
 mod tests {
   use crate::partition::optimization_contribution::OptimizationContribution;
   use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
-  use crate::timetree::inference::runner::BRANCH_GRID_SIZE;
+  use crate::timetree::inference::runner::{EPS, GRID_POINTS};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
@@ -30,7 +30,7 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 0.1,
       /* one_mutation */ 1e-3,
-      BRANCH_GRID_SIZE,
+      GRID_POINTS,
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
@@ -39,21 +39,27 @@ mod tests {
     Ok(())
   }
 
-  /// With no substitution contributions and no observed indels but a positive
-  /// indel rate, the Poisson log-likelihood peaks at $t_{\min}$.
-  ///
-  /// The grid floor is `min_bl = one_mutation * 0.01`. A pure indel-rate
-  /// likelihood decreases monotonically in branch length, so its peak sits at
-  /// that floor.
+  /// A pure indel-rate likelihood (no substitutions, no observed indels) decreases monotonically in
+  /// branch length, so its mode sits on the finite hard bound at `t = 0`, not on the heuristic grid
+  /// floor. Mass re-windowing extends the lower grid edge to that bound (design D2, `HardApproach`
+  /// with `b == 0`), so the peak lands exactly on `t = 0` with no `+inf` ordinate stored (AC2).
   #[test]
-  fn test_branch_length_likelihood_indel_rate_only_peak_at_t_min() -> Result<(), Report> {
+  fn test_branch_length_likelihood_indel_rate_only_mode_on_hard_bound() -> Result<(), Report> {
     let distribution = helpers::build_indel_rate_only_distribution()?;
 
-    let t_min = 1e-3 * 0.01;
-    let expected_peak_time = t_min;
-    let peak_time = distribution.likely_time().expect("distribution has a peak");
-    assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = 1e-10);
+    let (t_min, _t_max) = distribution.time_bounds().unwrap();
+    assert_abs_diff_eq!(t_min, 0.0, epsilon = 1e-12);
 
+    let peak_time = distribution.likely_time().expect("distribution has a peak");
+    assert_abs_diff_eq!(peak_time, 0.0, epsilon = 1e-12);
+
+    let Distribution::Function(function) = distribution.as_ref() else {
+      panic!("branch-length distribution must be a Function");
+    };
+    assert!(
+      function.y().iter().all(|y| y.is_finite()),
+      "no +inf ordinate may be stored on the hard lower bound"
+    );
     Ok(())
   }
 
@@ -118,13 +124,14 @@ mod tests {
   /// analytic Poisson ordinate, not the system under test.
   #[rustfmt::skip]
   #[rstest]
-  #[case::just_past_tmax( 6.0)]
-  #[case::far_past_tmax( 10.0)]
+  #[case::just_past_tmax(  9.0)]
+  #[case::far_past_tmax(  15.0)]
   #[trace]
   fn test_branch_length_likelihood_right_soft_tail_extrapolates_poisson_decay(#[case] t: f64) -> Result<(), Report> {
     let distribution = helpers::build_indel_rate_only_distribution()?;
 
-    // t_max = min(max(1.0 * 5, 1e-3 * 10), 5.0) = 5.0; both query points sit beyond it.
+    // After mass re-windowing, t_max is the soft mass-domain edge (~ -ln(EPS) for this unit-rate
+    // decay), well beyond the heuristic pilot extent; both query points sit past it, in the tail.
     let (_t_min, t_max) = distribution.time_bounds().unwrap();
     assert!(t > t_max, "query {t} must be beyond t_max {t_max}");
 
@@ -154,7 +161,7 @@ mod tests {
       indel_rate,
       /* current_branch_length */ 5.0,
       one_mutation,
-      BRANCH_GRID_SIZE,
+      GRID_POINTS,
       clock_rate,
       gamma,
     )?;
@@ -188,7 +195,7 @@ mod tests {
       indel_rate,
       /* current_branch_length */ 5.0,
       one_mutation,
-      BRANCH_GRID_SIZE,
+      GRID_POINTS,
       clock_rate,
       gamma,
     )?;
@@ -220,7 +227,7 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 0.01,
       /* one_mutation */ 1e-3,
-      BRANCH_GRID_SIZE,
+      GRID_POINTS,
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
@@ -242,7 +249,7 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 0.1,
       /* one_mutation */ 1e-3,
-      BRANCH_GRID_SIZE,
+      GRID_POINTS,
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
@@ -264,7 +271,7 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 2.0,
       /* one_mutation */ 1e-3,
-      BRANCH_GRID_SIZE,
+      GRID_POINTS,
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
@@ -287,7 +294,7 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 0.1,
       one_mutation,
-      BRANCH_GRID_SIZE,
+      GRID_POINTS,
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
@@ -297,10 +304,11 @@ mod tests {
     Ok(())
   }
 
-  /// The distribution carries exactly the requested number of grid points,
-  /// spaced uniformly across `[min_bl, max_bl]`.
+  /// A flat likelihood (no substitutions, no indels) is non-integrable, so it has no probability mass
+  /// domain to size by: the re-window falls back to the shift-only normalize and keeps the pilot grid
+  /// exactly, spaced uniformly across `[min_bl, max_bl]`.
   #[test]
-  fn test_branch_length_likelihood_grid_has_uniform_requested_resolution() -> Result<(), Report> {
+  fn test_branch_length_likelihood_flat_distribution_keeps_pilot_grid() -> Result<(), Report> {
     let contributions: Vec<OptimizationContribution> = vec![];
     let distribution = compute_branch_length_distribution(
       &contributions,
@@ -308,14 +316,52 @@ mod tests {
       /* indel_rate */ 0.0,
       /* current_branch_length */ 0.1,
       /* one_mutation */ 1e-3,
-      BRANCH_GRID_SIZE,
+      GRID_POINTS,
       /* clock_rate */ 1.0,
       /* gamma */ 1.0,
     )?;
 
     let t = distribution.t();
-    assert_eq!(t.len(), BRANCH_GRID_SIZE);
+    assert_eq!(t.len(), GRID_POINTS);
     assert!(has_uniform_spacing(&t));
+    Ok(())
+  }
+
+  /// A multi-event branch likelihood is mass-sized so its stored grid holds at least `1 - 2*EPS` of
+  /// the true probability mass (AC1) and at least `GRID_POINTS` points (AC3).
+  ///
+  /// Fixture: `indel_count = 1`, `indel_rate = 1`, no substitutions, so the branch likelihood is the
+  /// Poisson-indel Gamma shape `L(t) ~ (mu*t)^k * exp(-mu*t)`, peaked at `t = k/mu = 1`. Oracle: that
+  /// analytic density integrated on an independent dense reference grid far finer than `GRID_POINTS`,
+  /// over the full support and over the stored domain `[lo, hi]`.
+  #[test]
+  fn test_branch_length_likelihood_grid_holds_target_mass_fraction() -> Result<(), Report> {
+    let contributions: Vec<OptimizationContribution> = vec![];
+    let (indel_count, indel_rate) = (1_usize, 1.0);
+    let distribution = compute_branch_length_distribution(
+      &contributions,
+      indel_count,
+      indel_rate,
+      /* current_branch_length */ 1.0,
+      /* one_mutation */ 1e-3,
+      GRID_POINTS,
+      /* clock_rate */ 1.0,
+      /* gamma */ 1.0,
+    )?;
+
+    assert!(
+      distribution.t().len() >= GRID_POINTS,
+      "stored grid must hold at least GRID_POINTS points, got {}",
+      distribution.t().len()
+    );
+
+    let (lo, hi) = distribution.time_bounds().unwrap();
+    let fraction = helpers::gamma_mass_fraction_inside(indel_count as f64, indel_rate, lo, hi);
+    assert!(
+      fraction >= 1.0 - 2.0 * EPS,
+      "stored grid holds only {fraction} of the mass, below 1 - 2*EPS = {}",
+      1.0 - 2.0 * EPS
+    );
     Ok(())
   }
 
@@ -328,6 +374,29 @@ mod tests {
       distribution.eval(t).unwrap_or(0.0)
     }
 
+    /// Fraction of the analytic Poisson-indel Gamma density `L(t) = t^k * exp(-mu*t)` (the
+    /// `t`-independent normalizing constant cancels in the ratio) lying inside `[lo, hi]`, by dense
+    /// trapezoidal integration over `[0, t_far]` with `t_far` far beyond the mode `k/mu`. Independent
+    /// of the system under test: it integrates the closed-form density directly, not the SUT's grid.
+    pub fn gamma_mass_fraction_inside(k: f64, mu: f64, lo: f64, hi: f64) -> f64 {
+      const N: usize = 2_000_001;
+      let t_far = 60.0;
+      let dt = t_far / (N as f64 - 1.0);
+      let density = |t: f64| t.powf(k) * (-mu * t).exp();
+      let mut total = 0.0;
+      let mut inside = 0.0;
+      for i in 0..N {
+        let t = i as f64 * dt;
+        let weight = if i == 0 || i == N - 1 { 0.5 } else { 1.0 };
+        let area = weight * density(t) * dt;
+        total += area;
+        if t >= lo && t <= hi {
+          inside += area;
+        }
+      }
+      inside / total
+    }
+
     pub fn build_indel_rate_only_distribution() -> Result<Arc<Distribution<NegLog>>, Report> {
       let contributions: Vec<OptimizationContribution> = vec![];
       compute_branch_length_distribution(
@@ -336,7 +405,7 @@ mod tests {
         /* indel_rate */ 1.0,
         /* current_branch_length */ 1.0,
         /* one_mutation */ 1e-3,
-        BRANCH_GRID_SIZE,
+        GRID_POINTS,
         /* clock_rate */ 1.0,
         /* gamma */ 1.0,
       )
