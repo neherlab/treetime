@@ -8,6 +8,7 @@ use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
 use treetime_distribution::NegLog;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side};
+use treetime_utils::array::ndarray::{first, last};
 use treetime_utils::make_report;
 
 /// Compute the branch-length likelihood distribution used for time inference.
@@ -45,23 +46,15 @@ pub fn compute_branch_length_distribution(
     .iter()
     .copied()
     .map(|branch_len| {
-      evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, branch_len).map(|log_lh| log_lh.value())
+      evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, branch_len).map(|lh| lh.value())
     })
     .collect::<Result<_, _>>()?;
-  let max_log_lh = *log_lh.max()?;
 
-  // Store negative-log ordinates directly: `-ln(p / p_peak) = ln(p_peak) - ln(p) = max_log_lh -
-  // log_lh`. The peak ordinate is `0`, matching the `NegLog` peak-normalization convention, and no
-  // `exp` round-trip is taken.
-  let neg_log = log_lh.mapv(|value| max_log_lh - value);
+  let (log_lh, max_log_lh) = peak_normalize_neg_log(&log_lh)?;
 
-  // Convert branch length grid to time grid: time = branch_length / (clock_rate * gamma)
-  // gamma > 1 means faster evolution, so same substitutions correspond to shorter time
-  let effective_clock_rate = clock_rate * gamma;
-  let time_min = grid[0] / effective_clock_rate;
-  let time_max = grid[grid.len() - 1] / effective_clock_rate;
+  let TimeRange { time_min, time_max } = branch_length_grid_to_time_range(&grid, clock_rate, gamma);
 
-  let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), neg_log)?;
+  let distribution_fn = DistributionFunction::from_range_values((time_min, time_max), log_lh)?;
 
   // Neg-log density at the boundary (branch length 0); the grid samples inside `min_bl > 0`, so it
   // cannot supply it. The substitution likelihood is evaluated there directly: finite for a
@@ -116,4 +109,33 @@ fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize) -> Array1
   );
   let max_bl = peak_max_bl.min(MAX_BRANCH_LENGTH);
   Array1::linspace(min_bl, max_bl, n_points)
+}
+
+/// Peak-normalize log-likelihood ordinates into the `NegLog` convention.
+///
+/// Returns the neg-log ordinates `max_log_lh - log_lh` (peak ordinate `0`, all others `>= 0`)
+/// alongside the peak log-likelihood `max_log_lh`, so callers can normalize additional off-grid
+/// ordinates (such as the boundary at branch length 0) against the same peak. The subtraction
+/// stores `-ln(p / p_peak) = ln(p_peak) - ln(p)` directly, taking no `exp` round-trip.
+fn peak_normalize_neg_log(log_lh: &Array1<f64>) -> Result<(Array1<f64>, f64), Report> {
+  let max_log_lh = *log_lh.max()?;
+  let neg_log = log_lh.mapv(|value| max_log_lh - value);
+  Ok((neg_log, max_log_lh))
+}
+
+/// Convert a branch-length grid (substitutions/site) to the corresponding time range.
+///
+/// `time = branch_length / (clock_rate * gamma)`. A `gamma > 1` (faster evolution) maps the same
+/// substitution count to a shorter time, compressing the range.
+fn branch_length_grid_to_time_range(grid: &Array1<f64>, clock_rate: f64, gamma: f64) -> TimeRange {
+  let effective_clock_rate = clock_rate * gamma;
+  TimeRange {
+    time_min: first(grid) / effective_clock_rate,
+    time_max: last(grid) / effective_clock_rate,
+  }
+}
+
+struct TimeRange {
+  time_min: f64,
+  time_max: f64,
 }
