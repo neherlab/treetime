@@ -31,9 +31,11 @@ v1 sums `ln(dist.eval(child_time - parent_time))` over all edges with assigned t
 - v0 marginal path integrates the root distribution; v1 has no marginal path
   for this metric.
 
-The metric drives convergence detection in the EM refinement loop. Different numerical values can cause the loop to terminate at a different iteration, producing different final timetree results.
+`log_lh_pos` is a reported diagnostic only: the convergence gate `has_converged()` depends solely on `max_time_change` and `n_resolved` (`packages/treetime/src/timetree/convergence/metrics.rs:49-54`), not on any log-likelihood. Correcting the metric changes reported `log_lh_pos`/`log_lh_total`, not inferred dates or the stopping iteration.
 
-This is a candidate for alignment with v0's formula if parity is desired, or for explicit documentation as a v1-specific improvement if the new metric is scientifically preferable. Needs discussion.
+## Correctness fix required independently of parity
+
+The v1 per-edge term is also internally wrong, separate from the v0-parity question. `Distribution::<NegLog>::eval` returns the neg-log ordinate `y = -ln(p / p_peak) >= 0` (`packages/treetime-distribution/src/distribution_core/distribution.rs:146`), not a probability. v1 sums `y.ln()`; the documented log-probability is `-y` (v0 sums `-BLI = -y`). Fix the accumulation to a genuine log-probability and rework the `p > 0.0` guard and "zero or negative probability" message (`packages/treetime/src/timetree/convergence/likelihood.rs:56-67`), which assume a plain probability and wrongly drop the mode (`y = 0`). This fix stands regardless of whether the calendar-time-vs-substitution and root-term differences are aligned to v0.
 
 ## Related issues
 

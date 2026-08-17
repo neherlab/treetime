@@ -31,9 +31,27 @@ v1 sums `ln(dist.eval(child_time - parent_time))` over all edges with assigned t
 - v0 marginal path integrates the root distribution; v1 has no marginal path
   for this metric.
 
-The metric drives convergence detection in the EM refinement loop. Different numerical values can cause the loop to terminate at a different iteration, producing different final timetree results.
+## v1 formula is internally incorrect, not just a different valid metric
 
-This is a candidate for alignment with v0's formula if parity is desired, or for explicit documentation as a v1-specific improvement if the new metric is scientifically preferable. Needs discussion.
+Beyond the v0/v1 divergence above, the v1 per-edge term is mathematically wrong. `Distribution::<NegLog>::eval` returns the stored neg-log ordinate `y = -ln(p / p_peak) >= 0` (`packages/treetime-distribution/src/distribution_core/distribution.rs:146`, `eval = f.interp`), not a plain probability. v1 sums `y.ln()`; the log-probability it is documented to sum is `-y`.
+
+- v0's joint path sums `-BLI(branch_length)`, i.e. `-y`, the log-probability. v1 sums `+ln(y)`, an unrelated quantity.
+- The direction is inverted across edges: as an edge fit worsens, `y` grows, the true log-probability `-y` decreases, but the summed `ln(y)` increases.
+- The `p > 0.0` guard and the "zero or negative probability" debug message (`packages/treetime/src/timetree/convergence/likelihood.rs:56-67`) assume a plain probability. The actual mode (`y = 0`, highest probability) fails `p > 0.0`, is logged as "zero or negative probability", and is dropped from the sum.
+
+So this is not a "possibly preferable v1 metric pending a parity discussion": the v1 formula must be corrected to a genuine log-probability (`-y`, or evaluate in plain space and take its log) regardless of whether the calendar-time-vs-substitution and root-term differences above are aligned to v0.
+
+## Impact
+
+`log_lh_pos` feeds `log_lh_total` and the `ConvergenceMetrics` written to the tracelog and the per-iteration info log (`packages/treetime/src/timetree/convergence/optimizer.rs:59-91`). It is a reported diagnostic only: `has_converged()` depends solely on `max_time_change` and `n_resolved` (`packages/treetime/src/timetree/convergence/metrics.rs:49-54`), so the defect does not change inferred node dates, tree topology, or the convergence stopping decision. The observable effect is an incorrect `log_lh_pos` (and therefore `log_lh_total`) surfaced to the user.
+
+(An earlier statement that this metric "drives convergence detection" does not hold for the current convergence gate.)
+
+## Interaction with the branch-length right-boundary tail
+
+The branch-length distribution now carries a soft `Linear` right tail (`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`), so an edge whose inferred duration exceeds the grid's `t_max` is evaluable instead of failing `eval`. Such edges previously hit the `Err` arm and were dropped from this sum; they now flow through the incorrect `ln(y)` accumulation above, so more edges are affected than before.
+
+This is a candidate for alignment with v0's formula if parity is desired, but the internal-correctness fix (`ln(y)` to `-y`) is required independently of that decision.
 
 ## Related tickets
 
