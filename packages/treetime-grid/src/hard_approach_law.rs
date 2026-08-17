@@ -54,6 +54,25 @@ pub struct HardApproachLaw {
 }
 
 impl HardApproachLaw {
+  /// Fit the hard-boundary approach law from the boundary ordinate, choosing the regime.
+  ///
+  /// `y_hard` is the boundary neg-log ordinate at `t_hard`: `Some` when the density is finite there
+  /// (a zero-mutation branch, a straight-line approach) and `None` when it diverges (a forced
+  /// substitution or an indel, a power-law approach). Only the producer that owns the likelihood can
+  /// compute this ordinate, so it is supplied rather than sampled from the grid. Dispatches to
+  /// [`fit_linear`](Self::fit_linear) for the finite case and [`fit_log_power_law`](Self::fit_log_power_law)
+  /// for the divergent case; `n_fit` is the innermost-point count for the power-law regression and is
+  /// unused when `y_hard` is `Some`.
+  ///
+  /// `Side` selects the grid end nearest the boundary. `None` when the selected constructor cannot
+  /// fit (see [`fit_linear`](Self::fit_linear) and [`fit_log_power_law`](Self::fit_log_power_law)).
+  pub fn fit(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, y_hard: Option<f64>, n_fit: usize) -> Option<Self> {
+    match y_hard {
+      Some(y_hard) => Self::fit_linear(grid_fn, t_hard, side, y_hard),
+      None => Self::fit_log_power_law(grid_fn, t_hard, side, n_fit),
+    }
+  }
+
   /// Fit the straight-line approach for a finite boundary density (`n = 0`) over `[t_hard, t_edge)`.
   ///
   /// A zero-mutation branch has a finite, maximal density at the boundary, so the neg-log is a

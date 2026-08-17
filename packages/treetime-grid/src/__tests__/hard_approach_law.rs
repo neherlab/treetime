@@ -143,6 +143,36 @@ mod tests {
     Ok(())
   }
 
+  // --- HardApproachLaw::fit (regime dispatch on the boundary ordinate) ---
+  // `Some(y_hard)` routes to the straight-line finite fit; `None` routes to the divergent power-law
+  // fit. Oracle: the dispatched result must equal a direct call to the matching constructor.
+
+  #[test]
+  fn test_hard_approach_law_fit_some_routes_to_linear() -> Result<(), Report> {
+    // Finite boundary: y = 0.5 t + 1, so y_hard = 1.0. `fit(Some(1.0))` must equal `fit_linear(1.0)`
+    // and carry the finite marker `b = 0`. The unused `n_fit` argument does not affect the result.
+    let y = Array1::linspace(0.1, 1.0, 20).mapv(|t: f64| 0.5 * t + 1.0);
+    let grid = GridFn::from_range_values((0.1, 1.0), y)?;
+    let dispatched = HardApproachLaw::fit(&grid, 0.0, Side::Left, Some(1.0), 10);
+    let direct = HardApproachLaw::fit_linear(&grid, 0.0, Side::Left, 1.0);
+    assert_eq!(direct, dispatched);
+    assert_abs_diff_eq!(0.0, dispatched.expect("fit should succeed").b, epsilon = 1e-14);
+    Ok(())
+  }
+
+  #[test]
+  fn test_hard_approach_law_fit_none_routes_to_power_law() -> Result<(), Report> {
+    // Divergent boundary: exact neg-log power law with b = 1.5. `fit(None)` must equal
+    // `fit_log_power_law` with the same innermost-point count and carry the divergent marker
+    // `slope = 0`.
+    let grid = make_neglog_power_law_grid(0.0, 1.0, 1.5, 0.1, 1.0, 20);
+    let dispatched = HardApproachLaw::fit(&grid, 0.0, Side::Left, None, 10);
+    let direct = HardApproachLaw::fit_log_power_law(&grid, 0.0, Side::Left, 10);
+    assert_eq!(direct, dispatched);
+    assert_abs_diff_eq!(0.0, dispatched.expect("fit should succeed").slope, epsilon = 1e-14);
+    Ok(())
+  }
+
   // --- HardApproachLaw::mass (edge-relative) ---
   // Oracle: analytic integral of exp(-y(t)) over the gap.
   //  - b > 0:              p_edge * |t_edge - t_hard| / (b + 1)
