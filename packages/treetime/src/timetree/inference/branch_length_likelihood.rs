@@ -39,16 +39,7 @@ pub fn compute_branch_length_distribution(
 
   let grid = create_simple_grid(current_branch_length, one_mutation, n_grid_points);
 
-  // `create_simple_grid` always returns strictly positive branch lengths
-  // (`min_bl = one_mutation * 0.01 > 0`), satisfying the `t > 0` precondition
-  // of `poisson_indel_log_lh` when `indel_count > 0`.
-  let log_lh: Array1<f64> = grid
-    .iter()
-    .copied()
-    .map(|branch_len| {
-      evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, branch_len).map(|lh| lh.value())
-    })
-    .collect::<Result<_, _>>()?;
+  let log_lh = evaluate_log_lh_on_grid(&grid, contributions, indel_count, indel_rate)?;
 
   let (log_lh, max_log_lh) = peak_normalize_neg_log(&log_lh)?;
 
@@ -105,6 +96,26 @@ fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize) -> Array1
   );
   let max_bl = peak_max_bl.min(MAX_BRANCH_LENGTH);
   Array1::linspace(min_bl, max_bl, n_points)
+}
+
+/// Evaluate the combined substitution + Poisson-indel log-likelihood at each grid branch length.
+///
+/// `create_simple_grid` always returns strictly positive branch lengths
+/// (`min_bl = one_mutation * 0.01 > 0`), satisfying the `t > 0` precondition
+/// of `poisson_indel_log_lh` when `indel_count > 0`.
+fn evaluate_log_lh_on_grid(
+  grid: &Array1<f64>,
+  contributions: &[OptimizationContribution],
+  indel_count: usize,
+  indel_rate: f64,
+) -> Result<Array1<f64>, Report> {
+  grid
+    .iter()
+    .copied()
+    .map(|branch_len| {
+      evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, branch_len).map(|lh| lh.value())
+    })
+    .collect()
 }
 
 /// Peak-normalize log-likelihood ordinates into the `NegLog` convention.
