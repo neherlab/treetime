@@ -34,14 +34,14 @@ Builder methods `fn GridFn.with_left_extrap()`, `fn GridFn.with_right_extrap()`,
 
 The inference pipeline produces several distribution types. Each carries per-side tails that downstream operations use when computing support intersections. Tails are metadata set on the convolution result; they are consumed by the next operation in the pipeline (multiplication or division).
 
-| Distribution            | Left tail (past)  | Right tail (future) | Where set                                                                                      | Consumed by                                                    |
-| ----------------------- | ----------------- | ------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Leaf time constraint    | `Error`           | `Error`             | default                                                                                        | backward convolution input                                     |
-| Branch length           | `Error`           | `Error`             | default                                                                                        | convolution input (negated for backward)                       |
-| Backward parent message | `Linear` (fitted) | `Hard`              | `fn fit_message_soft_tail()` on the left, `with_right_extrap(Hard)` (backward_pass)            | multiplication (combining children), division (forward cavity) |
-| Internal node time dist | `Linear` (fitted) | `Hard`              | multiplication result (left tail re-fit by `fn derive_summed_tail()`, preserved by normalize)  | forward convolution input, division dividend                   |
-| Forward message         | `Hard`            | `Linear` (fitted)   | `with_left_extrap(Hard)`, `fn fit_message_soft_tail()` on the right (forward_pass)             | multiplication (refining node dist)                            |
-| Refined node time dist  | `Hard`            | `Hard`              | multiplication result (composed from forward message and subtree dist, preserved by normalize) | `fn Distribution.likely_time()` extraction                     |
+| Distribution            | Left tail (past)  | Right tail (future) | Where set                                                                                             | Consumed by                                                                     |
+| ----------------------- | ----------------- | ------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Leaf time constraint    | `Error`           | `Error`             | default                                                                                               | backward convolution input                                                      |
+| Branch length           | `HardApproach`    | `Linear` (fitted)   | `fn compute_branch_length_distribution()` (hard approach near `t=0`, `SoftTailLaw::fit` near `t_max`) | convolution input (negated for backward); `fn compute_positional_log_lh()` eval |
+| Backward parent message | `Linear` (fitted) | `Hard`              | `fn fit_message_soft_tail()` on the left, `with_right_extrap(Hard)` (backward_pass)                   | multiplication (combining children), division (forward cavity)                  |
+| Internal node time dist | `Linear` (fitted) | `Hard`              | multiplication result (left tail re-fit by `fn derive_summed_tail()`, preserved by normalize)         | forward convolution input, division dividend                                    |
+| Forward message         | `Hard`            | `Linear` (fitted)   | `with_left_extrap(Hard)`, `fn fit_message_soft_tail()` on the right (forward_pass)                    | multiplication (refining node dist)                                             |
+| Refined node time dist  | `Hard`            | `Hard`              | multiplication result (composed from forward message and subtree dist, preserved by normalize)        | `fn Distribution.likely_time()` extraction                                      |
 
 ### Why backward messages have `Linear` left / `Hard` right
 
@@ -50,6 +50,12 @@ The backward parent message is the convolution $\text{parent\_message} = \text{c
 ### Why forward messages have `Hard` left / `Linear` right
 
 The forward message is the convolution $\text{dist\_from\_parent} = \text{parent\_except\_subtree} \circledast \text{branch\_dist}$. It represents "when could this node have existed, given its parent and branch?" The parent's committed time provides a hard lower bound (branch lengths are non-negative), so the left tail is `Hard`. There is no upper bound from the parent side on how far in the future the node could be, so the right side is soft: a fitted `Linear` tail, for the same integrability reason as the backward left tail.
+
+### Why the branch-length distribution has `HardApproach` left / `Linear` right
+
+The branch-length distribution is the per-edge likelihood $L(t) \propto (\mu t)^{n} e^{-\mu t}$ over the branch duration, gridded on $[t_\text{min}, t_\text{max}]$. Its two edges are asymmetric facts. The left edge $t = 0$ is a hard boundary: a duration cannot be negative. For a branch with mutations the density vanishes there as a power law, so the left tail is a `HardApproach` law fitted near $t = 0$, which also carries the finite mode of a zero-mutation branch sitting on the boundary. The right edge $t_\text{max}$ is not a fact about the distribution, only where gridding stopped: the exponential $e^{-\mu t}$ keeps the density decaying past it (the Poisson indel term only adds a further linear neg-log slope), so the right side is a soft `Linear` tail fitted from the outermost points, with finite mass. Leaving it `Error` would declare a hard cutoff and drop any edge whose inferred duration exceeds $t_\text{max}$.
+
+Convolution reads only the grid ordinates and reconstructs the message tails from its own output, so it does not consume these tails; `negate()` swaps and sign-flips them for the backward message. The tails are consumed directly by `fn compute_positional_log_lh()`, which evaluates the distribution at the inferred duration $\text{child\_time} - \text{parent\_time}$: a duration beyond $t_\text{max}$ now reads the extrapolated `Linear` tail instead of failing the `Error` default and dropping the edge.
 
 ### `normalize()` preserves tails
 
