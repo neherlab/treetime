@@ -7,6 +7,7 @@ pub mod init;
 pub mod interval;
 pub mod io;
 pub mod iterator;
+pub mod least_squares;
 pub mod sync;
 pub mod testing;
 

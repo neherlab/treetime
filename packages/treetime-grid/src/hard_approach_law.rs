@@ -1,6 +1,7 @@
 use crate::GridFn;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
+use treetime_utils::least_squares::LineFit;
 use treetime_utils::make_error;
 
 /// Approach law for a *hard* grid boundary, in negative-log space.
@@ -93,7 +94,7 @@ impl HardApproachLaw {
       );
     }
 
-    let neg_b_raw = least_squares_slope(&xs, &ys);
+    let neg_b_raw = LineFit::least_squares(&xs, &ys).slope;
     let b = (-neg_b_raw).max(0.0);
     if !b.is_finite() {
       return make_error!("Hard-boundary power-law fit on the {side:?} side produced a non-finite exponent");
@@ -286,24 +287,4 @@ fn edge_ordinate(grid_fn: &GridFn<f64>, side: Side) -> Result<(f64, f64), Report
     );
   }
   Ok((t_edge, y_edge))
-}
-
-/// Slope of the simple least-squares line `y = slope * x + intercept`.
-///
-/// The intercept is not returned: both call sites (the power-law exponent fit and the soft-tail
-/// slope fit) are edge-relative and discard it.
-pub(crate) fn least_squares_slope(xs: &[f64], ys: &[f64]) -> f64 {
-  let n = xs.len() as f64;
-  let sum_x: f64 = xs.iter().sum();
-  let sum_y: f64 = ys.iter().sum();
-  let sum_xx: f64 = xs.iter().map(|x| x * x).sum();
-  let sum_xy: f64 = xs.iter().zip(ys).map(|(x, y)| x * y).sum();
-
-  let sum_x_sq = sum_x * sum_x;
-  let denom = n * sum_xx - sum_x_sq;
-  if denom.abs() < 1e-30 {
-    return 0.0;
-  }
-
-  (n * sum_xy - sum_x * sum_y) / denom
 }

@@ -1,7 +1,8 @@
 use crate::GridFn;
-use crate::hard_approach_law::{Side, least_squares_slope};
+use crate::hard_approach_law::Side;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
+use treetime_utils::least_squares::LineFit;
 use treetime_utils::make_error;
 
 /// Log-linear approach for a *soft* grid boundary: an exponential probability tail that
@@ -79,7 +80,7 @@ impl SoftTailLaw {
       );
     }
 
-    let slope_raw = least_squares_slope(&ts, &ys);
+    let slope_raw = LineFit::least_squares(&ts, &ys).slope;
 
     // Decay guard: keep only a slope that decays away from support.
     let slope = match side {
