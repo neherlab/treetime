@@ -25,10 +25,13 @@ Mass sizing stores each distribution on its own mass-bounded domain instead of t
 - `compute_positional_log_lh` assumes every committed duration lands inside its branch-length distribution's support.
 - `resolve_polytomies` is a seeded sampler whose output is not stable under sub-grid time perturbations.
 
-Two candidate mechanisms for the positional `+inf` are not yet distinguished:
+## Confirmed mechanism (topology violation, not clipping)
 
-- A near-zero or negative duration (a node timed at or before its parent), overlapping [M-timetree-marginal-node-times-can-violate-topology.md](M-timetree-marginal-node-times-can-violate-topology.md).
-- A legitimate positive duration clipped out of a too-narrow branch-length mass domain (the construction pilot grid clipping a real tail before the mass rewindow measures it).
+Instrumenting `compute_positional_log_lh` on `test_pipeline_timetree_convergence` identified the offending edge as `17 -> 9`: `parent_time = 2003.00717`, `child_time = 2003.00274`, so `time_diff = child_time - parent_time = -4.43e-3` (and `-7.64e-3` on the next iteration). The duration is negative (the child is timed before its parent), and the branch-length distribution support is `(0.0, 5.87)`, so the negative duration falls beyond the hard left boundary at `t = 0`, where `interp` returns `Y::probability_zero()` = `+inf` under `NegLog`.
+
+This is mechanism (b): a marginal node-time inversion (child before parent), overlapping [M-timetree-marginal-node-times-can-violate-topology.md](M-timetree-marginal-node-times-can-violate-topology.md). It is **not** mechanism (a) clipping: the duration is not a clipped positive tail, it is genuinely negative. Mass sizing re-grids the parent posterior and shifts its committed `likely_time` by a sub-grid amount (~1.6 days here), which is enough to push an already near-zero branch past its earlier, near-fixed child. `set_likely_time` projects an inferred node up to its parent but does not prevent an inferred parent from landing after an earlier child, so the inversion survives.
+
+The `+inf` panic (rather than a benign `-inf`) is compounded by a unit bug in the metric: `compute_positional_log_lh` (`packages/treetime/src/timetree/convergence/likelihood.rs`) evaluates the `NegLog` branch-length distribution and treats the returned neg-log ordinate as a plain probability (`p > 0.0` then `total += p.ln()`). The log-probability contribution should be `-p` (`= log prob`). For a valid duration the wrong formula happens to stay negative; for the beyond-boundary `+inf` neg-log it yields `+inf` instead of the semantically correct `-inf`, tripping the `log_lh_pos < 0` assertion with a misleading sign. This metric defect is independent of the node-time inversion and is tracked separately (see Related).
 
 ## Fix approach
 
@@ -42,5 +45,6 @@ Any fix must keep the golden-master reference runs unchanged and restore the fou
 
 ## Related
 
-- [M-timetree-marginal-node-times-can-violate-topology.md](M-timetree-marginal-node-times-can-violate-topology.md): marginal node times can invert parent-child order.
+- [M-timetree-marginal-node-times-can-violate-topology.md](M-timetree-marginal-node-times-can-violate-topology.md): marginal node times can invert parent-child order. This is the confirmed root cause of the positional `+inf` above; its topology contract decision is the substantive fix.
+- [M-timetree-positional-likelihood-metric.md](M-timetree-positional-likelihood-metric.md): the `eval` returns a neg-log ordinate but the metric sums `y.ln()` instead of `-y`. This unit bug turns the beyond-boundary `+inf` neg-log into a `+inf` sum (crash) instead of the correct `-inf`.
 - [M-timetree-branch-grid-uniform-resolution.md](M-timetree-branch-grid-uniform-resolution.md): branch-grid resolution concern for the same distributions.
