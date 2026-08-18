@@ -50,10 +50,15 @@ pub fn compute_branch_length_distribution(
   let f = GridFn::from_range_values((time_min, time_max), log_lh)?;
 
   let y_hard = branch_length_boundary_ordinate(contributions, indel_count, indel_rate, max_log_lh)?;
-  let left_boundary =
-    HardApproachLaw::fit(&f, 0.0, Side::Left, y_hard, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
-      format!("When building the branch-length likelihood hard boundary near t=0 over [{time_min}, {time_max}]")
-    })?;
+  // A finite boundary ordinate selects the straight-line fit; its absence (a forced substitution or
+  // an indel, whose neg-log diverges at t=0) selects the power-law fit.
+  let left_boundary = match y_hard {
+    Some(y_hard) => HardApproachLaw::fit_linear(&f, 0.0, Side::Left, y_hard),
+    None => HardApproachLaw::fit_log_power_law(&f, 0.0, Side::Left, DEFAULT_TAIL_FIT_POINTS),
+  }
+  .wrap_err_with(|| {
+    format!("When building the branch-length likelihood hard boundary near t=0 over [{time_min}, {time_max}]")
+  })?;
 
   let right_boundary = SoftTailLaw::fit(&f, Side::Right, DEFAULT_TAIL_FIT_POINTS).wrap_err_with(|| {
     format!("When fitting the branch-length likelihood soft tail near t_max over [{time_min}, {time_max}]")
@@ -147,8 +152,8 @@ struct TimeRange {
 /// Classifies the hard boundary of the branch-length density: `Some(max_log_lh - log_lh(0))` when
 /// the density is finite there (a zero-mutation branch, whose neg-log approaches the boundary as a
 /// straight line), and `None` when it diverges (a forced substitution or an indel, whose neg-log
-/// approaches as a power law). This is exactly the boundary ordinate a straight-line
-/// `HardApproachLaw::fit` needs; the `None` case selects the power-law fit instead.
+/// approaches as a power law). The `Some` case supplies the boundary ordinate to
+/// `HardApproachLaw::fit_linear`; the `None` case selects `HardApproachLaw::fit_log_power_law`.
 ///
 /// An indel branch cannot be evaluated at `t = 0` (`k*ln(0) = -inf`, and `poisson_indel_log_lh`
 /// rejects `t = 0` for `k > 0`), so `indel_count > 0` diverges without evaluation.

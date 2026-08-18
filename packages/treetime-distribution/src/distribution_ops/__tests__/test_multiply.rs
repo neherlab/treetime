@@ -9,7 +9,7 @@ mod tests {
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
   use rstest::rstest;
-  use treetime_grid::{BoundaryBehavior, HardApproachLaw};
+  use treetime_grid::{Approach, BoundaryBehavior, HardApproachLaw};
   use treetime_utils::pretty_assert_ulps_eq;
 
   /// Formula * Function returns a Function with correct pointwise products.
@@ -608,13 +608,11 @@ mod tests {
   fn test_multiply_function_function_composes_approach_laws() {
     let law_a = HardApproachLaw {
       t_hard: 0.0,
-      b: 1.0,
-      slope: 0.5,
+      shape: Approach::Combined { b: 1.0, slope: 0.5 },
     };
     let law_b = HardApproachLaw {
       t_hard: 0.0,
-      b: 2.0,
-      slope: 1.5,
+      shape: Approach::Combined { b: 2.0, slope: 1.5 },
     };
 
     let a = Distribution::Function(
@@ -638,8 +636,7 @@ mod tests {
       .expect("result should have left approach law");
     let expected = HardApproachLaw {
       t_hard: 0.0,
-      b: 3.0,
-      slope: 2.0,
+      shape: Approach::Combined { b: 3.0, slope: 2.0 },
     };
     assert_eq!(expected, composed);
   }
@@ -651,8 +648,7 @@ mod tests {
   fn test_multiply_function_function_nullary_hard_absorbs_approach_law() {
     let law = HardApproachLaw {
       t_hard: 0.0,
-      b: 1.5,
-      slope: 0.5,
+      shape: Approach::Combined { b: 1.5, slope: 0.5 },
     };
 
     let a = Distribution::Function(
@@ -684,8 +680,7 @@ mod tests {
       .unwrap()
       .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw {
         t_hard: 0.0,
-        b: 1.0,
-        slope: 2.0,
+        shape: Approach::Combined { b: 1.0, slope: 2.0 },
       }))
       .unwrap();
 
@@ -698,9 +693,12 @@ mod tests {
       .approach_law()
       .expect("approach law should survive normalization");
     // max was 100.0 -> scale factor 1/100 -> both shape terms scale by 1/100
-    assert_abs_diff_eq!(0.01, preserved.b, epsilon = 1e-14);
-    assert_abs_diff_eq!(0.02, preserved.slope, epsilon = 1e-14);
     assert_abs_diff_eq!(0.0, preserved.t_hard, epsilon = 1e-14);
+    let Approach::Combined { b, slope } = preserved.shape else {
+      panic!("expected Combined regime, got {:?}", preserved.shape);
+    };
+    assert_abs_diff_eq!(0.01, b, epsilon = 1e-14);
+    assert_abs_diff_eq!(0.02, slope, epsilon = 1e-14);
   }
 
   /// An empty product is legitimate only when the operands' hard domains are genuinely disjoint.

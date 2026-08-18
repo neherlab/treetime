@@ -14,81 +14,32 @@ use treetime_utils::make_error;
 /// ```
 ///
 /// where `y_edge` is the grid's stored neg-log edge ordinate (`y[0]` on the left, `y[n-1]` on the
-/// right) and `t_edge` its coordinate. The law is *edge-relative*: it stores only the shape
-/// parameters `b` and `slope` and reads the live grid edge on evaluation, exactly like
-/// [`SoftTailLaw`](crate::SoftTailLaw). Reading the live edge keeps the law valid across
-/// re-windowing and resampling with no refit and no absolute anchor to keep in sync: a vertical
-/// shift of every ordinate (peak-normalization) is absorbed through `y_edge`, and a scale
-/// (`p -> p^factor`) scales both shape parameters.
-///
-/// Two regimes arise from the branch-length likelihood `p(t) ~ t^n * exp(-mu*t)` (`n` mutations):
-///
-/// - `n >= 1` (divergent): `y(t) = -n*ln(t) + mu*t + C`, so `b = n > 0`. The density vanishes at the
-///   boundary (`y -> +inf`). The log term dominates; the linear term is a small correction over the
-///   sub-mutation gap, so the fit sets `slope = 0`.
-/// - `n = 0` (finite): `y(t) = mu*t + C`, so `b = 0` and `slope = mu`. The density is finite and
-///   maximal at the boundary; the linear term carries the mode, which sits exactly on the edge.
-///
-/// A single law covers both: `n = 0` is not a special case, it is `b = 0`, where the log term
-/// vanishes and the law is the line `y_edge + slope*(t - t_edge)`. This matches the derived Part C
-/// truth `y = -n*ln(t) + mu*t + C`, of which the flat single-term proposed form (`a - b*ln|dt|`) is
-/// the `slope = 0` restriction that cannot represent the `n = 0` mode.
+/// right) and `t_edge` its coordinate. The law is *edge-relative*: it stores only the shape and
+/// reads the live grid edge on evaluation, exactly like [`SoftTailLaw`](crate::SoftTailLaw).
+/// Reading the live edge keeps the law valid across re-windowing and resampling with no refit and
+/// no absolute anchor to keep in sync: a vertical shift of every ordinate (peak-normalization) is
+/// absorbed through `y_edge`, and a scale (`p -> p^factor`) scales the shape.
 ///
 /// The boundary location `t_hard` is an immovable physical fact (e.g. `t = 0` for branch lengths)
-/// and is stored absolutely; `b` and `slope` are the shape.
-///
-/// Under multiplication (addition in neg-log) both shape parameters add:
-/// `b_result = b_a + b_b`, `slope_result = slope_a + slope_b`. A product of a divergent and a
-/// finite message therefore carries both a `b > 0` and a `slope > 0` term, which is why the two
-/// terms must live in one law rather than in separate variants that would not close under
-/// multiplication.
+/// and is stored as an absolute coordinate. The shape is one of three [regimes](Approach), decided once at
+/// construction and never re-derived by a consumer: every evaluator matches [`Approach`] instead
+/// of inspecting float values, so `eval` and `mass` cannot disagree about which regime a law is.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct HardApproachLaw {
   /// Location of the hard boundary (e.g. `t = 0` for branch lengths).
   pub t_hard: f64,
-  /// Power-law exponent `b >= 0`. `b > 0`: density vanishes at the boundary (`y -> +inf`), a power
-  /// law fitted from the grid; a fitted continuous approximation of the mutation count, not an
-  /// integer. `b = 0`: finite boundary, the law is a straight line.
-  pub b: f64,
-  /// Linear slope of the neg-log law near the boundary. Finite boundary: the slope of the line from
-  /// the boundary to the grid edge. Divergent boundary: `0`. Composition adds slopes.
-  pub slope: f64,
+  /// The neg-log approach shape near the boundary. See [`Approach`].
+  pub shape: Approach,
 }
 
 impl HardApproachLaw {
-  /// Fit the hard-boundary approach law from the boundary ordinate, choosing the regime.
-  ///
-  /// `y_hard` is the boundary neg-log ordinate at `t_hard`: `Some` when the density is finite there
-  /// (a zero-mutation branch, a straight-line approach) and `None` when it diverges (a forced
-  /// substitution or an indel, a power-law approach). Only the producer that owns the likelihood can
-  /// compute this ordinate, so it is supplied rather than sampled from the grid. Dispatches to
-  /// [`fit_linear`](Self::fit_linear) for the finite case and [`fit_log_power_law`](Self::fit_log_power_law)
-  /// for the divergent case; `n_fit` is the innermost-point count for the power-law regression and is
-  /// unused when `y_hard` is `Some`.
-  ///
-  /// `Side` selects the grid end nearest the boundary. Returns an error when the selected
-  /// constructor cannot fit (see [`fit_linear`](Self::fit_linear) and
-  /// [`fit_log_power_law`](Self::fit_log_power_law)).
-  pub fn fit(
-    grid_fn: &GridFn<f64>,
-    t_hard: f64,
-    side: Side,
-    y_hard: Option<f64>,
-    n_fit: usize,
-  ) -> Result<Self, Report> {
-    match y_hard {
-      Some(y_hard) => Self::fit_linear(grid_fn, t_hard, side, y_hard),
-      None => Self::fit_log_power_law(grid_fn, t_hard, side, n_fit),
-    }
-  }
-
   /// Fit the straight-line approach for a finite boundary density (`n = 0`) over `[t_hard, t_edge)`.
   ///
   /// A zero-mutation branch has a finite, maximal density at the boundary, so the neg-log is a
   /// straight line. The law is that exact line through the boundary point `(t_hard, y_hard)` and the
-  /// grid edge -- two points, no regression: `b = 0`, `slope = (y_edge - y_hard) / (t_edge -
-  /// t_hard)`. `y_hard = -ln p(t_hard)` is the boundary neg-log ordinate, supplied by the producer
-  /// (the grid samples strictly inside `min_bl > 0`, so no grid point sits at `t_hard`).
+  /// grid edge -- two points, no regression: `slope = (y_edge - y_hard) / (t_edge - t_hard)`.
+  /// `y_hard = -ln p(t_hard)` is the boundary neg-log ordinate, supplied by the producer (the grid
+  /// samples strictly inside `min_bl > 0`, so no grid point sits at `t_hard`).
   ///
   /// `Side` selects the grid end nearest the boundary. Returns an error on an empty grid, a
   /// non-finite edge ordinate, or a non-finite slope.
@@ -101,7 +52,7 @@ impl HardApproachLaw {
          (t={t_edge}, y={y_edge}) and boundary (t={t_hard}, y={y_hard})"
       );
     }
-    Ok(HardApproachLaw { t_hard, b: 0.0, slope })
+    Ok(HardApproachLaw::from_terms(t_hard, 0.0, slope))
   }
 
   /// Fit the power-law approach for a divergent boundary density (`n >= 1`, or an indel) over
@@ -109,12 +60,16 @@ impl HardApproachLaw {
   ///
   /// The density vanishes at the boundary, so `-ln p` diverges. Fit `b >= 0` from the innermost
   /// `n_fit` points by one log-distance regression on `(ln|t - t_hard|, y)`: `y = a - b*ln|dt|` is
-  /// linear in `ln|dt|` with slope `-b`; `slope = 0`. The intercept is discarded (edge-relative).
+  /// linear in `ln|dt|` with slope `-b`. The intercept `a` is discarded (edge-relative). A
+  /// wrong-sign fit clamps to `b = 0`, which yields a flat [`Finite`](Approach::Finite) shape rather
+  /// than a divergent one that would fabricate a boundary singularity the data does not support.
   ///
   /// `Side` selects the grid end nearest the boundary. Returns an error on an empty grid, a
   /// non-finite edge ordinate, fewer than two finite innermost points, or a non-finite result.
   pub fn fit_log_power_law(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, n_fit: usize) -> Result<Self, Report> {
     let n = grid_fn.n_points();
+    // Validate that the grid can anchor an edge-relative law at evaluation time; the regression
+    // below reads interior points, but a non-finite or absent edge cannot anchor the live law.
     edge_ordinate(grid_fn, side)?;
 
     let n_fit = n_fit.min(n);
@@ -138,32 +93,73 @@ impl HardApproachLaw {
       );
     }
 
-    let (neg_b_raw, _) = least_squares_fit(&xs, &ys);
+    let neg_b_raw = least_squares_slope(&xs, &ys);
     let b = (-neg_b_raw).max(0.0);
     if !b.is_finite() {
       return make_error!("Hard-boundary power-law fit on the {side:?} side produced a non-finite exponent");
     }
-    Ok(HardApproachLaw { t_hard, b, slope: 0.0 })
+    Ok(HardApproachLaw::from_terms(t_hard, b, 0.0))
+  }
+
+  /// Build a law from raw `b` and `slope` terms, classifying the [regime](Approach) once.
+  ///
+  /// This is the single point where the two shape parameters are mapped to a regime: `b > 0` with a
+  /// non-zero slope is [`Combined`](Approach::Combined), `b > 0` alone is
+  /// [`Divergent`](Approach::Divergent), and everything else (including a clamped `b = 0`) is
+  /// [`Finite`](Approach::Finite). Producers (`fit_*`, `compose_multiply`, `scale`, `negate_arg`)
+  /// go through here; consumers (`eval`, `mass`) match the resulting regime and never re-derive it.
+  pub(crate) fn from_terms(t_hard: f64, b: f64, slope: f64) -> Self {
+    let shape = if b > 0.0 {
+      if slope != 0.0 {
+        Approach::Combined { b, slope }
+      } else {
+        Approach::Divergent { b }
+      }
+    } else {
+      Approach::Finite { slope }
+    };
+    HardApproachLaw { t_hard, shape }
+  }
+
+  /// The shape terms of this law, with the regime's implied zero filled in.
+  fn terms(&self) -> ShapeTerms {
+    match self.shape {
+      Approach::Finite { slope } => ShapeTerms { b: 0.0, slope },
+      Approach::Divergent { b } => ShapeTerms { b, slope: 0.0 },
+      Approach::Combined { b, slope } => ShapeTerms { b, slope },
+    }
   }
 
   /// Evaluate the approach law in neg-log at `t`, anchored on the live grid edge.
   ///
-  /// `y_edge` is the grid's stored neg-log edge ordinate and `t_edge` its coordinate. Returns
-  /// `y_edge - b*ln(|t - t_hard| / |t_edge - t_hard|) + slope*(t - t_edge)`, so the law meets the
-  /// grid continuously at the edge. At `t == t_hard` a divergent law (`b > 0`) returns `+inf`
-  /// (density zero at the boundary); a finite law (`b = 0`) returns the line's value there,
-  /// `y_edge + slope*(t_hard - t_edge)`.
+  /// `y_edge` is the grid's stored neg-log edge ordinate and `t_edge` its coordinate. Each regime is
+  /// its own closed form, so the law meets the grid continuously at the edge:
+  ///
+  /// - [`Finite`](Approach::Finite): the line `y_edge + slope*(t - t_edge)`, finite everywhere
+  ///   including at `t == t_hard`, where it carries the boundary mode.
+  /// - [`Divergent`](Approach::Divergent) and [`Combined`](Approach::Combined): the power-law
+  ///   `y_edge - b*ln(|t - t_hard| / |t_edge - t_hard|)` (plus the `slope` term for `Combined`),
+  ///   returning `+inf` at `t == t_hard` because the density is zero at the boundary.
   pub fn eval(&self, y_edge: f64, t_edge: f64, t: f64) -> f64 {
-    let dt = (t - self.t_hard).abs();
-    let dt_edge = (t_edge - self.t_hard).abs();
-    let log_term = if self.b == 0.0 {
-      0.0
-    } else if dt == 0.0 {
-      return f64::INFINITY;
-    } else {
-      self.b * (dt / dt_edge).ln()
-    };
-    y_edge - log_term + self.slope * (t - t_edge)
+    match self.shape {
+      Approach::Finite { slope } => y_edge + slope * (t - t_edge),
+      Approach::Divergent { b } => {
+        let dt = (t - self.t_hard).abs();
+        if dt == 0.0 {
+          return f64::INFINITY;
+        }
+        let dt_edge = (t_edge - self.t_hard).abs();
+        y_edge - b * (dt / dt_edge).ln()
+      },
+      Approach::Combined { b, slope } => {
+        let dt = (t - self.t_hard).abs();
+        if dt == 0.0 {
+          return f64::INFINITY;
+        }
+        let dt_edge = (t_edge - self.t_hard).abs();
+        y_edge - b * (dt / dt_edge).ln() + slope * (t - t_edge)
+      },
+    }
   }
 
   /// Probability mass in the approach region between `t_hard` and the grid edge, in plain
@@ -172,35 +168,55 @@ impl HardApproachLaw {
   /// Closed form of `integral_{t_hard}^{t_edge} exp(-y(t)) dt` with the edge probability recovered
   /// from its stored neg-log ordinate as `p_edge = exp(-y_edge)`:
   ///
-  /// - `b > 0`: `p_edge * |t_edge - t_hard| / (b + 1)` (power law; the `slope` correction is
-  ///   negligible over the sub-grid gap and is dropped, mirroring the fit).
-  /// - `b = 0, slope != 0`: `p_edge * (exp(slope*dt_edge) - 1) / slope`.
-  /// - `b = 0, slope = 0`: `p_edge * dt_edge`.
+  /// - [`Finite`](Approach::Finite), `slope != 0`: `p_edge * (exp(slope*dt_edge) - 1) / slope`.
+  /// - [`Finite`](Approach::Finite), `slope == 0`: `p_edge * dt_edge`.
+  /// - [`Divergent`](Approach::Divergent): `p_edge * dt_edge / (b + 1)`.
+  /// - [`Combined`](Approach::Combined): `p_edge * dt_edge / (b + 1)` -- the `slope` correction is
+  ///   dropped, so this mass does *not* match the integral of [`eval`](Self::eval) for a `Combined`
+  ///   law. See `kb/issues/M-grid-hard-approach-combined-mass-drops-slope.md` for the exact
+  ///   incomplete-gamma form pending a decision.
   pub fn mass(&self, y_edge: f64, t_edge: f64) -> f64 {
     let dt_edge = (t_edge - self.t_hard).abs();
     let p_edge = (-y_edge).exp();
 
-    if self.b > 0.0 {
-      p_edge * dt_edge / (self.b + 1.0)
-    } else if self.slope != 0.0 {
-      p_edge * (self.slope * dt_edge).exp_m1() / self.slope
-    } else {
-      p_edge * dt_edge
+    match self.shape {
+      Approach::Finite { slope } if slope != 0.0 => p_edge * (slope * dt_edge).exp_m1() / slope,
+      Approach::Finite { .. } => p_edge * dt_edge,
+      Approach::Divergent { b } | Approach::Combined { b, .. } => p_edge * dt_edge / (b + 1.0),
     }
   }
 
-  /// Compose two approach laws under multiplication: the shape parameters add.
+  /// Whether the density is finite at the boundary (the [`Finite`](Approach::Finite) regime).
+  ///
+  /// `true` means the neg-log reaches a finite value at `t_hard` and the mode sits on the boundary;
+  /// `false` means the density vanishes there (`Divergent`/`Combined`, `y -> +inf`). Consumers use
+  /// this to ask the semantic question instead of inspecting the raw exponent.
+  #[must_use]
+  pub fn is_finite_at_boundary(&self) -> bool {
+    matches!(self.shape, Approach::Finite { .. })
+  }
+
+  /// Compose two approach laws under multiplication: the shape terms add.
   ///
   /// Multiplication is addition in neg-log space, so the product law's exponent and slope are the
-  /// sums of the operand values. Both laws must share the same `t_hard`, and both are evaluated
+  /// sums of the operand terms, re-classified into a regime. A product of a divergent and a finite
+  /// message therefore carries both a `b > 0` and a `slope != 0` term and lands in
+  /// [`Combined`](Approach::Combined). Both laws must share the same `t_hard`, and both are evaluated
   /// against the same live grid edge, so there is no anchor to reconcile.
   #[must_use]
   pub fn compose_multiply(&self, other: &HardApproachLaw) -> HardApproachLaw {
-    HardApproachLaw {
-      t_hard: self.t_hard,
-      b: self.b + other.b,
-      slope: self.slope + other.slope,
-    }
+    let a = self.terms();
+    let b = other.terms();
+    HardApproachLaw::from_terms(self.t_hard, a.b + b.b, a.slope + b.slope)
+  }
+
+  /// Scale the approach law when every neg-log ordinate is multiplied by `factor` (`p -> p^factor`).
+  ///
+  /// Both shape terms scale by `factor`; the regime is preserved for `factor > 0`.
+  #[must_use]
+  pub fn scale(&self, factor: f64) -> HardApproachLaw {
+    let t = self.terms();
+    HardApproachLaw::from_terms(self.t_hard, t.b * factor, t.slope * factor)
   }
 
   /// Transform the approach law when the argument is negated: `f(x) -> f(-x)`.
@@ -208,12 +224,37 @@ impl HardApproachLaw {
   /// The boundary moves to `-t_hard`; the exponent `b` is unchanged and the linear slope flips sign.
   #[must_use]
   pub fn negate_arg(&self) -> Self {
-    HardApproachLaw {
-      t_hard: -self.t_hard,
-      b: self.b,
-      slope: -self.slope,
-    }
+    let t = self.terms();
+    HardApproachLaw::from_terms(-self.t_hard, t.b, -t.slope)
   }
+}
+
+/// The two raw shape terms of a hard-approach law before classification into an [`Approach`] regime.
+struct ShapeTerms {
+  b: f64,
+  slope: f64,
+}
+
+/// The neg-log approach shape near a hard boundary, in one of three mutually exclusive regimes.
+///
+/// The regime is decided once, by the producer that owns the likelihood, and stored in the type so
+/// no consumer re-derives it from float values. The branch-length likelihood `p(t) ~ t^n *
+/// exp(-mu*t)` (`n` mutations) gives the first two regimes directly; multiplication of messages
+/// (addition in neg-log space) can combine them into the third.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum Approach {
+  /// Finite boundary density (`n = 0`): the neg-log is the straight line
+  /// `y_edge + slope*(t - t_edge)`, finite and maximal at the boundary, which the linear term
+  /// carries. `slope == 0` is the flat sub-case.
+  Finite { slope: f64 },
+  /// Divergent boundary density (`n >= 1`, or an indel): the density vanishes at the boundary, so
+  /// the neg-log is the power law `y_edge - b*ln|dt/dt_edge|` with `b > 0` and `y -> +inf` at
+  /// `t_hard`. `b` is a fitted continuous approximation of the mutation count, not an integer.
+  Divergent { b: f64 },
+  /// Product of a divergent and a finite message: both terms are present (`b > 0`, `slope != 0`).
+  /// This regime exists because composition adds shape terms and is not closed over the first two
+  /// alone.
+  Combined { b: f64, slope: f64 },
 }
 
 /// Which side of the grid a hard boundary is on.
@@ -247,8 +288,11 @@ fn edge_ordinate(grid_fn: &GridFn<f64>, side: Side) -> Result<(f64, f64), Report
   Ok((t_edge, y_edge))
 }
 
-/// Simple least-squares linear regression: y = slope * x + intercept.
-pub(crate) fn least_squares_fit(xs: &[f64], ys: &[f64]) -> (f64, f64) {
+/// Slope of the simple least-squares line `y = slope * x + intercept`.
+///
+/// The intercept is not returned: both call sites (the power-law exponent fit and the soft-tail
+/// slope fit) are edge-relative and discard it.
+pub(crate) fn least_squares_slope(xs: &[f64], ys: &[f64]) -> f64 {
   let n = xs.len() as f64;
   let sum_x: f64 = xs.iter().sum();
   let sum_y: f64 = ys.iter().sum();
@@ -258,10 +302,8 @@ pub(crate) fn least_squares_fit(xs: &[f64], ys: &[f64]) -> (f64, f64) {
   let sum_x_sq = sum_x * sum_x;
   let denom = n * sum_xx - sum_x_sq;
   if denom.abs() < 1e-30 {
-    return (0.0, sum_y / n);
+    return 0.0;
   }
 
-  let slope = (n * sum_xy - sum_x * sum_y) / denom;
-  let intercept = (sum_y - slope * sum_x) / n;
-  (slope, intercept)
+  (n * sum_xy - sum_x * sum_y) / denom
 }

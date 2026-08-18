@@ -3,7 +3,6 @@ use std::fmt::Debug;
 use crate::InterpElem;
 use crate::boundary_behavior::BoundaryBehavior;
 use crate::grid::Grid;
-use crate::hard_approach_law::HardApproachLaw;
 use crate::interp_nonuniform::interp_nonuniform;
 use crate::soft_tail_law::SoftTailLaw;
 use approx::{UlpsEq, ulps_eq};
@@ -80,7 +79,7 @@ impl<T: InterpElem> GridFn<T> {
   ///
   /// [`Self::from_grid_array`] deliberately resets both tails to [`BoundaryBehavior::Error`]
   /// because it constructs a fresh function. Regridding is the opposite case: the declared domain
-  /// (hard versus soft) and the fitted [`SoftTailLaw`] / [`HardApproachLaw`] describe the
+  /// (hard versus soft) and the fitted [`SoftTailLaw`] / [`HardApproachLaw`](crate::HardApproachLaw) describe the
   /// distribution, not the grid, so they must be preserved. Centralizing the carry here makes
   /// preservation structural: every regridding method (`resample`, and any future addition)
   /// builds through this helper and therefore cannot lose the policy.
@@ -662,11 +661,7 @@ impl<T: InterpElem> GridFn<T> {
 /// line `y_edge + slope*(t - t_edge)` steepens by `factor` (see [`GridFn::scale_y`]).
 fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   match behavior {
-    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(HardApproachLaw {
-      b: law.b * factor,
-      slope: law.slope * factor,
-      ..law
-    }),
+    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.scale(factor)),
     BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(SoftTailLaw {
       slope: law.slope * factor,
     }),

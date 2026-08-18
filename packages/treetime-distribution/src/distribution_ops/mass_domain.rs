@@ -143,7 +143,11 @@ pub fn refit_soft_tails(f: DistributionFunction<f64, NegLog>) -> Result<Distribu
 fn lower_edge(profile: &MassProfile, target: f64) -> Result<f64, Report> {
   match profile.left {
     BoundaryBehavior::Hard => Ok(profile.x_min),
-    BoundaryBehavior::HardApproach(law) => Ok(if law.b == 0.0 { law.t_hard } else { profile.x_min }),
+    BoundaryBehavior::HardApproach(law) => Ok(if law.is_finite_at_boundary() {
+      law.t_hard
+    } else {
+      profile.x_min
+    }),
     BoundaryBehavior::Linear(law) => Ok(soft_edge(
       profile,
       law.slope.abs(),
@@ -161,7 +165,11 @@ fn lower_edge(profile: &MassProfile, target: f64) -> Result<f64, Report> {
 fn upper_edge(profile: &MassProfile, target: f64) -> Result<f64, Report> {
   match profile.right {
     BoundaryBehavior::Hard => Ok(profile.x_max),
-    BoundaryBehavior::HardApproach(law) => Ok(if law.b == 0.0 { law.t_hard } else { profile.x_max }),
+    BoundaryBehavior::HardApproach(law) => Ok(if law.is_finite_at_boundary() {
+      law.t_hard
+    } else {
+      profile.x_max
+    }),
     BoundaryBehavior::Linear(law) => Ok(soft_edge(
       profile,
       law.slope.abs(),

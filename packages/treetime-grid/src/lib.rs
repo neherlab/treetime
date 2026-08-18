@@ -19,7 +19,7 @@ impl InterpElem for f64 {}
 pub use boundary_behavior::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS};
 pub use grid::Grid;
 pub use grid_fn::GridFn;
-pub use hard_approach_law::{HardApproachLaw, Side};
+pub use hard_approach_law::{Approach, HardApproachLaw, Side};
 pub use soft_tail_law::SoftTailLaw;
 pub type GridFnF64 = GridFn<f64>;
 

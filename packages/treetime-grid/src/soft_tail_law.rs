@@ -1,5 +1,5 @@
 use crate::GridFn;
-use crate::hard_approach_law::{Side, least_squares_fit};
+use crate::hard_approach_law::{Side, least_squares_slope};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
@@ -79,7 +79,7 @@ impl SoftTailLaw {
       );
     }
 
-    let (slope_raw, _intercept) = least_squares_fit(&ts, &ys);
+    let slope_raw = least_squares_slope(&ts, &ys);
 
     // Decay guard: keep only a slope that decays away from support.
     let slope = match side {

@@ -5,7 +5,7 @@ mod tests {
   use crate::policy::{NegLog, Plain};
   use eyre::Report;
   use ndarray::array;
-  use treetime_grid::HardApproachLaw;
+  use treetime_grid::{Approach, HardApproachLaw};
   use treetime_utils::pretty_assert_ulps_eq;
 
   type DistFn = DistributionFunction<f64, Plain>;
@@ -29,13 +29,12 @@ mod tests {
   #[test]
   fn test_distribution_function_shift_y_preserves_fitted_approach_law() -> Result<(), Report> {
     // NegLog normalization is a pure shift, so a fitted boundary law must survive it: the hard
-    // approach law is edge-relative (stores only shape `b`, `slope`, and the immovable `t_hard`) and
+    // approach law is edge-relative (stores only the shape regime and the immovable `t_hard`) and
     // shift-invariant, so subtracting the peak ordinate leaves it identical while evaluation reads
     // the shifted edge. This locks the routing of `shift_y` through the law-preserving grid shift.
     let law = HardApproachLaw {
       t_hard: 0.0,
-      b: 1.0,
-      slope: 2.0,
+      shape: Approach::Combined { b: 1.0, slope: 2.0 },
     };
     let f: DistFnNegLog = DistributionFunction::from_range_values((1.0, 3.0), array![1004.0, 1000.0, 1003.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(law))?;
