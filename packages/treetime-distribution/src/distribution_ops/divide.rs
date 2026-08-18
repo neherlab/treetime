@@ -156,9 +156,30 @@ fn divide_function_by_function<Y: YAxisPolicy>(
       let values = Zip::from(&dividend_values)
         .and(&divisor_values)
         .map_collect(|&dividend, &divisor| Y::divide(dividend, Y::safe_divisor(divisor)));
-      let function = DistributionFunction::from_range_values(bounds, values)?;
+      // Tail policy survives (kb/decisions/distribution-tails-and-arithmetic.md). Division is
+      // asymmetric -- the dividend's bounds are used as-is and the divisor only extends -- so the
+      // quotient inherits the dividend's tail on each side: beyond a soft dividend edge the quotient
+      // keeps decaying, beyond a hard edge it is zero. A divisor `Error` edge strictly inside the
+      // dividend truncates the result grid there, and the quotient is undefined past it, so that side
+      // becomes `Error`.
+      let left_truncated = divisor.left_extrap() == BoundaryBehavior::Error && divisor.x_min() > dividend.x_min();
+      let right_truncated = divisor.right_extrap() == BoundaryBehavior::Error && divisor.x_max() < dividend.x_max();
+      let function = DistributionFunction::from_range_values(bounds, values)?
+        .with_left_extrap(division_result_tail(dividend.left_extrap(), left_truncated))?
+        .with_right_extrap(division_result_tail(dividend.right_extrap(), right_truncated))?;
       Ok(Distribution::Function(function))
     },
+  }
+}
+
+/// Per-side tail of a Function/Function quotient: the dividend's tail, unless a divisor `Error` bound
+/// truncated the result grid inside the dividend on that side (then the quotient is undefined beyond
+/// the truncating edge, so `Error`).
+fn division_result_tail(dividend_tail: BoundaryBehavior, divisor_truncates: bool) -> BoundaryBehavior {
+  if divisor_truncates {
+    BoundaryBehavior::Error
+  } else {
+    dividend_tail
   }
 }
 
