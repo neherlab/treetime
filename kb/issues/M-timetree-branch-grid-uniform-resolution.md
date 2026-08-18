@@ -4,7 +4,9 @@ The branch distribution grid in `create_simple_grid()` uses `Array1::linspace` (
 
 ## Current status
 
-The branch-length-informed grid concentrates points near the peak for typical branches. The resolution improvement has not been empirically validated: the golden master tests (`test_gm_runner_marginal_dense`, `test_gm_runner_marginal_sparse`, `test_gm_runner_poisson`) remain `#[ignore]`d at target tolerance `epsilon = 1e-6`. Un-ignoring them is the acceptance criterion for closing this issue.
+Mass sizing now governs the final extent: `create_simple_grid()` builds the uniform pilot grid described above, then `rewindow_to_mass` resamples it onto a mass-bounded domain (`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`). The `min(center * 5, ...)` extent above is therefore the pilot grid the rewindow measures, not the stored grid. The residual concern is unchanged: the pilot grid is uniform `linspace`, so a too-narrow or under-resolved pilot can clip or blur the peak before the rewindow measures mass (feeding [H-timetree-mass-sizing-node-times-break-downstream-invariants.md](H-timetree-mass-sizing-node-times-break-downstream-invariants.md) mechanism (a)).
+
+The resolution improvement has not been empirically validated: the golden master tests (`test_gm_runner_marginal_dense`, `test_gm_runner_marginal_sparse`, `test_gm_runner_poisson`) remain `#[ignore]`d at target tolerance `epsilon = 1e-6`. Un-ignoring them is the acceptance criterion for closing this issue.
 
 ## Remaining concern
 

@@ -14,7 +14,7 @@ Reproduce on `dev` with the division bound in place:
 
 ## Impact and scope
 
-- Blocks restoring the four integration tests that the forward-pass division collapse originally forced `#[ignore]` (see [H-timetree-mass-sizing-collapses-forward-pass-division.md](H-timetree-mass-sizing-collapses-forward-pass-division.md)). Bounding the division removes the collapse but exposes this next layer.
+- Blocks restoring the four integration tests that the now-fixed forward-pass division collapse originally forced `#[ignore]`. Bounding the division quotient to the divisor's grid support (`divisor_tail_extends_quotient` in `packages/treetime-distribution/src/distribution_ops/divide.rs`) removed the empty-distribution collapse but exposed this next layer.
 - The positional log-likelihood `+inf` is a genuine correctness symptom: a committed node time is inconsistent with its incident branch-length support.
 - The polytomy `resolved_nodes` assertions predate mass sizing (the value was asserted and passing before the mass-sizing collapse ignore was added), so they encode pre-mass-sizing node times.
 
@@ -42,6 +42,5 @@ Any fix must keep the golden-master reference runs unchanged and restore the fou
 
 ## Related
 
-- [H-timetree-mass-sizing-collapses-forward-pass-division.md](H-timetree-mass-sizing-collapses-forward-pass-division.md): the division-sampling cause, now bounded so the division no longer collapses.
 - [M-timetree-marginal-node-times-can-violate-topology.md](M-timetree-marginal-node-times-can-violate-topology.md): marginal node times can invert parent-child order.
 - [M-timetree-branch-grid-uniform-resolution.md](M-timetree-branch-grid-uniform-resolution.md): branch-grid resolution concern for the same distributions.
