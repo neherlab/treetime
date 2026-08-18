@@ -18,8 +18,8 @@ pub const DEFAULT_TAIL_FIT_POINTS: usize = 5;
 /// which assign a per-side tail policy to each message.
 ///
 /// Every variant is a complete value: the two law-carrying variants ([`Self::HardApproach`],
-/// [`Self::Linear`]) always hold a fitted law, and the two nullary tail variants ([`Self::Hard`],
-/// [`Self::Constant`]) declare a tail that needs no law. A grid too small to fit a required law is
+/// [`Self::Linear`]) always hold a fitted law, and the two nullary variants ([`Self::Error`],
+/// [`Self::Hard`]) declare a boundary that needs no law. A grid too small to fit a required law is
 /// an error at the fitting site, never a silent flat fallback, so no variant stands for "a law was
 /// wanted here but is missing".
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
@@ -38,12 +38,9 @@ pub enum BoundaryBehavior {
   /// nearest grid point the density follows the edge-relative [`HardApproachLaw`]: a power-law term
   /// for divergent branches plus a linear term that carries a finite mode sitting on the boundary.
   HardApproach(HardApproachLaw),
-  /// Return the nearest boundary value (`y[0]` to the left, `y[n-1]` to the right),
-  /// i.e. a flat tail. Use when the function is genuinely uninformative beyond the edge.
-  Constant,
   /// Soft boundary: the density continues past the grid edge along the log-linear [`SoftTailLaw`]
-  /// (an exponential probability tail). Unlike `Constant` it has finite mass, so it does not
-  /// corrupt the quantile and HPD integrals.
+  /// (an exponential probability tail). The tail decays and has finite mass, so it keeps the
+  /// quantile and HPD integrals well-defined.
   Linear(SoftTailLaw),
 }
 
@@ -57,10 +54,10 @@ impl BoundaryBehavior {
   /// probability beyond; `Error`: out-of-support evaluation is undefined). A hard boundary
   /// *restricts* the result domain and is never silently extended.
   ///
-  /// `Constant` (flat) and `Linear` (log-linear) are the soft tails. This predicate is what the
-  /// multiplication rule keys off, so both extend the domain through the same rule.
+  /// `Linear` (log-linear) is the only soft tail. This predicate is what the multiplication rule
+  /// keys off, so a soft edge extends the domain through that rule.
   pub fn is_soft(self) -> bool {
-    matches!(self, BoundaryBehavior::Constant | BoundaryBehavior::Linear(_))
+    matches!(self, BoundaryBehavior::Linear(_))
   }
 
   /// Whether this boundary terminates the evaluable domain on its side: a `Hard`/`HardApproach`

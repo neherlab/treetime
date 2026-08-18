@@ -29,8 +29,8 @@ use treetime_utils::make_error;
 /// carries an absolute anchor.
 ///
 /// `slope` is signed so the tail decays away from support: negative on a left tail, positive on
-/// a right tail. A flat tail is `slope == 0`; unlike [`BoundaryBehavior::Constant`](crate::BoundaryBehavior::Constant)
-/// it is reached only by clamping a degenerate fit, and a genuine decaying tail has finite mass.
+/// a right tail. A flat tail is `slope == 0`, reached only by clamping a degenerate fit; it is
+/// non-integrable, while a genuine decaying tail has finite mass.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SoftTailLaw {
   /// Signed neg-log slope `d(-ln p)/dt`: negative on a left tail, positive on a right tail.
@@ -105,8 +105,7 @@ impl SoftTailLaw {
   ///
   /// Closed form of the half-line integral `∫ p_edge exp(-slope (t - t_edge)) dt`, with the edge
   /// probability recovered from its stored neg-log ordinate as `p_edge = exp(-y_edge)`. A flat
-  /// tail (`slope == 0`) is non-integrable and returns `+inf`; a genuine decaying tail is finite,
-  /// unlike a [`BoundaryBehavior::Constant`](crate::BoundaryBehavior::Constant) tail.
+  /// tail (`slope == 0`) is non-integrable and returns `+inf`; a genuine decaying tail is finite.
   pub fn mass(&self, y_edge: f64) -> f64 {
     (-y_edge).exp() / self.slope.abs()
   }

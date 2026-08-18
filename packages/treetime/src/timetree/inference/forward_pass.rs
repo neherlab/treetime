@@ -230,7 +230,7 @@ where
       // Tail policy for the forward message (kb/decisions/distribution-tails-and-arithmetic.md).
       // The parent's time is a hard lower bound (left tail Hard). There is no upper bound from the
       // parent side on how far in the future the node could be, so the right side is soft: a fitted
-      // log-linear Linear tail with finite mass, replacing the non-integrable flat Constant.
+      // log-linear Linear tail with finite mass, so the quantile and HPD integrals stay well-defined.
       let forward_message = distribution_convolution(&parent_except_subtree, branch_dist)?;
       let right_tail = fit_message_soft_tail(&forward_message, Side::Right)?;
       let dist_from_parent = forward_message
@@ -340,12 +340,10 @@ fn restrict_to_reachable(
   }
 
   // Resampling evaluates the grid's own end points, which rounding can push a hair outside it, so
-  // hold the boundary value while resampling and put the parent's own tails back afterwards. Same
-  // treatment as `DistributionFunction::resample_dx`.
+  // the clamped resample holds the boundary value at that overshoot and the parent's own tails are
+  // put back afterwards. Same treatment as `DistributionFunction::resample_dx`.
   let restricted = parent_fn
-    .clone()
-    .with_extrap(BoundaryBehavior::Constant)?
-    .resample_range_dx((window_min, window_max), parent_fn.dx())?
+    .resample_range_dx_clamped((window_min, window_max), parent_fn.dx())?
     .with_left_extrap(parent_fn.left_extrap())?
     .with_right_extrap(parent_fn.right_extrap())?;
   Ok(Distribution::Function(restricted))

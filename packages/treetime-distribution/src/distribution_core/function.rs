@@ -265,17 +265,32 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     })
   }
 
+  /// Resample onto a uniform grid over `x_range`, clamping any target point that grid-construction
+  /// rounding pushes marginally outside this function's own support back to the nearest boundary
+  /// (see [`GridFn::resample_range_dx_clamped`]). The result carries no declared tail; the caller
+  /// restores the intended per-side policy.
+  pub fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    let grid_fn = self.grid_fn.resample_range_dx_clamped(x_range, dx)?;
+    Ok(Self {
+      grid_fn,
+      _policy: PolicyMarker::new(),
+    })
+  }
+
   pub fn resample_dx(&self, dx: T) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
-    // Re-grid onto the function's own support. When dx does not divide the range evenly,
-    // the final uniform grid point can fall marginally beyond x_max; hold the boundary
-    // value there instead of erroring, since this is a gridding artifact, not a genuine
+    // Re-grid onto the function's own support. When dx does not divide the range evenly, the final
+    // uniform grid point can round a fraction of dx beyond x_max; the clamped resample holds the
+    // boundary value there instead of erroring, since this is a gridding artifact, not a genuine
     // out-of-support query. The resampled result keeps this function's own tail policy.
-    let regridded = self.grid_fn.clone().with_extrap(BoundaryBehavior::Constant);
-    let resampled = regridded.resample_range_dx((self.x_min(), self.x_max()), dx)?;
-    let resampled = resampled
+    let resampled = self
+      .grid_fn
+      .resample_range_dx_clamped((self.x_min(), self.x_max()), dx)?
       .with_left_extrap(self.grid_fn.left_extrap())
       .with_right_extrap(self.grid_fn.right_extrap());
     Ok(Self::from_grid_fn(resampled))

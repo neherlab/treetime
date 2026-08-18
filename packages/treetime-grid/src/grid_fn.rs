@@ -346,8 +346,8 @@ impl<T: InterpElem> GridFn<T> {
   ///
   /// Uses piecewise linear interpolation within the grid bounds. Outside the bounds the
   /// per-side [`BoundaryBehavior`] applies: `Error` (default) rejects the query, `Hard`
-  /// returns `0.0`, `Constant` returns the nearest boundary value, and `Linear` continues the
-  /// density along its fitted log-linear tail.
+  /// returns `0.0`, `HardApproach` follows the fitted approach law up to its hard boundary, and
+  /// `Linear` continues the density along its fitted log-linear tail.
   ///
   /// # Arguments
   ///
@@ -407,7 +407,6 @@ impl<T: InterpElem> GridFn<T> {
     T: Float,
   {
     match behavior {
-      BoundaryBehavior::Constant => Ok(boundary_value),
       // Soft log-linear tail: a straight neg-log line anchored on the live grid edge, evaluated on
       // the stored ordinate axis so it meets the grid continuously at `boundary_value`.
       BoundaryBehavior::Linear(law) => {
@@ -650,6 +649,29 @@ impl<T: InterpElem> GridFn<T> {
     let (x_min, x_max) = x_range;
     let grid = Grid::from_range_dx(x_min, x_max, dx)?;
     self.resample(&grid)
+  }
+
+  /// Resamples onto a uniform grid over `x_range`, clamping any target point that grid-construction
+  /// rounding pushes marginally outside this function's own support back to the nearest boundary.
+  ///
+  /// [`Grid::from_range_dx`] rounds the point count to the nearest integer, so the final target
+  /// point can land up to `dx / 2` beyond `x_range.1`. When a caller regrids a function onto its own
+  /// support (or a sub-window of it), that overshoot is a gridding artifact, not a genuine
+  /// out-of-support query: clamping the query into `[x_min, x_max]` reads the boundary value there,
+  /// exactly as evaluating the function at its own endpoint would. Unlike [`Self::resample`] this
+  /// never consults the per-side tail policy, so it neither errors on an `Error` tail nor invents
+  /// density from a soft one; the caller restores the real tails on the result.
+  pub fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    let grid = Grid::from_range_dx(x_range.0, x_range.1, dx)?;
+    let x_min = self.grid.x_min();
+    let x_max = self.grid.x_max();
+    let y_new = (0..grid.n_points())
+      .map(|i| self.interp(grid.x_at(i).max(x_min).min(x_max)))
+      .collect::<Result<Vec<T>, Report>>()?;
+    self.regridded(grid, Array1::from_vec(y_new))
   }
 }
 

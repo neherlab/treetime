@@ -136,9 +136,9 @@ where
     let negated_branch_dist = branch_dist.negate()?;
     // Tail policy for the backward message (kb/decisions/distribution-tails-and-arithmetic.md).
     // The parent could be arbitrarily far in the past, so the left side is soft: a fitted log-linear
-    // Linear tail that decays with finite mass. A flat Constant tail is non-integrable and corrupts
-    // the quantile and HPD integrals, so it is retired here. The child's sampling date is a hard
-    // upper bound on the parent's age, so the right tail stays Hard.
+    // Linear tail that decays with finite mass, so the quantile and HPD integrals stay well-defined.
+    // The child's sampling date is a hard upper bound on the parent's age, so the right tail stays
+    // Hard.
     let message = distribution_convolution(node_time_dist.as_ref(), &negated_branch_dist)?;
     let left_tail = fit_message_soft_tail(&message, Side::Left)?;
     let parent_message = message
@@ -293,7 +293,7 @@ fn combine_upper_bound(operands: impl Iterator<Item = (f64, BoundaryBehavior)>) 
 
 /// Whether a tail terminates the evaluable domain on its side. `Hard`/`HardApproach` is zero
 /// probability beyond the edge and `Error` is undefined beyond it, so all restrict the working grid;
-/// the soft laws (`Constant`, `Linear`) continue past the edge and do not.
+/// the soft `Linear` law continues past the edge and does not.
 fn is_restricting(tail: BoundaryBehavior) -> bool {
   tail.is_hard()
 }
@@ -301,12 +301,11 @@ fn is_restricting(tail: BoundaryBehavior) -> bool {
 /// Derive the concrete tail policy of a summed message on one side from the operands' tail classes.
 ///
 /// Mirrors the multiplication tail rule (`treetime_distribution::distribution_ops::multiply`) as a
-/// class lattice `Error > Hard > Linear > Constant`: the product is soft only when every operand is
-/// soft, a hard bound dominates any soft one, and an undeclared (`Error`) bound dominates all. The
-/// backward messages carry no fitted law, so the hard and undeclared classes need none here
-/// (`Hard`, `Error`); the flat class stays `Constant`. Only the soft log-linear class needs a law,
-/// which is fit from the summed data on `side` -- a grid too degenerate to fit is an error rather
-/// than a silent flat fallback.
+/// class lattice `Error > Hard > Linear`: the product is soft only when every operand is soft, a
+/// hard bound dominates any soft one, and an undeclared (`Error`) bound dominates all. The backward
+/// messages carry no fitted law, so the hard and undeclared classes need none here (`Hard`,
+/// `Error`). Only the soft log-linear class needs a law, which is fit from the summed data on
+/// `side` -- a grid too degenerate to fit is an error rather than a silent flat fallback.
 ///
 /// Backward messages carry a fitted `Linear` tail on the left (soft) side and `Hard` on the right,
 /// so a fan-in of such messages reaches the soft-fit branch here and re-fits the summed left tail
@@ -324,7 +323,6 @@ fn derive_summed_tail(
       BoundaryBehavior::Error => any_error = true,
       BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) => any_hard = true,
       BoundaryBehavior::Linear(_) => any_linear = true,
-      BoundaryBehavior::Constant => {},
     }
   }
 
@@ -340,5 +338,7 @@ fn derive_summed_tail(
     })?;
     return Ok(BoundaryBehavior::Linear(law));
   }
-  Ok(BoundaryBehavior::Constant)
+  // Every operand tail falls into one of the three classes above, so reaching here means the fold
+  // received no operand messages -- the caller guarantees at least one, so this is an internal bug.
+  make_internal_error!("Backward child fold on the {side:?} side received no operand tails")
 }

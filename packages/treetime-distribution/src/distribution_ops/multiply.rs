@@ -347,8 +347,7 @@ fn with_composed_tails<Y: YAxisPolicy>(
 ///   `HardApproach` law rather than propagating it, which would fabricate density the `Hard` operand
 ///   forbids.
 /// - Two `Linear` soft tails compose by adding their neg-log slopes (multiplication is addition in
-///   neg-log space). A `Linear` tail times a flat `Constant` keeps the `Linear` slope, because a
-///   flat tail contributes slope zero.
+///   neg-log space).
 fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> BoundaryBehavior {
   match (a, b) {
     (BoundaryBehavior::Error, _) | (_, BoundaryBehavior::Error) => BoundaryBehavior::Error,
@@ -365,10 +364,6 @@ fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> Boun
     (BoundaryBehavior::Linear(a_law), BoundaryBehavior::Linear(b_law)) => {
       BoundaryBehavior::Linear(a_law.compose_multiply(&b_law))
     },
-    // A flat `Constant` contributes slope zero, so it leaves the `Linear` slope unchanged.
-    (BoundaryBehavior::Linear(law), BoundaryBehavior::Constant)
-    | (BoundaryBehavior::Constant, BoundaryBehavior::Linear(law)) => BoundaryBehavior::Linear(law),
-    (BoundaryBehavior::Constant, BoundaryBehavior::Constant) => BoundaryBehavior::Constant,
   }
 }
 

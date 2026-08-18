@@ -104,7 +104,7 @@ where
 
   let result: Distribution<NegLog> = if let Distribution::Function(f) = distribution {
     // Rebuild carries no tails, so re-declare the input's per-side policy, then re-fit the soft slope
-    // the varying weight changed (Hard/HardApproach/Constant/Error are carried unchanged).
+    // the varying weight changed (Hard/HardApproach/Error are carried unchanged).
     let combined_fn = DistributionFunction::from_start_dx_values(f.x_min(), f.dx(), combined)?
       .with_left_extrap(f.left_extrap())?
       .with_right_extrap(f.right_extrap())?;

@@ -19,7 +19,7 @@ use treetime_utils::make_error;
 /// (a flat, non-integrable likelihood) contributes infinite mass, so the total is `+inf`; that is a
 /// value, not an error, and lets the re-window fall back gracefully. Returns an error only for a side
 /// whose tail is genuinely non-mass-sizable and never appears on a stored inference distribution
-/// (`Error`, or the retired `Constant`).
+/// (an undeclared `Error` tail).
 pub fn total_mass(f: &DistributionFunction<f64, NegLog>) -> Result<f64, Report> {
   Ok(mass_profile(f)?.z)
 }
@@ -38,7 +38,7 @@ pub fn total_mass(f: &DistributionFunction<f64, NegLog>) -> Result<f64, Report> 
 ///   `t_hard`, so no `+inf` ordinate is ever placed on the grid.
 ///
 /// Probability is exactly zero beyond a hard bound, so `eps` never trims a hard side. Returns an error
-/// for an `Error`- or `Constant`-tailed side.
+/// for an `Error`-tailed side.
 pub fn mass_bounded_domain(f: &DistributionFunction<f64, NegLog>, eps: f64) -> Result<(f64, f64), Report> {
   let profile = mass_profile(f)?;
   if !(profile.z.is_finite() && profile.z > 0.0) {
@@ -88,7 +88,7 @@ pub fn rewindow_to_mass(
 
   // Fall back to the shift-only normalize when the distribution is not mass-sizable, keeping the
   // pilot grid peak-normalized (mass-sizing is an accuracy step, not a correctness requirement). This
-  // covers a non-integrable (flat) tail, whose mass is infinite, and an `Error`/`Constant` tail that
+  // covers a degenerate soft tail with zero decay, whose mass is infinite, and an `Error` tail that
   // carries no probability law -- such as the hard box a leaf date range contributes to a forward
   // product. Both are legitimate here and have no probability mass domain to size by.
   let mass_sizable = total_mass(&normalized).is_ok_and(|z| z.is_finite() && z > 0.0);
@@ -118,8 +118,8 @@ pub fn rewindow_to_mass(
 /// Only soft tails are refit: their slope is recovered by least squares from the grid, so moving the
 /// edge (or changing the ordinates by a non-constant amount) is a genuine accuracy improvement. A
 /// `HardApproach` law needs the producer-supplied boundary ordinate that the grid does not carry, so
-/// it is left unchanged (edge-relative and already valid); `Hard`, `Constant`, and `Error` carry no
-/// fittable slope and are left unchanged too.
+/// it is left unchanged (edge-relative and already valid); `Hard` and `Error` carry no fittable
+/// slope and are left unchanged too.
 ///
 /// Shared with [`distribution_add_neg_log_weight`](crate::distribution_add_neg_log_weight), which adds
 /// a per-point cost to the ordinates and re-fits the soft tail whose slope the cost changed.
@@ -155,7 +155,7 @@ fn lower_edge(profile: &MassProfile, target: f64) -> Result<f64, Report> {
       target,
       Side::Left,
     )),
-    BoundaryBehavior::Constant | BoundaryBehavior::Error => {
+    BoundaryBehavior::Error => {
       make_error!("Mass-bounded domain: left side has a non-mass-sizable tail")
     },
   }
@@ -177,7 +177,7 @@ fn upper_edge(profile: &MassProfile, target: f64) -> Result<f64, Report> {
       target,
       Side::Right,
     )),
-    BoundaryBehavior::Constant | BoundaryBehavior::Error => {
+    BoundaryBehavior::Error => {
       make_error!("Mass-bounded domain: right side has a non-mass-sizable tail")
     },
   }
@@ -307,14 +307,13 @@ fn mass_profile(f: &DistributionFunction<f64, NegLog>) -> Result<MassProfile, Re
 /// Closed-form tail mass beyond one grid edge, peak-relative.
 ///
 /// `w_edge` is the peak-relative neg-log edge ordinate (`y_edge - y_peak`) and `t_edge` its coordinate.
-/// A `Hard` edge terminates the domain, so its mass is zero. `Error` and the non-integrable `Constant`
-/// are not mass-sizable and are rejected.
+/// A `Hard` edge terminates the domain, so its mass is zero. An `Error` edge is not mass-sizable and
+/// is rejected.
 fn tail_mass(extrap: BoundaryBehavior, w_edge: f64, t_edge: f64, side: Side) -> Result<f64, Report> {
   match extrap {
     BoundaryBehavior::Linear(law) => Ok(law.mass(w_edge)),
     BoundaryBehavior::HardApproach(law) => Ok(law.mass(w_edge, t_edge)),
     BoundaryBehavior::Hard => Ok(0.0),
-    BoundaryBehavior::Constant => make_error!("Mass domain: {side:?} side has a non-integrable Constant tail"),
     BoundaryBehavior::Error => make_error!("Mass domain: {side:?} side has an undeclared (Error) tail"),
   }
 }

@@ -165,13 +165,14 @@ fn convolution_range_function<Y: SupportsConvolution>(
 ///
 /// Convolution is a Minkowski sum, not an intersection: it translates an operand's mass across the
 /// other operand's entire support, so two mass-bearing operands always jointly produce mass and are
-/// never disjoint. Modelling a mass-bearing operand as unbounded (soft on both sides) makes
-/// [`guarded_empty_result`] permit an empty result only when an operand itself is empty, and flag
-/// any other empty convolution as the numerical collapse it is.
+/// never disjoint. Modelling a mass-bearing operand as unbounded on both sides (infinite bounds)
+/// makes [`guarded_empty_result`] permit an empty result only when an operand itself is empty, and
+/// flag any other empty convolution as the numerical collapse it is. The infinite bounds already
+/// carry the unboundedness, so the per-side behavior is immaterial and left at the default.
 fn conv_operand_domain(has_mass: bool) -> Option<HardDomain> {
   has_mass.then_some((
     (f64::NEG_INFINITY, f64::INFINITY),
-    (BoundaryBehavior::Constant, BoundaryBehavior::Constant),
+    (BoundaryBehavior::Error, BoundaryBehavior::Error),
   ))
 }
 
