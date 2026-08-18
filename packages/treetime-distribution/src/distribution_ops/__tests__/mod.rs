@@ -8,4 +8,5 @@ mod test_negation;
 mod test_prop_multiply_child_order;
 mod test_prop_overlap;
 mod test_scalar_multiply;
+mod test_subtract;
 mod test_time_bounds;

@@ -2,9 +2,11 @@
 mod tests {
   use crate::DistributionPlain as Distribution;
   use crate::distribution_core::formula::DistributionFormula;
+  use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::scalar_multiply::distribution_scalar_multiplication;
   use approx::assert_ulps_eq;
   use ndarray::array;
+  use treetime_grid::{BoundaryBehavior, SoftTailLaw};
   use treetime_utils::assert_error;
 
   #[test]
@@ -176,5 +178,31 @@ mod tests {
     } else {
       panic!("Expected Function distribution");
     }
+  }
+
+  /// Scaling the probability by a constant leaves both fitted tail laws unchanged.
+  ///
+  /// A constant probability scale is a constant shift of the negative-log ordinate, which both the
+  /// soft slope and the hard edge are invariant to. The input carries a soft `Linear` left law
+  /// (slope `-0.7`) and a `Hard` right edge; after scaling by `2.5` both are byte-identical. Before
+  /// the fix the rebuild dropped both sides to `Error`.
+  #[test]
+  fn test_distribution_scalar_multiplication_preserves_tail_laws() {
+    let left = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.7 });
+    let input = DistributionFunction::from_start_dx_values(0.0, 1.0, array![1.0, 2.0, 3.0, 4.0])
+      .unwrap()
+      .with_left_extrap(left)
+      .unwrap()
+      .with_right_extrap(BoundaryBehavior::Hard)
+      .unwrap();
+
+    let result = distribution_scalar_multiplication(&Distribution::Function(input), 2.5).unwrap();
+
+    let Distribution::Function(f) = result else {
+      panic!("Expected Function distribution");
+    };
+    assert_eq!(left, f.left_extrap());
+    assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
+    assert_ulps_eq!(f.y(), &array![2.5, 5.0, 7.5, 10.0], max_ulps = 4);
   }
 }

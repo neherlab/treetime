@@ -1,10 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::DistributionPlain as Distribution;
+  use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::divide::distribution_division;
   use ndarray::{Array1, array};
   use rstest::rstest;
-  use treetime_grid::BoundaryBehavior;
+  use treetime_grid::{BoundaryBehavior, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   use self::helpers::{DistributionVariant, distribution};
@@ -230,6 +231,59 @@ mod tests {
     // Oracle: v0 `Distribution.divide()` converts one surviving endpoint knot to a delta.
     let expected = Distribution::point(1.0, 0.6);
     assert_eq!(expected, actual);
+  }
+
+  /// The quotient inherits the dividend's per-side tail when the dividend binds the intersection.
+  ///
+  /// The dividend spans `[2, 10]` with a soft `Linear` left law and a `Hard` right edge; the divisor
+  /// spans the wider `[0, 12]` with default `Error` tails, so its edges never truncate inside the
+  /// dividend and the intersection is exactly `[2, 10]`. The quotient therefore carries the
+  /// dividend's Linear-left / Hard-right policy, not the `Error` a bare rebuild would leave.
+  #[test]
+  fn test_divide_function_by_function_inherits_dividend_tails() {
+    let left = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 });
+    let dividend =
+      DistributionFunction::from_start_dx_values(2.0, 1.0, array![9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0])
+        .unwrap()
+        .with_left_extrap(left)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Hard)
+        .unwrap();
+    let divisor = DistributionFunction::from_start_dx_values(0.0, 1.0, Array1::from_elem(13, 2.0)).unwrap();
+
+    let actual = distribution_division(&Distribution::Function(dividend), &Distribution::Function(divisor)).unwrap();
+
+    let Distribution::Function(f) = actual else {
+      panic!("expected a Function quotient");
+    };
+    assert_eq!(left, f.left_extrap());
+    assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
+  }
+
+  /// A divisor `Error` bound strictly inside the dividend truncates the result grid, so that side is
+  /// `Error` (the quotient is undefined past the divisor's own edge).
+  ///
+  /// The dividend spans `[2, 10]` (Linear left, Hard right); the divisor spans `[4, 8]` with `Error`
+  /// tails, so it truncates both sides inward of the dividend and the intersection is `[4, 8]`. Both
+  /// result sides are `Error`, overriding the dividend's inherited tails.
+  #[test]
+  fn test_divide_function_by_function_divisor_error_truncation_yields_error_tails() {
+    let dividend =
+      DistributionFunction::from_start_dx_values(2.0, 1.0, array![9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0])
+        .unwrap()
+        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 }))
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Hard)
+        .unwrap();
+    let divisor = DistributionFunction::from_start_dx_values(4.0, 1.0, array![2.0, 2.0, 2.0, 2.0, 2.0]).unwrap();
+
+    let actual = distribution_division(&Distribution::Function(dividend), &Distribution::Function(divisor)).unwrap();
+
+    let Distribution::Function(f) = actual else {
+      panic!("expected a Function quotient");
+    };
+    assert_eq!(BoundaryBehavior::Error, f.left_extrap());
+    assert_eq!(BoundaryBehavior::Error, f.right_extrap());
   }
 
   mod helpers {
