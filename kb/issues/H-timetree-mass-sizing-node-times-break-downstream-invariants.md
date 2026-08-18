@@ -4,7 +4,7 @@
 
 With probability-mass grid sizing enabled for timetree distributions (`rewindow_to_mass` at branch-length construction and after the backward/forward composite steps) and the forward-pass division bounded to the divisor's real support (so it no longer collapses to `Empty`), the forward pass completes but assigns node times that violate two downstream invariants on some datasets:
 
-- **Positional log-likelihood `+inf`.** `compute_positional_log_lh` evaluates each edge's branch-length distribution at `child_time - parent_time` and reads zero probability there (`-ln 0 = +inf`), so the pipeline's `log_lh_pos < 0` invariant fails. The inferred branch duration lands where the branch-length distribution carries no probability (the `HardApproach` left tail past `t_hard`, i.e. a near-zero or negative duration).
+- **Positional log-likelihood `+inf`.** `compute_positional_log_lh` evaluates each edge's branch-length distribution at `child_time - parent_time` and reads a beyond-support value that surfaces as `+inf` (see Confirmed mechanism), so the pipeline's `log_lh_pos < 0` invariant fails. The inferred branch duration lands where the branch-length distribution carries no probability (past the hard left boundary at `t = 0`, i.e. a negative duration).
 - **Seeded polytomy resolution flips.** `resolve_polytomies` reaches a different topology outcome than before mass sizing: a polytomy that used to be resolved is now left unresolved. The resolver (`simulate_subtree`) is seeded-stochastic and sensitive to the exact child/parent times, so a node-time shift changes the sampled history and the resolution decision.
 
 Reproduce on `dev` with the division bound in place:
@@ -18,7 +18,7 @@ Reproduce on `dev` with the division bound in place:
 - The positional log-likelihood `+inf` is a genuine correctness symptom: a committed node time is inconsistent with its incident branch-length support.
 - The polytomy `resolved_nodes` assertions predate mass sizing (the value was asserted and passing before the mass-sizing collapse ignore was added), so they encode pre-mass-sizing node times.
 
-## Root cause (partial)
+## Root cause
 
 Mass sizing stores each distribution on its own mass-bounded domain instead of the heuristic peak-multiple grid, which moves the stored grid extent and can shift `likely_time` (the peak) by up to a grid spacing. Downstream consumers assume the pre-mass-sizing times:
 
@@ -35,11 +35,12 @@ The `+inf` panic (rather than a benign `-inf`) is compounded by a unit bug in th
 
 ## Fix approach
 
-Not decided. Options:
+The `+inf` mechanism is settled (topology inversion, above), so the fix has two independent parts:
 
-- Determine which mechanism produces the positional `+inf` (instrument the edge and duration that reads zero probability). If it is a clipped branch-length mass domain, make the construction pilot grid mass-sufficient so the rewindow never measures a clipped tail. If it is a topology violation, resolve the marginal node-time monotonicity separately.
-- Reconsider whether message-passing posteriors should be stored mass-sized at all, versus mass sizing only final per-node outputs in a way that never feeds a subsequent division or breaks branch-support consistency.
-- Make mass sizing mode-preserving so the committed `likely_time` matches the pre-mass-sizing peak within tolerance, keeping the seeded polytomy resolution stable.
+- Resolve the marginal node-time contract in [M-timetree-marginal-node-times-can-violate-topology.md](M-timetree-marginal-node-times-can-violate-topology.md). This decides whether an inferred parent may land after an earlier child and is the substantive fix for the inverted branch. Decision-required.
+- Correct the positional metric in [M-timetree-positional-likelihood-metric.md](M-timetree-positional-likelihood-metric.md) to sum `-y` (log prob) and treat a beyond-support duration as `-inf` or a skip. Independent and decision-free; it stops the misleading `+inf` crash but does not by itself remove the inverted branch.
+
+The seeded polytomy flip is a separate consequence of the same node-time perturbation: `resolve_polytomies` (`simulate_subtree`) is sensitive to sub-grid time shifts. Making mass sizing mode-preserving (committed `likely_time` matches the pre-mass-sizing peak within tolerance) would keep the resolver stable; the resolver's sensitivity to sub-grid perturbation is otherwise its own robustness concern.
 
 Any fix must keep the golden-master reference runs unchanged and restore the four ignored integration tests to passing.
 
