@@ -87,6 +87,7 @@ Each item carries provenance flags:
 - $b$: hard-approach exponent (power-law order at a hard boundary)
 - $k$: soft-tail log-slope
 - $C$: a constant factor
+- $c(t)$: coalescent per-time neg-log cost (leaf, internal, or root)
 - $t_0$: position of a point operand (a fixed date)
 - $t_{\text{hard}}$: hard-boundary location of an operand
 - $x_{\min}, x_{\max}$: grid lower and upper extent
@@ -251,6 +252,198 @@ Support $[-w, \infty)$; the step becomes a linear ramp on $[-w, w]$; the right-t
 
 </details>
 
+### Multiplication mathematics
+
+Multiplication combines two factors of a node's posterior (child messages, a date constraint, a cavity quotient). Pointwise,
+
+$$(f \cdot g)(t) = f(t)\,g(t),$$
+
+carried out in neg-log as the sum of ordinates ($-\ln(f g) = -\ln f - \ln g$): exact, associative, order-independent, with no plain-space round trip and no FFT. It is the counterpart of convolution: convolution takes the Minkowski **sum** of supports and needs an integral; multiplication takes the **intersection** of supports and is pointwise.
+
+Two facts hold for every case:
+
+- **Support is the intersection.** The product is non-zero only where both operands are. Resolved per side: both hard, the tightest (innermost) hard bound; both soft, the loosest (outermost) soft bound, since each operand's tail law continues to the other; mixed, the hard bound dominates. A soft side never separates two domains.
+- **Each edge composes on its own.** Fitted laws combine in closed form: two `HardApproach` exponents add ($b_1 + b_2$, with no gain, the contrast with convolution's $+1$); two `Linear` slopes add ($k_1 + k_2$); a flat `Constant` contributes slope zero and leaves a `Linear` slope unchanged. A nullary `Hard` declares zero density in the sub-grid gap, so it absorbs a `HardApproach` rather than propagating it. `Error` on either side dominates (result `Error`).
+
+**Empty invariant** (base-proposal Part B): $f \cdot g$ is `Empty` only when the operands' hard domains are genuinely disjoint, or one operand is already empty. A soft side never causes disjointness. Any other empty product is a numerical or logic collapse and is raised as an internal error rather than returned, because a silent `Empty` poisons every ancestor to the root (the motivating defect).
+
+<details>
+<summary>M1. point * point 🧮</summary>
+
+**Operands.** Two point masses $A_1\,\delta(t - t_1)$ and $A_2\,\delta(t - t_2)$.
+
+**Result and support.** Non-zero only if the positions coincide (within $10^{-9}$). Then a single point $A_1 A_2\,\delta_{t_1}$; otherwise the supports are disjoint and the result is `Empty`.
+
+**Bulk.** None. In neg-log the ordinate adds: $-\ln(A_1 A_2) = -\ln A_1 - \ln A_2$.
+
+**Boundary laws.** Hard on both sides (a point is zero-width hard support).
+
+**Implementation.** Compare positions within $10^{-9}$; emit the point, or a guarded empty.
+
+</details>
+
+<details>
+<summary>M2. point * range 🧮</summary>
+
+**Operands.** A point $A_p\,\delta(t - t_0)$ and a box $A_r\,\mathbf{1}_{[r_1, r_2]}$.
+
+**Result and support.** If $t_0 \in [r_1, r_2]$ the point samples the box's constant height: a point $A_p A_r\,\delta_{t_0}$. Otherwise `Empty`.
+
+**Bulk.** None.
+
+**Boundary laws.** Hard on both sides.
+
+**Implementation.** Range test with $10^{-9}$ tolerance; emit the point, or a guarded empty.
+
+</details>
+
+<details>
+<summary>M3. point * function 🧮💻</summary>
+
+**Operands.** A point $A\,\delta(t - t_0)$ and a gridded density $f$ with its boundary laws.
+
+**Result and support.** The point samples $f$: a point $\big(t_0,\ A\,f(t_0)\big)$. If $t_0$ lies beyond a **soft** edge, $f(t_0)$ is the tail-law value; beyond a **hard** or `Error` edge, or if the product underflows to an undefined amplitude, the result is `Empty`.
+
+**Bulk.** None.
+
+**Boundary laws.** Hard on both sides (a point).
+
+**Implementation.** Classify $t_0$ against the grid; beyond a non-soft edge, guarded empty; otherwise interpolate $f(t_0)$ and emit the point.
+
+</details>
+
+<details>
+<summary>M4. range * range 🧮</summary>
+
+**Operands.** Two boxes $A_1\,\mathbf{1}_{[\alpha_1, \beta_1]}$ and $A_2\,\mathbf{1}_{[\alpha_2, \beta_2]}$.
+
+**Result and support.** The overlap $[\max(\alpha_1, \alpha_2),\ \min(\beta_1, \beta_2)]$; `Empty` if the overlap is degenerate. On the overlap the product is a box of height $A_1 A_2$.
+
+**Bulk.** Constant height $A_1 A_2$.
+
+**Boundary laws.** Hard on both sides (compact support).
+
+**Implementation.** Intersect the endpoints; emit the overlap range, or a guarded empty.
+
+</details>
+
+<details>
+<summary>M5. range * function 🧮💻</summary>
+
+**Operands.** A box $A_r\,\mathbf{1}_{[r_1, r_2]}$ and a gridded density $f$. The box restricts the domain to its support on both sides.
+
+**Result and support.** The intersection of the box with $f$'s domain, per the support rule: the box is hard on both ends, so it clips $f$'s support (including a soft side of $f$) to the overlap. The result may degenerate to a point (single-point overlap) or `Empty` (disjoint).
+
+**Bulk.** On a grid over the overlap at $f$'s spacing $dx$, sample $f$ and scale by the box height: $g = A_r\,f$ over the overlap.
+
+**Boundary laws.** On a side where the box is the tightest bound, the result is hard there; on the other side $f$'s law carries into the product.
+
+**Implementation.** Intersect at spacing $dx$; interpolate $f$ on the overlap grid; scale by $A_r$; compose the tails from the two operands. (The box's own sides are hard, not `Error`; see K24.)
+
+</details>
+
+<details>
+<summary>M6. function * function 📄💻🧮</summary>
+
+**Operands.** Two gridded densities $f$ (spacing $dx_1$) and $g$ (spacing $dx_2$), each with its boundary laws.
+
+**Result and support.** The intersection per the support rule: tightest hard bound where both are hard, loosest soft bound where both are soft, hard dominating a mixed side. May degenerate to a point or `Empty`.
+
+**Bulk.** Co-locate both operands on one grid over the intersection at $dx = \min(dx_1, dx_2)$, interpolate each once, and multiply pointwise (add ordinates in neg-log). This is the pairwise form of the backward child fold's co-location.
+
+**Boundary laws.** Composed per side from the two operand tails: exponents add (no gain), slopes add, `Hard` absorbs `HardApproach`, `Error` dominates.
+
+**Implementation.** Resolve the intersection with the soft-extend-then-intersect rule; grid at $\min(dx_1, dx_2)$; interpolate both; multiply; attach the composed tails. Sizing is deferred to the pass re-window.
+
+</details>
+
+<details>
+<summary>M7. formula * any 💻</summary>
+
+**Operands.** A `Formula` (an analytic distribution with no natural grid) and any other kind.
+
+**Result and support.** The overlap of evaluable ranges; the formula is discretized over the overlap (a fixed grid, 200 points) and multiplied by the other operand's values there. `Empty` if the ranges are disjoint.
+
+**Boundary laws.** The formula's evaluable range is treated as hard on both ends; the other operand's law composes on each side.
+
+**Implementation.** Intersect the evaluable ranges; discretize the formula on the overlap grid; multiply; compose the tails.
+
+</details>
+
+### Division mathematics
+
+Division forms a **cavity**: the forward pass divides a parent's posterior by the backward message the child sent up, removing that child's own contribution before sending information back down. Pointwise,
+
+$$(f / g)(t) = f(t) / g(t),$$
+
+carried out in neg-log as **subtraction** of ordinates ($-\ln(f/g) = -\ln f - (-\ln g)$). Unlike multiplication it is **asymmetric**: the dividend $f$ is privileged and sets the result's support and tails; the divisor $g$ only restricts where dividing by it is well-defined.
+
+Two facts govern it:
+
+- **The dividend owns the support.** The result spans the dividend's grid. The divisor bounds the quotient only on a side where its own tail does not extend past its grid, and a divisor `Error` edge strictly inside the dividend truncates the result there.
+- **Only a flat divisor tail extends the quotient.** Beyond the divisor's grid, dividing by a decaying (`Linear`) or zero (`Hard`, `HardApproach`) tail inflates the quotient into a spurious spike: under NegLog dividing by zero probability is $f - (+\infty) = -\infty$, an infinite-probability spike that makes the downstream convolution non-finite and collapses the forward message to `Empty`. Only a `Constant` (flat, finite) divisor tail is safe to divide by, so only it lets the quotient continue past the divisor's edge under the dividend; every other tail bounds the quotient at the divisor's real grid edge, so the divisor is never sampled beyond its support.
+
+The plain-space `safe_divisor` floor is not what prevents the spike; under NegLog it is the identity, so this tail rule is the guard. Only division by a `Function` is defined; dividing by a point or a range is not well-defined, and `Formula` is unsupported.
+
+<details>
+<summary>D1. point / function 🧮💻</summary>
+
+**Operands.** A point $A\,\delta(t - t_0)$ and a divisor density $g$.
+
+**Result and support.** Sample $g$ at $t_0$: a point $\big(t_0,\ A / g(t_0)\big)$. `Empty` if the quotient is undefined there (for example $t_0$ beyond a divisor tail that does not extend the quotient).
+
+**Boundary laws.** Hard on both sides (a point).
+
+**Implementation.** Interpolate $g(t_0)$ through `safe_divisor`; emit the point, or a guarded empty.
+
+</details>
+
+<details>
+<summary>D2. range / function 🧮💻</summary>
+
+**Operands.** A range dividend (box of height $A_r$) and a divisor $g$.
+
+**Result and support.** The intersection of the range with the divisor's quotient-domain (the divisor extended on any `Constant` side). May degenerate to a point or `Empty`.
+
+**Bulk.** On a grid over the intersection at $g$'s spacing, divide the range height by $g$ pointwise: $A_r / g$.
+
+**Boundary laws.** Inherited from the range dividend's declared sides (`Error` under the current model, `Hard` under K24).
+
+</details>
+
+<details>
+<summary>D3. function / function 🧮💻</summary>
+
+**Operands.** A dividend $f$ and a divisor $g$, each gridded with boundary laws.
+
+**Result and support.** $f$'s grid, intersected with $g$'s quotient-domain per the divisor-tail rule (a `Constant` divisor side extends to $f$'s bound; every other side bounds at $g$'s edge). May degenerate to a point or `Empty`.
+
+**Bulk.** Co-locate on the intersection at $dx = \min(dx_f, dx_g)$; subtract ordinates (divide in plain space).
+
+**Boundary laws** (asymmetric). Each side inherits the dividend $f$'s tail, unless a divisor `Error` edge strictly inside $f$ truncated the grid there, in which case that side is `Error` (the quotient is undefined past it).
+
+</details>
+
+### Negation
+
+Negation reflects a distribution across the time axis, $f(x) \to f(-x)$. The backward pass uses it to send a message toward the past: the message to a parent is the node's time distribution convolved with the **negated** branch-length factor ($\text{node} \ast (-\text{branch})$), because the branch length subtracts from the child's age to reach the parent's. It is exact and changes no probability.
+
+- **Point** at $t$: moves to $-t$.
+- **Range** $[s, e]$: becomes $[-e, -s]$.
+- **Function**: the grid is reflected ($x_{\min}, x_{\max} \to -x_{\max}, -x_{\min}$), the ordinates reversed, and **the two boundary laws swap sides**, each reflected: a `HardApproach` negates its $t_{\text{hard}}$, a `SoftTailLaw` flips its slope sign. A hard left bound becomes a hard right bound; a right-decaying soft tail becomes a left-decaying soft tail.
+
+### Coalescent weight (pointwise cost)
+
+The coalescent prior enters not as a product of two distributions but as an **analytic per-time cost** $c(t)$ added to a node's distribution. Under NegLog this is a pointwise ordinate add,
+
+$$-\ln\!\big(p(t)\,e^{-c(t)}\big) = -\ln p(t) + c(t),$$
+
+evaluated at each grid point on the **existing** grid: no resampling and no support change. There are three costs, each a function of a node's time and child count: a **leaf** cost, an **internal-node** cost, and a **root** cost.
+
+**Grid and placement.** The internal or root cost is added on the child-product grid, before the single end-of-node mass re-window (step 5 of the child multiplication). The leaf cost belongs to the **outgoing message only**, never the stored node distribution.
+
+**Boundary laws.** A finite cost cannot turn zero probability positive or make an undefined side defined, so each side keeps its input class (`Hard`, `HardApproach`, `Constant`, `Error` carried unchanged). Because the cost varies with $t$ it changes a soft tail's local slope, so a `Linear` law is refit from the reweighted grid. The result is peak-normalized.
+
 ### Code divergences
 
 Verify these against current source before relying on line numbers.
@@ -272,6 +465,15 @@ Main path [packages/treetime-distribution/src/distribution_ops/convolve.rs#L130-
 1. **Truncated support**: it reuses the input extent, so there is no widening by $w$.
 2. **Dropped tails**: via `from_start_dx_values`.
 3. **Biased edges**: the mask sum ignores off-grid mass, so the outermost retained ordinates read low. The later tail-refit then reads these corrupted points.
+
+</details>
+
+<details>
+<summary>K24. Compact operands present `Error` sides, so range-clipped products lose mass sizing 💻🚩</summary>
+
+Point, range, and formula operands present `Error` on both sides for the multiplication support and composition rules [packages/treetime-distribution/src/distribution_ops/multiply.rs#L431-L452](packages/treetime-distribution/src/distribution_ops/multiply.rs#L431-L452). This is correct for the disjointness test, where `Error` and `Hard` both restrict the domain, but wrong for tail composition: `Error` dominates the lattice [packages/treetime-distribution/src/distribution_ops/multiply.rs#L352-L373](packages/treetime-distribution/src/distribution_ops/multiply.rs#L352-L373), so any product clipped by a date range or point inherits `Error` on that side and becomes non-mass-sizable, forcing `rewindow_to_mass` back to a shift-only normalize.
+
+A compact operand carries zero density beyond its support, a hard fact, so it should present `Hard`, letting the clipped product stay mass-sizable. Same correction as the `range * range` and `point *` law declarations (C2, C3 emit `Hard`).
 
 </details>
 
