@@ -38,16 +38,6 @@ mod tests {
   }
 
   #[test]
-  fn test_boundary_neglog_constant_allowed() -> Result<(), Report> {
-    // Constant is representation-independent (it repeats a stored value), so it is allowed
-    // under NegLog. The right tail returns the last stored value.
-    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
-    let f = f.with_right_extrap(BoundaryBehavior::Constant)?;
-    assert_ulps_eq!(2.0, f.interp(3.0)?, max_ulps = 4);
-    Ok(())
-  }
-
-  #[test]
   fn test_boundary_plain_hard_allowed() -> Result<(), Report> {
     let f: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
     let f = f.with_extrap(BoundaryBehavior::Hard)?;
@@ -82,11 +72,11 @@ mod tests {
   #[case::error_right(   ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Error),    None)]
   #[case::hard_left(     (-1.0, BoundaryBehavior::Hard,     BoundaryBehavior::Error),    None)]
   #[case::hard_right(    ( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Hard),     None)]
-  #[case::constant_left( (-1.0, BoundaryBehavior::Constant, BoundaryBehavior::Error),    Some(2.0))]
-  #[case::constant_right(( 3.0, BoundaryBehavior::Error,    BoundaryBehavior::Constant), Some(6.0))]
-  // Soft Linear tail: the function continues, so the product is non-empty. The right edge ordinate
-  // is 3.0 at x_max=2.0, so the neg-log tail at t=3.0 is 3.0 + slope*(3.0-2.0) = 4.0 and the
-  // product is 2.0 times it.
+  // Soft Linear tail: the function continues past the edge, so the product is non-empty. The tail is
+  // the neg-log line y_edge + slope*(t - t_edge) read from the live grid edge. Left: y_edge=1.0 at
+  // x_min=0.0, so at t=-1.0 it is 1.0 + (-1.0)*(-1.0) = 2.0, product 2.0*2.0 = 4.0. Right: y_edge=3.0
+  // at x_max=2.0, so at t=3.0 it is 3.0 + 1.0*(3.0-2.0) = 4.0, product 2.0*4.0 = 8.0.
+  #[case::linear_some_left( (-1.0, BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }), BoundaryBehavior::Error), Some(4.0))]
   #[case::linear_some_right(( 3.0, BoundaryBehavior::Error, BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 })), Some(8.0))]
   #[trace]
   fn test_boundary_multiply_point_function_outside_support(

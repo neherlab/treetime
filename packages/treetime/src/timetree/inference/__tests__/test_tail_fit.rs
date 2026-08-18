@@ -36,8 +36,9 @@ mod tests {
     Ok(())
   }
 
-  // The property the whole change exists for: a fitted decaying tail is integrable. A flat Constant
-  // tail has infinite mass; the Linear tail's half-line integral exp(-y_edge)/|slope| is finite.
+  // The property the whole change exists for: a fitted decaying tail is integrable. A flat,
+  // non-integrable tail has infinite mass; the Linear tail's half-line integral exp(-y_edge)/|slope|
+  // is finite.
   #[test]
   fn test_tail_fit_fitted_tail_has_finite_mass() -> Result<(), Report> {
     let message: Distribution<NegLog> =
@@ -51,35 +52,32 @@ mod tests {
     Ok(())
   }
 
-  // Point, Range, and Empty messages carry no grid tail; the helper returns an inert Constant
+  // Point, Range, and Empty messages carry no grid tail; the helper returns an inert Error
   // because with_*_extrap is a no-op on non-Function distributions.
   #[test]
-  fn test_tail_fit_point_message_is_inert_constant() -> Result<(), Report> {
+  fn test_tail_fit_point_message_is_inert_error() -> Result<(), Report> {
     let message: Distribution<NegLog> = Distribution::point(2015.0, 0.0);
-    assert_eq!(BoundaryBehavior::Constant, fit_message_soft_tail(&message, Side::Left)?);
+    assert_eq!(BoundaryBehavior::Error, fit_message_soft_tail(&message, Side::Left)?);
     Ok(())
   }
 
   #[test]
-  fn test_tail_fit_range_message_is_inert_constant() -> Result<(), Report> {
+  fn test_tail_fit_range_message_is_inert_error() -> Result<(), Report> {
     let message: Distribution<NegLog> = Distribution::range((2014.0, 2015.0), 0.0);
-    assert_eq!(
-      BoundaryBehavior::Constant,
-      fit_message_soft_tail(&message, Side::Right)?
-    );
+    assert_eq!(BoundaryBehavior::Error, fit_message_soft_tail(&message, Side::Right)?);
     Ok(())
   }
 
   #[test]
-  fn test_tail_fit_empty_message_is_inert_constant() -> Result<(), Report> {
+  fn test_tail_fit_empty_message_is_inert_error() -> Result<(), Report> {
     let message: Distribution<NegLog> = Distribution::empty();
-    assert_eq!(BoundaryBehavior::Constant, fit_message_soft_tail(&message, Side::Left)?);
+    assert_eq!(BoundaryBehavior::Error, fit_message_soft_tail(&message, Side::Left)?);
     Ok(())
   }
 
   // A grid with fewer than two finite points in the fit window cannot yield a slope. The helper
-  // errors rather than fabricating a flat fallback, which would silently reintroduce the
-  // non-integrable Constant behavior. Here only the right edge is finite.
+  // errors rather than fabricating a flat fallback, which would silently reintroduce a
+  // non-integrable flat tail. Here only the right edge is finite.
   #[test]
   fn test_tail_fit_degenerate_grid_errors() {
     let message: Distribution<NegLog> =

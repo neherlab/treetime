@@ -9,8 +9,15 @@ mod tests {
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
   use rstest::rstest;
-  use treetime_grid::{Approach, BoundaryBehavior, HardApproachLaw};
+  use treetime_grid::{Approach, BoundaryBehavior, HardApproachLaw, SoftTailLaw};
   use treetime_utils::pretty_assert_ulps_eq;
+
+  /// A gentle soft `Linear` left tail, the fixture stand-in for a backward-pass parent-older tail.
+  /// `Linear` is the only soft `BoundaryBehavior`, so it is what bridges disjoint grids under
+  /// multiplication. The slope is tiny and negative so the extrapolated Plain ordinates stay positive
+  /// across the wide gaps these fixtures span (a steeper tail would underflow to a non-positive
+  /// amplitude before reaching the far operand).
+  const SOFT: BoundaryBehavior = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.001 });
 
   /// Formula * Function returns a Function with correct pointwise products.
   ///
@@ -259,37 +266,29 @@ mod tests {
     assert!(peak > 5.5 && peak < 7.5, "Peak at {peak}, expected ~6.5");
   }
 
-  /// C2: overlapping grids with Constant tails -- intersection unchanged (tails only extend).
+  /// C2: overlapping grids with soft tails -- intersection unchanged (tails only extend).
   #[test]
   fn test_multiply_tail_c2_overlapping_with_tails() {
-    let a = Distribution::Function(
-      make_function(0.0, 10.0, 101, 5.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::Constant)
-        .unwrap(),
-    );
-    let b = Distribution::Function(
-      make_function(3.0, 13.0, 101, 8.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::Constant)
-        .unwrap(),
-    );
+    let a = Distribution::Function(make_function(0.0, 10.0, 101, 5.0, 2.0).with_left_extrap(SOFT).unwrap());
+    let b = Distribution::Function(make_function(3.0, 13.0, 101, 8.0, 2.0).with_left_extrap(SOFT).unwrap());
     let result = distribution_multiplication(&a, &b).unwrap();
     let Distribution::Function(f) = &result else {
       panic!("Expected Function")
     };
-    // A's Constant left extends to min(0, 3) = 0 (no change). B's extends to min(3, 0) = 0.
+    // A's soft left tail extends to min(0, 3) = 0 (no change). B's extends to min(3, 0) = 0.
     // Intersection of [0, 10] and [0, 13] = [0, 10].
     assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
     assert_ulps_eq!(f.x_max(), 10.0, max_ulps = 4);
   }
 
-  /// C3: disjoint grids, one Constant left tail -- extends to produce non-empty result.
+  /// C3: disjoint grids, one soft left tail -- extends to produce non-empty result.
   #[test]
   fn test_multiply_tail_c3_disjoint_one_constant_left() {
-    // A: grid [10, 20], Constant left tail
+    // A: grid [10, 20], soft left tail
     // B: grid [0, 8], default Error tails
     let a = Distribution::Function(
       make_function(10.0, 20.0, 101, 15.0, 3.0)
-        .with_left_extrap(BoundaryBehavior::Constant)
+        .with_left_extrap(SOFT)
         .unwrap(),
     );
     let b = Distribution::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
@@ -304,21 +303,21 @@ mod tests {
     assert!(result.likely_time().is_some());
   }
 
-  /// C4: disjoint grids, both Constant left -- backward-pass pattern.
+  /// C4: disjoint grids, both soft left -- backward-pass pattern.
   #[test]
   fn test_multiply_tail_c4_disjoint_both_constant_left() {
-    // Two backward-pass messages with disjoint finite grids but overlapping via Constant
-    // left tails: leaf message [2001, 2007] and subtree message [1970, 2000].
+    // Two backward-pass messages with disjoint finite grids but overlapping via their soft left
+    // tails: leaf message [2001, 2007] and subtree message [1970, 2000].
     let leaf_msg = Distribution::Function(
       make_function(2001.0, 2007.0, 61, 2004.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::Constant)
+        .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let subtree_msg = Distribution::Function(
       make_function(1970.0, 2000.0, 301, 1990.0, 5.0)
-        .with_left_extrap(BoundaryBehavior::Constant)
+        .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
@@ -332,7 +331,7 @@ mod tests {
     // Intersection of [1970, 2007] and [1970, 2000] = [1970, 2000].
     assert_ulps_eq!(f.x_min(), 1970.0, max_ulps = 4);
     assert_ulps_eq!(f.x_max(), 2000.0, max_ulps = 4);
-    // Product should be dominated by the subtree's shape (leaf is flat constant in this region).
+    // Product should be dominated by the subtree's shape (the leaf's soft tail varies slowly here).
     let peak = result.likely_time().unwrap();
     assert!(peak > 1985.0 && peak < 1995.0, "Peak at {peak}, expected near 1990");
   }
@@ -353,15 +352,11 @@ mod tests {
     );
   }
 
-  /// C6: endpoint contact with Constant tail -- extends past contact to produce interval.
+  /// C6: endpoint contact with a soft tail -- extends past contact to produce interval.
   #[test]
   fn test_multiply_tail_c6_endpoint_contact_with_constant() {
-    // Without tails: endpoint contact -> Point. With Constant left on A: extends past.
-    let a = Distribution::Function(
-      make_function(5.0, 10.0, 51, 7.5, 2.0)
-        .with_left_extrap(BoundaryBehavior::Constant)
-        .unwrap(),
-    );
+    // Without tails: endpoint contact -> Point. With a soft left tail on A: extends past.
+    let a = Distribution::Function(make_function(5.0, 10.0, 51, 7.5, 2.0).with_left_extrap(SOFT).unwrap());
     let b = Distribution::Function(make_function(0.0, 5.0, 51, 2.5, 2.0));
     let result = distribution_multiplication(&a, &b).unwrap();
     let Distribution::Function(f) = &result else {
@@ -376,11 +371,7 @@ mod tests {
   /// C7: one contained in other with tails -- intersection unchanged.
   #[test]
   fn test_multiply_tail_c7_contained_with_tails() {
-    let outer = Distribution::Function(
-      make_function(0.0, 20.0, 201, 10.0, 5.0)
-        .with_left_extrap(BoundaryBehavior::Constant)
-        .unwrap(),
-    );
+    let outer = Distribution::Function(make_function(0.0, 20.0, 201, 10.0, 5.0).with_left_extrap(SOFT).unwrap());
     let inner = Distribution::Function(make_function(5.0, 15.0, 101, 10.0, 3.0));
     let result = distribution_multiplication(&outer, &inner).unwrap();
     let Distribution::Function(f) = &result else {
@@ -391,21 +382,21 @@ mod tests {
     assert_ulps_eq!(f.x_max(), 15.0, max_ulps = 4);
   }
 
-  /// C8: mixed Constant left + Hard right -- backward message pattern.
+  /// C8: mixed soft left + Hard right -- backward message pattern.
   #[test]
   fn test_multiply_tail_c8_mixed_constant_zero() {
-    // Both messages have Constant left (parent could be older) and Hard right (hard upper bound).
+    // Both messages have soft left (parent could be older) and Hard right (hard upper bound).
     // Overlapping case -- verify tails don't corrupt the result.
     let a = Distribution::Function(
       make_function(0.0, 10.0, 101, 5.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::Constant)
+        .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let b = Distribution::Function(
       make_function(3.0, 8.0, 51, 5.5, 1.5)
-        .with_left_extrap(BoundaryBehavior::Constant)
+        .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
@@ -426,7 +417,7 @@ mod tests {
   fn test_multiply_tail_commutative() {
     let a = Distribution::Function(
       make_function(10.0, 20.0, 101, 15.0, 3.0)
-        .with_left_extrap(BoundaryBehavior::Constant)
+        .with_left_extrap(SOFT)
         .unwrap(),
     );
     let b = Distribution::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
@@ -443,38 +434,38 @@ mod tests {
   /// Chained multiply + normalize (no manual re-apply) survives a disjoint late child.
   ///
   /// Simulates the backward pass: three overlapping messages produce a narrow accumulated
-  /// result, then a fourth message with a disjoint finite grid but overlapping via its Constant
+  /// result, then a fourth message with a disjoint finite grid but overlapping via its soft left tail. Multiplication
   /// left tail. Multiplication composes the result tails from its operands and normalize()
-  /// preserves them, so the accumulator keeps its Constant left tail across steps without any
+  /// preserves them, so the accumulator keeps its soft left tail across steps without any
   /// manual re-application. The fourth multiplication therefore extends leftward and stays
   /// non-empty.
   #[test]
   fn test_multiply_tail_chained_normalize_preserves_tails_survives_disjoint() {
     let msg1 = Distribution::Function(
       make_function(2000.0, 2010.0, 101, 2005.0, 2.0)
-        .with_left_extrap(BoundaryBehavior::Constant)
+        .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let msg2 = Distribution::Function(
       make_function(2001.0, 2008.0, 71, 2004.0, 1.5)
-        .with_left_extrap(BoundaryBehavior::Constant)
+        .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let msg3 = Distribution::Function(
       make_function(2003.0, 2009.0, 61, 2006.0, 1.5)
-        .with_left_extrap(BoundaryBehavior::Constant)
+        .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    // Fourth message: disjoint from the narrowed accumulator but reachable via Constant left tail.
+    // Fourth message: disjoint from the narrowed accumulator but reachable via soft left tail.
     let msg4 = Distribution::Function(
       make_function(1970.0, 1999.0, 291, 1990.0, 5.0)
-        .with_left_extrap(BoundaryBehavior::Constant)
+        .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
@@ -487,10 +478,10 @@ mod tests {
     }
 
     let Distribution::Function(f) = &accum else {
-      panic!("Chained multiplication collapsed to {accum:?} despite Constant left tails")
+      panic!("Chained multiplication collapsed to {accum:?} despite soft left tails")
     };
     // The composed tails survive normalization across every step.
-    assert_eq!(BoundaryBehavior::Constant, f.left_extrap());
+    assert!(matches!(f.left_extrap(), BoundaryBehavior::Linear(_)));
     assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
     assert!(
       accum.likely_time().is_some(),
@@ -502,49 +493,49 @@ mod tests {
   ///
   /// Two recent messages narrow the accumulator to ~(2024.5, 2025.5). A much older message at
   /// (1970, 1999) has a disjoint finite grid. Because normalize() preserves the accumulator's
-  /// Constant left tail, the final multiplication extends leftward to reach the old message and
+  /// soft left tail, the final multiplication extends leftward to reach the old message and
   /// produces a non-empty result. Under the old behavior, where normalize reset tails to Error,
   /// this product collapsed to Empty.
   #[test]
   fn test_multiply_tail_chained_normalize_no_reapply_survives() {
     let msg_recent_1 = Distribution::Function(
       make_function(2024.0, 2026.0, 21, 2025.0, 0.5)
-        .with_left_extrap(BoundaryBehavior::Constant)
+        .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let msg_recent_2 = Distribution::Function(
       make_function(2024.5, 2025.5, 11, 2025.0, 0.3)
-        .with_left_extrap(BoundaryBehavior::Constant)
+        .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
     let msg_old = Distribution::Function(
       make_function(1970.0, 1999.0, 291, 1990.0, 5.0)
-        .with_left_extrap(BoundaryBehavior::Constant)
+        .with_left_extrap(SOFT)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
 
-    // First two messages overlap and narrow the accumulator; the product keeps Constant left.
+    // First two messages overlap and narrow the accumulator; the product keeps a soft left tail.
     let product = distribution_multiplication(&msg_recent_1, &msg_recent_2).unwrap();
     assert!(!matches!(product, Distribution::Empty));
 
-    // Normalize preserves the Constant left tail.
+    // Normalize preserves the soft left tail.
     let normalized = product.normalize();
     let Distribution::Function(f) = &normalized else {
       panic!("Expected Function, got {normalized:?}")
     };
-    assert_eq!(BoundaryBehavior::Constant, f.left_extrap());
+    assert!(matches!(f.left_extrap(), BoundaryBehavior::Linear(_)));
 
     // The old message's disjoint grid is reachable because the accumulator extends leftward.
     let final_result = distribution_multiplication(&normalized, &msg_old).unwrap();
     assert!(
       !matches!(final_result, Distribution::Empty),
-      "Constant left tail must survive normalize() so the accumulator overlaps the old message"
+      "soft left tail must survive normalize() so the accumulator overlaps the old message"
     );
   }
 
@@ -552,7 +543,7 @@ mod tests {
   #[test]
   fn test_multiply_normalize_preserves_tails() {
     let f = make_function(2000.0, 2010.0, 101, 2005.0, 2.0)
-      .with_left_extrap(BoundaryBehavior::Constant)
+      .with_left_extrap(SOFT)
       .unwrap()
       .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
@@ -560,22 +551,22 @@ mod tests {
     let Distribution::Function(f) = &normalized else {
       panic!("Expected Function, got {normalized:?}")
     };
-    assert_eq!(BoundaryBehavior::Constant, f.left_extrap());
+    assert!(matches!(f.left_extrap(), BoundaryBehavior::Linear(_)));
     assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
     // Peak scaled to 1.0, tails unchanged.
     assert_ulps_eq!(1.0, f.y().iter().copied().fold(f64::MIN, f64::max), max_ulps = 4);
   }
 
-  /// Function * Function composes the per-side result tail from the operands' tails, with
-  /// precedence Constant < Hard < Error (the more restrictive tail wins).
+  /// Function * Function composes the per-side result tail from the operands' tails, with precedence
+  /// soft (`Linear`) < `Hard` < `Error` (the more restrictive tail wins). A hard bound dominates a
+  /// soft one and an undeclared `Error` dominates all.
   #[rustfmt::skip]
   #[rstest]
-  #[case::constant_constant(BoundaryBehavior::Constant, BoundaryBehavior::Constant, BoundaryBehavior::Constant)]
-  #[case::constant_hard(    BoundaryBehavior::Constant, BoundaryBehavior::Hard,     BoundaryBehavior::Hard)]
-  #[case::constant_error(   BoundaryBehavior::Constant, BoundaryBehavior::Error,    BoundaryBehavior::Error)]
-  #[case::hard_hard(        BoundaryBehavior::Hard,     BoundaryBehavior::Hard,     BoundaryBehavior::Hard)]
-  #[case::hard_error(       BoundaryBehavior::Hard,     BoundaryBehavior::Error,    BoundaryBehavior::Error)]
-  #[case::error_error(      BoundaryBehavior::Error,    BoundaryBehavior::Error,    BoundaryBehavior::Error)]
+  #[case::soft_hard(  SOFT,                    BoundaryBehavior::Hard,  BoundaryBehavior::Hard)]
+  #[case::soft_error( SOFT,                    BoundaryBehavior::Error, BoundaryBehavior::Error)]
+  #[case::hard_hard(  BoundaryBehavior::Hard,  BoundaryBehavior::Hard,  BoundaryBehavior::Hard)]
+  #[case::hard_error( BoundaryBehavior::Hard,  BoundaryBehavior::Error, BoundaryBehavior::Error)]
+  #[case::error_error(BoundaryBehavior::Error, BoundaryBehavior::Error, BoundaryBehavior::Error)]
   #[trace]
   fn test_multiply_function_function_composes_result_tails(
     #[case] a_left: BoundaryBehavior,
@@ -600,6 +591,33 @@ mod tests {
       panic!("Expected Function, got {ba:?}")
     };
     assert_eq!(expected_left, fba.left_extrap());
+  }
+
+  /// Two soft `Linear` tails compose to a soft `Linear` tail whose neg-log slopes add
+  /// (multiplication is addition in neg-log space).
+  #[test]
+  fn test_multiply_function_function_composes_soft_tails() {
+    let a = Distribution::Function(
+      make_function(0.0, 10.0, 101, 5.0, 2.0)
+        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.002 }))
+        .unwrap(),
+    );
+    let b = Distribution::Function(
+      make_function(2.0, 12.0, 101, 7.0, 2.0)
+        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.003 }))
+        .unwrap(),
+    );
+
+    let ab = distribution_multiplication(&a, &b).unwrap();
+    let Distribution::Function(fab) = &ab else {
+      panic!("Expected Function, got {ab:?}")
+    };
+    let BoundaryBehavior::Linear(law) = fab.left_extrap() else {
+      panic!("Expected a composed Linear left tail, got {:?}", fab.left_extrap())
+    };
+    // Oracle: SoftTailLaw::compose_multiply adds the slopes: -0.002 + -0.003 = -0.005.
+    assert_ulps_eq!(-0.005, law.slope, max_ulps = 4);
+    assert_eq!(BoundaryBehavior::Error, fab.right_extrap());
   }
 
   /// Function * Function composes approach laws: both shape parameters (`b` and `slope`) add
@@ -706,15 +724,15 @@ mod tests {
   /// two hard bounds facing each other can separate the domains. Multiplication returns `Empty`
   /// exactly in the disjoint case and reports an internal error otherwise (numerical collapse).
   ///
-  /// `C` = Constant (soft), `H` = Hard, `E` = Error. Each operand is (lo, hi, left_tail, right_tail).
+  /// `L` = Linear (soft), `H` = Hard, `E` = Error. Each operand is (lo, hi, left_tail, right_tail).
   #[rustfmt::skip]
   #[rstest]
-  #[case::hard_gap_disjoint(          (10.0, 20.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    ( 0.0,  8.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    true)]
-  #[case::overlapping(                ( 0.0, 10.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    ( 5.0, 15.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    false)]
-  #[case::endpoint_contact(           ( 0.0, 10.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    (10.0, 20.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    false)]
-  #[case::soft_left_bridges_gap(      (10.0, 20.0, BoundaryBehavior::Constant, BoundaryBehavior::Error), ( 0.0,  8.0, BoundaryBehavior::Error, BoundaryBehavior::Error),    false)]
-  #[case::facing_bounds_hard_far_soft((10.0, 20.0, BoundaryBehavior::Error, BoundaryBehavior::Constant), ( 0.0,  8.0, BoundaryBehavior::Constant, BoundaryBehavior::Error), true)]
-  #[case::backward_messages_never(    (2001.0, 2007.0, BoundaryBehavior::Constant, BoundaryBehavior::Hard), (1970.0, 2000.0, BoundaryBehavior::Constant, BoundaryBehavior::Hard), false)]
+  #[case::hard_gap_disjoint(          (10.0, 20.0, BoundaryBehavior::Error, BoundaryBehavior::Error), ( 0.0,  8.0, BoundaryBehavior::Error, BoundaryBehavior::Error), true)]
+  #[case::overlapping(                ( 0.0, 10.0, BoundaryBehavior::Error, BoundaryBehavior::Error), ( 5.0, 15.0, BoundaryBehavior::Error, BoundaryBehavior::Error), false)]
+  #[case::endpoint_contact(           ( 0.0, 10.0, BoundaryBehavior::Error, BoundaryBehavior::Error), (10.0, 20.0, BoundaryBehavior::Error, BoundaryBehavior::Error), false)]
+  #[case::soft_left_bridges_gap(      (10.0, 20.0, SOFT, BoundaryBehavior::Error),                   ( 0.0,  8.0, BoundaryBehavior::Error, BoundaryBehavior::Error), false)]
+  #[case::facing_bounds_hard_far_soft((10.0, 20.0, BoundaryBehavior::Error, SOFT),                   ( 0.0,  8.0, SOFT, BoundaryBehavior::Error),                   true)]
+  #[case::backward_messages_never(    (2001.0, 2007.0, SOFT, BoundaryBehavior::Hard),                (1970.0, 2000.0, SOFT, BoundaryBehavior::Hard),                false)]
   #[trace]
   fn test_multiply_hard_domains_disjoint(
     #[case] (a_lo, a_hi, a_left, a_right): (f64, f64, BoundaryBehavior, BoundaryBehavior),

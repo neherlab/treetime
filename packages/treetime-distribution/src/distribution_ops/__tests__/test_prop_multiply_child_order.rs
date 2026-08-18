@@ -2,8 +2,8 @@
 //!
 //! The timetree backward pass combines a node's child parent-time messages by folding
 //! `distribution_multiplication` with `normalize()` between steps
-//! (`packages/treetime/src/timetree/inference/backward_pass.rs`). Each message carries a
-//! `Constant` left tail (the parent may be arbitrarily older) and a `Hard` right tail (the
+//! (`packages/treetime/src/timetree/inference/backward_pass.rs`). Each message carries a soft
+//! `Linear` left tail (the parent may be arbitrarily older) and a `Hard` right tail (the
 //! child's sampling date bounds the parent's age)
 //! (`kb/decisions/distribution-tails-and-arithmetic.md`).
 //!
@@ -11,7 +11,7 @@
 //! commutative, and both the support intersection and the composed tails are built from
 //! order-independent `max`/`min` over the operands' bounds, so across every permutation of the
 //! children the fold yields a non-empty distribution over the *same* support with the *same*
-//! `Constant`/`Hard` tails. These invariants guard the exact failure modes the fix targeted:
+//! `Linear`/`Hard` tails. These invariants guard the exact failure modes the fix targeted:
 //! tail-metadata loss (which would collapse some orderings to `Empty` while others survive) and
 //! asymmetric support resolution (which would place the result on different intervals).
 //!
@@ -32,13 +32,18 @@ mod tests {
   use itertools::Itertools;
   use ndarray::Array1;
   use proptest::prelude::*;
-  use treetime_grid::BoundaryBehavior;
+  use treetime_grid::{BoundaryBehavior, SoftTailLaw};
   use treetime_utils::{pretty_assert_ulps_eq, prop_assert_ulps_eq};
+
+  /// A gentle soft `Linear` left tail (the backward-pass parent-older tail). `Linear` is the only
+  /// soft `BoundaryBehavior`, so it is what bridges disjoint grids; the slope is tiny and negative so
+  /// the extrapolated Plain ordinates stay positive across the wide gaps these fixtures span.
+  const SOFT: BoundaryBehavior = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.001 });
 
   proptest! {
     /// Every permutation of the children folds to a non-empty `Function` over the same support.
     ///
-    /// A lost `Constant` left tail would let a disjoint child collapse the product to `Empty` for
+    /// A lost soft left tail would let a disjoint child collapse the product to `Empty` for
     /// some orderings but not others; an asymmetric intersection would shift the support bounds.
     #[test]
     fn test_prop_multiply_child_order_preserves_support(
@@ -58,7 +63,7 @@ mod tests {
       }
     }
 
-    /// Every permutation of the children folds to a result carrying `Constant` left / `Hard` right
+    /// Every permutation of the children folds to a result carrying `Linear` left / `Hard` right
     /// tails, so a later disjoint child remains reachable regardless of processing order.
     #[test]
     fn test_prop_multiply_child_order_preserves_tails(
@@ -73,17 +78,17 @@ mod tests {
         let Distribution::Function(f) = &result else {
           return Err(TestCaseError::fail(format!("fold collapsed to {result:?}")));
         };
-        prop_assert_eq!(BoundaryBehavior::Constant, f.left_extrap());
+        prop_assert!(matches!(f.left_extrap(), BoundaryBehavior::Linear(_)));
         prop_assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
       }
     }
   }
 
-  /// A disjoint child reachable only via the `Constant` left tail keeps the fold non-empty and on
+  /// A disjoint child reachable only via the soft `Linear` left tail keeps the fold non-empty and on
   /// the same support no matter where it appears in the processing order.
   ///
   /// Two recent messages narrow the accumulator to a late interval; a much older message overlaps
-  /// only through its `Constant` left tail. Before tail-preserving normalization, folding the old
+  /// only through its soft `Linear` left tail. Before tail-preserving normalization, folding the old
   /// message last collapsed the product to `Empty`; the support is now identical for every order.
   #[test]
   fn test_multiply_child_order_disjoint_child_invariant_support() {
@@ -121,7 +126,7 @@ mod tests {
     accum
   }
 
-  /// A backward parent message: a Gaussian bump on a finite grid with a `Constant` left tail
+  /// A backward parent message: a Gaussian bump on a finite grid with a soft `Linear` left tail
   /// (parent may be older) and a `Hard` right tail (child date bounds the parent's age).
   fn make_child_message((center, width, sigma, n_points): (f64, f64, f64, usize)) -> Distribution {
     let x_min = center - width / 2.0;
@@ -132,7 +137,7 @@ mod tests {
     });
     let f = DistributionFunction::<f64, Plain>::from_start_dx_values(x_min, dx, y)
       .unwrap()
-      .with_left_extrap(BoundaryBehavior::Constant)
+      .with_left_extrap(SOFT)
       .unwrap()
       .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();

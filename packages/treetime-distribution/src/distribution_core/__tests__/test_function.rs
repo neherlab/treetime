@@ -5,7 +5,7 @@ mod tests {
   use crate::policy::{NegLog, Plain};
   use eyre::Report;
   use ndarray::array;
-  use treetime_grid::{Approach, HardApproachLaw};
+  use treetime_grid::{Approach, HardApproachLaw, SoftTailLaw};
   use treetime_utils::pretty_assert_ulps_eq;
 
   type DistFn = DistributionFunction<f64, Plain>;
@@ -15,14 +15,17 @@ mod tests {
   fn test_distribution_function_shift_y_shifts_values_and_preserves_tails() -> Result<(), Report> {
     // shift_y adds a constant to every ordinate and keeps the grid and both out-of-support tails,
     // the additive counterpart of scale_y used by NegLog normalization. Subtracting the minimum
-    // ordinate (1000) shifts the peak to 0 while the Constant tails carry through unchanged.
+    // ordinate (1000) shifts the peak to 0 while the soft tail laws carry through unchanged (they are
+    // edge-relative and read the shifted edge on evaluation).
+    let left = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 });
+    let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 });
     let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![1004.0, 1000.0, 1003.0])?
-      .with_left_extrap(BoundaryBehavior::Constant)?
-      .with_right_extrap(BoundaryBehavior::Constant)?;
+      .with_left_extrap(left)?
+      .with_right_extrap(right)?;
     let shifted = f.shift_y(-1000.0);
     pretty_assert_ulps_eq!(array![4.0, 0.0, 3.0], shifted.y());
-    assert_eq!(BoundaryBehavior::Constant, shifted.left_extrap());
-    assert_eq!(BoundaryBehavior::Constant, shifted.right_extrap());
+    assert_eq!(left, shifted.left_extrap());
+    assert_eq!(right, shifted.right_extrap());
     Ok(())
   }
 

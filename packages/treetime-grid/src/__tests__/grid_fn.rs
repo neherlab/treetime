@@ -50,45 +50,30 @@ mod tests {
     Ok(())
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  // Constant extrapolation: return first y value (explicit opt-in on the left tail)
-  #[case::one_unit_left((0.0, 1.0), array![0.0, 10.0], -1.0, 0.0)]
-  #[case::half_unit_left((0.0, 1.0), array![0.0, 10.0], -0.5, 0.0)]
-  #[case::two_units_left((0.0, 1.0), array![0.0, 10.0], -2.0, 0.0)]
-  #[case::offset_range((1.0, 2.0), array![5.0, 15.0], 0.0, 5.0)]
-  #[case::three_points((1.0, 3.0), array![10.0, 20.0, 30.0], 0.0, 10.0)]
-  #[trace]
-  fn test_gridfn_interp_left_extrapolation_constant(
-    #[case] x_range: (f64, f64),
-    #[case] y: Array1<f64>,
-    #[case] query: f64,
-    #[case] expected: f64,
-  ) -> Result<(), Report> {
-    let grid_fn = GridFn::from_range_values(x_range, y)?.with_left_extrap(BoundaryBehavior::Constant);
-    let actual = grid_fn.interp(query)?;
-    assert_ulps_eq!(expected, actual, max_ulps = 4);
+  // `resample_range_dx_clamped` holds the boundary value where grid-construction rounding pushes the
+  // final target point beyond the source support. `from_range_dx(0, 1, 0.4)` rounds to four points
+  // ending at 1.2, past x_max = 1.0. A plain resample rejects that overshoot under the default `Error`
+  // tail; the clamped resample clamps the query to x_max and reads the boundary ordinate there.
+  #[test]
+  fn test_gridfn_resample_range_dx_clamped_holds_boundary_on_overshoot() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
+    assert_error!(
+      grid_fn.resample_range_dx((0.0, 1.0), 0.4),
+      "GridFn evaluated at 1.2000000000000002, above the support boundary 1.0, but no extrapolation policy is set for that side"
+    );
+    let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.4)?;
+    // Target points 0.0, 0.4, 0.8, 1.2; the last clamps to x_max = 1.0, reading y = 10.0.
+    assert_ulps_eq!(clamped.y(), &array![0.0, 4.0, 8.0, 10.0], max_ulps = 4);
     Ok(())
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  // Constant extrapolation: return last y value (explicit opt-in on the right tail)
-  #[case::one_unit_right((0.0, 1.0), array![0.0, 10.0], 2.0, 10.0)]
-  #[case::half_unit_right((0.0, 1.0), array![0.0, 10.0], 1.5, 10.0)]
-  #[case::two_units_right((0.0, 1.0), array![0.0, 10.0], 3.0, 10.0)]
-  #[case::offset_range((1.0, 2.0), array![5.0, 15.0], 3.0, 15.0)]
-  #[case::three_points((0.0, 2.0), array![10.0, 20.0, 30.0], 3.0, 30.0)]
-  #[trace]
-  fn test_gridfn_interp_right_extrapolation_constant(
-    #[case] x_range: (f64, f64),
-    #[case] y: Array1<f64>,
-    #[case] query: f64,
-    #[case] expected: f64,
-  ) -> Result<(), Report> {
-    let grid_fn = GridFn::from_range_values(x_range, y)?.with_right_extrap(BoundaryBehavior::Constant);
-    let actual = grid_fn.interp(query)?;
-    assert_ulps_eq!(expected, actual, max_ulps = 4);
+  // Within the source support the clamp never fires, so a clamped resample matches a plain one.
+  #[test]
+  fn test_gridfn_resample_range_dx_clamped_matches_plain_within_support() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
+    let plain = grid_fn.resample_range_dx((0.0, 1.0), 0.5)?;
+    let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.5)?;
+    assert_ulps_eq!(clamped.y(), plain.y(), max_ulps = 4);
     Ok(())
   }
 
@@ -134,11 +119,15 @@ mod tests {
   #[test]
   fn test_gridfn_negate_arg_swaps_extrap_sides() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?
-      .with_left_extrap(BoundaryBehavior::Constant)
+      .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }))
       .with_right_extrap(BoundaryBehavior::Hard);
     let negated = grid_fn.negate_arg()?;
+    // Sides swap; the reflected soft law's slope flips sign on its new (right) side.
     assert_eq!(BoundaryBehavior::Hard, negated.left_extrap());
-    assert_eq!(BoundaryBehavior::Constant, negated.right_extrap());
+    assert_eq!(
+      BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }),
+      negated.right_extrap()
+    );
     Ok(())
   }
 
@@ -146,10 +135,13 @@ mod tests {
   fn test_gridfn_resample_preserves_extrap() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 2.0), array![0.0, 10.0, 20.0])?
       .with_left_extrap(BoundaryBehavior::Hard)
-      .with_right_extrap(BoundaryBehavior::Constant);
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 2.0 }));
     let resampled = grid_fn.resample_range_dx((0.0, 2.0), 0.5)?;
     assert_eq!(BoundaryBehavior::Hard, resampled.left_extrap());
-    assert_eq!(BoundaryBehavior::Constant, resampled.right_extrap());
+    assert_eq!(
+      BoundaryBehavior::Linear(SoftTailLaw { slope: 2.0 }),
+      resampled.right_extrap()
+    );
     Ok(())
   }
 
@@ -208,13 +200,13 @@ mod tests {
     Ok(())
   }
 
-  /// A soft boundary continues the distribution past the grid edge (`Constant`); a hard
+  /// A soft boundary continues the distribution past the grid edge (`Linear`); a hard
   /// boundary terminates the domain (`Hard`: zero beyond; `Error`: undefined beyond).
   #[rustfmt::skip]
   #[rstest]
-  #[case::constant(BoundaryBehavior::Constant, true)]
-  #[case::hard(    BoundaryBehavior::Hard,     false)]
-  #[case::error(   BoundaryBehavior::Error,    false)]
+  #[case::linear(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }), true)]
+  #[case::hard(  BoundaryBehavior::Hard,                                false)]
+  #[case::error( BoundaryBehavior::Error,                               false)]
   #[trace]
   fn test_boundary_behavior_is_soft(#[case] behavior: BoundaryBehavior, #[case] expected: bool) {
     assert_eq!(expected, behavior.is_soft());

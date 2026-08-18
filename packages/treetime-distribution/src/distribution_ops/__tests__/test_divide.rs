@@ -235,21 +235,27 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
+  /// No divisor tail extends the quotient past the divisor's grid edge, not even a soft `Linear` one.
+  ///
+  /// Dividing by an extrapolated divisor tail beyond its grid would inflate the quotient into a
+  /// spurious spike, so the divisor is always bounded at its real grid support and the dividend's own
+  /// tails carry the cavity beyond it. The divisor spans `[1, 3]` inside the dividend's `[0, 4]`, so
+  /// the quotient is confined to `[1, 3]` regardless of the divisor's declared tails.
   #[test]
-  fn test_divide_function_by_function_honors_explicit_divisor_tails() {
+  fn test_divide_function_by_function_divisor_tail_never_extends_quotient() {
     let dividend =
       Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![10.0, 20.0, 30.0, 40.0, 50.0]).unwrap();
     let divisor = Distribution::function(array![1.0, 2.0, 3.0], array![2.0, 2.0, 2.0])
       .unwrap()
-      .with_left_extrap(BoundaryBehavior::Constant)
+      .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 }))
       .unwrap()
-      .with_right_extrap(BoundaryBehavior::Constant)
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 }))
       .unwrap();
 
     let actual = distribution_division(&dividend, &divisor).unwrap();
-    // Oracle: kb/decisions/distribution-tails-and-arithmetic.md, division tail rules.
-    let expected =
-      Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![5.0, 10.0, 15.0, 20.0, 25.0]).unwrap();
+    // Oracle: kb/decisions/distribution-tails-and-arithmetic.md, division tail rules: the quotient is
+    // bounded at the divisor grid [1, 3], carrying dividend/2 = [10, 15, 20] there.
+    let expected = Distribution::function(array![1.0, 2.0, 3.0], array![10.0, 15.0, 20.0]).unwrap();
     assert_eq!(expected, actual);
   }
 
