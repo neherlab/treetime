@@ -94,7 +94,9 @@ where
   let mut distribution = combine_child_messages(&messages)?;
 
   // Multiply in the coalescent prior once the child messages are folded. The root and internal
-  // contributions differ, and both scale with the node's child count.
+  // contributions differ, and both scale with the node's child count. The leaf coalescent factor is
+  // deliberately not applied here: it belongs to the outgoing message only, never the stored node
+  // distribution, so it is added later in `outgoing_node_distribution`.
   if let (Some(model), Some(current)) = (coalescent_model, distribution.as_ref()) {
     let n_children = graph
       .get_node(slot.key)
@@ -392,6 +394,9 @@ fn outgoing_node_distribution<N: TimetreeNode>(
   node: &N,
 ) -> Result<Option<Arc<Distribution<NegLog>>>, Report> {
   if is_leaf && let (Some(model), Some(distribution)) = (coalescent_model, node.time_distribution()) {
+    // Leaf coalescent factor: added to this outgoing message only, so it never reaches the stored node
+    // distribution (set by `multiply_node_factors` without it). It weights how the leaf informs its
+    // parent, not the leaf's own time, so it stays out of the stored distribution the forward pass reuses.
     let with_leaf = distribution_add_neg_log_weight(distribution.as_ref(), |time| Ok(model.leaf_contribution(time)))?;
     return Ok(Some(Arc::new(with_leaf)));
   }
