@@ -91,40 +91,70 @@ where
   D: Send + Sync,
 {
   let messages = gather_child_messages(graph, dependencies, slot);
-  let mut distribution = combine_child_messages(&messages)?;
+  let distribution = combine_child_messages(&messages)?;
+  let distribution = apply_coalescent_prior(graph, coalescent_model, slot, distribution)?;
+  apply_date_constraint(slot, distribution)
+}
 
-  // Multiply in the coalescent prior once the child messages are folded. The root and internal
-  // contributions differ, and both scale with the node's child count. The leaf coalescent factor is
-  // deliberately not applied here: it belongs to the outgoing message only, never the stored node
-  // distribution, so it is added later in `outgoing_node_distribution`.
-  if let (Some(model), Some(current)) = (coalescent_model, distribution.as_ref()) {
-    let n_children = graph
-      .get_node(slot.key)
-      .expect("Indexed node must exist")
-      .read_arc()
-      .outbound()
-      .len();
-    distribution = Some(if slot.parent_edge.is_none() {
-      distribution_add_neg_log_weight(current, |time| model.root_contribution(time, n_children))?
-    } else {
-      distribution_add_neg_log_weight(current, |time| model.internal_contribution(time, n_children))?
-    });
+/// Multiply the node's role-specific coalescent prior into its folded child messages.
+///
+/// The root and internal contributions differ, and both scale with the node's child count. The leaf
+/// coalescent factor is deliberately not applied here: it belongs to the outgoing message only, never
+/// the stored node distribution, so it is added later in [`outgoing_node_distribution`]. A node with no
+/// coalescent model, or none of whose children left a message, is returned unchanged.
+fn apply_coalescent_prior<N, E, D>(
+  graph: &Graph<N, E, D>,
+  coalescent_model: Option<&CoalescentModel>,
+  slot: &IndexedPassSlot<N, E>,
+  distribution: Option<Distribution<NegLog>>,
+) -> Result<Option<Distribution<NegLog>>, Report>
+where
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + TimetreeEdge,
+  D: Send + Sync,
+{
+  match (coalescent_model, distribution) {
+    (Some(model), Some(current)) => {
+      let n_children = graph
+        .get_node(slot.key)
+        .expect("Indexed node must exist")
+        .read_arc()
+        .outbound()
+        .len();
+      let weighted = if slot.parent_edge.is_none() {
+        distribution_add_neg_log_weight(&current, |time| model.root_contribution(time, n_children))?
+      } else {
+        distribution_add_neg_log_weight(&current, |time| model.internal_contribution(time, n_children))?
+      };
+      Ok(Some(weighted))
+    },
+    (_, distribution) => Ok(distribution),
   }
+}
 
-  // Multiply in the input date constraint. It is an independent factor of the node's posterior, so it
-  // multiplies whatever the children have to say; for a leaf, which has no children, it is the whole
-  // distribution. Doing this here rather than once at load time is what keeps the input recoverable:
-  // the forward pass refines the time distribution of a node whose date is uncertain in place, and
-  // sending that refined distribution back to the parent on the next round would count the parent's
-  // own message toward the node a second time.
-  if let Some(constraint) = slot.node.date_constraint() {
-    distribution = Some(match distribution {
-      Some(current) => distribution_multiplication(&current, constraint)?,
-      None => constraint.as_ref().clone(),
-    });
-  }
-
-  Ok(distribution)
+/// Multiply the node's input date constraint into its accumulated factors.
+///
+/// The date constraint is an independent factor of the node's posterior, so it multiplies whatever the
+/// children have to say; for a leaf, which has no children, it is the whole distribution. Applying it
+/// here rather than once at load time is what keeps the input recoverable: the forward pass refines the
+/// time distribution of a node whose date is uncertain in place, and sending that refined distribution
+/// back to the parent on the next round would count the parent's own message toward the node a second
+/// time.
+fn apply_date_constraint<N, E>(
+  slot: &IndexedPassSlot<N, E>,
+  distribution: Option<Distribution<NegLog>>,
+) -> Result<Option<Distribution<NegLog>>, Report>
+where
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + TimetreeEdge,
+{
+  let Some(constraint) = slot.node.date_constraint() else {
+    return Ok(distribution);
+  };
+  Ok(Some(match distribution {
+    Some(current) => distribution_multiplication(&current, constraint)?,
+    None => constraint.as_ref().clone(),
+  }))
 }
 
 /// Gathers the backward messages from a node's good children.
