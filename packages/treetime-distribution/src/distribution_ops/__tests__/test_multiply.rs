@@ -10,7 +10,7 @@ mod tests {
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::{Approach, BoundaryBehavior, HardApproachLaw, SoftTailLaw};
-  use treetime_utils::pretty_assert_ulps_eq;
+  use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   /// A gentle soft `Linear` left tail, the fixture stand-in for a backward-pass parent-older tail.
   /// `Linear` is the only soft `BoundaryBehavior`, so it is what bridges disjoint grids under
@@ -620,17 +620,19 @@ mod tests {
     assert_eq!(BoundaryBehavior::Error, fab.right_extrap());
   }
 
-  /// Function * Function composes approach laws: both shape parameters (`b` and `slope`) add
-  /// (multiplication is addition in neg-log space).
+  /// Two `HardApproach` tails cannot be multiplied: their exact product carries both a power-law
+  /// exponent and a linear slope, which a single-parameter hard-approach law cannot represent. No
+  /// production path multiplies two hard-approach tails, so this is a loud internal error rather than
+  /// a silent lossy composition.
   #[test]
-  fn test_multiply_function_function_composes_approach_laws() {
+  fn test_multiply_function_function_two_hard_approach_is_unsupported() {
     let law_a = HardApproachLaw {
       t_hard: 0.0,
-      shape: Approach::Combined { b: 1.0, slope: 0.5 },
+      shape: Approach::Divergent { b: 1.0 },
     };
     let law_b = HardApproachLaw {
       t_hard: 0.0,
-      shape: Approach::Combined { b: 2.0, slope: 1.5 },
+      shape: Approach::Divergent { b: 2.0 },
     };
 
     let a = Distribution::Function(
@@ -644,19 +646,10 @@ mod tests {
         .unwrap(),
     );
 
-    let result = distribution_multiplication(&a, &b).unwrap();
-    let Distribution::Function(f) = &result else {
-      panic!("Expected Function")
-    };
-    let composed = f
-      .left_extrap()
-      .approach_law()
-      .expect("result should have left approach law");
-    let expected = HardApproachLaw {
-      t_hard: 0.0,
-      shape: Approach::Combined { b: 3.0, slope: 2.0 },
-    };
-    assert_eq!(expected, composed);
+    assert_error!(
+      distribution_multiplication(&a, &b),
+      "Cannot multiply two HardApproach tails: their product is not representable by a single-parameter hard-approach law, and this composition is unreachable in the inference pipeline. This is an internal error. Please report it to developers."
+    );
   }
 
   /// A nullary `Hard` operand absorbs the other side's approach law. It declares zero density in the
@@ -666,7 +659,7 @@ mod tests {
   fn test_multiply_function_function_nullary_hard_absorbs_approach_law() {
     let law = HardApproachLaw {
       t_hard: 0.0,
-      shape: Approach::Combined { b: 1.5, slope: 0.5 },
+      shape: Approach::Divergent { b: 1.5 },
     };
 
     let a = Distribution::Function(
@@ -688,9 +681,9 @@ mod tests {
   }
 
   /// normalize() preserves approach laws alongside tail policies. Under `Plain` policy normalize
-  /// rescales every ordinate by `1/max`, which scales both edge-relative shape terms by that factor
-  /// so that evaluating the law on the rescaled ordinates matches rescaling the original law's
-  /// output.
+  /// rescales every ordinate by `1/max`, which scales the edge-relative shape parameter by that
+  /// factor so that evaluating the law on the rescaled ordinates matches rescaling the original
+  /// law's output.
   #[test]
   fn test_multiply_normalize_preserves_approach_law() {
     // Build a distribution with a known max > 1 so normalization visibly rescales
@@ -698,7 +691,7 @@ mod tests {
       .unwrap()
       .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw {
         t_hard: 0.0,
-        shape: Approach::Combined { b: 1.0, slope: 2.0 },
+        shape: Approach::Divergent { b: 1.0 },
       }))
       .unwrap();
 
@@ -710,13 +703,12 @@ mod tests {
       .left_extrap()
       .approach_law()
       .expect("approach law should survive normalization");
-    // max was 100.0 -> scale factor 1/100 -> both shape terms scale by 1/100
+    // max was 100.0 -> scale factor 1/100 -> the exponent scales by 1/100
     assert_abs_diff_eq!(0.0, preserved.t_hard, epsilon = 1e-14);
-    let Approach::Combined { b, slope } = preserved.shape else {
-      panic!("expected Combined regime, got {:?}", preserved.shape);
+    let Approach::Divergent { b } = preserved.shape else {
+      panic!("expected Divergent regime, got {:?}", preserved.shape);
     };
     assert_abs_diff_eq!(0.01, b, epsilon = 1e-14);
-    assert_abs_diff_eq!(0.02, slope, epsilon = 1e-14);
   }
 
   /// An empty product is legitimate only when the operands' hard domains are genuinely disjoint.

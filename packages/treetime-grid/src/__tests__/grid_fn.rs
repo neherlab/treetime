@@ -231,7 +231,7 @@ mod tests {
   fn test_gridfn_resample_preserves_fitted_hard_law() -> Result<(), Report> {
     let law = HardApproachLaw {
       t_hard: 0.0,
-      shape: Approach::Combined { b: 1.0, slope: 0.5 },
+      shape: Approach::Divergent { b: 1.0 },
     };
     let grid_fn = GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(law));
@@ -265,13 +265,13 @@ mod tests {
   }
 
   /// Scaling every neg-log ordinate by a factor raises the probability to a power (`p -> p^factor`),
-  /// so both shape terms of the hard approach law (the exponent `b` and the linear `slope`) scale by
-  /// the same factor while the boundary location is unchanged. The hard class must survive the scale.
+  /// so the hard approach law's shape parameter (the exponent `b`) scales by the same factor while
+  /// the boundary location is unchanged. The hard class must survive the scale.
   #[test]
   fn test_gridfn_scale_y_preserves_hard_class_and_scales_law() -> Result<(), Report> {
     let law = HardApproachLaw {
       t_hard: 0.0,
-      shape: Approach::Combined { b: 1.0, slope: 2.0 },
+      shape: Approach::Divergent { b: 1.0 },
     };
     let grid_fn = GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(law));
@@ -280,7 +280,7 @@ mod tests {
 
     let expected = HardApproachLaw {
       t_hard: 0.0,
-      shape: Approach::Combined { b: 3.0, slope: 6.0 },
+      shape: Approach::Divergent { b: 3.0 },
     };
     assert_eq!(BoundaryBehavior::HardApproach(expected), scaled.left_extrap());
     Ok(())
@@ -308,7 +308,7 @@ mod tests {
   fn test_gridfn_shift_y_preserves_hard_law_unchanged() -> Result<(), Report> {
     let law = HardApproachLaw {
       t_hard: 0.0,
-      shape: Approach::Combined { b: 1.0, slope: 0.5 },
+      shape: Approach::Divergent { b: 1.0 },
     };
     let grid_fn = GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(law));
@@ -341,7 +341,7 @@ mod tests {
   fn test_gridfn_boundary_law_survives_regrid_round_trip() -> Result<(), Report> {
     let hard = HardApproachLaw {
       t_hard: 0.0,
-      shape: Approach::Combined { b: 1.0, slope: 0.5 },
+      shape: Approach::Divergent { b: 1.0 },
     };
     let soft = SoftTailLaw { slope: 0.7 };
     let grid_fn = GridFn::from_range_values((1.0, 3.0), array![3.0, 2.5, 2.0])?

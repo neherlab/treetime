@@ -16,43 +16,37 @@ mod tests {
   }
 
   // --- HardApproachLaw::eval (edge-relative, per-regime) ---
-  // Oracle: `y(t) = y_edge - b * ln(|t - t_hard| / |t_edge - t_hard|) + slope * (t - t_edge)`,
-  // evaluated by hand. `from_terms` classifies each `(b, slope)` pair into a regime: `b > 0` with a
-  // non-zero slope is `Combined`, `b > 0` alone is `Divergent` (value `+inf` at `t == t_hard`), and
-  // `b == 0` is `Finite` (the line `y_edge + slope * (t - t_edge)`, finite at the boundary).
+  // Oracle: evaluated by hand from each regime's closed form.
+  //  - Divergent(b): y(t) = y_edge - b * ln(|t - t_hard| / |t_edge - t_hard|), value +inf at t_hard.
+  //  - Finite(slope): y(t) = y_edge + slope * (t - t_edge), finite everywhere including the boundary.
 
   #[rustfmt::skip]
   #[rstest]
-  // b = 1, slope = 0 -> Divergent, boundary at 0, edge (t_edge=1, y_edge=0): y(t) = -ln(t)
-  #[case::b1_edge(       (0.0, 1.0, 0.0), (0.0, 1.0), 1.0,                    0.0)]
-  #[case::b1_half(       (0.0, 1.0, 0.0), (0.0, 1.0), 0.5,          2.0_f64.ln())]
-  #[case::b1_boundary(   (0.0, 1.0, 0.0), (0.0, 1.0), 0.0,          f64::INFINITY)]
-  // b = 2, slope = 0 -> Divergent, boundary at 0, edge (1, 0): y(t) = -2 ln(t)
-  #[case::b2_half(       (0.0, 2.0, 0.0), (0.0, 1.0), 0.5,    2.0 * 2.0_f64.ln())]
+  // Divergent, boundary at 0, edge (t_edge=1, y_edge=0): y(t) = -ln(t)
+  #[case::b1_edge(       (0.0, Approach::Divergent { b: 1.0 }), (0.0, 1.0), 1.0,                    0.0)]
+  #[case::b1_half(       (0.0, Approach::Divergent { b: 1.0 }), (0.0, 1.0), 0.5,          2.0_f64.ln())]
+  #[case::b1_boundary(   (0.0, Approach::Divergent { b: 1.0 }), (0.0, 1.0), 0.0,          f64::INFINITY)]
+  // Divergent b=2, edge (1, 0): y(t) = -2 ln(t)
+  #[case::b2_half(       (0.0, Approach::Divergent { b: 2.0 }), (0.0, 1.0), 0.5,    2.0 * 2.0_f64.ln())]
   // Non-zero edge ordinate anchors the law: b=1, edge (t_edge=2, y_edge=3), y(1) = 3 - ln(1/2)
-  #[case::anchored(      (0.0, 1.0, 0.0), (3.0, 2.0), 1.0,      3.0 + 2.0_f64.ln())]
-  // b = 0, slope = 2 -> Finite line y = y_edge + slope*(t - t_edge), edge (t_edge=1, y_edge=2.5)
-  #[case::line_interior( (0.0, 0.0, 2.0), (2.5, 1.0), 0.3,                    1.1)]
-  #[case::line_boundary( (0.0, 0.0, 2.0), (2.5, 1.0), 0.0,                    0.5)]
-  // b = 0, slope = 0 -> Finite (flat) at the edge ordinate, everywhere including the boundary
-  #[case::flat_gap(      (0.0, 0.0, 0.0), (2.5, 1.0), 0.3,                    2.5)]
-  #[case::flat_boundary( (0.0, 0.0, 0.0), (2.5, 1.0), 0.0,                    2.5)]
-  // b=1, slope=1 -> Combined (product of divergent and finite messages), edge (1, 0):
-  // y(0.5) = -ln(0.5) + 1*(0.5 - 1) = ln2 - 0.5
-  #[case::composed(      (0.0, 1.0, 1.0), (0.0, 1.0), 0.5,       2.0_f64.ln() - 0.5)]
-  // Combined law still diverges at the boundary
-  #[case::composed_boundary((0.0, 1.0, 1.0), (0.0, 1.0), 0.0,    f64::INFINITY)]
-  // Non-zero t_hard, b = 1, slope = 0 -> Divergent, edge (t_edge=6, y_edge=1): y(t) = 1 - ln(|t-5|/1)
-  #[case::offset_edge(   (5.0, 1.0, 0.0), (1.0, 6.0), 6.0,                    1.0)]
-  #[case::offset_boundary((5.0, 1.0, 0.0),(1.0, 6.0), 5.0,          f64::INFINITY)]
+  #[case::anchored(      (0.0, Approach::Divergent { b: 1.0 }), (3.0, 2.0), 1.0,      3.0 + 2.0_f64.ln())]
+  // Finite line y = y_edge + slope*(t - t_edge), edge (t_edge=1, y_edge=2.5)
+  #[case::line_interior( (0.0, Approach::Finite { slope: 2.0 }), (2.5, 1.0), 0.3,                    1.1)]
+  #[case::line_boundary( (0.0, Approach::Finite { slope: 2.0 }), (2.5, 1.0), 0.0,                    0.5)]
+  // Finite (flat) at the edge ordinate, everywhere including the boundary
+  #[case::flat_gap(      (0.0, Approach::Finite { slope: 0.0 }), (2.5, 1.0), 0.3,                    2.5)]
+  #[case::flat_boundary( (0.0, Approach::Finite { slope: 0.0 }), (2.5, 1.0), 0.0,                    2.5)]
+  // Non-zero t_hard, Divergent b=1, edge (t_edge=6, y_edge=1): y(t) = 1 - ln(|t-5|/1)
+  #[case::offset_edge(   (5.0, Approach::Divergent { b: 1.0 }), (1.0, 6.0), 6.0,                    1.0)]
+  #[case::offset_boundary((5.0, Approach::Divergent { b: 1.0 }),(1.0, 6.0), 5.0,          f64::INFINITY)]
   #[trace]
   fn test_hard_approach_law_eval(
-    #[case] (t_hard, b, slope): (f64, f64, f64),
+    #[case] (t_hard, shape): (f64, Approach),
     #[case] (y_edge, t_edge): (f64, f64),
     #[case] t: f64,
     #[case] expected: f64,
   ) {
-    let law = HardApproachLaw::from_terms(t_hard, b, slope);
+    let law = HardApproachLaw { t_hard, shape };
     let actual = law.eval(y_edge, t_edge, t);
     if expected.is_infinite() {
       assert!(actual.is_infinite() && actual > 0.0, "expected +inf, got {actual}");
@@ -133,6 +127,18 @@ mod tests {
   }
 
   #[test]
+  fn test_hard_approach_law_fit_clamps_wrong_sign_to_flat_finite() -> Result<(), Report> {
+    // A regression that trends the wrong way (density increasing into the boundary) clamps b to 0,
+    // which is the flat finite shape, not a fabricated divergence. Ordinates decreasing with distance
+    // from t_hard give a negative raw exponent, clamped to `Finite { slope: 0.0 }`.
+    let y = Array1::linspace(0.1, 1.0, 20).mapv(|t: f64| 2.0 + (t - 0.0).abs().ln());
+    let grid = GridFn::from_range_values((0.1, 1.0), y)?;
+    let law = HardApproachLaw::fit_log_power_law(&grid, 0.0, Side::Left, 10).expect("fit should succeed");
+    assert_eq!(Approach::Finite { slope: 0.0 }, law.shape);
+    Ok(())
+  }
+
+  #[test]
   fn test_hard_approach_law_fit_err_divergent_without_finite_points() -> Result<(), Report> {
     // Divergent boundary (y_hard = +inf): the left edge is finite but every interior point is +inf,
     // so the regression window has only one finite point and cannot fit an exponent.
@@ -161,60 +167,50 @@ mod tests {
 
   // --- HardApproachLaw::mass (edge-relative) ---
   // Oracle: analytic integral of exp(-y(t)) over the gap.
-  //  - Divergent (b > 0):            p_edge * |t_edge - t_hard| / (b + 1)
-  //  - Finite, slope != 0:           p_edge * (exp(slope * dt_edge) - 1) / slope
-  //  - Finite, slope == 0:           p_edge * dt_edge
-  //  - Combined (b > 0, slope != 0): p_edge * |t_edge - t_hard| / (b + 1), slope term dropped
+  //  - Divergent (b > 0):  p_edge * |t_edge - t_hard| / (b + 1)
+  //  - Finite, slope != 0: p_edge * (exp(slope * dt_edge) - 1) / slope
+  //  - Finite, slope == 0: p_edge * dt_edge
 
   #[rustfmt::skip]
   #[rstest]
-  // b=1, slope=0 -> Divergent, y_edge=0 (p_edge=1), t_edge=1: integral_0^1 t dt = 1/2
-  #[case::power_b1((0.0, 1.0, 0.0), 0.0,          1.0,                             0.5)]
-  // b=2, slope=0 -> Divergent, y_edge=0, t_edge=1: integral_0^1 t^2 dt = 1/3
-  #[case::power_b2((0.0, 2.0, 0.0), 0.0,          1.0,                       1.0 / 3.0)]
-  // b=0, slope=0 -> Finite (flat), y_edge=0, t_edge=0.5: constant p=1 over [0, 0.5] = 0.5
-  #[case::flat(    (0.0, 0.0, 0.0), 0.0,          0.5,                             0.5)]
-  // b=0, slope=2 -> Finite line, y_edge=0 (p_edge=1), t_edge=0.5: (exp(2*0.5) - 1) / 2 = (e - 1)/2
-  #[case::line(    (0.0, 0.0, 2.0), 0.0,          0.5,             1.0_f64.exp_m1() / 2.0)]
-  // Edge ordinate scales mass: b=1, slope=0, y_edge=ln2 (p_edge=0.5), t_edge=1: 0.5 * 1 / 2 = 0.25
-  #[case::anchored((0.0, 1.0, 0.0), 2.0_f64.ln(), 1.0,                            0.25)]
-  // b=1, slope=2 -> Combined: mass drops the slope term, so it equals the Divergent b=1 mass (0.5).
-  // This locks the current approximation; the slope-inclusive integral is a pending decision.
-  #[case::combined_slope_dropped((0.0, 1.0, 2.0), 0.0, 1.0,                        0.5)]
+  // Divergent b=1, y_edge=0 (p_edge=1), t_edge=1: integral_0^1 t dt = 1/2
+  #[case::power_b1((0.0, Approach::Divergent { b: 1.0 }), 0.0,          1.0,                       0.5)]
+  // Divergent b=2, y_edge=0, t_edge=1: integral_0^1 t^2 dt = 1/3
+  #[case::power_b2((0.0, Approach::Divergent { b: 2.0 }), 0.0,          1.0,                 1.0 / 3.0)]
+  // Finite flat, y_edge=0, t_edge=0.5: constant p=1 over [0, 0.5] = 0.5
+  #[case::flat(    (0.0, Approach::Finite { slope: 0.0 }), 0.0,         0.5,                       0.5)]
+  // Finite line, y_edge=0 (p_edge=1), t_edge=0.5: (exp(2*0.5) - 1) / 2 = (e - 1)/2
+  #[case::line(    (0.0, Approach::Finite { slope: 2.0 }), 0.0,         0.5,       1.0_f64.exp_m1() / 2.0)]
+  // Edge ordinate scales mass: Divergent b=1, y_edge=ln2 (p_edge=0.5), t_edge=1: 0.5 * 1 / 2 = 0.25
+  #[case::anchored((0.0, Approach::Divergent { b: 1.0 }), 2.0_f64.ln(), 1.0,                      0.25)]
   #[trace]
   fn test_hard_approach_law_mass(
-    #[case] (t_hard, b, slope): (f64, f64, f64),
+    #[case] (t_hard, shape): (f64, Approach),
     #[case] y_edge: f64,
     #[case] t_edge: f64,
     #[case] expected: f64,
   ) {
-    let law = HardApproachLaw::from_terms(t_hard, b, slope);
+    let law = HardApproachLaw { t_hard, shape };
     assert_abs_diff_eq!(expected, law.mass(y_edge, t_edge), epsilon = 1e-14);
   }
 
-  // --- HardApproachLaw::compose_multiply ---
-
-  #[test]
-  fn test_hard_approach_law_compose_multiply_shape_params_add() {
-    // A product of a divergent (b>0) and a finite (slope>0) message carries both terms and lands in
-    // the Combined regime with the terms summed.
-    let a = HardApproachLaw::from_terms(0.0, 1.0, 0.5);
-    let b = HardApproachLaw::from_terms(0.0, 2.0, 1.5);
-    let expected = HardApproachLaw {
-      t_hard: 0.0,
-      shape: Approach::Combined { b: 3.0, slope: 2.0 },
-    };
-    assert_eq!(expected, a.compose_multiply(&b));
-  }
-
   // --- HardApproachLaw::negate_arg ---
+  // The boundary moves to -t_hard; a divergent exponent is unchanged and a finite slope flips sign.
 
-  #[test]
-  fn test_hard_approach_law_negate_arg() {
-    let law = HardApproachLaw::from_terms(5.0, 1.0, 2.0);
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::divergent((5.0, Approach::Divergent { b: 1.0 }),    (-5.0, Approach::Divergent { b: 1.0 }))]
+  #[case::finite(   (5.0, Approach::Finite { slope: 2.0 }),   (-5.0, Approach::Finite { slope: -2.0 }))]
+  #[case::flat(     (5.0, Approach::Finite { slope: 0.0 }),   (-5.0, Approach::Finite { slope: 0.0 }))]
+  #[trace]
+  fn test_hard_approach_law_negate_arg(
+    #[case] (t_hard, shape): (f64, Approach),
+    #[case] (expected_t_hard, expected_shape): (f64, Approach),
+  ) {
+    let law = HardApproachLaw { t_hard, shape };
     let expected = HardApproachLaw {
-      t_hard: -5.0,
-      shape: Approach::Combined { b: 1.0, slope: -2.0 },
+      t_hard: expected_t_hard,
+      shape: expected_shape,
     };
     assert_eq!(expected, law.negate_arg());
   }
@@ -308,9 +304,11 @@ mod tests {
 
   #[test]
   fn test_gridfn_scale_y_scales_approach_law() -> Result<(), Report> {
+    // Scaling every neg-log ordinate by a factor raises probability to a power, so the regime's
+    // shape parameter scales by the same factor while the regime and boundary are unchanged.
     let law = HardApproachLaw {
       t_hard: 0.0,
-      shape: Approach::Combined { b: 1.5, slope: 2.0 },
+      shape: Approach::Divergent { b: 1.5 },
     };
     let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![1.0, 2.0, 3.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(law));
@@ -320,11 +318,10 @@ mod tests {
       .left_extrap()
       .approach_law()
       .expect("approach law should be preserved");
-    // Scaling ordinates raises probability to a power, so both shape terms scale by the factor.
     assert_eq!(
       HardApproachLaw {
         t_hard: 0.0,
-        shape: Approach::Combined { b: 4.5, slope: 6.0 },
+        shape: Approach::Divergent { b: 4.5 },
       },
       scaled_law
     );
@@ -349,11 +346,11 @@ mod tests {
   fn test_gridfn_negate_arg_swaps_approach_laws() -> Result<(), Report> {
     let left_law = HardApproachLaw {
       t_hard: 0.0,
-      shape: Approach::Combined { b: 1.0, slope: 2.0 },
+      shape: Approach::Divergent { b: 1.0 },
     };
     let right_law = HardApproachLaw {
       t_hard: 10.0,
-      shape: Approach::Combined { b: 2.0, slope: -1.0 },
+      shape: Approach::Finite { slope: -1.0 },
     };
     let grid = GridFn::from_range_values((1.0, 9.0), ndarray::array![1.0, 5.0, 9.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(left_law))
@@ -366,19 +363,19 @@ mod tests {
       .approach_law()
       .expect("should have right approach");
 
-    // Right law (t_hard=10) reflects to the left: t_hard=-10, exponent unchanged, slope flips.
+    // Right law (t_hard=10, Finite) reflects to the left: t_hard=-10, slope flips sign.
     assert_eq!(
       HardApproachLaw {
         t_hard: -10.0,
-        shape: Approach::Combined { b: 2.0, slope: 1.0 },
+        shape: Approach::Finite { slope: 1.0 },
       },
       new_left
     );
-    // Left law (t_hard=0) reflects to the right: t_hard=0, exponent unchanged, slope flips.
+    // Left law (t_hard=0, Divergent) reflects to the right: t_hard=0, exponent unchanged.
     assert_eq!(
       HardApproachLaw {
         t_hard: 0.0,
-        shape: Approach::Combined { b: 1.0, slope: -2.0 },
+        shape: Approach::Divergent { b: 1.0 },
       },
       new_right
     );
@@ -389,7 +386,7 @@ mod tests {
   fn test_gridfn_resample_preserves_approach_law() -> Result<(), Report> {
     let law = HardApproachLaw {
       t_hard: 0.0,
-      shape: Approach::Combined { b: 1.0, slope: 0.5 },
+      shape: Approach::Divergent { b: 1.0 },
     };
     let grid = GridFn::from_range_values((1.0, 5.0), ndarray::array![2.0, 4.0, 6.0, 8.0, 10.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(law));

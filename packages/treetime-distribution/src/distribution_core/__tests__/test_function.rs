@@ -37,7 +37,7 @@ mod tests {
     // the shifted edge. This locks the routing of `shift_y` through the law-preserving grid shift.
     let law = HardApproachLaw {
       t_hard: 0.0,
-      shape: Approach::Combined { b: 1.0, slope: 2.0 },
+      shape: Approach::Divergent { b: 1.0 },
     };
     let f: DistFnNegLog = DistributionFunction::from_range_values((1.0, 3.0), array![1004.0, 1000.0, 1003.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(law))?;

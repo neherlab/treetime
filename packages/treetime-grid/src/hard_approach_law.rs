@@ -6,25 +6,16 @@ use treetime_utils::make_error;
 
 /// Approach law for a *hard* grid boundary, in negative-log space.
 ///
-/// Between a hard boundary at `t_hard` and the nearest grid point, the branch-length density
-/// follows the Gamma likelihood `p(t) ~ |t - t_hard|^b * exp(-slope*|t - t_hard|)`, so in
-/// negative-log space it is the two-term law
+/// Between a hard boundary at `t_hard` and the nearest grid point the neg-log density follows one of
+/// two [regimes](Approach): a finite line (a zero-mutation branch, whose mode sits on the boundary)
+/// or a power-law divergence (a branch with mutations, whose density vanishes at the boundary). The
+/// derivation and the surrounding tail framework are recorded in
+/// `kb/decisions/distribution-tails-and-arithmetic.md`.
 ///
-/// ```text
-/// y(t) = y_edge - b*ln( |t - t_hard| / |t_edge - t_hard| ) + slope*(t - t_edge)
-/// ```
-///
-/// where `y_edge` is the grid's stored neg-log edge ordinate (`y[0]` on the left, `y[n-1]` on the
-/// right) and `t_edge` its coordinate. The law is *edge-relative*: it stores only the shape and
-/// reads the live grid edge on evaluation, exactly like [`SoftTailLaw`](crate::SoftTailLaw).
-/// Reading the live edge keeps the law valid across re-windowing and resampling with no refit and
-/// no absolute anchor to keep in sync: a vertical shift of every ordinate (peak-normalization) is
-/// absorbed through `y_edge`, and a scale (`p -> p^factor`) scales the shape.
-///
-/// The boundary location `t_hard` is an immovable physical fact (e.g. `t = 0` for branch lengths)
-/// and is stored as an absolute coordinate. The shape is one of three [regimes](Approach), decided once at
-/// construction and never re-derived by a consumer: every evaluator matches [`Approach`] instead
-/// of inspecting float values, so `eval` and `mass` cannot disagree about which regime a law is.
+/// The law is *edge-relative*: it stores only shape (`t_hard` and the regime) and reads the live
+/// grid edge `(t_edge, y_edge)` on evaluation, exactly like [`SoftTailLaw`](crate::SoftTailLaw). The
+/// boundary location `t_hard` is an immovable physical fact (e.g. `t = 0` for branch lengths); the
+/// ordinate is read live, so a peak-normalization shift, a resample, or a re-window needs no refit.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct HardApproachLaw {
   /// Location of the hard boundary (e.g. `t = 0` for branch lengths).
@@ -53,7 +44,10 @@ impl HardApproachLaw {
          (t={t_edge}, y={y_edge}) and boundary (t={t_hard}, y={y_hard})"
       );
     }
-    Ok(HardApproachLaw::from_terms(t_hard, 0.0, slope))
+    Ok(HardApproachLaw {
+      t_hard,
+      shape: Approach::Finite { slope },
+    })
   }
 
   /// Fit the power-law approach for a divergent boundary density (`n >= 1`, or an indel) over
@@ -99,36 +93,13 @@ impl HardApproachLaw {
     if !b.is_finite() {
       return make_error!("Hard-boundary power-law fit on the {side:?} side produced a non-finite exponent");
     }
-    Ok(HardApproachLaw::from_terms(t_hard, b, 0.0))
-  }
-
-  /// Build a law from raw `b` and `slope` terms, classifying the [regime](Approach) once.
-  ///
-  /// This is the single point where the two shape parameters are mapped to a regime: `b > 0` with a
-  /// non-zero slope is [`Combined`](Approach::Combined), `b > 0` alone is
-  /// [`Divergent`](Approach::Divergent), and everything else (including a clamped `b = 0`) is
-  /// [`Finite`](Approach::Finite). Producers (`fit_*`, `compose_multiply`, `scale`, `negate_arg`)
-  /// go through here; consumers (`eval`, `mass`) match the resulting regime and never re-derive it.
-  pub(crate) fn from_terms(t_hard: f64, b: f64, slope: f64) -> Self {
+    // A wrong-sign regression clamps to `b = 0`, which is the flat finite shape, not a divergence.
     let shape = if b > 0.0 {
-      if slope != 0.0 {
-        Approach::Combined { b, slope }
-      } else {
-        Approach::Divergent { b }
-      }
+      Approach::Divergent { b }
     } else {
-      Approach::Finite { slope }
+      Approach::Finite { slope: 0.0 }
     };
-    HardApproachLaw { t_hard, shape }
-  }
-
-  /// The shape terms of this law, with the regime's implied zero filled in.
-  fn terms(&self) -> ShapeTerms {
-    match self.shape {
-      Approach::Finite { slope } => ShapeTerms { b: 0.0, slope },
-      Approach::Divergent { b } => ShapeTerms { b, slope: 0.0 },
-      Approach::Combined { b, slope } => ShapeTerms { b, slope },
-    }
+    Ok(HardApproachLaw { t_hard, shape })
   }
 
   /// Evaluate the approach law in neg-log at `t`, anchored on the live grid edge.
@@ -138,9 +109,9 @@ impl HardApproachLaw {
   ///
   /// - [`Finite`](Approach::Finite): the line `y_edge + slope*(t - t_edge)`, finite everywhere
   ///   including at `t == t_hard`, where it carries the boundary mode.
-  /// - [`Divergent`](Approach::Divergent) and [`Combined`](Approach::Combined): the power-law
-  ///   `y_edge - b*ln(|t - t_hard| / |t_edge - t_hard|)` (plus the `slope` term for `Combined`),
-  ///   returning `+inf` at `t == t_hard` because the density is zero at the boundary.
+  /// - [`Divergent`](Approach::Divergent): the power-law
+  ///   `y_edge - b*ln(|t - t_hard| / |t_edge - t_hard|)`, returning `+inf` at `t == t_hard` because
+  ///   the density is zero at the boundary.
   pub fn eval(&self, y_edge: f64, t_edge: f64, t: f64) -> f64 {
     match self.shape {
       Approach::Finite { slope } => y_edge + slope * (t - t_edge),
@@ -151,14 +122,6 @@ impl HardApproachLaw {
         }
         let dt_edge = (t_edge - self.t_hard).abs();
         y_edge - b * (dt / dt_edge).ln()
-      },
-      Approach::Combined { b, slope } => {
-        let dt = (t - self.t_hard).abs();
-        if dt == 0.0 {
-          return f64::INFINITY;
-        }
-        let dt_edge = (t_edge - self.t_hard).abs();
-        y_edge - b * (dt / dt_edge).ln() + slope * (t - t_edge)
       },
     }
   }
@@ -172,10 +135,6 @@ impl HardApproachLaw {
   /// - [`Finite`](Approach::Finite), `slope != 0`: `p_edge * (exp(slope*dt_edge) - 1) / slope`.
   /// - [`Finite`](Approach::Finite), `slope == 0`: `p_edge * dt_edge`.
   /// - [`Divergent`](Approach::Divergent): `p_edge * dt_edge / (b + 1)`.
-  /// - [`Combined`](Approach::Combined): `p_edge * dt_edge / (b + 1)` -- the `slope` correction is
-  ///   dropped, so this mass does *not* match the integral of [`eval`](Self::eval) for a `Combined`
-  ///   law. See `kb/issues/M-grid-hard-approach-combined-mass-drops-slope.md` for the exact
-  ///   incomplete-gamma form pending a decision.
   pub fn mass(&self, y_edge: f64, t_edge: f64) -> f64 {
     let dt_edge = (t_edge - self.t_hard).abs();
     let p_edge = (-y_edge).exp();
@@ -183,65 +142,57 @@ impl HardApproachLaw {
     match self.shape {
       Approach::Finite { slope } if slope != 0.0 => p_edge * (slope * dt_edge).exp_m1() / slope,
       Approach::Finite { .. } => p_edge * dt_edge,
-      Approach::Divergent { b } | Approach::Combined { b, .. } => p_edge * dt_edge / (b + 1.0),
+      Approach::Divergent { b } => p_edge * dt_edge / (b + 1.0),
     }
   }
 
   /// Whether the density is finite at the boundary (the [`Finite`](Approach::Finite) regime).
   ///
   /// `true` means the neg-log reaches a finite value at `t_hard` and the mode sits on the boundary;
-  /// `false` means the density vanishes there (`Divergent`/`Combined`, `y -> +inf`). Consumers use
-  /// this to ask the semantic question instead of inspecting the raw exponent.
+  /// `false` means the density vanishes there ([`Divergent`](Approach::Divergent), `y -> +inf`).
+  /// Consumers use this to ask the semantic question instead of inspecting the raw exponent.
   #[must_use]
   pub fn is_finite_at_boundary(&self) -> bool {
     matches!(self.shape, Approach::Finite { .. })
   }
 
-  /// Compose two approach laws under multiplication: the shape terms add.
-  ///
-  /// Multiplication is addition in neg-log space, so the product law's exponent and slope are the
-  /// sums of the operand terms, re-classified into a regime. A product of a divergent and a finite
-  /// message therefore carries both a `b > 0` and a `slope != 0` term and lands in
-  /// [`Combined`](Approach::Combined). Both laws must share the same `t_hard`, and both are evaluated
-  /// against the same live grid edge, so there is no anchor to reconcile.
-  #[must_use]
-  pub fn compose_multiply(&self, other: &HardApproachLaw) -> HardApproachLaw {
-    let a = self.terms();
-    let b = other.terms();
-    HardApproachLaw::from_terms(self.t_hard, a.b + b.b, a.slope + b.slope)
-  }
-
   /// Scale the approach law when every neg-log ordinate is multiplied by `factor` (`p -> p^factor`).
   ///
-  /// Both shape terms scale by `factor`; the regime is preserved for `factor > 0`.
+  /// The regime's shape parameter scales by `factor`; the regime is preserved for `factor > 0`.
   #[must_use]
   pub fn scale(&self, factor: f64) -> HardApproachLaw {
-    let t = self.terms();
-    HardApproachLaw::from_terms(self.t_hard, t.b * factor, t.slope * factor)
+    let shape = match self.shape {
+      Approach::Finite { slope } => Approach::Finite { slope: slope * factor },
+      Approach::Divergent { b } => Approach::Divergent { b: b * factor },
+    };
+    HardApproachLaw {
+      t_hard: self.t_hard,
+      shape,
+    }
   }
 
   /// Transform the approach law when the argument is negated: `f(x) -> f(-x)`.
   ///
-  /// The boundary moves to `-t_hard`; the exponent `b` is unchanged and the linear slope flips sign.
+  /// The boundary moves to `-t_hard`; the divergent exponent `b` is unchanged and the finite slope
+  /// flips sign.
   #[must_use]
   pub fn negate_arg(&self) -> Self {
-    let t = self.terms();
-    HardApproachLaw::from_terms(-self.t_hard, t.b, -t.slope)
+    let shape = match self.shape {
+      Approach::Finite { slope } => Approach::Finite { slope: -slope },
+      Approach::Divergent { b } => Approach::Divergent { b },
+    };
+    HardApproachLaw {
+      t_hard: -self.t_hard,
+      shape,
+    }
   }
 }
 
-/// The two raw shape terms of a hard-approach law before classification into an [`Approach`] regime.
-struct ShapeTerms {
-  b: f64,
-  slope: f64,
-}
-
-/// The neg-log approach shape near a hard boundary, in one of three mutually exclusive regimes.
+/// The neg-log approach shape near a hard boundary, in one of two mutually exclusive regimes.
 ///
 /// The regime is decided once, by the producer that owns the likelihood, and stored in the type so
 /// no consumer re-derives it from float values. The branch-length likelihood `p(t) ~ t^n *
-/// exp(-mu*t)` (`n` mutations) gives the first two regimes directly; multiplication of messages
-/// (addition in neg-log space) can combine them into the third.
+/// exp(-mu*t)` (`n` mutations) gives both regimes directly.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum Approach {
   /// Finite boundary density (`n = 0`): the neg-log is the straight line
@@ -252,10 +203,6 @@ pub enum Approach {
   /// the neg-log is the power law `y_edge - b*ln|dt/dt_edge|` with `b > 0` and `y -> +inf` at
   /// `t_hard`. `b` is a fitted continuous approximation of the mutation count, not an integer.
   Divergent { b: f64 },
-  /// Product of a divergent and a finite message: both terms are present (`b > 0`, `slope != 0`).
-  /// This regime exists because composition adds shape terms and is not closed over the first two
-  /// alone.
-  Combined { b: f64, slope: f64 },
 }
 
 /// Which side of the grid a hard boundary is on.

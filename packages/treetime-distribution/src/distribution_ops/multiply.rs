@@ -328,8 +328,8 @@ fn with_composed_tails<Y: YAxisPolicy>(
   b_tails: (BoundaryBehavior, BoundaryBehavior),
 ) -> Result<DistributionFunction<f64, Y>, Report> {
   function
-    .with_left_extrap(compose_multiplication_tail(a_tails.0, b_tails.0))?
-    .with_right_extrap(compose_multiplication_tail(a_tails.1, b_tails.1))
+    .with_left_extrap(compose_multiplication_tail(a_tails.0, b_tails.0)?)?
+    .with_right_extrap(compose_multiplication_tail(a_tails.1, b_tails.1)?)
 }
 
 /// Compose the per-side result tail for a product from the two operands' tails on that side.
@@ -341,28 +341,32 @@ fn with_composed_tails<Y: YAxisPolicy>(
 ///
 /// Fitted laws compose in closed form:
 ///
-/// - Two `HardApproach` laws compose by adding their shape parameters (multiplication is addition in
-///   neg-log space, and both laws read the same live grid edge). A nullary `Hard` operand declares
-///   zero density in the sub-grid gap `[t_hard, t_first)`, so the product is zero there: it absorbs a
-///   `HardApproach` law rather than propagating it, which would fabricate density the `Hard` operand
-///   forbids.
+/// - A nullary `Hard` operand declares zero density in the sub-grid gap `[t_hard, t_first)`, so the
+///   product is zero there: it absorbs a `HardApproach` law rather than propagating it, which would
+///   fabricate density the `Hard` operand forbids.
 /// - Two `Linear` soft tails compose by adding their neg-log slopes (multiplication is addition in
 ///   neg-log space).
-fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> BoundaryBehavior {
+///
+/// Two `HardApproach` laws are not composed: their exact product carries both a power-law exponent
+/// and a linear slope (and, at distinct boundaries, a slope drawn from the other operand's local
+/// gradient), which the single-parameter [`HardApproachLaw`](treetime_grid::HardApproachLaw) cannot
+/// represent. No production path multiplies two hard-approach tails; if one is reached it is a loud
+/// internal error rather than a silent lossy composition.
+fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> Result<BoundaryBehavior, Report> {
   match (a, b) {
-    (BoundaryBehavior::Error, _) | (_, BoundaryBehavior::Error) => BoundaryBehavior::Error,
-    // Both sides hard: a nullary `Hard` zeroes the sub-grid gap and so absorbs a `HardApproach`
-    // law; two approach laws compose by adding their shape parameters.
+    (BoundaryBehavior::Error, _) | (_, BoundaryBehavior::Error) => Ok(BoundaryBehavior::Error),
+    // Both sides hard: a nullary `Hard` zeroes the sub-grid gap and so absorbs a `HardApproach` law.
     (BoundaryBehavior::Hard, BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_))
-    | (BoundaryBehavior::HardApproach(_), BoundaryBehavior::Hard) => BoundaryBehavior::Hard,
-    (BoundaryBehavior::HardApproach(a_law), BoundaryBehavior::HardApproach(b_law)) => {
-      BoundaryBehavior::HardApproach(a_law.compose_multiply(&b_law))
-    },
+    | (BoundaryBehavior::HardApproach(_), BoundaryBehavior::Hard) => Ok(BoundaryBehavior::Hard),
+    (BoundaryBehavior::HardApproach(_), BoundaryBehavior::HardApproach(_)) => make_internal_error!(
+      "Cannot multiply two HardApproach tails: their product is not representable by a \
+       single-parameter hard-approach law, and this composition is unreachable in the inference pipeline"
+    ),
     // A hard bound restricts the product regardless of the soft other side, so keep the hard side.
-    (hard @ (BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_)), _) => hard,
-    (_, hard @ (BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_))) => hard,
+    (hard @ (BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_)), _) => Ok(hard),
+    (_, hard @ (BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_))) => Ok(hard),
     (BoundaryBehavior::Linear(a_law), BoundaryBehavior::Linear(b_law)) => {
-      BoundaryBehavior::Linear(a_law.compose_multiply(&b_law))
+      Ok(BoundaryBehavior::Linear(a_law.compose_multiply(&b_law)))
     },
   }
 }
