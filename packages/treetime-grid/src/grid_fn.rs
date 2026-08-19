@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use crate::InterpElem;
 use crate::boundary_behavior::BoundaryBehavior;
 use crate::grid::Grid;
+use crate::hard_approach_law::Side;
 use crate::interp_nonuniform::interp_nonuniform;
 use crate::soft_tail_law::SoftTailLaw;
 use approx::{UlpsEq, ulps_eq};
@@ -372,7 +373,7 @@ impl<T: InterpElem> GridFn<T> {
       if ulps_eq!(xi, x_min, max_ulps = 4) {
         return Ok(self.y[0]);
       }
-      return self.extrapolate(self.left_extrap, self.y[0], xi, x_min, "below");
+      return self.extrapolate(self.left_extrap, self.y[0], xi, x_min, Side::Left);
     }
 
     if xi > x_max {
@@ -380,7 +381,7 @@ impl<T: InterpElem> GridFn<T> {
       if ulps_eq!(xi, x_max, max_ulps = 4) {
         return Ok(self.y[n - 1]);
       }
-      return self.extrapolate(self.right_extrap, self.y[n - 1], xi, x_max, "above");
+      return self.extrapolate(self.right_extrap, self.y[n - 1], xi, x_max, Side::Right);
     }
 
     let idx = self.grid.find_interval_index(xi);
@@ -402,7 +403,7 @@ impl<T: InterpElem> GridFn<T> {
     Ok(Array1::from_vec(values))
   }
 
-  fn extrapolate(&self, behavior: BoundaryBehavior, boundary_value: T, xi: T, bound: T, side: &str) -> Result<T, Report>
+  fn extrapolate(&self, behavior: BoundaryBehavior, boundary_value: T, xi: T, bound: T, side: Side) -> Result<T, Report>
   where
     T: Float,
   {
@@ -420,7 +421,7 @@ impl<T: InterpElem> GridFn<T> {
       BoundaryBehavior::HardApproach(law) => {
         let xi_f64 = xi.to_f64().unwrap();
         // Beyond the hard boundary: zero probability
-        if (side == "below" && xi_f64 < law.t_hard) || (side != "below" && xi_f64 > law.t_hard) {
+        if (side == Side::Left && xi_f64 < law.t_hard) || (side == Side::Right && xi_f64 > law.t_hard) {
           return Ok(T::zero());
         }
         // Between hard boundary and grid edge: use the edge-relative approach law, anchored on the
@@ -429,9 +430,15 @@ impl<T: InterpElem> GridFn<T> {
         Ok(T::from(value).unwrap())
       },
       BoundaryBehavior::Hard => Ok(T::zero()),
-      BoundaryBehavior::Error => make_error!(
-        "GridFn evaluated at {xi:?}, {side} the support boundary {bound:?}, but no extrapolation policy is set for that side"
-      ),
+      BoundaryBehavior::Error => {
+        let side_word = match side {
+          Side::Left => "below",
+          Side::Right => "above",
+        };
+        make_error!(
+          "GridFn evaluated at {xi:?}, {side_word} the support boundary {bound:?}, but no extrapolation policy is set for that side"
+        )
+      },
     }
   }
 
