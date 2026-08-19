@@ -374,7 +374,7 @@ impl<T: InterpElem> GridFn<T> {
       if ulps_eq!(xi, x_min, max_ulps = 4) {
         return Ok(self.y[0]);
       }
-      return self.extrapolate(self.left_extrap, self.y[0], xi, x_min, Side::Left);
+      return self.extrapolate(self.left_extrap, xi, Side::Left);
     }
 
     if xi > x_max {
@@ -382,7 +382,7 @@ impl<T: InterpElem> GridFn<T> {
       if ulps_eq!(xi, x_max, max_ulps = 4) {
         return Ok(self.y[n - 1]);
       }
-      return self.extrapolate(self.right_extrap, self.y[n - 1], xi, x_max, Side::Right);
+      return self.extrapolate(self.right_extrap, xi, Side::Right);
     }
 
     let idx = self.grid.find_interval_index(xi);
@@ -404,19 +404,33 @@ impl<T: InterpElem> GridFn<T> {
     Ok(Array1::from_vec(values))
   }
 
-  fn extrapolate(&self, behavior: BoundaryBehavior, boundary_value: T, xi: T, bound: T, side: Side) -> Result<T, Report>
+  /// The live anchor at one grid edge: its coordinate and stored neg-log ordinate.
+  ///
+  /// This is the [`GridEdge`] the edge-relative boundary laws read on evaluation. The left edge is
+  /// `(x_min, y[0])`, the right edge `(x_max, y[n-1])`.
+  pub fn edge(&self, side: Side) -> GridEdge
+  where
+    T: Float,
+  {
+    let (t, y) = match side {
+      Side::Left => (self.grid.x_min(), self.y[0]),
+      Side::Right => (self.grid.x_max(), self.y[self.grid.n_points() - 1]),
+    };
+    GridEdge {
+      t: t.to_f64().unwrap(),
+      y: y.to_f64().unwrap(),
+    }
+  }
+
+  fn extrapolate(&self, behavior: BoundaryBehavior, xi: T, side: Side) -> Result<T, Report>
   where
     T: Float,
   {
     match behavior {
       // Soft log-linear tail: a straight neg-log line anchored on the live grid edge, evaluated on
-      // the stored ordinate axis so it meets the grid continuously at `boundary_value`.
+      // the stored ordinate axis so it meets the grid continuously at the edge ordinate.
       BoundaryBehavior::Linear(law) => {
-        let edge = GridEdge {
-          t: bound.to_f64().unwrap(),
-          y: boundary_value.to_f64().unwrap(),
-        };
-        let value = law.eval(edge, xi.to_f64().unwrap());
+        let value = law.eval(self.edge(side), xi.to_f64().unwrap());
         Ok(T::from(value).unwrap())
       },
       BoundaryBehavior::HardApproach(law) => {
@@ -427,18 +441,14 @@ impl<T: InterpElem> GridFn<T> {
         }
         // Between hard boundary and grid edge: use the edge-relative approach law, anchored on the
         // live grid edge, exactly like the soft-tail arm above.
-        let edge = GridEdge {
-          t: bound.to_f64().unwrap(),
-          y: boundary_value.to_f64().unwrap(),
-        };
-        let value = law.eval(edge, xi_f64);
+        let value = law.eval(self.edge(side), xi_f64);
         Ok(T::from(value).unwrap())
       },
       BoundaryBehavior::Hard => Ok(T::zero()),
       BoundaryBehavior::Error => {
-        let side_word = match side {
-          Side::Left => "below",
-          Side::Right => "above",
+        let (side_word, bound) = match side {
+          Side::Left => ("below", self.grid.x_min()),
+          Side::Right => ("above", self.grid.x_max()),
         };
         make_error!(
           "GridFn evaluated at {xi:?}, {side_word} the support boundary {bound:?}, but no extrapolation policy is set for that side"
