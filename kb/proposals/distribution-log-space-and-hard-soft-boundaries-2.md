@@ -9,7 +9,7 @@ Terms used throughout:
 - **Neg-log storage**: a time distribution stores $-\ln p$ at each grid point. Multiplying distributions is adding ordinates; the likelihood peak is the _least_ ordinate.
 - **Grid plus boundary laws**: a distribution is an explicit grid over a finite window, with a boundary law on each side that continues it past the window.
   - **Hard boundary**: probability is zero beyond it; the domain ends there. Near it the density is a power law, $p \propto (t - t_{\text{hard}})^{b}$ (type `HardApproach`, exponent $b$). $b = 0$ is a finite step, so a mode can sit exactly on the edge.
-  - **Soft boundary**: an analytic tail continues beyond, log-linear in $t$ (type `SoftTailLaw`, slope $k$: $-\ln p = C + k\,(t - t_{\text{edge}})$).
+  - **Soft boundary**: an analytic tail continues beyond, log-linear in $t$ (type `Linear`, carrying a soft-tail law of slope $k$: $-\ln p = C + k\,(t - t_{\text{edge}})$).
   - **`Error`**: a side that must never be evaluated.
 - **Branch-length factor**: for a branch with $n$ mutations, $L(t) \propto (\mu t)^{n} e^{-\mu t}$, with a hard bound at $t = 0$ and its peak at the maximum-likelihood branch length.
 - **Passes**: timetree inference runs a backward pass (leaves to root, building each node's outgoing message) and a forward pass (root to leaves). A coalescent prior adds a per-node weight.
@@ -19,12 +19,12 @@ Terms used throughout:
 
 A branch-length distribution convolved with a leaf date behaves differently for an exact date and for an uncertain one:
 
-- **branch ⊛ point** (exact date): the branch distribution shifted along the time axis. Shape and tails do not change; only the position moves.
-- **branch ⊛ range** (date interval): the same tails, with the interior washed out. Convolving with a uniform interval smooths the bulk near the peak but leaves each tail's slope intact.
+- **branch ⊛ point** (exact date): the branch distribution shifted along the time axis. Shape and both boundary laws are unchanged; only the position moves (C4).
+- **branch ⊛ range** (date interval): the interior washed out and the hard edge blurred. Convolving with a uniform interval of half-width $w$ smooths the bulk near the peak and leaves the soft tail's slope intact, but spreads the hard edge into a ramp: its power-law exponent gains one ($b \to b + 1$) and the bound moves outward by $w$ (C5).
 
-In both cases the tails survive the convolution, so the hard-approach and soft-tail laws carry through directly. These are analytic convolutions: they do not go through the FFT and do not need mass sizing.
+The soft tail's slope survives in both cases. The point case carries its hard edge through unchanged (a pure shift); the range case reshapes the hard edge as above, so only the soft-tail law carries through directly. These are analytic convolutions: they do not go through the FFT and do not need mass sizing.
 
-## The backward pass has two grid operations
+## The backward pass
 
 The child fold and the edge convolution build their grids by different rules. They are separate steps.
 
@@ -83,7 +83,6 @@ Each item carries provenance flags:
 - $w$: half-width of a date range
 - $s$: center of a date range
 - $A$: amplitude of a point or range operand
-- $a$: location of a hard boundary
 - $b$: hard-approach exponent (power-law order at a hard boundary)
 - $k$: soft-tail log-slope
 - $C$: a constant factor
@@ -186,7 +185,7 @@ Support is $f$'s support shifted by $t_0$; width and shape unchanged.
 **Boundary laws** (both carried, no refit):
 
 - **Hard side.** `HardApproach` with exponent $b$ unchanged; $t_{\text{hard}} \to t_{\text{hard}} + t_0$.
-- **Soft side.** `SoftTailLaw` with slope $k$ unchanged. The law is edge-relative (stored against the edge ordinate), and the edge ordinate shifts by the same $-\ln A$, so it stays consistent without refitting.
+- **Soft side.** `Linear` with slope $k$ unchanged. The law is edge-relative (stored against the edge ordinate), and the edge ordinate shifts by the same $-\ln A$, so it stays consistent without refitting.
 
 **Implementation.** Shift the grid origin by $t_0$, add $-\ln A$ to all ordinates, shift $t_{\text{hard}}$, copy both laws.
 
@@ -231,13 +230,14 @@ Support $[-w, \infty)$; the step becomes a linear ramp on $[-w, w]$; the right-t
 
 **Operands.** Two gridded densities $f$ (spacing $dx_1$, $N_1$ points) and $g$ (spacing $dx_2$, $N_2$ points).
 
-**Method (FFT, in plain space).** A convolution is an integral, not a pointwise operation, so it is carried out in plain probability space:
+**Method (FFT, in plain space).** A convolution is an integral, not a pointwise operation, so it is carried out in plain probability space. The output window is chosen by mass **before** convolving, from the operand mass-bounded domains: the result's mass lies within the Minkowski sum $[\,lo_f + lo_g,\ hi_f + hi_g\,]$ of those domains, so that sum bounds the output window without the result in hand (conservative, so it never clips mass).
 
-1. **Resample** both to a common spacing $dx = \min(dx_1, dx_2)$; the FFT needs a shared grid and the finer spacing is the resolution floor.
-2. **Peak-normalize.** Convert neg-log to plain by subtracting the peak ordinate and exponentiating (prevents underflow); record the peak offset in neg-log units.
-3. **Full-mode FFT convolution.** The output has $N_1 + N_2 - 1$ points and already spans the Minkowski sum.
-4. **Convert back** to neg-log and restore the peak offset.
-5. **Mass-size** the output grid (the FFT grid is large; trim to the target mass fraction).
+1. **Choose the output window** by mass from the operand mass-bounded domains (Minkowski sum), at spacing $dx = \min(dx_1, dx_2)$; the finer spacing is the resolution floor.
+2. **Resample** both operands to $dx$; the FFT needs a shared grid.
+3. **Peak-normalize.** Convert neg-log to plain by subtracting the peak ordinate and exponentiating (prevents underflow); record the peak offset in neg-log units.
+4. **Full-mode FFT convolution.** The full result has $N_1 + N_2 - 1$ points and spans the Minkowski sum.
+5. **Convert back** to neg-log and restore the peak offset.
+6. **Land** the result on the chosen window in a single resample, clamping the hard side to the convolution's own support.
 
 **Support.** $[\,x^{f}_{\min} + x^{g}_{\min},\ x^{f}_{\max} + x^{g}_{\max}\,]$.
 
@@ -248,7 +248,7 @@ Support $[-w, \infty)$; the step becomes a linear ramp on $[-w, w]$; the right-t
 - **Hard side.** Exponents add and gain one ($t^{p} \ast t^{q} \sim t^{p + q + 1}$); the result edge is the sum of the operand hard edges. Refit `HardApproach` from the outermost trusted points.
 - **Soft side.** Refit `Linear` slope from the outermost trusted points; discard everything below the roundoff floor.
 
-**Implementation.** Resample, peak-normalize, full FFT, denormalize, refit both tails from the trusted band, then mass-window. This is the only case that mass-sizes its own output.
+**Implementation.** Choose the output window from the operand mass-bounded domains, resample to $dx$, peak-normalize, full FFT, denormalize, land on the window, then refit both tails from the trusted band. This is the only case that mass-sizes its output; the window is derived from the operands, with a fallback to the result's own mass when an operand has no mass-bounded domain (a `Point`/`Range` operand or a non-mass-sizable tail).
 
 </details>
 
@@ -338,7 +338,7 @@ Two facts hold for every case:
 
 **Boundary laws.** On a side where the box is the tightest bound, the result is hard there; on the other side $f$'s law carries into the product.
 
-**Implementation.** Intersect at spacing $dx$; interpolate $f$ on the overlap grid; scale by $A_r$; compose the tails from the two operands. (The box's own sides are hard, not `Error`; see K24.)
+**Implementation.** Intersect at spacing $dx$; interpolate $f$ on the overlap grid; scale by $A_r$; compose the tails from the two operands. (The box's own sides are hard, not `Error`; see K13.)
 
 </details>
 
@@ -407,7 +407,7 @@ The plain-space `safe_divisor` floor is not what prevents the spike; under NegLo
 
 **Bulk.** On a grid over the intersection at $g$'s spacing, divide the range height by $g$ pointwise: $A_r / g$.
 
-**Boundary laws.** Inherited from the range dividend's declared sides (`Error` under the current model, `Hard` under K24).
+**Boundary laws.** Inherited from the range dividend's declared sides (`Error` under the current model, `Hard` under K13).
 
 </details>
 
@@ -430,7 +430,7 @@ Negation reflects a distribution across the time axis, $f(x) \to f(-x)$. The bac
 
 - **Point** at $t$: moves to $-t$.
 - **Range** $[s, e]$: becomes $[-e, -s]$.
-- **Function**: the grid is reflected ($x_{\min}, x_{\max} \to -x_{\max}, -x_{\min}$), the ordinates reversed, and **the two boundary laws swap sides**, each reflected: a `HardApproach` negates its $t_{\text{hard}}$, a `SoftTailLaw` flips its slope sign. A hard left bound becomes a hard right bound; a right-decaying soft tail becomes a left-decaying soft tail.
+- **Function**: the grid is reflected ($x_{\min}, x_{\max} \to -x_{\max}, -x_{\min}$), the ordinates reversed, and **the two boundary laws swap sides**, each reflected: a `HardApproach` negates its $t_{\text{hard}}$, a `Linear` tail flips its slope sign. A hard left bound becomes a hard right bound; a right-decaying soft tail becomes a left-decaying soft tail.
 
 ### Coalescent weight (pointwise cost)
 
@@ -440,7 +440,7 @@ $$-\ln\!\big(p(t)\,e^{-c(t)}\big) = -\ln p(t) + c(t),$$
 
 evaluated at each grid point on the **existing** grid: no resampling and no support change. There are three costs, each a function of a node's time and child count: a **leaf** cost, an **internal-node** cost, and a **root** cost.
 
-**Grid and placement.** The internal or root cost is added on the child-product grid, before the single end-of-node mass re-window (step 5 of the child multiplication). The leaf cost belongs to the **outgoing message only**, never the stored node distribution.
+**Grid and placement.** The internal or root cost is the coalescent contribution added on the child-product grid (step 5 of the child multiplication); the child fold applies no mass re-window. The leaf cost belongs to the **outgoing message only**, never the stored node distribution.
 
 **Boundary laws.** A finite cost cannot turn zero probability positive or make an undefined side defined, so each side keeps its input class (`Hard`, `HardApproach`, `Constant`, `Error` carried unchanged). Because the cost varies with $t$ it changes a soft tail's local slope, so a `Linear` law is refit from the reweighted grid. The result is peak-normalized.
 
@@ -469,7 +469,7 @@ Main path [packages/treetime-distribution/src/distribution_ops/convolve.rs#L130-
 </details>
 
 <details>
-<summary>K24. Compact operands present `Error` sides, so range-clipped products lose mass sizing 💻🚩</summary>
+<summary>K13. Compact operands present `Error` sides, so range-clipped products lose mass sizing 💻🚩</summary>
 
 Point, range, and formula operands present `Error` on both sides for the multiplication support and composition rules [packages/treetime-distribution/src/distribution_ops/multiply.rs#L431-L452](packages/treetime-distribution/src/distribution_ops/multiply.rs#L431-L452). This is correct for the disjointness test, where `Error` and `Hard` both restrict the domain, but wrong for tail composition: `Error` dominates the lattice [packages/treetime-distribution/src/distribution_ops/multiply.rs#L352-L373](packages/treetime-distribution/src/distribution_ops/multiply.rs#L352-L373), so any product clipped by a date range or point inherits `Error` on that side and becomes non-mass-sizable, forcing `rewindow_to_mass` back to a shift-only normalize.
 
@@ -478,7 +478,7 @@ A compact operand carries zero density beyond its support, a hard fact, so it sh
 </details>
 
 <details>
-<summary>K13. Branch factor is mass-sized at construction, against the intended design 💻🚩</summary>
+<summary>K14. Branch factor is mass-sized at construction, against the intended design 💻🚩</summary>
 
 `compute_branch_length_distribution` currently **mass-sizes the freshly built factor** [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L66-L72](packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L66-L72). The intended design builds it analytically from its closed form, with no re-window at construction.
 
@@ -536,7 +536,7 @@ Re-window deliberately leaves $2\epsilon$ mass in the tails, so a grid-only inte
 <details>
 <summary>K18. Coalescent factor is message-only 📄💻</summary>
 
-The coalescent factor belongs to the **outgoing (backward) message only**, never the stored node distribution. It is added on the node grid before the single end-of-node re-window.
+The coalescent factor belongs to the **outgoing (backward) message only**, never the stored node distribution. It is added on the child-product grid as the final step of the child multiplication (step 5), which applies no mass re-window.
 
 </details>
 
@@ -559,8 +559,8 @@ Grid selection and manipulation before and after convolution is not settled. A c
 <details>
 <summary>K21. Which left-law to declare for range ⊛ function 🧮🚩</summary>
 
-- **Default**: `HardApproach` with exponent $b + 1$ at $a - w$ (sub-grid accurate).
-- **Plain `Hard` at $a - w$**: acceptable only when $w \gg dx$, so the ramp is grid-resolved.
+- **Default**: `HardApproach` with exponent $b + 1$ at $t_{\text{hard}} - w$ (sub-grid accurate).
+- **Plain `Hard` at $t_{\text{hard}} - w$**: acceptable only when $w \gg dx$, so the ramp is grid-resolved.
 - **When $w \lesssim dx$**: the ramp is sub-cell, and only the `HardApproach` law represents it.
 
 </details>
@@ -568,8 +568,8 @@ Grid selection and manipulation before and after convolution is not settled. A c
 <details>
 <summary>K22. Grid-map sizing rule 🧮</summary>
 
-- The FFT path self-sizes by mass.
-- Every analytic path produces a naturally compact, tail-complete result and defers sizing to the pass re-window.
+- The FFT path sizes its output window by mass, from the operand mass-bounded domains (Minkowski sum), before convolving; it falls back to the result's own mass when an operand has no mass-bounded domain.
+- Every analytic path produces a naturally compact, tail-complete result and defers sizing to the next convolution's output-grid selection.
 - The resolution floor is the finest operand $dx$.
 
 </details>
