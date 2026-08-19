@@ -65,9 +65,8 @@ where
     // convolved toward the parent. Every downstream consumer (likely_time, quantile, and the outgoing
     // convolution via to_plain_normalized) is shift-invariant, so the peak offset removed here has no
     // effect on inferred times or likelihoods.
-    slot
-      .node
-      .set_time_distribution(Some(Arc::new(distribution.normalize())));
+    let distribution = distribution.normalize();
+    slot.node.set_time_distribution(Some(Arc::new(distribution)));
   }
 
   send_message_to_parent(coalescent_model, graph, slot)
