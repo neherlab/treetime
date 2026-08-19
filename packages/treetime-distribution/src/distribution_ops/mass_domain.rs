@@ -2,7 +2,7 @@ use crate::policy::{NegLog, YAxisPolicy};
 use crate::{Distribution, DistributionFunction};
 use eyre::Report;
 use ndarray::Array1;
-use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
+use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridEdge, Side, SoftTailLaw};
 use treetime_utils::make_error;
 
 /// Total probability mass of a neg-log grid distribution, tails included.
@@ -312,7 +312,7 @@ fn mass_profile(f: &DistributionFunction<f64, NegLog>) -> Result<MassProfile, Re
 fn tail_mass(extrap: BoundaryBehavior, w_edge: f64, t_edge: f64, side: Side) -> Result<f64, Report> {
   match extrap {
     BoundaryBehavior::Linear(law) => Ok(law.mass(w_edge)),
-    BoundaryBehavior::HardApproach(law) => Ok(law.mass(w_edge, t_edge)),
+    BoundaryBehavior::HardApproach(law) => Ok(law.mass(GridEdge { t: t_edge, y: w_edge })),
     BoundaryBehavior::Hard => Ok(0.0),
     BoundaryBehavior::Error => make_error!("Mass domain: {side:?} side has an undeclared (Error) tail"),
   }

@@ -1,4 +1,4 @@
-use crate::GridFn;
+use crate::{GridEdge, GridFn};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use treetime_utils::least_squares::LineFit;
@@ -13,7 +13,8 @@ use treetime_utils::make_error;
 /// `kb/decisions/distribution-tails-and-arithmetic.md`.
 ///
 /// The law is *edge-relative*: it stores only shape (`t_hard` and the regime) and reads the live
-/// grid edge `(t_edge, y_edge)` on evaluation, exactly like [`SoftTailLaw`](crate::SoftTailLaw). The
+/// grid edge ([`GridEdge`](crate::GridEdge)) on evaluation, exactly like
+/// [`SoftTailLaw`](crate::SoftTailLaw). The
 /// boundary location `t_hard` is an immovable physical fact (e.g. `t = 0` for branch lengths); the
 /// ordinate is read live, so a peak-normalization shift, a resample, or a re-window needs no refit.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -102,26 +103,27 @@ impl HardApproachLaw {
     Ok(HardApproachLaw { t_hard, shape })
   }
 
-  /// Evaluate the approach law in neg-log at `t`, anchored on the live grid edge.
+  /// Evaluate the approach law in neg-log at `t`, anchored on the live grid `edge`.
   ///
-  /// `y_edge` is the grid's stored neg-log edge ordinate and `t_edge` its coordinate. Each regime is
-  /// its own closed form, so the law meets the grid continuously at the edge:
+  /// `edge` is the grid's current edge (its coordinate `edge.t` and stored neg-log ordinate
+  /// `edge.y`). Each regime is its own closed form, so the law meets the grid continuously at the
+  /// edge:
   ///
-  /// - [`Finite`](Approach::Finite): the line `y_edge + slope*(t - t_edge)`, finite everywhere
+  /// - [`Finite`](Approach::Finite): the line `edge.y + slope*(t - edge.t)`, finite everywhere
   ///   including at `t == t_hard`, where it carries the boundary mode.
   /// - [`Divergent`](Approach::Divergent): the power-law
-  ///   `y_edge - b*ln(|t - t_hard| / |t_edge - t_hard|)`, returning `+inf` at `t == t_hard` because
+  ///   `edge.y - b*ln(|t - t_hard| / |edge.t - t_hard|)`, returning `+inf` at `t == t_hard` because
   ///   the density is zero at the boundary.
-  pub fn eval(&self, y_edge: f64, t_edge: f64, t: f64) -> f64 {
+  pub fn eval(&self, edge: GridEdge, t: f64) -> f64 {
     match self.shape {
-      Approach::Finite { slope } => y_edge + slope * (t - t_edge),
+      Approach::Finite { slope } => edge.y + slope * (t - edge.t),
       Approach::Divergent { b } => {
         let dt = (t - self.t_hard).abs();
         if dt == 0.0 {
           return f64::INFINITY;
         }
-        let dt_edge = (t_edge - self.t_hard).abs();
-        y_edge - b * (dt / dt_edge).ln()
+        let dt_edge = (edge.t - self.t_hard).abs();
+        edge.y - b * (dt / dt_edge).ln()
       },
     }
   }
@@ -129,15 +131,15 @@ impl HardApproachLaw {
   /// Probability mass in the approach region between `t_hard` and the grid edge, in plain
   /// probability.
   ///
-  /// Closed form of `integral_{t_hard}^{t_edge} exp(-y(t)) dt` with the edge probability recovered
-  /// from its stored neg-log ordinate as `p_edge = exp(-y_edge)`:
+  /// Closed form of `integral_{t_hard}^{edge.t} exp(-y(t)) dt` with the edge probability recovered
+  /// from the anchor's stored neg-log ordinate as `p_edge = exp(-edge.y)`:
   ///
   /// - [`Finite`](Approach::Finite), `slope != 0`: `p_edge * (exp(slope*dt_edge) - 1) / slope`.
   /// - [`Finite`](Approach::Finite), `slope == 0`: `p_edge * dt_edge`.
   /// - [`Divergent`](Approach::Divergent): `p_edge * dt_edge / (b + 1)`.
-  pub fn mass(&self, y_edge: f64, t_edge: f64) -> f64 {
-    let dt_edge = (t_edge - self.t_hard).abs();
-    let p_edge = (-y_edge).exp();
+  pub fn mass(&self, edge: GridEdge) -> f64 {
+    let dt_edge = (edge.t - self.t_hard).abs();
+    let p_edge = (-edge.y).exp();
 
     match self.shape {
       Approach::Finite { slope } if slope != 0.0 => p_edge * (slope * dt_edge).exp_m1() / slope,

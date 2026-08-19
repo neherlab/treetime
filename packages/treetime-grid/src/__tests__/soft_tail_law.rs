@@ -39,7 +39,7 @@ mod tests {
     #[case] expected: f64,
   ) {
     let law = SoftTailLaw { slope };
-    assert_abs_diff_eq!(expected, law.eval(y_edge, t_edge, t), epsilon = 1e-14);
+    assert_abs_diff_eq!(expected, law.eval(GridEdge { t: t_edge, y: y_edge }, t), epsilon = 1e-14);
   }
 
   // --- SoftTailLaw::fit ---

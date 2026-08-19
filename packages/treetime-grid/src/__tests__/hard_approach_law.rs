@@ -47,7 +47,7 @@ mod tests {
     #[case] expected: f64,
   ) {
     let law = HardApproachLaw { t_hard, shape };
-    let actual = law.eval(y_edge, t_edge, t);
+    let actual = law.eval(GridEdge { t: t_edge, y: y_edge }, t);
     if expected.is_infinite() {
       assert!(actual.is_infinite() && actual > 0.0, "expected +inf, got {actual}");
     } else {
@@ -122,7 +122,7 @@ mod tests {
     let grid = GridFn::from_range_values((0.2, 1.0), ndarray::array![2.0, 3.0, 4.0, 5.0, 6.0])?;
     let law = HardApproachLaw::fit_linear(&grid, 0.0, Side::Left, 0.5).expect("fit should succeed");
     assert_eq!(Approach::Finite { slope: 7.5 }, law.shape);
-    assert_abs_diff_eq!(0.5, law.eval(2.0, 0.2, 0.0), epsilon = 1e-12);
+    assert_abs_diff_eq!(0.5, law.eval(GridEdge { t: 0.2, y: 2.0 }, 0.0), epsilon = 1e-12);
     Ok(())
   }
 
@@ -191,7 +191,7 @@ mod tests {
     #[case] expected: f64,
   ) {
     let law = HardApproachLaw { t_hard, shape };
-    assert_abs_diff_eq!(expected, law.mass(y_edge, t_edge), epsilon = 1e-14);
+    assert_abs_diff_eq!(expected, law.mass(GridEdge { t: t_edge, y: y_edge }), epsilon = 1e-14);
   }
 
   // --- HardApproachLaw::negate_arg ---

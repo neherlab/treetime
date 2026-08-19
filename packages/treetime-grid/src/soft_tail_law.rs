@@ -1,5 +1,5 @@
-use crate::GridFn;
 use crate::hard_approach_law::Side;
+use crate::{GridEdge, GridFn};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use treetime_utils::least_squares::LineFit;
@@ -91,14 +91,13 @@ impl SoftTailLaw {
     Ok(SoftTailLaw { slope })
   }
 
-  /// Evaluate the tail in neg-log at `t`, anchored on the live grid edge.
+  /// Evaluate the tail in neg-log at `t`, anchored on the live grid `edge`.
   ///
-  /// `y_edge` is the grid's stored neg-log edge ordinate (`y[0]` on the left, `y[n-1]` on the
-  /// right) and `t_edge` its coordinate. Returns `y_edge + slope * (t - t_edge)`, the straight
-  /// line that a decaying exponential tail becomes in neg-log space, so the tail meets the grid
-  /// continuously at the edge.
-  pub fn eval(&self, y_edge: f64, t_edge: f64, t: f64) -> f64 {
-    y_edge + self.slope * (t - t_edge)
+  /// `edge` is the grid's current edge (its coordinate `edge.t` and stored neg-log ordinate
+  /// `edge.y`). Returns `edge.y + slope * (t - edge.t)`, the straight line that a decaying
+  /// exponential tail becomes in neg-log space, so the tail meets the grid continuously at the edge.
+  pub fn eval(&self, edge: GridEdge, t: f64) -> f64 {
+    edge.y + self.slope * (t - edge.t)
   }
 
   /// Tail mass beyond the edge, `exp(-y_edge) / |slope|`, in plain probability.

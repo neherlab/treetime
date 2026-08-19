@@ -1,5 +1,6 @@
 pub mod boundary_behavior;
 pub mod grid;
+pub mod grid_edge;
 pub mod grid_fn;
 pub mod grid_iter;
 pub mod hard_approach_law;
@@ -18,6 +19,7 @@ impl InterpElem for f64 {}
 
 pub use boundary_behavior::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS};
 pub use grid::Grid;
+pub use grid_edge::GridEdge;
 pub use grid_fn::GridFn;
 pub use hard_approach_law::{Approach, HardApproachLaw, Side};
 pub use soft_tail_law::SoftTailLaw;

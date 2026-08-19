@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use crate::InterpElem;
 use crate::boundary_behavior::BoundaryBehavior;
 use crate::grid::Grid;
+use crate::grid_edge::GridEdge;
 use crate::hard_approach_law::Side;
 use crate::interp_nonuniform::interp_nonuniform;
 use crate::soft_tail_law::SoftTailLaw;
@@ -411,11 +412,11 @@ impl<T: InterpElem> GridFn<T> {
       // Soft log-linear tail: a straight neg-log line anchored on the live grid edge, evaluated on
       // the stored ordinate axis so it meets the grid continuously at `boundary_value`.
       BoundaryBehavior::Linear(law) => {
-        let value = law.eval(
-          boundary_value.to_f64().unwrap(),
-          bound.to_f64().unwrap(),
-          xi.to_f64().unwrap(),
-        );
+        let edge = GridEdge {
+          t: bound.to_f64().unwrap(),
+          y: boundary_value.to_f64().unwrap(),
+        };
+        let value = law.eval(edge, xi.to_f64().unwrap());
         Ok(T::from(value).unwrap())
       },
       BoundaryBehavior::HardApproach(law) => {
@@ -425,8 +426,12 @@ impl<T: InterpElem> GridFn<T> {
           return Ok(T::zero());
         }
         // Between hard boundary and grid edge: use the edge-relative approach law, anchored on the
-        // live grid edge (`boundary_value` at `bound`), exactly like the soft-tail arm above.
-        let value = law.eval(boundary_value.to_f64().unwrap(), bound.to_f64().unwrap(), xi_f64);
+        // live grid edge, exactly like the soft-tail arm above.
+        let edge = GridEdge {
+          t: bound.to_f64().unwrap(),
+          y: boundary_value.to_f64().unwrap(),
+        };
+        let value = law.eval(edge, xi_f64);
         Ok(T::from(value).unwrap())
       },
       BoundaryBehavior::Hard => Ok(T::zero()),
