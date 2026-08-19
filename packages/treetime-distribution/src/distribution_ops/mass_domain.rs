@@ -77,36 +77,57 @@ pub fn rewindow_to_mass(
   let Distribution::Function(f) = dist else {
     return Ok(dist.normalize());
   };
+  let Some(normalized) = peak_normalized_if_mass_sizable(f) else {
+    return Ok(dist.normalize());
+  };
+  let (lo, hi) = mass_bounded_domain(&normalized, eps)?;
+  resample_to_mass_window(&normalized, lo, hi, grid_points)
+}
 
+/// Peak-normalize a neg-log grid distribution, or `None` when it is not mass-sizable.
+///
+/// Subtracts the peak ordinate (so the mode has plain probability one) when the distribution has a
+/// finite mode and a finite positive total mass. A distribution with no finite mode, a degenerate soft
+/// tail with zero decay (infinite mass), or an `Error` tail carrying no probability law -- such as the
+/// hard box a leaf date range contributes to a forward product -- is not mass-sizable; the caller
+/// falls back to the shift-only `normalize`, since mass-sizing is an accuracy step, not a correctness
+/// requirement.
+pub fn peak_normalized_if_mass_sizable(
+  f: &DistributionFunction<f64, NegLog>,
+) -> Option<DistributionFunction<f64, NegLog>> {
   let y_peak = f.grid_fn().y_min();
   if !y_peak.is_finite() {
-    // No finite mode to normalize against; the shift-only normalize yields Empty, matching the site
-    // this call replaces.
-    return Ok(dist.normalize());
+    return None;
   }
   let normalized = f.shift_y(-y_peak);
+  total_mass(&normalized)
+    .is_ok_and(|z| z.is_finite() && z > 0.0)
+    .then_some(normalized)
+}
 
-  // Fall back to the shift-only normalize when the distribution is not mass-sizable, keeping the
-  // pilot grid peak-normalized (mass-sizing is an accuracy step, not a correctness requirement). This
-  // covers a degenerate soft tail with zero decay, whose mass is infinite, and an `Error` tail that
-  // carries no probability law -- such as the hard box a leaf date range contributes to a forward
-  // product. Both are legitimate here and have no probability mass domain to size by.
-  let mass_sizable = total_mass(&normalized).is_ok_and(|z| z.is_finite() && z > 0.0);
-  if !mass_sizable {
-    return Ok(dist.normalize());
+/// Resample a peak-normalized neg-log distribution onto the mass window `[lo, hi]`.
+///
+/// The resolution floor is `dx = min(mass_width / (grid_points - 1), input_dx)`, so the result holds
+/// **at least** `grid_points` points and is never coarser than the input. The resample runs over the
+/// exact `[lo, hi]` endpoints rather than a `dx`-stepped grid whose final point can round a fraction of
+/// a cell past the bound: a hard edge must land exactly on its bound, so a downstream division by a
+/// hard-bounded message never samples it beyond support (which would read `+inf` and collapse the
+/// message to empty). The `ceil` keeps the resulting spacing `mass_width / (n - 1) <= dx`, so the
+/// floor holds. The soft tails are then re-fit on the moved outermost points as a deliberate accuracy
+/// step at the new edge.
+pub fn resample_to_mass_window(
+  normalized: &DistributionFunction<f64, NegLog>,
+  lo: f64,
+  hi: f64,
+  grid_points: usize,
+) -> Result<Distribution<NegLog>, Report> {
+  if hi <= lo {
+    return make_error!("Mass window collapsed to an empty interval [{lo}, {hi}]");
   }
-
-  let (lo, hi) = mass_bounded_domain(&normalized, eps)?;
   let mass_width = hi - lo;
   let floor_dx = normalized.dx();
   let target_dx = mass_width / (grid_points.saturating_sub(1).max(1) as f64);
   let dx = target_dx.min(floor_dx);
-
-  // Resample over the exact `[lo, hi]` endpoints rather than a `dx`-stepped grid whose final point
-  // can round a fraction of a cell past the bound. A hard edge must land exactly on its bound, so a
-  // downstream division by a hard-bounded message never samples it beyond support (which would read
-  // `+inf` and collapse the message to empty). The point count is at least `grid_points`, and the
-  // `ceil` keeps the resulting spacing `mass_width / (n - 1) <= dx`, so the resolution floor holds.
   let n_points = ((mass_width / dx).ceil() as usize + 1).max(grid_points).max(2);
   let resampled = normalized.resample_range_n_points((lo, hi), n_points)?;
   let resampled = refit_soft_tails(resampled)?;

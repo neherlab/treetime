@@ -1,5 +1,6 @@
 pub mod convolve;
 pub mod divide;
+pub mod edge_convolution;
 pub mod log_cost;
 pub mod map;
 pub mod mass_domain;

@@ -64,6 +64,24 @@ pub fn distribution_convolution<Y: SupportsConvolution>(
   }
 }
 
+/// Convolution that returns a result of two `Function` operands on the fine FFT grid, skipping the
+/// operand-spacing coarsening that [`distribution_convolution`] applies.
+///
+/// A caller that immediately re-grids the result -- an edge crossing that lands the message on a
+/// mass-based output grid -- would otherwise resample twice (coarsen to operand spacing, then re-grid
+/// to the mass window), losing resolution the fine convolution held. This variant hands back the fine
+/// result so the mass re-grid is the single, defining grid selection. Every operand combination with a
+/// non-`Function` operand is identical to [`distribution_convolution`].
+pub fn distribution_convolution_fine<Y: SupportsConvolution>(
+  a: &Distribution<Y>,
+  b: &Distribution<Y>,
+) -> Result<Distribution<Y>, Report> {
+  match (a, b) {
+    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function_fine::<Y>(a, b),
+    _ => distribution_convolution(a, b),
+  }
+}
+
 fn convolution_point_point<Y: SupportsConvolution>(
   a: &DistributionPoint<f64, Y>,
   b: &DistributionPoint<f64, Y>,
@@ -176,10 +194,23 @@ fn conv_operand_domain(has_mass: bool) -> Option<HardDomain> {
   ))
 }
 
+/// Convolve two `Function` operands, coarsening the fine FFT result back to the coarser operand
+/// spacing (the general-purpose grid presentation).
+fn convolution_function_function<Y: SupportsConvolution>(
+  a: &DistributionFunction<f64, Y>,
+  b: &DistributionFunction<f64, Y>,
+) -> Result<Distribution<Y>, Report> {
+  let coarse_dx = a.dx().max(b.dx());
+  match convolution_function_function_fine(a, b)? {
+    Distribution::Function(conv_distr) => coarsen_convolution(conv_distr, coarse_dx),
+    other => Ok(other),
+  }
+}
+
 // Numerical routine: `a`/`b` operands, `t` grid, `n` trusted-point count follow the
 // convolution/interpolation conventions used throughout this module.
 #[allow(clippy::many_single_char_names)]
-fn convolution_function_function<Y: SupportsConvolution>(
+fn convolution_function_function_fine<Y: SupportsConvolution>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
@@ -256,7 +287,7 @@ fn convolution_function_function<Y: SupportsConvolution>(
   }
 
   let conv_distr = DistributionFunction::<f64, Y>::from_start_dx_values(x_min, dx, y)?;
-  coarsen_convolution(conv_distr, dx_a.max(dx_b))
+  Ok(Distribution::Function(conv_distr))
 }
 
 /// Coarsen the fine-grid convolution result back to the coarser operand spacing.

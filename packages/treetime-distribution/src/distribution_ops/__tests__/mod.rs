@@ -1,5 +1,6 @@
 mod test_convolve;
 mod test_divide;
+mod test_edge_convolution;
 mod test_log_cost;
 mod test_map;
 mod test_mass_domain;
