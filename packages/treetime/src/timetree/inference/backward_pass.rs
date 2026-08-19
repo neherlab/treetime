@@ -1,6 +1,7 @@
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
+use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use crate::timetree::inference::tail_fit::fit_message_soft_tail;
 use eyre::{Report, WrapErr};
 use std::cmp::Ordering;
@@ -12,6 +13,7 @@ use treetime_distribution::NegLog;
 use treetime_distribution::distribution_add_neg_log_weight;
 use treetime_distribution::distribution_convolution;
 use treetime_distribution::distribution_multiplication;
+use treetime_distribution::rewindow_to_mass;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
@@ -143,6 +145,10 @@ where
     let parent_message = message
       .with_left_extrap(left_tail)?
       .with_right_extrap(BoundaryBehavior::Hard)?;
+    // Size the message grid by probability mass: the single regrid of the pass, picking the
+    // convolution output grid once as the message crosses the edge. The message is tail-complete here
+    // (fitted Linear left, Hard right), so its mass domain is well-defined.
+    let parent_message = rewindow_to_mass(&parent_message, EPS, GRID_POINTS)?;
     edge.set_msg_to_parent(Some(Arc::new(parent_message)));
   }
 

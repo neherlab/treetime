@@ -1,5 +1,6 @@
 use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
+use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use crate::timetree::inference::tail_fit::fit_message_soft_tail;
 use eyre::Report;
 use log::{Level, debug, log_enabled, warn};
@@ -11,6 +12,7 @@ use treetime_distribution::NegLog;
 use treetime_distribution::distribution_convolution;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
+use treetime_distribution::rewindow_to_mass;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
@@ -234,10 +236,12 @@ where
       let dist_from_parent = forward_message
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(right_tail)?;
+      // Size the message grid by probability mass: the single regrid, picking the convolution output
+      // grid once as the message crosses the edge. Tail-complete here (Hard left, fitted Linear right).
+      let dist_from_parent = rewindow_to_mass(&dist_from_parent, EPS, GRID_POINTS)?;
       // Peak-normalize the refined posterior and store it as-is. Multiplying the parent message by
       // the subtree evidence is a pointwise operation that does not resize the grid, so the stored
-      // posterior needs no mass sizing: that belongs to the edge crossing (the convolution that
-      // produced the parent message), not to this product.
+      // posterior needs no further mass sizing.
       let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?.normalize();
       log_refinement(&slot.node, parent_time_dist, &combined);
 
@@ -263,6 +267,9 @@ where
       let dist_from_parent = forward_message
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(right_tail)?;
+      // Size the message grid by probability mass: the single regrid, picking the convolution output
+      // grid once as the message crosses the edge. Tail-complete here (Hard left, fitted Linear right).
+      let dist_from_parent = rewindow_to_mass(&dist_from_parent, EPS, GRID_POINTS)?;
       log_refinement(&slot.node, parent_time_dist, &dist_from_parent);
       slot.node.set_time_distribution(Some(Arc::new(dist_from_parent)));
     }
