@@ -16,7 +16,7 @@ pub use distribution_ops::edge_convolution::convolve_across_edge;
 pub use distribution_ops::log_cost::{distribution_add_neg_log_weight, distribution_apply_neg_log_weight};
 pub use distribution_ops::map::distribution_map;
 pub use distribution_ops::mass_domain::{mass_bounded_domain, rewindow_to_mass, total_mass};
-pub use distribution_ops::multiply::distribution_multiplication;
+pub use distribution_ops::multiply::{distribution_multiplication, distribution_product};
 pub use distribution_ops::negate::{distribution_negation, distribution_negation_inplace};
 pub use distribution_ops::scalar_multiply::distribution_scalar_multiplication;
 pub use distribution_ops::subtract::distribution_subtraction;
