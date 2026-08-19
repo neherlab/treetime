@@ -1,7 +1,6 @@
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
-use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use crate::timetree::inference::tail_fit::fit_message_soft_tail;
 use eyre::{Report, WrapErr};
 use std::cmp::Ordering;
@@ -13,7 +12,6 @@ use treetime_distribution::NegLog;
 use treetime_distribution::distribution_add_neg_log_weight;
 use treetime_distribution::distribution_convolution;
 use treetime_distribution::distribution_multiplication;
-use treetime_distribution::rewindow_to_mass;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
@@ -105,12 +103,13 @@ where
   }
 
   if let Some(dist) = result.as_ref() {
-    // Re-window once at the end: size the combined posterior's grid by probability mass (design D3),
-    // which peak-normalizes as its first step (subsuming the shift-only normalize this replaces).
-    // Every downstream consumer (likely_time, quantile, hpd_region, and the outgoing convolution via
-    // to_plain_normalized) is shift-invariant, so the peak offset removed here has no effect on
-    // inferred times or likelihoods.
-    let dist = rewindow_to_mass(dist, EPS, GRID_POINTS)?;
+    // Peak-normalize the combined posterior and store it as-is. The child fold already produced a
+    // compact grid (operand extents, finest operand pitch), so the stored node distribution needs no
+    // mass sizing: that belongs to the edge crossing, where a message is regridded once as it is
+    // convolved toward the parent. Every downstream consumer (likely_time, quantile, and the outgoing
+    // convolution via to_plain_normalized) is shift-invariant, so the peak offset removed here has no
+    // effect on inferred times or likelihoods.
+    let dist = dist.normalize();
     slot.node.set_time_distribution(Some(Arc::new(dist)));
   }
 
@@ -234,8 +233,8 @@ fn sum_function_messages(functions: &[&DistributionFunction<f64, NegLog>]) -> Re
   // `multiply_function_function` builds its intersection grid (`round(range / dx) + 1` points over an
   // inclusive grid). This intermediate fold grid is a transient fidelity grid, not a stored
   // distribution: it stays at least as fine as its sharpest operand so no operand loses resolution
-  // before the sum (design D3). The mass re-window to `GRID_POINTS` happens once on the combined
-  // posterior after the fold.
+  // before the sum (design D3). The combined posterior is only peak-normalized after the fold; mass
+  // sizing happens later, once per message, when the outgoing message is regridded across an edge.
   let resampled = functions
     .iter()
     .map(|f| f.resample_range_dx((left, right), dx))
