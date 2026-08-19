@@ -1,18 +1,15 @@
 use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
-use crate::timetree::inference::tail_fit::fit_message_soft_tail;
 use eyre::Report;
 use log::{Level, debug, log_enabled, warn};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use treetime_distribution::BoundaryBehavior;
 use treetime_distribution::Distribution;
 use treetime_distribution::NegLog;
-use treetime_distribution::distribution_convolution;
+use treetime_distribution::convolve_across_edge;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
-use treetime_distribution::rewindow_to_mass;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
@@ -227,18 +224,11 @@ where
       };
       let parent_except_subtree = restrict_to_reachable(parent_except_subtree, subtree_dist, branch_dist)?;
 
-      // Tail policy for the forward message (kb/decisions/distribution-tails-and-arithmetic.md).
-      // The parent's time is a hard lower bound (left tail Hard). There is no upper bound from the
-      // parent side on how far in the future the node could be, so the right side is soft: a fitted
-      // log-linear Linear tail with finite mass, so the quantile and HPD integrals stay well-defined.
-      let forward_message = distribution_convolution(&parent_except_subtree, branch_dist)?;
-      let right_tail = fit_message_soft_tail(&forward_message, Side::Right)?;
-      let dist_from_parent = forward_message
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(right_tail)?;
-      // Size the message grid by probability mass: the single regrid, picking the convolution output
-      // grid once as the message crosses the edge. Tail-complete here (Hard left, fitted Linear right).
-      let dist_from_parent = rewindow_to_mass(&dist_from_parent, EPS, GRID_POINTS)?;
+      // Convolve the parent-minus-subtree message across the branch into the forward message. Tail
+      // policy (kb/decisions/distribution-tails-and-arithmetic.md): the parent's time is a hard lower
+      // bound (left Hard); the node's time is unbounded to the future, so the right side is a soft,
+      // fitted log-linear tail with finite mass, keeping the quantile and HPD integrals well-defined.
+      let dist_from_parent = convolve_across_edge(&parent_except_subtree, branch_dist, Side::Right, EPS, GRID_POINTS)?;
       // Peak-normalize the refined posterior and store it as-is. Multiplying the parent message by
       // the subtree evidence is a pointwise operation that does not resize the grid, so the stored
       // posterior needs no further mass sizing.
@@ -259,17 +249,8 @@ where
     } else if let (Some(parent_time_dist), Some(branch_dist)) =
       (parent.time_distribution(), edge.branch_length_distribution())
     {
-      // Same forward tail policy as the two-parent-message branch above: Hard left, fitted Linear
-      // right. Fit after normalize(), a pure ordinate shift that preserves the grid the fit reads
-      // and leaves the slope unchanged (the soft-tail slope is shift-invariant).
-      let forward_message = distribution_convolution(parent_time_dist, branch_dist)?.normalize();
-      let right_tail = fit_message_soft_tail(&forward_message, Side::Right)?;
-      let dist_from_parent = forward_message
-        .with_left_extrap(BoundaryBehavior::Hard)?
-        .with_right_extrap(right_tail)?;
-      // Size the message grid by probability mass: the single regrid, picking the convolution output
-      // grid once as the message crosses the edge. Tail-complete here (Hard left, fitted Linear right).
-      let dist_from_parent = rewindow_to_mass(&dist_from_parent, EPS, GRID_POINTS)?;
+      // Same forward tail policy as the branch above: Hard left, fitted Linear right.
+      let dist_from_parent = convolve_across_edge(parent_time_dist, branch_dist, Side::Right, EPS, GRID_POINTS)?;
       log_refinement(&slot.node, parent_time_dist, &dist_from_parent);
       slot.node.set_time_distribution(Some(Arc::new(dist_from_parent)));
     }

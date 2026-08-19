@@ -2,7 +2,6 @@ use crate::coalescent::coalescent::CoalescentModel;
 use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
-use crate::timetree::inference::tail_fit::fit_message_soft_tail;
 use eyre::{Report, WrapErr};
 use std::cmp::Ordering;
 use std::sync::Arc;
@@ -10,10 +9,9 @@ use treetime_distribution::BoundaryBehavior;
 use treetime_distribution::Distribution;
 use treetime_distribution::DistributionFunction;
 use treetime_distribution::NegLog;
+use treetime_distribution::convolve_across_edge;
 use treetime_distribution::distribution_add_neg_log_weight;
-use treetime_distribution::distribution_convolution;
 use treetime_distribution::distribution_multiplication;
-use treetime_distribution::rewindow_to_mass;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
@@ -40,7 +38,13 @@ where
   })
 }
 
-/// Computes time distribution for a single internal node from its children.
+/// Computes a node's time distribution and the backward message it sends to its parent.
+///
+/// The node is handled in two phases. Child multiplication folds the backward messages of the node's
+/// children and multiplies in the coalescent prior and the input date constraint, giving the node's
+/// time distribution ([`multiply_node_factors`]); that distribution is stored peak-normalized. The
+/// node distribution is then convolved across the branch into the backward message the parent folds
+/// in ([`send_message_to_parent`]).
 fn propagate_distributions_backward_slot<N, E, D>(
   graph: &Graph<N, E, D>,
   coalescent_model: Option<&CoalescentModel>,
@@ -52,20 +56,92 @@ where
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  let is_leaf = graph.is_leaf(slot.key);
-  let is_root = slot.parent_edge.is_none();
-  let n_children = graph
-    .get_node(slot.key)
-    .expect("Indexed node must exist")
-    .read_arc()
-    .outbound()
-    .len();
+  let node_distribution = multiply_node_factors(graph, coalescent_model, dependencies, slot)?;
 
-  // Gather the backward messages from all good children, then combine them on one common grid (see
-  // fn combine_child_messages). Collecting the messages first keeps the fold independent of the
-  // order the children are visited.
-  let mut messages: Vec<Arc<Distribution<NegLog>>> = Vec::new();
-  for (child, _) in graph.children_of(&graph.get_node(slot.key).expect("Indexed node must exist").read_arc()) {
+  if let Some(distribution) = &node_distribution {
+    // Peak-normalize the combined posterior and store it as-is. The child fold already produced a
+    // compact grid (operand extents, finest operand pitch), so the stored node distribution needs no
+    // mass sizing: that belongs to the edge crossing, where a message is regridded once as it is
+    // convolved toward the parent. Every downstream consumer (likely_time, quantile, and the outgoing
+    // convolution via to_plain_normalized) is shift-invariant, so the peak offset removed here has no
+    // effect on inferred times or likelihoods.
+    slot
+      .node
+      .set_time_distribution(Some(Arc::new(distribution.normalize())));
+  }
+
+  send_message_to_parent(coalescent_model, graph, slot)
+}
+
+/// Multiplies the independent factors that make up a node's time distribution.
+///
+/// A node's posterior over its time is a product of independent factors, which under `NegLog` is a
+/// sum of ordinates: the fold of the child backward messages ([`combine_child_messages`]), the
+/// coalescent prior (root- or internal-specific), and the input date constraint. Returns `None` for a
+/// node with neither children nor a date constraint, which therefore constrains its time not at all.
+fn multiply_node_factors<N, E, D>(
+  graph: &Graph<N, E, D>,
+  coalescent_model: Option<&CoalescentModel>,
+  dependencies: &IndexedPassDependencies<N, E>,
+  slot: &IndexedPassSlot<N, E>,
+) -> Result<Option<Distribution<NegLog>>, Report>
+where
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + TimetreeEdge,
+  D: Send + Sync,
+{
+  let messages = gather_child_messages(graph, dependencies, slot);
+  let mut distribution = combine_child_messages(&messages)?;
+
+  // Multiply in the coalescent prior once the child messages are folded. The root and internal
+  // contributions differ, and both scale with the node's child count.
+  if let (Some(model), Some(current)) = (coalescent_model, distribution.as_ref()) {
+    let n_children = graph
+      .get_node(slot.key)
+      .expect("Indexed node must exist")
+      .read_arc()
+      .outbound()
+      .len();
+    distribution = Some(if slot.parent_edge.is_none() {
+      distribution_add_neg_log_weight(current, |time| model.root_contribution(time, n_children))?
+    } else {
+      distribution_add_neg_log_weight(current, |time| model.internal_contribution(time, n_children))?
+    });
+  }
+
+  // Multiply in the input date constraint. It is an independent factor of the node's posterior, so it
+  // multiplies whatever the children have to say; for a leaf, which has no children, it is the whole
+  // distribution. Doing this here rather than once at load time is what keeps the input recoverable:
+  // the forward pass refines the time distribution of a node whose date is uncertain in place, and
+  // sending that refined distribution back to the parent on the next round would count the parent's
+  // own message toward the node a second time.
+  if let Some(constraint) = slot.node.date_constraint() {
+    distribution = Some(match distribution {
+      Some(current) => distribution_multiplication(&current, constraint)?,
+      None => constraint.as_ref().clone(),
+    });
+  }
+
+  Ok(distribution)
+}
+
+/// Gathers the backward messages from a node's good children.
+///
+/// Collecting the messages up front keeps the fold independent of the order the children are visited.
+/// A bad-branch child carries no usable message and is skipped.
+fn gather_child_messages<N, E, D>(
+  graph: &Graph<N, E, D>,
+  dependencies: &IndexedPassDependencies<N, E>,
+  slot: &IndexedPassSlot<N, E>,
+) -> Vec<Arc<Distribution<NegLog>>>
+where
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + TimetreeEdge,
+  D: Send + Sync,
+{
+  let mut messages = Vec::new();
+  let node = graph.get_node(slot.key).expect("Indexed node must exist");
+  for (child, _) in graph.children_of(&node.read_arc()) {
     let child_key = child.read_arc().key();
     let child = dependencies.slot(child_key);
     if child.node.bad_branch() {
@@ -80,79 +156,7 @@ where
       messages.push(Arc::clone(parent_message));
     }
   }
-
-  let mut result = combine_child_messages(&messages)?;
-
-  if let (Some(model), Some(distribution)) = (coalescent_model, result.as_ref()) {
-    result = Some(if is_root {
-      distribution_add_neg_log_weight(distribution, |time| model.root_contribution(time, n_children))?
-    } else {
-      distribution_add_neg_log_weight(distribution, |time| model.internal_contribution(time, n_children))?
-    });
-  }
-
-  // Lift the input date constraint into the time distribution. It is an independent factor of the
-  // node's posterior, so it multiplies whatever the children have to say; for a leaf, which has no
-  // children, it is the whole message. Doing this here rather than once at load time is what keeps
-  // the input recoverable: the forward pass refines the time distribution of a node whose date is
-  // uncertain in place, and sending that refined distribution back to the parent on the next round
-  // would count the parent's own message toward the node a second time.
-  if let Some(constraint) = slot.node.date_constraint().clone() {
-    result = Some(match result {
-      Some(dist) => distribution_multiplication(&dist, &constraint)?,
-      None => constraint.as_ref().clone(),
-    });
-  }
-
-  if let Some(dist) = result.as_ref() {
-    // Peak-normalize the combined posterior and store it as-is. The child fold already produced a
-    // compact grid (operand extents, finest operand pitch), so the stored node distribution needs no
-    // mass sizing: that belongs to the edge crossing, where a message is regridded once as it is
-    // convolved toward the parent. Every downstream consumer (likely_time, quantile, and the outgoing
-    // convolution via to_plain_normalized) is shift-invariant, so the peak offset removed here has no
-    // effect on inferred times or likelihoods.
-    let dist = dist.normalize();
-    slot.node.set_time_distribution(Some(Arc::new(dist)));
-  }
-
-  // A leaf's coalescent factor belongs only to the temporary message convolved toward the parent,
-  // never to the distribution stored on the node.
-  let outgoing_distribution = if is_leaf {
-    let distribution = slot.node.time_distribution();
-    match (coalescent_model, distribution) {
-      (Some(model), Some(distribution)) => Some(Arc::new(distribution_add_neg_log_weight(
-        distribution.as_ref(),
-        |time| Ok(model.leaf_contribution(time)),
-      )?)),
-      (_, distribution) => distribution.clone(),
-    }
-  } else {
-    slot.node.time_distribution().clone()
-  };
-
-  if !slot.node.bad_branch()
-    && let Some((_, edge)) = slot.parent_edge.as_mut()
-    && let (Some(branch_dist), Some(node_time_dist)) = (edge.branch_length_distribution(), outgoing_distribution)
-  {
-    let negated_branch_dist = branch_dist.negate()?;
-    // Tail policy for the backward message (kb/decisions/distribution-tails-and-arithmetic.md).
-    // The parent could be arbitrarily far in the past, so the left side is soft: a fitted log-linear
-    // Linear tail that decays with finite mass, so the quantile and HPD integrals stay well-defined.
-    // The child's sampling date is a hard upper bound on the parent's age, so the right tail stays
-    // Hard.
-    let message = distribution_convolution(node_time_dist.as_ref(), &negated_branch_dist)?;
-    let left_tail = fit_message_soft_tail(&message, Side::Left)?;
-    let parent_message = message
-      .with_left_extrap(left_tail)?
-      .with_right_extrap(BoundaryBehavior::Hard)?;
-    // Size the message grid by probability mass: the single regrid of the pass, picking the
-    // convolution output grid once as the message crosses the edge. The message is tail-complete here
-    // (fitted Linear left, Hard right), so its mass domain is well-defined.
-    let parent_message = rewindow_to_mass(&parent_message, EPS, GRID_POINTS)?;
-    edge.set_msg_to_parent(Some(Arc::new(parent_message)));
-  }
-
-  Ok(())
+  messages
 }
 
 /// Combine the backward messages of a node's children into a single time distribution.
@@ -346,4 +350,68 @@ fn derive_summed_tail(
   // Every operand tail falls into one of the three classes above, so reaching here means the fold
   // received no operand messages -- the caller guarantees at least one, so this is an internal bug.
   make_internal_error!("Backward child fold on the {side:?} side received no operand tails")
+}
+
+/// Convolves a node's distribution across the branch to its parent and sets the backward message.
+///
+/// This is the edge crossing of the backward pass. The node's outgoing distribution
+/// ([`outgoing_node_distribution`]) is convolved with the negated branch-length distribution
+/// ([`convolve_across_branch`]). A node with no parent edge, a bad branch, or a missing branch-length
+/// or node distribution sends no message.
+fn send_message_to_parent<N, E, D>(
+  coalescent_model: Option<&CoalescentModel>,
+  graph: &Graph<N, E, D>,
+  slot: &mut IndexedPassSlot<N, E>,
+) -> Result<(), Report>
+where
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + TimetreeEdge,
+  D: Send + Sync,
+{
+  let outgoing = outgoing_node_distribution(coalescent_model, graph.is_leaf(slot.key), &slot.node)?;
+
+  if !slot.node.bad_branch()
+    && let Some((_, edge)) = slot.parent_edge.as_mut()
+    && let (Some(branch_length_distribution), Some(outgoing)) = (edge.branch_length_distribution(), outgoing)
+  {
+    let message = convolve_across_branch(&outgoing, branch_length_distribution)?;
+    edge.set_msg_to_parent(Some(Arc::new(message)));
+  }
+
+  Ok(())
+}
+
+/// The node's distribution as it leaves toward its parent.
+///
+/// A leaf's coalescent factor belongs only to this outgoing message, never to the distribution stored
+/// on the node, so it is added here rather than in [`multiply_node_factors`]. An internal node sends
+/// its stored distribution unchanged.
+fn outgoing_node_distribution<N: TimetreeNode>(
+  coalescent_model: Option<&CoalescentModel>,
+  is_leaf: bool,
+  node: &N,
+) -> Result<Option<Arc<Distribution<NegLog>>>, Report> {
+  if is_leaf && let (Some(model), Some(distribution)) = (coalescent_model, node.time_distribution()) {
+    let with_leaf = distribution_add_neg_log_weight(distribution.as_ref(), |time| Ok(model.leaf_contribution(time)))?;
+    return Ok(Some(Arc::new(with_leaf)));
+  }
+  Ok(node.time_distribution().clone())
+}
+
+/// Convolves an outgoing node distribution across the branch to form the backward message.
+///
+/// The branch is negated because the parent is older than the node, so its age is the node's time
+/// minus the branch length. The convolution then picks its output grid by probability mass from the
+/// operands and lands the message on it in a single regrid (see [`convolve_across_edge`]).
+///
+/// Tail policy (kb/decisions/distribution-tails-and-arithmetic.md): the parent could be arbitrarily
+/// far in the past, so the left side is soft (`Side::Left`) -- a fitted log-linear tail that decays
+/// with finite mass, keeping the quantile and HPD integrals well-defined. The child's sampling date is
+/// a hard upper bound on the parent's age, so the right tail stays `Hard`.
+fn convolve_across_branch(
+  outgoing: &Distribution<NegLog>,
+  branch_length_distribution: &Distribution<NegLog>,
+) -> Result<Distribution<NegLog>, Report> {
+  let negated_branch = branch_length_distribution.negate()?;
+  convolve_across_edge(outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)
 }
