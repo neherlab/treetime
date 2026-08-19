@@ -34,14 +34,14 @@ Builder methods `fn GridFn.with_left_extrap()`, `fn GridFn.with_right_extrap()`,
 
 The inference pipeline produces several distribution types. Each carries per-side tails that downstream operations use when computing support intersections. Tails are metadata set on the convolution result; they are consumed by the next operation in the pipeline (multiplication or division).
 
-| Distribution            | Left tail (past)  | Right tail (future) | Where set                                                                                             | Consumed by                                                                     |
-| ----------------------- | ----------------- | ------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Leaf time constraint    | `Error`           | `Error`             | default                                                                                               | backward convolution input                                                      |
-| Branch length           | `HardApproach`    | `Linear` (fitted)   | `fn compute_branch_length_distribution()` (hard approach near `t=0`, `SoftTailLaw::fit` near `t_max`) | convolution input (negated for backward); `fn compute_positional_log_lh()` eval |
-| Backward parent message | `Linear` (fitted) | `Hard`              | `fn fit_message_soft_tail()` on the left, `with_right_extrap(Hard)` (backward_pass)                   | multiplication (combining children), division (forward cavity)                  |
-| Internal node time dist | `Linear` (fitted) | `Hard`              | multiplication result (left tail re-fit by `fn derive_summed_tail()`, preserved by normalize)         | forward convolution input, division dividend                                    |
-| Forward message         | `Hard`            | `Linear` (fitted)   | `with_left_extrap(Hard)`, `fn fit_message_soft_tail()` on the right (forward_pass)                    | multiplication (refining node dist)                                             |
-| Refined node time dist  | `Hard`            | `Hard`              | multiplication result (composed from forward message and subtree dist, preserved by normalize)        | `fn Distribution.likely_time()` extraction                                      |
+| Distribution            | Left tail (past)  | Right tail (future) | Where set                                                                                                 | Consumed by                                                                     |
+| ----------------------- | ----------------- | ------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Leaf time constraint    | `Error`           | `Error`             | default                                                                                                   | backward convolution input                                                      |
+| Branch length           | `HardApproach`    | `Linear` (fitted)   | `fn compute_branch_length_distribution()` (hard approach near `t=0`, `SoftTailLaw::fit` near `t_max`)     | convolution input (negated for backward); `fn compute_positional_log_lh()` eval |
+| Backward parent message | `Linear` (fitted) | `Hard`              | `fn fit_message_soft_tail()` on the left, `with_right_extrap(Hard)` (backward_pass)                       | multiplication (combining children), division (forward cavity)                  |
+| Internal node time dist | `Linear` (fitted) | `Hard`              | product result (left tail composed in closed form by `fn distribution_product()`, preserved by normalize) | forward convolution input, division dividend                                    |
+| Forward message         | `Hard`            | `Linear` (fitted)   | `with_left_extrap(Hard)`, `fn fit_message_soft_tail()` on the right (forward_pass)                        | multiplication (refining node dist)                                             |
+| Refined node time dist  | `Hard`            | `Hard`              | multiplication result (composed from forward message and subtree dist, preserved by normalize)            | `fn Distribution.likely_time()` extraction                                      |
 
 ### Why backward messages have `Linear` left / `Hard` right
 
@@ -61,7 +61,7 @@ Convolution reads only the grid ordinates and reconstructs the message tails fro
 
 Under the negative-log axis, `fn Distribution.normalize()` subtracts the minimum ordinate via `fn DistributionFunction.shift_y()`. A shift is closed form on both fitted laws -- the soft-tail slope and the hard approach law's shape are shift-invariant -- so `shift_y` carries the laws through unchanged rather than dropping them. Every regrid also preserves the per-side policy and fitted law through the centralized `fn GridFn.regridded()` helper, and `fn GridFn.scale_y()` rescales the fitted laws rather than discarding them. Only an arbitrary `fn GridFn.mapv()` drops the law (keeping the side's class), which no normalization path uses.
 
-This lets the backward pass combine child messages with multiplication and normalization alone: multiplication composes the result tails (see [multiplication tails](#multiplication)) and normalization preserves them, so a chain of multiplications keeps its fitted `Linear` left tail and can still extend to reach a child with a disjoint finite grid. The child fold re-fits the summed left tail once from the combined grid (`fn derive_summed_tail()`).
+This lets the backward pass combine child messages with a single product and normalization: the product composes the result tails (see [multiplication tails](#multiplication)) and normalization preserves them, so the folded result keeps its fitted `Linear` left tail and can still extend to reach a child with a disjoint finite grid. The child fold is `fn distribution_product()` (treetime-distribution), which co-locates the `Function` messages on one common grid and composes the summed left tail in closed form from the operands' own tails (`fn compose_multiplication_tail()`), so no tail is re-fit from the combined grid.
 
 The forward pass applies its own tail policies _after_ normalization because the forward message needs `Hard` left and a fitted `Linear` right regardless of the tails the multiplication produced. It fits the right soft tail from the normalized grid; the shift left the slope unchanged, so fitting before or after normalization gives the same law.
 
@@ -175,7 +175,8 @@ Scientific workflows requiring posterior peak, normalization, or integrated-prob
 ### Inference pass tail application
 
 - [packages/treetime/src/timetree/inference/tail_fit.rs](../../packages/treetime/src/timetree/inference/tail_fit.rs): `fn fit_message_soft_tail()` -- fits the soft-side `Linear` tail of a message, errors on a degenerate grid, inert on non-Function messages. Shared by both passes.
-- [packages/treetime/src/timetree/inference/backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs): backward message soft-left / hard-right assignment; `fn derive_summed_tail()` re-fits the summed left tail in the child fold.
+- [packages/treetime/src/timetree/inference/backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs): backward message soft-left / hard-right assignment; the child fold delegates to `fn distribution_product()` (treetime-distribution), which composes the summed tails in closed form.
+- [packages/treetime-distribution/src/distribution_ops/multiply.rs](../../packages/treetime-distribution/src/distribution_ops/multiply.rs): `fn distribution_product()` folds the child `Function` messages on one common grid; `fn compose_multiplication_tail()` composes each side's result tail in closed form (soft slopes add, a hard bound dominates).
 - [packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs): forward message hard-left / soft-right assignment, fit after `normalize()`.
 
 ### Tests
