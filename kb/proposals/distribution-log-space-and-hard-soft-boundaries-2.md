@@ -11,6 +11,7 @@ Terms used throughout:
   - **Hard boundary**: probability is zero beyond it; the domain ends there. Near it the density is a power law, $p \propto (t - t_{\text{hard}})^{b}$ (type `HardApproach`, exponent $b$). $b = 0$ is a finite step, so a mode can sit exactly on the edge.
   - **Soft boundary**: an analytic tail continues beyond, log-linear in $t$ (type `Linear`, carrying a soft-tail law of slope $k$: $-\ln p = C + k\,(t - t_{\text{edge}})$).
   - **`Error`**: a side that must never be evaluated.
+  - **Removed law**: the base proposal's flat `Constant` soft law is removed by decision. `Linear` is the only soft law; a genuinely flat tail is a `Linear` law of slope zero.
 - **Branch-length factor**: for a branch with $n$ mutations, $L(t) \propto (\mu t)^{n} e^{-\mu t}$, with a hard bound at $t = 0$ and its peak at the maximum-likelihood branch length.
 - **Passes**: timetree inference runs a backward pass (leaves to root, building each node's outgoing message) and a forward pass (root to leaves). A coalescent prior adds a per-node weight.
 - **Mass windowing** (re-window): trim a distribution's grid to a target fraction of its probability mass, the boundary laws carrying the remainder.
@@ -263,7 +264,7 @@ carried out in neg-log as the sum of ordinates ($-\ln(f g) = -\ln f - \ln g$): e
 Two facts hold for every case:
 
 - **Support is the intersection.** The product is non-zero only where both operands are. Resolved per side: both hard, the tightest (innermost) hard bound; both soft, the loosest (outermost) soft bound, since each operand's tail law continues to the other; mixed, the hard bound dominates. A soft side never separates two domains.
-- **Each edge composes on its own.** Fitted laws combine in closed form: two `HardApproach` exponents add ($b_1 + b_2$, with no gain, the contrast with convolution's $+1$); two `Linear` slopes add ($k_1 + k_2$); a flat `Constant` contributes slope zero and leaves a `Linear` slope unchanged. A nullary `Hard` declares zero density in the sub-grid gap, so it absorbs a `HardApproach` rather than propagating it. `Error` on either side dominates (result `Error`).
+- **Each edge composes on its own.** Fitted laws combine in closed form: two `HardApproach` exponents add ($b_1 + b_2$, with no gain, the contrast with convolution's $+1$); two `Linear` slopes add ($k_1 + k_2$), so a flat tail (`Linear` of slope zero) leaves the other slope unchanged. A nullary `Hard` declares zero density in the sub-grid gap, so it absorbs a `HardApproach` rather than propagating it. `Error` on either side dominates (result `Error`).
 
 **Empty invariant** (base-proposal Part B): $f \cdot g$ is `Empty` only when the operands' hard domains are genuinely disjoint, or one operand is already empty. A soft side never causes disjointness. Any other empty product is a numerical or logic collapse and is raised as an internal error rather than returned, because a silent `Empty` poisons every ancestor to the root (the motivating defect).
 
@@ -353,7 +354,7 @@ Two facts hold for every case:
 
 **Boundary laws.** Composed per side from the two operand tails: exponents add (no gain), slopes add, `Hard` absorbs `HardApproach`, `Error` dominates.
 
-**Implementation.** Resolve the intersection with the soft-extend-then-intersect rule; grid at $\min(dx_1, dx_2)$; interpolate both; multiply; attach the composed tails. Sizing is deferred to the pass re-window.
+**Implementation.** Resolve the intersection with the soft-extend-then-intersect rule; grid at $\min(dx_1, dx_2)$; interpolate both; multiply; attach the composed tails. Sizing is deferred to the next convolution's output-grid selection.
 
 </details>
 
@@ -381,7 +382,7 @@ carried out in neg-log as **subtraction** of ordinates ($-\ln(f/g) = -\ln f - (-
 Two facts govern it:
 
 - **The dividend owns the support.** The result spans the dividend's grid. The divisor bounds the quotient only on a side where its own tail does not extend past its grid, and a divisor `Error` edge strictly inside the dividend truncates the result there.
-- **Only a flat divisor tail extends the quotient.** Beyond the divisor's grid, dividing by a decaying (`Linear`) or zero (`Hard`, `HardApproach`) tail inflates the quotient into a spurious spike: under NegLog dividing by zero probability is $f - (+\infty) = -\infty$, an infinite-probability spike that makes the downstream convolution non-finite and collapses the forward message to `Empty`. Only a `Constant` (flat, finite) divisor tail is safe to divide by, so only it lets the quotient continue past the divisor's edge under the dividend; every other tail bounds the quotient at the divisor's real grid edge, so the divisor is never sampled beyond its support.
+- **No divisor tail extends the quotient.** Beyond the divisor's grid, dividing by a decaying (`Linear`) or zero (`Hard`, `HardApproach`) tail inflates the quotient into a spurious spike: under NegLog dividing by zero probability is $f - (+\infty) = -\infty$, an infinite-probability spike that makes the downstream convolution non-finite and collapses the forward message to `Empty`. Every divisor tail therefore bounds the quotient at the divisor's real grid edge, so the divisor is never sampled beyond its support; the dividend's own tail carries the cavity past that edge.
 
 The plain-space `safe_divisor` floor is not what prevents the spike; under NegLog it is the identity, so this tail rule is the guard. Only division by a `Function` is defined; dividing by a point or a range is not well-defined, and `Formula` is unsupported.
 
@@ -403,7 +404,7 @@ The plain-space `safe_divisor` floor is not what prevents the spike; under NegLo
 
 **Operands.** A range dividend (box of height $A_r$) and a divisor $g$.
 
-**Result and support.** The intersection of the range with the divisor's quotient-domain (the divisor extended on any `Constant` side). May degenerate to a point or `Empty`.
+**Result and support.** The intersection of the range with the divisor's grid support (no divisor tail extends the quotient). May degenerate to a point or `Empty`.
 
 **Bulk.** On a grid over the intersection at $g$'s spacing, divide the range height by $g$ pointwise: $A_r / g$.
 
@@ -416,7 +417,7 @@ The plain-space `safe_divisor` floor is not what prevents the spike; under NegLo
 
 **Operands.** A dividend $f$ and a divisor $g$, each gridded with boundary laws.
 
-**Result and support.** $f$'s grid, intersected with $g$'s quotient-domain per the divisor-tail rule (a `Constant` divisor side extends to $f$'s bound; every other side bounds at $g$'s edge). May degenerate to a point or `Empty`.
+**Result and support.** $f$'s grid, intersected with $g$'s grid support per the divisor-tail rule (every divisor side bounds at $g$'s edge; no tail extends the quotient). May degenerate to a point or `Empty`.
 
 **Bulk.** Co-locate on the intersection at $dx = \min(dx_f, dx_g)$; subtract ordinates (divide in plain space).
 
@@ -442,7 +443,7 @@ evaluated at each grid point on the **existing** grid: no resampling and no supp
 
 **Grid and placement.** The internal or root cost is the coalescent contribution added on the child-product grid (step 5 of the child multiplication); the child fold applies no mass re-window. The leaf cost belongs to the **outgoing message only**, never the stored node distribution.
 
-**Boundary laws.** A finite cost cannot turn zero probability positive or make an undefined side defined, so each side keeps its input class (`Hard`, `HardApproach`, `Constant`, `Error` carried unchanged). Because the cost varies with $t$ it changes a soft tail's local slope, so a `Linear` law is refit from the reweighted grid. The result is peak-normalized.
+**Boundary laws.** A finite cost cannot turn zero probability positive or make an undefined side defined, so each side keeps its input class (`Hard`, `HardApproach`, `Error` carried unchanged). Because the cost varies with $t$ it changes a soft tail's local slope, so a `Linear` law is refit from the reweighted grid. The result is peak-normalized.
 
 ### Code divergences
 
@@ -487,7 +488,7 @@ This contradicts landed code and needs an explicit decision.
 </details>
 
 <details>
-<summary>K14. Branch-length closed form and its analytic grid 📄💻</summary>
+<summary>K15. Branch-length closed form and its analytic grid 📄💻</summary>
 
 The factor carries a **Poisson indel term**:
 
@@ -502,7 +503,7 @@ Its grid follows directly from the form:
 </details>
 
 <details>
-<summary>K15. Mass machinery location 💻</summary>
+<summary>K16. Mass machinery location 💻</summary>
 
 The mass functions live in [packages/treetime-distribution/src/distribution_ops/mass_domain.rs](packages/treetime-distribution/src/distribution_ops/mass_domain.rs): `total_mass`, `mass_bounded_domain`, `rewindow_to_mass`. `rewindow_to_mass` trims to $\ge 1 - 2\epsilon$ of the mass.
 
@@ -513,7 +514,7 @@ The **same functions** serve regridding and should serve HPD.
 ### Confidence intervals (HPD)
 
 <details>
-<summary>K16. Confidence integrals ignore tail mass 💻</summary>
+<summary>K17. Confidence integrals ignore tail mass 💻</summary>
 
 `quantile` and `hpd_region` integrate a **grid-only trapezoidal CDF** and ignore the boundary-law tail masses [packages/treetime-distribution/src/distribution_core/distribution.rs#L266-L323](packages/treetime-distribution/src/distribution_core/distribution.rs#L266-L323), [packages/treetime-distribution/src/distribution_core/distribution.rs#L550-L635](packages/treetime-distribution/src/distribution_core/distribution.rs#L550-L635).
 
@@ -524,7 +525,7 @@ Re-window deliberately leaves $2\epsilon$ mass in the tails, so a grid-only inte
 </details>
 
 <details>
-<summary>K17. Related open tickets 💻</summary>
+<summary>K18. Related open tickets 💻</summary>
 
 - [kb/issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md](../issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md)
 - [kb/issues/M-timetree-confidence-interval-deficiencies.md](../issues/M-timetree-confidence-interval-deficiencies.md)
@@ -534,14 +535,14 @@ Re-window deliberately leaves $2\epsilon$ mass in the tails, so a grid-only inte
 ### Backward pass and coalescent
 
 <details>
-<summary>K18. Coalescent factor is message-only 📄💻</summary>
+<summary>K19. Coalescent factor is message-only 📄💻</summary>
 
 The coalescent factor belongs to the **outgoing (backward) message only**, never the stored node distribution. It is added on the child-product grid as the final step of the child multiplication (step 5), which applies no mass re-window.
 
 </details>
 
 <details>
-<summary>K19. Common grid for the child product 📄</summary>
+<summary>K20. Common grid for the child product 📄</summary>
 
 Child multiplication builds the common grid by **intersecting hard sides to the tightest bound and widening soft sides to the loosest**, with spacing taken from the finest operand.
 
@@ -550,14 +551,14 @@ Child multiplication builds the common grid by **intersecting hard sides to the 
 ### Open decisions and caveats
 
 <details>
-<summary>K20. Convolution grid handling is undecided 🚩</summary>
+<summary>K21. Convolution grid handling is undecided 🚩</summary>
 
 Grid selection and manipulation before and after convolution is not settled. A concrete scheme is proposed and validated but not implemented; per the project scientific-change gate it needs explicit consent.
 
 </details>
 
 <details>
-<summary>K21. Which left-law to declare for range ⊛ function 🧮🚩</summary>
+<summary>K22. Which left-law to declare for range ⊛ function 🧮🚩</summary>
 
 - **Default**: `HardApproach` with exponent $b + 1$ at $t_{\text{hard}} - w$ (sub-grid accurate).
 - **Plain `Hard` at $t_{\text{hard}} - w$**: acceptable only when $w \gg dx$, so the ramp is grid-resolved.
@@ -566,7 +567,7 @@ Grid selection and manipulation before and after convolution is not settled. A c
 </details>
 
 <details>
-<summary>K22. Grid-map sizing rule 🧮</summary>
+<summary>K23. Grid-map sizing rule 🧮</summary>
 
 - The FFT path sizes its output window by mass, from the operand mass-bounded domains (Minkowski sum), before convolving; it falls back to the result's own mass when an operand has no mass-bounded domain.
 - Every analytic path produces a naturally compact, tail-complete result and defers sizing to the next convolution's output-grid selection.
@@ -575,7 +576,7 @@ Grid selection and manipulation before and after convolution is not settled. A c
 </details>
 
 <details>
-<summary>K23. branch ⊛ point result is derived, not confirmed 🚩</summary>
+<summary>K24. branch ⊛ point result is derived, not confirmed 🚩</summary>
 
 The domain experts did not specify the branch ⊛ point case. The pure-shift result in C4 is derived from the convolution, not a confirmed decision. Confirm whether it is the intended design.
 
