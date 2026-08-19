@@ -96,8 +96,9 @@ where
 ///
 /// The root and internal contributions differ, and both scale with the node's child count. The leaf
 /// coalescent factor is deliberately not applied here: it belongs to the outgoing message only, never
-/// the stored node distribution, so it is added later in [`outgoing_node_distribution`]. A node with no
-/// coalescent model, or none of whose children left a message, is returned unchanged.
+/// the stored node distribution, so it is added later when the message is formed in
+/// [`send_message_to_parent`]. A node with no coalescent model, or none of whose children left a
+/// message, is returned unchanged.
 fn apply_coalescent_prior<N, E, D>(
   graph: &Graph<N, E, D>,
   coalescent_model: Option<&CoalescentModel>,
@@ -209,10 +210,18 @@ fn combine_child_messages(messages: &[Arc<Distribution<NegLog>>]) -> Result<Opti
 
 /// Convolves a node's distribution across the branch to its parent and sets the backward message.
 ///
-/// This is the edge crossing of the backward pass. The node's outgoing distribution
-/// ([`outgoing_node_distribution`]) is convolved with the negated branch-length distribution
-/// ([`convolve_across_branch`]). A node with no parent edge, a bad branch, or a missing branch-length
-/// or node distribution sends no message.
+/// This is the edge crossing of the backward pass. The node's outgoing distribution is convolved with
+/// the negated branch-length distribution. A node with no parent edge, a bad branch, or a missing
+/// branch-length or node distribution sends no message.
+///
+/// The branch is negated because the parent is older than the node, so its age is the node's time minus
+/// the branch length. The convolution then picks its output grid by probability mass from the operands
+/// and lands the message on it in a single regrid (see [`convolve_across_edge`]).
+///
+/// Tail policy (kb/decisions/distribution-tails-and-arithmetic.md): the parent could be arbitrarily far
+/// in the past, so the left side is soft (`Side::Left`) -- a fitted log-linear tail that decays with
+/// finite mass, keeping the quantile and HPD integrals well-defined. The child's sampling date is a hard
+/// upper bound on the parent's age, so the right tail stays `Hard`.
 fn send_message_to_parent<N, E, D>(
   coalescent_model: Option<&CoalescentModel>,
   graph: &Graph<N, E, D>,
@@ -223,53 +232,28 @@ where
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  let outgoing = outgoing_node_distribution(coalescent_model, graph.is_leaf(slot.key), &slot.node)?;
+  // The node's distribution as it leaves toward its parent. An internal node sends its stored
+  // distribution unchanged.
+  let outgoing = if graph.is_leaf(slot.key)
+    && let (Some(model), Some(distribution)) = (coalescent_model, slot.node.time_distribution())
+  {
+    // Leaf coalescent factor: added to this outgoing message only, so it never reaches the stored node
+    // distribution (set by `multiply_node_factors` without it). It weights how the leaf informs its
+    // parent, not the leaf's own time, so it stays out of the stored distribution the forward pass reuses.
+    let with_leaf = distribution_add_neg_log_weight(distribution.as_ref(), |time| Ok(model.leaf_contribution(time)))?;
+    Some(Arc::new(with_leaf))
+  } else {
+    slot.node.time_distribution().clone()
+  };
 
   if !slot.node.bad_branch()
     && let Some((_, edge)) = slot.parent_edge.as_mut()
     && let (Some(branch_length_distribution), Some(outgoing)) = (edge.branch_length_distribution(), outgoing)
   {
-    let message = convolve_across_branch(&outgoing, branch_length_distribution)?;
+    let negated_branch = branch_length_distribution.negate()?;
+    let message = convolve_across_edge(&outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)?;
     edge.set_msg_to_parent(Some(Arc::new(message)));
   }
 
   Ok(())
-}
-
-/// The node's distribution as it leaves toward its parent.
-///
-/// A leaf's coalescent factor belongs only to this outgoing message, never to the distribution stored
-/// on the node, so it is added here rather than in [`multiply_node_factors`]. An internal node sends
-/// its stored distribution unchanged.
-fn outgoing_node_distribution<N: TimetreeNode>(
-  coalescent_model: Option<&CoalescentModel>,
-  is_leaf: bool,
-  node: &N,
-) -> Result<Option<Arc<Distribution<NegLog>>>, Report> {
-  if is_leaf && let (Some(model), Some(distribution)) = (coalescent_model, node.time_distribution()) {
-    // Leaf coalescent factor: added to this outgoing message only, so it never reaches the stored node
-    // distribution (set by `multiply_node_factors` without it). It weights how the leaf informs its
-    // parent, not the leaf's own time, so it stays out of the stored distribution the forward pass reuses.
-    let with_leaf = distribution_add_neg_log_weight(distribution.as_ref(), |time| Ok(model.leaf_contribution(time)))?;
-    return Ok(Some(Arc::new(with_leaf)));
-  }
-  Ok(node.time_distribution().clone())
-}
-
-/// Convolves an outgoing node distribution across the branch to form the backward message.
-///
-/// The branch is negated because the parent is older than the node, so its age is the node's time
-/// minus the branch length. The convolution then picks its output grid by probability mass from the
-/// operands and lands the message on it in a single regrid (see [`convolve_across_edge`]).
-///
-/// Tail policy (kb/decisions/distribution-tails-and-arithmetic.md): the parent could be arbitrarily
-/// far in the past, so the left side is soft (`Side::Left`) -- a fitted log-linear tail that decays
-/// with finite mass, keeping the quantile and HPD integrals well-defined. The child's sampling date is
-/// a hard upper bound on the parent's age, so the right tail stays `Hard`.
-fn convolve_across_branch(
-  outgoing: &Distribution<NegLog>,
-  branch_length_distribution: &Distribution<NegLog>,
-) -> Result<Distribution<NegLog>, Report> {
-  let negated_branch = branch_length_distribution.negate()?;
-  convolve_across_edge(outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)
 }
