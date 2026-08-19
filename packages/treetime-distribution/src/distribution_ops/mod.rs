@@ -6,6 +6,7 @@ pub mod map;
 pub mod mass_domain;
 pub mod multiply;
 pub mod negate;
+pub mod product;
 pub mod scalar_multiply;
 pub mod subtract;
 pub mod time_bounds;
