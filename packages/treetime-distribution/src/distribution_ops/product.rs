@@ -4,7 +4,6 @@ use crate::distribution_ops::multiply::{compose_multiplication_tail, distributio
 use crate::policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::Zip;
-use std::cmp::Ordering;
 use treetime_grid::BoundaryBehavior;
 use treetime_utils::make_internal_error;
 
@@ -83,10 +82,10 @@ fn multiply_functions<Y: YAxisPolicy>(functions: &[&DistributionFunction<f64, Y>
     .reduce(f64::min)
     .expect("multiply_functions requires at least one operand");
 
-  if !matches!(left.partial_cmp(&right), Some(Ordering::Less)) {
-    // Overlapping hard domains (checked above) always leave left < right, so a non-`Less` compare --
-    // equal, reversed, or `NaN` -- is a numerical collapse. Guarding it keeps an empty product from
-    // silently poisoning every ancestor node.
+  if left >= right {
+    // Overlapping hard domains (checked above) always leave left < right, so an equal or reversed
+    // bound is a numerical collapse (the grid extents are finite, so no `NaN` arises here). Guarding
+    // it keeps an empty product from silently poisoning every ancestor node.
     return make_internal_error!("distribution product produced an empty working grid [{left}, {right}]");
   }
 
