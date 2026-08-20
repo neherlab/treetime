@@ -246,17 +246,17 @@ where
     return Ok(());
   };
 
-  // A leaf folds its coalescent factor into this outgoing message only, so it never reaches the stored
-  // node distribution (set by `multiply_node_factors` without it): the factor weights how the leaf
-  // informs its parent, not the leaf's own time, which the forward pass reuses. An internal node, or any
-  // node without a coalescent model, sends its stored distribution unchanged, borrowed rather than cloned.
-  let outgoing = match coalescent_model {
-    Some(model) if graph.is_leaf(slot.key) => {
-      Cow::Owned(distribution_add_neg_log_weight(distribution.as_ref(), |time| {
-        Ok(model.leaf_contribution(time))
-      })?)
-    },
-    _ => Cow::Borrowed(distribution.as_ref()),
+  // A leaf weights its outgoing message by the leaf coalescent factor. This factor captures how the leaf
+  // informs its parent, not the leaf's own time, so it stays out of the stored distribution the forward
+  // pass reuses (`multiply_node_factors` sets that one without it). Every other node -- internal, or any
+  // node without a coalescent model -- sends its stored distribution unchanged, borrowed rather than cloned.
+  let outgoing = if graph.is_leaf(slot.key)
+    && let Some(model) = coalescent_model
+  {
+    let weighted = distribution_add_neg_log_weight(distribution.as_ref(), |time| Ok(model.leaf_contribution(time)))?;
+    Cow::Owned(weighted)
+  } else {
+    Cow::Borrowed(distribution.as_ref())
   };
 
   let negated_branch = branch_length_distribution.negate()?;
