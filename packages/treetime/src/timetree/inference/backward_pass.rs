@@ -164,24 +164,22 @@ where
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  match (coalescent_model, distribution) {
-    (Some(model), Some(current)) => {
-      let n_children = graph
-        .get_node(slot.key)
-        .expect("Indexed node must exist")
-        .read_arc()
-        .outbound()
-        .len();
-      let contribution = if slot.parent_edge.is_none() {
-        CoalescentModel::root_contribution
-      } else {
-        CoalescentModel::internal_contribution
-      };
-      let weighted = distribution_add_neg_log_weight(&current, |time| contribution(model, time, n_children))?;
-      Ok(Some(weighted))
-    },
-    (_, distribution) => Ok(distribution),
-  }
+  let Some(model) = coalescent_model else {
+    return Ok(distribution);
+  };
+  let Some(current) = distribution else {
+    return Ok(None);
+  };
+  let is_root = graph.is_root(slot.key);
+  let n_children = graph.degree_out(slot.key)?;
+  let weighted = distribution_add_neg_log_weight(&current, |time| {
+    if is_root {
+      model.root_contribution(time, n_children)
+    } else {
+      model.internal_contribution(time, n_children)
+    }
+  })?;
+  Ok(Some(weighted))
 }
 
 /// Multiply the node's input date constraint into its accumulated factors.
