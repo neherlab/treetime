@@ -175,31 +175,161 @@ fn multiply_function_function<Y: YAxisPolicy>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  let a_bounds = (a.x_min(), a.x_max());
-  let a_tails = (a.left_extrap(), a.right_extrap());
-  let b_bounds = (b.x_min(), b.x_max());
-  let b_tails = (b.left_extrap(), b.right_extrap());
-  match multiplication_support_intersection(a_bounds, a_tails, b_bounds, b_tails) {
-    SupportIntersection::Disjoint => {
-      guarded_empty_result("multiplication", Some((a_bounds, a_tails)), Some((b_bounds, b_tails)))
+  // Pairwise multiplication is the two-operand case of the N-ary co-location: co-locate both operands
+  // on one common grid over the support intersection and reduce once. Routing both arities through the
+  // single primitive keeps the grid construction identical, so `a * b` equals `product([a, b])`.
+  multiply_functions(&[a, b])
+}
+
+/// Product of N gridded densities co-located on one common grid: the shared core of both
+/// [`multiply_function_function`] and [`distribution_product`](crate::distribution_ops::product::distribution_product).
+///
+/// A product of independent factors is pointwise -- a sum of neg-log ordinates -- so it is exact,
+/// commutative, and independent of factor order. All operands are co-located on one working grid over
+/// the support intersection and interpolated once each (regardless of fan-out), then reduced by a
+/// single elementwise product.
+///
+/// The grid follows the multiplication support contract (`kb/decisions/distribution-tails-and-arithmetic.md`):
+/// per side the tightest (innermost) hard bound when any operand terminates the domain there,
+/// otherwise the loosest (outermost) soft bound; spacing from the finest operand; both analytical
+/// endpoints included via `Array1::linspace`, so a hard bound lands exactly on a grid node. A disjoint
+/// intersection is a legitimate `Empty` (only hard sides can separate domains); endpoint-only contact
+/// collapses to a `Point`.
+///
+/// Result tails compose in closed form by folding [`compose_multiplication_tail`] over the operands:
+/// soft slopes add, a hard bound dominates, `Error` dominates all. No tail is re-fit from the summed
+/// grid.
+pub fn multiply_functions<Y: YAxisPolicy>(
+  functions: &[&DistributionFunction<f64, Y>],
+) -> Result<Distribution<Y>, Report> {
+  // Float multiplication is commutative but not associative, so the reduction is folded in a canonical
+  // operand order. This makes the product genuinely independent of caller/child order (bit-identical
+  // across permutations of the same operands), not merely equal to rounding tolerance.
+  let ordered = canonical_operand_order(functions);
+  let (&first, rest) = ordered
+    .split_first()
+    .expect("multiply_functions requires at least one operand");
+
+  match multiply_functions_support(&ordered) {
+    // Genuinely disjoint hard domains carry no common support, so their product is legitimately empty.
+    // A soft side never separates domains; only hard sides can, so this branch is the guarded-empty
+    // case by construction.
+    SupportIntersection::Disjoint => Ok(Distribution::empty()),
+    // Supports meet at one point: the product collapses to a point mass whose amplitude is the
+    // pointwise product of the operands sampled there (v0 converts the surviving knot to a delta).
+    SupportIntersection::Point(t) => {
+      let mut amplitude = first.interp(t)?;
+      for f in rest {
+        amplitude = Y::multiply(amplitude, f.interp(t)?);
+      }
+      Ok(Distribution::point(t, amplitude))
     },
-    SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.interp(t)?, b.interp(t)?))),
     SupportIntersection::Interval(bounds) => {
-      let n_points = distribution_support_n_points(bounds, a.dx().min(b.dx()))?;
+      let dx = ordered
+        .iter()
+        .map(|f| f.dx())
+        .reduce(f64::min)
+        .expect("multiply_functions requires at least one operand");
+      let n_points = distribution_support_n_points(bounds, dx)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
-      let values_a = a.interp_many(&grid)?;
-      let values_b = b.interp_many(&grid)?;
-      let values = Zip::from(&values_a)
-        .and(&values_b)
-        .map_collect(|&value_a, &value_b| Y::multiply(value_a, value_b));
-      let function = with_composed_tails(
-        DistributionFunction::from_range_values(bounds, values)?,
-        a_tails,
-        b_tails,
-      )?;
+
+      // Resample every operand onto the shared grid; each lands on the same grid, so the fold is a
+      // plain elementwise product (a sum of ordinates in neg-log).
+      let mut values = first.interp_many(&grid)?;
+      for f in rest {
+        let other = f.interp_many(&grid)?;
+        Zip::from(&mut values)
+          .and(&other)
+          .for_each(|value, &o| *value = Y::multiply(*value, o));
+      }
+
+      let left_tail = compose_product_tail(ordered.iter().map(|f| f.left_extrap()))?;
+      let right_tail = compose_product_tail(ordered.iter().map(|f| f.right_extrap()))?;
+      let function = DistributionFunction::from_range_values(bounds, values)?
+        .with_left_extrap(left_tail)?
+        .with_right_extrap(right_tail)?;
       Ok(Distribution::Function(function))
     },
   }
+}
+
+/// Canonical, order-independent operand sequence for the reduction. Sorted by grid extent then
+/// spacing, so any permutation of the same operands folds in the same order and yields a bit-identical
+/// product despite floating-point non-associativity.
+fn canonical_operand_order<'a, Y: YAxisPolicy>(
+  functions: &[&'a DistributionFunction<f64, Y>],
+) -> Vec<&'a DistributionFunction<f64, Y>> {
+  let mut ordered = functions.to_vec();
+  // `total_cmp` is a total order over f64 (unlike `partial_cmp`), so the sort is deterministic.
+  ordered.sort_by(|a, b| {
+    a.x_min()
+      .total_cmp(&b.x_min())
+      .then_with(|| a.x_max().total_cmp(&b.x_max()))
+      .then_with(|| a.dx().total_cmp(&b.dx()))
+  });
+  ordered
+}
+
+/// Resolve the N-ary multiplication support intersection: `Disjoint`, a single-point `Point`, or an
+/// `Interval`. The N-ary form of [`multiplication_support_intersection`]: per side the result takes
+/// the tightest (innermost) hard bound when any operand terminates its domain there, otherwise the
+/// loosest (outermost) soft bound. Disjointness is decided from hard sides only -- a soft side
+/// continues under its tail law and never separates domains. Endpoint contact uses exact comparison,
+/// matching the pairwise rule; a tolerance would enlarge the intersection.
+#[allow(clippy::float_cmp)] // Endpoint contact requires exact bound equality; a tolerance would enlarge the intersection.
+fn multiply_functions_support<Y: YAxisPolicy>(functions: &[&DistributionFunction<f64, Y>]) -> SupportIntersection {
+  let mut hard_lo = f64::NEG_INFINITY;
+  let mut hard_hi = f64::INFINITY;
+  let mut soft_lo = f64::INFINITY;
+  let mut soft_hi = f64::NEG_INFINITY;
+  let mut any_hard_left = false;
+  let mut any_hard_right = false;
+  for f in functions {
+    if f.left_extrap().is_soft() {
+      soft_lo = soft_lo.min(f.x_min());
+    } else {
+      any_hard_left = true;
+      hard_lo = hard_lo.max(f.x_min());
+    }
+    if f.right_extrap().is_soft() {
+      soft_hi = soft_hi.max(f.x_max());
+    } else {
+      any_hard_right = true;
+      hard_hi = hard_hi.min(f.x_max());
+    }
+  }
+
+  // Disjointness is a fact about hard sides only; a soft side is treated as unbounded on that side.
+  if hard_lo > hard_hi {
+    return SupportIntersection::Disjoint;
+  }
+
+  let lo = if any_hard_left { hard_lo } else { soft_lo };
+  let hi = if any_hard_right { hard_hi } else { soft_hi };
+  if lo == hi {
+    SupportIntersection::Point(lo)
+  } else if lo < hi {
+    SupportIntersection::Interval((lo, hi))
+  } else {
+    // lo > hi while the hard domains overlap is a numerical collapse, not a real intersection; treat
+    // it as disjoint so the caller yields a guarded empty rather than an inverted grid. Unreachable
+    // for well-formed operands (lo > hi implies both sides hard, which the disjoint check caught).
+    SupportIntersection::Disjoint
+  }
+}
+
+/// Compose the per-side result tail of an N-ary product by folding the pairwise composition
+/// ([`compose_multiplication_tail`]): soft slopes add, a hard bound dominates, `Error` dominates all.
+/// Closed-form, with no re-fit from the summed grid.
+fn compose_product_tail(tails: impl Iterator<Item = BoundaryBehavior>) -> Result<BoundaryBehavior, Report> {
+  let mut composed: Option<BoundaryBehavior> = None;
+  for tail in tails {
+    composed = Some(match composed {
+      None => tail,
+      Some(current) => compose_multiplication_tail(current, tail)?,
+    });
+  }
+  Ok(composed.expect("compose_product_tail requires at least one operand"))
 }
 
 fn multiply_formula_formula<Y: YAxisPolicy>(
