@@ -6,6 +6,11 @@ use treetime_utils::make_error;
 
 pub(super) const MAX_GRID_POINTS: usize = 1_000_000;
 
+/// Relative tolerance for treating an interval-count ratio as an exact integer when sizing a grid.
+/// Far above the few-ulp error of a single division, far below a half interval, so it absorbs float
+/// noise at exact multiples without ever misclassifying a genuine fractional ratio.
+const GRID_COUNT_TOL: f64 = 1e-9;
+
 /// Compute union of time bounds from two distributions.
 ///
 /// `Empty` is the union identity: it contributes nothing. Two empty distributions
@@ -72,7 +77,20 @@ pub(super) fn distribution_support_intersection(a: (f64, f64), b: (f64, f64)) ->
 }
 
 pub(super) fn distribution_support_n_points((start, end): (f64, f64), dx: f64) -> Result<usize, Report> {
-  let intervals = ((end - start) / dx).round();
+  // Round the interval count up (resolution floor): the realized spacing (end - start) / intervals is
+  // then never coarser than the finest operand's dx, while `Array1::linspace` still lands both
+  // analytical endpoints on grid nodes. See kb/decisions/distribution-tails-and-arithmetic.md.
+  //
+  // A ratio within a small relative tolerance of an integer is taken as that integer, so float error
+  // at an exact multiple (e.g. 1.5 / 0.5 evaluating to 3.0000000000000004) does not add a spurious
+  // point. The tolerance sits far above the few-ulp division error and far below a half interval.
+  let ratio = (end - start) / dx;
+  let nearest = ratio.round();
+  let intervals = if (ratio - nearest).abs() <= GRID_COUNT_TOL * ratio.abs().max(1.0) {
+    nearest
+  } else {
+    ratio.ceil()
+  };
   if !intervals.is_finite() || intervals < 0.0 {
     return make_error!("Cannot discretize distribution support [{start}, {end}] with spacing {dx}");
   }

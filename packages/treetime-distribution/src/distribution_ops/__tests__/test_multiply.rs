@@ -82,10 +82,11 @@ mod tests {
       panic!("Expected Function variant, got {actual:?}");
     };
 
-    // Oracle: Richard Neher's grid contract in commit 542ac860c7cfa4bab6764aee1d1b3810a09eb54f:
-    // round(overlap_width / function.dx()) + 1 points over the exact intersection.
-    let expected_t = array![1.2, 2.4];
-    let expected_y = array![5.28, 16.32];
+    // Oracle: the resolution-floor grid contract (kb/decisions/distribution-tails-and-arithmetic.md),
+    // ceil(overlap_width / function.dx()) + 1 = ceil(1.2 / 1.0) + 1 = 3 points over [1.2, 2.4].
+    // The product is formula(t) * function.interp(t) = 2t * (t + 1) = 2t^2 + 2t.
+    let expected_t = array![1.2, 1.8, 2.4];
+    let expected_y = array![5.28, 10.08, 16.32];
     pretty_assert_ulps_eq!(expected_t, actual.t(), max_ulps = 4);
     pretty_assert_ulps_eq!(expected_y, actual.y(), max_ulps = 4);
   }
@@ -159,8 +160,9 @@ mod tests {
       panic!("Expected Function variant, got {actual:?}");
     };
 
-    // Oracle: Richard Neher's grid contract in commit 542ac860c7cfa4bab6764aee1d1b3810a09eb54f:
-    // round(overlap_width / min(dx)) + 1 points over the exact intersection.
+    // Oracle: the resolution-floor grid contract (kb/decisions/distribution-tails-and-arithmetic.md),
+    // ceil(overlap_width / min(dx)) + 1 = ceil(1.5 / 0.5) + 1 = 4 points over the exact intersection
+    // [1.2, 2.7] (an exact multiple, so the count is unchanged from the earlier round contract).
     let expected_t = array![1.2, 1.7, 2.2, 2.7];
     let expected_y = array![4.4, 8.1, 12.8, 18.5];
     pretty_assert_ulps_eq!(expected_t, actual.t(), max_ulps = 4);
