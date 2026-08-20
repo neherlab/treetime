@@ -9,7 +9,7 @@ mod tests {
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
   use rstest::rstest;
-  use treetime_grid::{Approach, BoundaryBehavior, HardApproachLaw, SoftTailLaw};
+  use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   /// A gentle soft `Linear` left tail, the fixture stand-in for a backward-pass parent-older tail.
@@ -620,20 +620,14 @@ mod tests {
     assert_eq!(BoundaryBehavior::Error, fab.right_extrap());
   }
 
-  /// Two `HardApproach` tails cannot be multiplied: their exact product carries both a power-law
-  /// exponent and a linear slope, which a single-parameter hard-approach law cannot represent. No
-  /// production path multiplies two hard-approach tails, so this is a loud internal error rather than
-  /// a silent lossy composition.
+  /// Two `HardApproach` tails cannot be multiplied. At distinct boundaries the tighter bound
+  /// dominates while the other operand contributes a smooth factor there, which no single-exponent
+  /// hard-approach law can represent. No production path multiplies two hard-approach tails, so this
+  /// is a loud internal error rather than a silent lossy composition.
   #[test]
   fn test_multiply_function_function_two_hard_approach_is_unsupported() {
-    let law_a = HardApproachLaw {
-      t_hard: 0.0,
-      shape: Approach::Divergent { b: 1.0 },
-    };
-    let law_b = HardApproachLaw {
-      t_hard: 0.0,
-      shape: Approach::Divergent { b: 2.0 },
-    };
+    let law_a = HardApproachLaw { t_hard: 0.0, b: 1.0 };
+    let law_b = HardApproachLaw { t_hard: 0.0, b: 2.0 };
 
     let a = Distribution::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
@@ -657,10 +651,7 @@ mod tests {
   /// survive: the result is a nullary `Hard`, not `HardApproach`.
   #[test]
   fn test_multiply_function_function_nullary_hard_absorbs_approach_law() {
-    let law = HardApproachLaw {
-      t_hard: 0.0,
-      shape: Approach::Divergent { b: 1.5 },
-    };
+    let law = HardApproachLaw { t_hard: 0.0, b: 1.5 };
 
     let a = Distribution::Function(
       make_function(1.0, 10.0, 91, 5.0, 2.0)
@@ -689,10 +680,7 @@ mod tests {
     // Build a distribution with a known max > 1 so normalization visibly rescales
     let f = DistributionFunction::<f64, Plain>::from_range_values((1.0, 5.0), array![20.0, 40.0, 100.0, 40.0, 20.0])
       .unwrap()
-      .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw {
-        t_hard: 0.0,
-        shape: Approach::Divergent { b: 1.0 },
-      }))
+      .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 }))
       .unwrap();
 
     let normalized = Distribution::Function(f).normalize();
@@ -705,10 +693,7 @@ mod tests {
       .expect("approach law should survive normalization");
     // max was 100.0 -> scale factor 1/100 -> the exponent scales by 1/100
     assert_abs_diff_eq!(0.0, preserved.t_hard, epsilon = 1e-14);
-    let Approach::Divergent { b } = preserved.shape else {
-      panic!("expected Divergent regime, got {:?}", preserved.shape);
-    };
-    assert_abs_diff_eq!(0.01, b, epsilon = 1e-14);
+    assert_abs_diff_eq!(0.01, preserved.b, epsilon = 1e-14);
   }
 
   /// An empty product is legitimate only when the operands' hard domains are genuinely disjoint.

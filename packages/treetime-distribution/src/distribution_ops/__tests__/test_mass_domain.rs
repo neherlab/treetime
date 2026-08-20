@@ -5,7 +5,7 @@ mod tests {
   use crate::{Distribution, DistributionFunction};
   use approx::assert_abs_diff_eq;
   use ndarray::Array1;
-  use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
+  use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
 
   /// Per-side tail mass fraction used across these tests (design D4, proposal Axis 2).
   const EPS: f64 = 5e-4;
@@ -94,14 +94,14 @@ mod tests {
     );
   }
 
-  /// A distribution whose mode sits on a finite hard-approach boundary keeps that mode on the lower
-  /// edge after re-windowing, with no `+inf` ordinate stored.
+  /// A distribution whose mode sits on a finite hard boundary keeps that mode on the lower edge after
+  /// re-windowing, with no `+inf` ordinate stored.
   ///
-  /// Oracle: design D2 (`HardApproach` with `b == 0`) extends the lower edge to the exact finite
-  /// `t_hard`, where the finite (`b == 0`) law places the mode.
+  /// Oracle: a nullary `Hard` lower boundary is the exact bound, so re-windowing leaves the lower edge
+  /// on it (probability is zero beyond, no `eps` trim) and the mode stays on the first grid point.
   #[test]
   fn test_mass_domain_rewindow_keeps_mode_on_hard_bound() {
-    let f = helpers::hard_approach_mode_neglog(1.0, 0.01, 5.0, 500);
+    let f = helpers::hard_bound_mode_neglog(1.0, 5.0, 500);
     let rewindowed = helpers::as_function(rewindow_to_mass(&Distribution::Function(f), EPS, GRID_POINTS).unwrap());
 
     assert_abs_diff_eq!(rewindowed.x_min(), 0.0, epsilon = 1e-12);
@@ -177,21 +177,14 @@ mod tests {
     }
 
     /// A density whose mode sits on a finite hard boundary at `t = 0`: `y(t) = slope*t` on
-    /// `[x_min, t_max]` with a `HardApproach` (`b == 0`) left law anchored at `t_hard = 0` and a
-    /// fitted soft right tail.
-    pub fn hard_approach_mode_neglog(
-      slope: f64,
-      x_min: f64,
-      t_max: f64,
-      n: usize,
-    ) -> DistributionFunction<f64, NegLog> {
-      let t = Array1::linspace(x_min, t_max, n);
+    /// `[0, t_max]` with a nullary `Hard` left boundary (the grid edge is the exact hard bound,
+    /// carrying the mode) and a fitted soft right tail.
+    pub fn hard_bound_mode_neglog(slope: f64, t_max: f64, n: usize) -> DistributionFunction<f64, NegLog> {
+      let t = Array1::linspace(0.0, t_max, n);
       let y = t.mapv(|ti| slope * ti);
       let f = DistributionFunction::from_arrays(&t, y).unwrap();
-      // Boundary neg-log ordinate at t = 0 is y(0) = 0, so fit_linear recovers b = 0, slope = `slope`.
-      let left = HardApproachLaw::fit_linear(f.grid_fn(), 0.0, Side::Left, 0.0).unwrap();
       let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS).unwrap();
-      f.with_left_extrap(BoundaryBehavior::HardApproach(left))
+      f.with_left_extrap(BoundaryBehavior::Hard)
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Linear(right))
         .unwrap()

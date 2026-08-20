@@ -48,7 +48,7 @@ impl SoftTailLaw {
   /// v0's tail guard (`node_interpolator.py`).
   ///
   /// The fit reads stored ordinates directly, so it is valid under `NegLog` storage with no
-  /// conversion, exactly like [`HardApproachLaw::fit_log_power_law`](crate::HardApproachLaw::fit_log_power_law).
+  /// conversion, exactly like [`HardApproachLaw::fit`](crate::HardApproachLaw::fit).
   ///
   /// Returns an error when fewer than two finite points are available near the edge.
   pub fn fit(grid_fn: &GridFn<f64>, side: Side, n_fit: usize) -> Result<Self, Report> {

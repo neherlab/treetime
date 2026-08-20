@@ -698,11 +698,11 @@ impl<T: InterpElem> GridFn<T> {
 }
 
 /// Scale a fitted boundary law when every ordinate is multiplied by `factor`. Scaling every neg-log
-/// ordinate by `factor` raises the probability to a power (`p -> p^factor`), so both shape terms of
-/// the hard approach law scale by `factor`: `y = y_edge - b*ln|dt/dt_edge| + slope*(t - t_edge)`
-/// becomes `factor*y = factor*y_edge - (factor*b)*ln|dt/dt_edge| + (factor*slope)*(t - t_edge)`, with
-/// the edge read live. A soft-tail slope scales with the ordinates the same way: the neg-log tail
-/// line `y_edge + slope*(t - t_edge)` steepens by `factor` (see [`GridFn::scale_y`]).
+/// ordinate by `factor` raises the probability to a power (`p -> p^factor`), so the hard approach
+/// law's exponent scales by `factor`: `y = y_edge - b*ln|dt/dt_edge|` becomes
+/// `factor*y = factor*y_edge - (factor*b)*ln|dt/dt_edge|`, with the edge read live. A soft-tail slope
+/// scales with the ordinates the same way: the neg-log tail line `y_edge + slope*(t - t_edge)`
+/// steepens by `factor` (see [`GridFn::scale_y`]).
 fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   match behavior {
     BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.scale(factor)),
@@ -715,7 +715,7 @@ fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
 
 /// Shift a fitted boundary law when a constant `delta` is added to every ordinate. Both the hard
 /// approach law and the soft-tail law are edge-relative: they read the shifted edge ordinate on
-/// evaluation and store only shape (the exponent `b`, the slope), which is invariant under a
+/// evaluation and store only shape (the exponent `b`, or the slope), which is invariant under a
 /// vertical shift. So both carry through unchanged (see [`GridFn::shift_y`]); the `delta` argument
 /// is retained for symmetry with [`scale_tail_law`].
 fn shift_tail_law(behavior: BoundaryBehavior, _delta: f64) -> BoundaryBehavior {

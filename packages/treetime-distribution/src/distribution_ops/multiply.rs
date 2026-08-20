@@ -347,11 +347,13 @@ fn with_composed_tails<Y: YAxisPolicy>(
 /// - Two `Linear` soft tails compose by adding their neg-log slopes (multiplication is addition in
 ///   neg-log space).
 ///
-/// Two `HardApproach` laws are not composed: their exact product carries both a power-law exponent
-/// and a linear slope (and, at distinct boundaries, a slope drawn from the other operand's local
-/// gradient), which the single-parameter [`HardApproachLaw`](treetime_grid::HardApproachLaw) cannot
-/// represent. No production path multiplies two hard-approach tails; if one is reached it is a loud
-/// internal error rather than a silent lossy composition.
+/// Two `HardApproach` laws are not composed. At a shared boundary their product is the single power
+/// law `b_1 + b_2`, but at distinct boundaries the tighter bound dominates while the other operand
+/// contributes a smooth, locally varying factor there, which no single-exponent
+/// [`HardApproachLaw`](treetime_grid::HardApproachLaw) at the tighter bound can represent. No
+/// production path multiplies two hard-approach tails (message hard sides are the nullary `Hard`, and
+/// only the branch-length factor produces `HardApproach`), so reaching this is a loud internal error
+/// rather than a silent lossy composition.
 pub(super) fn compose_multiplication_tail(
   a: BoundaryBehavior,
   b: BoundaryBehavior,

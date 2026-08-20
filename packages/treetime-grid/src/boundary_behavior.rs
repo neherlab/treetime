@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 
 /// Number of edge grid points a boundary law is fit from by default.
 ///
-/// Both [`HardApproachLaw::fit_log_power_law`] and [`SoftTailLaw::fit`] read the innermost/outermost
-/// points nearest an edge; this is the shared count so the branch-length approach fit and the regrid
-/// refit use one value rather than drifting copies.
+/// Both [`HardApproachLaw::fit`] and [`SoftTailLaw::fit`] read the innermost/outermost points nearest
+/// an edge; this is the shared count so the branch-length approach fit and the regrid refit use one
+/// value rather than drifting copies.
 pub const DEFAULT_TAIL_FIT_POINTS: usize = 5;
 
 /// Behavior of a [`GridFn`](crate::GridFn) when evaluated outside its grid support.
@@ -35,8 +35,9 @@ pub enum BoundaryBehavior {
   Hard,
   /// Hard boundary with a fitted approach law across the sub-grid gap. The domain still terminates
   /// (probability is zero past [`HardApproachLaw::t_hard`]), but between the hard boundary and the
-  /// nearest grid point the density follows the edge-relative [`HardApproachLaw`]: a power-law term
-  /// for divergent branches plus a linear term that carries a finite mode sitting on the boundary.
+  /// nearest grid point the density follows the edge-relative [`HardApproachLaw`]: the single-exponent
+  /// power law of a divergent branch. A finite mode sitting exactly on the boundary is instead stored
+  /// as an exact grid endpoint ([`Self::Hard`]), so this variant carries only the divergent case.
   HardApproach(HardApproachLaw),
   /// Soft boundary: the density continues past the grid edge along the log-linear [`SoftTailLaw`]
   /// (an exponential probability tail). The tail decays and has finite mass, so it keeps the

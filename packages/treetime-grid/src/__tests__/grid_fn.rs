@@ -229,10 +229,7 @@ mod tests {
   /// edge-relative (stores only the exponent), so a pure resample preserves it verbatim.
   #[test]
   fn test_gridfn_resample_preserves_fitted_hard_law() -> Result<(), Report> {
-    let law = HardApproachLaw {
-      t_hard: 0.0,
-      shape: Approach::Divergent { b: 1.0 },
-    };
+    let law = HardApproachLaw { t_hard: 0.0, b: 1.0 };
     let grid_fn = GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(law));
 
@@ -269,19 +266,13 @@ mod tests {
   /// the boundary location is unchanged. The hard class must survive the scale.
   #[test]
   fn test_gridfn_scale_y_preserves_hard_class_and_scales_law() -> Result<(), Report> {
-    let law = HardApproachLaw {
-      t_hard: 0.0,
-      shape: Approach::Divergent { b: 1.0 },
-    };
+    let law = HardApproachLaw { t_hard: 0.0, b: 1.0 };
     let grid_fn = GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(law));
 
     let scaled = grid_fn.scale_y(3.0);
 
-    let expected = HardApproachLaw {
-      t_hard: 0.0,
-      shape: Approach::Divergent { b: 3.0 },
-    };
+    let expected = HardApproachLaw { t_hard: 0.0, b: 3.0 };
     assert_eq!(BoundaryBehavior::HardApproach(expected), scaled.left_extrap());
     Ok(())
   }
@@ -306,10 +297,7 @@ mod tests {
   /// it reads the shifted edge ordinate on evaluation. The hard class must survive the shift.
   #[test]
   fn test_gridfn_shift_y_preserves_hard_law_unchanged() -> Result<(), Report> {
-    let law = HardApproachLaw {
-      t_hard: 0.0,
-      shape: Approach::Divergent { b: 1.0 },
-    };
+    let law = HardApproachLaw { t_hard: 0.0, b: 1.0 };
     let grid_fn = GridFn::from_range_values((1.0, 3.0), array![2.0, 3.0, 4.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(law));
 
@@ -339,10 +327,7 @@ mod tests {
   /// `scale_y(1.0)` is the identity, so every coefficient is preserved exactly across the trip.
   #[test]
   fn test_gridfn_boundary_law_survives_regrid_round_trip() -> Result<(), Report> {
-    let hard = HardApproachLaw {
-      t_hard: 0.0,
-      shape: Approach::Divergent { b: 1.0 },
-    };
+    let hard = HardApproachLaw { t_hard: 0.0, b: 1.0 };
     let soft = SoftTailLaw { slope: 0.7 };
     let grid_fn = GridFn::from_range_values((1.0, 3.0), array![3.0, 2.5, 2.0])?
       .with_left_extrap(BoundaryBehavior::HardApproach(hard))

@@ -31,11 +31,10 @@ pub fn total_mass(f: &DistributionFunction<f64, NegLog>) -> Result<f64, Report> 
 /// - soft (`Linear`): the edge is the point where the mass outside it (its tail plus the grid mass
 ///   integrated inward) equals `eps * Z`. Solved in closed form within the tail when the tail alone
 ///   already carries more than `eps * Z`, and by trapezoid-CDF inversion within the grid otherwise.
-/// - `Hard`: the grid edge already terminates the domain, so it stays put; there is no mass beyond it.
-/// - `HardApproach` with `b == 0` (finite mode on the boundary): the edge extends to the exact finite
-///   bound `t_hard`, where the mode may sit.
-/// - `HardApproach` with `b > 0` (divergent): the edge stays at the grid bound, strictly inside
-///   `t_hard`, so no `+inf` ordinate is ever placed on the grid.
+/// - `Hard`: the grid edge is the hard bound itself, so it stays put; there is no mass beyond it. A
+///   finite mode sitting exactly on the bound is carried here, on the exact grid endpoint.
+/// - `HardApproach` (divergent): the grid edge is strictly inside `t_hard` with a sub-grid gap, so no
+///   `+inf` ordinate is ever placed on the grid; the edge stays at the grid bound.
 ///
 /// Probability is exactly zero beyond a hard bound, so `eps` never trims a hard side. Returns an error
 /// for an `Error`-tailed side.
@@ -163,12 +162,7 @@ pub fn refit_soft_tails(f: DistributionFunction<f64, NegLog>) -> Result<Distribu
 /// Lower (left) mass-domain edge for the profile's declared left tail (design D2).
 fn lower_edge(profile: &MassProfile, target: f64) -> Result<f64, Report> {
   match profile.left {
-    BoundaryBehavior::Hard => Ok(profile.x_min),
-    BoundaryBehavior::HardApproach(law) => Ok(if law.is_finite_at_boundary() {
-      law.t_hard
-    } else {
-      profile.x_min
-    }),
+    BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) => Ok(profile.x_min),
     BoundaryBehavior::Linear(law) => Ok(soft_edge(
       profile,
       law.slope.abs(),
@@ -185,12 +179,7 @@ fn lower_edge(profile: &MassProfile, target: f64) -> Result<f64, Report> {
 /// Upper (right) mass-domain edge for the profile's declared right tail (design D2).
 fn upper_edge(profile: &MassProfile, target: f64) -> Result<f64, Report> {
   match profile.right {
-    BoundaryBehavior::Hard => Ok(profile.x_max),
-    BoundaryBehavior::HardApproach(law) => Ok(if law.is_finite_at_boundary() {
-      law.t_hard
-    } else {
-      profile.x_max
-    }),
+    BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) => Ok(profile.x_max),
     BoundaryBehavior::Linear(law) => Ok(soft_edge(
       profile,
       law.slope.abs(),

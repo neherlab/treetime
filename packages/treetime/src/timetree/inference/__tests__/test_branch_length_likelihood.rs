@@ -40,9 +40,9 @@ mod tests {
   }
 
   /// A pure indel-rate likelihood (no substitutions, no observed indels) decreases monotonically in
-  /// branch length, so its mode sits on the finite hard bound at `t = 0`, not on the heuristic grid
-  /// floor. Mass re-windowing extends the lower grid edge to that bound (design D2, `HardApproach`
-  /// with `b == 0`), so the peak lands exactly on `t = 0` with no `+inf` ordinate stored (AC2).
+  /// branch length, so its mode sits on the finite hard bound at `t = 0`. The boundary is finite, so
+  /// the grid starts at the exact bound `t = 0` with a nullary `Hard` left boundary, and the peak
+  /// lands exactly on `t = 0` with no `+inf` ordinate stored (AC2).
   #[test]
   fn test_branch_length_likelihood_indel_rate_only_mode_on_hard_bound() -> Result<(), Report> {
     let distribution = helpers::build_indel_rate_only_distribution()?;
@@ -63,13 +63,14 @@ mod tests {
     Ok(())
   }
 
-  /// With no substitution contributions and no observed indels but a positive
-  /// indel rate, the normalized probability in branch-length space is
-  /// $\exp(-\mu (t - t_{\min}))$, whose neg-log ordinate is $\mu (t - t_{\min})$.
+  /// With no substitution contributions and no observed indels but a positive indel rate, the
+  /// probability in branch-length space is $\exp(-\mu t)$, whose mode is at the finite hard bound
+  /// $t = 0$. The grid starts at that exact bound, so peak-normalizing against the true mode gives the
+  /// neg-log ordinate $\mu t$ (not offset by a grid floor).
   ///
   /// With `clock_rate = gamma = 1.0`, branch-length and time axes coincide. On the neg-log axis the
   /// stored ordinate is exactly linear in $t$, so grid interpolation reproduces it with no
-  /// second-order error: `eval` returns $\mu (t - t_{\min})$ to machine precision.
+  /// second-order error: `eval` returns $\mu t$ to machine precision.
   ///
   /// The test points stay inside the support so the assertion exercises the
   /// interpolated grid rather than constant extrapolation.
@@ -83,8 +84,7 @@ mod tests {
     let distribution = helpers::build_indel_rate_only_distribution()?;
 
     let indel_rate = 1.0;
-    let t_min = 1e-3 * 0.01;
-    let expected = indel_rate * (t - t_min);
+    let expected = indel_rate * t;
     assert_abs_diff_eq!(helpers::eval(&distribution, t), expected, epsilon = 1e-10);
 
     Ok(())
@@ -119,9 +119,9 @@ mod tests {
   /// ordinate instead of failing the `Error` default. Under the `Error` default `eval` would error
   /// and `compute_positional_log_lh` would silently drop the edge; the soft tail keeps it evaluable.
   ///
-  /// For the pure indel-rate likelihood the neg-log ordinate is exactly linear, `mu * (t - t_min)`
-  /// (the closed-form Poisson decay), so the tail fit reproduces it past `t_max`. The oracle is that
-  /// analytic Poisson ordinate, not the system under test.
+  /// For the pure indel-rate likelihood the neg-log ordinate is exactly linear, `mu * t` (the
+  /// closed-form Poisson decay normalized at the true mode `t = 0`), so the tail fit reproduces it
+  /// past `t_max`. The oracle is that analytic Poisson ordinate, not the system under test.
   #[rustfmt::skip]
   #[rstest]
   #[case::just_past_tmax(  9.0)]
@@ -136,8 +136,7 @@ mod tests {
     assert!(t > t_max, "query {t} must be beyond t_max {t_max}");
 
     let indel_rate = 1.0;
-    let t_min = 1e-3 * 0.01;
-    let expected = indel_rate * (t - t_min);
+    let expected = indel_rate * t;
     assert_abs_diff_eq!(distribution.eval(t)?, expected, epsilon = 1e-10);
     Ok(())
   }
@@ -282,17 +281,20 @@ mod tests {
     Ok(())
   }
 
-  /// The grid floor is `one_mutation * 0.01`, independent of branch length. With
-  /// `clock_rate = gamma = 1` the lower time bound equals that floor.
+  /// A *divergent* boundary (here an observed indel, whose density vanishes at `t = 0` so the neg-log
+  /// diverges) floors the grid at `one_mutation * 0.01`, strictly above the bound, so no `+inf`
+  /// ordinate is placed on a grid point. With `clock_rate = gamma = 1` the lower time bound equals
+  /// that floor. The `HardApproach` left tail keeps the mass-domain edge on the grid bound, so the
+  /// stored lower edge stays at the floor after re-windowing.
   #[test]
-  fn test_branch_length_likelihood_grid_lower_bound_from_one_mutation() -> Result<(), Report> {
+  fn test_branch_length_likelihood_divergent_boundary_floors_grid_above_zero() -> Result<(), Report> {
     let contributions: Vec<OptimizationContribution> = vec![];
     let one_mutation = 1e-3;
     let distribution = compute_branch_length_distribution(
       &contributions,
-      /* indel_count */ 0,
-      /* indel_rate */ 0.0,
-      /* current_branch_length */ 0.1,
+      /* indel_count */ 1,
+      /* indel_rate */ 1.0,
+      /* current_branch_length */ 1.0,
       one_mutation,
       GRID_POINTS,
       /* clock_rate */ 1.0,
@@ -301,6 +303,17 @@ mod tests {
 
     let (t_min, _t_max) = distribution.time_bounds().unwrap();
     assert_abs_diff_eq!(t_min, one_mutation * 0.01, epsilon = 1e-12);
+    Ok(())
+  }
+
+  /// A *finite* boundary (here a zero-mutation branch, whose density is maximal at `t = 0`) starts the
+  /// grid at the exact hard bound `t = 0`, with no `one_mutation` floor: the mode is carried on the
+  /// exact endpoint rather than approximated across a sub-grid gap.
+  #[test]
+  fn test_branch_length_likelihood_finite_boundary_grid_starts_at_zero() -> Result<(), Report> {
+    let distribution = helpers::build_indel_rate_only_distribution()?;
+    let (t_min, _t_max) = distribution.time_bounds().unwrap();
+    assert_abs_diff_eq!(t_min, 0.0, epsilon = 1e-12);
     Ok(())
   }
 
