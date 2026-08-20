@@ -3,7 +3,6 @@ use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, w
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use eyre::Report;
-use std::borrow::Cow;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::NegLog;
@@ -93,68 +92,6 @@ where
   apply_date_constraint(slot, distribution)
 }
 
-/// Multiply the node's role-specific coalescent prior into its folded child messages.
-///
-/// The root and internal contributions differ, and both scale with the node's child count. The leaf
-/// coalescent factor is deliberately not applied here: it belongs to the outgoing message only, never
-/// the stored node distribution, so it is added later when the message is formed in
-/// [`send_message_to_parent`]. A node with no coalescent model, or none of whose children left a
-/// message, is returned unchanged.
-fn apply_coalescent_prior<N, E, D>(
-  graph: &Graph<N, E, D>,
-  coalescent_model: Option<&CoalescentModel>,
-  slot: &IndexedPassSlot<N, E>,
-  distribution: Option<Distribution<NegLog>>,
-) -> Result<Option<Distribution<NegLog>>, Report>
-where
-  N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
-  D: Send + Sync,
-{
-  match (coalescent_model, distribution) {
-    (Some(model), Some(current)) => {
-      let n_children = graph
-        .get_node(slot.key)
-        .expect("Indexed node must exist")
-        .read_arc()
-        .outbound()
-        .len();
-      let weighted = if slot.parent_edge.is_none() {
-        distribution_add_neg_log_weight(&current, |time| model.root_contribution(time, n_children))?
-      } else {
-        distribution_add_neg_log_weight(&current, |time| model.internal_contribution(time, n_children))?
-      };
-      Ok(Some(weighted))
-    },
-    (_, distribution) => Ok(distribution),
-  }
-}
-
-/// Multiply the node's input date constraint into its accumulated factors.
-///
-/// The date constraint is an independent factor of the node's posterior, so it multiplies whatever the
-/// children have to say; for a leaf, which has no children, it is the whole distribution. Applying it
-/// here rather than once at load time is what keeps the input recoverable: the forward pass refines the
-/// time distribution of a node whose date is uncertain in place, and sending that refined distribution
-/// back to the parent on the next round would count the parent's own message toward the node a second
-/// time.
-fn apply_date_constraint<N, E>(
-  slot: &IndexedPassSlot<N, E>,
-  distribution: Option<Distribution<NegLog>>,
-) -> Result<Option<Distribution<NegLog>>, Report>
-where
-  N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
-{
-  let Some(constraint) = slot.node.date_constraint() else {
-    return Ok(distribution);
-  };
-  Ok(Some(match distribution {
-    Some(current) => distribution_multiplication(&current, constraint)?,
-    None => constraint.as_ref().clone(),
-  }))
-}
-
 /// Gathers the backward messages from a node's good children.
 ///
 /// Collecting the messages up front keeps the fold independent of the order the children are visited.
@@ -209,6 +146,69 @@ fn combine_child_messages(messages: &[Arc<Distribution<NegLog>>]) -> Result<Opti
   Ok(Some(distribution_product(&factors)?))
 }
 
+/// Multiply the node's role-specific coalescent prior into its folded child messages.
+///
+/// The root and internal contributions differ, and both scale with the node's child count. The leaf
+/// coalescent factor is deliberately not applied here: it belongs to the outgoing message only, never
+/// the stored node distribution, so it is added later when the message is formed in
+/// [`send_message_to_parent`]. A node with no coalescent model, or none of whose children left a
+/// message, is returned unchanged.
+fn apply_coalescent_prior<N, E, D>(
+  graph: &Graph<N, E, D>,
+  coalescent_model: Option<&CoalescentModel>,
+  slot: &IndexedPassSlot<N, E>,
+  distribution: Option<Distribution<NegLog>>,
+) -> Result<Option<Distribution<NegLog>>, Report>
+where
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + TimetreeEdge,
+  D: Send + Sync,
+{
+  match (coalescent_model, distribution) {
+    (Some(model), Some(current)) => {
+      let n_children = graph
+        .get_node(slot.key)
+        .expect("Indexed node must exist")
+        .read_arc()
+        .outbound()
+        .len();
+      let contribution = if slot.parent_edge.is_none() {
+        CoalescentModel::root_contribution
+      } else {
+        CoalescentModel::internal_contribution
+      };
+      let weighted = distribution_add_neg_log_weight(&current, |time| contribution(model, time, n_children))?;
+      Ok(Some(weighted))
+    },
+    (_, distribution) => Ok(distribution),
+  }
+}
+
+/// Multiply the node's input date constraint into its accumulated factors.
+///
+/// The date constraint is an independent factor of the node's posterior, so it multiplies whatever the
+/// children have to say; for a leaf, which has no children, it is the whole distribution. Applying it
+/// here rather than once at load time is what keeps the input recoverable: the forward pass refines the
+/// time distribution of a node whose date is uncertain in place, and sending that refined distribution
+/// back to the parent on the next round would count the parent's own message toward the node a second
+/// time.
+fn apply_date_constraint<N, E>(
+  slot: &IndexedPassSlot<N, E>,
+  distribution: Option<Distribution<NegLog>>,
+) -> Result<Option<Distribution<NegLog>>, Report>
+where
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + TimetreeEdge,
+{
+  let Some(constraint) = slot.node.date_constraint() else {
+    return Ok(distribution);
+  };
+  Ok(Some(match distribution {
+    Some(current) => distribution_multiplication(&current, constraint)?,
+    None => constraint.as_ref().clone(),
+  }))
+}
+
 /// Convolves a node's distribution across the branch to its parent and sets the backward message.
 ///
 /// This is the edge crossing of the backward pass. The node's outgoing distribution is convolved with
@@ -246,30 +246,31 @@ where
     return Ok(());
   };
 
-  let outgoing = outgoing_distribution(coalescent_model, graph.is_leaf(slot.key), distribution)?;
+  // A leaf weights its outgoing message by the leaf coalescent factor. Every other node -- internal, or
+  // any node without a coalescent model -- sends its stored distribution unchanged.
+  let leaf_weighted = if graph.is_leaf(slot.key)
+    && let Some(model) = coalescent_model
+  {
+    Some(weight_by_leaf_contribution(model, distribution.as_ref())?)
+  } else {
+    None
+  };
+  let outgoing = leaf_weighted.as_ref().unwrap_or_else(|| distribution.as_ref());
 
   let negated_branch = branch_length_distribution.negate()?;
-  let message = convolve_across_edge(&outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)?;
+  let message = convolve_across_edge(outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)?;
   edge.set_msg_to_parent(Some(Arc::new(message)));
 
   Ok(())
 }
 
-/// The node's distribution as it leaves toward its parent.
+/// Weight a distribution by the leaf coalescent factor.
 ///
-/// A leaf weights its outgoing message by the leaf coalescent factor. This factor captures how the leaf
-/// informs its parent, not the leaf's own time, so it stays out of the stored distribution the forward
-/// pass reuses (`multiply_node_factors` sets that one without it). Every other node -- internal, or any
-/// node without a coalescent model -- sends its stored distribution unchanged, borrowed rather than cloned.
-fn outgoing_distribution<'a>(
-  coalescent_model: Option<&CoalescentModel>,
-  is_leaf: bool,
-  distribution: &'a Arc<Distribution<NegLog>>,
-) -> Result<Cow<'a, Distribution<NegLog>>, Report> {
-  if is_leaf && let Some(model) = coalescent_model {
-    let weighted = distribution_add_neg_log_weight(distribution.as_ref(), |time| Ok(model.leaf_contribution(time)))?;
-    Ok(Cow::Owned(weighted))
-  } else {
-    Ok(Cow::Borrowed(distribution.as_ref()))
-  }
+/// The factor captures how a leaf informs its parent, not the leaf's own time, so it is applied to the
+/// outgoing message only, never to the stored distribution the forward pass reuses.
+fn weight_by_leaf_contribution(
+  model: &CoalescentModel,
+  distribution: &Distribution<NegLog>,
+) -> Result<Distribution<NegLog>, Report> {
+  distribution_add_neg_log_weight(distribution, |time| Ok(model.leaf_contribution(time)))
 }
