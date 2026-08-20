@@ -3,9 +3,7 @@ use crate::distribution_core::formula::DistributionFormula;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
-use crate::distribution_ops::time_bounds::{
-  SupportIntersection, distribution_support_intersection, distribution_support_n_points,
-};
+use crate::distribution_ops::time_bounds::{SupportIntersection, distribution_support_n_points};
 use crate::policy::YAxisPolicy;
 use eyre::Report;
 use itertools::izip;
@@ -148,7 +146,7 @@ fn multiply_range_function<Y: YAxisPolicy>(
   let a_tails = (BoundaryBehavior::Error, BoundaryBehavior::Error);
   let b_bounds = (func.x_min(), func.x_max());
   let b_tails = (func.left_extrap(), func.right_extrap());
-  match multiplication_support_intersection(a_bounds, a_tails, b_bounds, b_tails) {
+  match multiplication_support_intersection(&[(a_bounds, a_tails), (b_bounds, b_tails)]) {
     SupportIntersection::Disjoint => {
       guarded_empty_result("multiplication", Some((a_bounds, a_tails)), Some((b_bounds, b_tails)))
     },
@@ -212,7 +210,8 @@ pub fn multiply_functions<Y: YAxisPolicy>(
     .split_first()
     .expect("multiply_functions requires at least one operand");
 
-  match multiply_functions_support(&ordered) {
+  let domains: Vec<HardDomain> = ordered.iter().copied().map(function_hard_domain).collect();
+  match multiplication_support_intersection(&domains) {
     // Genuinely disjoint hard domains carry no common support, so their product is legitimately empty.
     // A soft side never separates domains; only hard sides can, so this branch is the guarded-empty
     // case by construction.
@@ -266,18 +265,29 @@ fn canonical_operand_order<'a, Y: YAxisPolicy>(
   ordered
 }
 
-/// Resolve the N-ary multiplication support intersection: `Disjoint`, a single-point `Point`, or an
-/// `Interval`. The N-ary form of [`multiplication_support_intersection`]: per side the result takes
-/// the tightest (innermost) hard bound when any operand terminates its domain there, otherwise the
-/// loosest (outermost) soft bound. Disjointness is decided from hard sides only -- a soft side
-/// continues under its tail law and never separates domains. Endpoint contact uses exact comparison,
-/// matching the pairwise rule; a tolerance would enlarge the intersection.
+/// Resolve the multiplication support intersection over the operands' hard domains: `Disjoint`, a
+/// single-point `Point`, or an `Interval`.
+///
+/// Each grid boundary is either *hard* (the domain terminates: `Hard` is zero probability beyond,
+/// `Error` is undefined beyond) or *soft* (the distribution continues past the edge under a declared
+/// tail law). The product domain is resolved per side independently:
+///
+/// - any hard operand on the side: the tightest (innermost) hard bound -- a hard bound is a fact
+///   about a distribution, so the product can be non-zero only where every hard operand is;
+/// - otherwise: the loosest (outermost) soft bound -- each operand's tail law continues to the
+///   others, so the product stays evaluable out to the farthest edge.
+///
+/// Disjointness is decided from hard sides only; a soft side continues under its tail law and never
+/// separates domains. This is why the Ebola-scale disjoint-grid product stays non-empty: the backward
+/// messages are soft on the left, so the left side takes the loosest soft bound instead of collapsing
+/// to an empty intersection of the two finite grids. Endpoint contact uses exact comparison; a
+/// tolerance would enlarge the intersection.
 #[allow(clippy::float_cmp)] // Endpoint contact requires exact bound equality; a tolerance would enlarge the intersection.
-fn multiply_functions_support<Y: YAxisPolicy>(functions: &[&DistributionFunction<f64, Y>]) -> SupportIntersection {
+fn multiplication_support_intersection(domains: &[HardDomain]) -> SupportIntersection {
   // Resolve each side independently: hard operands take the tightest (innermost) bound and soft
   // operands the loosest (outermost). `None` means no operand of that class bounds the side.
-  let (hard_lo, soft_lo) = side_bounds(functions, Side::Left);
-  let (hard_hi, soft_hi) = side_bounds(functions, Side::Right);
+  let (hard_lo, soft_lo) = side_bounds(domains, Side::Left);
+  let (hard_hi, soft_hi) = side_bounds(domains, Side::Right);
 
   // Disjointness is a fact about hard sides only; a soft side is treated as unbounded on that side.
   // `izip!` over the two `Option`s yields a pair only when both hard bounds are present.
@@ -301,26 +311,32 @@ fn multiply_functions_support<Y: YAxisPolicy>(functions: &[&DistributionFunction
   }
 }
 
-/// Reduce the operands' bounds on one `side` into its hard and soft components. Hard operands are
-/// combined into the tightest (innermost) bound and soft operands into the loosest (outermost);
-/// either component is `None` when no operand of that class bounds the side. The innermost and
-/// outermost reductions flip between the lower (`Left`) and upper (`Right`) side.
-fn side_bounds<Y: YAxisPolicy>(functions: &[&DistributionFunction<f64, Y>], side: Side) -> (Option<f64>, Option<f64>) {
+/// Reduce the operand hard domains on one `side` into its hard and soft bound components. Hard
+/// operands are combined into the tightest (innermost) bound and soft operands into the loosest
+/// (outermost); either component is `None` when no operand of that class bounds the side. The
+/// innermost and outermost reductions flip between the lower (`Left`) and upper (`Right`) side.
+fn side_bounds(domains: &[HardDomain], side: Side) -> (Option<f64>, Option<f64>) {
   let (inner, outer): (fn(f64, f64) -> f64, fn(f64, f64) -> f64) = match side {
     Side::Left => (f64::max, f64::min),
     Side::Right => (f64::min, f64::max),
   };
-  let hard = functions
+  let extrap = |d: &HardDomain| match side {
+    Side::Left => d.1.0,
+    Side::Right => d.1.1,
+  };
+  let bound = |d: &HardDomain| match side {
+    Side::Left => d.0.0,
+    Side::Right => d.0.1,
+  };
+  let hard = domains
     .iter()
-    .copied()
-    .filter(|f| !f.extrap(side).is_soft())
-    .map(|f| f.bound(side))
+    .filter(|&d| !extrap(d).is_soft())
+    .map(&bound)
     .reduce(inner);
-  let soft = functions
+  let soft = domains
     .iter()
-    .copied()
-    .filter(|f| f.extrap(side).is_soft())
-    .map(|f| f.bound(side))
+    .filter(|&d| extrap(d).is_soft())
+    .map(&bound)
     .reduce(outer);
   (hard, soft)
 }
@@ -376,7 +392,7 @@ fn multiply_formula_function<Y: YAxisPolicy>(
   let a_tails = (BoundaryBehavior::Error, BoundaryBehavior::Error);
   let b_bounds = (b.x_min(), b.x_max());
   let b_tails = (b.left_extrap(), b.right_extrap());
-  match multiplication_support_intersection(a_bounds, a_tails, b_bounds, b_tails) {
+  match multiplication_support_intersection(&[(a_bounds, a_tails), (b_bounds, b_tails)]) {
     SupportIntersection::Disjoint => {
       guarded_empty_result("multiplication", Some((a_bounds, a_tails)), Some((b_bounds, b_tails)))
     },
@@ -511,57 +527,6 @@ pub(super) fn compose_multiplication_tail(
       Ok(BoundaryBehavior::Linear(a_law.compose_multiply(&b_law)))
     },
   }
-}
-
-/// Compute support intersection for multiplication, honoring operand tails.
-///
-/// Each grid boundary is either *hard* (the domain terminates: `Hard` is zero probability
-/// beyond, `Error` is undefined beyond) or *soft* (the distribution continues past the grid
-/// edge under a declared tail law). The product domain, resolved per side independently, is:
-///
-/// - both hard: the *tightest* (innermost) hard bound -- a hard bound is a fact about a
-///   distribution, so the product can be non-zero only where both operands are;
-/// - both soft: the *loosest* (outermost) soft bound -- either operand's tail law continues to
-///   the other, so the product remains evaluable out to the farther edge;
-/// - mixed: the hard bound dominates -- it terminates the domain regardless of the soft operand.
-///
-/// A soft boundary extends the operand's evaluable domain to the other operand's bound on the
-/// same side; a hard boundary keeps its grid edge. Intersecting the two extended domains then
-/// selects the tightest-hard / loosest-soft bound automatically. This is why the Ebola-scale
-/// disjoint-grid product stays non-empty: the backward messages are soft on the left (the parent
-/// could be arbitrarily older), so the left side takes the loosest soft bound instead of
-/// collapsing to an empty intersection of the two finite grids.
-fn multiplication_support_intersection(
-  a_bounds: (f64, f64),
-  a_tails: (BoundaryBehavior, BoundaryBehavior),
-  b_bounds: (f64, f64),
-  b_tails: (BoundaryBehavior, BoundaryBehavior),
-) -> SupportIntersection {
-  let a_eval = (
-    if a_tails.0.is_soft() {
-      a_bounds.0.min(b_bounds.0)
-    } else {
-      a_bounds.0
-    },
-    if a_tails.1.is_soft() {
-      a_bounds.1.max(b_bounds.1)
-    } else {
-      a_bounds.1
-    },
-  );
-  let b_eval = (
-    if b_tails.0.is_soft() {
-      b_bounds.0.min(a_bounds.0)
-    } else {
-      b_bounds.0
-    },
-    if b_tails.1.is_soft() {
-      b_bounds.1.max(a_bounds.1)
-    } else {
-      b_bounds.1
-    },
-  );
-  distribution_support_intersection(a_eval, b_eval)
 }
 
 /// A distribution's hard support domain: grid bounds `(lo, hi)` and the boundary behavior on each
