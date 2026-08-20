@@ -9,6 +9,7 @@ use crate::distribution_ops::time_bounds::{
 use crate::policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::{Array1, Zip};
+use ordered_float::OrderedFloat;
 use treetime_grid::BoundaryBehavior;
 use treetime_utils::make_internal_error;
 
@@ -260,13 +261,7 @@ fn canonical_operand_order<'a, Y: YAxisPolicy>(
   functions: &[&'a DistributionFunction<f64, Y>],
 ) -> Vec<&'a DistributionFunction<f64, Y>> {
   let mut ordered = functions.to_vec();
-  // `total_cmp` is a total order over f64 (unlike `partial_cmp`), so the sort is deterministic.
-  ordered.sort_by(|a, b| {
-    a.x_min()
-      .total_cmp(&b.x_min())
-      .then_with(|| a.x_max().total_cmp(&b.x_max()))
-      .then_with(|| a.dx().total_cmp(&b.dx()))
-  });
+  ordered.sort_by_key(|f| (OrderedFloat(f.x_min()), OrderedFloat(f.x_max()), OrderedFloat(f.dx())));
   ordered
 }
 

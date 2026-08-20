@@ -22,6 +22,7 @@ eyre = { workspace = true }
 getset = { workspace = true }
 itertools = { workspace = true }
 num = { workspace = true }
+ordered-float = { workspace = true }
 serde = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -34,7 +35,6 @@ treetime-analytical = { workspace = true }
 
 # [external]
 ctor = { workspace = true }
-ordered-float = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rayon = { workspace = true }
