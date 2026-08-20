@@ -71,11 +71,15 @@ v1 computes the result grid for both multiplication and division by resampling o
 
 Given an intersection $[x_{\min}, x_{\max}]$, the result grid has:
 
-$$n = \text{clamp}\left(\text{round}\left(\frac{x_{\max} - x_{\min}}{\Delta x}\right) + 1,\; 2,\; 10^6\right)$$
+$$n = \text{clamp}\left(\left\lceil\frac{x_{\max} - x_{\min}}{\Delta x}\right\rceil + 1,\; 2,\; 10^6\right)$$
 
 where $\Delta x = \min(\Delta x_a, \Delta x_b)$ for Function * Function, and $\Delta x = \Delta x_f$ for Range * Function or Formula * Function (using the Function operand's spacing).
 
-The result grid includes both analytical endpoints via `Array1::linspace`. A disjoint intersection produces `Empty`. Endpoint-only contact produces a `Point` distribution evaluated at the shared boundary, matching v0's behavior of converting one surviving knot to a delta.
+The interval count is rounded **up** (the resolution floor): the realized spacing $(x_{\max} - x_{\min})/(n-1)$ is then never coarser than the finest operand's $\Delta x$, so multiplying a narrow distribution by a wide one cannot ratchet the spacing coarser than the narrow operand had. A ratio within a small relative tolerance of an integer is taken as that integer, so float error at an exact multiple does not add a spurious grid point.
+
+The result grid includes both analytical endpoints via `Array1::linspace`, so a hard bound lands exactly on a grid node and a mode sitting on it stays representable. A disjoint intersection produces `Empty`. Endpoint-only contact produces a `Point` distribution evaluated at the shared boundary, matching v0's behavior of converting one surviving knot to a delta.
+
+The same `Array1::linspace` grid and support trichotomy serve both the pairwise `fn multiply_function_function()` and the N-ary `fn multiply_functions()` (the shared co-location primitive that `fn distribution_product()` folds the child messages with), so a pairwise product equals the two-operand N-ary product.
 
 Endpoint contact uses exact comparison of the analytical bounds, not a tolerance. A tolerance would enlarge the intersection and could turn two narrowly disjoint supports into a `Point`.
 
@@ -152,7 +156,7 @@ The hard side of each message uses the nullary `Hard` variant, which places zero
 
 ## Accepted limitations
 
-This is a bounded resampling rule, not a derived interpolation-error criterion. Rounding can make the realized spacing slightly finer or coarser than the target. The $10^6$-point cap can make it substantially coarser. Sequential multiplication resamples at each binary operation and is not guaranteed to be associative, although Function * Function multiplication is commutative because its support and spacing choices are symmetric.
+This is a bounded resampling rule, not a derived interpolation-error criterion. Rounding the interval count up keeps the realized spacing at or below the finest operand's $\Delta x$; only the $10^6$-point cap can force it substantially coarser on a very wide intersection. Sequential (chained pairwise) multiplication still resamples at each binary operation and is not guaranteed to be associative. The N-ary `fn multiply_functions()` fold, by contrast, co-locates all operands on one grid in a canonical operand order, so its result is bit-identical across any permutation of the factors.
 
 Convolution now routes both policies through a shared plain-space peak-normalization (`fn to_peak_normalized_plain()`), so the `Plain` result carries ULP-level round-trip noise from the `-ln`/`exp` bracketing that the previous raw-probability path did not. The difference is at the limit of `f64` precision, far below any scientific tolerance, but exact-equality assertions on `Plain` convolution output no longer hold.
 
