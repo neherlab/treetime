@@ -6,7 +6,7 @@ use ndarray_stats::QuantileExt;
 use num::Float;
 use serde::{Deserialize, Serialize};
 use treetime_grid::grid::Grid;
-use treetime_grid::{BoundaryBehavior, GridFn, InterpElem};
+use treetime_grid::{BoundaryBehavior, GridFn, InterpElem, Side};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
@@ -146,6 +146,17 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.x_max()
   }
 
+  /// Grid bound on `side`: `x_min` for `Side::Left`, `x_max` for `Side::Right`.
+  pub fn bound(&self, side: Side) -> T
+  where
+    T: Float,
+  {
+    match side {
+      Side::Left => self.x_min(),
+      Side::Right => self.x_max(),
+    }
+  }
+
   pub fn dx(&self) -> T {
     self.grid_fn.dx()
   }
@@ -206,6 +217,15 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   pub fn right_extrap(&self) -> BoundaryBehavior {
     self.grid_fn.right_extrap()
+  }
+
+  /// Out-of-support tail behavior on `side`: `left_extrap` for `Side::Left`, `right_extrap` for
+  /// `Side::Right`.
+  pub fn extrap(&self, side: Side) -> BoundaryBehavior {
+    match side {
+      Side::Left => self.left_extrap(),
+      Side::Right => self.right_extrap(),
+    }
   }
 
   /// Set the left (below `x_min`) out-of-support tail policy.

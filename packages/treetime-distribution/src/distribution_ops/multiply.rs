@@ -8,9 +8,10 @@ use crate::distribution_ops::time_bounds::{
 };
 use crate::policy::YAxisPolicy;
 use eyre::Report;
+use itertools::izip;
 use ndarray::{Array1, Zip};
 use ordered_float::OrderedFloat;
-use treetime_grid::BoundaryBehavior;
+use treetime_grid::{BoundaryBehavior, Side};
 use treetime_utils::make_internal_error;
 
 /// Grid size for discretizing Formula distributions that have no natural grid.
@@ -273,34 +274,21 @@ fn canonical_operand_order<'a, Y: YAxisPolicy>(
 /// matching the pairwise rule; a tolerance would enlarge the intersection.
 #[allow(clippy::float_cmp)] // Endpoint contact requires exact bound equality; a tolerance would enlarge the intersection.
 fn multiply_functions_support<Y: YAxisPolicy>(functions: &[&DistributionFunction<f64, Y>]) -> SupportIntersection {
-  let mut hard_lo = f64::NEG_INFINITY;
-  let mut hard_hi = f64::INFINITY;
-  let mut soft_lo = f64::INFINITY;
-  let mut soft_hi = f64::NEG_INFINITY;
-  let mut any_hard_left = false;
-  let mut any_hard_right = false;
-  for f in functions {
-    if f.left_extrap().is_soft() {
-      soft_lo = soft_lo.min(f.x_min());
-    } else {
-      any_hard_left = true;
-      hard_lo = hard_lo.max(f.x_min());
-    }
-    if f.right_extrap().is_soft() {
-      soft_hi = soft_hi.max(f.x_max());
-    } else {
-      any_hard_right = true;
-      hard_hi = hard_hi.min(f.x_max());
-    }
-  }
+  // Resolve each side independently: hard operands take the tightest (innermost) bound and soft
+  // operands the loosest (outermost). `None` means no operand of that class bounds the side.
+  let (hard_lo, soft_lo) = side_bounds(functions, Side::Left);
+  let (hard_hi, soft_hi) = side_bounds(functions, Side::Right);
 
   // Disjointness is a fact about hard sides only; a soft side is treated as unbounded on that side.
-  if hard_lo > hard_hi {
+  // `izip!` over the two `Option`s yields a pair only when both hard bounds are present.
+  if izip!(hard_lo, hard_hi).any(|(lo, hi)| lo > hi) {
     return SupportIntersection::Disjoint;
   }
 
-  let lo = if any_hard_left { hard_lo } else { soft_lo };
-  let hi = if any_hard_right { hard_hi } else { soft_hi };
+  // A present hard bound overrides the soft bound on its side. With no operands each side keeps its
+  // empty sentinel (lo = +inf, hi = -inf), which the final `else` reports as `Disjoint`.
+  let lo = hard_lo.or(soft_lo).unwrap_or(f64::INFINITY);
+  let hi = hard_hi.or(soft_hi).unwrap_or(f64::NEG_INFINITY);
   if lo == hi {
     SupportIntersection::Point(lo)
   } else if lo < hi {
@@ -311,6 +299,30 @@ fn multiply_functions_support<Y: YAxisPolicy>(functions: &[&DistributionFunction
     // for well-formed operands (lo > hi implies both sides hard, which the disjoint check caught).
     SupportIntersection::Disjoint
   }
+}
+
+/// Reduce the operands' bounds on one `side` into its hard and soft components. Hard operands are
+/// combined into the tightest (innermost) bound and soft operands into the loosest (outermost);
+/// either component is `None` when no operand of that class bounds the side. The innermost and
+/// outermost reductions flip between the lower (`Left`) and upper (`Right`) side.
+fn side_bounds<Y: YAxisPolicy>(functions: &[&DistributionFunction<f64, Y>], side: Side) -> (Option<f64>, Option<f64>) {
+  let (inner, outer): (fn(f64, f64) -> f64, fn(f64, f64) -> f64) = match side {
+    Side::Left => (f64::max, f64::min),
+    Side::Right => (f64::min, f64::max),
+  };
+  let hard = functions
+    .iter()
+    .copied()
+    .filter(|f| !f.extrap(side).is_soft())
+    .map(|f| f.bound(side))
+    .reduce(inner);
+  let soft = functions
+    .iter()
+    .copied()
+    .filter(|f| f.extrap(side).is_soft())
+    .map(|f| f.bound(side))
+    .reduce(outer);
+  (hard, soft)
 }
 
 /// Compose the per-side result tail of an N-ary product by folding the pairwise composition
