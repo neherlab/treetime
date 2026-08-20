@@ -53,9 +53,12 @@ where
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  let node_distribution = multiply_node_factors(graph, coalescent_model, dependencies, slot)?;
+  let messages = gather_child_messages(graph, dependencies, slot);
+  let distribution = combine_child_messages(&messages)?;
+  let distribution = apply_coalescent_prior(graph, coalescent_model, slot, distribution)?;
+  let distribution = apply_date_constraint(slot, distribution)?;
 
-  if let Some(distribution) = &node_distribution {
+  if let Some(distribution) = &distribution {
     // Peak-normalize the combined posterior and store it as-is. The child fold already produced a
     // compact grid (operand extents, finest operand pitch), so the stored node distribution needs no
     // mass sizing: that belongs to the edge crossing, where a message is regridded once as it is
@@ -67,29 +70,6 @@ where
   }
 
   send_message_to_parent(coalescent_model, graph, slot)
-}
-
-/// Multiplies the independent factors that make up a node's time distribution.
-///
-/// A node's posterior over its time is a product of independent factors, which under `NegLog` is a
-/// sum of ordinates: the fold of the child backward messages ([`combine_child_messages`]), the
-/// coalescent prior (root- or internal-specific), and the input date constraint. Returns `None` for a
-/// node with neither children nor a date constraint, which therefore constrains its time not at all.
-fn multiply_node_factors<N, E, D>(
-  graph: &Graph<N, E, D>,
-  coalescent_model: Option<&CoalescentModel>,
-  dependencies: &IndexedPassDependencies<N, E>,
-  slot: &IndexedPassSlot<N, E>,
-) -> Result<Option<Distribution<NegLog>>, Report>
-where
-  N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
-  D: Send + Sync,
-{
-  let messages = gather_child_messages(graph, dependencies, slot);
-  let distribution = combine_child_messages(&messages)?;
-  let distribution = apply_coalescent_prior(graph, coalescent_model, slot, distribution)?;
-  apply_date_constraint(slot, distribution)
 }
 
 /// Gathers the backward messages from a node's good children.
