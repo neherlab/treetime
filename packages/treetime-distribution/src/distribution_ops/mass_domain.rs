@@ -142,7 +142,7 @@ pub fn resample_to_mass_window(
 /// it is left unchanged (edge-relative and already valid); `Hard` and `Error` carry no fittable
 /// slope and are left unchanged too.
 ///
-/// Shared with [`distribution_add_neg_log_weight`](crate::distribution_add_neg_log_weight), which adds
+/// Shared with [`distribution_multiply_by_fn`](crate::distribution_multiply_by_fn), which adds
 /// a per-point cost to the ordinates and re-fits the soft tail whose slope the cost changed.
 pub fn refit_soft_tails(f: DistributionFunction<f64, NegLog>) -> Result<DistributionFunction<f64, NegLog>, Report> {
   let f = if matches!(f.left_extrap(), BoundaryBehavior::Linear(_)) {

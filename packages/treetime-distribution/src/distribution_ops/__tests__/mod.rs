@@ -1,10 +1,10 @@
 mod test_convolve;
 mod test_divide;
 mod test_edge_convolution;
-mod test_log_cost;
 mod test_map;
 mod test_mass_domain;
 mod test_multiply;
+mod test_multiply_by_fn;
 mod test_negation;
 mod test_product;
 mod test_prop_multiply_child_order;

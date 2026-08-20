@@ -8,7 +8,7 @@ At [`packages/treetime/src/timetree/inference/backward_pass.rs#L98`](../../packa
 
 ## Log-weighting intermediate buffers
 
-`fn distribution_apply_neg_log_weight()` [`packages/treetime-distribution/src/distribution_ops/log_cost.rs#L18-L58`](../../packages/treetime-distribution/src/distribution_ops/log_cost.rs#L18-L58) allocates a `weights` array via `collect()`, a `neg_log` array from the subtraction, and a `scaled` array from `mapv`. It also calls `distribution.t()` which may allocate a new `Array1` for Range variants. This function runs once per internal node per backward pass and once per leaf with an active coalescent model.
+`fn distribution_multiply_by_fn()` [`packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L27-L65`](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L27-L65) allocates a `weights` array via `collect()`, a `neg_log` array from the subtraction, and a `scaled` array from `mapv`. It also calls `distribution.t()` which may allocate a new `Array1` for Range variants. This function runs once per internal node per backward pass and once per leaf with an active coalescent model.
 
 ## Model construction clones invariant arrays
 
@@ -16,4 +16,4 @@ At [`packages/treetime/src/timetree/inference/backward_pass.rs#L98`](../../packa
 
 ## Required behavior
 
-Replace deep clones with moves or borrows where ownership allows. Reduce intermediate allocations in `distribution_apply_neg_log_weight` by combining operations or reusing buffers. Validate improvements with focused allocation benchmarks.
+Replace deep clones with moves or borrows where ownership allows. Reduce intermediate allocations in `distribution_multiply_by_fn` by combining operations or reusing buffers. Validate improvements with focused allocation benchmarks.

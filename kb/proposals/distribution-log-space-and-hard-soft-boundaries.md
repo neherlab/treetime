@@ -72,7 +72,7 @@ Switch timetree time distributions from `Plain` to `NegLog` (`packages/treetime-
 - [M-distribution-plain-division-fixed-floor.md](../issues/M-distribution-plain-division-fixed-floor.md) — division is subtraction; `NegLog::safe_divisor` is already the identity.
 - [N-distribution-function-product-negative-roundoff.md](../issues/N-distribution-function-product-negative-roundoff.md) — linear interpolation of a log-density cannot produce a negative amplitude, so the `~-1e-26 → ln → NaN` path cannot recur.
 
-The coalescent contribution also stops round-tripping: `distribution_apply_neg_log_weight` already computes in neg-log and becomes plain addition.
+The coalescent contribution also stops round-tripping: `distribution_multiply_by_fn` already computes in neg-log and becomes plain addition.
 
 ### Prerequisite
 

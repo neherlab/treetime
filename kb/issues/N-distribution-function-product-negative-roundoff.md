@@ -16,7 +16,7 @@ Traced on `timetree --tree data/ebola/20/tree.nwk --aln data/ebola/20/aln.fasta.
 
 ## Impact
 
-Benign for current consumers. The magnitude is 25+ orders below the unit peak. The one operation that previously mishandled it, `distribution_apply_neg_log_weight`, took `ln(amplitude)` and turned the negative into `NaN`, collapsing the whole distribution to `Empty` under `--coalescent`; it now maps non-positive amplitudes to `+inf` cost (zero mass) via `Plain::is_defined`, so the negatives are tolerated. Any future consumer that assumes strictly non-negative `Function` amplitudes (a logarithm, a positivity assertion) would need the same guard.
+Benign for current consumers. The magnitude is 25+ orders below the unit peak. The one operation that previously mishandled it, `distribution_multiply_by_fn`, took `ln(amplitude)` and turned the negative into `NaN`, collapsing the whole distribution to `Empty` under `--coalescent`; it now maps non-positive amplitudes to `+inf` cost (zero mass) via `Plain::is_defined`, so the negatives are tolerated. Any future consumer that assumes strictly non-negative `Function` amplitudes (a logarithm, a positivity assertion) would need the same guard.
 
 ## Options
 

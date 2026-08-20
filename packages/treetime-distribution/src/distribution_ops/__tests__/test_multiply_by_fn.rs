@@ -2,7 +2,7 @@
 mod tests {
   use crate::DistributionFunction;
   use crate::DistributionNegLog;
-  use crate::distribution_ops::log_cost::distribution_add_neg_log_weight;
+  use crate::distribution_ops::multiply_by_fn::distribution_multiply_by_fn;
   use approx::assert_abs_diff_eq;
   use ndarray::{Array1, array};
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
@@ -11,26 +11,26 @@ mod tests {
   /// A constant weight is a uniform shift in log space, which normalization removes: the result
   /// equals the already-normalized input.
   #[test]
-  fn test_log_cost_add_neg_log_weight_constant_is_uniform_shift() {
+  fn test_multiply_by_fn_constant_is_uniform_shift() {
     let neglog = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
-    let actual = distribution_add_neg_log_weight(&neglog, |_| Ok(10.0)).unwrap();
+    let actual = distribution_multiply_by_fn(&neglog, |_| Ok(10.0)).unwrap();
     assert_abs_diff_eq!(array![4.0, 0.0, 3.0], actual.y(), epsilon = 1e-15);
   }
 
   /// Empty passes through unchanged.
   #[test]
-  fn test_log_cost_add_neg_log_weight_empty_passthrough() {
-    let actual = distribution_add_neg_log_weight(&DistributionNegLog::Empty, |_| Ok(1.0)).unwrap();
+  fn test_multiply_by_fn_empty_passthrough() {
+    let actual = distribution_multiply_by_fn(&DistributionNegLog::Empty, |_| Ok(1.0)).unwrap();
     assert_eq!(DistributionNegLog::Empty, actual);
   }
 
   /// A Formula has no grid and is rejected.
   #[test]
-  fn test_log_cost_add_neg_log_weight_rejects_formula() {
+  fn test_multiply_by_fn_rejects_formula() {
     let formula = DistributionNegLog::Formula(crate::DistributionFormula::new(|_| Ok(1.0), 0.0, 10.0));
     assert_error!(
-      distribution_add_neg_log_weight(&formula, |_| Ok(1.0)),
-      "distribution_add_neg_log_weight requires a concrete Point, Range, or Function distribution"
+      distribution_multiply_by_fn(&formula, |_| Ok(1.0)),
+      "distribution_multiply_by_fn requires a concrete Point, Range, or Function distribution"
     );
   }
 
@@ -42,7 +42,7 @@ mod tests {
   /// (analytical: least-squares slope of an exactly linear ordinate) and the right edge stays `Hard`.
   /// Before the fix the rebuild reset both sides to `Error`, disabling the following mass re-window.
   #[test]
-  fn test_log_cost_add_neg_log_weight_preserves_soft_left_hard_right() {
+  fn test_multiply_by_fn_preserves_soft_left_hard_right() {
     let t = Array1::linspace(0.0, 4.0, 21);
     let y = t.mapv(|ti| -2.0 * ti);
     let f = DistributionFunction::from_arrays(&t, y).unwrap();
@@ -53,7 +53,7 @@ mod tests {
       .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
 
-    let actual = distribution_add_neg_log_weight(&DistributionNegLog::Function(input), |ti: f64| Ok(0.5 * ti)).unwrap();
+    let actual = distribution_multiply_by_fn(&DistributionNegLog::Function(input), |ti: f64| Ok(0.5 * ti)).unwrap();
 
     let DistributionNegLog::Function(rf) = actual else {
       panic!("expected a Function result");
@@ -74,7 +74,7 @@ mod tests {
   /// combined ordinate is still `-2t` and the re-fit recovers slope `-2`. This is the boundary case
   /// where the general re-fit reduces to `normalize`'s shift-invariant carry.
   #[test]
-  fn test_log_cost_add_neg_log_weight_constant_weight_keeps_soft_slope() {
+  fn test_multiply_by_fn_constant_weight_keeps_soft_slope() {
     let t = Array1::linspace(0.0, 4.0, 21);
     let y = t.mapv(|ti| -2.0 * ti);
     let f = DistributionFunction::from_arrays(&t, y).unwrap();
@@ -85,7 +85,7 @@ mod tests {
       .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
 
-    let actual = distribution_add_neg_log_weight(&DistributionNegLog::Function(input), |_| Ok(10.0)).unwrap();
+    let actual = distribution_multiply_by_fn(&DistributionNegLog::Function(input), |_| Ok(10.0)).unwrap();
 
     let DistributionNegLog::Function(rf) = actual else {
       panic!("expected a Function result");
@@ -99,7 +99,7 @@ mod tests {
 
   /// Hard sides carry through unchanged: `0 * exp(-w) = 0` beyond the edge regardless of the weight.
   #[test]
-  fn test_log_cost_add_neg_log_weight_carries_hard_both_sides() {
+  fn test_multiply_by_fn_carries_hard_both_sides() {
     let t = Array1::linspace(0.0, 4.0, 21);
     let y = t.mapv(|ti| -2.0 * ti);
     let input = DistributionFunction::from_arrays(&t, y)
@@ -107,7 +107,7 @@ mod tests {
       .with_extrap(BoundaryBehavior::Hard)
       .unwrap();
 
-    let actual = distribution_add_neg_log_weight(&DistributionNegLog::Function(input), |ti: f64| Ok(0.5 * ti)).unwrap();
+    let actual = distribution_multiply_by_fn(&DistributionNegLog::Function(input), |ti: f64| Ok(0.5 * ti)).unwrap();
 
     let DistributionNegLog::Function(rf) = actual else {
       panic!("expected a Function result");

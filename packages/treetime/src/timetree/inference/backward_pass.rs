@@ -7,8 +7,8 @@ use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::NegLog;
 use treetime_distribution::convolve_across_edge;
-use treetime_distribution::distribution_add_neg_log_weight;
 use treetime_distribution::distribution_multiplication;
+use treetime_distribution::distribution_multiply_by_fn;
 use treetime_distribution::distribution_product;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
@@ -88,7 +88,7 @@ where
   let leaf_weighted = if graph.is_leaf(slot.key)
     && let Some(model) = coalescent_model
   {
-    Some(distribution_add_neg_log_weight(
+    Some(distribution_multiply_by_fn(
       distribution.as_ref(),
       |time| Ok(model.leaf_contribution(time)),
     )?)
@@ -187,7 +187,7 @@ where
   }
   let is_root = graph.is_root(slot.key);
   let n_children = graph.degree_out(slot.key)?;
-  distribution_add_neg_log_weight(&distribution, |time| {
+  distribution_multiply_by_fn(&distribution, |time| {
     if is_root {
       model.root_contribution(time, n_children)
     } else {

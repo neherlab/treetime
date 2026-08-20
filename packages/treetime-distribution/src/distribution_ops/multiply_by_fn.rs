@@ -24,7 +24,7 @@ use treetime_utils::make_error;
 /// edge-relative `Hard`/`HardApproach` laws carry through unchanged. Erasing the policy to `Error`
 /// here disabled the mass re-window (design D3) for every coalescent internal and root node, since
 /// that node's contribution routes through this function in the backward pass.
-pub fn distribution_add_neg_log_weight<F>(
+pub fn distribution_multiply_by_fn<F>(
   distribution: &Distribution<NegLog>,
   weight: F,
 ) -> Result<Distribution<NegLog>, Report>
@@ -35,7 +35,7 @@ where
     return Ok(Distribution::Empty);
   }
   if matches!(distribution, Distribution::Formula(_)) {
-    return make_error!("distribution_add_neg_log_weight requires a concrete Point, Range, or Function distribution");
+    return make_error!("distribution_multiply_by_fn requires a concrete Point, Range, or Function distribution");
   }
 
   let times = distribution.t();
@@ -46,7 +46,7 @@ where
 
   let minimum = min_or(&combined, f64::INFINITY);
   if !minimum.is_finite() {
-    return make_error!("distribution_add_neg_log_weight found no finite weight over the distribution grid");
+    return make_error!("distribution_multiply_by_fn found no finite weight over the distribution grid");
   }
 
   let result: Distribution<NegLog> = if let Distribution::Function(f) = distribution {
