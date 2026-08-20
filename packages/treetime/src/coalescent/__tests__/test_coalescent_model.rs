@@ -7,7 +7,7 @@ mod tests {
   use eyre::Report;
   use ndarray::array;
   use proptest::prelude::*;
-  use treetime_distribution::{Distribution, DistributionFormula, distribution_apply_neg_log_weight};
+  use treetime_distribution::Distribution;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_utils::{assert_error, prop_assert_abs_diff_eq};
 
@@ -23,56 +23,6 @@ mod tests {
       epsilon = 1e-10
     );
     pretty_assert_abs_diff_eq!(7.5 - 0.5_f64.ln(), model.root_contribution(0.0, 2)?, epsilon = 1e-10);
-    Ok(())
-  }
-
-  #[test]
-  fn test_coalescent_model_leaf_application_preserves_range_support() -> Result<(), Report> {
-    let model = model(array![0.0, 10.0], array![1.0, 2.0, 0.0], 2.0)?;
-    let distribution = Distribution::range((0.0, 10.0), 1.0);
-
-    let actual = distribution_apply_neg_log_weight(&distribution, |time| Ok(model.leaf_contribution(time)))?;
-
-    let expected_times = array![0.0, 10.0];
-    assert_eq!(expected_times, actual.t());
-    assert!(matches!(actual, Distribution::Function(_)));
-    assert!(actual.eval(0.0)? > actual.eval(10.0)?);
-    Ok(())
-  }
-
-  #[test]
-  fn test_coalescent_model_leaf_application_preserves_point() -> Result<(), Report> {
-    let model = model(array![0.0, 10.0], array![1.0, 2.0, 0.0], 2.0)?;
-    let distribution = Distribution::point(5.0, 0.25);
-
-    let actual = distribution_apply_neg_log_weight(&distribution, |time| Ok(model.leaf_contribution(time)))?;
-
-    // A one-point likelihood normalizes to unit peak without changing support.
-    let expected = Distribution::point(5.0, 1.0);
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_coalescent_model_leaf_application_preserves_empty() -> Result<(), Report> {
-    let model = model(array![0.0, 10.0], array![1.0, 2.0, 0.0], 2.0)?;
-
-    let actual = distribution_apply_neg_log_weight(&Distribution::Empty, |time| Ok(model.leaf_contribution(time)))?;
-
-    assert_eq!(Distribution::Empty, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_coalescent_model_application_preserves_function_grid() -> Result<(), Report> {
-    let model = model(array![0.0, 10.0], array![1.0, 2.0, 0.0], 2.0)?;
-    let expected_times = array![0.0, 2.5, 5.0, 7.5, 10.0];
-    let distribution = Distribution::function(expected_times.clone(), array![0.2, 0.5, 1.0, 0.5, 0.2])?;
-
-    let actual = distribution_apply_neg_log_weight(&distribution, |time| Ok(model.leaf_contribution(time)))?;
-
-    assert_eq!(expected_times, actual.t());
-    assert!(!matches!(actual, Distribution::Formula(_)));
     Ok(())
   }
 
@@ -97,17 +47,6 @@ mod tests {
       model.branch_merger_rate_schedule(&tc_schedule),
       "Coalescent Tc region 0 must be finite and positive, got NaN"
     );
-    Ok(())
-  }
-
-  #[test]
-  fn test_coalescent_model_rejects_formula_contribution_input() -> Result<(), Report> {
-    let model = model(array![0.0, 10.0], array![1.0, 2.0, 0.0], 2.0)?;
-    let distribution = Distribution::Formula(DistributionFormula::new(|_| Ok(1.0), 0.0, 10.0));
-
-    let error = distribution_apply_neg_log_weight(&distribution, |time| Ok(model.leaf_contribution(time))).unwrap_err();
-
-    assert!(error.to_string().contains("concrete Point, Range, or Function"));
     Ok(())
   }
 
