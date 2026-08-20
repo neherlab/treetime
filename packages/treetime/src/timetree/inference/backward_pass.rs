@@ -246,22 +246,30 @@ where
     return Ok(());
   };
 
-  // A leaf weights its outgoing message by the leaf coalescent factor. This factor captures how the leaf
-  // informs its parent, not the leaf's own time, so it stays out of the stored distribution the forward
-  // pass reuses (`multiply_node_factors` sets that one without it). Every other node -- internal, or any
-  // node without a coalescent model -- sends its stored distribution unchanged, borrowed rather than cloned.
-  let outgoing = if graph.is_leaf(slot.key)
-    && let Some(model) = coalescent_model
-  {
-    let weighted = distribution_add_neg_log_weight(distribution.as_ref(), |time| Ok(model.leaf_contribution(time)))?;
-    Cow::Owned(weighted)
-  } else {
-    Cow::Borrowed(distribution.as_ref())
-  };
+  let outgoing = outgoing_distribution(coalescent_model, graph.is_leaf(slot.key), distribution)?;
 
   let negated_branch = branch_length_distribution.negate()?;
   let message = convolve_across_edge(&outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)?;
   edge.set_msg_to_parent(Some(Arc::new(message)));
 
   Ok(())
+}
+
+/// The node's distribution as it leaves toward its parent.
+///
+/// A leaf weights its outgoing message by the leaf coalescent factor. This factor captures how the leaf
+/// informs its parent, not the leaf's own time, so it stays out of the stored distribution the forward
+/// pass reuses (`multiply_node_factors` sets that one without it). Every other node -- internal, or any
+/// node without a coalescent model -- sends its stored distribution unchanged, borrowed rather than cloned.
+fn outgoing_distribution<'a>(
+  coalescent_model: Option<&CoalescentModel>,
+  is_leaf: bool,
+  distribution: &'a Arc<Distribution<NegLog>>,
+) -> Result<Cow<'a, Distribution<NegLog>>, Report> {
+  if is_leaf && let Some(model) = coalescent_model {
+    let weighted = distribution_add_neg_log_weight(distribution.as_ref(), |time| Ok(model.leaf_contribution(time)))?;
+    Ok(Cow::Owned(weighted))
+  } else {
+    Ok(Cow::Borrowed(distribution.as_ref()))
+  }
 }
