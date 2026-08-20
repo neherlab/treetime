@@ -57,8 +57,6 @@ where
   let distribution = apply_coalescent_prior(graph, coalescent_model, slot, distribution)?;
   let distribution = apply_date_constraint(slot, distribution)?;
 
-  // Store the pipeline result when non-empty. A leaf whose time was set before the backward pass
-  // (from its sampling date) keeps that pre-existing distribution when the pipeline produces Empty.
   if !matches!(distribution, Distribution::Empty) {
     // Peak-normalize the combined posterior. Every downstream consumer (likely_time, quantile, and
     // the outgoing convolution via to_plain_normalized) is shift-invariant, so the peak offset
@@ -67,44 +65,7 @@ where
     slot.node.set_time_distribution(Some(Arc::new(distribution)));
   }
 
-  // Convolve the node's distribution across the branch to form the backward message for the parent.
-  // A node on a bad branch, without a distribution, parent edge, or branch-length distribution sends
-  // no message.
-  if slot.node.bad_branch() {
-    return Ok(());
-  }
-  let Some(distribution) = slot.node.time_distribution() else {
-    return Ok(());
-  };
-  let Some((_, edge)) = slot.parent_edge.as_mut() else {
-    return Ok(());
-  };
-  let Some(branch_length_distribution) = edge.branch_length_distribution() else {
-    return Ok(());
-  };
-
-  // A leaf weights its outgoing message by the leaf coalescent factor; every other node sends its
-  // stored distribution unchanged.
-  let leaf_weighted = if graph.is_leaf(slot.key)
-    && let Some(model) = coalescent_model
-  {
-    Some(distribution_multiply_by_fn(
-      distribution.as_ref(),
-      |time| Ok(model.leaf_contribution(time)),
-    )?)
-  } else {
-    None
-  };
-  let outgoing = leaf_weighted.as_ref().unwrap_or_else(|| distribution.as_ref());
-
-  // The branch is negated because the parent is older than the node. Tail policy: the left side is
-  // soft (parent could be arbitrarily far in the past), the right side is hard (child's sampling
-  // date bounds the parent's age).
-  let negated_branch = branch_length_distribution.negate()?;
-  let message = convolve_across_edge(outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)?;
-  edge.set_msg_to_parent(Some(Arc::new(message)));
-
-  Ok(())
+  send_backward_message(coalescent_model, graph.is_leaf(slot.key), slot)
 }
 
 /// Gathers the backward messages from a node's good children.
@@ -166,7 +127,7 @@ fn combine_child_messages(messages: &[Arc<Distribution<NegLog>>]) -> Result<Dist
 /// The root and internal contributions differ, and both scale with the node's child count. The leaf
 /// coalescent factor is deliberately not applied here: it belongs to the outgoing message only, never
 /// the stored node distribution, so it is added later when the message is formed in
-/// [`send_message_to_parent`]. A node with no coalescent model, or an `Empty` distribution (no child
+/// [`send_backward_message`]. A node with no coalescent model, or an `Empty` distribution (no child
 /// left a message), is returned unchanged.
 fn apply_coalescent_prior<N, E, D>(
   graph: &Graph<N, E, D>,
@@ -221,3 +182,46 @@ where
   distribution_multiplication(&distribution, constraint)
 }
 
+/// Convolves the node's stored distribution across the branch into a backward message for the parent.
+///
+/// The branch is negated (parent is older than the node). The left tail is soft (parent could be
+/// arbitrarily far in the past); the right tail is hard (child's sampling date bounds the parent's
+/// age). A leaf weights its outgoing message by the coalescent leaf factor, which belongs to the
+/// message only, not the stored distribution.
+fn send_backward_message<N, E>(
+  coalescent_model: Option<&CoalescentModel>,
+  is_leaf: bool,
+  slot: &mut IndexedPassSlot<N, E>,
+) -> Result<(), Report>
+where
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + TimetreeEdge,
+{
+  if slot.node.bad_branch() {
+    return Ok(());
+  }
+  let Some(distribution) = slot.node.time_distribution() else {
+    return Ok(());
+  };
+  let Some((_, edge)) = slot.parent_edge.as_mut() else {
+    return Ok(());
+  };
+  let Some(branch_length_distribution) = edge.branch_length_distribution() else {
+    return Ok(());
+  };
+
+  let leaf_weighted = if is_leaf && let Some(model) = coalescent_model {
+    Some(distribution_multiply_by_fn(distribution.as_ref(), |time| {
+      Ok(model.leaf_contribution(time))
+    })?)
+  } else {
+    None
+  };
+  let outgoing = leaf_weighted.as_ref().unwrap_or_else(|| distribution.as_ref());
+
+  let negated_branch = branch_length_distribution.negate()?;
+  let message = convolve_across_edge(outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)?;
+  edge.set_msg_to_parent(Some(Arc::new(message)));
+
+  Ok(())
+}
