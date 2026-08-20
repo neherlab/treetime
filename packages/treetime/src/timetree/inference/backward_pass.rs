@@ -3,6 +3,7 @@ use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, w
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use eyre::Report;
+use std::borrow::Cow;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::NegLog;
@@ -232,28 +233,35 @@ where
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  // The node's distribution as it leaves toward its parent. An internal node sends its stored
-  // distribution unchanged.
-  let outgoing = if graph.is_leaf(slot.key)
-    && let (Some(model), Some(distribution)) = (coalescent_model, slot.node.time_distribution())
-  {
-    // Leaf coalescent factor: added to this outgoing message only, so it never reaches the stored node
-    // distribution (set by `multiply_node_factors` without it). It weights how the leaf informs its
-    // parent, not the leaf's own time, so it stays out of the stored distribution the forward pass reuses.
-    let with_leaf = distribution_add_neg_log_weight(distribution.as_ref(), |time| Ok(model.leaf_contribution(time)))?;
-    Some(Arc::new(with_leaf))
-  } else {
-    slot.node.time_distribution().clone()
+  if slot.node.bad_branch() {
+    return Ok(());
+  }
+  let Some(distribution) = slot.node.time_distribution() else {
+    return Ok(());
+  };
+  let Some((_, edge)) = slot.parent_edge.as_mut() else {
+    return Ok(());
+  };
+  let Some(branch_length_distribution) = edge.branch_length_distribution() else {
+    return Ok(());
   };
 
-  if !slot.node.bad_branch()
-    && let Some((_, edge)) = slot.parent_edge.as_mut()
-    && let (Some(branch_length_distribution), Some(outgoing)) = (edge.branch_length_distribution(), outgoing)
-  {
-    let negated_branch = branch_length_distribution.negate()?;
-    let message = convolve_across_edge(&outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)?;
-    edge.set_msg_to_parent(Some(Arc::new(message)));
-  }
+  // A leaf folds its coalescent factor into this outgoing message only, so it never reaches the stored
+  // node distribution (set by `multiply_node_factors` without it): the factor weights how the leaf
+  // informs its parent, not the leaf's own time, which the forward pass reuses. An internal node, or any
+  // node without a coalescent model, sends its stored distribution unchanged, borrowed rather than cloned.
+  let outgoing = match coalescent_model {
+    Some(model) if graph.is_leaf(slot.key) => {
+      Cow::Owned(distribution_add_neg_log_weight(distribution.as_ref(), |time| {
+        Ok(model.leaf_contribution(time))
+      })?)
+    },
+    _ => Cow::Borrowed(distribution.as_ref()),
+  };
+
+  let negated_branch = branch_length_distribution.negate()?;
+  let message = convolve_across_edge(&outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)?;
+  edge.set_msg_to_parent(Some(Arc::new(message)));
 
   Ok(())
 }
