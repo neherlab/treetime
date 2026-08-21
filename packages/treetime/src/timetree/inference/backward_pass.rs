@@ -52,6 +52,10 @@ where
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
+  // take child messages and date constraint --> determine xmin, xmax, and grid
+  // evaluate coalescent on that grid (different for root, internal, child)
+  // multiply messages, date constraint, and coalescent --> node distribution
+  // regrid node distribution to sensible grid
   let messages = gather_child_messages(graph, dependencies, slot);
   let distribution = combine_child_messages(&messages)?;
   let distribution = apply_coalescent_prior(graph, coalescent_model, slot, distribution)?;

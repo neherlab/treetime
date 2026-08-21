@@ -38,6 +38,8 @@ pub fn convolve_across_edge(
   let Distribution::Function(conv) = conv else {
     return Ok(conv.normalize());
   };
+  // keep grid as is (truncate to machine precision range), but refit tails.
+
 
   // Fit the soft tail from the fine convolution grid so the window's extrapolated outer points are
   // sensible; declare the opposite side hard. The soft slope is refit once the result is landed.

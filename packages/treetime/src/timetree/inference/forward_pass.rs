@@ -222,6 +222,10 @@ where
       } else {
         parent_time_dist.as_ref().clone()
       };
+
+      // TODO: remove or review (richard)
+      // this 'restrict_to_reachable' is analogous to the regridding after
+      // combination of messages in the backward pass.
       let parent_except_subtree = restrict_to_reachable(parent_except_subtree, subtree_dist, branch_dist)?;
 
       // Convolve the parent-minus-subtree message across the branch into the forward message. Tail
