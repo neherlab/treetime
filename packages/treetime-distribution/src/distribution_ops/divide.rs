@@ -184,6 +184,11 @@ fn division_result_tail(dividend_tail: BoundaryBehavior, divisor_truncates: bool
   }
 }
 
+//TODO: is this function really needed? The reasoning about the soft-tail is not sound, I think.
+//in all our cases, the dividend is a product of functions that include the divisor. So
+//the tail should never explode. The soft tail is important to maintain a consistent product
+// of functions in the backward pass and be able to evaluate functions arbitrarily far in the past.
+//truncating this tail in division undoes that and leads to empty distributions in the forward pass
 fn division_support_intersection<Y: YAxisPolicy>(
   dividend_bounds: (f64, f64),
   divisor: &DistributionFunction<f64, Y>,

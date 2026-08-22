@@ -291,6 +291,7 @@ fn restrict_to_reachable(
   else {
     return Ok(parent);
   };
+  //TODO: we should be sampling into the  branch's tail if necessary.
 
   let dx = parent_fn.dx();
   let span = parent_fn.x_max() - parent_fn.x_min();
