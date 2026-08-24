@@ -10,7 +10,7 @@ Add an HKY85 (or other non-symmetric model) test case where forward and backward
 
 ## Location
 
-`packages/treetime/src/partition/marginal_helpers.rs:209,248:`
+`packages/treetime/src/partition/marginal_helpers/__tests__/test_marginal_helpers.rs:10,66:`
 
 ## Notes
 

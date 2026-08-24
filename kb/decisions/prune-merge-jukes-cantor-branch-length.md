@@ -33,5 +33,5 @@ Child branch lengths are computed from remaining (non-shared) mutations using th
 
 ## Tests
 
-- Unit: [`test_jukes_cantor_distance_*`](../../packages/treetime/src/gtr/jc_distance.rs#L87) cover known analytical values, monotonicity, the $d \ge p$ property, small-$p$ Taylor behaviour, and the saturation clamp.
+- Unit: [`test_jukes_cantor_distance_*`](../../packages/treetime/src/gtr/jc_distance/__tests__/test_jc_distance.rs#L8) cover known analytical values, monotonicity, the $d \ge p$ property, small-$p$ Taylor behaviour, and the saturation clamp.
 - Integration: [`test_merge_branch_length_jc_correction_differs_from_raw`](../../packages/treetime/src/optimize/topology/__tests__/test_merge_shared_mutations.rs#L581) exercises a polytomy where $p = 0.1$, regressing if raw p-distance were restored.
