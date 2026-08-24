@@ -4,7 +4,6 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
-  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::assert_error;
 
@@ -152,67 +151,33 @@ mod tests {
   #[test]
   fn test_gridfn_soft_tail_right_extrapolation() -> Result<(), Report> {
     // Grid [0.0, 2.0], soft right tail with neg-log slope 1.0 (decaying rightward).
-    let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![4.0, 3.0, 2.0])?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }));
+    let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![4.0, 3.0, 2.0])?;
+    let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 });
 
     // At the edge: continuous with the grid.
     assert_abs_diff_eq!(2.0, grid.interp(2.0)?, epsilon = 1e-14);
     // Beyond the edge: y_edge + slope * (t - x_max) = 2.0 + 1.0 * 0.5.
-    assert_abs_diff_eq!(2.5, grid.interp(2.5)?, epsilon = 1e-14);
+    assert_abs_diff_eq!(
+      2.5,
+      grid.interp_with_extrap(2.5, BoundaryBehavior::Error, right)?,
+      epsilon = 1e-14
+    );
     Ok(())
   }
 
   #[test]
   fn test_gridfn_soft_tail_left_extrapolation() -> Result<(), Report> {
     // Grid [0.0, 2.0], soft left tail with neg-log slope -1.0 (decaying leftward).
-    let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![2.0, 3.0, 4.0])?
-      .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }));
+    let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![2.0, 3.0, 4.0])?;
+    let left = BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 });
 
     assert_abs_diff_eq!(2.0, grid.interp(0.0)?, epsilon = 1e-14);
     // Beyond the left edge: y_edge + slope * (t - x_min) = 2.0 + (-1.0) * (-0.5).
-    assert_abs_diff_eq!(2.5, grid.interp(-0.5)?, epsilon = 1e-14);
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_scale_y_scales_soft_tail_slope() -> Result<(), Report> {
-    // scale_y multiplies every stored neg-log ordinate by the factor, so the tail line steepens by
-    // the factor: the slope scales and the extrapolated value uses the scaled edge and slope.
-    let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![4.0, 3.0, 2.0])?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }));
-
-    let scaled = grid.scale_y(3.0);
-    let law = scaled.right_extrap().soft_law().expect("soft tail preserved");
-    assert_abs_diff_eq!(3.0, law.slope, epsilon = 1e-14);
-    // Edge value 2.0 -> 6.0, slope 1.0 -> 3.0, so the tail at t=2.5 is 6.0 + 3.0 * 0.5.
-    assert_abs_diff_eq!(7.5, scaled.interp(2.5)?, epsilon = 1e-14);
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_mapv_resets_boundary_law_to_error() -> Result<(), Report> {
-    let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![4.0, 3.0, 2.0])?
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }));
-
-    // An arbitrary y-transform can move the tail off the log-linear family the law describes, so the
-    // result carries no declared tail: `mapv` resets both sides to `Error`, exactly as a fresh
-    // `from_grid_array` does, rather than keeping a soft class with an invalid (or absent) law.
-    let mapped = grid.mapv(|v| v * v);
-    assert_eq!(BoundaryBehavior::Error, mapped.right_extrap());
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_negate_arg_swaps_and_flips_soft_tail() -> Result<(), Report> {
-    let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![2.0, 3.0, 4.0])?
-      .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }))
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.7 }));
-
-    let negated = grid.negate_arg()?;
-    // Left tail (slope -1.0) becomes the right tail with slope +1.0.
-    assert_abs_diff_eq!(1.0, negated.right_extrap().soft_law().unwrap().slope, epsilon = 1e-14);
-    // Right tail (slope 0.7) becomes the left tail with slope -0.7.
-    assert_abs_diff_eq!(-0.7, negated.left_extrap().soft_law().unwrap().slope, epsilon = 1e-14);
+    assert_abs_diff_eq!(
+      2.5,
+      grid.interp_with_extrap(-0.5, left, BoundaryBehavior::Error)?,
+      epsilon = 1e-14
+    );
     Ok(())
   }
 
@@ -222,14 +187,18 @@ mod tests {
     // tail is anchored to the live edge (not an absolute coordinate), extrapolation past the new
     // edge uses the new edge value, staying continuous. An absolutely anchored law would extend
     // from the stale original edge and be discontinuous here.
-    let grid = make_neglog_linear_grid(-1.0, 0.0, 5.0, 51)
-      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }));
+    let grid = make_neglog_linear_grid(-1.0, 0.0, 5.0, 51);
+    let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 });
 
     // Re-window to [0, 4]: the right edge moves from 5.0 to 4.0.
     let rewindowed = grid.resample_range_dx((0.0, 4.0), 0.1)?;
     let edge_value = rewindowed.interp(4.0)?;
     // Extrapolation just past the new edge equals edge_value + slope * 0.5.
-    assert_abs_diff_eq!(edge_value + 0.5, rewindowed.interp(4.5)?, epsilon = 1e-12);
+    assert_abs_diff_eq!(
+      edge_value + 0.5,
+      rewindowed.interp_with_extrap(4.5, BoundaryBehavior::Error, right)?,
+      epsilon = 1e-12
+    );
     Ok(())
   }
 }

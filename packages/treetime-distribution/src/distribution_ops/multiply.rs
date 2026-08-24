@@ -143,7 +143,7 @@ fn multiply_range_function<Y: YAxisPolicy>(
   func: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
   let a_bounds = (range.start(), range.end());
-  let a_tails = (BoundaryBehavior::Error, BoundaryBehavior::Error);
+  let a_tails = (BoundaryBehavior::Hard, BoundaryBehavior::Hard);
   let b_bounds = (func.x_min(), func.x_max());
   let b_tails = (func.left_extrap(), func.right_extrap());
   match multiplication_support_intersection(&[(a_bounds, a_tails), (b_bounds, b_tails)]) {
@@ -160,7 +160,7 @@ fn multiply_range_function<Y: YAxisPolicy>(
       let values = func
         .interp_many(&grid)?
         .mapv(|value| Y::multiply(range.amplitude(), value));
-      // A range has no interpolated tail (Error both sides), so composition keeps Error tails.
+      // A range has hard boundaries on both sides, so composition keeps hard tails.
       let function = with_composed_tails(
         DistributionFunction::from_range_values(bounds, values)?,
         a_tails,
@@ -359,29 +359,29 @@ fn multiply_formula_formula<Y: YAxisPolicy>(
   a: &DistributionFormula<Y>,
   b: &DistributionFormula<Y>,
 ) -> Result<Distribution<Y>, Report> {
-  let overlap_min = a.t_min().max(b.t_min());
-  let overlap_max = a.t_max().min(b.t_max());
-
-  if overlap_min >= overlap_max {
-    return guarded_empty_result(
-      "multiplication",
-      Some(formula_hard_domain(a)),
-      Some(formula_hard_domain(b)),
-    );
+  let a_domain = formula_hard_domain(a);
+  let b_domain = formula_hard_domain(b);
+  match multiplication_support_intersection(&[a_domain, b_domain]) {
+    SupportIntersection::Disjoint => guarded_empty_result("multiplication", Some(a_domain), Some(b_domain)),
+    SupportIntersection::Point(t) => Ok(Distribution::point(
+      t,
+      Y::multiply(a.eval_single(t)?, b.eval_single(t)?),
+    )),
+    SupportIntersection::Interval(bounds) => {
+      let grid = Array1::linspace(bounds.0, bounds.1, FORMULA_GRID_SIZE);
+      let a_values = a.eval_many(&grid)?;
+      let b_values = b.eval_many(&grid)?;
+      let values = Zip::from(&a_values)
+        .and(&b_values)
+        .map_collect(|&a_value, &b_value| Y::multiply(a_value, b_value));
+      let function = with_composed_tails(
+        DistributionFunction::from_range_values(bounds, values)?,
+        a_domain.1,
+        b_domain.1,
+      )?;
+      Ok(Distribution::Function(function))
+    },
   }
-
-  let n_points = FORMULA_GRID_SIZE;
-  let values = (0..n_points)
-    .map(|i| {
-      let t = overlap_min + (overlap_max - overlap_min) * (i as f64 / (n_points - 1) as f64);
-      let va = a.eval_single(t)?;
-      let vb = b.eval_single(t)?;
-      Ok(Y::multiply(va, vb))
-    })
-    .collect::<Result<Vec<f64>, Report>>()?;
-
-  let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), Array1::from_vec(values))?;
-  Ok(Distribution::Function(distribution_fn))
 }
 
 fn multiply_formula_function<Y: YAxisPolicy>(
@@ -389,7 +389,7 @@ fn multiply_formula_function<Y: YAxisPolicy>(
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
   let a_bounds = (a.t_min(), a.t_max());
-  let a_tails = (BoundaryBehavior::Error, BoundaryBehavior::Error);
+  let a_tails = (a.left_extrap(), a.right_extrap());
   let b_bounds = (b.x_min(), b.x_max());
   let b_tails = (b.left_extrap(), b.right_extrap());
   match multiplication_support_intersection(&[(a_bounds, a_tails), (b_bounds, b_tails)]) {
@@ -405,7 +405,6 @@ fn multiply_formula_function<Y: YAxisPolicy>(
       let values = Zip::from(&formula_values)
         .and(&function_values)
         .map_collect(|&formula, &function| Y::multiply(formula, function));
-      // A formula has no interpolated tail (Error both sides), so composition keeps Error tails.
       let function = with_composed_tails(
         DistributionFunction::from_range_values(bounds, values)?,
         a_tails,
@@ -423,7 +422,14 @@ fn multiply_formula_point<Y: YAxisPolicy>(
   const EPS: f64 = 1e-9;
   let t = b.t();
 
-  if t < a.t_min() - EPS || t > a.t_max() + EPS {
+  let tail = if t < a.t_min() - EPS {
+    Some(a.left_extrap())
+  } else if t > a.t_max() + EPS {
+    Some(a.right_extrap())
+  } else {
+    None
+  };
+  if tail.is_some_and(|tail| !tail.is_soft()) {
     return guarded_empty_result(
       "multiplication",
       Some(formula_hard_domain(a)),
@@ -449,29 +455,22 @@ fn multiply_formula_range<Y: YAxisPolicy>(
   a: &DistributionFormula<Y>,
   b: &DistributionRange<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
-  let overlap_min = a.t_min().max(b.start());
-  let overlap_max = a.t_max().min(b.end());
-
-  if overlap_min >= overlap_max {
-    return guarded_empty_result(
-      "multiplication",
-      Some(formula_hard_domain(a)),
-      Some(range_hard_domain(b)),
-    );
+  let a_domain = formula_hard_domain(a);
+  let b_domain = range_hard_domain(b);
+  match multiplication_support_intersection(&[a_domain, b_domain]) {
+    SupportIntersection::Disjoint => guarded_empty_result("multiplication", Some(a_domain), Some(b_domain)),
+    SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.eval_single(t)?, b.amplitude()))),
+    SupportIntersection::Interval(bounds) => {
+      let grid = Array1::linspace(bounds.0, bounds.1, FORMULA_GRID_SIZE);
+      let values = a.eval_many(&grid)?.mapv(|value| Y::multiply(value, b.amplitude()));
+      let function = with_composed_tails(
+        DistributionFunction::from_range_values(bounds, values)?,
+        a_domain.1,
+        b_domain.1,
+      )?;
+      Ok(Distribution::Function(function))
+    },
   }
-
-  let b_amplitude = b.amplitude();
-  let n_points = FORMULA_GRID_SIZE;
-  let values = (0..n_points)
-    .map(|i| {
-      let t = overlap_min + (overlap_max - overlap_min) * (i as f64 / (n_points - 1) as f64);
-      let va = a.eval_single(t)?;
-      Ok(Y::multiply(va, b_amplitude))
-    })
-    .collect::<Result<Vec<f64>, Report>>()?;
-
-  let distribution_fn = DistributionFunction::from_range_values((overlap_min, overlap_max), Array1::from_vec(values))?;
-  Ok(Distribution::Function(distribution_fn))
 }
 
 /// Attach the per-side result tails composed from the two operands' tails to a Function result.
@@ -536,12 +535,12 @@ pub type HardDomain = ((f64, f64), (BoundaryBehavior, BoundaryBehavior));
 
 /// Hard domain of a point mass: the single point `t`, hard on both sides.
 pub fn point_hard_domain<Y: YAxisPolicy>(p: &DistributionPoint<f64, Y>) -> HardDomain {
-  ((p.t(), p.t()), (BoundaryBehavior::Error, BoundaryBehavior::Error))
+  ((p.t(), p.t()), (BoundaryBehavior::Hard, BoundaryBehavior::Hard))
 }
 
 /// Hard domain of a range: its finite support, hard on both sides.
 pub fn range_hard_domain<Y: YAxisPolicy>(r: &DistributionRange<f64, Y>) -> HardDomain {
-  ((r.start(), r.end()), (BoundaryBehavior::Error, BoundaryBehavior::Error))
+  ((r.start(), r.end()), (BoundaryBehavior::Hard, BoundaryBehavior::Hard))
 }
 
 /// Hard domain of a function: its grid bounds and the declared per-side tail behavior.
@@ -549,12 +548,9 @@ pub fn function_hard_domain<Y: YAxisPolicy>(f: &DistributionFunction<f64, Y>) ->
   ((f.x_min(), f.x_max()), (f.left_extrap(), f.right_extrap()))
 }
 
-/// Hard domain of a formula: its evaluable range, hard on both sides.
+/// Hard domain of a formula: its sampling range and declared per-side boundary behavior.
 pub fn formula_hard_domain<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> HardDomain {
-  (
-    (f.t_min(), f.t_max()),
-    (BoundaryBehavior::Error, BoundaryBehavior::Error),
-  )
+  ((f.t_min(), f.t_max()), (f.left_extrap(), f.right_extrap()))
 }
 
 /// Hard support domain of a distribution, or `None` when its support is empty.

@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::distribution_core::formula::DistributionFormula;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::multiply::distribution_multiplication;
   use crate::policy::{NegLog, Plain};
@@ -8,7 +9,7 @@ mod tests {
   use eyre::Report;
   use ndarray::array;
   use rstest::rstest;
-  use treetime_grid::{BoundaryBehavior, SoftTailLaw};
+  use treetime_grid::{BoundaryBehavior, Side, SoftTailLaw};
   use treetime_utils::assert_error;
 
   type DistFnPlain = DistributionFunction<f64, Plain>;
@@ -58,11 +59,66 @@ mod tests {
   }
 
   #[test]
-  fn test_boundary_with_extrap_noop_on_point() -> Result<(), Report> {
-    // Non-Function variants have no interpolated tail, so setting a tail policy is a no-op.
+  fn test_boundary_compact_variant_remains_hard() -> Result<(), Report> {
     let point: DistributionPlain = Distribution::point(1.0, 2.0);
-    let unchanged = point.clone().with_left_extrap(BoundaryBehavior::Hard)?;
+    let unchanged = point
+      .clone()
+      .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }))?;
     assert_eq!(point, unchanged);
+    assert_eq!(BoundaryBehavior::Hard, unchanged.left_extrap());
+    assert_eq!(BoundaryBehavior::Hard, unchanged.right_extrap());
+    Ok(())
+  }
+
+  #[test]
+  fn test_boundary_empty_and_range_are_hard() {
+    let empty: DistributionPlain = Distribution::empty();
+    let range: DistributionPlain = Distribution::range((0.0, 2.0), 1.0);
+
+    assert_eq!(BoundaryBehavior::Hard, empty.left_extrap());
+    assert_eq!(BoundaryBehavior::Hard, empty.right_extrap());
+    assert_eq!(BoundaryBehavior::Hard, range.left_extrap());
+    assert_eq!(BoundaryBehavior::Hard, range.right_extrap());
+  }
+
+  #[test]
+  fn test_boundary_compact_variants_evaluate_to_probability_zero_outside_support() -> Result<(), Report> {
+    let empty: DistributionPlain = Distribution::empty();
+    let point: DistributionPlain = Distribution::point(1.0, 2.0);
+    let range: Distribution<NegLog> = Distribution::range((0.0, 2.0), 3.0);
+
+    assert_ulps_eq!(0.0, empty.eval(1.0)?, max_ulps = 4);
+    assert_ulps_eq!(0.0, point.eval(0.0)?, max_ulps = 4);
+    assert!(range.eval(3.0)?.is_infinite());
+    Ok(())
+  }
+
+  #[test]
+  fn test_boundary_formula_getters_and_soft_tail_fitting() -> Result<(), Report> {
+    let formula: Distribution<NegLog> = Distribution::Formula(DistributionFormula::new(Ok, 0.0, 2.0));
+    assert_eq!(BoundaryBehavior::Error, formula.left_extrap());
+    assert_eq!(BoundaryBehavior::Error, formula.right_extrap());
+
+    let formula = formula.fit_soft_tail(Side::Right, 10)?;
+
+    let BoundaryBehavior::Linear(law) = formula.right_extrap() else {
+      panic!("expected a fitted right soft tail")
+    };
+    assert_ulps_eq!(1.0, law.slope, max_ulps = 256);
+    assert_ulps_eq!(2.5, formula.eval(2.5)?, max_ulps = 8);
+    Ok(())
+  }
+
+  #[test]
+  fn test_boundary_distribution_function_soft_tail_fitting() -> Result<(), Report> {
+    let function: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
+    let distribution = Distribution::Function(function).fit_soft_tail(Side::Right, 3)?;
+
+    assert_eq!(
+      BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }),
+      distribution.right_extrap()
+    );
+    assert_ulps_eq!(2.5, distribution.eval(2.5)?, max_ulps = 8);
     Ok(())
   }
 

@@ -5,7 +5,7 @@ use crate::distribution_ops::mass_domain::{
 };
 use crate::policy::NegLog;
 use eyre::Report;
-use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
+use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side};
 
 /// Convolve two neg-log distributions across a tree edge onto a mass-based output grid.
 ///
@@ -34,25 +34,18 @@ pub fn convolve_across_edge(
   eps: f64,
   grid_points: usize,
 ) -> Result<Distribution<NegLog>, Report> {
-  let conv = distribution_convolution_fine(a, b)?;
+  let conv = distribution_convolution_fine(a, b)?.fit_soft_tail(soft, DEFAULT_TAIL_FIT_POINTS)?;
+  let conv = match soft {
+    Side::Left => conv.with_right_extrap(BoundaryBehavior::Hard)?,
+    Side::Right => conv.with_left_extrap(BoundaryBehavior::Hard)?,
+  };
   let Distribution::Function(conv) = conv else {
     return Ok(conv.normalize());
   };
   // keep grid as is (truncate to machine precision range), but refit tails.
 
-
   // Fit the soft tail from the fine convolution grid so the window's extrapolated outer points are
   // sensible; declare the opposite side hard. The soft slope is refit once the result is landed.
-  let soft_law = SoftTailLaw::fit(conv.grid_fn(), soft, DEFAULT_TAIL_FIT_POINTS)?;
-  let conv = match soft {
-    Side::Left => conv
-      .with_left_extrap(BoundaryBehavior::Linear(soft_law))?
-      .with_right_extrap(BoundaryBehavior::Hard)?,
-    Side::Right => conv
-      .with_right_extrap(BoundaryBehavior::Linear(soft_law))?
-      .with_left_extrap(BoundaryBehavior::Hard)?,
-  };
-
   let Some(normalized) = peak_normalized_if_mass_sizable(&conv) else {
     return Ok(Distribution::Function(conv).normalize());
   };

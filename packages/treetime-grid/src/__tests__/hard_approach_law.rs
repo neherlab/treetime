@@ -224,15 +224,27 @@ mod tests {
     let grid = GridFn::from_range_values(
       (1.0, 5.0),
       ndarray::array![0.0, -(2.0_f64.ln()), -(3.0_f64.ln()), -(4.0_f64.ln()), -(5.0_f64.ln())],
-    )?
-    .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 }));
+    )?;
+    let behavior = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 });
 
     // In the gap: y(0.5) = -ln(0.5) = ln(2)
-    assert_abs_diff_eq!(2.0_f64.ln(), grid.interp(0.5)?, epsilon = 1e-14);
+    assert_abs_diff_eq!(
+      2.0_f64.ln(),
+      grid.interp_with_extrap(0.5, behavior, BoundaryBehavior::Error)?,
+      epsilon = 1e-14
+    );
     // At the hard boundary: +inf (b > 0 means density is zero)
-    assert!(grid.interp(0.0)?.is_infinite());
+    assert!(
+      grid
+        .interp_with_extrap(0.0, behavior, BoundaryBehavior::Error)?
+        .is_infinite()
+    );
     // Beyond the hard boundary: zero sentinel
-    assert_abs_diff_eq!(0.0, grid.interp(-0.5)?, epsilon = 1e-14);
+    assert_abs_diff_eq!(
+      0.0,
+      grid.interp_with_extrap(-0.5, behavior, BoundaryBehavior::Error)?,
+      epsilon = 1e-14
+    );
     // On the grid: ordinary interpolation
     assert_abs_diff_eq!(0.0, grid.interp(1.0)?, epsilon = 1e-14);
     Ok(())
@@ -241,12 +253,24 @@ mod tests {
   #[test]
   fn test_gridfn_hard_approach_flat_preserves_boundary() -> Result<(), Report> {
     // b = 0: the law is flat at the live edge ordinate across the whole gap and the boundary.
-    let grid = GridFn::from_range_values((0.1, 1.0), ndarray::array![5.0, 5.0, 5.0, 5.0, 5.0])?
-      .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 0.0 }));
+    let grid = GridFn::from_range_values((0.1, 1.0), ndarray::array![5.0, 5.0, 5.0, 5.0, 5.0])?;
+    let behavior = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 0.0 });
 
-    assert_abs_diff_eq!(5.0, grid.interp(0.05)?, epsilon = 1e-14);
-    assert_abs_diff_eq!(5.0, grid.interp(0.0)?, epsilon = 1e-14);
-    assert_abs_diff_eq!(0.0, grid.interp(-0.1)?, epsilon = 1e-14);
+    assert_abs_diff_eq!(
+      5.0,
+      grid.interp_with_extrap(0.05, behavior, BoundaryBehavior::Error)?,
+      epsilon = 1e-14
+    );
+    assert_abs_diff_eq!(
+      5.0,
+      grid.interp_with_extrap(0.0, behavior, BoundaryBehavior::Error)?,
+      epsilon = 1e-14
+    );
+    assert_abs_diff_eq!(
+      0.0,
+      grid.interp_with_extrap(-0.1, behavior, BoundaryBehavior::Error)?,
+      epsilon = 1e-14
+    );
     Ok(())
   }
 
@@ -257,81 +281,16 @@ mod tests {
     let grid = GridFn::from_range_values(
       (1.0, 5.0),
       ndarray::array![0.0, -(2.0_f64.ln()), -(3.0_f64.ln()), -(4.0_f64.ln()), -(5.0_f64.ln())],
-    )?
-    .with_left_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 }));
+    )?;
+    let behavior = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 });
 
-    let before = grid.interp(0.5)?;
+    let before = grid.interp_with_extrap(0.5, behavior, BoundaryBehavior::Error)?;
     let shifted = grid.shift_y(10.0);
-    assert_eq!(
-      BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 }),
-      shifted.left_extrap()
+    assert_abs_diff_eq!(
+      before + 10.0,
+      shifted.interp_with_extrap(0.5, behavior, BoundaryBehavior::Error)?,
+      epsilon = 1e-13
     );
-    assert_abs_diff_eq!(before + 10.0, shifted.interp(0.5)?, epsilon = 1e-13);
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_scale_y_scales_approach_law() -> Result<(), Report> {
-    // Scaling every neg-log ordinate by a factor raises probability to a power, so the exponent scales
-    // by the same factor while the boundary is unchanged.
-    let law = HardApproachLaw { t_hard: 0.0, b: 1.5 };
-    let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![1.0, 2.0, 3.0])?
-      .with_left_extrap(BoundaryBehavior::HardApproach(law));
-
-    let scaled = grid.scale_y(3.0);
-    let scaled_law = scaled
-      .left_extrap()
-      .approach_law()
-      .expect("approach law should be preserved");
-    assert_eq!(HardApproachLaw { t_hard: 0.0, b: 4.5 }, scaled_law);
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_mapv_clears_approach_law() -> Result<(), Report> {
-    let law = HardApproachLaw { t_hard: 0.0, b: 1.0 };
-    let grid = GridFn::from_range_values((1.0, 3.0), ndarray::array![1.0, 2.0, 3.0])?
-      .with_left_extrap(BoundaryBehavior::HardApproach(law));
-
-    let mapped = grid.mapv(|v| v * v);
-    assert_eq!(None, mapped.left_extrap().approach_law());
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_negate_arg_swaps_approach_laws() -> Result<(), Report> {
-    let left_law = HardApproachLaw { t_hard: 0.0, b: 1.0 };
-    let right_law = HardApproachLaw { t_hard: 10.0, b: 2.0 };
-    let grid = GridFn::from_range_values((1.0, 9.0), ndarray::array![1.0, 5.0, 9.0])?
-      .with_left_extrap(BoundaryBehavior::HardApproach(left_law))
-      .with_right_extrap(BoundaryBehavior::HardApproach(right_law));
-
-    let negated = grid.negate_arg()?;
-    let new_left = negated.left_extrap().approach_law().expect("should have left approach");
-    let new_right = negated
-      .right_extrap()
-      .approach_law()
-      .expect("should have right approach");
-
-    // Right law (t_hard=10) reflects to the left: t_hard=-10, exponent unchanged.
-    assert_eq!(HardApproachLaw { t_hard: -10.0, b: 2.0 }, new_left);
-    // Left law (t_hard=0) reflects to the right: t_hard=0, exponent unchanged.
-    assert_eq!(HardApproachLaw { t_hard: 0.0, b: 1.0 }, new_right);
-    Ok(())
-  }
-
-  #[test]
-  fn test_gridfn_resample_preserves_approach_law() -> Result<(), Report> {
-    let law = HardApproachLaw { t_hard: 0.0, b: 1.0 };
-    let grid = GridFn::from_range_values((1.0, 5.0), ndarray::array![2.0, 4.0, 6.0, 8.0, 10.0])?
-      .with_left_extrap(BoundaryBehavior::HardApproach(law));
-
-    let resampled = grid.resample_range_dx((1.0, 5.0), 0.5)?;
-    let resampled_law = resampled
-      .left_extrap()
-      .approach_law()
-      .expect("approach law should be preserved");
-    assert_eq!(law, resampled_law);
     Ok(())
   }
 }

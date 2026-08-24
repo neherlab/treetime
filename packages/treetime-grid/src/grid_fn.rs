@@ -6,7 +6,6 @@ use crate::grid::Grid;
 use crate::grid_edge::GridEdge;
 use crate::hard_approach_law::Side;
 use crate::interp_nonuniform::interp_nonuniform;
-use crate::soft_tail_law::SoftTailLaw;
 use approx::{UlpsEq, ulps_eq};
 use eyre::Report;
 use itertools::{Itertools, izip};
@@ -21,9 +20,8 @@ use treetime_utils::make_error;
 /// Function represented on a uniform grid for piecewise linear interpolation
 ///
 /// Represents a function as a set of (x, y) points on a uniformly-spaced grid, providing
-/// linear interpolation between points. Behavior outside the grid is governed by the
-/// per-side [`BoundaryBehavior`] policies `left_extrap` and `right_extrap`, which default
-/// to [`BoundaryBehavior::Error`].
+/// linear interpolation between points. Callers can supply per-side [`BoundaryBehavior`]
+/// values when they need extrapolation outside the grid.
 ///
 /// # Invariants
 ///
@@ -32,34 +30,20 @@ use treetime_utils::make_error;
 /// - `y` array must contain at least 2 points
 /// - `dx` must be positive
 /// - These invariants are enforced by the type system and cannot be violated
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>"))]
 pub struct GridFn<T: InterpElem> {
   grid: Grid<T>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   y: Array1<T>,
-  // Out-of-support tail policy is runtime behavior, not persisted data: skip it so serialized
-  // output (auspice node data, snapshots) is unchanged. Deserialization restores the default.
-  #[serde(skip)]
-  left_extrap: BoundaryBehavior,
-  #[serde(skip)]
-  right_extrap: BoundaryBehavior,
 }
 
 impl<T: InterpElem> GridFn<T> {
   /// Construct a fresh grid function from a grid and matching y-array.
   ///
-  /// Both tails default to [`BoundaryBehavior::Error`]: a raw grid and y-array carry no declared
-  /// out-of-support policy, so evaluating beyond the grid is a programming error until a caller
-  /// opts in with [`Self::with_left_extrap`] / [`Self::with_right_extrap`]. Defaulting to a soft
-  /// tail here would fabricate a boundary law the data never declared and silently corrupt the
-  /// quantile and HPD integrals that depend on the declared tail.
-  ///
-  /// This is the *fresh-construction* entry point. Regridding an existing function is different:
-  /// the per-side policy and any fitted boundary law are properties of the distribution, not of
-  /// the grid, so they must survive every regrid. That carry lives in [`Self::regridded`], which
-  /// every regridding method routes through, so a regrid can never silently drop the policy by
-  /// forgetting to re-apply it.
+  /// A raw grid and y-array carry no out-of-support policy. [`Self::interp`] rejects evaluation
+  /// outside the grid. Distribution types own boundary policy and pass it to
+  /// [`Self::interp_with_extrap`] when required.
   pub fn from_grid_array(grid: Grid<T>, y: Array1<T>) -> Result<Self, Report> {
     if grid.n_points() != y.len() {
       return make_error!(
@@ -68,62 +52,7 @@ impl<T: InterpElem> GridFn<T> {
         y.len()
       );
     }
-    Ok(Self {
-      grid,
-      y,
-      left_extrap: BoundaryBehavior::default(),
-      right_extrap: BoundaryBehavior::default(),
-    })
-  }
-
-  /// Rebuild this function on a new grid and y-array, carrying the per-side boundary policy and
-  /// any fitted boundary law across the regrid.
-  ///
-  /// [`Self::from_grid_array`] deliberately resets both tails to [`BoundaryBehavior::Error`]
-  /// because it constructs a fresh function. Regridding is the opposite case: the declared domain
-  /// (hard versus soft) and the fitted [`SoftTailLaw`] / [`HardApproachLaw`](crate::HardApproachLaw) describe the
-  /// distribution, not the grid, so they must be preserved. Centralizing the carry here makes
-  /// preservation structural: every regridding method (`resample`, and any future addition)
-  /// builds through this helper and therefore cannot lose the policy.
-  ///
-  /// Both the hard approach law and the soft-tail law are edge-relative: they store only shape (the
-  /// exponent `b`, the slope) and read the resampled edge ordinate on evaluation, so both stay valid
-  /// across a regrid without refitting. Refitting is required only after operations that change the
-  /// tail's shape (convolution), never after a pure regrid.
-  fn regridded(&self, grid: Grid<T>, y: Array1<T>) -> Result<Self, Report> {
-    Ok(
-      Self::from_grid_array(grid, y)?
-        .with_left_extrap(self.left_extrap)
-        .with_right_extrap(self.right_extrap),
-    )
-  }
-
-  /// Set the out-of-support behavior for the left (below `x_min`) tail.
-  #[must_use]
-  pub fn with_left_extrap(mut self, behavior: BoundaryBehavior) -> Self {
-    self.left_extrap = behavior;
-    self
-  }
-
-  /// Set the out-of-support behavior for the right (above `x_max`) tail.
-  #[must_use]
-  pub fn with_right_extrap(mut self, behavior: BoundaryBehavior) -> Self {
-    self.right_extrap = behavior;
-    self
-  }
-
-  /// Set the same out-of-support behavior for both tails.
-  #[must_use]
-  pub fn with_extrap(self, behavior: BoundaryBehavior) -> Self {
-    self.with_left_extrap(behavior).with_right_extrap(behavior)
-  }
-
-  pub fn left_extrap(&self) -> BoundaryBehavior {
-    self.left_extrap
-  }
-
-  pub fn right_extrap(&self) -> BoundaryBehavior {
-    self.right_extrap
+    Ok(Self { grid, y })
   }
 
   pub fn from_grid_fn<F>(grid: Grid<T>, y_fn: F) -> Result<Self, Report>
@@ -347,9 +276,7 @@ impl<T: InterpElem> GridFn<T> {
   /// Interpolate function value at a single point
   ///
   /// Uses piecewise linear interpolation within the grid bounds. Outside the bounds the
-  /// per-side [`BoundaryBehavior`] applies: `Error` (default) rejects the query, `Hard`
-  /// returns `0.0`, `HardApproach` follows the fitted approach law up to its hard boundary, and
-  /// `Linear` continues the density along its fitted log-linear tail.
+  /// evaluation is rejected. Use [`Self::interp_with_extrap`] to supply boundary policy.
   ///
   /// # Arguments
   ///
@@ -360,6 +287,19 @@ impl<T: InterpElem> GridFn<T> {
   /// Interpolated value at `xi`, or an error when `xi` is outside the support and the
   /// relevant tail policy is [`BoundaryBehavior::Error`].
   pub fn interp(&self, xi: T) -> Result<T, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    self.interp_with_extrap(xi, BoundaryBehavior::Error, BoundaryBehavior::Error)
+  }
+
+  /// Interpolate a value with explicit left and right out-of-support policies.
+  pub fn interp_with_extrap(
+    &self,
+    xi: T,
+    left_extrap: BoundaryBehavior,
+    right_extrap: BoundaryBehavior,
+  ) -> Result<T, Report>
   where
     T: Float + UlpsEq,
   {
@@ -374,7 +314,7 @@ impl<T: InterpElem> GridFn<T> {
       if ulps_eq!(xi, x_min, max_ulps = 4) {
         return Ok(self.y[0]);
       }
-      return self.extrapolate(self.left_extrap, xi, Side::Left);
+      return self.extrapolate(left_extrap, xi, Side::Left);
     }
 
     if xi > x_max {
@@ -382,7 +322,7 @@ impl<T: InterpElem> GridFn<T> {
       if ulps_eq!(xi, x_max, max_ulps = 4) {
         return Ok(self.y[n - 1]);
       }
-      return self.extrapolate(self.right_extrap, xi, Side::Right);
+      return self.extrapolate(right_extrap, xi, Side::Right);
     }
 
     let idx = self.grid.find_interval_index(xi);
@@ -391,8 +331,7 @@ impl<T: InterpElem> GridFn<T> {
 
   /// Interpolate function values at multiple points.
   ///
-  /// Applies [`GridFn::interp`] to each query; a single out-of-support query under an
-  /// `Error` tail fails the whole call.
+  /// Applies [`GridFn::interp`] to each query.
   pub fn interp_many(&self, queries: &Array1<T>) -> Result<Array1<T>, Report>
   where
     T: Float + UlpsEq,
@@ -400,6 +339,23 @@ impl<T: InterpElem> GridFn<T> {
     let values = queries
       .iter()
       .map(|&q| self.interp(q))
+      .collect::<Result<Vec<T>, Report>>()?;
+    Ok(Array1::from_vec(values))
+  }
+
+  /// Interpolate values with explicit left and right out-of-support policies.
+  pub fn interp_many_with_extrap(
+    &self,
+    queries: &Array1<T>,
+    left_extrap: BoundaryBehavior,
+    right_extrap: BoundaryBehavior,
+  ) -> Result<Array1<T>, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    let values = queries
+      .iter()
+      .map(|&q| self.interp_with_extrap(q, left_extrap, right_extrap))
       .collect::<Result<Vec<T>, Report>>()?;
     Ok(Array1::from_vec(values))
   }
@@ -480,22 +436,10 @@ impl<T: InterpElem> GridFn<T> {
     Self {
       grid: self.grid,
       y: self.y.mapv(f),
-      // An arbitrary y-transform invalidates any fitted boundary law and can move the tail off the
-      // log-linear family the laws describe, so the result carries no declared tail: both sides
-      // reset to `Error`, exactly as a fresh `from_grid_array` does. A caller that still wants a tail
-      // re-declares it (and refits) with a known transform (`scale_y`, `shift_y`) or an explicit
-      // `with_*_extrap`. Structure-preserving transforms keep their law through their own methods.
-      left_extrap: BoundaryBehavior::default(),
-      right_extrap: BoundaryBehavior::default(),
     }
   }
 
-  /// Scale all y-values by a multiplicative factor, preserving boundary laws.
-  ///
-  /// Under NegLog storage, multiplying stored ordinates by `factor` is a pointwise scale of the
-  /// neg-log values (`p -> p^factor`). The hard approach exponent `b` scales by `factor`, and a
-  /// soft-tail slope scales by `factor`: the stored ordinates steepen by `factor`, so both neg-log
-  /// laws do as well, while the edge-relative tails read the already-scaled edge value.
+  /// Scale all y-values by a multiplicative factor.
   #[must_use]
   pub fn scale_y(&self, factor: f64) -> Self
   where
@@ -504,35 +448,18 @@ impl<T: InterpElem> GridFn<T> {
     Self {
       grid: self.grid,
       y: self.y.mapv(|v| v * T::from(factor).unwrap()),
-      left_extrap: scale_tail_law(self.left_extrap, factor),
-      right_extrap: scale_tail_law(self.right_extrap, factor),
     }
   }
 
-  /// Add a constant `delta` to every y-value, preserving boundary policy and fitted laws.
-  ///
-  /// This is the additive counterpart of [`Self::scale_y`]. Under `NegLog` storage the ordinate is
-  /// `-ln(probability)`, so adding a constant is normalization by a pure shift (subtracting the
-  /// peak ordinate moves the mode to zero): exact, no scaling, and it preserves likelihood ratios.
-  ///
-  /// Both fitted laws carry through unchanged. They are edge-relative: a hard approach law
-  /// `y = y_edge - b·ln|Δt/Δt_edge|` and a soft-tail law both store only shape (the exponent `b`,
-  /// the slope `d(-ln p)/dt`), which is invariant under a vertical shift, while evaluation reads the
-  /// shifted edge ordinate.
-  ///
-  /// Unlike the arbitrary [`Self::mapv`], a shift is a known transform whose effect on both laws is
-  /// closed form, so the law is updated rather than dropped.
+  /// Add a constant `delta` to every y-value.
   #[must_use]
   pub fn shift_y(&self, delta: T) -> Self
   where
     T: Float,
   {
-    let delta_f64 = delta.to_f64().unwrap();
     Self {
       grid: self.grid,
       y: self.y.mapv(|v| v + delta),
-      left_extrap: shift_tail_law(self.left_extrap, delta_f64),
-      right_extrap: shift_tail_law(self.right_extrap, delta_f64),
     }
   }
 
@@ -575,11 +502,6 @@ impl<T: InterpElem> GridFn<T> {
       self.y.swap(i, n - 1 - i);
     }
 
-    // The reflection swaps the left and right tails and reflects each fitted law's argument: a
-    // hard approach law negates its `t_hard`, a soft-tail slope flips sign.
-    self.left_extrap = negate_tail_law(self.left_extrap);
-    self.right_extrap = negate_tail_law(self.right_extrap);
-    std::mem::swap(&mut self.left_extrap, &mut self.right_extrap);
     Ok(())
   }
 
@@ -599,11 +521,24 @@ impl<T: InterpElem> GridFn<T> {
   where
     T: Float + UlpsEq,
   {
+    self.resample_with_extrap(grid, BoundaryBehavior::Error, BoundaryBehavior::Error)
+  }
+
+  /// Resample with explicit left and right out-of-support policies.
+  pub fn resample_with_extrap(
+    &self,
+    grid: &Grid<T>,
+    left_extrap: BoundaryBehavior,
+    right_extrap: BoundaryBehavior,
+  ) -> Result<Self, Report>
+  where
+    T: Float + UlpsEq,
+  {
     let n_points = grid.n_points();
     let y_new = (0..n_points)
-      .map(|i| self.interp(grid.x_at(i)))
+      .map(|i| self.interp_with_extrap(grid.x_at(i), left_extrap, right_extrap))
       .collect::<Result<Vec<T>, Report>>()?;
-    self.regridded(*grid, Array1::from_vec(y_new))
+    Self::from_grid_array(*grid, Array1::from_vec(y_new))
   }
 
   /// Resamples function to a new uniform grid with specified start, spacing, and length
@@ -680,9 +615,8 @@ impl<T: InterpElem> GridFn<T> {
   /// point can land up to `dx / 2` beyond `x_range.1`. When a caller regrids a function onto its own
   /// support (or a sub-window of it), that overshoot is a gridding artifact, not a genuine
   /// out-of-support query: clamping the query into `[x_min, x_max]` reads the boundary value there,
-  /// exactly as evaluating the function at its own endpoint would. Unlike [`Self::resample`] this
-  /// never consults the per-side tail policy, so it neither errors on an `Error` tail nor invents
-  /// density from a soft one; the caller restores the real tails on the result.
+  /// exactly as evaluating the function at its own endpoint would. This method does not use an
+  /// out-of-support policy.
   pub fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
@@ -693,41 +627,7 @@ impl<T: InterpElem> GridFn<T> {
     let y_new = (0..grid.n_points())
       .map(|i| self.interp(grid.x_at(i).max(x_min).min(x_max)))
       .collect::<Result<Vec<T>, Report>>()?;
-    self.regridded(grid, Array1::from_vec(y_new))
-  }
-}
-
-/// Scale a fitted boundary law when every ordinate is multiplied by `factor`. Scaling every neg-log
-/// ordinate by `factor` raises the probability to a power (`p -> p^factor`), so the hard approach
-/// law's exponent scales by `factor`: `y = y_edge - b*ln|dt/dt_edge|` becomes
-/// `factor*y = factor*y_edge - (factor*b)*ln|dt/dt_edge|`, with the edge read live. A soft-tail slope
-/// scales with the ordinates the same way: the neg-log tail line `y_edge + slope*(t - t_edge)`
-/// steepens by `factor` (see [`GridFn::scale_y`]).
-fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
-  match behavior {
-    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.scale(factor)),
-    BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(SoftTailLaw {
-      slope: law.slope * factor,
-    }),
-    other => other,
-  }
-}
-
-/// Shift a fitted boundary law when a constant `delta` is added to every ordinate. Both the hard
-/// approach law and the soft-tail law are edge-relative: they read the shifted edge ordinate on
-/// evaluation and store only shape (the exponent `b`, or the slope), which is invariant under a
-/// vertical shift. So both carry through unchanged (see [`GridFn::shift_y`]); the `delta` argument
-/// is retained for symmetry with [`scale_tail_law`].
-fn shift_tail_law(behavior: BoundaryBehavior, _delta: f64) -> BoundaryBehavior {
-  behavior
-}
-
-/// Reflect a fitted boundary law for `f(x) -> f(-x)`.
-fn negate_tail_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
-  match behavior {
-    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.negate_arg()),
-    BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(law.negate_arg()),
-    other => other,
+    Self::from_grid_array(grid, Array1::from_vec(y_new))
   }
 }
 

@@ -101,7 +101,7 @@ mod tests {
     let Distribution::Function(function) = distribution.as_ref() else {
       panic!("branch-length distribution must be a Function");
     };
-    let right = function.grid_fn().right_extrap();
+    let right = function.right_extrap();
     assert!(
       matches!(right, BoundaryBehavior::Linear(_)),
       "right boundary must be a soft Linear tail, got {right:?}"

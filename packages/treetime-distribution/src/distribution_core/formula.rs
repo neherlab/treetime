@@ -5,6 +5,7 @@ use ndarray_stats::QuantileExt;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::sync::Arc;
+use treetime_grid::{BoundaryBehavior, GridFn, Side, SoftTailLaw};
 
 const FORMULA_GRID_SIZE: usize = 200;
 
@@ -23,6 +24,10 @@ pub struct DistributionFormula<Y: YAxisPolicy = Plain> {
   t_min: f64,
   t_max: f64,
   #[serde(skip)]
+  left_extrap: BoundaryBehavior,
+  #[serde(skip)]
+  right_extrap: BoundaryBehavior,
+  #[serde(skip)]
   _policy: PolicyMarker<Y>,
 }
 
@@ -39,6 +44,8 @@ impl<Y: YAxisPolicy> DistributionFormula<Y> {
       eval_fn: Arc::new(eval_fn),
       t_min,
       t_max,
+      left_extrap: BoundaryBehavior::default(),
+      right_extrap: BoundaryBehavior::default(),
       _policy: PolicyMarker::new(),
     }
   }
@@ -61,6 +68,46 @@ impl<Y: YAxisPolicy> DistributionFormula<Y> {
 
   pub fn t_max(&self) -> f64 {
     self.t_max
+  }
+
+  pub fn left_extrap(&self) -> BoundaryBehavior {
+    self.left_extrap
+  }
+
+  pub fn right_extrap(&self) -> BoundaryBehavior {
+    self.right_extrap
+  }
+
+  #[must_use]
+  pub fn with_left_extrap(mut self, behavior: BoundaryBehavior) -> Self {
+    self.left_extrap = behavior;
+    self
+  }
+
+  #[must_use]
+  pub fn with_right_extrap(mut self, behavior: BoundaryBehavior) -> Self {
+    self.right_extrap = behavior;
+    self
+  }
+
+  #[must_use]
+  pub fn with_extrap(self, behavior: BoundaryBehavior) -> Self {
+    self.with_left_extrap(behavior).with_right_extrap(behavior)
+  }
+
+  /// Fit and store a decaying log-linear tail on one side of the formula domain.
+  pub fn fit_soft_tail(self, side: Side, n_fit: usize) -> Result<Self> {
+    let t = Array1::linspace(self.t_min, self.t_max, FORMULA_GRID_SIZE);
+    let y = t
+      .iter()
+      .map(|&value| (self.eval_fn)(value))
+      .collect::<Result<Vec<f64>>>()?;
+    let grid_fn = GridFn::from_arrays(&t, Array1::from_vec(y))?;
+    let law = SoftTailLaw::fit(&grid_fn, side, n_fit)?;
+    Ok(match side {
+      Side::Left => self.with_left_extrap(BoundaryBehavior::Linear(law)),
+      Side::Right => self.with_right_extrap(BoundaryBehavior::Linear(law)),
+    })
   }
 
   pub fn likely_time(&self) -> f64 {
@@ -90,6 +137,8 @@ impl<Y: YAxisPolicy> Clone for DistributionFormula<Y> {
       eval_fn: Arc::clone(&self.eval_fn),
       t_min: self.t_min,
       t_max: self.t_max,
+      left_extrap: self.left_extrap,
+      right_extrap: self.right_extrap,
       _policy: PolicyMarker::new(),
     }
   }
@@ -103,6 +152,9 @@ impl<Y: YAxisPolicy> fmt::Debug for DistributionFormula<Y> {
 
 impl<Y: YAxisPolicy> PartialEq for DistributionFormula<Y> {
   fn eq(&self, other: &Self) -> bool {
-    self.t_min == other.t_min && self.t_max == other.t_max
+    self.t_min == other.t_min
+      && self.t_max == other.t_max
+      && self.left_extrap == other.left_extrap
+      && self.right_extrap == other.right_extrap
   }
 }

@@ -10,8 +10,7 @@ use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use treetime_grid::BoundaryBehavior;
-use treetime_utils::make_error;
+use treetime_grid::{BoundaryBehavior, Side};
 
 pub const TIME_LIMIT: f64 = 1e10;
 pub const TIME_EPSILON: f64 = 1e-10;
@@ -149,17 +148,17 @@ impl<Y: YAxisPolicy> Distribution<Y> {
         if ulps_eq!(t, p.t(), max_ulps = 10) {
           Ok(p.amplitude())
         } else {
-          make_error!("Cannot evaluate point distribution outside its support")
+          Ok(Y::probability_zero())
         }
       },
       Self::Range(r) => {
         if t >= r.start() && t <= r.end() {
           Ok(r.amplitude())
         } else {
-          make_error!("Cannot evaluate range distribution outside its support")
+          Ok(Y::probability_zero())
         }
       },
-      Self::Empty => make_error!("Cannot evaluate empty distribution"),
+      Self::Empty => Ok(Y::probability_zero()),
     }
   }
 
@@ -167,44 +166,52 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     match self {
       Self::Function(f) => f.interp_many(t),
       Self::Formula(f) => f.eval_many(t),
-      Self::Point(p) => {
-        let results = t
-          .iter()
-          .map(|&ti| {
-            if ulps_eq!(ti, p.t(), max_ulps = 10) {
-              Ok(p.amplitude())
-            } else {
-              make_error!("Cannot evaluate point distribution outside its support")
-            }
-          })
-          .collect::<Result<Vec<f64>, Report>>()?;
-        Ok(Array1::from(results))
-      },
-      Self::Range(r) => {
-        let results = t
-          .iter()
-          .map(|&ti| {
-            if ti >= r.start() && ti <= r.end() {
-              Ok(r.amplitude())
-            } else {
-              make_error!("Cannot evaluate range distribution outside its support")
-            }
-          })
-          .collect::<Result<Vec<f64>, Report>>()?;
-        Ok(Array1::from(results))
-      },
-      Self::Empty => make_error!("Cannot evaluate empty distribution"),
+      Self::Point(p) => Ok(t.mapv(|ti| {
+        if ulps_eq!(ti, p.t(), max_ulps = 10) {
+          p.amplitude()
+        } else {
+          Y::probability_zero()
+        }
+      })),
+      Self::Range(r) => Ok(t.mapv(|ti| {
+        if ti >= r.start() && ti <= r.end() {
+          r.amplitude()
+        } else {
+          Y::probability_zero()
+        }
+      })),
+      Self::Empty => Ok(Array1::from_elem(t.len(), Y::probability_zero())),
+    }
+  }
+
+  /// Return the left out-of-support policy.
+  ///
+  /// Function and formula distributions return their stored policy. Exact compact variants always
+  /// have hard boundaries.
+  pub fn left_extrap(&self) -> BoundaryBehavior {
+    match self {
+      Self::Function(function) => function.left_extrap(),
+      Self::Formula(formula) => formula.left_extrap(),
+      Self::Empty | Self::Point(_) | Self::Range(_) => BoundaryBehavior::Hard,
+    }
+  }
+
+  /// Return the right out-of-support policy.
+  pub fn right_extrap(&self) -> BoundaryBehavior {
+    match self {
+      Self::Function(function) => function.right_extrap(),
+      Self::Formula(formula) => formula.right_extrap(),
+      Self::Empty | Self::Point(_) | Self::Range(_) => BoundaryBehavior::Hard,
     }
   }
 
   /// Set the left (far past) out-of-support tail policy.
   ///
-  /// Applies to the `Function` variant, whose support is finite and gridded. The other
-  /// variants have no interpolated tail, so this is a no-op for them. Rejects a
-  /// [`BoundaryBehavior::Hard`] tail under a negative-log representation.
+  /// Applies to function and formula variants. Exact compact variants remain hard.
   pub fn with_left_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
     match self {
       Self::Function(f) => Ok(Self::Function(f.with_left_extrap(behavior)?)),
+      Self::Formula(f) => Ok(Self::Formula(f.with_left_extrap(behavior))),
       other => Ok(other),
     }
   }
@@ -213,6 +220,24 @@ impl<Y: YAxisPolicy> Distribution<Y> {
   pub fn with_right_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
     match self {
       Self::Function(f) => Ok(Self::Function(f.with_right_extrap(behavior)?)),
+      Self::Formula(f) => Ok(Self::Formula(f.with_right_extrap(behavior))),
+      other => Ok(other),
+    }
+  }
+
+  /// Set the same out-of-support policy on both sides.
+  pub fn with_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
+    self.with_left_extrap(behavior)?.with_right_extrap(behavior)
+  }
+
+  /// Fit and store a decaying log-linear tail on one side.
+  ///
+  /// Function and formula variants fit their stored values near the selected edge. Exact compact
+  /// variants remain hard.
+  pub fn fit_soft_tail(self, side: Side, n_fit: usize) -> Result<Self, Report> {
+    match self {
+      Self::Function(function) => Ok(Self::Function(function.fit_soft_tail(side, n_fit)?)),
+      Self::Formula(formula) => Ok(Self::Formula(formula.fit_soft_tail(side, n_fit)?)),
       other => Ok(other),
     }
   }

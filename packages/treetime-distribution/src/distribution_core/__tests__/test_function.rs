@@ -5,8 +5,8 @@ mod tests {
   use crate::policy::{NegLog, Plain};
   use eyre::Report;
   use ndarray::array;
-  use treetime_grid::{HardApproachLaw, SoftTailLaw};
-  use treetime_utils::pretty_assert_ulps_eq;
+  use treetime_grid::{HardApproachLaw, Side, SoftTailLaw};
+  use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   type DistFn = DistributionFunction<f64, Plain>;
   type DistFnNegLog = DistributionFunction<f64, NegLog>;
@@ -40,6 +40,91 @@ mod tests {
       .with_left_extrap(BoundaryBehavior::HardApproach(law))?;
     let shifted = f.shift_y(-1000.0);
     assert_eq!(BoundaryBehavior::HardApproach(law), shifted.left_extrap());
+    Ok(())
+  }
+
+  #[test]
+  fn test_function_boundary_storage_is_owned_by_distribution_function() -> Result<(), Report> {
+    let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 });
+    let function: DistFnNegLog =
+      DistributionFunction::from_range_values((0.0, 2.0), array![4.0, 3.0, 2.0])?.with_right_extrap(right)?;
+
+    pretty_assert_ulps_eq!(2.5, function.interp(2.5)?);
+    assert_error!(
+      function.grid_fn().interp(2.5),
+      "GridFn evaluated at 2.5, above the support boundary 2.0, but no extrapolation policy is set for that side"
+    );
+    assert_eq!(right, function.right_extrap());
+    Ok(())
+  }
+
+  #[test]
+  fn test_function_resample_preserves_boundary_laws() -> Result<(), Report> {
+    let left = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 });
+    let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 0.7 });
+    let function: DistFnNegLog = DistributionFunction::from_range_values((1.0, 3.0), array![3.0, 2.5, 2.0])?
+      .with_left_extrap(left)?
+      .with_right_extrap(right)?;
+
+    let actual = function.resample_range_dx((1.0, 3.0), 0.25)?;
+
+    assert_eq!(left, actual.left_extrap());
+    assert_eq!(right, actual.right_extrap());
+    Ok(())
+  }
+
+  #[test]
+  fn test_function_scale_y_transforms_boundary_laws() -> Result<(), Report> {
+    let left = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.5 });
+    let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 0.7 });
+    let function: DistFnNegLog = DistributionFunction::from_range_values((1.0, 3.0), array![3.0, 2.5, 2.0])?
+      .with_left_extrap(left)?
+      .with_right_extrap(right)?;
+
+    let actual = function.scale_y(3.0)?;
+
+    assert_eq!(
+      BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 4.5 }),
+      actual.left_extrap()
+    );
+    assert_eq!(
+      BoundaryBehavior::Linear(SoftTailLaw { slope: 0.7 * 3.0 }),
+      actual.right_extrap()
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_function_negate_arg_swaps_and_reflects_boundary_laws() -> Result<(), Report> {
+    let left = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 });
+    let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 0.7 });
+    let function: DistFnNegLog = DistributionFunction::from_range_values((1.0, 3.0), array![3.0, 2.5, 2.0])?
+      .with_left_extrap(left)?
+      .with_right_extrap(right)?;
+
+    let actual = function.negate_arg()?;
+
+    assert_eq!(
+      BoundaryBehavior::Linear(SoftTailLaw { slope: -0.7 }),
+      actual.left_extrap()
+    );
+    assert_eq!(
+      BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: -0.0, b: 1.0 }),
+      actual.right_extrap()
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_function_fit_soft_tail_recovers_linear_slope() -> Result<(), Report> {
+    let function: DistFnNegLog = DistributionFunction::from_range_values((0.0, 2.0), array![0.0, 1.0, 2.0])?;
+
+    let actual = function.fit_soft_tail(Side::Right, 3)?;
+
+    assert_eq!(
+      BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }),
+      actual.right_extrap()
+    );
     Ok(())
   }
 
