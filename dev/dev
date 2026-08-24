@@ -18,6 +18,7 @@ declare -A ALIASES=(
   ["lf"]="lint-fix"
   ["lc"]="lint-ci"
   ["lD"]="lint-deps"
+  ["dy"]="dylint"
   ["f"]="format"
   ["fc"]="format-check"
   ["q"]="quality"
@@ -61,6 +62,9 @@ _BUILD_ENV=("CARGO_TARGET_DIR=${_BUILD_DIR}" "RUSTFLAGS=${_BUILD_RUSTFLAGS}")
 _TEST_ENV=("CARGO_TARGET_DIR=${_TEST_DIR}" "RUSTFLAGS=${_TEST_RUSTFLAGS}")
 _BENCH_ENV=("CARGO_TARGET_DIR=${_BUILD_DIR}" "RUSTFLAGS=${_TEST_RUSTFLAGS}")
 _LINT_CI_ENV=("${_BUILD_ENV[@]}" "KACHE_CACHE_DIR=${KACHE_CACHE_DIR:-$(project_root)/.cache/kache}/lint-ci")
+# Isolated target dir: dylint checks the workspace with the pinned nightly driver,
+# whose artifacts must not overwrite the stable build cache.
+_DYLINT_ENV=("CARGO_TARGET_DIR=${_BUILD_DIR}/dylint/check" "RUSTFLAGS=${_BUILD_RUSTFLAGS}")
 
 function is_known_command() {
   local token="${1:-}"
@@ -234,6 +238,23 @@ function run_one() {
     ;;
   "lint-deps")
     nicely cargo shear "$@"
+    ;;
+  "dylint")
+    # Build the lint library from its own directory so its .cargo/config.toml
+    # applies: dylint-link appends the toolchain suffix the driver requires.
+    # cargo-dylint's own metadata build does not pick up that config, so we
+    # pre-build here and load the result with --lib-path.
+    local dylint_lib_dir="${_BUILD_DIR}/dylint/lib"
+    local dylint_so
+    pushd "$(project_root)/dev/dylint" >/dev/null
+    nicely cargo build --release --target-dir "${dylint_lib_dir}"
+    popd >/dev/null
+    dylint_so="$(find "${dylint_lib_dir}/release" -maxdepth 1 -name 'libtreetime_lints@*.so' -print -quit)"
+    if [[ -z "${dylint_so}" ]]; then
+      printf "Error: dylint library build produced no toolchain-suffixed .so\n" >&2
+      exit 1
+    fi
+    nicely "${_DYLINT_ENV[@]}" cargo dylint --lib-path "${dylint_so}" -- --workspace --all-targets "$@"
     ;;
   "format")
     nicely cargo -q fmt "$@"

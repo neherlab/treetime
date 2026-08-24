@@ -18,6 +18,7 @@ RUN set -euxo pipefail >/dev/null \
   file \
   git \
   libc6-dev \
+  libssl-dev \
   lsb-release \
   make \
   parallel \
@@ -129,3 +130,7 @@ COPY --link --chown="${UID}:${GID}" "rust-toolchain.toml" "${CARGO_HOME}/rust-to
 COPY --link "dev/docker/files/install-rust" "/"
 RUN set -euxo pipefail >/dev/null \
 && /install-rust "${HOST_TUPLE}" "${CARGO_HOME}"
+
+COPY --link "dev/docker/files/install-dylint" "/"
+RUN set -euxo pipefail >/dev/null \
+&& /install-dylint

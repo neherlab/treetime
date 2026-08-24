@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#
+# Usage: $0
+#
+# Install the pinned nightly toolchain and dylint tooling used to build and run
+# the custom lint library in dev/dylint. Kept in its own image layer so it is
+# cached independently of the main Rust toolchain install.
+#
+# The tooling is compiled from source: the official prebuilt release binaries
+# require a newer glibc than the Debian base image provides.
+#
+# The nightly channel must match the clippy_utils rev in dev/dylint/Cargo.toml;
+# the tooling version must match its dylint_linting dependency.
+#
+set -euxo pipefail
+
+DYLINT_TOOLCHAIN="nightly-2026-05-28"
+DYLINT_VERSION="6.0.3"
+
+rustup toolchain install "${DYLINT_TOOLCHAIN}" --profile minimal -c rustc-dev -c llvm-tools-preview -c rust-src
+rustc "+${DYLINT_TOOLCHAIN}" --version --verbose
+
+cargo -q install --locked cargo-dylint --version "${DYLINT_VERSION}"
+cargo -q install --locked dylint-link --version "${DYLINT_VERSION}"
+cargo dylint --version
