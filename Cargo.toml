@@ -75,6 +75,7 @@ argmin = { version = "=0.10.0", features = [] }
 argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg_0_17"] }
 auto_ops = "=0.3.0"
 bio = { version = "=2.3.0", features = ["phylogeny"] }
+bon = "=3.9.3"
 bytes = { version = "1.10.1", features = ["serde"] }
 chrono = { version = "=0.4.42", default-features = false, features = ["clock", "alloc", "std", "serde"] }
 chronoutil = "=0.2.7"
@@ -167,7 +168,10 @@ util-phyloxml = { path = "packages/util-phyloxml" }
 util-usher-mat = { path = "packages/util-usher-mat" }
 
 [workspace.metadata.cargo-shear]
-ignored = ["blas-src", "openblas-src", "argmin-math"]
+# bon is available workspace-wide for incremental adoption of the builder pattern
+# (guided by the suggest_builder / needless_builder dylint lints); no member
+# consumes it yet.
+ignored = ["blas-src", "openblas-src", "argmin-math", "bon"]
 
 [workspace.lints.rust]
 # Lint groups
