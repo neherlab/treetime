@@ -10,13 +10,13 @@ Generic serialization helpers (JSON, YAML) live in `treetime-utils::io`.
 | --------------------- | --------------------------------------------------------------- | ---- | ----- |
 | `nwk`                 | Newick tree format                                              | yes  | yes   |
 | `nex`                 | Nexus tree format                                               | -    | yes   |
-| `fasta`               | FASTA sequences (with transparent xz/gz/bz2/zstd decompression) | yes  | yes   |
+| `fasta`               | FASTA sequences                                                 | yes  | yes   |
 | `auspice`             | Auspice v2 JSON (Nextstrain visualization)                      | yes  | yes   |
 | `phyloxml`            | PhyloXML tree format                                            | yes  | yes   |
 | `usher_mat`           | UShER MAT protobuf                                              | yes  | yes   |
-| `csv`                 | CSV/TSV with auto-delimiter detection                           | yes  | yes   |
-| `dates_csv`           | Date metadata from CSV/TSV (year fractions, date ranges)        | yes  | -     |
-| `discrete_states_csv` | Discrete trait metadata from CSV/TSV                            | yes  | -     |
+| `csv`                 | CSV/TSV/SSV with bounded content-based delimiter detection      | yes  | yes   |
+| `dates_csv`           | Date metadata from CSV/TSV/SSV (year fractions, date ranges)    | yes  | -     |
+| `discrete_states_csv` | Discrete trait metadata from CSV/TSV/SSV                        | yes  | -     |
 | `graphviz`            | Graphviz DOT format                                             | -    | yes   |
 
 ## Utilities
@@ -62,5 +62,5 @@ json_write_file("output.json", &config, JsonPretty(true))?;
 
 ## Notes
 
-- FASTA reading transparently decompresses `.xz`, `.gz`, `.bz2`, `.zst` files
-- CSV delimiter is auto-detected from file extension (`.tsv` uses tab, `.csv` uses comma)
+- File readers transparently decompress `.xz`, `.gz`, `.bz2`, and `.zst` files.
+- Metadata readers select a delimiter from `--metadata-delimiters` by parsing a bounded sample of the decompressed header. The logical `.csv`, `.tsv`, or `.ssv` extension resolves ambiguous samples.

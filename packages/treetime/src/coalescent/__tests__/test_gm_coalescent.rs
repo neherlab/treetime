@@ -130,6 +130,7 @@ mod tests {
     let graph = nwk_read_file(fixtures_dir.join(&snapshot.inputs.tree_path))?;
     let dates = read_dates(
       fixtures_dir.join(&snapshot.inputs.metadata_path),
+      &[',', '\t', ';'],
       &[],
       &Some(o!("name")),
       &Some(o!("date")),

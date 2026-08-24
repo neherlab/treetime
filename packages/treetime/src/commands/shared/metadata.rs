@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
-use treetime_io::csv::default_name_candidates;
+use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
 
 /// Default sampling-date string format (ISO 8601 calendar date), matching augur's `--date-format`.
 pub const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";
@@ -35,11 +35,11 @@ pub struct MetadataIdArgs {
 
   /// Candidate field delimiter(s) for the metadata table
   ///
-  /// The delimiter actually present in the file is used. Defaults to comma and tab.
-  #[default(vec![',', '\t'])]
+  /// The delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.
+  #[default(_code = "default_metadata_delimiters()")]
   #[cfg_attr(
     feature = "clap",
-    clap(long = "metadata-delimiters", num_args = 1.., value_name = "CHAR", default_values_t = vec![',', '\t'])
+    clap(long = "metadata-delimiters", num_args = 1.., value_name = "CHAR", default_values_t = default_metadata_delimiters())
   )]
   pub metadata_delimiters: Vec<char>,
 }

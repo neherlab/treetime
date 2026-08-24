@@ -206,6 +206,7 @@ mod tests {
       let metadata_path = project_root.join(&fixture.metadata_path);
       let (attr_values, _attr_name) = read_discrete_attrs::<String>(
         &metadata_path,
+        &[',', '\t', ';'],
         &default_name_candidates(),
         &fixture.name_column,
         &Some(fixture.attribute.clone()),
@@ -219,6 +220,7 @@ mod tests {
           let weights_filepath = project_root.join(weights_path);
           let (map, _) = read_discrete_attrs::<f64>(
             &weights_filepath,
+            &[',', '\t', ';'],
             &[],
             &Some(fixture.attribute.clone()),
             &Some("weight".to_owned()),

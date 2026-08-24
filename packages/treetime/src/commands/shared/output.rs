@@ -16,6 +16,7 @@ use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, Top
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::NwkStyle;
 use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk, nwk_read_file};
+use treetime_utils::io::fs::read_file_to_string;
 use treetime_utils::{make_error, make_report};
 
 /// Internal resolution and lookup key for every selectable output.
@@ -817,7 +818,7 @@ impl TopologyOrderArgs {
           .topology_order_target_file
           .as_ref()
           .ok_or_else(|| make_report!("--topology-order-target-file is required for list"))?;
-        let contents = std::fs::read_to_string(path)
+        let contents = read_file_to_string(path)
           .wrap_err_with(|| format!("When reading topology order target list '{}'", path.display()))?;
         Ok(
           contents

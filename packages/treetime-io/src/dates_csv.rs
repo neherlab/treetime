@@ -1,4 +1,4 @@
-use crate::csv::{get_col_name, guess_csv_delimiter};
+use crate::csv::{detect_csv_delimiter, get_col_name, normalize_csv_headers};
 use csv::{ReaderBuilder as CsvReaderBuilder, StringRecord, Trim};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -96,11 +96,8 @@ pub fn read_dates_from_reader(
 
   let headers = reader
     .headers()
-    .map(|record| record.iter().map(str::to_owned).collect_vec())
-    .map_err(|err| make_report!("{err}"))?
-    .iter()
-    .map(|header| header.trim_start_matches('#').trim_end_matches('#').trim().to_owned())
-    .collect_vec();
+    .map(normalize_csv_headers)
+    .map_err(|err| make_report!("{err}"))?;
 
   let name_column_idx = get_col_name(&headers, name_candidates, name_column)?;
   let date_column_idx = get_col_name(&headers, &vec_of_owned!["date"], date_column)?;
@@ -129,15 +126,19 @@ pub fn read_dates_from_str(
 
 pub fn read_dates(
   filepath: impl AsRef<Path>,
+  delimiters: &[char],
   name_candidates: &[String],
   name_column: &Option<String>,
   date_column: &Option<String>,
 ) -> Result<DatesMap, Report> {
   let filepath = filepath.as_ref();
-  let file =
+  let mut file =
     open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: '{}'", filepath.display()))?;
-  let delimiter = guess_csv_delimiter(filepath)
-    .wrap_err_with(|| format!("When guessing CSV delimiter for '{}'", filepath.display()))?;
+  let delimiter = detect_csv_delimiter(&mut *file, filepath, delimiters, |headers| {
+    get_col_name(headers, name_candidates, name_column).is_ok()
+      && get_col_name(headers, &vec_of_owned!["date"], date_column).is_ok()
+  })
+  .wrap_err_with(|| format!("When detecting CSV delimiter for '{}'", filepath.display()))?;
   read_dates_from_reader(file, delimiter, name_candidates, name_column, date_column)
     .wrap_err_with(|| format!("When reading dates from file: '{}'", filepath.display()))
 }

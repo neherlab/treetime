@@ -1,9 +1,11 @@
-use csv::{ReaderBuilder as CsvReaderBuilder, Writer as CsvWriterImpl, WriterBuilder as CsvWriterBuilder};
-use eyre::Report;
+use csv::{ReaderBuilder as CsvReaderBuilder, Trim, Writer as CsvWriterImpl, WriterBuilder as CsvWriterBuilder};
+use eyre::{Report, WrapErr};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::io::Write;
+use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 use treetime_utils::error::to_eyre_error;
+use treetime_utils::io::compression::remove_compression_ext;
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::fs::{extension, read_file_to_string};
 use treetime_utils::make_error;
@@ -128,6 +130,11 @@ pub fn default_name_candidates() -> Vec<String> {
   vec!["strain".to_owned(), "name".to_owned(), "accession".to_owned()]
 }
 
+/// Return the default metadata delimiter candidates.
+pub fn default_metadata_delimiters() -> Vec<char> {
+  vec![',', '\t', ';']
+}
+
 pub fn get_col_name(
   headers: &[String],
   possible_names: &[String],
@@ -160,15 +167,85 @@ pub fn get_col_name(
   }
 }
 
-pub fn guess_csv_delimiter(filepath: impl AsRef<Path>) -> Result<u8, Report> {
-  let filepath = filepath.as_ref();
-  let ext = extension(filepath)
-    .ok_or_else(|| make_report!("Unable to detect file extension: '{filepath:?}': "))?
-    .to_lowercase();
-  match ext.as_str() {
-    "csv" => Ok(b','),
-    "tsv" => Ok(b'\t'),
-    "ssv" => Ok(b';'),
-    _ => make_error!("Unknown file extension: '{ext}'"),
+/// Select a delimiter from a bounded sample of the decompressed input header.
+pub fn detect_csv_delimiter<R: BufRead + ?Sized>(
+  reader: &mut R,
+  filepath: impl AsRef<Path>,
+  delimiters: &[char],
+  header_matches: impl Fn(&[String]) -> bool,
+) -> Result<u8, Report> {
+  const SAMPLE_SIZE: usize = 64 * 1024;
+
+  let delimiters = delimiters
+    .iter()
+    .copied()
+    .unique()
+    .map(delimiter_to_byte)
+    .collect::<Result<Vec<_>, _>>()?;
+
+  if delimiters.is_empty() {
+    return make_error!("At least one metadata delimiter is required");
+  }
+  if let [delimiter] = delimiters.as_slice() {
+    return Ok(*delimiter);
+  }
+
+  let sample = reader.fill_buf()?;
+  let sample = &sample[..sample.len().min(SAMPLE_SIZE)];
+  let matches = delimiters
+    .iter()
+    .copied()
+    .filter(|delimiter| csv_headers(sample, *delimiter).is_ok_and(|headers| header_matches(&headers)))
+    .collect_vec();
+
+  if let [delimiter] = matches.as_slice() {
+    Ok(*delimiter)
+  } else {
+    let path_delimiter = delimiter_from_path(filepath);
+    if let Some(delimiter) = path_delimiter
+      && delimiters.contains(&delimiter)
+      && (matches.is_empty() || matches.contains(&delimiter))
+    {
+      return Ok(delimiter);
+    }
+    make_error!(
+      "Unable to detect metadata delimiter from candidates: {}",
+      delimiters
+        .iter()
+        .map(|delimiter| format!("{:?}", char::from(*delimiter)))
+        .join(", ")
+    )
+  }
+}
+
+/// Normalize metadata header labels for column matching.
+pub fn normalize_csv_headers(headers: &csv::StringRecord) -> Vec<String> {
+  headers
+    .iter()
+    .map(|header| header.trim_start_matches('#').trim_end_matches('#').trim().to_owned())
+    .collect()
+}
+
+fn delimiter_to_byte(delimiter: char) -> Result<u8, Report> {
+  u8::try_from(u32::from(delimiter))
+    .map_err(Report::from)
+    .wrap_err_with(|| format!("Metadata delimiter {delimiter:?} must fit in one byte"))
+}
+
+fn csv_headers(sample: &[u8], delimiter: u8) -> Result<Vec<String>, csv::Error> {
+  let mut reader = CsvReaderBuilder::new()
+    .trim(Trim::All)
+    .delimiter(delimiter)
+    .from_reader(sample);
+  reader.headers().map(normalize_csv_headers)
+}
+
+fn delimiter_from_path(filepath: impl AsRef<Path>) -> Option<u8> {
+  let filepath = remove_compression_ext(filepath);
+  match extension(filepath)?.to_lowercase().as_str() {
+    "csv" => Some(b','),
+    "tsv" => Some(b'\t'),
+    "ssv" => Some(b';'),
+    _ => None,
   }
 }

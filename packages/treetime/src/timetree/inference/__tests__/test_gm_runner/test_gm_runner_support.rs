@@ -103,6 +103,7 @@ pub mod support {
     let metadata_path = PROJECT_ROOT.join(&input.metadata_path);
     read_dates(
       &metadata_path,
+      &[',', '\t', ';'],
       &treetime_io::csv::default_name_candidates(),
       &input.name_column,
       &None,

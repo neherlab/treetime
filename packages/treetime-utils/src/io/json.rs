@@ -1,4 +1,6 @@
+use crate::io::compression::remove_compression_ext;
 use crate::io::file::{create_file_or_stdout, open_file_or_stdin};
+use crate::io::fs::extension;
 use crate::io::yaml::yaml_write_file;
 use eyre::{Report, WrapErr};
 use serde::{Deserialize, Serialize};
@@ -62,12 +64,24 @@ pub fn json_write<W: Write, T: Serialize>(writer: W, obj: &T, pretty: JsonPretty
 /// Writes JSON or YAML file depending on file extension
 pub fn json_or_yaml_write_file<T: Serialize>(filepath: impl AsRef<Path>, obj: &T) -> Result<(), Report> {
   let filepath = filepath.as_ref();
-  let filepath_str = filepath.to_string_lossy().to_lowercase();
-  if filepath_str.ends_with("yaml") || filepath_str.ends_with("yml") {
-    yaml_write_file(filepath, &obj)
-  } else {
-    json_write_file(filepath, &obj, JsonPretty(true))
+  match serialization_format_from_path(filepath) {
+    SerializationFormat::Json => json_write_file(filepath, &obj, JsonPretty(true)),
+    SerializationFormat::Yaml => yaml_write_file(filepath, &obj),
   }
+}
+
+pub(crate) fn serialization_format_from_path(filepath: impl AsRef<Path>) -> SerializationFormat {
+  let filepath = remove_compression_ext(filepath);
+  match extension(filepath).map(|ext| ext.to_lowercase()) {
+    Some(ext) if matches!(ext.as_str(), "yaml" | "yml") => SerializationFormat::Yaml,
+    _ => SerializationFormat::Json,
+  }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum SerializationFormat {
+  Json,
+  Yaml,
 }
 
 /// Check whether a serde value serializes to null. This is useful to skip a generic struct field even if we don't

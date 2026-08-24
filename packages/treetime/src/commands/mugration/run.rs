@@ -54,6 +54,7 @@ pub fn run_mugration(
 
   let (attr_values, _attr_name) = read_discrete_attrs::<String>(
     &mugration_args.metadata,
+    &mugration_args.metadata_id.metadata_delimiters,
     &mugration_args.metadata_id.metadata_id_columns,
     &None,
     &Some(mugration_args.attribute.clone()),
@@ -64,6 +65,7 @@ pub fn run_mugration(
   let weights = if let Some(weights_filepath) = &mugration_args.weights {
     let (map, _) = read_discrete_attrs::<f64>(
       weights_filepath,
+      &mugration_args.metadata_id.metadata_delimiters,
       &[],
       &Some(mugration_args.attribute.clone()),
       &Some("weight".to_owned()),

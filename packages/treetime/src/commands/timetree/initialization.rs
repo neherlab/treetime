@@ -73,6 +73,7 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
   let dates = if let Some(dates_path) = &args.metadata {
     let dates = read_dates(
       dates_path,
+      &args.metadata_id.metadata_delimiters,
       &args.metadata_id.metadata_id_columns,
       &None,
       &args.date_column_args.date_column,
