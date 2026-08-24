@@ -19,6 +19,7 @@ declare -A ALIASES=(
   ["lc"]="lint-ci"
   ["lD"]="lint-deps"
   ["dy"]="dylint"
+  ["dyf"]="dylint-fix"
   ["f"]="format"
   ["fc"]="format-check"
   ["q"]="quality"
@@ -87,6 +88,23 @@ function bun_run() {
   pushd "$(project_root)" >/dev/null
   bun run "$@"
   popd >/dev/null
+}
+
+# Build the custom lint library and set _DYLINT_SO to the toolchain-suffixed
+# .so. Built from its own directory so its .cargo/config.toml applies:
+# dylint-link appends the toolchain suffix the driver requires. cargo-dylint's
+# own metadata build does not pick up that config, so we pre-build here and
+# load the result with --lib-path.
+function dylint_build_lib() {
+  local dylint_lib_dir="${_BUILD_DIR}/dylint/lib"
+  pushd "$(project_root)/dev/dylint" >/dev/null
+  nicely cargo build --release --target-dir "${dylint_lib_dir}"
+  popd >/dev/null
+  _DYLINT_SO="$(find "${dylint_lib_dir}/release" -maxdepth 1 -name 'libtreetime_lints@*.so' -print -quit)"
+  if [[ -z "${_DYLINT_SO}" ]]; then
+    printf "Error: dylint library build produced no toolchain-suffixed .so\n" >&2
+    exit 1
+  fi
 }
 
 function main() {
@@ -240,21 +258,19 @@ function run_one() {
     nicely cargo shear "$@"
     ;;
   "dylint")
-    # Build the lint library from its own directory so its .cargo/config.toml
-    # applies: dylint-link appends the toolchain suffix the driver requires.
-    # cargo-dylint's own metadata build does not pick up that config, so we
-    # pre-build here and load the result with --lib-path.
-    local dylint_lib_dir="${_BUILD_DIR}/dylint/lib"
-    local dylint_so
-    pushd "$(project_root)/dev/dylint" >/dev/null
-    nicely cargo build --release --target-dir "${dylint_lib_dir}"
-    popd >/dev/null
-    dylint_so="$(find "${dylint_lib_dir}/release" -maxdepth 1 -name 'libtreetime_lints@*.so' -print -quit)"
-    if [[ -z "${dylint_so}" ]]; then
-      printf "Error: dylint library build produced no toolchain-suffixed .so\n" >&2
-      exit 1
+    dylint_build_lib
+    nicely "${_DYLINT_ENV[@]}" cargo dylint --lib-path "${_DYLINT_SO}" -- --workspace --all-targets "$@"
+    ;;
+  "dylint-fix")
+    # cargo-dylint's --fix wraps `cargo fix`; the trailing args after `--` are
+    # passed to it. Mirror lint-fix's VCS handling: allow staged changes in a
+    # normal checkout, skip the VCS guard in a worktree (where .git is a file).
+    dylint_build_lib
+    local vcs_flag="--allow-staged"
+    if [[ -f "$(project_root)/.git" ]]; then
+      vcs_flag="--allow-no-vcs"
     fi
-    nicely "${_DYLINT_ENV[@]}" cargo dylint --lib-path "${dylint_so}" -- --workspace --all-targets "$@"
+    nicely "${_DYLINT_ENV[@]}" cargo dylint --fix --lib-path "${_DYLINT_SO}" -- "${vcs_flag}" --workspace --all-targets "$@"
     ;;
   "format")
     nicely cargo -q fmt "$@"
