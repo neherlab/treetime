@@ -283,7 +283,7 @@ fn canonical_operand_order<'a, Y: YAxisPolicy>(
 /// to an empty intersection of the two finite grids. Endpoint contact uses exact comparison; a
 /// tolerance would enlarge the intersection.
 #[allow(clippy::float_cmp)] // Endpoint contact requires exact bound equality; a tolerance would enlarge the intersection.
-fn multiplication_support_intersection(domains: &[HardDomain]) -> SupportIntersection {
+pub(super) fn multiplication_support_intersection(domains: &[HardDomain]) -> SupportIntersection {
   // Resolve each side independently: hard operands take the tightest (innermost) bound and soft
   // operands the loosest (outermost). `None` means no operand of that class bounds the side.
   let (hard_lo, soft_lo) = side_bounds(domains, Side::Left);

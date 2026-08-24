@@ -4,9 +4,11 @@ mod tests {
   use crate::DistributionPlain as Distribution;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::divide::distribution_division;
+  use crate::distribution_ops::multiply::distribution_multiplication;
+  use crate::policy::NegLog;
   use ndarray::{Array1, array};
   use rstest::rstest;
-  use treetime_grid::{BoundaryBehavior, SoftTailLaw};
+  use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   use self::helpers::{DistributionVariant, distribution};
@@ -109,8 +111,14 @@ mod tests {
     let func = Distribution::function(t, y).unwrap();
 
     let actual = distribution_division(&range, &func).unwrap();
-    // Result should only cover the overlap region [1.0, 3.0]
-    let expected = Distribution::function(array![1.0, 2.0, 3.0], array![5.0, 2.0, 2.5]).unwrap();
+    // Result covers the overlap region [1.0, 3.0]. A range is zero outside its box, so the quotient is
+    // zero beyond the overlap edges: both result sides are `Hard`.
+    let expected = Distribution::Function(
+      DistributionFunction::from_arrays(&array![1.0, 2.0, 3.0], array![5.0, 2.0, 2.5])
+        .unwrap()
+        .with_extrap(BoundaryBehavior::Hard)
+        .unwrap(),
+    );
     assert_eq!(expected, actual);
   }
 
@@ -235,14 +243,18 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
-  /// No divisor tail extends the quotient past the divisor's grid edge, not even a soft `Linear` one.
+  /// A soft `Linear` divisor tail no longer truncates the quotient: it is sampled as bulk out to the
+  /// dividend's own hard edge.
   ///
-  /// Dividing by an extrapolated divisor tail beyond its grid would inflate the quotient into a
-  /// spurious spike, so the divisor is always bounded at its real grid support and the dividend's own
-  /// tails carry the cavity beyond it. The divisor spans `[1, 3]` inside the dividend's `[0, 4]`, so
-  /// the quotient is confined to `[1, 3]` regardless of the divisor's declared tails.
+  /// The dividend spans `[0, 4]` with hard (`Error`) edges; the divisor spans `[1, 3]` with soft
+  /// `Linear` tails. Under the unified division rule (intersect hard sides, union soft sides), the
+  /// dividend's two hard edges bind the quotient to `[0, 4]`, and the divisor's decaying tails are
+  /// evaluated as bulk on `[0, 1]` and `[3, 4]` instead of clipping the result. The divisor
+  /// extrapolates to `2.5` at both `t = 0` (left tail) and `t = 4` (right tail), so the quotient there
+  /// is `dividend / 2.5`.
+  /// Oracle: kb/decisions/distribution-tails-and-arithmetic.md (Division); test_scripts/density_algebra.py `combine()`.
   #[test]
-  fn test_divide_function_by_function_divisor_tail_never_extends_quotient() {
+  fn test_divide_function_by_function_soft_divisor_tail_extends_quotient_within_dividend() {
     let dividend =
       Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![10.0, 20.0, 30.0, 40.0, 50.0]).unwrap();
     let divisor = Distribution::function(array![1.0, 2.0, 3.0], array![2.0, 2.0, 2.0])
@@ -253,9 +265,8 @@ mod tests {
       .unwrap();
 
     let actual = distribution_division(&dividend, &divisor).unwrap();
-    // Oracle: kb/decisions/distribution-tails-and-arithmetic.md, division tail rules: the quotient is
-    // bounded at the divisor grid [1, 3], carrying dividend/2 = [10, 15, 20] there.
-    let expected = Distribution::function(array![1.0, 2.0, 3.0], array![10.0, 15.0, 20.0]).unwrap();
+    let expected =
+      Distribution::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![4.0, 10.0, 15.0, 20.0, 20.0]).unwrap();
     assert_eq!(expected, actual);
   }
 
@@ -270,30 +281,45 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
-  /// The quotient inherits the dividend's per-side tail when the dividend binds the intersection.
+  /// A soft side of the quotient is refit from the combined grid, and a hard dividend edge binds.
   ///
   /// The dividend spans `[2, 10]` with a soft `Linear` left law and a `Hard` right edge; the divisor
-  /// spans the wider `[0, 12]` with default `Error` tails, so its edges never truncate inside the
-  /// dividend and the intersection is exactly `[2, 10]`. The quotient therefore carries the
-  /// dividend's Linear-left / Hard-right policy, not the `Error` a bare rebuild would leave.
+  /// spans the wider `[0, 12]` with a soft `Linear` left law and a `Hard` right edge. Both operands
+  /// are soft on the left, so the union rule extends the quotient to the outermost left edge (`0`) and
+  /// refits a decaying `Linear` law there. Both are hard on the right, so the innermost bound (the
+  /// dividend's `10`) binds and the quotient inherits the dividend's `Hard` right edge.
   #[test]
-  fn test_divide_function_by_function_inherits_dividend_tails() {
-    let left = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 });
+  fn test_divide_function_by_function_soft_left_refits_hard_right_binds() {
     let dividend =
       DistributionFunction::from_start_dx_values(2.0, 1.0, array![9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0])
         .unwrap()
-        .with_left_extrap(left)
+        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.5 }))
         .unwrap()
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap();
-    let divisor = DistributionFunction::from_start_dx_values(0.0, 1.0, Array1::from_elem(13, 2.0)).unwrap();
+    let divisor = DistributionFunction::from_start_dx_values(0.0, 1.0, Array1::from_elem(13, 2.0))
+      .unwrap()
+      .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -0.25 }))
+      .unwrap()
+      .with_right_extrap(BoundaryBehavior::Hard)
+      .unwrap();
 
     let actual = distribution_division(&Distribution::Function(dividend), &Distribution::Function(divisor)).unwrap();
 
     let Distribution::Function(f) = actual else {
       panic!("expected a Function quotient");
     };
-    assert_eq!(left, f.left_extrap());
+    pretty_assert_ulps_eq!(0.0, f.x_min(), max_ulps = 4);
+    pretty_assert_ulps_eq!(10.0, f.x_max(), max_ulps = 4);
+    // The left side is a refit soft tail, not the dividend's own law; it must decay (slope <= 0).
+    let BoundaryBehavior::Linear(left) = f.left_extrap() else {
+      panic!("expected a refit Linear left tail, got {:?}", f.left_extrap());
+    };
+    assert!(
+      left.slope <= 0.0,
+      "refit left tail must decay, got slope {}",
+      left.slope
+    );
     assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
   }
 
@@ -321,6 +347,48 @@ mod tests {
     };
     assert_eq!(BoundaryBehavior::Error, f.left_extrap());
     assert_eq!(BoundaryBehavior::Error, f.right_extrap());
+  }
+
+  /// The cavity identity: dividing a product by one of its own factors recovers the other factor.
+  ///
+  /// The forward-pass cavity is `parent_posterior / msg_to_parent`, where the posterior is a product
+  /// that contains the message as a factor, so `divide(a * b, b) == a`. Both operands share a grid, so
+  /// the bulk is exact subtraction in neg-log; the soft-left tail is refit from the same leftmost
+  /// points `a` was fit from, so it recovers `a`'s law exactly. This is why the corrected division
+  /// rule cannot explode the quotient tail: the divisor's decay is already baked into the dividend.
+  /// Oracle: test_scripts/density_algebra.py `test_quotient_equals_the_explicit_product_beyond_the_second_cell`.
+  #[test]
+  fn test_divide_function_by_function_roundtrip_recovers_dividend_factor() {
+    let grid = array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+    let a =
+      DistributionFunction::<f64, NegLog>::from_arrays(&grid, array![4.0, 3.0, 2.0, 1.0, 0.0, 1.0, 2.0, 3.0, 4.0])
+        .unwrap()
+        .fit_soft_tail(Side::Left, DEFAULT_TAIL_FIT_POINTS)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Hard)
+        .unwrap();
+    let b =
+      DistributionFunction::<f64, NegLog>::from_arrays(&grid, array![2.0, 1.5, 1.0, 0.5, 0.0, 0.5, 1.0, 1.5, 2.0])
+        .unwrap()
+        .fit_soft_tail(Side::Left, DEFAULT_TAIL_FIT_POINTS)
+        .unwrap()
+        .with_right_extrap(BoundaryBehavior::Hard)
+        .unwrap();
+
+    let product = distribution_multiplication(
+      &DistributionNegLog::Function(a.clone()),
+      &DistributionNegLog::Function(b.clone()),
+    )
+    .unwrap();
+    let quotient = distribution_division(&product, &DistributionNegLog::Function(b)).unwrap();
+
+    let DistributionNegLog::Function(q) = quotient else {
+      panic!("expected a Function quotient");
+    };
+    pretty_assert_ulps_eq!(a.t(), q.t(), max_ulps = 4);
+    pretty_assert_ulps_eq!(a.y().clone(), q.y().clone(), max_ulps = 8);
+    assert_eq!(a.left_extrap(), q.left_extrap());
+    assert_eq!(a.right_extrap(), q.right_extrap());
   }
 
   mod helpers {
