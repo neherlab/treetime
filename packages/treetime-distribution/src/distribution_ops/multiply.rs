@@ -389,7 +389,7 @@ fn multiply_formula_function<Y: YAxisPolicy>(
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
   let a_bounds = (a.t_min(), a.t_max());
-  let a_tails = (a.left_extrap(), a.right_extrap());
+  let a_tails = (BoundaryBehavior::Error, BoundaryBehavior::Error);
   let b_bounds = (b.x_min(), b.x_max());
   let b_tails = (b.left_extrap(), b.right_extrap());
   match multiplication_support_intersection(&[(a_bounds, a_tails), (b_bounds, b_tails)]) {
@@ -422,14 +422,7 @@ fn multiply_formula_point<Y: YAxisPolicy>(
   const EPS: f64 = 1e-9;
   let t = b.t();
 
-  let tail = if t < a.t_min() - EPS {
-    Some(a.left_extrap())
-  } else if t > a.t_max() + EPS {
-    Some(a.right_extrap())
-  } else {
-    None
-  };
-  if tail.is_some_and(|tail| !tail.is_soft()) {
+  if t < a.t_min() - EPS || t > a.t_max() + EPS {
     return guarded_empty_result(
       "multiplication",
       Some(formula_hard_domain(a)),
@@ -548,9 +541,12 @@ pub fn function_hard_domain<Y: YAxisPolicy>(f: &DistributionFunction<f64, Y>) ->
   ((f.x_min(), f.x_max()), (f.left_extrap(), f.right_extrap()))
 }
 
-/// Hard domain of a formula: its sampling range and declared per-side boundary behavior.
+/// Hard domain of a formula: its finite arithmetic sampling range, with no extrapolated tail.
 pub fn formula_hard_domain<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> HardDomain {
-  ((f.t_min(), f.t_max()), (f.left_extrap(), f.right_extrap()))
+  (
+    (f.t_min(), f.t_max()),
+    (BoundaryBehavior::Error, BoundaryBehavior::Error),
+  )
 }
 
 /// Hard support domain of a distribution, or `None` when its support is empty.

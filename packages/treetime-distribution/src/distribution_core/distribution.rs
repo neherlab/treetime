@@ -186,32 +186,32 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 
   /// Return the left out-of-support policy.
   ///
-  /// Function and formula distributions return their stored policy. Exact compact variants always
-  /// have hard boundaries.
-  pub fn left_extrap(&self) -> BoundaryBehavior {
+  /// Function distributions return their stored policy, formulas return `None`, and exact compact
+  /// variants return [`BoundaryBehavior::Hard`].
+  pub fn left_extrap(&self) -> Option<BoundaryBehavior> {
     match self {
-      Self::Function(function) => function.left_extrap(),
-      Self::Formula(formula) => formula.left_extrap(),
-      Self::Empty | Self::Point(_) | Self::Range(_) => BoundaryBehavior::Hard,
+      Self::Function(function) => Some(function.left_extrap()),
+      Self::Formula(_) => None,
+      Self::Empty | Self::Point(_) | Self::Range(_) => Some(BoundaryBehavior::Hard),
     }
   }
 
-  /// Return the right out-of-support policy.
-  pub fn right_extrap(&self) -> BoundaryBehavior {
+  /// Return the right out-of-support policy, or `None` for an exact formula.
+  pub fn right_extrap(&self) -> Option<BoundaryBehavior> {
     match self {
-      Self::Function(function) => function.right_extrap(),
-      Self::Formula(formula) => formula.right_extrap(),
-      Self::Empty | Self::Point(_) | Self::Range(_) => BoundaryBehavior::Hard,
+      Self::Function(function) => Some(function.right_extrap()),
+      Self::Formula(_) => None,
+      Self::Empty | Self::Point(_) | Self::Range(_) => Some(BoundaryBehavior::Hard),
     }
   }
 
   /// Set the left (far past) out-of-support tail policy.
   ///
-  /// Applies to function and formula variants. Exact compact variants remain hard.
+  /// Applies to function variants. Formulas have no stored policy, and exact compact variants remain
+  /// hard.
   pub fn with_left_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
     match self {
       Self::Function(f) => Ok(Self::Function(f.with_left_extrap(behavior)?)),
-      Self::Formula(f) => Ok(Self::Formula(f.with_left_extrap(behavior))),
       other => Ok(other),
     }
   }
@@ -220,7 +220,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
   pub fn with_right_extrap(self, behavior: BoundaryBehavior) -> Result<Self, Report> {
     match self {
       Self::Function(f) => Ok(Self::Function(f.with_right_extrap(behavior)?)),
-      Self::Formula(f) => Ok(Self::Formula(f.with_right_extrap(behavior))),
       other => Ok(other),
     }
   }
@@ -232,12 +231,11 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 
   /// Fit and store a decaying log-linear tail on one side.
   ///
-  /// Function and formula variants fit their stored values near the selected edge. Exact compact
-  /// variants remain hard.
+  /// Function variants fit their stored values near the selected edge. Formulas stay exact, and
+  /// compact variants remain hard.
   pub fn fit_soft_tail(self, side: Side, n_fit: usize) -> Result<Self, Report> {
     match self {
       Self::Function(function) => Ok(Self::Function(function.fit_soft_tail(side, n_fit)?)),
-      Self::Formula(formula) => Ok(Self::Formula(formula.fit_soft_tail(side, n_fit)?)),
       other => Ok(other),
     }
   }

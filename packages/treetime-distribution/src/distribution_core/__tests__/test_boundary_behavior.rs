@@ -65,8 +65,8 @@ mod tests {
       .clone()
       .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }))?;
     assert_eq!(point, unchanged);
-    assert_eq!(BoundaryBehavior::Hard, unchanged.left_extrap());
-    assert_eq!(BoundaryBehavior::Hard, unchanged.right_extrap());
+    assert_eq!(Some(BoundaryBehavior::Hard), unchanged.left_extrap());
+    assert_eq!(Some(BoundaryBehavior::Hard), unchanged.right_extrap());
     Ok(())
   }
 
@@ -75,10 +75,10 @@ mod tests {
     let empty: DistributionPlain = Distribution::empty();
     let range: DistributionPlain = Distribution::range((0.0, 2.0), 1.0);
 
-    assert_eq!(BoundaryBehavior::Hard, empty.left_extrap());
-    assert_eq!(BoundaryBehavior::Hard, empty.right_extrap());
-    assert_eq!(BoundaryBehavior::Hard, range.left_extrap());
-    assert_eq!(BoundaryBehavior::Hard, range.right_extrap());
+    assert_eq!(Some(BoundaryBehavior::Hard), empty.left_extrap());
+    assert_eq!(Some(BoundaryBehavior::Hard), empty.right_extrap());
+    assert_eq!(Some(BoundaryBehavior::Hard), range.left_extrap());
+    assert_eq!(Some(BoundaryBehavior::Hard), range.right_extrap());
   }
 
   #[test]
@@ -94,17 +94,14 @@ mod tests {
   }
 
   #[test]
-  fn test_boundary_formula_getters_and_soft_tail_fitting() -> Result<(), Report> {
+  fn test_boundary_formula_has_no_stored_boundary_policy() -> Result<(), Report> {
     let formula: Distribution<NegLog> = Distribution::Formula(DistributionFormula::new(Ok, 0.0, 2.0));
-    assert_eq!(BoundaryBehavior::Error, formula.left_extrap());
-    assert_eq!(BoundaryBehavior::Error, formula.right_extrap());
+    assert_eq!(None, formula.left_extrap());
+    assert_eq!(None, formula.right_extrap());
 
     let formula = formula.fit_soft_tail(Side::Right, 10)?;
 
-    let BoundaryBehavior::Linear(law) = formula.right_extrap() else {
-      panic!("expected a fitted right soft tail")
-    };
-    assert_ulps_eq!(1.0, law.slope, max_ulps = 256);
+    assert_eq!(None, formula.right_extrap());
     assert_ulps_eq!(2.5, formula.eval(2.5)?, max_ulps = 8);
     Ok(())
   }
@@ -116,7 +113,7 @@ mod tests {
 
     assert_eq!(
       BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }),
-      distribution.right_extrap()
+      distribution.right_extrap().expect("function boundary policy")
     );
     assert_ulps_eq!(2.5, distribution.eval(2.5)?, max_ulps = 8);
     Ok(())
