@@ -12,10 +12,12 @@
 //! `eyre!` produced by a helper macro is left alone, and a `bail!` is reported
 //! as `bail!` rather than as its inner `eyre!`.
 
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::is_in_test;
 use clippy_utils::macros::expn_backtrace;
+use clippy_utils::source::snippet_with_applicability;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_span::{ExpnKind, Span, Symbol};
@@ -98,18 +100,43 @@ impl<'tcx> LateLintPass<'tcx> for PreferErrorMacros {
             return;
         }
 
-        let help = match raw {
-            "bail" => "return `make_error!(...)` instead of `bail!(...)`",
-            _ => "use `make_error!(...)` to build an `Err(...)`, or `make_report!(...)` for a `Report` (e.g. in `.map_err`, `.wrap_err_with`, `.ok_or_else`)",
+        // Build the replacement from the call-site source, swapping only the
+        // macro path (everything up to the argument delimiter) and keeping the
+        // original arguments verbatim. This handles both `eyre!(...)` and the
+        // path-qualified `eyre::eyre!(...)` form.
+        //
+        // `make_report!($args)` expands to `eyre::eyre!($args)`, an exact
+        // signature match, so `eyre!` -> `make_report!` is always equivalent and
+        // safe to auto-apply. `make_error!` routes its arguments through
+        // `format!`, so `bail!` -> `return make_error!` changes behavior for a
+        // single non-format-string argument; offer it as display-only.
+        let (help, prefix, mut applicability) = match raw {
+            "bail" => (
+                "return `make_error!(...)` instead of `bail!(...)`",
+                "return make_error!",
+                Applicability::MaybeIncorrect,
+            ),
+            _ => (
+                "use `make_report!(...)` for a `Report`, or `make_error!(...)` to build an `Err(...)`",
+                "make_report!",
+                Applicability::MachineApplicable,
+            ),
         };
 
-        span_lint_and_help(
-            cx,
-            PREFER_ERROR_MACROS,
-            call_site,
-            format!("raw `{raw}!` -- use the project error helper macros"),
-            None,
-            help,
-        );
+        let msg = format!("raw `{raw}!` -- use the project error helper macros");
+        let snippet = snippet_with_applicability(cx, call_site, "", &mut applicability);
+        match snippet.find(|c| matches!(c, '(' | '[' | '{')) {
+            Some(delim) => span_lint_and_sugg(
+                cx,
+                PREFER_ERROR_MACROS,
+                call_site,
+                msg,
+                help,
+                format!("{prefix}{}", &snippet[delim..]),
+                applicability,
+            ),
+            // No source snippet available: keep the warning, drop the suggestion.
+            None => span_lint_and_help(cx, PREFER_ERROR_MACROS, call_site, msg, None, help),
+        }
     }
 }
