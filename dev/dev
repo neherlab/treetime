@@ -65,7 +65,7 @@ _BENCH_ENV=("CARGO_TARGET_DIR=${_BUILD_DIR}" "RUSTFLAGS=${_TEST_RUSTFLAGS}")
 _LINT_CI_ENV=("${_BUILD_ENV[@]}" "KACHE_CACHE_DIR=${KACHE_CACHE_DIR:-$(project_root)/.cache/kache}/lint-ci")
 # Isolated target dir: dylint checks the workspace with the pinned nightly driver,
 # whose artifacts must not overwrite the stable build cache.
-_DYLINT_ENV=("CARGO_TARGET_DIR=${_BUILD_DIR}/dylint/check" "RUSTFLAGS=${_BUILD_RUSTFLAGS}")
+_DYLINT_ENV=("CARGO_TARGET_DIR=${_BUILD_DIR}/dylint/check" "RUSTFLAGS=${_BUILD_RUSTFLAGS}" "RUST_BACKTRACE=0")
 
 function is_known_command() {
   local token="${1:-}"
@@ -98,7 +98,7 @@ function bun_run() {
 function dylint_build_lib() {
   local dylint_lib_dir="${_BUILD_DIR}/dylint/lib"
   pushd "$(project_root)/dev/dylint" >/dev/null
-  nicely cargo build --release --target-dir "${dylint_lib_dir}"
+  nicely cargo -q build --release --target-dir "${dylint_lib_dir}"
   popd >/dev/null
   _DYLINT_SO="$(find "${dylint_lib_dir}/release" -maxdepth 1 -name 'libtreetime_lints@*.so' -print -quit)"
   if [[ -z "${_DYLINT_SO}" ]]; then
@@ -259,7 +259,7 @@ function run_one() {
     ;;
   "dylint")
     dylint_build_lib
-    nicely "${_DYLINT_ENV[@]}" cargo dylint --lib-path "${_DYLINT_SO}" -- --workspace --all-targets "$@"
+    nicely "${_DYLINT_ENV[@]}" cargo dylint --quiet --lib-path "${_DYLINT_SO}" -- --quiet --workspace --all-targets "$@"
     ;;
   "dylint-fix")
     # cargo-dylint's --fix wraps `cargo fix`; the trailing args after `--` are
@@ -270,7 +270,7 @@ function run_one() {
     if [[ -f "$(project_root)/.git" ]]; then
       vcs_flag="--allow-no-vcs"
     fi
-    nicely "${_DYLINT_ENV[@]}" cargo dylint --fix --lib-path "${_DYLINT_SO}" -- "${vcs_flag}" --workspace --all-targets "$@"
+    nicely "${_DYLINT_ENV[@]}" cargo dylint --quiet --fix --lib-path "${_DYLINT_SO}" -- "${vcs_flag}" --quiet --workspace --all-targets "$@"
     ;;
   "format")
     nicely cargo -q fmt "$@"
