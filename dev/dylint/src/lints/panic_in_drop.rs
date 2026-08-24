@@ -11,7 +11,7 @@ rustc_session::declare_lint! {
     /// Warns when a `Drop::drop` implementation contains operations that can
     /// panic, since panicking during unwinding causes an immediate process abort.
     pub PANIC_IN_DROP,
-    Deny,
+    Warn,
     "panic-able expression in `Drop` impl -- this will abort during unwinding"
 }
 

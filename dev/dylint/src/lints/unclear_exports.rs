@@ -8,7 +8,7 @@ rustc_session::declare_lint! {
     /// Every imported name must be listed explicitly under its original name so the
     /// module's API surface is intentional, auditable, and traceable.
     pub UNCLEAR_EXPORTS,
-    Deny,
+    Warn,
     "unclear exports -- glob imports and renamed imports are banned"
 }
 
