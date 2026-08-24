@@ -1,0 +1,26 @@
+# Vendored custom lint library for the TreeTime project, run via cargo-dylint.
+# Standalone workspace: builds on a pinned nightly (see rust-toolchain.toml),
+# isolated from the main workspace which targets stable Rust.
+[workspace]
+
+[package]
+name = "treetime_lints"
+version = "0.1.0"
+edition = "2024"
+description = "Custom Rust lints for the TreeTime project, via the dylint ecosystem"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+clippy_utils = { git = "https://github.com/rust-lang/rust-clippy", rev = "9fca3bc9fc2bc83c60bde26d18ed68f11564b228" }
+dylint_linting = "6.0"
+serde = { version = "1", features = ["derive"] }
+
+[package.metadata.rust-analyzer]
+rustc_private = true
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(dylint_lib, values(any()))'] }
