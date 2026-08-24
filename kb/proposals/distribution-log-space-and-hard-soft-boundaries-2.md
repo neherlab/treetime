@@ -377,14 +377,14 @@ Division forms a **cavity**: the forward pass divides a parent's posterior by th
 
 $$(f / g)(t) = f(t) / g(t),$$
 
-carried out in neg-log as **subtraction** of ordinates ($-\ln(f/g) = -\ln f - (-\ln g)$). Unlike multiplication it is **asymmetric**: the dividend $f$ is privileged and sets the result's support and tails; the divisor $g$ only restricts where dividing by it is well-defined.
+carried out in neg-log as **subtraction** of ordinates ($-\ln(f/g) = -\ln f - (-\ln g)$).
 
-Two facts govern it:
+> **Superseded.** This section originally described division as **asymmetric** (dividend-privileged), with every divisor tail truncating the quotient at the divisor's grid edge. That truncation was the cause of the empty-distribution defect it feared: when the two independently regridded operands barely overlapped, the quotient collapsed. Division now uses the **same per-side support rule as multiplication** (intersect hard sides, union soft sides). The authoritative rule is [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) (Division). The corrected facts:
 
-- **The dividend owns the support.** The result spans the dividend's grid. The divisor bounds the quotient only on a side where its own tail does not extend past its grid, and a divisor `Error` edge strictly inside the dividend truncates the result there.
-- **No divisor tail extends the quotient.** Beyond the divisor's grid, dividing by a decaying (`Linear`) or zero (`Hard`, `HardApproach`) tail inflates the quotient into a spurious spike: under NegLog dividing by zero probability is $f - (+\infty) = -\infty$, an infinite-probability spike that makes the downstream convolution non-finite and collapses the forward message to `Empty`. Every divisor tail therefore bounds the quotient at the divisor's real grid edge, so the divisor is never sampled beyond its support; the dividend's own tail carries the cavity past that edge.
+- **Support follows the multiplication rule.** Per side the quotient takes the innermost hard bound when any operand is hard, else the outermost soft bound. A divisor `Hard`/`HardApproach`/`Error` edge strictly inside the dividend still bounds the quotient there; a hard dividend edge bounds it to zero.
+- **A soft divisor tail extends the quotient.** The cavity dividend is a product that contains the divisor as a factor ($f = g \cdot \text{rest}$), so on a soft side $k_f = k_g + k_\text{rest}$ and the quotient slope $k_f - k_g = k_\text{rest} \ge 0$ decays: dividing by the divisor's decaying tail does not spike, because that decay is already baked into the dividend and cancels. The divisor's soft tail is sampled as bulk out to the union edge, and the result's soft sides are refit from the combined grid. Dividing by $g$ _in isolation_ would spike, but the cavity never does.
 
-The plain-space `safe_divisor` floor is not what prevents the spike; under NegLog it is the identity, so this tail rule is the guard. Only division by a `Function` is defined; dividing by a point or a range is not well-defined, and `Formula` is unsupported.
+The plain-space `safe_divisor` floor is not what prevents a spike; under NegLog it is the identity. Only division by a `Function` is defined; dividing by a point or a range is not well-defined, and `Formula` is unsupported.
 
 <details>
 <summary>D1. point / function 🧮💻</summary>
@@ -404,11 +404,11 @@ The plain-space `safe_divisor` floor is not what prevents the spike; under NegLo
 
 **Operands.** A range dividend (box of height $A_r$) and a divisor $g$.
 
-**Result and support.** The intersection of the range with the divisor's grid support (no divisor tail extends the quotient). May degenerate to a point or `Empty`.
+**Result and support.** The intersection of the range with the divisor's evaluable domain, per the multiplication support rule: a soft divisor tail extends the quotient within the range, and a divisor hard/`Error` edge inside the range bounds it there. May degenerate to a point or `Empty`.
 
 **Bulk.** On a grid over the intersection at $g$'s spacing, divide the range height by $g$ pointwise: $A_r / g$.
 
-**Boundary laws.** Inherited from the range dividend's declared sides (`Error` under the current model, `Hard` under K13).
+**Boundary laws.** A range is hard on both sides, so each result side is `Hard` (the quotient is zero outside the box), or `Error` where a divisor hard edge binds inside the range.
 
 </details>
 
@@ -417,11 +417,11 @@ The plain-space `safe_divisor` floor is not what prevents the spike; under NegLo
 
 **Operands.** A dividend $f$ and a divisor $g$, each gridded with boundary laws.
 
-**Result and support.** $f$'s grid, intersected with $g$'s grid support per the divisor-tail rule (every divisor side bounds at $g$'s edge; no tail extends the quotient). May degenerate to a point or `Empty`.
+**Result and support.** The multiplication support rule applied to $f$ and $g$: per side the innermost hard bound when either is hard there, else the outermost soft bound. A soft divisor edge extends the quotient (its tail sampled as bulk); a divisor hard/`Error` edge or a hard dividend edge bounds it. May degenerate to a point or `Empty`.
 
 **Bulk.** Co-locate on the intersection at $dx = \min(dx_f, dx_g)$; subtract ordinates (divide in plain space).
 
-**Boundary laws** (asymmetric). Each side inherits the dividend $f$'s tail, unless a divisor `Error` edge strictly inside $f$ truncated the grid there, in which case that side is `Error` (the quotient is undefined past it).
+**Boundary laws.** Per side: both operands soft -> refit a `Linear` law from the combined grid; the dividend's hard edge binds -> inherit the dividend's tail; a divisor hard/`Error` edge binds -> `Error`. Exact slope subtraction is not used, because it holds only while both grids reach the same edge.
 
 </details>
 

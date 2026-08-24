@@ -131,16 +131,33 @@ A `Range` operand has exact hard boundaries. A `Formula` operand has no stored p
 
 #### Division
 
-The quotient spans the dividend's bounds intersected with the divisor's evaluable domain; the dividend's bounds are used as-is. This asymmetry reflects the use case: the forward pass divides a parent's time distribution (dividend) by a child's backward message (divisor) to compute the cavity. The divisor is never sampled beyond its real, grid-backed support: only a flat `Constant` tail extends the quotient past the divisor's grid edge, because it is the one tail evaluable there without distorting the quotient. Every other tail bounds the quotient at the divisor's grid edge, and the dividend's own tail carries the cavity beyond.
+Division shares multiplication's support rule. The forward pass divides a parent's time distribution (dividend $f$) by a child's backward message (divisor $g$) to compute the cavity $f/g$. In neg-log the quotient is a subtraction of ordinates ($-\ln(f/g) = -\ln f - (-\ln g)$).
 
-| Divisor tail            | Behavior                                          | Rationale                                                                                                                                                                                                                                                                                                      |
-| ----------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Constant`              | Extend divisor bound to the dividend's grid bound | The divisor is evaluable at its flat boundary value, so dividing by it beyond the grid is well-defined and does not inflate the quotient; the cavity continues under the dividend                                                                                                                              |
-| `Hard` / `HardApproach` | Bound the quotient at the divisor's grid edge     | Probability is zero beyond the boundary. Under neg-log that is $+\infty$, so `dividend - (+\infty) = -\infty` -- a spurious spike that collapses the downstream convolution. `fn YAxisPolicy::safe_divisor()` cannot rescue it: it floors small divisors under plain storage but is the identity under neg-log |
-| `Linear`                | Bound the quotient at the divisor's grid edge     | The divisor decays beyond the grid, so dividing by its extrapolated tail inflates the quotient into a spurious spike                                                                                                                                                                                           |
-| `Error`                 | Bound the quotient at the divisor's grid edge     | Out-of-support evaluation is undefined; finite-support division constrained to the divisor's grid                                                                                                                                                                                                              |
+The dividend is the product of _all_ the parent's factors, and the divisor is _one_ of those factors: $f = g \cdot \text{rest}$, so the cavity $f/g = \text{rest}$ is itself a product of factors. Because the divisor is a factor of the dividend, its decay is already baked into the dividend and cancels in the quotient. On a soft side the neg-log slopes add under multiplication (see [multiplication tails](#multiplication)), so $k_f = k_g + k_\text{rest}$ and the quotient tail slope is $k_f - k_g = k_\text{rest} \ge 0$: the quotient decays, it does not spike. Dividing by $g$ _in isolation_ would inflate the result where $g$ decays, but the cavity never does that -- $g$ appears in $f$.
 
-This is why an independently re-gridded dividend (for example, a mass-sized parent posterior whose grid extends past a hard-bounded child message) no longer collapses the cavity: the quotient stops at the divisor's grid edge instead of sampling the divisor's out-of-support extrapolation.
+The result grid is therefore the same per-side rule as multiplication (intersect hard, union soft):
+
+- any hard operand on a side (dividend **or** divisor) bounds the quotient at the innermost hard edge;
+- otherwise both operands are soft, and the quotient extends to the outermost soft edge, sampling each operand through its own tail law and subtracting.
+
+A soft divisor edge no longer truncates the quotient: the divisor's decaying tail is evaluated as bulk out to the union edge, exactly as the Python prototype `test_scripts/density_algebra.py` `combine()` does with `signs=[1, -1]`. A divisor `Hard`/`HardApproach`/`Error` edge strictly inside the dividend still bounds the quotient there -- dividing by zero (`+\infty` under neg-log, giving $f - (+\infty) = -\infty$) or an undefined value is a genuine spike -- and the quotient is `Error` beyond it.
+
+##### Result tails
+
+Per side the quotient tail follows from which operand binds the edge:
+
+| Dividend side | Divisor side | Binding edge   | Result tail                                                                                                  |
+| ------------- | ------------ | -------------- | ------------------------------------------------------------------------------------------------------------ |
+| soft          | soft         | outermost soft | refit `Linear` from the combined grid                                                                        |
+| hard          | soft         | dividend hard  | the dividend's own hard tail (`Hard`/`HardApproach`), or `Error` if the dividend side is `Error`             |
+| soft          | hard         | divisor hard   | `Error` (undefined or a spike past the divisor edge)                                                         |
+| hard          | hard         | innermost hard | the dividend tail if the dividend binds (ties included, a $0/0$ cavity edge the dividend owns), else `Error` |
+
+A soft result side is **refit** from the combined grid via `fn SoftTailLaw::fit()`, not composed in closed form. Exact slope subtraction $k_f - k_g$ holds only while every operand's grid reaches the same edge; the cavity's operands are independently regridded (each fits its own tail from FFT output), so the outermost quotient cells mix one operand's bulk with another's tail and the true local slope there is not $k_f - k_g$. The refit reads the quotient's own outermost points, and `fn SoftTailLaw::fit()` clamps a wrong-sign slope to flat, which is the guard against a tail that would manufacture probability outward. Multiplication composes its soft tails in closed form (slopes add, always decaying at least as fast) because addition cannot invert a decay; division refits because subtraction can.
+
+The soft sides union and extend under their tail laws, so an independently re-gridded dividend (for example, a mass-sized parent posterior whose grid extends past a hard-bounded child message) keeps the cavity non-empty even when the two finite grids barely overlap.
+
+A subtlety this rule does not correct: when the divided-out child held the _tightest_ hard bound on a side, the parent product never stored the next factor's bound, so the quotient can only keep the dividend's (former child's) hard bound there -- a $0/0$ cancellation at the edge. The cavity is then slightly too tight on that side. Restoring the exact bound would require rebuilding the cavity from the retained factors instead of dividing the aggregate, tracked in [kb/issues/M-timetree-cavity-hard-bound-too-tight.md](../issues/M-timetree-cavity-hard-bound-too-tight.md).
 
 Coalescent contributions do not introduce another grid. The backward pass multiplies child messages first and evaluates the coalescent contribution pointwise on the resulting grid in negative-log space.
 
@@ -178,7 +195,7 @@ Scientific workflows requiring posterior peak, normalization, or integrated-prob
 ### Tail-aware arithmetic
 
 - [packages/treetime-distribution/src/distribution_ops/multiply.rs](../../packages/treetime-distribution/src/distribution_ops/multiply.rs): `fn multiplication_support_intersection()`, `fn multiplication_empty_result()` (empty invariant), `fn hard_domains_disjoint()`, `fn compose_multiplication_tail()`, `fn with_composed_tails()`, `fn multiply_point_function()`, `fn multiply_function_function()`, `fn multiply_range_function()`
-- [packages/treetime-distribution/src/distribution_ops/divide.rs](../../packages/treetime-distribution/src/distribution_ops/divide.rs): `fn division_support_intersection()`, `fn divide_function_by_function()`, `fn divide_range_by_function()`
+- [packages/treetime-distribution/src/distribution_ops/divide.rs](../../packages/treetime-distribution/src/distribution_ops/divide.rs): `fn divide_function_by_function()`, `fn divide_range_by_function()`, `fn divide_point_by_function()`, `fn apply_division_tail()`, `fn division_side_tail()` (reuses `fn multiplication_support_intersection()` for the grid, refits soft result tails)
 
 ### Inference pass tail application
 

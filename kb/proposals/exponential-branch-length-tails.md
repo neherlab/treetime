@@ -32,7 +32,7 @@ Previous grid explosion issues (fixed in `94a519a3`) were caused by a units mixu
 
 The `Constant` tail fix in multiplication is complementary. It ensures multiplication reads operand tails when computing support intersection, regardless of tail shape. If exponential tails are implemented:
 
-- `BoundaryBehavior::Exponential` would need the same treatment in `multiplication_support_intersection` and `division_support_intersection` as `Constant`: extend the evaluable domain on that side
+- `BoundaryBehavior::Exponential` would need the same treatment as `Constant` in `multiplication_support_intersection` (now shared by both multiplication and division): extend the evaluable domain on that side
 - The product in the extension region would use the exponential decay values instead of a flat constant, producing a more physically accurate result
 
 ## Open questions

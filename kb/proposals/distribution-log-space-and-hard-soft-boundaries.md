@@ -109,7 +109,7 @@ soft side:  result bound = loosest  (outermost) soft bound among operands
 mixed:      a hard bound always dominates a soft bound on the same side
 ```
 
-Each operand is then evaluated over the result domain, using its declared law wherever the query falls outside its own grid. This is the symmetric generalization of the rule division already applies (`divide.rs:146-161`), which extends only to the dividend's boundary because division has a privileged operand.
+Each operand is then evaluated over the result domain, using its declared law wherever the query falls outside its own grid. Division now uses this same per-side rule (`fn divide_function_by_function()`; see [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md)): it is no longer asymmetric with a privileged dividend, and differs from multiplication only in combining ordinates by subtraction and refitting its soft result tails from the combined grid.
 
 Applied to node 603:
 
@@ -273,7 +273,7 @@ Steps 2–5 are one atomic behavioral change; 1 precedes them, 6–8 follow.
 - `packages/treetime/src/timetree/inference/forward_pass.rs:98-130` — cavity division, forward message
 - `packages/treetime/src/timetree/convergence/likelihood.rs:29-70` — `compute_positional_log_lh`
 - `packages/treetime-distribution/src/distribution_ops/multiply.rs:138-157` — `multiply_function_function`
-- `packages/treetime-distribution/src/distribution_ops/divide.rs:146-161` — existing tail-aware bounds
+- `packages/treetime-distribution/src/distribution_ops/divide.rs` `fn divide_function_by_function()` -- tail-aware bounds (now shares the multiplication support rule)
 - `packages/treetime-distribution/src/distribution_ops/time_bounds.rs:52-64` — `distribution_support_intersection`
 - `packages/treetime-distribution/src/policy.rs` — `YAxisPolicy`, `supports_zero_boundary`, `SupportsConvolution`
 - `packages/treetime-distribution/src/distribution_core/distribution.rs:129-133, 214-243` — `time_bounds` (panics on `Empty`), `max_value` / `scale_by` / `normalize`
