@@ -114,7 +114,7 @@ where
 /// Assign the node's committed time from the peak of its time distribution, clamped to be no
 /// earlier than the parent's committed time. Returns the assigned time, or `None` when the time
 /// distribution is empty or degenerate and no time could be determined (the node is left undated).
-fn set_likely_time(node: &mut impl TimetreeNode, parent_time: Option<f64>) -> Option<f64> {
+pub(super) fn set_likely_time(node: &mut impl TimetreeNode, parent_time: Option<f64>) -> Option<f64> {
   let time = node
     .time_distribution()
     .as_ref()
@@ -335,58 +335,4 @@ fn restrict_to_reachable(
     .with_left_extrap(parent_fn.left_extrap())?
     .with_right_extrap(parent_fn.right_extrap())?;
   Ok(Distribution::Function(restricted))
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use crate::payload::timetree::NodeTimetree;
-  use crate::pretty_assert_ulps_eq;
-  use pretty_assertions::assert_eq;
-  use rstest::rstest;
-  use treetime_distribution::Distribution;
-
-  #[test]
-  fn test_forward_pass_set_likely_time_empty_distribution_returns_none() {
-    let mut node = node_with_distribution(Some(Distribution::empty()));
-    assert_eq!(None, set_likely_time(&mut node, None));
-    assert_eq!(None, node.time());
-  }
-
-  #[test]
-  fn test_forward_pass_set_likely_time_missing_distribution_returns_none() {
-    let mut node = node_with_distribution(None);
-    assert_eq!(None, set_likely_time(&mut node, None));
-    assert_eq!(None, node.time());
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::no_parent(      None,      5.0)]
-  #[case::parent_earlier( Some(3.0), 5.0)]
-  #[case::parent_clamps(  Some(8.0), 8.0)]
-  #[trace]
-  fn test_forward_pass_set_likely_time_uses_distribution_peak(
-    #[case] parent_time: Option<f64>,
-    #[case] expected: f64,
-  ) {
-    let mut node = node_with_distribution(Some(Distribution::point(5.0, 1.0)));
-    let assigned = set_likely_time(&mut node, parent_time).expect("a time should be assigned");
-    pretty_assert_ulps_eq!(assigned, expected, max_ulps = 4);
-    let committed = node.time().expect("node time should be committed");
-    pretty_assert_ulps_eq!(committed, expected, max_ulps = 4);
-  }
-
-  mod helpers {
-    use super::*;
-
-    pub(super) fn node_with_distribution(distribution: Option<Distribution<NegLog>>) -> NodeTimetree {
-      NodeTimetree {
-        time_distribution: distribution.map(Arc::new),
-        ..NodeTimetree::default()
-      }
-    }
-  }
-
-  use helpers::*;
 }
