@@ -10,11 +10,11 @@ v1 discretizes probability distributions on finite uniform grids. Two questions 
 
 ### `BoundaryBehavior`
 
-`GridFn` carries an independent tail policy on each side via `enum BoundaryBehavior` in `left_extrap` and `right_extrap`, defaulting to `Error`:
+`DistributionFunction` carries an independent tail policy on each side via `enum BoundaryBehavior` in `left_extrap` and `right_extrap`, defaulting to `Error`. `GridFn` remains a representation-agnostic interpolant; callers supply policies when they request extrapolation.
 
 | Variant        | Class | Out-of-support value                                        | Use case                                                                                                                                                                                                                                                                         |
 | -------------- | ----- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Error`        | hard  | returns an error                                            | Default. A bare grid function is a generic interpolant; querying outside support is a programming error                                                                                                                                                                          |
+| `Error`        | hard  | returns an error                                            | Default for a Function distribution; querying outside support is a programming error                                                                                                                                                                                             |
 | `Hard`         | hard  | zero probability ($0$ under plain, $+\infty$ under neg-log) | The grid edge is the hard boundary: probability is zero beyond it, with no sub-grid gap to interpolate                                                                                                                                                                           |
 | `HardApproach` | hard  | fitted `HardApproachLaw` across the sub-grid gap            | The hard boundary lies below the first grid point; between them the density follows an edge-relative single-exponent power-law approach law. A finite mode on the boundary is instead stored as an exact grid endpoint (`Hard`), so this variant carries only the divergent case |
 | `Constant`     | soft  | returns the boundary $y$                                    | Flat tail: genuinely uninformative beyond the edge. Non-integrable (infinite mass), so retained only for edges outside inference                                                                                                                                                 |
@@ -26,9 +26,11 @@ A boundary is **hard** when the grid edge is a fact about the distribution -- pr
 
 `Linear` stores only the neg-log slope $k$ and re-reads the live grid edge on evaluation. A soft edge is a movable representation choice -- re-windowing and resampling shift it -- so anchoring the tail to the current edge keeps it valid across regridding, where a stored absolute anchor would go stale. The `Hard` approach law is edge-relative in the same way: only its boundary _location_ $t_\text{hard}$ is an immovable physical fact, while the ordinate is read from the live grid edge and the law stores only its shape (the single power-law exponent $b$), so it too survives regridding without a stored anchor. Both laws are shift-invariant: adding a constant to every $-\ln p$ leaves $k$ and the hard law's exponent $b$ unchanged.
 
-`GridFn` is representation-agnostic: `Hard` writes the literal $0.0$, and the distribution layer maps that to the policy-correct zero-probability value ($0$ under plain, $+\infty$ under negative-log). Every variant is therefore valid under both axes. The timetree passes store distributions on the negative-log axis (`Distribution<NegLog>`), where the ordinate is $-\ln p$ and normalization is a pure ordinate shift.
+`GridFn` is representation-agnostic: its explicit extrapolation API returns the literal $0.0$ for `Hard`. `DistributionFunction` owns the policies and maps this value to the policy-correct zero-probability value ($0$ under plain, $+\infty$ under negative-log). Every variant is therefore valid under both axes. The timetree passes store distributions on the negative-log axis (`Distribution<NegLog>`), where the ordinate is $-\ln p$ and normalization is a pure ordinate shift.
 
-Builder methods `fn GridFn.with_left_extrap()`, `fn GridFn.with_right_extrap()`, and `fn GridFn.with_extrap()` set the policy. `fn GridFn.resample()` propagates it. `fn GridFn.negate_arg_inplace()` swaps left and right (negating the argument reflects the domain).
+Builder methods `fn DistributionFunction.with_left_extrap()`, `fn DistributionFunction.with_right_extrap()`, and `fn DistributionFunction.with_extrap()` set the policy. Resampling preserves both policies. `fn DistributionFunction.negate_arg_inplace()` swaps left and right and transforms fitted laws because negating the argument reflects the domain.
+
+`Distribution::Formula` evaluates its exact closure and stores no boundary policy. `fn Distribution.left_extrap()` and `fn Distribution.right_extrap()` therefore return `None` for Formula. Exact compact variants (`Empty`, `Point`, and `Range`) return `Some(Hard)`. The setters and `fn Distribution.fit_soft_tail()` change only Function distributions.
 
 ## Tail assignments in the timetree pipeline
 
@@ -59,7 +61,7 @@ Convolution reads only the grid ordinates and reconstructs the message tails fro
 
 ### `normalize()` preserves tails
 
-Under the negative-log axis, `fn Distribution.normalize()` subtracts the minimum ordinate via `fn DistributionFunction.shift_y()`. A shift is closed form on both fitted laws -- the soft-tail slope and the hard approach law's shape are shift-invariant -- so `shift_y` carries the laws through unchanged rather than dropping them. Every regrid also preserves the per-side policy and fitted law through the centralized `fn GridFn.regridded()` helper, and `fn GridFn.scale_y()` rescales the fitted laws rather than discarding them. Only an arbitrary `fn GridFn.mapv()` drops the law (keeping the side's class), which no normalization path uses.
+Under the negative-log axis, `fn Distribution.normalize()` subtracts the minimum ordinate via `fn DistributionFunction.shift_y()`. A shift is closed form on both fitted laws -- the soft-tail slope and the hard approach law's shape are shift-invariant -- so `shift_y` carries the laws through unchanged. Every `DistributionFunction` regrid also preserves its per-side policy and fitted law, and `fn DistributionFunction.scale_y()` rescales the fitted laws.
 
 This lets the backward pass combine child messages with a single product and normalization: the product composes the result tails (see [multiplication tails](#multiplication)) and normalization preserves them, so the folded result keeps its fitted `Linear` left tail and can still extend to reach a child with a disjoint finite grid. The child fold is `fn distribution_product()` (treetime-distribution), which co-locates the `Function` messages on one common grid and composes the summed left tail in closed form from the operands' own tails (`fn compose_multiplication_tail()`), so no tail is re-fit from the combined grid.
 
@@ -125,7 +127,7 @@ A `Function` result carries per-side tails composed from the two operands' tails
 | hard    | `Error` | `Error`                                                |
 | `Error` | `Error` | `Error`                                                |
 
-A `Range` or `Formula` operand has no interpolated tail (it is `Error` on both sides), so Range * Function and Formula * Function results carry `Error` tails. Only Function * Function can produce non-`Error` result tails, and only when both operands opt in. Combined with tail-preserving normalization, this is what lets the backward pass accumulate child messages without re-applying tails.
+A `Range` operand has exact hard boundaries. A `Formula` operand has no stored policy; arithmetic uses its finite sampling range as an `Error`-bounded domain when it must produce a Function result. Range * Function and Formula * Function results therefore do not inherit a soft tail from the compact or Formula operand. Only Function * Function can produce soft result tails, and only when both operands opt in. Combined with tail-preserving normalization, this is what lets the backward pass accumulate child messages without re-applying tails.
 
 #### Division
 
@@ -168,8 +170,10 @@ Scientific workflows requiring posterior peak, normalization, or integrated-prob
 
 - [packages/treetime-grid/src/boundary_behavior.rs](../../packages/treetime-grid/src/boundary_behavior.rs): `enum BoundaryBehavior` (`Error`/`Hard`/`HardApproach`/`Constant`/`Linear`, every variant a complete value), `fn BoundaryBehavior.is_soft()`/`is_hard()`, `const DEFAULT_TAIL_FIT_POINTS`
 - [packages/treetime-grid/src/soft_tail_law.rs](../../packages/treetime-grid/src/soft_tail_law.rs): `struct SoftTailLaw` (single neg-log slope), `fn SoftTailLaw::fit()`, `fn SoftTailLaw::mass()`, `fn SoftTailLaw::compose_multiply()`
-- [packages/treetime-grid/src/grid_fn.rs](../../packages/treetime-grid/src/grid_fn.rs): `left_extrap`/`right_extrap` fields, `fn GridFn.with_left_extrap()`/`fn GridFn.with_right_extrap()`/`fn GridFn.with_extrap()`, `fn GridFn.interp()` (fallible, dispatches by tail), `fn GridFn.regridded()` (centralized policy/law carry across every regrid), `fn GridFn.resample()`, `fn GridFn.scale_y()` (rescales fitted laws), `fn GridFn.shift_y()` (shift-invariant, carries laws), `fn GridFn.mapv()` (drops the law, keeps the class), `fn GridFn.negate_arg_inplace()` (swaps sides)
-- [packages/treetime-distribution/src/distribution_core/distribution.rs](../../packages/treetime-distribution/src/distribution_core/distribution.rs): `fn Distribution.with_left_extrap()`/`fn Distribution.with_right_extrap()` (no-op for non-Function variants); `fn Distribution.normalize()` (subtracts the minimum ordinate via `fn DistributionFunction.shift_y()` under `NegLog`)
+- [packages/treetime-grid/src/grid_fn.rs](../../packages/treetime-grid/src/grid_fn.rs): policy-free grid interpolation; `fn GridFn.interp_with_extrap()` and `fn GridFn.resample_with_extrap()` accept explicit policies for one operation
+- [packages/treetime-distribution/src/distribution_core/function.rs](../../packages/treetime-distribution/src/distribution_core/function.rs): `left_extrap`/`right_extrap` fields and getters; policy builders; tail fitting; policy-preserving resampling, ordinate transforms, and argument negation
+- [packages/treetime-distribution/src/distribution_core/formula.rs](../../packages/treetime-distribution/src/distribution_core/formula.rs): exact Formula closure and finite sampling range, with no stored boundary policy
+- [packages/treetime-distribution/src/distribution_core/distribution.rs](../../packages/treetime-distribution/src/distribution_core/distribution.rs): optional boundary getters; Function-only policy builders and tail fitting; hard compact variants; `fn Distribution.normalize()`
 
 ### Tail-aware arithmetic
 

@@ -6,15 +6,17 @@ This document specifies how grid functions behave outside their support and how 
 
 ## 1. Extrapolation outside grid support
 
-`GridFn<T>` represents a piecewise-linear function on a finite uniform grid `[x_min, x_max]`. Two policies are needed depending on context:
+`GridFn<T>` represents a piecewise-linear function on a finite uniform grid `[x_min, x_max]`. It stores only the grid and ordinates. Generic interpolation outside the grid returns an error unless the caller supplies explicit left and right `BoundaryBehavior` values.
+
+`DistributionFunction` stores independent `left_extrap` and `right_extrap` fields. Fresh function distributions use `Error` on both sides. `Distribution` exposes both policies through variant-independent optional getters and fits a `Linear` tail from function values near a selected edge. A `Formula` has no stored boundary policy because its exact closure evaluates on demand. `Empty`, `Point`, and `Range` distributions have exact compact support, so their getters return `Hard`, attempts to replace those boundaries have no effect, and evaluation outside their support returns the axis-specific zero-probability value.
+
+The distribution layer supports these policies depending on context:
 
 - **`Hard`** -- return `0.0` for any query outside `[x_min, x_max]`. This is the correct default for any bounded probability distribution: leaf date constraints, branch-length likelihoods, and their products are zero outside their stated support.
 
 - **`Constant`** -- return the nearest boundary value (`y[0]` to the left, `y[n-1]` to the right). Use this when the distribution is genuinely uninformative beyond the grid edge, i.e. the tail should be treated as flat rather than absent.
 
-Add a `BoundaryBehavior` enum with these two variants and store independent `left_extrap` / `right_extrap` fields on `GridFn`. Default both to `Hard`. Expose builder methods `with_left_extrap` / `with_right_extrap` that return `Self`. Propagate these fields in `mapv`, `resample`, and `negate_arg_inplace` (the last must swap left<->right because negating the argument reflects the domain).
-
-Expose the same builder methods on `DistributionFunction` (delegating to the inner `GridFn`) and on `Distribution<Y>` (no-op for non-Function variants).
+`DistributionFunction` preserves its policies during resampling and vertical shifts. Scaling transforms fitted-law coefficients, and argument negation reflects each law and swaps the two sides. Formula arithmetic uses its sampling range to construct finite result grids while direct evaluation uses the exact closure.
 
 ### Applying the policies in the inference passes
 
