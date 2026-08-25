@@ -3,6 +3,7 @@ mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::output::{LadderizeArg, OutputCoreArgs, TimetreeOutputSelection, TopologyOrderArgs};
   use crate::commands::timetree::args::TreetimeTimetreeArgs;
+  use crate::commands::timetree::output::coalescent::{CoalescentMode, CoalescentOutput};
   use crate::commands::timetree::run::run_timetree_estimation;
   use crate::progress::NoopProgress;
   use eyre::Report;
@@ -125,6 +126,43 @@ mod tests {
     let mut expected = actual.clone();
     expected.sort_unstable_by(|left, right| right.cmp(left));
     assert_eq!(expected, actual);
+
+    Ok(())
+  }
+
+  #[test]
+  #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
+  fn test_pipeline_timetree_writes_coalescent_outputs() -> Result<(), Report> {
+    let root = project_root();
+    let output = tempfile::tempdir()?;
+    let args = TreetimeTimetreeArgs {
+      alignment: AlignmentArgs {
+        alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
+      },
+      tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+      metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+      max_iter: 3,
+      coalescent_skyline: true,
+      output: OutputCoreArgs {
+        output_all: Some(output.path().to_path_buf()),
+        ..Default::default()
+      },
+      output_coalescent_json: Some(output.path().join("timetree.coalescent.json")),
+      ..TreetimeTimetreeArgs::default()
+    };
+
+    run_timetree_estimation(&args, &NoopProgress)?;
+
+    // The default `--output-all` set writes the coalescent TSV; the JSON is requested per file.
+    let tsv_path = output.path().join("timetree.coalescent.tsv");
+    assert!(tsv_path.exists(), "default --output-all must write the coalescent TSV");
+
+    let doc: CoalescentOutput = json_read_file(output.path().join("timetree.coalescent.json"))?;
+    assert_eq!(CoalescentMode::Skyline, doc.inputs.mode);
+    assert!(
+      !doc.outputs.segments.is_empty(),
+      "a skyline run must report at least one coalescent segment"
+    );
 
     Ok(())
   }

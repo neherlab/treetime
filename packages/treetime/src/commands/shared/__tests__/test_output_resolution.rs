@@ -370,4 +370,84 @@ mod tests {
     };
     assert_eq!(resolved.tree_outputs, expected);
   }
+
+  // --- Coalescent outputs (timetree only) ---
+
+  #[test]
+  fn test_resolve_timetree_default_includes_coalescent_tsv_not_csv_json() {
+    let dir = TempDir::new().unwrap();
+    let args = OutputCoreArgs {
+      output_all: Some(dir.path().to_path_buf()),
+      ..Default::default()
+    };
+    let resolved = args.resolve(CommandKind::Timetree, &[], &[]).unwrap();
+
+    assert_eq!(
+      Some(&dir.path().join("timetree.coalescent.tsv")),
+      resolved.non_tree_outputs.get(&OutputSelection::CoalescentTsv)
+    );
+    assert!(
+      !resolved.non_tree_outputs.contains_key(&OutputSelection::CoalescentCsv),
+      "coalescent CSV is opt-in, not a default output"
+    );
+    assert!(
+      !resolved.non_tree_outputs.contains_key(&OutputSelection::CoalescentJson),
+      "coalescent JSON is opt-in, not a default output"
+    );
+  }
+
+  #[test]
+  fn test_resolve_timetree_coalescent_csv_json_opt_in_via_selection() {
+    let dir = TempDir::new().unwrap();
+    let args = OutputCoreArgs {
+      output_all: Some(dir.path().to_path_buf()),
+      ..Default::default()
+    };
+    let resolved = args
+      .resolve(
+        CommandKind::Timetree,
+        &[OutputSelection::CoalescentCsv, OutputSelection::CoalescentJson],
+        &[],
+      )
+      .unwrap();
+
+    assert_eq!(
+      Some(&dir.path().join("timetree.coalescent.csv")),
+      resolved.non_tree_outputs.get(&OutputSelection::CoalescentCsv)
+    );
+    assert_eq!(
+      Some(&dir.path().join("timetree.coalescent.json")),
+      resolved.non_tree_outputs.get(&OutputSelection::CoalescentJson)
+    );
+  }
+
+  #[test]
+  fn test_resolve_timetree_offers_all_coalescent_formats() {
+    let coalescent = btreeset! {
+      OutputSelection::CoalescentTsv,
+      OutputSelection::CoalescentCsv,
+      OutputSelection::CoalescentJson,
+    };
+    assert!(coalescent.is_subset(&CommandKind::Timetree.all_selectable()));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::ancestral(CommandKind::Ancestral)]
+  #[case::optimize (CommandKind::Optimize)]
+  #[case::mugration(CommandKind::Mugration)]
+  #[case::clock    (CommandKind::Clock)]
+  #[case::prune    (CommandKind::Prune)]
+  #[trace]
+  fn test_resolve_coalescent_outputs_are_timetree_only(#[case] command: CommandKind) {
+    let coalescent = btreeset! {
+      OutputSelection::CoalescentTsv,
+      OutputSelection::CoalescentCsv,
+      OutputSelection::CoalescentJson,
+    };
+    assert!(
+      command.all_selectable().is_disjoint(&coalescent),
+      "{command:?} must not offer coalescent outputs"
+    );
+  }
 }

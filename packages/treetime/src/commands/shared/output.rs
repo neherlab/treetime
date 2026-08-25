@@ -51,6 +51,9 @@ pub enum OutputSelection {
   TraitsCsv,
   ClockCsv,
   Tracelog,
+  CoalescentTsv,
+  CoalescentCsv,
+  CoalescentJson,
 }
 
 impl OutputSelection {
@@ -100,6 +103,9 @@ impl OutputSelection {
       Self::TraitsCsv => ".traits.csv",
       Self::ClockCsv => ".clock.csv",
       Self::Tracelog => ".tracelog.csv",
+      Self::CoalescentTsv => ".coalescent.tsv",
+      Self::CoalescentCsv => ".coalescent.csv",
+      Self::CoalescentJson => ".coalescent.json",
     }
   }
 
@@ -140,6 +146,9 @@ impl OutputSelection {
       Self::TraitsCsv => "--output-traits-csv",
       Self::ClockCsv => "--output-clock-csv",
       Self::Tracelog => "--output-tracelog",
+      Self::CoalescentTsv => "--output-coalescent-tsv",
+      Self::CoalescentCsv => "--output-coalescent-csv",
+      Self::CoalescentJson => "--output-coalescent-json",
     }
   }
 
@@ -251,6 +260,9 @@ per_command_output_selection!(TimetreeOutputSelection {
   ClockModel,
   ConfidenceTsv,
   Tracelog,
+  CoalescentTsv,
+  CoalescentCsv,
+  CoalescentJson,
 });
 per_command_output_selection!(ClockOutputSelection { ClockModel, ClockCsv });
 per_command_output_selection!(MugrationOutputSelection {
@@ -288,7 +300,14 @@ impl CommandKind {
       btreeset![Nwk, Nexus]
     };
     let mut non_tree = self.non_tree_outputs();
-    for non_default in [ReconstructedAaFasta, ConfidenceTsv, ConfidenceCsv, Tracelog] {
+    for non_default in [
+      ReconstructedAaFasta,
+      ConfidenceTsv,
+      ConfidenceCsv,
+      Tracelog,
+      CoalescentCsv,
+      CoalescentJson,
+    ] {
       non_tree.remove(&non_default);
     }
     &tree_defaults | &non_tree
@@ -315,7 +334,16 @@ impl CommandKind {
     use OutputSelection::*;
     match self {
       Self::Ancestral => btreeset![AugurNodeData, Gtr, ReconstructedNucFasta, ReconstructedAaFasta],
-      Self::Timetree => btreeset![AugurNodeData, Gtr, ClockModel, ConfidenceTsv, Tracelog],
+      Self::Timetree => btreeset![
+        AugurNodeData,
+        Gtr,
+        ClockModel,
+        ConfidenceTsv,
+        Tracelog,
+        CoalescentTsv,
+        CoalescentCsv,
+        CoalescentJson
+      ],
       Self::Optimize => btreeset![AugurNodeData, Gtr],
       Self::Mugration => btreeset![AugurNodeData, Gtr, ConfidenceCsv, TraitsCsv],
       Self::Clock => btreeset![ClockModel, ClockCsv],

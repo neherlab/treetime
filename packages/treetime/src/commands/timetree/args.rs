@@ -308,6 +308,28 @@ pub struct TreetimeTimetreeArgs {
   #[cfg_attr(feature = "clap", clap(long, visible_alias = "tracelog", value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_tracelog: Option<PathBuf>,
 
+  /// Path to output the inferred coalescent time scale as a flat TSV (one row per skyline segment).
+  ///
+  /// Written only when a coalescent was inferred (`--coalescent`, `--coalescent-opt`, or
+  /// `--coalescent-skyline`). Takes precedence over paths configured with `--output-all` and
+  /// `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_coalescent_tsv: Option<PathBuf>,
+
+  /// Path to output the inferred coalescent time scale as a flat CSV (one row per skyline segment).
+  ///
+  /// Written only when a coalescent was inferred. Takes precedence over paths configured with
+  /// `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_coalescent_csv: Option<PathBuf>,
+
+  /// Path to output the inferred coalescent time scale as a rich JSON document (inputs + segments).
+  ///
+  /// Written only when a coalescent was inferred. Takes precedence over paths configured with
+  /// `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_coalescent_json: Option<PathBuf>,
+
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub output: OutputCoreArgs,
 

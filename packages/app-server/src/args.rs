@@ -322,6 +322,9 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
       output_gtr: None,
       output_clock_model: None,
       output_confidence_tsv: None,
+      output_coalescent_tsv: None,
+      output_coalescent_csv: None,
+      output_coalescent_json: None,
       output_tracelog: s.tracelog.map(PathBuf::from),
       output: OutputCoreArgs {
         output_all: Some(PathBuf::from(s.outdir)),

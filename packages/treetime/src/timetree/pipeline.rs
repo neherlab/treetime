@@ -10,6 +10,9 @@ use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::population_size::effective_population_size;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
+use crate::commands::timetree::output::coalescent::{
+  CoalescentBand, CoalescentInputs, CoalescentMode as OutputCoalescentMode, CoalescentOutput, CoalescentSolve,
+};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::make_error;
@@ -32,7 +35,7 @@ use crate::timetree::refinement::{Refinement, RefinementOptions, TopologyRefinem
 use crate::timetree::utils::{initialize_clock_totals_from_time_distributions, initialize_node_divergences};
 use eyre::{Report, WrapErr};
 use log::{debug, info};
-use ndarray::array;
+use ndarray::{Array1, array};
 use parking_lot::RwLock;
 use serde::Serialize;
 use std::io::Write;
@@ -111,6 +114,9 @@ pub struct TimetreeOutput {
   pub gtr: Option<GTR>,
   #[serde(skip)]
   pub model_name: Option<GtrModelName>,
+  /// The inferred coalescent time scale, or `None` when the run asked for no coalescent.
+  #[serde(skip)]
+  pub coalescent: Option<CoalescentOutput>,
 }
 
 pub fn run(
@@ -441,6 +447,14 @@ pub fn run(
     || rate_std.is_some())
   .then(|| extract_confidence_intervals(&input.graph));
 
+  let coalescent_output = build_coalescent_output(
+    coalescent,
+    &coalescent_tc,
+    &lineage_counts,
+    params.gen_per_year,
+    params.coalescent_confidence,
+  )?;
+
   progress.report("Done", 1.0, "");
   Ok(TimetreeOutput {
     graph: input.graph,
@@ -450,6 +464,7 @@ pub fn run(
     dates: input.dates,
     gtr: partition_gtr,
     model_name: partition_model_name,
+    coalescent: coalescent_output,
   })
 }
 
@@ -514,6 +529,11 @@ fn estimate_coalescent_tc(
   Ok(Some(CoalescentTimescale {
     distribution: result.tc_distribution,
     schedule: result.tc_schedule,
+    report: Some(CoalescentTcReport {
+      segment_boundaries: result.segment_boundaries,
+      tc_lower_bounds: result.tc_lower_bounds,
+      tc_upper_bounds: result.tc_upper_bounds,
+    }),
   }))
 }
 
@@ -540,6 +560,9 @@ fn coalescent_timescale(
 struct CoalescentTimescale {
   distribution: Distribution,
   schedule: PiecewiseConstantFn,
+  /// Per-segment reporting data (boundaries and confidence band) from the analytic solve. `None`
+  /// for a fixed user Tc, which has no solve and no band.
+  report: Option<CoalescentTcReport>,
 }
 
 impl CoalescentTimescale {
@@ -547,8 +570,74 @@ impl CoalescentTimescale {
     Self {
       distribution: Distribution::constant(tc),
       schedule: PiecewiseConstantFn::new(array![], array![tc]),
+      report: None,
     }
   }
+}
+
+/// Per-segment reporting data carried out of the skyline/constant analytic solve for the output
+/// document. Holds the P1 confidence band and the segment boundaries; the Tc values themselves come
+/// from [`CoalescentTimescale::schedule`].
+struct CoalescentTcReport {
+  /// Segment boundaries in numeric date (length `n_segments + 1`, ascending).
+  segment_boundaries: Array1<f64>,
+  /// Lower confidence bound per segment.
+  tc_lower_bounds: Array1<f64>,
+  /// Upper confidence bound per segment.
+  tc_upper_bounds: Array1<f64>,
+}
+
+/// Assembles the coalescent output document for the requested mode, or `None` when the run asked
+/// for no coalescent.
+///
+/// The optimized modes (constant, skyline) carry the P1 confidence band from the analytic solve. A
+/// fixed user Tc has no solve and no band; its single segment spans the tree's time range, taken
+/// from the lineage-count breakpoints (the same span the skyline solve partitions).
+fn build_coalescent_output(
+  requested: CoalescentMode,
+  timescale: &CoalescentTimescale,
+  lineage_counts: &PiecewiseConstantFn,
+  gen_per_year: f64,
+  n_std: f64,
+) -> Result<Option<CoalescentOutput>, Report> {
+  let (mode, confidence_n_std) = match requested {
+    CoalescentMode::Disabled => return Ok(None),
+    CoalescentMode::Fixed(_) => (OutputCoalescentMode::Fixed, None),
+    CoalescentMode::Constant => (OutputCoalescentMode::Constant, Some(n_std)),
+    CoalescentMode::Skyline => (OutputCoalescentMode::Skyline, Some(n_std)),
+  };
+
+  let tc_values = timescale.schedule.values().to_vec();
+  let (boundaries, band_bounds) = if let Some(report) = &timescale.report {
+    (
+      report.segment_boundaries.to_vec(),
+      Some((report.tc_lower_bounds.to_vec(), report.tc_upper_bounds.to_vec())),
+    )
+  } else {
+    // Fixed Tc: a single segment spanning the whole tree, no band.
+    let breakpoints = lineage_counts.breakpoints();
+    let t_min = breakpoints[0];
+    let t_max = breakpoints[breakpoints.len() - 1];
+    (vec![t_min, t_max], None)
+  };
+
+  let band = band_bounds.as_ref().map(|(lower, upper)| CoalescentBand {
+    lower: lower.as_slice(),
+    upper: upper.as_slice(),
+  });
+  let output = CoalescentOutput::new(
+    CoalescentInputs {
+      mode,
+      gen_per_year,
+      confidence_n_std,
+    },
+    &CoalescentSolve {
+      segment_boundaries: &boundaries,
+      tc_values: &tc_values,
+      band,
+    },
+  )?;
+  Ok(Some(output))
 }
 
 struct PartitionInitResult {
@@ -611,8 +700,20 @@ fn optimize_branch_lengths_pre_step(
 
 #[cfg(test)]
 mod tests {
-  use super::{CoalescentMode, coalescent_mode};
+  use super::{
+    CoalescentBand, CoalescentInputs, CoalescentMode, CoalescentOutput, CoalescentSolve, CoalescentTcReport,
+    CoalescentTimescale, OutputCoalescentMode, build_coalescent_output, coalescent_mode,
+  };
+  use eyre::Report;
+  use ndarray::array;
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_distribution::Distribution;
+  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+
+  // N_e = T_c * gen_per_year (packages/treetime/src/coalescent/population_size.rs).
+  const GEN_PER_YEAR: f64 = 50.0;
+  const N_STD: f64 = 2.0;
 
   #[rustfmt::skip]
   #[rstest]
@@ -632,5 +733,138 @@ mod tests {
     let actual = coalescent_mode(coalescent, coalescent_opt, coalescent_skyline);
 
     assert_eq!(expected, actual);
+  }
+
+  // Oracle: the independently tested `CoalescentOutput::new`
+  // (packages/treetime/src/commands/timetree/output/__tests__/test_coalescent_output.rs). These
+  // tests fix the pipeline-to-output mapping: requested mode, band presence, and (for a fixed Tc)
+  // the single-segment span taken from the lineage-count breakpoints.
+
+  #[test]
+  fn test_pipeline_build_coalescent_output_disabled_returns_none() -> Result<(), Report> {
+    let timescale = CoalescentTimescale::constant(1.0);
+    let lineage_counts = PiecewiseConstantFn::new(array![2000.0, 2020.0], array![1.0, 2.0, 3.0]);
+
+    let actual = build_coalescent_output(
+      CoalescentMode::Disabled,
+      &timescale,
+      &lineage_counts,
+      GEN_PER_YEAR,
+      N_STD,
+    )?;
+
+    assert_eq!(None, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_build_coalescent_output_fixed_single_segment_no_band() -> Result<(), Report> {
+    // A fixed user Tc has no solve and no band; its one segment spans the tree, taken from the
+    // lineage-count breakpoints (first = t_min, last = t_max).
+    let timescale = CoalescentTimescale::constant(2.5);
+    let lineage_counts = PiecewiseConstantFn::new(array![2000.0, 2010.0, 2020.0], array![1.0, 2.0, 3.0, 4.0]);
+
+    let actual = build_coalescent_output(
+      CoalescentMode::Fixed(2.5),
+      &timescale,
+      &lineage_counts,
+      GEN_PER_YEAR,
+      N_STD,
+    )?;
+
+    let expected = CoalescentOutput::new(
+      CoalescentInputs {
+        mode: OutputCoalescentMode::Fixed,
+        gen_per_year: GEN_PER_YEAR,
+        confidence_n_std: None,
+      },
+      &CoalescentSolve {
+        segment_boundaries: &[2000.0, 2020.0],
+        tc_values: &[2.5],
+        band: None,
+      },
+    )?;
+    assert_eq!(Some(expected), actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_build_coalescent_output_constant_carries_band() -> Result<(), Report> {
+    let timescale = CoalescentTimescale {
+      distribution: Distribution::constant(3.0),
+      schedule: PiecewiseConstantFn::new(array![], array![3.0]),
+      report: Some(CoalescentTcReport {
+        segment_boundaries: array![2000.0, 2020.0],
+        tc_lower_bounds: array![2.0],
+        tc_upper_bounds: array![4.0],
+      }),
+    };
+    let lineage_counts = PiecewiseConstantFn::new(array![2000.0, 2020.0], array![1.0, 2.0, 3.0]);
+
+    let actual = build_coalescent_output(
+      CoalescentMode::Constant,
+      &timescale,
+      &lineage_counts,
+      GEN_PER_YEAR,
+      N_STD,
+    )?;
+
+    let expected = CoalescentOutput::new(
+      CoalescentInputs {
+        mode: OutputCoalescentMode::Constant,
+        gen_per_year: GEN_PER_YEAR,
+        confidence_n_std: Some(N_STD),
+      },
+      &CoalescentSolve {
+        segment_boundaries: &[2000.0, 2020.0],
+        tc_values: &[3.0],
+        band: Some(CoalescentBand {
+          lower: &[2.0],
+          upper: &[4.0],
+        }),
+      },
+    )?;
+    assert_eq!(Some(expected), actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_build_coalescent_output_skyline_multi_segment_band() -> Result<(), Report> {
+    let timescale = CoalescentTimescale {
+      distribution: Distribution::constant(3.0),
+      schedule: PiecewiseConstantFn::new(array![2010.0], array![3.0, 5.0]),
+      report: Some(CoalescentTcReport {
+        segment_boundaries: array![2000.0, 2010.0, 2020.0],
+        tc_lower_bounds: array![2.0, 4.0],
+        tc_upper_bounds: array![4.0, 6.0],
+      }),
+    };
+    let lineage_counts = PiecewiseConstantFn::new(array![2000.0, 2020.0], array![1.0, 2.0, 3.0]);
+
+    let actual = build_coalescent_output(
+      CoalescentMode::Skyline,
+      &timescale,
+      &lineage_counts,
+      GEN_PER_YEAR,
+      N_STD,
+    )?;
+
+    let expected = CoalescentOutput::new(
+      CoalescentInputs {
+        mode: OutputCoalescentMode::Skyline,
+        gen_per_year: GEN_PER_YEAR,
+        confidence_n_std: Some(N_STD),
+      },
+      &CoalescentSolve {
+        segment_boundaries: &[2000.0, 2010.0, 2020.0],
+        tc_values: &[3.0, 5.0],
+        band: Some(CoalescentBand {
+          lower: &[2.0, 4.0],
+          upper: &[4.0, 6.0],
+        }),
+      },
+    )?;
+    assert_eq!(Some(expected), actual);
+    Ok(())
   }
 }

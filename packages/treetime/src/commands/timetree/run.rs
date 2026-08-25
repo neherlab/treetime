@@ -4,6 +4,9 @@ use crate::commands::shared::tree_output::write_timetree_tree_outputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::output::augur_node_data::write_augur_node_data_json;
+use crate::commands::timetree::output::coalescent::{
+  CoalescentOutput, write_coalescent_delimited, write_coalescent_json,
+};
 use crate::commands::timetree::result::{TimetreeGraphData, TimetreeResult};
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
@@ -12,8 +15,8 @@ use crate::seq::div::compute_edge_mutation_counts;
 use crate::timetree::confidence::write_confidence_intervals_file;
 use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use eyre::{Report, WrapErr};
-use log::{info, warn};
-use std::path::PathBuf;
+use log::{debug, info, warn};
+use std::path::{Path, PathBuf};
 use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
 
@@ -44,6 +47,9 @@ pub fn run_timetree_estimation(
       (OutputSelection::ClockModel, args.output_clock_model.as_deref()),
       (OutputSelection::ConfidenceTsv, args.output_confidence_tsv.as_deref()),
       (OutputSelection::Tracelog, args.output_tracelog.as_deref()),
+      (OutputSelection::CoalescentTsv, args.output_coalescent_tsv.as_deref()),
+      (OutputSelection::CoalescentCsv, args.output_coalescent_csv.as_deref()),
+      (OutputSelection::CoalescentJson, args.output_coalescent_json.as_deref()),
     ],
   )?;
   let tracelog: Option<Box<dyn std::io::Write + Send>> = match resolved.non_tree_outputs.get(&OutputSelection::Tracelog)
@@ -119,6 +125,7 @@ pub fn run_timetree_estimation(
     dates,
     gtr,
     model_name,
+    coalescent,
   } = output;
   let mut graph = graph.map_data(TimetreeGraphData::new(
     clock_model,
@@ -152,6 +159,33 @@ pub fn run_timetree_estimation(
       },
       None => warn!("Skipping confidence-interval output: no confidence intervals were computed (use --time-marginal)"),
     }
+  }
+
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::CoalescentTsv) {
+    write_coalescent_output(
+      coalescent.as_ref(),
+      path,
+      args.output_coalescent_tsv.is_some(),
+      |output, path| write_coalescent_delimited(output, path, b'\t'),
+    )?;
+  }
+
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::CoalescentCsv) {
+    write_coalescent_output(
+      coalescent.as_ref(),
+      path,
+      args.output_coalescent_csv.is_some(),
+      |output, path| write_coalescent_delimited(output, path, b','),
+    )?;
+  }
+
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::CoalescentJson) {
+    write_coalescent_output(
+      coalescent.as_ref(),
+      path,
+      args.output_coalescent_json.is_some(),
+      |output, path| write_coalescent_json(output, path),
+    )?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
@@ -207,4 +241,38 @@ pub fn run_timetree_estimation(
 
   progress.report("Done", 1.0, "");
   Ok(TimetreeResult { graph })
+}
+
+/// Writes one coalescent output file, or reports the absence of a coalescent.
+///
+/// A coalescent output exists only when the run inferred one (`--coalescent`, `--coalescent-opt`,
+/// or `--coalescent-skyline`). An explicit per-file flag on a run without a coalescent is an error;
+/// a file selected only through `--output-all` or `--output-selection` is skipped with a warning.
+/// Mirrors the GTR and confidence-interval outputs.
+fn write_coalescent_output(
+  coalescent: Option<&CoalescentOutput>,
+  path: &Path,
+  explicit: bool,
+  write: impl FnOnce(&CoalescentOutput, &Path) -> Result<(), Report>,
+) -> Result<(), Report> {
+  match coalescent {
+    Some(output) => {
+      write(output, path)?;
+      info!("Wrote coalescent output to {path}", path = path.display());
+    },
+    None if explicit => {
+      return make_error!(
+        "Coalescent output requested but no coalescent was inferred. \
+         Use --coalescent, --coalescent-opt, or --coalescent-skyline."
+      );
+    },
+    // A coalescent is opt-in, so its absence under a plain `--output-all` run is expected. Unlike
+    // GTR and confidence outputs (near-universal in timetree, so worth a warning when missing),
+    // report the skip at debug level to avoid warning noise on every non-coalescent run.
+    None => debug!(
+      "Skipping coalescent output: no coalescent was inferred \
+       (use --coalescent, --coalescent-opt, or --coalescent-skyline)"
+    ),
+  }
+  Ok(())
 }
