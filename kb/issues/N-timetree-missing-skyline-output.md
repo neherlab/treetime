@@ -1,24 +1,12 @@
-# Missing skyline output files
+# Skyline plot output missing and grid-points default diverges from v0
 
-Let $T_c$ denote the coalescent population-size time scale. v0 `--coalescent=skyline` produces `skyline.tsv` (effective population size over time with confidence bounds) and `skyline.pdf`. v1 computes a `SkylineResult`, retains only its $T_c$ distribution for the final inference pass, and never serializes the result to disk.
+Let $T_c$ denote the coalescent population-size time scale. The inferred coalescent time scale (skyline, optimized-constant, or fixed $T_c$) is serialized from the `timetree` command to `timetree.coalescent.tsv` (in the default `--output-all` set) and, on request, `timetree.coalescent.csv` and `timetree.coalescent.json`. Each carries the per-segment $T_c$, effective population size $N_e$, and the confidence band. Two gaps to v0 remain.
 
-## Location
+## Remaining gaps
 
-`SkylineResult` is computed at [`packages/treetime/src/timetree/pipeline.rs#L343-L351`](../../packages/treetime/src/timetree/pipeline.rs#L343-L351) but not returned to the command output or written.
+- No plot. v0 `--coalescent=skyline` also renders `skyline.pdf`. v1 produces no plot; skyline plotting is part of the unimplemented plotting surface (see [N-timetree-plot-unimplemented.md](N-timetree-plot-unimplemented.md)).
+- Grid-points default. v0 defaults to 20 skyline grid points; v1 defaults to 10 (`--skyline-n-points` in [packages/treetime/src/commands/timetree/args.rs](../../packages/treetime/src/commands/timetree/args.rs)). Whether v1 should adopt the v0 default is undecided.
 
-## Details
+## Notes
 
-- v0 `skyline.tsv` columns: `#date`, `N_e`, `lower`, `upper` (confidence bounds)
-- v0 defaults to 20 skyline grid points, v1 defaults to 10
-  ([`packages/treetime/src/commands/timetree/args.rs#L142-L149`](../../packages/treetime/src/commands/timetree/args.rs#L142-L149))
-
-## Related issues
-
-- [timetree.json missing coalescent parameters](N-timetree-json-missing-coalescent.md)
-  skyline results also not serialized to JSON
-- [kb/decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md)
-  the objective and optimizer both diverge from v0
-
-## Related tickets
-
-- [kb/tickets/timetree-output-add-skyline-files.md](../tickets/timetree-output-add-skyline-files.md)
+The serialized format is v1's own rich (JSON) and flat (TSV/CSV) layout with `segment.start` / `segment.end`, `T_c`, and `N_e` fields, not v0's `#date`, `N_e`, `lower`, `upper` columns. The optimizer and confidence band also diverge from v0, so skyline values differ (see [kb/decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md) and [kb/decisions/coalescent-skyline-hessian-confidence-bands.md](../decisions/coalescent-skyline-hessian-confidence-bands.md)).

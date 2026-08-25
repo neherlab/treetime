@@ -133,6 +133,7 @@
 - [x] Tree-format topology ordering
 - [x] Clock model JSON with `timetree.*` basename
 - [x] Confidence TSV
+- [x] Coalescent time scale TSV/CSV/JSON (`--output-coalescent-{tsv,csv,json}`; per-segment $T_c$, $N_e$, and confidence band for skyline, optimized-constant, and fixed $T_c$; TSV in the default `--output-all` set, CSV and JSON opt-in; the `skyline.pdf` plot and the grid-points default remain, see [kb/issues/N-timetree-missing-skyline-output.md](../issues/N-timetree-missing-skyline-output.md))
 - [ ] Ancestral sequences FASTA ([kb/issues/N-timetree-ancestral-sequences-output-unimplemented.md](../issues/N-timetree-ancestral-sequences-output-unimplemented.md))
 - [ ] Branch mutations table ([kb/issues/N-timetree-branch-mutations-output-unimplemented.md](../issues/N-timetree-branch-mutations-output-unimplemented.md))
 - [ ] Molecular clock text output or approved replacement ([kb/issues/N-timetree-molecular-clock-text-output-undecided.md](../issues/N-timetree-molecular-clock-text-output-undecided.md))
@@ -161,5 +162,5 @@
 - [ ] `--reconstruct-tip-states`
 - [ ] `--report-ambiguous`
 - [ ] `--seed`
-- [x] `--gen-per-year` (generations per year, default 50.0; reports effective population size `N_e = Tc * gen_per_year` to the log for the constant, opt, and skyline modes; file output tracked with skyline plot output above)
+- [x] `--gen-per-year` (generations per year, default 50.0; reports effective population size `N_e = Tc * gen_per_year` to the log for the constant, opt, and skyline modes, and to the coalescent output files above)
 - [ ] `--aln` legacy option
