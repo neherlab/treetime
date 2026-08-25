@@ -161,5 +161,5 @@
 - [ ] `--reconstruct-tip-states`
 - [ ] `--report-ambiguous`
 - [ ] `--seed`
-- [ ] `--gen-per-year` (generations per year for N_e estimation)
+- [x] `--gen-per-year` (generations per year, default 50.0; reports effective population size `N_e = Tc * gen_per_year` to the log for the constant, opt, and skyline modes; file output tracked with skyline plot output above)
 - [ ] `--aln` legacy option
