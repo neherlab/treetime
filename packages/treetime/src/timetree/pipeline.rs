@@ -8,6 +8,7 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, Reroot
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::lineage_counts::compute_lineage_counts;
+use crate::coalescent::population_size::effective_population_size;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
@@ -71,6 +72,9 @@ pub struct TimetreeParams {
   pub n_skyline: usize,
   /// Skyline smoothing stiffness (penalizes changes in 1/Tc; units of time^2).
   pub skyline_stiffness: f64,
+  /// Generations per year, used to report the coalescent effective population size
+  /// `N_e = Tc * gen_per_year`. Reporting only; does not enter the inference.
+  pub gen_per_year: f64,
   pub n_branches_posterior: Option<usize>,
   pub time_marginal: TimeMarginalMode,
   pub confidence: bool,
@@ -360,6 +364,24 @@ pub fn run(
       )
       .wrap_err("Failed to record convergence metrics")
       .wrap_err_with(|| format!("When running round {i}"))?;
+  }
+
+  // Report the effective population size implied by the converged Tc, matching v0's screen output
+  // for the constant/opt/skyline coalescent. Fixed and disabled modes report no coalescent, as in
+  // v0. N_e = Tc * gen_per_year is a reporting quantity and does not affect the inference.
+  if coalescent.is_optimized() {
+    let tc_values = coalescent_tc.schedule.values();
+    info!(
+      "Coalescent effective population size (gen_per_year={:.4}, {} segment(s)):",
+      params.gen_per_year,
+      tc_values.len()
+    );
+    for (i, &tc) in tc_values.iter().enumerate() {
+      info!(
+        "  segment {i}: Tc = {tc:.6e}  N_e = {:.6e}",
+        effective_population_size(tc, params.gen_per_year)
+      );
+    }
   }
 
   progress.check_cancelled()?;

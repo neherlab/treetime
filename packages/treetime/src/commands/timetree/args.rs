@@ -332,9 +332,18 @@ pub struct TreetimeTimetreeArgs {
   #[cfg_attr(feature = "clap", clap(long, hide = true))]
   pub clock_filter_method: Option<String>,
 
-  /// Generations per year for coalescent model (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true))]
-  pub gen_per_year: Option<f64>,
+  /// Generations per year for converting the coalescent time scale Tc into an effective
+  /// population size.
+  ///
+  /// The coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is
+  /// already in calendar years, so this factor rescales it into generation units, the standard
+  /// axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.
+  #[default = 50.0]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, default_value_t = TreetimeTimetreeArgs::default().gen_per_year)
+  )]
+  pub gen_per_year: f64,
 
   /// Use greedy polytomy resolution (not yet implemented)
   #[cfg_attr(feature = "clap", clap(long, hide = true))]

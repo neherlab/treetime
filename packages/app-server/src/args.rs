@@ -330,7 +330,7 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
       aa: s.aa,
       custom_gtr: None,
       clock_filter_method: None,
-      gen_per_year: None,
+      gen_per_year: TreetimeTimetreeArgs::default().gen_per_year,
       greedy_resolve: false,
       stochastic_resolve: false,
     }
