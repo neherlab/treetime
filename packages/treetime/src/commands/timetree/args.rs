@@ -15,10 +15,10 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 
 #[cfg(feature = "clap")]
-fn parse_n_skyline(s: &str) -> Result<usize, String> {
+fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
   let n: usize = s.parse().map_err(|_err| format!("'{s}' is not a valid number"))?;
   if n < 2 {
-    return Err("n-skyline must be at least 2".to_owned());
+    return Err("skyline-n-points must be at least 2".to_owned());
   }
   Ok(n)
 }
@@ -131,7 +131,7 @@ pub struct TreetimeTimetreeArgs {
 
   /// Use skyline coalescent model instead of constant Tc.
   ///
-  /// Estimates a piecewise linear coalescent rate history. Requires --n-skyline to specify
+  /// Estimates a piecewise linear coalescent rate history. Requires --skyline-n-points to specify
   /// the number of grid points.
   #[cfg_attr(feature = "clap", clap(long))]
   #[cfg_attr(
@@ -145,9 +145,9 @@ pub struct TreetimeTimetreeArgs {
   /// Only used when --coalescent-skyline is set. Defines how many piecewise linear segments
   /// are used to model Tc(t) over time. Must be at least 2.
   #[default = 10]
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().n_skyline))]
-  #[cfg_attr(feature = "clap", clap(value_parser = parse_n_skyline))]
-  pub n_skyline: usize,
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().skyline_n_points))]
+  #[cfg_attr(feature = "clap", clap(value_parser = parse_skyline_n_points))]
+  pub skyline_n_points: usize,
 
   /// Smoothing stiffness for the skyline coalescent.
   ///
@@ -159,6 +159,16 @@ pub struct TreetimeTimetreeArgs {
   #[default = 2.0]
   #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().skyline_stiffness))]
   pub skyline_stiffness: f64,
+
+  /// Confidence level for coalescent time scale (Tc) bands, in standard deviations.
+  ///
+  /// Applies to every inferred coalescent mode (constant, --coalescent-opt, and
+  /// --coalescent-skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is
+  /// the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed
+  /// --coalescent value is not inferred and therefore has no band.
+  #[default = 2.0]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().coalescent_confidence))]
+  pub coalescent_confidence: f64,
 
   /// add posterior LH to coalescent model: use the posterior probability distributions of
   /// divergence times for estimating the number of branches when calculating the coalescent

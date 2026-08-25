@@ -134,3 +134,61 @@ pub fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
   setup_logger(args.verbosity.get_filter_level());
   Ok(args)
 }
+
+#[cfg(test)]
+mod tests {
+  use clap::Parser;
+  use clap::error::ErrorKind;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use treetime::commands::timetree::args::TreetimeTimetreeArgs;
+  use treetime_utils::pretty_assert_ulps_eq;
+
+  // Timetree declares no clap-required arguments, so a bare invocation exercises defaults.
+  fn parse_timetree(extra: &[&str]) -> Result<TreetimeTimetreeArgs, clap::Error> {
+    let argv = std::iter::once("timetree").chain(extra.iter().copied());
+    TreetimeTimetreeArgs::try_parse_from(argv)
+  }
+
+  #[test]
+  fn test_treetime_cli_coalescent_defaults() -> Result<(), clap::Error> {
+    // Defaults live in `TreetimeTimetreeArgs` (SmartDefault) and clap reads them via `default_value_t`.
+    let args = parse_timetree(&[])?;
+    pretty_assert_ulps_eq!(2.0, args.coalescent_confidence);
+    assert_eq!(10, args.skyline_n_points);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::confidence(&["--coalescent-confidence", "3.5"], 3.5, 10)]
+  #[case::n_points(  &["--skyline-n-points",      "4"],   2.0,  4)]
+  #[trace]
+  fn test_treetime_cli_coalescent_args_parse(
+    #[case] extra: &[&str],
+    #[case] expected_confidence: f64,
+    #[case] expected_n_points: usize,
+  ) {
+    let args = parse_timetree(extra).unwrap();
+    pretty_assert_ulps_eq!(expected_confidence, args.coalescent_confidence);
+    assert_eq!(expected_n_points, args.skyline_n_points);
+  }
+
+  #[test]
+  fn test_treetime_cli_skyline_n_points_rejects_below_two() {
+    // The renamed `--skyline-n-points` keeps the >= 2 lower bound of the old `--n-skyline`.
+    match parse_timetree(&["--skyline-n-points", "1"]) {
+      Ok(_) => panic!("--skyline-n-points=1 must be rejected"),
+      Err(err) => assert_eq!(ErrorKind::ValueValidation, err.kind()),
+    }
+  }
+
+  #[test]
+  fn test_treetime_cli_rejects_renamed_n_skyline_flag() {
+    // The old `--n-skyline` spelling is gone; only `--skyline-n-points` is accepted.
+    match parse_timetree(&["--n-skyline", "5"]) {
+      Ok(_) => panic!("removed --n-skyline flag must be rejected"),
+      Err(err) => assert_eq!(ErrorKind::UnknownArgument, err.kind()),
+    }
+  }
+}

@@ -124,9 +124,9 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
   Default values: `strain`, `name`, `accession`
 * `--metadata-delimiters <CHAR>` — Candidate field delimiter(s) for the metadata table
 
-   The delimiter actually present in the file is used. Defaults to comma and tab.
+   The delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.
 
-  Default values: `,`, `	`
+  Default values: `,`, `	`, `;`
 * `--date-column <COLUMN>` — Label of the column to be used as sampling date (auto-detected when omitted)
 * `--date-format <FORMAT>` — Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)
 
@@ -167,8 +167,8 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
    When set, TreeTime finds the optimal constant Tc analytically (closed-form maximum of the coalescent likelihood). This is similar to Python v0's `--coalescent=opt`, which used a numerical search.
 * `--coalescent-skyline` — Use skyline coalescent model instead of constant Tc.
 
-   Estimates a piecewise linear coalescent rate history. Requires --n-skyline to specify the number of grid points.
-* `--n-skyline <N_SKYLINE>` — Number of grid points in skyline coalescent model.
+   Estimates a piecewise linear coalescent rate history. Requires --skyline-n-points to specify the number of grid points.
+* `--skyline-n-points <SKYLINE_N_POINTS>` — Number of grid points in skyline coalescent model.
 
    Only used when --coalescent-skyline is set. Defines how many piecewise linear segments are used to model Tc(t) over time. Must be at least 2.
 
@@ -176,6 +176,11 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--skyline-stiffness <SKYLINE_STIFFNESS>` — Smoothing stiffness for the skyline coalescent.
 
    Penalizes log-fold-changes of the coalescent time scale Tc between adjacent skyline segments: with z = ln Tc, the objective adds `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the stiffness is dimensionless and scale-independent. Larger values enforce a smoother Tc(t). Only used when --coalescent-skyline is set.
+
+  Default value: `2`
+* `--coalescent-confidence <COALESCENT_CONFIDENCE>` — Confidence level for coalescent time scale (Tc) bands, in standard deviations.
+
+   Applies to every inferred coalescent mode (constant, --coalescent-opt, and --coalescent-skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed --coalescent value is not inferred and therefore has no band.
 
   Default value: `2`
 * `--tip-labels` — add tip labels (default for small trees with <30 leaves)
@@ -1030,9 +1035,9 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
   Default values: `strain`, `name`, `accession`
 * `--metadata-delimiters <CHAR>` — Candidate field delimiter(s) for the metadata table
 
-   The delimiter actually present in the file is used. Defaults to comma and tab.
+   The delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.
 
-  Default values: `,`, `	`
+  Default values: `,`, `	`, `;`
 * `--date-column <COLUMN>` — Label of the column to be used as sampling date (auto-detected when omitted)
 * `--date-format <FORMAT>` — Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)
 
@@ -1487,9 +1492,9 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
   Default values: `strain`, `name`, `accession`
 * `--metadata-delimiters <CHAR>` — Candidate field delimiter(s) for the metadata table
 
-   The delimiter actually present in the file is used. Defaults to comma and tab.
+   The delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.
 
-  Default values: `,`, `	`
+  Default values: `,`, `	`, `;`
 * `--output-confidence-csv <OUTPUT_CONFIDENCE_CSV>` [alias: `confidence`] — Path to output state-probability-profile CSV.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.

@@ -10,6 +10,10 @@ publish.workspace = true
 repository.workspace = true
 version.workspace = true
 
+# `approx` is used only through the `pretty_assert_ulps_eq!` macro expansion in tests,
+# which cargo-shear cannot see without `--expand`; suppress the false positive.
+[package.metadata.cargo-shear]
+ignored = ["approx"]
 
 [dependencies]
 # [internal]
@@ -64,6 +68,7 @@ tikv-jemallocator = { workspace = true }
 treetime-schema = { workspace = true }
 
 [dev-dependencies]
+approx = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
 

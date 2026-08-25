@@ -236,9 +236,9 @@ TIMETREE_BATCH_RUNS = [
   ("flu/h3n2/200",                "flu/h3n2/200/coal-opt",             "--coalescent-opt --max-iter=3"),
   ("ebola/20",                    "ebola/20/coal-opt",                 "--coalescent-opt"),
   ("zika/20",                     "zika/20/coal-opt",                  "--coalescent-opt"),
-  ("flu/h3n2/20",                 "flu/h3n2/20/skyline",               "--coalescent-skyline --n-skyline=5"),
-  ("flu/h3n2/200",                "flu/h3n2/200/skyline",              "--coalescent-skyline --n-skyline=5 --max-iter=3"),
-  # ("ebola/20",                    "ebola/20/skyline",                  "--coalescent-skyline --n-skyline=5"),  # SLOW 5m16s: H-timetree-coalescent-grid-explosion
+  ("flu/h3n2/20",                 "flu/h3n2/20/skyline",               "--coalescent-skyline --skyline-n-points=5"),
+  ("flu/h3n2/200",                "flu/h3n2/200/skyline",              "--coalescent-skyline --skyline-n-points=5 --max-iter=3"),
+  # ("ebola/20",                    "ebola/20/skyline",                  "--coalescent-skyline --skyline-n-points=5"),  # SLOW 5m16s: H-timetree-coalescent-grid-explosion
 
   # Reroot strategies
   ("flu/h3n2/20",                 "flu/h3n2/20/reroot-mindev",         "--reroot=min-dev"),
@@ -297,7 +297,7 @@ TIMETREE_BATCH_RUNS = [
   ("ebola/362",                   "ebola/362/no-filter-keeproot",      "--clock-filter=0 --keep-root"),
 
   # Skyline + confidence
-  ("flu/h3n2/200",                "flu/h3n2/200/skyline-conf",         "--coalescent-skyline --n-skyline=5 --confidence --max-iter=3"),
+  ("flu/h3n2/200",                "flu/h3n2/200/skyline-conf",         "--coalescent-skyline --skyline-n-points=5 --confidence --max-iter=3"),
 
   # Parsimony + fast (minimal iterations)
   ("flu/h3n2/200",                "flu/h3n2/200/fast",                 "--method-anc=parsimony --max-iter=1 --keep-polytomies"),

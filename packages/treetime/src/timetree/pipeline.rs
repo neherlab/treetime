@@ -69,9 +69,11 @@ pub struct TimetreeParams {
   pub coalescent: Option<f64>,
   pub coalescent_opt: bool,
   pub coalescent_skyline: bool,
-  pub n_skyline: usize,
+  pub skyline_n_points: usize,
   /// Skyline smoothing stiffness (penalizes changes in 1/Tc; units of time^2).
   pub skyline_stiffness: f64,
+  /// Confidence level (standard deviations) for inferred coalescent Tc bands.
+  pub coalescent_confidence: f64,
   /// Generations per year, used to report the coalescent effective population size
   /// `N_e = Tc * gen_per_year`. Reporting only; does not enter the inference.
   pub gen_per_year: f64,
@@ -249,8 +251,9 @@ pub fn run(
 
   // set up coalescent parameters and inference mode
   let skyline_params = SkylineParams {
-    n_points: params.n_skyline,
+    n_points: params.skyline_n_points,
     stiffness: params.skyline_stiffness,
+    n_std: params.coalescent_confidence,
     ..SkylineParams::default()
   };
 

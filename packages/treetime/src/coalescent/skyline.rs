@@ -26,6 +26,10 @@ pub struct SkylineParams {
   pub tolerance: f64,
   /// Maximum Newton iterations.
   pub max_iter: u64,
+  /// Confidence level, in standard deviations, for the Tc(t) bands reported alongside
+  /// the optimized time scale. The band spans `Tc_i * exp(±n_std * σ_i)`, where `σ_i`
+  /// is the standard deviation of `ln Tc_i` recovered from the optimization curvature.
+  pub n_std: f64,
 }
 
 impl Default for SkylineParams {
@@ -35,6 +39,7 @@ impl Default for SkylineParams {
       stiffness: 2.0,
       tolerance: 1e-8,
       max_iter: 100,
+      n_std: 2.0,
     }
   }
 }

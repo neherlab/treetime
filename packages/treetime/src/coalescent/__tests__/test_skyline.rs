@@ -209,6 +209,7 @@ mod tests {
       stiffness: 2.0,
       tolerance: 1e-12,
       max_iter: 1000,
+      ..SkylineParams::default()
     };
     let s = 3.0;
 
