@@ -1,4 +1,5 @@
 mod test_augur_node_data;
+mod test_coalescent_output;
 mod test_confidence_combine;
 mod test_confidence_extract;
 mod test_confidence_rate;
