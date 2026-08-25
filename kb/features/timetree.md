@@ -60,7 +60,7 @@
 - [x] Branch counting k(t) from node times
 - [ ] `--n-branches-posterior` (parsed, returns explicit error - [kb/issues/N-timetree-n-branches-posterior-unimplemented.md](../issues/N-timetree-n-branches-posterior-unimplemented.md))
 - [ ] Empirical skyline (v0 `skyline_empirical()` - sliding window without optimization)
-- [ ] Skyline confidence intervals (v0 computes via second derivatives)
+- [x] Skyline confidence bands from the full inverse Hessian ([kb/decisions/coalescent-skyline-hessian-confidence-bands.md](../decisions/coalescent-skyline-hessian-confidence-bands.md))
 - [ ] Skyline plot output ([kb/issues/N-timetree-missing-skyline-output.md](../issues/N-timetree-missing-skyline-output.md))
 
 ## Polytomy Resolution

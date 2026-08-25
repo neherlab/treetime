@@ -125,6 +125,7 @@ backtracking line search.
   conventions as `CoalescentModel`, so the optimum maximizes the model-evaluated
   likelihood and the reported LH matches `compute_coalescent_total_lh`)
 - [x] Newton solve with Armijo line search (no positivity constraint needed)
+- [x] Curvature-based confidence bands from the full inverse Hessian in $\ln T_c$ coordinates, including adjacent-segment covariance from the stiffness penalty ([kb/decisions/coalescent-skyline-hessian-confidence-bands.md](../decisions/coalescent-skyline-hessian-confidence-bands.md))
 - [x] **Equal-width segment boundaries** — uniform spacing gives the stiffness a
   clean, grid-independent meaning and is robust to tied merger times. Merger-sparse
   regions may leave empty segments ($M_i=0$) whose $z_i$ is pinned by the smoothing
