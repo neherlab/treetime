@@ -7,5 +7,6 @@ mod test_integration;
 mod test_lineage_dynamics;
 mod test_optimize_tc;
 mod test_population_size;
+mod test_prop_skyline_confidence;
 mod test_skyline;
 mod test_total_lh;

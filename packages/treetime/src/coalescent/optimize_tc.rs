@@ -10,6 +10,12 @@ use treetime_primitives::LogLh;
 pub struct OptimizeTcResult {
   /// Optimized coalescence time scale.
   pub tc: f64,
+  /// Curvature-based variance of `ln Tc` at the optimum.
+  pub log_tc_variance: f64,
+  /// Lower confidence bound for `Tc`.
+  pub tc_lower_bound: f64,
+  /// Upper confidence bound for `Tc`.
+  pub tc_upper_bound: f64,
   /// Total coalescent likelihood at optimized Tc.
   pub likelihood: LogLh,
 }
@@ -42,6 +48,9 @@ where
   )?;
   Ok(OptimizeTcResult {
     tc: result.tc_values[0],
+    log_tc_variance: result.log_tc_variances[0],
+    tc_lower_bound: result.tc_lower_bounds[0],
+    tc_upper_bound: result.tc_upper_bounds[0],
     likelihood: result.log_likelihood,
   })
 }

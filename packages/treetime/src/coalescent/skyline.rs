@@ -3,15 +3,18 @@ use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood
 use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::make_error;
 use crate::payload::traits::TimetreeNode;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use log::{info, warn};
-use ndarray::Array1;
+use ndarray::{Array1, Array2, array};
+use ndarray_linalg::layout::MatrixLayout;
+use ndarray_linalg::{SolveTridiagonal, Tridiagonal};
 use treetime_distribution::{Distribution, DistributionFormula};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_primitives::LogLh;
+use treetime_utils::array::ndarray::exp;
 
 /// Parameters for skyline (piecewise-constant Tc) optimization.
 #[derive(Debug, Clone)]
@@ -55,6 +58,12 @@ pub struct SkylineResult {
   pub segment_boundaries: Array1<f64>,
   /// Optimized Tc value per segment (length `n_points`).
   pub tc_values: Array1<f64>,
+  /// Diagonal of the inverse Hessian in `ln Tc` coordinates.
+  pub log_tc_variances: Array1<f64>,
+  /// Lower confidence bound per segment.
+  pub tc_lower_bounds: Array1<f64>,
+  /// Upper confidence bound per segment.
+  pub tc_upper_bounds: Array1<f64>,
   /// Coalescent log-likelihood at the optimized Tc(t).
   pub log_likelihood: LogLh,
 }
@@ -97,6 +106,12 @@ where
     return make_error!(
       "Skyline optimization requires at least 1 segment, got {}",
       params.n_points
+    );
+  }
+  if !(params.n_std.is_finite() && params.n_std >= 0.0) {
+    return make_error!(
+      "Skyline confidence must be finite and nonnegative, got {}",
+      params.n_std
     );
   }
 
@@ -142,6 +157,7 @@ where
   let z = solve_log_tc(&i_seg, &m_seg, params.stiffness, params.tolerance, params.max_iter)?;
 
   let tc_values = Array1::from_iter(z.iter().map(|&zi| zi.exp()));
+  let confidence = skyline_confidence_band(&z, &i_seg, params.stiffness, params.n_std, &tc_values)?;
   let tc_distribution = build_tc_distribution(&boundaries, &tc_values);
   // Internal segment boundaries are the exact discontinuities of the clamped Tc schedule.
   let tc_schedule = PiecewiseConstantFn::new(
@@ -160,9 +176,11 @@ where
   info!("Skyline Tc(t) trajectory ({} segments):", tc_values.len());
   for (i, &tc) in tc_values.iter().enumerate() {
     info!(
-      "  segment {i}: [{:.4}, {:.4}]  Tc = {tc:.6e}",
+      "  segment {i}: [{:.4}, {:.4}]  Tc = {tc:.6e} [{:.6e}, {:.6e}]",
       boundaries[i],
-      boundaries[i + 1]
+      boundaries[i + 1],
+      confidence.tc_lower_bounds[i],
+      confidence.tc_upper_bounds[i]
     );
   }
 
@@ -171,6 +189,9 @@ where
     tc_schedule,
     segment_boundaries: Array1::from(boundaries),
     tc_values,
+    log_tc_variances: confidence.log_tc_variances,
+    tc_lower_bounds: confidence.tc_lower_bounds,
+    tc_upper_bounds: confidence.tc_upper_bounds,
     log_likelihood,
   })
 }
@@ -308,25 +329,8 @@ fn solve_log_tc(
 
   let mut converged = false;
   for _ in 0..max_iter {
-    // Gradient and tridiagonal Hessian (diagonal `diag`, off-diagonal `off = -γ`).
-    // For the data term, ∂/∂zᵢ (Iᵢ e^{-zᵢ} + Mᵢ zᵢ) = -Iᵢ e^{-zᵢ} + Mᵢ and its
-    // second derivative is Iᵢ e^{-zᵢ}.
-    let mut g = vec![0.0; n];
-    let mut diag = vec![0.0; n];
-    for i in 0..n {
-      let rate = i_seg[i] * (-z[i]).exp(); // Iᵢ e^{-zᵢ}
-      g[i] = -rate + m_seg[i];
-      diag[i] = rate;
-    }
-    let mut off = vec![0.0; n - 1];
-    for i in 0..n - 1 {
-      let d = z[i] - z[i + 1];
-      g[i] += stiffness * d;
-      g[i + 1] -= stiffness * d;
-      diag[i] += stiffness;
-      diag[i + 1] += stiffness;
-      off[i] = -stiffness;
-    }
+    let g = skyline_gradient(&z, i_seg, m_seg, stiffness);
+    let hessian = skyline_hessian(&z, i_seg, stiffness)?;
 
     let g_norm = g.iter().fold(0.0_f64, |acc, &v| acc.max(v.abs()));
     if g_norm < tolerance {
@@ -336,8 +340,10 @@ fn solve_log_tc(
 
     // Solve the Hessian system with the gradient, then negate in place: the
     // Newton step is dz = -H⁻¹g.
-    let mut dz = solve_symmetric_tridiagonal(&diag, &off, &g);
-    dz.iter_mut().for_each(|d| *d = -*d);
+    let mut dz = hessian
+      .solve_tridiagonal(&g)
+      .wrap_err("Failed to solve the skyline Hessian system")?;
+    dz.mapv_inplace(|d| -d);
 
     // Armijo backtracking line search; Tc = e^z stays positive for any step.
     let mut alpha: f64 = 1.0;
@@ -363,39 +369,88 @@ fn solve_log_tc(
   Ok(z)
 }
 
+/// Returns the objective gradient at `z`.
+fn skyline_gradient(z: &[f64], i_seg: &[f64], m_seg: &[f64], stiffness: f64) -> Array1<f64> {
+  let n = z.len();
+  let mut gradient = Array1::from_iter((0..n).map(|i| -i_seg[i] * (-z[i]).exp() + m_seg[i]));
+
+  for i in 0..n - 1 {
+    let difference = z[i] - z[i + 1];
+    gradient[i] += stiffness * difference;
+    gradient[i + 1] -= stiffness * difference;
+  }
+  gradient
+}
+
+/// Returns the symmetric tridiagonal objective Hessian at `z`.
+fn skyline_hessian(z: &[f64], i_seg: &[f64], stiffness: f64) -> Result<Tridiagonal<f64>, Report> {
+  let n = z.len();
+  let matrix_size = i32::try_from(n).wrap_err("Skyline segment count exceeds the linear algebra limit")?;
+  let mut diagonal: Vec<f64> = (0..n).map(|i| i_seg[i] * (-z[i]).exp()).collect();
+  for i in 0..n - 1 {
+    diagonal[i] += stiffness;
+    diagonal[i + 1] += stiffness;
+  }
+  let off_diagonal = vec![-stiffness; n - 1];
+
+  Ok(Tridiagonal {
+    l: MatrixLayout::C {
+      row: matrix_size,
+      lda: matrix_size,
+    },
+    dl: off_diagonal.clone(),
+    d: diagonal,
+    du: off_diagonal,
+  })
+}
+
+/// Computes the local Gaussian confidence band from the Hessian at the optimum.
+///
+/// The inverse Hessian is the covariance of the Laplace approximation in `ln Tc`
+/// coordinates. See https://doi.org/10.1080/01621459.1986.10478240.
+fn skyline_confidence_band(
+  z: &[f64],
+  i_seg: &[f64],
+  stiffness: f64,
+  n_std: f64,
+  tc_values: &Array1<f64>,
+) -> Result<SkylineConfidenceBand, Report> {
+  let hessian = skyline_hessian(z, i_seg, stiffness)?;
+  let log_tc_variances = if z.len() == 1 {
+    array![1.0 / hessian.d[0]]
+  } else {
+    hessian
+      .solve_tridiagonal(&Array2::eye(z.len()))
+      .wrap_err("Failed to invert the skyline Hessian")?
+      .diag()
+      .to_owned()
+  };
+  if log_tc_variances
+    .iter()
+    .any(|variance| !variance.is_finite() || *variance <= 0.0)
+  {
+    return make_error!("Skyline Hessian inverse contains a nonpositive or non-finite variance");
+  }
+
+  let band_factors = exp(&(log_tc_variances.mapv(f64::sqrt) * n_std));
+  Ok(SkylineConfidenceBand {
+    log_tc_variances,
+    tc_lower_bounds: tc_values / &band_factors,
+    tc_upper_bounds: tc_values * &band_factors,
+  })
+}
+
+struct SkylineConfidenceBand {
+  log_tc_variances: Array1<f64>,
+  tc_lower_bounds: Array1<f64>,
+  tc_upper_bounds: Array1<f64>,
+}
+
 /// Value of the skyline objective `C(z)` (constants dropped).
 fn skyline_cost(z: &[f64], i_seg: &[f64], m_seg: &[f64], stiffness: f64) -> f64 {
   let data: f64 = (0..z.len()).map(|i| i_seg[i] * (-z[i]).exp() + m_seg[i] * z[i]).sum();
   let penalty: f64 = z.windows(2).map(|w| (w[1] - w[0]).powi(2)).sum::<f64>() * 0.5 * stiffness;
   data + penalty
-}
-
-/// Solves a symmetric tridiagonal system `A x = rhs` via the Thomas algorithm.
-///
-/// `diag` is the main diagonal (length `n`); `off` holds the shared sub/super
-/// diagonal (length `n - 1`). `A` is positive-definite here, so no pivoting.
-fn solve_symmetric_tridiagonal(diag: &[f64], off: &[f64], rhs: &[f64]) -> Vec<f64> {
-  let n = diag.len();
-  if n == 1 {
-    return vec![rhs[0] / diag[0]];
-  }
-  let mut c = vec![0.0; n];
-  let mut d = vec![0.0; n];
-  c[0] = off[0] / diag[0];
-  d[0] = rhs[0] / diag[0];
-  for i in 1..n {
-    let denom = diag[i] - off[i - 1] * c[i - 1];
-    if i < n - 1 {
-      c[i] = off[i] / denom;
-    }
-    d[i] = (rhs[i] - off[i - 1] * d[i - 1]) / denom;
-  }
-  let mut x = vec![0.0; n];
-  x[n - 1] = d[n - 1];
-  for i in (0..n - 1).rev() {
-    x[i] = d[i] - c[i] * x[i + 1];
-  }
-  x
 }
 
 /// Builds a piecewise-constant Tc(t) distribution from per-segment Tc values.

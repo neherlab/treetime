@@ -7,8 +7,10 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
+  use rstest::rstest;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::assert_error;
 
   const SMALL_TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
 
@@ -50,6 +52,26 @@ mod tests {
     pretty_assert_ulps_eq!(result.tc_schedule.values(), &result.tc_values, max_ulps = 4);
     assert!(result.log_likelihood.value().is_finite());
 
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::negative(         -1.0,          "Skyline confidence must be finite and nonnegative, got -1")]
+  #[case::not_a_number(     f64::NAN,      "Skyline confidence must be finite and nonnegative, got NaN")]
+  #[case::positive_infinity(f64::INFINITY, "Skyline confidence must be finite and nonnegative, got inf")]
+  #[trace]
+  fn test_optimize_skyline_rejects_invalid_confidence(
+    #[case] n_std: f64,
+    #[case] expected: &str,
+  ) -> Result<(), Report> {
+    let graph = helpers::create_graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
+    let params = SkylineParams {
+      n_std,
+      ..SkylineParams::default()
+    };
+
+    assert_error!(optimize_skyline(&graph, &params), expected);
     Ok(())
   }
 
@@ -207,9 +229,9 @@ mod tests {
     let params = SkylineParams {
       n_points: 4,
       stiffness: 2.0,
+      n_std: 2.0,
       tolerance: 1e-12,
       max_iter: 1000,
-      ..SkylineParams::default()
     };
     let s = 3.0;
 

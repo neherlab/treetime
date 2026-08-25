@@ -4,7 +4,7 @@ mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::coalescent::optimize_tc::optimize_tc;
   use crate::partition::timetree::GraphTimetree;
-  use crate::pretty_assert_ulps_eq;
+  use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use maplit::btreemap;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
@@ -75,6 +75,22 @@ mod tests {
       let result = optimize_tc(&graph)?;
       pretty_assert_ulps_eq!(tree3_analytic_tc(2000.0, t_x, t_tip), result.tc, max_ulps = 8);
     }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_tc_confidence_matches_analytic_curvature() -> Result<(), Report> {
+    let result = optimize_tc(&tree3(2000.0, 2005.0, 2010.0)?)?;
+
+    // Analytical oracle: for one segment, C(z) = I exp(-z) + Mz. At the
+    // optimum I exp(-z*) = M, so the Hessian is M and Var(z) = 1/M. This
+    // binary tree has M = 2 mergers.
+    let expected_log_tc_variance: f64 = 0.5;
+    let expected_factor = (2.0 * expected_log_tc_variance.sqrt()).exp();
+    pretty_assert_ulps_eq!(expected_log_tc_variance, result.log_tc_variance, max_ulps = 8);
+    pretty_assert_abs_diff_eq!(result.tc / expected_factor, result.tc_lower_bound, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(result.tc * expected_factor, result.tc_upper_bound, epsilon = 1e-10);
 
     Ok(())
   }
