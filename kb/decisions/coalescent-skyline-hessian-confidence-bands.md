@@ -4,6 +4,8 @@ v1 reports curvature-based confidence bands for inferred coalescent time scales 
 
 **Type**: Scientific and implementation change from v0.
 
+**Status**: Approved by the maintainer team.
+
 **v0**: `MergerModel.optimize_skyline()` at [`packages/legacy/treetime/treetime/merger_models.py#L320-L333`](../../packages/legacy/treetime/treetime/merger_models.py#L320-L333) perturbs one $ln T_c$ value at a time by $0.1$. It uses the resulting diagonal finite-difference curvature and omits covariance caused by the skyline stiffness penalty.
 
 **v1**: `optimize_skyline()` at [`packages/treetime/src/coalescent/skyline.rs`](../../packages/treetime/src/coalescent/skyline.rs) evaluates the exact symmetric tridiagonal Hessian at the optimum and solves against the identity matrix. The diagonal of the inverse gives the marginal variance for each $ln T_c$ value under a local <a id="gloss-use-1"></a>Laplace approximation <sup>[1](#gloss-1)</sup>. A normal approximation centered at one dominant mode uses the inverse observed curvature as covariance <a id="cite-1"></a>[Tierney and Kadane 1986](https://doi.org/10.1080/01621459.1986.10478240) [[1](#ref-1)]. Sparse neighboring dependence is represented by a <a id="gloss-use-2"></a>precision matrix <sup>[2](#gloss-2)</sup>, whose inverse is the covariance matrix <a id="cite-2"></a>[Rue et al. 2009](https://doi.org/10.1111/j.1467-9868.2008.00700.x) [[2](#ref-2)].
