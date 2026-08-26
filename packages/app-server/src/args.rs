@@ -205,12 +205,14 @@ pub struct ServerTimetreeArgs {
   pub coalescent: Option<f64>,
   pub coalescent_opt: bool,
   pub coalescent_skyline: bool,
-  #[default = 10]
+  #[default = 20]
   pub skyline_n_points: usize,
   #[default = 2.0]
   pub skyline_stiffness: f64,
   #[default = 2.0]
   pub coalescent_confidence: f64,
+  #[default = 50.0]
+  pub gen_per_year: f64,
   pub n_branches_posterior: Option<usize>,
   pub tip_labels: bool,
   pub no_tip_labels: bool,
@@ -336,7 +338,7 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
       aa: s.aa,
       custom_gtr: None,
       clock_filter_method: None,
-      gen_per_year: TreetimeTimetreeArgs::default().gen_per_year,
+      gen_per_year: s.gen_per_year,
       greedy_resolve: false,
       stochastic_resolve: false,
     }
