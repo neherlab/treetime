@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::output::coalescent::{
-    CoalescentBand, CoalescentInputs, CoalescentOutputMode, CoalescentOutput, CoalescentSegmentRow, CoalescentSolve,
+    CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSegmentRow, CoalescentSolve,
     Estimate, SegmentInterval, coalescent_delimited_str, coalescent_json_str,
   };
   use eyre::Report;

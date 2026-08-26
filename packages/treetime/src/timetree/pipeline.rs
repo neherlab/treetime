@@ -11,7 +11,7 @@ use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::population_size::effective_population_size;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::commands::timetree::output::coalescent::{
-  CoalescentBand, CoalescentInputs, CoalescentMode as OutputCoalescentMode, CoalescentOutput, CoalescentSolve,
+  CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
 };
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
@@ -450,7 +450,6 @@ pub fn run(
   let coalescent_output = build_coalescent_output(
     coalescent,
     &coalescent_tc,
-    &lineage_counts,
     params.gen_per_year,
     params.coalescent_confidence,
   )?;
@@ -485,6 +484,19 @@ impl CoalescentMode {
   /// Whether Tc is re-estimated from the tree, as opposed to fixed or disabled.
   fn is_optimized(self) -> bool {
     matches!(self, CoalescentMode::Constant | CoalescentMode::Skyline)
+  }
+
+  /// Serialization tag for the coalescent output document, or `None` when the run writes no
+  /// coalescent output. Only an inferred Tc (constant or skyline) is written: `Disabled` has no
+  /// coalescent, and a fixed user Tc emits nothing, matching v0 and the stderr `N_e` report gated
+  /// on [`Self::is_optimized`]. Sole mapping from the inference mode to the output tag, so a new
+  /// mode is one edit here.
+  fn output_mode(self) -> Option<CoalescentOutputMode> {
+    match self {
+      CoalescentMode::Disabled | CoalescentMode::Fixed(_) => None,
+      CoalescentMode::Constant => Some(CoalescentOutputMode::Constant),
+      CoalescentMode::Skyline => Some(CoalescentOutputMode::Skyline),
+    }
   }
 }
 
@@ -587,54 +599,41 @@ struct CoalescentTcReport {
   tc_upper_bounds: Array1<f64>,
 }
 
-/// Assembles the coalescent output document for the requested mode, or `None` when the run asked
-/// for no coalescent.
+/// Assembles the coalescent output document for the requested mode, or `None` when the run writes
+/// no coalescent output (disabled, or a fixed user Tc that emits nothing, per [`CoalescentMode::output_mode`]).
 ///
-/// The optimized modes (constant, skyline) carry the P1 confidence band from the analytic solve. A
-/// fixed user Tc has no solve and no band; its single segment spans the tree's time range, taken
-/// from the lineage-count breakpoints (the same span the skyline solve partitions).
+/// Only the optimized modes (constant, skyline) reach the document: each carries the P1 confidence
+/// band and per-segment boundaries from the analytic solve, so the band is always present.
 fn build_coalescent_output(
   requested: CoalescentMode,
   timescale: &CoalescentTimescale,
-  lineage_counts: &PiecewiseConstantFn,
   gen_per_year: f64,
   n_std: f64,
 ) -> Result<Option<CoalescentOutput>, Report> {
-  let (mode, confidence_n_std) = match requested {
-    CoalescentMode::Disabled => return Ok(None),
-    CoalescentMode::Fixed(_) => (OutputCoalescentMode::Fixed, None),
-    CoalescentMode::Constant => (OutputCoalescentMode::Constant, Some(n_std)),
-    CoalescentMode::Skyline => (OutputCoalescentMode::Skyline, Some(n_std)),
+  let Some(mode) = requested.output_mode() else {
+    return Ok(None);
   };
+  let report = timescale.report.as_ref().ok_or_else(|| {
+    make_report!("An inferred coalescent ({mode:?}) must carry a per-segment report, but none was produced")
+  })?;
 
   let tc_values = timescale.schedule.values().to_vec();
-  let (boundaries, band_bounds) = if let Some(report) = &timescale.report {
-    (
-      report.segment_boundaries.to_vec(),
-      Some((report.tc_lower_bounds.to_vec(), report.tc_upper_bounds.to_vec())),
-    )
-  } else {
-    // Fixed Tc: a single segment spanning the whole tree, no band.
-    let breakpoints = lineage_counts.breakpoints();
-    let t_min = breakpoints[0];
-    let t_max = breakpoints[breakpoints.len() - 1];
-    (vec![t_min, t_max], None)
-  };
-
-  let band = band_bounds.as_ref().map(|(lower, upper)| CoalescentBand {
-    lower: lower.as_slice(),
-    upper: upper.as_slice(),
-  });
+  let boundaries = report.segment_boundaries.to_vec();
+  let lower = report.tc_lower_bounds.to_vec();
+  let upper = report.tc_upper_bounds.to_vec();
   let output = CoalescentOutput::new(
     CoalescentInputs {
       mode,
       gen_per_year,
-      confidence_n_std,
+      confidence_n_std: Some(n_std),
     },
     &CoalescentSolve {
       segment_boundaries: &boundaries,
       tc_values: &tc_values,
-      band,
+      band: Some(CoalescentBand {
+        lower: &lower,
+        upper: &upper,
+      }),
     },
   )?;
   Ok(Some(output))
@@ -701,15 +700,22 @@ fn optimize_branch_lengths_pre_step(
 #[cfg(test)]
 mod tests {
   use super::{
-    CoalescentBand, CoalescentInputs, CoalescentMode, CoalescentOutput, CoalescentSolve, CoalescentTcReport,
-    CoalescentTimescale, OutputCoalescentMode, build_coalescent_output, coalescent_mode,
+    CoalescentBand, CoalescentInputs, CoalescentMode, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
+    CoalescentTcReport, CoalescentTimescale, build_coalescent_output, coalescent_mode, estimate_coalescent_tc,
   };
+  use crate::clock::date_constraints::load_date_constraints;
+  use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
+  use crate::partition::timetree::GraphTimetree;
   use eyre::Report;
+  use maplit::btreemap;
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_distribution::Distribution;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+  use treetime_io::dates_csv::{DateConstraint, DatesMap};
+  use treetime_io::nwk::nwk_read_str;
+  use treetime_utils::{o, pretty_assert_array_eq};
 
   // N_e = T_c * gen_per_year (packages/treetime/src/coalescent/population_size.rs).
   const GEN_PER_YEAR: f64 = 50.0;
@@ -743,48 +749,22 @@ mod tests {
   #[test]
   fn test_pipeline_build_coalescent_output_disabled_returns_none() -> Result<(), Report> {
     let timescale = CoalescentTimescale::constant(1.0);
-    let lineage_counts = PiecewiseConstantFn::new(array![2000.0, 2020.0], array![1.0, 2.0, 3.0]);
 
-    let actual = build_coalescent_output(
-      CoalescentMode::Disabled,
-      &timescale,
-      &lineage_counts,
-      GEN_PER_YEAR,
-      N_STD,
-    )?;
+    let actual = build_coalescent_output(CoalescentMode::Disabled, &timescale, GEN_PER_YEAR, N_STD)?;
 
     assert_eq!(None, actual);
     Ok(())
   }
 
   #[test]
-  fn test_pipeline_build_coalescent_output_fixed_single_segment_no_band() -> Result<(), Report> {
-    // A fixed user Tc has no solve and no band; its one segment spans the tree, taken from the
-    // lineage-count breakpoints (first = t_min, last = t_max).
+  fn test_pipeline_build_coalescent_output_fixed_returns_none() -> Result<(), Report> {
+    // A fixed user Tc is not inferred, so it writes no coalescent output, matching v0 and the
+    // stderr N_e report gated on `is_optimized`.
     let timescale = CoalescentTimescale::constant(2.5);
-    let lineage_counts = PiecewiseConstantFn::new(array![2000.0, 2010.0, 2020.0], array![1.0, 2.0, 3.0, 4.0]);
 
-    let actual = build_coalescent_output(
-      CoalescentMode::Fixed(2.5),
-      &timescale,
-      &lineage_counts,
-      GEN_PER_YEAR,
-      N_STD,
-    )?;
+    let actual = build_coalescent_output(CoalescentMode::Fixed(2.5), &timescale, GEN_PER_YEAR, N_STD)?;
 
-    let expected = CoalescentOutput::new(
-      CoalescentInputs {
-        mode: OutputCoalescentMode::Fixed,
-        gen_per_year: GEN_PER_YEAR,
-        confidence_n_std: None,
-      },
-      &CoalescentSolve {
-        segment_boundaries: &[2000.0, 2020.0],
-        tc_values: &[2.5],
-        band: None,
-      },
-    )?;
-    assert_eq!(Some(expected), actual);
+    assert_eq!(None, actual);
     Ok(())
   }
 
@@ -799,19 +779,11 @@ mod tests {
         tc_upper_bounds: array![4.0],
       }),
     };
-    let lineage_counts = PiecewiseConstantFn::new(array![2000.0, 2020.0], array![1.0, 2.0, 3.0]);
-
-    let actual = build_coalescent_output(
-      CoalescentMode::Constant,
-      &timescale,
-      &lineage_counts,
-      GEN_PER_YEAR,
-      N_STD,
-    )?;
+    let actual = build_coalescent_output(CoalescentMode::Constant, &timescale, GEN_PER_YEAR, N_STD)?;
 
     let expected = CoalescentOutput::new(
       CoalescentInputs {
-        mode: OutputCoalescentMode::Constant,
+        mode: CoalescentOutputMode::Constant,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(N_STD),
       },
@@ -839,19 +811,11 @@ mod tests {
         tc_upper_bounds: array![4.0, 6.0],
       }),
     };
-    let lineage_counts = PiecewiseConstantFn::new(array![2000.0, 2020.0], array![1.0, 2.0, 3.0]);
-
-    let actual = build_coalescent_output(
-      CoalescentMode::Skyline,
-      &timescale,
-      &lineage_counts,
-      GEN_PER_YEAR,
-      N_STD,
-    )?;
+    let actual = build_coalescent_output(CoalescentMode::Skyline, &timescale, GEN_PER_YEAR, N_STD)?;
 
     let expected = CoalescentOutput::new(
       CoalescentInputs {
-        mode: OutputCoalescentMode::Skyline,
+        mode: CoalescentOutputMode::Skyline,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(N_STD),
       },
@@ -865,6 +829,49 @@ mod tests {
       },
     )?;
     assert_eq!(Some(expected), actual);
+    Ok(())
+  }
+
+  fn dated_tree() -> Result<GraphTimetree, Report> {
+    // Small dated 3-tip tree spanning [2000, 2010] with two binary mergers, enough for a
+    // multi-segment skyline solve.
+    let dates: DatesMap = btreemap! {
+      o!("root") => Some(DateConstraint::exact(2000.0)),
+      o!("x")    => Some(DateConstraint::exact(2005.0)),
+      o!("a")    => Some(DateConstraint::exact(2010.0)),
+      o!("b")    => Some(DateConstraint::exact(2010.0)),
+      o!("c")    => Some(DateConstraint::exact(2010.0)),
+    };
+    let graph = nwk_read_str("((a:1,b:1)x:1,c:1)root:0;")?;
+    load_date_constraints(&dates, &graph)?;
+    Ok(graph)
+  }
+
+  #[test]
+  fn test_pipeline_estimate_coalescent_tc_report_carries_the_skyline_solve() -> Result<(), Report> {
+    // The end-to-end pipeline test is disabled on the mass-sizing bug, so the link from the
+    // optimizer result to the report struct has no running guard. This exercises exactly that
+    // copy: `estimate_coalescent_tc` must carry the solve's own boundaries and band into the
+    // `CoalescentTcReport`, unpermuted and unresized. The oracle is a direct `optimize_skyline`
+    // call with the same deterministic inputs, so any drop or transpose in the copy shows up.
+    let graph = dated_tree()?;
+    let params = SkylineParams {
+      n_points: 3,
+      ..SkylineParams::default()
+    };
+
+    let solve = optimize_skyline(&graph, &params)?;
+    let timescale = estimate_coalescent_tc(CoalescentMode::Skyline, &graph, &params)?
+      .expect("skyline mode yields a coalescent timescale");
+    let report = timescale
+      .report
+      .expect("an inferred skyline carries a per-segment report");
+
+    pretty_assert_array_eq!(solve.segment_boundaries, report.segment_boundaries);
+    pretty_assert_array_eq!(solve.tc_lower_bounds, report.tc_lower_bounds);
+    pretty_assert_array_eq!(solve.tc_upper_bounds, report.tc_upper_bounds);
+    pretty_assert_array_eq!(solve.tc_values, timescale.schedule.values().clone());
+
     Ok(())
   }
 }

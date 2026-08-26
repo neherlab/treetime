@@ -18,8 +18,8 @@ mod tests {
   fn test_skyline_marginal_variance_matches_2x2_inverse() -> Result<(), Report> {
     // Oracle: closed-form 2x2 inverse. For H = [[a, -s], [-s, b]], det = a*b - s^2 and
     // diag(H^{-1}) = [b/det, a/det].
-    let (a, b, s) = (5.0, 3.0, 1.0);
-    let det = a * b - s * s;
+    let (a, b, s) = (5.0_f64, 3.0_f64, 1.0_f64);
+    let det = a * b - s.powi(2);
 
     let hessian = skyline_hessian(&[0.0, 0.0], &[a - s, b - s], s)?;
     let variances = marginal_log_tc_variances(&hessian)?;

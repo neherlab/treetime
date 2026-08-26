@@ -3,7 +3,7 @@ mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::output::{LadderizeArg, OutputCoreArgs, TimetreeOutputSelection, TopologyOrderArgs};
   use crate::commands::timetree::args::TreetimeTimetreeArgs;
-  use crate::commands::timetree::output::coalescent::{CoalescentMode, CoalescentOutput};
+  use crate::commands::timetree::output::coalescent::{CoalescentOutput, CoalescentOutputMode};
   use crate::commands::timetree::run::run_timetree_estimation;
   use crate::progress::NoopProgress;
   use eyre::Report;
@@ -158,7 +158,7 @@ mod tests {
     assert!(tsv_path.exists(), "default --output-all must write the coalescent TSV");
 
     let doc: CoalescentOutput = json_read_file(output.path().join("timetree.coalescent.json"))?;
-    assert_eq!(CoalescentMode::Skyline, doc.inputs.mode);
+    assert_eq!(CoalescentOutputMode::Skyline, doc.inputs.mode);
     assert!(
       !doc.outputs.segments.is_empty(),
       "a skyline run must report at least one coalescent segment"
