@@ -108,13 +108,17 @@ mod tests {
   mod end_to_end {
     use crate::cli::config::overlay_config;
     use crate::cli::treetime_cli::TreetimeArgs;
+    use crate::cli::validate::Validate;
     use clap::{CommandFactory, FromArgMatches};
+    use eyre::Report;
     use indoc::indoc;
     use pretty_assertions::assert_eq;
     use std::fs;
+    use std::path::{Path, PathBuf};
     use tempfile::tempdir;
+    use treetime::commands::ancestral::args::TreetimeAncestralArgs;
     use treetime::commands::timetree::args::TreetimeTimetreeArgs;
-    use treetime_utils::pretty_assert_ulps_eq;
+    use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
     // Drive the real parse path: full clap parse (which records value sources), then the `--config`
     // overlay, exactly as `treetime_parse_cli_args` does for a subcommand.
@@ -126,7 +130,7 @@ mod tests {
       args
     }
 
-    fn write_config(dir: &std::path::Path) -> std::path::PathBuf {
+    fn write_config(dir: &Path) -> PathBuf {
       // A partial YAML config: only two fields set, everything else must fall back to defaults.
       let path = dir.join("timetree.yaml");
       fs::write(
@@ -174,6 +178,44 @@ mod tests {
       let args = parse_timetree(&["treetime", "timetree"]);
       assert_eq!(20, args.skyline_n_points);
       pretty_assert_ulps_eq!(2.0, args.coalescent_confidence);
+    }
+
+    // Full resolve path for a command with a required argument: parse, overlay `--config`, validate.
+    fn resolve_ancestral(argv: &[&str]) -> Result<TreetimeAncestralArgs, Report> {
+      let matches = TreetimeArgs::command().get_matches_from(argv);
+      let sub = matches.subcommand_matches("ancestral").unwrap();
+      let mut args = TreetimeAncestralArgs::from_arg_matches(sub).unwrap();
+      overlay_config(&mut args, sub)?;
+      args.validate()?;
+      Ok(args)
+    }
+
+    // The headline of Part 1: a required argument may be supplied entirely by the config file, with no
+    // corresponding command-line flag, and validation passes.
+    #[test]
+    fn test_config_ancestral_config_satisfies_required_tree() {
+      let dir = tempdir().unwrap();
+      let path = dir.path().join("ancestral.yaml");
+      fs::write(
+        &path,
+        indoc! {r"
+        tree: from-config.nwk
+      "},
+      )
+      .unwrap();
+      let args = resolve_ancestral(&["treetime", "ancestral", "--config", path.to_str().unwrap()]).unwrap();
+      assert_eq!(Path::new("from-config.nwk"), args.tree());
+    }
+
+    // When a required argument is present in neither the command line nor the config file, validation
+    // errors with the clap-style message.
+    #[test]
+    fn test_config_ancestral_missing_tree_everywhere_errors() {
+      let result = resolve_ancestral(&["treetime", "ancestral"]);
+      assert_error!(
+        result,
+        "the following required arguments were not provided:\n  --tree <TREE>"
+      );
     }
   }
 }

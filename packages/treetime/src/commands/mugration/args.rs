@@ -6,7 +6,7 @@ use clap::ValueHint;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize)]
 #[serde(default)]
@@ -25,12 +25,12 @@ pub struct TreetimeMugrationArgs {
 
   /// Attribute to reconstruct, e.g. country
   #[cfg_attr(feature = "clap", clap(long))]
-  pub attribute: String,
+  pub attribute: Option<String>,
 
   /// CSV or TSV file with discrete characters. #name,country,continent taxon1,micronesia,oceania ...
   #[cfg_attr(feature = "clap", clap(long = "metadata", visible_alias = "states", short = 's'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  pub metadata: PathBuf,
+  pub metadata: Option<PathBuf>,
 
   /// CSV or TSV file with probabilities of that a randomly sampled sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.: #country,weight micronesia,0.1 ...
   #[cfg_attr(feature = "clap", clap(long, short = 'w'))]
@@ -130,4 +130,22 @@ pub struct TreetimeMugrationArgs {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub topology_order: TopologyOrderArgs,
+}
+
+impl TreetimeMugrationArgs {
+  /// Metadata (states) path. Present by construction: required-field validation runs during CLI parsing.
+  pub fn metadata(&self) -> &Path {
+    self
+      .metadata
+      .as_deref()
+      .expect("`--metadata` is required and is validated during CLI parsing")
+  }
+
+  /// Attribute to reconstruct. Present by construction: required-field validation runs during CLI parsing.
+  pub fn attribute(&self) -> &str {
+    self
+      .attribute
+      .as_deref()
+      .expect("`--attribute` is required and is validated during CLI parsing")
+  }
 }

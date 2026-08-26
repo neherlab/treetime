@@ -7,7 +7,7 @@ use clap::ValueHint;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize)]
 #[serde(default)]
@@ -23,7 +23,7 @@ pub struct TreetimePruneArgs {
   /// Name of file containing the tree in newick, nexus, or phylip format.
   #[cfg_attr(feature = "clap", clap(long, short = 't'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  pub tree: PathBuf,
+  pub tree: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub alphabet_args: AlphabetArgs,
@@ -107,4 +107,14 @@ pub struct TreetimePruneArgs {
   #[cfg_attr(feature = "clap", clap(long, default_value = "\n", value_name = "DELIMITER"))]
   #[default = '\n']
   pub prune_nodes_list_file_delimiter: char,
+}
+
+impl TreetimePruneArgs {
+  /// Input tree path. Present by construction: required-field validation runs during CLI parsing.
+  pub fn tree(&self) -> &Path {
+    self
+      .tree
+      .as_deref()
+      .expect("`--tree` is required and is validated during CLI parsing")
+  }
 }

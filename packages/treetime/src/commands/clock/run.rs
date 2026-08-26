@@ -69,7 +69,7 @@ pub fn run_clock(
   let input_order = leaf_order(&graph)?;
 
   let dates = read_dates(
-    &clock_args.metadata,
+    clock_args.metadata(),
     &clock_args.metadata_id.metadata_delimiters,
     &clock_args.metadata_id.metadata_id_columns,
     &None,

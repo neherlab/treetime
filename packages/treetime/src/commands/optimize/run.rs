@@ -30,7 +30,7 @@ pub fn run_optimize(
   for record in &mut aln {
     apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());
   }
-  let graph = nwk_read_file(&args.tree)?;
+  let graph = nwk_read_file(args.tree())?;
 
   let selection: Vec<OutputSelection> = args
     .output_selection
@@ -123,13 +123,7 @@ pub fn run_optimize(
     };
 
     let alignment = args.alignment.alignment.first().map(PathBuf::as_path);
-    write_augur_node_data_json(
-      &graph,
-      alignment,
-      Some(args.tree.as_path()),
-      mutation_counts.as_ref(),
-      path,
-    )?;
+    write_augur_node_data_json(&graph, alignment, Some(args.tree()), mutation_counts.as_ref(), path)?;
     info!("Wrote augur node data JSON to {path}", path = path.display());
   }
 

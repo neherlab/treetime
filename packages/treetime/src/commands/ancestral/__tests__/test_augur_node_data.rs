@@ -276,7 +276,7 @@ mod tests {
         alignment: AlignmentArgs {
           alignment: vec![fasta_path],
         },
-        tree: tree_path,
+        tree: Some(tree_path),
         method_anc: method,
         dense,
         model_args: ModelArgs {

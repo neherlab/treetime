@@ -13,7 +13,7 @@ use clap::ValueHint;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize)]
 #[serde(default)]
@@ -41,7 +41,7 @@ pub struct TreetimeClockArgs {
   /// CSV/TSV file with metadata including sampling dates
   #[cfg_attr(feature = "clap", clap(long = "metadata", visible_alias = "dates", short = 'd'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  pub metadata: PathBuf,
+  pub metadata: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub metadata_id: MetadataIdArgs,
@@ -146,6 +146,16 @@ pub struct TreetimeClockArgs {
   /// Clock regression model parameters
   #[cfg_attr(feature = "clap", clap(flatten, next_help_heading = "Clock regression"))]
   pub clock_regression: ClockRegressionArgs,
+}
+
+impl TreetimeClockArgs {
+  /// Metadata (dates) path. Present by construction: required-field validation runs during CLI parsing.
+  pub fn metadata(&self) -> &Path {
+    self
+      .metadata
+      .as_deref()
+      .expect("`--metadata` is required and is validated during CLI parsing")
+  }
 }
 
 /// Branch split optimization parameters

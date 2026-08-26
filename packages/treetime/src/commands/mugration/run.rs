@@ -53,11 +53,11 @@ pub fn run_mugration(
   )?;
 
   let (attr_values, _attr_name) = read_discrete_attrs::<String>(
-    &mugration_args.metadata,
+    mugration_args.metadata(),
     &mugration_args.metadata_id.metadata_delimiters,
     &mugration_args.metadata_id.metadata_id_columns,
     &None,
-    &Some(mugration_args.attribute.clone()),
+    &mugration_args.attribute,
     |s| Ok(s.to_owned()),
   )?;
   let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
@@ -67,7 +67,7 @@ pub fn run_mugration(
       weights_filepath,
       &mugration_args.metadata_id.metadata_delimiters,
       &[],
-      &Some(mugration_args.attribute.clone()),
+      &mugration_args.attribute,
       &Some("weight".to_owned()),
       |s| Ok(s.parse::<f64>()?),
     )?;
@@ -81,7 +81,7 @@ pub fn run_mugration(
   let mut result = execute_mugration(
     graph,
     &traits,
-    &mugration_args.attribute,
+    mugration_args.attribute(),
     weights.as_ref(),
     &mugration_args.missing_data,
     mugration_args.pc,

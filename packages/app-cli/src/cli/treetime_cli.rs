@@ -1,11 +1,13 @@
 use crate::cli::config::overlay_config;
 use crate::cli::jobs::Jobs;
+use crate::cli::validate::Validate;
 use crate::cli::verbosity::Verbosity;
 use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_complete::{Shell, generate};
 use clap_complete_fig::Fig;
 use eyre::Report;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::io;
 use std::path::PathBuf;
@@ -137,27 +139,38 @@ pub fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
   setup_logger(args.verbosity.get_filter_level());
 
   if let Some((_, sub_matches)) = matches.subcommand() {
-    overlay_command_config(&mut args.command, sub_matches)?;
+    resolve_command_config(&mut args.command, sub_matches)?;
   }
 
   Ok(args)
 }
 
-/// Merge a `--config` file into the selected command's args, if the command accepts one.
+/// Merge a `--config` file into the selected command's args, then validate the merged result.
 ///
+/// Merge (`overlay_config`) and validation (`Validate`) are applied together so a value supplied only
+/// by the config file both wins with the right precedence and satisfies required-argument checks.
 /// Commands without a configuration object (completions, schema, help) have no `--config` flag and
 /// are left untouched.
-fn overlay_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) -> Result<(), Report> {
+fn resolve_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) -> Result<(), Report> {
   match command {
-    TreetimeCommands::Timetree(args) => overlay_config(args.as_mut(), matches),
-    TreetimeCommands::Optimize(args) => overlay_config(args, matches),
-    TreetimeCommands::Prune(args) => overlay_config(args, matches),
-    TreetimeCommands::Ancestral(args) => overlay_config(args, matches),
-    TreetimeCommands::Clock(args) => overlay_config(args, matches),
-    TreetimeCommands::Homoplasy(args) => overlay_config(args, matches),
-    TreetimeCommands::Mugration(args) => overlay_config(args, matches),
+    TreetimeCommands::Timetree(args) => resolve(args.as_mut(), matches),
+    TreetimeCommands::Optimize(args) => resolve(args, matches),
+    TreetimeCommands::Prune(args) => resolve(args, matches),
+    TreetimeCommands::Ancestral(args) => resolve(args, matches),
+    TreetimeCommands::Clock(args) => resolve(args, matches),
+    TreetimeCommands::Homoplasy(args) => resolve(args, matches),
+    TreetimeCommands::Mugration(args) => resolve(args, matches),
     _ => Ok(()),
   }
+}
+
+/// Overlay the `--config` file onto `args`, then validate the merged result.
+fn resolve<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
+where
+  T: Serialize + DeserializeOwned + Default + Validate,
+{
+  overlay_config(args, matches)?;
+  args.validate()
 }
 
 #[cfg(test)]

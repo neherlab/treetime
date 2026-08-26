@@ -5,4 +5,5 @@ pub mod progress;
 pub mod rtt_chart;
 mod rtt_chart_render;
 pub mod treetime_cli;
+pub mod validate;
 pub mod verbosity;

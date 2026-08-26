@@ -31,7 +31,7 @@ pub fn run_prune(
   progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
 
-  let graph: GraphAncestral = nwk_read_file(&args.tree)?;
+  let graph: GraphAncestral = nwk_read_file(args.tree())?;
   let input_order = leaf_order(&graph)?;
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 

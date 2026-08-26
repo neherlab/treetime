@@ -58,7 +58,7 @@ impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
       },
       vcf_reference: s.vcf_reference.map(PathBuf::from),
-      tree: PathBuf::from(s.tree),
+      tree: Some(PathBuf::from(s.tree)),
       alphabet_args: AlphabetArgs { alphabet: s.alphabet },
       model_args: ModelArgs {
         model: s.model_name,
@@ -142,7 +142,7 @@ impl From<ServerClockArgs> for TreetimeClockArgs {
       },
       tree: s.tree.map(PathBuf::from),
       vcf_reference: s.vcf_reference.map(PathBuf::from),
-      metadata: PathBuf::from(s.dates),
+      metadata: Some(PathBuf::from(s.dates)),
       metadata_id: {
         let mut id = treetime::commands::shared::metadata::MetadataIdArgs::default();
         if let Some(name_col) = s.name_column {
@@ -374,8 +374,8 @@ impl From<ServerMugrationArgs> for TreetimeMugrationArgs {
     Self {
       config_args: treetime::commands::shared::config::ConfigArgs::default(),
       tree: s.tree.map(PathBuf::from),
-      attribute: s.attribute,
-      metadata: PathBuf::from(s.states),
+      attribute: Some(s.attribute),
+      metadata: Some(PathBuf::from(s.states)),
       weights: s.weights.map(PathBuf::from),
       metadata_id: {
         let mut id = treetime::commands::shared::metadata::MetadataIdArgs::default();
@@ -447,7 +447,7 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
       },
-      tree: PathBuf::from(s.tree),
+      tree: Some(PathBuf::from(s.tree)),
       alphabet_args: AlphabetArgs { alphabet: s.alphabet },
       model_args: ModelArgs {
         model: s.model_name,
@@ -508,7 +508,7 @@ impl From<ServerPruneArgs> for TreetimePruneArgs {
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
       },
-      tree: PathBuf::from(s.tree),
+      tree: Some(PathBuf::from(s.tree)),
       alphabet_args: AlphabetArgs { alphabet: s.alphabet },
       output: OutputCoreArgs {
         output_all: Some(PathBuf::from(s.outdir)),

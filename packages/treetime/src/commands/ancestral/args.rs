@@ -12,7 +12,7 @@ use clap::ValueHint;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize)]
 #[serde(default)]
@@ -35,7 +35,7 @@ pub struct TreetimeAncestralArgs {
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
   #[cfg_attr(feature = "clap", clap(long, short = 't'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  pub tree: PathBuf,
+  pub tree: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub alphabet_args: AlphabetArgs,
@@ -203,4 +203,14 @@ pub struct TreetimeAncestralArgs {
   /// Only affects marginal reconstruction (`--method-anc=marginal`).
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = SampleMode::default()))]
   pub sample_from_profile: SampleMode,
+}
+
+impl TreetimeAncestralArgs {
+  /// Input tree path. Present by construction: required-field validation runs during CLI parsing.
+  pub fn tree(&self) -> &Path {
+    self
+      .tree
+      .as_deref()
+      .expect("`--tree` is required and is validated during CLI parsing")
+  }
 }

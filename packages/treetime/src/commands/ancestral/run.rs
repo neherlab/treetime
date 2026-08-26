@@ -65,7 +65,7 @@ pub fn run_ancestral_reconstruction(
 
   progress.check_cancelled()?;
   progress.report("Parsing tree", 0.1, "");
-  let graph = nwk_read_file(&ancestral_args.tree)?;
+  let graph = nwk_read_file(ancestral_args.tree())?;
   let topology_order = ancestral_args.topology_order.resolve_topology_order(&graph, None)?;
 
   let selection: Vec<OutputSelection> = ancestral_args

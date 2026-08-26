@@ -11,7 +11,7 @@ use clap::ValueHint;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Reroot methods available in the optimize command.
 ///
@@ -49,7 +49,7 @@ pub struct TreetimeOptimizeArgs {
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
   #[cfg_attr(feature = "clap", clap(long, short = 't'))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  pub tree: PathBuf,
+  pub tree: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub alphabet_args: AlphabetArgs,
@@ -193,6 +193,14 @@ pub struct TreetimeOptimizeArgs {
 }
 
 impl TreetimeOptimizeArgs {
+  /// Input tree path. Present by construction: required-field validation runs during CLI parsing.
+  pub fn tree(&self) -> &Path {
+    self
+      .tree
+      .as_deref()
+      .expect("`--tree` is required and is validated during CLI parsing")
+  }
+
   /// Resolve the requested reroot policy.
   ///
   /// Returns `None` when the input root is kept (the default, or `--keep-root`).
