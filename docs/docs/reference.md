@@ -277,15 +277,15 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--output-tracelog <OUTPUT_TRACELOG>` [alias: `tracelog`] — Path to output iteration-statistics tracelog CSV (monitors convergence).
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
-* `--output-coalescent-tsv <OUTPUT_COALESCENT_TSV>` — Path to output the inferred coalescent time scale as a flat TSV (one row per skyline segment).
+* `--output-coalescent-tsv <OUTPUT_COALESCENT_TSV>` — Path to output the coalescent time scale as a flat TSV (one row per skyline segment).
 
-   Written only when a coalescent was inferred (`--coalescent`, `--coalescent-opt`, or `--coalescent-skyline`). Takes precedence over paths configured with `--output-all` and `--output-selection`.
-* `--output-coalescent-csv <OUTPUT_COALESCENT_CSV>` — Path to output the inferred coalescent time scale as a flat CSV (one row per skyline segment).
+   Written when a coalescent model is set (`--coalescent`, `--coalescent-opt`, or `--coalescent-skyline`). A fixed `--coalescent` writes one band-less segment over the tree span. Takes precedence over paths configured with `--output-all` and `--output-selection`.
+* `--output-coalescent-csv <OUTPUT_COALESCENT_CSV>` — Path to output the coalescent time scale as a flat CSV (one row per skyline segment).
 
-   Written only when a coalescent was inferred. Takes precedence over paths configured with `--output-all` and `--output-selection`.
-* `--output-coalescent-json <OUTPUT_COALESCENT_JSON>` — Path to output the inferred coalescent time scale as a rich JSON document (inputs + segments).
+   Written when a coalescent model is set. Takes precedence over paths configured with `--output-all` and `--output-selection`.
+* `--output-coalescent-json <OUTPUT_COALESCENT_JSON>` — Path to output the coalescent time scale as a rich JSON document (inputs + segments).
 
-   Written only when a coalescent was inferred. Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   Written when a coalescent model is set. Takes precedence over paths configured with `--output-all` and `--output-selection`.
 * `-O`, `--output-all <OUTPUT_ALL>` — Write all default output files into this directory.
 
    Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.
