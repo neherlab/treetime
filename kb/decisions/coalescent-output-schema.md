@@ -10,14 +10,14 @@ v1 serializes the inferred coalescent time scale from the `timetree` command wit
 
 **v1**: The serializers in [`packages/treetime/src/commands/timetree/output/coalescent.rs`](../../packages/treetime/src/commands/timetree/output/coalescent.rs) emit two shapes from one document:
 
-- Rich JSON (`timetree.coalescent.json`): an `inputs` block (mode, generations per year, confidence width) and `outputs.segments`, each segment carrying a numeric-date `segment` interval and nested `T_c` and `N_e` objects with `value`/`lower`/`upper`.
-- Flat delimited TSV/CSV (`timetree.coalescent.tsv`, `timetree.coalescent.csv`): one row per segment with dotted columns `segment.start`, `segment.end`, `T_c.value`, `T_c.lower`, `T_c.upper`, `N_e.value`, `N_e.lower`, `N_e.upper`. The TSV is in the default `--output-all` set; CSV and JSON are opt-in.
+- Rich JSON (`timetree.coalescent.json`): a complete `inputs` block (mode, the skyline `n_points` and `stiffness` where they apply, the confidence width, and generations per year) and an `outputs` block (the coalescent `log_likelihood` where inferred, and `segments`), each segment carrying a numeric-date `segment` interval and nested `T_c` and `N_e` objects with `value`/`lower`/`upper`. The JSON carries the full document; a field that does not apply to the mode (for example `n_points` for a constant or fixed `T_c`, or `log_likelihood` for a fixed `T_c`) is omitted.
+- Flat delimited TSV/CSV (`timetree.coalescent.tsv`, `timetree.coalescent.csv`): the selected per-segment projection, one row per segment with dotted columns `segment.start`, `segment.end`, `T_c.value`, `T_c.lower`, `T_c.upper`, `N_e.value`, `N_e.lower`, `N_e.upper`, and no inputs or likelihood. The TSV is in the default `--output-all` set; CSV and JSON are opt-in.
 
 ## Decision
 
 Report the coalescent as per-segment intervals rather than per-date points, and report both $T_c$ and the derived $N_e = T_c \cdot \text{gen\_per\_year}$ with their confidence bands. The rich JSON is the single source of truth; the flat rows are its projection, shifting the 0-based JSON index to 1-based.
 
-A fixed, user-supplied $T_c$ is not inferred and writes no coalescent output at all, matching v0 (which emits a skyline only for `skyline`, `opt`, and `const`) and v1's own stderr $N_e$ report.
+A fixed, user-supplied $T_c$ writes one band-less segment spanning the tree, carrying no confidence band and no likelihood; the segment span is the range of the coalescent breakpoints. The stderr $N_e$ report uses the same gate, so the file and the screen agree. This diverges from v0, which writes nothing for a fixed $T_c$ (it emits a skyline only for `skyline`, `opt`, and `const`). The divergence is intentional and does not target v0 parity.
 
 ## Rationale
 
