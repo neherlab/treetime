@@ -9,4 +9,5 @@ mod test_optimize_tc;
 mod test_population_size;
 mod test_prop_skyline_confidence;
 mod test_skyline;
+mod test_skyline_confidence;
 mod test_total_lh;

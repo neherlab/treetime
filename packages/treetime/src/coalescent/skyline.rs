@@ -38,7 +38,7 @@ pub struct SkylineParams {
 impl Default for SkylineParams {
   fn default() -> Self {
     Self {
-      n_points: 10,
+      n_points: 20,
       stiffness: 2.0,
       tolerance: 1e-8,
       max_iter: 100,
@@ -154,10 +154,10 @@ where
     );
   }
 
-  let z = solve_log_tc(&i_seg, &m_seg, params.stiffness, params.tolerance, params.max_iter)?;
+  let (z, hessian) = solve_log_tc(&i_seg, &m_seg, params.stiffness, params.tolerance, params.max_iter)?;
 
   let tc_values = Array1::from_iter(z.iter().map(|&zi| zi.exp()));
-  let confidence = skyline_confidence_band(&z, &i_seg, params.stiffness, params.n_std, &tc_values)?;
+  let confidence = skyline_confidence_band(&hessian, params.n_std, &tc_values)?;
   let tc_distribution = build_tc_distribution(&boundaries, &tc_values);
   // Internal segment boundaries are the exact discontinuities of the clamped Tc schedule.
   let tc_schedule = PiecewiseConstantFn::new(
@@ -289,13 +289,17 @@ fn accumulate_segment_terms(
 ///
 /// Convex in `z`, solved by Newton on the symmetric tridiagonal Hessian with an
 /// Armijo line search. `Tc = e^z` is positive by construction, so no step capping.
+///
+/// Returns the optimum `z` and the Hessian evaluated at that `z`. The confidence band
+/// is the inverse of this same operator, so returning it lets the band reuse the final
+/// Newton Hessian instead of rebuilding it.
 fn solve_log_tc(
   i_seg: &[f64],
   m_seg: &[f64],
   stiffness: f64,
   tolerance: f64,
   max_iter: u64,
-) -> Result<Vec<f64>, Report> {
+) -> Result<(Vec<f64>, Tridiagonal<f64>), Report> {
   let n = i_seg.len();
 
   // Decoupled per-segment optimum zᵢ = ln(Iᵢ / Mᵢ), with a pooled fallback for
@@ -317,7 +321,8 @@ fn solve_log_tc(
 
   // Single segment or no smoothing: the decoupled solution is already optimal.
   if n == 1 {
-    return Ok(z);
+    let hessian = skyline_hessian(&z, i_seg, stiffness)?;
+    return Ok((z, hessian));
   }
   // error if stiffness is non-positive, which would make the Hessian indefinite.
   if stiffness <= 0.0 {
@@ -327,15 +332,15 @@ fn solve_log_tc(
     );
   }
 
-  let mut converged = false;
   for _ in 0..max_iter {
     let g = skyline_gradient(&z, i_seg, m_seg, stiffness);
     let hessian = skyline_hessian(&z, i_seg, stiffness)?;
 
     let g_norm = g.iter().fold(0.0_f64, |acc, &v| acc.max(v.abs()));
     if g_norm < tolerance {
-      converged = true;
-      break;
+      // Converged: this Hessian is evaluated at the returned `z`, so hand it back
+      // for the confidence band rather than rebuilding the same operator.
+      return Ok((z, hessian));
     }
 
     // Solve the Hessian system with the gradient, then negate in place: the
@@ -361,12 +366,12 @@ fn solve_log_tc(
       }
     }
   }
-  // warn when we did not break early but reach the max iteration count.
-  if !converged {
-    warn!("Skyline optimization did not converge within {max_iter} iterations");
-  }
 
-  Ok(z)
+  // Reached the iteration cap without meeting the gradient tolerance. The last step
+  // advanced `z` past the loop's Hessian, so evaluate a fresh one at the final iterate.
+  warn!("Skyline optimization did not converge within {max_iter} iterations");
+  let hessian = skyline_hessian(&z, i_seg, stiffness)?;
+  Ok((z, hessian))
 }
 
 /// Returns the objective gradient at `z`.
@@ -383,7 +388,10 @@ fn skyline_gradient(z: &[f64], i_seg: &[f64], m_seg: &[f64], stiffness: f64) -> 
 }
 
 /// Returns the symmetric tridiagonal objective Hessian at `z`.
-fn skyline_hessian(z: &[f64], i_seg: &[f64], stiffness: f64) -> Result<Tridiagonal<f64>, Report> {
+///
+/// Exposed to the crate so tests can build a known Hessian and check the marginal
+/// variance recovery against a hand-inverted oracle.
+pub(crate) fn skyline_hessian(z: &[f64], i_seg: &[f64], stiffness: f64) -> Result<Tridiagonal<f64>, Report> {
   let n = z.len();
   let matrix_size = i32::try_from(n).wrap_err("Skyline segment count exceeds the linear algebra limit")?;
   let mut diagonal: Vec<f64> = (0..n).map(|i| i_seg[i] * (-z[i]).exp()).collect();
@@ -409,18 +417,33 @@ fn skyline_hessian(z: &[f64], i_seg: &[f64], stiffness: f64) -> Result<Tridiagon
 /// The inverse Hessian is the covariance of the Laplace approximation in `ln Tc`
 /// coordinates. See https://doi.org/10.1080/01621459.1986.10478240.
 fn skyline_confidence_band(
-  z: &[f64],
-  i_seg: &[f64],
-  stiffness: f64,
+  hessian: &Tridiagonal<f64>,
   n_std: f64,
   tc_values: &Array1<f64>,
 ) -> Result<SkylineConfidenceBand, Report> {
-  let hessian = skyline_hessian(z, i_seg, stiffness)?;
-  let log_tc_variances = if z.len() == 1 {
+  let log_tc_variances = marginal_log_tc_variances(hessian)?;
+  let band_factors = exp(&(log_tc_variances.mapv(f64::sqrt) * n_std));
+  Ok(SkylineConfidenceBand {
+    log_tc_variances,
+    tc_lower_bounds: tc_values / &band_factors,
+    tc_upper_bounds: tc_values * &band_factors,
+  })
+}
+
+/// Per-segment marginal variances of `ln Tc`: the diagonal of the inverse Hessian.
+///
+/// Inverting the full tridiagonal Hessian against the identity keeps the off-diagonal
+/// stiffness coupling between adjacent segments, so each marginal variance is strictly
+/// larger than the diagonal-only `1/H_ii` it would carry in isolation whenever the
+/// smoothing couples the segments. Exposed to the crate for the analytic oracle test.
+pub(crate) fn marginal_log_tc_variances(hessian: &Tridiagonal<f64>) -> Result<Array1<f64>, Report> {
+  let n = hessian.d.len();
+  let log_tc_variances = if n == 1 {
+    // A 1x1 Hessian inverts to the scalar reciprocal.
     array![1.0 / hessian.d[0]]
   } else {
     hessian
-      .solve_tridiagonal(&Array2::eye(z.len()))
+      .solve_tridiagonal(&Array2::eye(n))
       .wrap_err("Failed to invert the skyline Hessian")?
       .diag()
       .to_owned()
@@ -431,13 +454,7 @@ fn skyline_confidence_band(
   {
     return make_error!("Skyline Hessian inverse contains a nonpositive or non-finite variance");
   }
-
-  let band_factors = exp(&(log_tc_variances.mapv(f64::sqrt) * n_std));
-  Ok(SkylineConfidenceBand {
-    log_tc_variances,
-    tc_lower_bounds: tc_values / &band_factors,
-    tc_upper_bounds: tc_values * &band_factors,
-  })
+  Ok(log_tc_variances)
 }
 
 struct SkylineConfidenceBand {
