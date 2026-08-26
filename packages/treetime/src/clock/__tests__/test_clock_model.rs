@@ -1,8 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::clock_model::{ClockLine, ClockModel, ClockRegression};
+  use crate::clock::clock_model::{ClockLine, ClockModel, ClockModelStats, ClockRegression, RegressionStats};
   use crate::payload::clock_set::ClockSet;
   use eyre::Report;
+  use indoc::indoc;
+  use ndarray::array;
+  use pretty_assertions::assert_eq;
+  use treetime_utils::io::json::{JsonPretty, json_write_str};
 
   /// Build a ClockSet from two leaves whose regression produces the given clock_rate.
   ///
@@ -161,6 +165,70 @@ mod tests {
     let date = 2020.0;
     let div = 0.5;
     assert!((reg.clock_deviation(date, div) - model.clock_deviation(date, div)).abs() < 1e-15);
+    Ok(())
+  }
+
+  // --- Serialization ---
+  // The clock model JSON output (`.n.json`) must present the `hessian` and `cov` matrices as
+  // readable nested arrays, not the internal ndarray representation (`{"v":1,"dim":..,"data":..}`).
+  // The `array2_as_vec`/`array2_from_vec` serde helpers produce the row-major nested-array form.
+
+  fn estimated_model() -> ClockModel {
+    let stats = ClockModelStats::Estimated(RegressionStats {
+      chisq: 1.5,
+      r_val: 0.9,
+      hessian: array![[1.0, 2.0], [3.0, 4.0]],
+      cov: array![[0.1, 0.0], [0.0, 0.2]],
+    });
+    ClockModel::for_testing_with_stats(0.003, -6.0, stats)
+  }
+
+  #[test]
+  fn test_clock_model_serializes_stats_matrices_as_nested_arrays() -> Result<(), Report> {
+    let expected = indoc! {r#"{
+      "clock_rate": 0.003,
+      "intercept": -6.0,
+      "stats": {
+        "Estimated": {
+          "chisq": 1.5,
+          "r_val": 0.9,
+          "hessian": [
+            [
+              1.0,
+              2.0
+            ],
+            [
+              3.0,
+              4.0
+            ]
+          ],
+          "cov": [
+            [
+              0.1,
+              0.0
+            ],
+            [
+              0.0,
+              0.2
+            ]
+          ]
+        }
+      }
+    }"#};
+    let actual = json_write_str(&estimated_model(), JsonPretty(true))?;
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_clock_model_stats_matrices_json_roundtrip() -> Result<(), Report> {
+    let json = json_write_str(&estimated_model(), JsonPretty(true))?;
+    let restored: ClockModel = serde_json::from_str(&json)?;
+    let ClockModelStats::Estimated(stats) = restored.stats() else {
+      panic!("expected Estimated stats after round-trip");
+    };
+    assert_eq!(&array![[1.0, 2.0], [3.0, 4.0]], &stats.hessian);
+    assert_eq!(&array![[0.1, 0.0], [0.0, 0.2]], &stats.cov);
     Ok(())
   }
 }

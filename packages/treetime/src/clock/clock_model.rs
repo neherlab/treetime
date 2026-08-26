@@ -5,6 +5,7 @@ use getset::Getters;
 use log::{debug, warn};
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
+use treetime_utils::array::serde::{array2_as_vec, array2_from_vec};
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
@@ -20,7 +21,9 @@ pub trait ClockLine {
 pub struct RegressionStats {
   pub chisq: f64,
   pub r_val: f64,
+  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
   pub hessian: Array2<f64>,
+  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
   pub cov: Array2<f64>,
 }
 
@@ -36,7 +39,9 @@ pub struct ClockRegression {
   intercept: f64,
   chisq: f64,
   r_val: f64,
+  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
   hessian: Array2<f64>,
+  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
   cov: Array2<f64>,
 }
 
