@@ -375,10 +375,11 @@ pub fn run(
       .wrap_err_with(|| format!("When running round {i}"))?;
   }
 
-  // Report the effective population size implied by the converged Tc, matching v0's screen output
-  // for the constant/opt/skyline coalescent. Fixed and disabled modes report no coalescent, as in
-  // v0. N_e = Tc * gen_per_year is a reporting quantity and does not affect the inference.
-  if coalescent.is_optimized() {
+  // Report the effective population size implied by the converged Tc on screen, for every mode that
+  // writes a coalescent output file so the two channels agree. This extends v0's constant/opt/skyline
+  // screen output to a fixed Tc; only the disabled mode reports nothing. N_e = Tc * gen_per_year is a
+  // reporting quantity and does not affect the inference.
+  if coalescent.output_mode().is_some() {
     let tc_values = coalescent_tc.schedule.values();
     info!(
       "Coalescent effective population size (gen_per_year={:.4}, {} segment(s)):",
@@ -447,12 +448,7 @@ pub fn run(
     || rate_std.is_some())
   .then(|| extract_confidence_intervals(&input.graph));
 
-  let coalescent_output = build_coalescent_output(
-    coalescent,
-    &coalescent_tc,
-    params.gen_per_year,
-    params.coalescent_confidence,
-  )?;
+  let coalescent_output = build_coalescent_output(coalescent, &coalescent_tc, params.gen_per_year, &skyline_params)?;
 
   progress.report("Done", 1.0, "");
   Ok(TimetreeOutput {
@@ -486,14 +482,16 @@ impl CoalescentMode {
     matches!(self, CoalescentMode::Constant | CoalescentMode::Skyline)
   }
 
-  /// Serialization tag for the coalescent output document, or `None` when the run writes no
-  /// coalescent output. Only an inferred Tc (constant or skyline) is written: `Disabled` has no
-  /// coalescent, and a fixed user Tc emits nothing, matching v0 and the stderr `N_e` report gated
-  /// on [`Self::is_optimized`]. Sole mapping from the inference mode to the output tag, so a new
-  /// mode is one edit here.
+  /// Serialization tag for the coalescent output document, or `None` only when the run writes no
+  /// coalescent output (`Disabled`). Every set coalescent is written -- a fixed user Tc as well as
+  /// an inferred constant or skyline. Emitting a fixed Tc diverges from v0, which writes nothing for
+  /// it, by explicit decision (see `kb/decisions/coalescent-output-schema.md`). The stderr `N_e`
+  /// report uses the same gate, so the file and screen agree. Sole mapping from the inference mode
+  /// to the output tag, so a new mode is one edit here.
   fn output_mode(self) -> Option<CoalescentOutputMode> {
     match self {
-      CoalescentMode::Disabled | CoalescentMode::Fixed(_) => None,
+      CoalescentMode::Disabled => None,
+      CoalescentMode::Fixed(_) => Some(CoalescentOutputMode::Fixed),
       CoalescentMode::Constant => Some(CoalescentOutputMode::Constant),
       CoalescentMode::Skyline => Some(CoalescentOutputMode::Skyline),
     }
@@ -527,7 +525,7 @@ fn estimate_coalescent_tc(
   // skyline. They differ only in the number of segments.
   let n_points = match mode {
     CoalescentMode::Disabled => return Ok(None),
-    CoalescentMode::Fixed(tc) => return Ok(Some(CoalescentTimescale::constant(tc))),
+    CoalescentMode::Fixed(tc) => return fixed_timescale(tc, graph).map(Some),
     CoalescentMode::Constant => 1,
     CoalescentMode::Skyline => skyline_params.n_points,
   };
@@ -543,10 +541,38 @@ fn estimate_coalescent_tc(
     schedule: result.tc_schedule,
     report: Some(CoalescentTcReport {
       segment_boundaries: result.segment_boundaries,
-      tc_lower_bounds: result.tc_lower_bounds,
-      tc_upper_bounds: result.tc_upper_bounds,
+      band: Some(CoalescentReportBand {
+        lower: result.tc_lower_bounds,
+        upper: result.tc_upper_bounds,
+      }),
+      log_likelihood: Some(result.log_likelihood.value()),
     }),
   }))
+}
+
+/// Builds the timescale for a fixed, user-supplied Tc: a constant schedule plus a one-segment report
+/// spanning the tree's full time range.
+///
+/// The span is the range of the coalescent breakpoints -- the same node-time range the optimized
+/// modes report -- so a fixed Tc reports the whole tree as its single segment. No solve runs (a fixed
+/// Tc is the escape hatch for trees the optimizer rejects as degenerate), so the report carries no
+/// confidence band and no likelihood.
+fn fixed_timescale(tc: f64, graph: &GraphTimetree) -> Result<CoalescentTimescale, Report> {
+  let lineage_counts = compute_lineage_counts(graph).wrap_err("Failed to compute coalescent lineage counts")?;
+  let breakpoints = lineage_counts.breakpoints();
+  if breakpoints.is_empty() {
+    return make_error!("Cannot report a fixed coalescent Tc: the tree has no node times to span");
+  }
+  let t_min = breakpoints[0];
+  let t_max = breakpoints[breakpoints.len() - 1];
+  Ok(CoalescentTimescale {
+    report: Some(CoalescentTcReport {
+      segment_boundaries: array![t_min, t_max],
+      band: None,
+      log_likelihood: None,
+    }),
+    ..CoalescentTimescale::constant(tc)
+  })
 }
 
 /// The coalescent timescale a run works at, whether or not it asked for a coalescent prior.
@@ -587,53 +613,80 @@ impl CoalescentTimescale {
   }
 }
 
-/// Per-segment reporting data carried out of the skyline/constant analytic solve for the output
-/// document. Holds the P1 confidence band and the segment boundaries; the Tc values themselves come
-/// from [`CoalescentTimescale::schedule`].
+/// Per-segment reporting data carried out of the skyline/constant analytic solve, or synthesized for
+/// a fixed Tc, for the output document. Holds the segment boundaries and, for an inferred Tc, the
+/// confidence band and likelihood; the Tc values themselves come from
+/// [`CoalescentTimescale::schedule`].
 struct CoalescentTcReport {
   /// Segment boundaries in numeric date (length `n_segments + 1`, ascending).
   segment_boundaries: Array1<f64>,
-  /// Lower confidence bound per segment.
-  tc_lower_bounds: Array1<f64>,
-  /// Upper confidence bound per segment.
-  tc_upper_bounds: Array1<f64>,
+  /// Per-segment confidence band, or `None` for a fixed Tc (no solve, no band).
+  band: Option<CoalescentReportBand>,
+  /// Coalescent log-likelihood at the reported Tc, or `None` for a fixed Tc (not inferred).
+  log_likelihood: Option<f64>,
 }
 
-/// Assembles the coalescent output document for the requested mode, or `None` when the run writes
-/// no coalescent output (disabled, or a fixed user Tc that emits nothing, per [`CoalescentMode::output_mode`]).
+/// Per-segment Tc confidence band carried out of the analytic solve. Both bounds are present
+/// together, so a partial band is unrepresentable.
+struct CoalescentReportBand {
+  /// Lower confidence bound per segment.
+  lower: Array1<f64>,
+  /// Upper confidence bound per segment.
+  upper: Array1<f64>,
+}
+
+/// Assembles the coalescent output document for the requested mode, or `None` when the run writes no
+/// coalescent output (disabled, per [`CoalescentMode::output_mode`]).
 ///
-/// Only the optimized modes (constant, skyline) reach the document: each carries the P1 confidence
-/// band and per-segment boundaries from the analytic solve, so the band is always present.
+/// An inferred Tc (constant, skyline) carries the confidence band, likelihood, and per-segment
+/// boundaries from the analytic solve. A fixed Tc carries one segment over the tree span with no band
+/// and no likelihood. The skyline grid inputs are recorded only for a skyline.
 fn build_coalescent_output(
   requested: CoalescentMode,
   timescale: &CoalescentTimescale,
   gen_per_year: f64,
-  n_std: f64,
+  skyline_params: &SkylineParams,
 ) -> Result<Option<CoalescentOutput>, Report> {
   let Some(mode) = requested.output_mode() else {
     return Ok(None);
   };
   let report = timescale.report.as_ref().ok_or_else(|| {
-    make_report!("An inferred coalescent ({mode:?}) must carry a per-segment report, but none was produced")
+    make_report!("A coalescent output ({mode:?}) must carry a per-segment report, but none was produced")
   })?;
 
   let tc_values = timescale.schedule.values().to_vec();
   let boundaries = report.segment_boundaries.to_vec();
-  let lower = report.tc_lower_bounds.to_vec();
-  let upper = report.tc_upper_bounds.to_vec();
+
+  // The skyline grid and stiffness apply only to a skyline; the confidence width only when a band
+  // was estimated (a fixed Tc has neither).
+  let (n_points, stiffness) = match mode {
+    CoalescentOutputMode::Skyline => (Some(skyline_params.n_points), Some(skyline_params.stiffness)),
+    CoalescentOutputMode::Fixed | CoalescentOutputMode::Constant => (None, None),
+  };
+  let confidence_n_std = report.band.as_ref().map(|_| skyline_params.n_std);
+
+  let (lower, upper) = match &report.band {
+    Some(band) => (band.lower.to_vec(), band.upper.to_vec()),
+    None => (Vec::new(), Vec::new()),
+  };
+  let band = report.band.as_ref().map(|_| CoalescentBand {
+    lower: &lower,
+    upper: &upper,
+  });
+
   let output = CoalescentOutput::new(
     CoalescentInputs {
       mode,
+      n_points,
+      stiffness,
+      confidence_n_std,
       gen_per_year,
-      confidence_n_std: Some(n_std),
     },
     &CoalescentSolve {
       segment_boundaries: &boundaries,
       tc_values: &tc_values,
-      band: Some(CoalescentBand {
-        lower: &lower,
-        upper: &upper,
-      }),
+      band,
+      log_likelihood: report.log_likelihood,
     },
   )?;
   Ok(Some(output))
@@ -700,8 +753,9 @@ fn optimize_branch_lengths_pre_step(
 #[cfg(test)]
 mod tests {
   use super::{
-    CoalescentBand, CoalescentInputs, CoalescentMode, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
-    CoalescentTcReport, CoalescentTimescale, build_coalescent_output, coalescent_mode, estimate_coalescent_tc,
+    CoalescentBand, CoalescentInputs, CoalescentMode, CoalescentOutput, CoalescentOutputMode, CoalescentReportBand,
+    CoalescentSolve, CoalescentTcReport, CoalescentTimescale, build_coalescent_output, coalescent_mode,
+    estimate_coalescent_tc,
   };
   use crate::clock::date_constraints::load_date_constraints;
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
@@ -749,43 +803,79 @@ mod tests {
   #[test]
   fn test_pipeline_build_coalescent_output_disabled_returns_none() -> Result<(), Report> {
     let timescale = CoalescentTimescale::constant(1.0);
+    let params = SkylineParams {
+      n_std: N_STD,
+      ..SkylineParams::default()
+    };
 
-    let actual = build_coalescent_output(CoalescentMode::Disabled, &timescale, GEN_PER_YEAR, N_STD)?;
+    let actual = build_coalescent_output(CoalescentMode::Disabled, &timescale, GEN_PER_YEAR, &params)?;
 
     assert_eq!(None, actual);
     Ok(())
   }
 
   #[test]
-  fn test_pipeline_build_coalescent_output_fixed_returns_none() -> Result<(), Report> {
-    // A fixed user Tc is not inferred, so it writes no coalescent output, matching v0 and the
-    // stderr N_e report gated on `is_optimized`.
-    let timescale = CoalescentTimescale::constant(2.5);
+  fn test_pipeline_build_coalescent_output_fixed_emits_one_segment_no_band() -> Result<(), Report> {
+    // A fixed user Tc now writes a single-segment, band-less document spanning the tree, diverging
+    // from v0 by explicit decision (kb/decisions/coalescent-output-schema.md). The span is the
+    // lineage-count breakpoint range, matching the tree's [2000, 2010] date span.
+    let graph = dated_tree()?;
+    let params = SkylineParams {
+      n_std: N_STD,
+      ..SkylineParams::default()
+    };
+    let timescale = estimate_coalescent_tc(CoalescentMode::Fixed(2.5), &graph, &params)?
+      .expect("a fixed Tc yields a coalescent timescale");
 
-    let actual = build_coalescent_output(CoalescentMode::Fixed(2.5), &timescale, GEN_PER_YEAR, N_STD)?;
+    let actual = build_coalescent_output(CoalescentMode::Fixed(2.5), &timescale, GEN_PER_YEAR, &params)?
+      .expect("a fixed Tc writes a coalescent output");
 
-    assert_eq!(None, actual);
+    let expected = CoalescentOutput::new(
+      CoalescentInputs {
+        mode: CoalescentOutputMode::Fixed,
+        n_points: None,
+        stiffness: None,
+        confidence_n_std: None,
+        gen_per_year: GEN_PER_YEAR,
+      },
+      &CoalescentSolve {
+        segment_boundaries: &[2000.0, 2010.0],
+        tc_values: &[2.5],
+        band: None,
+        log_likelihood: None,
+      },
+    )?;
+    assert_eq!(expected, actual);
     Ok(())
   }
 
   #[test]
   fn test_pipeline_build_coalescent_output_constant_carries_band() -> Result<(), Report> {
+    let params = SkylineParams {
+      n_std: N_STD,
+      ..SkylineParams::default()
+    };
     let timescale = CoalescentTimescale {
       distribution: Distribution::constant(3.0),
       schedule: PiecewiseConstantFn::new(array![], array![3.0]),
       report: Some(CoalescentTcReport {
         segment_boundaries: array![2000.0, 2020.0],
-        tc_lower_bounds: array![2.0],
-        tc_upper_bounds: array![4.0],
+        band: Some(CoalescentReportBand {
+          lower: array![2.0],
+          upper: array![4.0],
+        }),
+        log_likelihood: Some(-7.5),
       }),
     };
-    let actual = build_coalescent_output(CoalescentMode::Constant, &timescale, GEN_PER_YEAR, N_STD)?;
+    let actual = build_coalescent_output(CoalescentMode::Constant, &timescale, GEN_PER_YEAR, &params)?;
 
     let expected = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Constant,
-        gen_per_year: GEN_PER_YEAR,
+        n_points: None,
+        stiffness: None,
         confidence_n_std: Some(N_STD),
+        gen_per_year: GEN_PER_YEAR,
       },
       &CoalescentSolve {
         segment_boundaries: &[2000.0, 2020.0],
@@ -794,6 +884,7 @@ mod tests {
           lower: &[2.0],
           upper: &[4.0],
         }),
+        log_likelihood: Some(-7.5),
       },
     )?;
     assert_eq!(Some(expected), actual);
@@ -802,22 +893,33 @@ mod tests {
 
   #[test]
   fn test_pipeline_build_coalescent_output_skyline_multi_segment_band() -> Result<(), Report> {
+    let params = SkylineParams {
+      n_points: 2,
+      stiffness: 3.0,
+      n_std: N_STD,
+      ..SkylineParams::default()
+    };
     let timescale = CoalescentTimescale {
       distribution: Distribution::constant(3.0),
       schedule: PiecewiseConstantFn::new(array![2010.0], array![3.0, 5.0]),
       report: Some(CoalescentTcReport {
         segment_boundaries: array![2000.0, 2010.0, 2020.0],
-        tc_lower_bounds: array![2.0, 4.0],
-        tc_upper_bounds: array![4.0, 6.0],
+        band: Some(CoalescentReportBand {
+          lower: array![2.0, 4.0],
+          upper: array![4.0, 6.0],
+        }),
+        log_likelihood: Some(-9.0),
       }),
     };
-    let actual = build_coalescent_output(CoalescentMode::Skyline, &timescale, GEN_PER_YEAR, N_STD)?;
+    let actual = build_coalescent_output(CoalescentMode::Skyline, &timescale, GEN_PER_YEAR, &params)?;
 
     let expected = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Skyline,
-        gen_per_year: GEN_PER_YEAR,
+        n_points: Some(2),
+        stiffness: Some(3.0),
         confidence_n_std: Some(N_STD),
+        gen_per_year: GEN_PER_YEAR,
       },
       &CoalescentSolve {
         segment_boundaries: &[2000.0, 2010.0, 2020.0],
@@ -826,6 +928,7 @@ mod tests {
           lower: &[2.0, 4.0],
           upper: &[4.0, 6.0],
         }),
+        log_likelihood: Some(-9.0),
       },
     )?;
     assert_eq!(Some(expected), actual);
@@ -868,9 +971,11 @@ mod tests {
       .expect("an inferred skyline carries a per-segment report");
 
     pretty_assert_array_eq!(solve.segment_boundaries, report.segment_boundaries);
-    pretty_assert_array_eq!(solve.tc_lower_bounds, report.tc_lower_bounds);
-    pretty_assert_array_eq!(solve.tc_upper_bounds, report.tc_upper_bounds);
     pretty_assert_array_eq!(solve.tc_values, timescale.schedule.values().clone());
+    assert_eq!(Some(solve.log_likelihood.value()), report.log_likelihood);
+    let band = report.band.expect("an inferred skyline carries a confidence band");
+    pretty_assert_array_eq!(solve.tc_lower_bounds, band.lower);
+    pretty_assert_array_eq!(solve.tc_upper_bounds, band.upper);
 
     Ok(())
   }

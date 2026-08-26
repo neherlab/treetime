@@ -110,7 +110,10 @@ impl CoalescentOutput {
 
     Ok(Self {
       inputs,
-      outputs: CoalescentOutputs { segments },
+      outputs: CoalescentOutputs {
+        log_likelihood: solve.log_likelihood,
+        segments,
+      },
     })
   }
 
@@ -133,12 +136,19 @@ impl CoalescentOutput {
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CoalescentInputs {
   pub mode: CoalescentOutputMode,
-  /// Generations per year used to map `T_c` to `N_e`.
-  pub gen_per_year: f64,
+  /// Number of skyline segments. `Some` only for a skyline; a constant or fixed `T_c` configures no
+  /// grid.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub n_points: Option<usize>,
+  /// Skyline smoothing stiffness. `Some` only for a skyline.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub stiffness: Option<f64>,
   /// Confidence level, in standard deviations, of the `T_c` band. `None` for a fixed `T_c`, which
   /// carries no band.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub confidence_n_std: Option<f64>,
+  /// Generations per year used to map `T_c` to `N_e`.
+  pub gen_per_year: f64,
 }
 
 /// How the reported `T_c` was produced. The disabled mode reports no coalescent, so it has no
@@ -160,6 +170,10 @@ pub enum CoalescentOutputMode {
 /// The per-segment coalescent time scales.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CoalescentOutputs {
+  /// Coalescent log-likelihood at the reported `T_c`. `None` for a fixed `T_c`, which is not
+  /// inferred.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub log_likelihood: Option<f64>,
   pub segments: Vec<CoalescentSegment>,
 }
 
@@ -265,6 +279,8 @@ pub struct CoalescentSolve<'a> {
   pub tc_values: &'a [f64],
   /// Per-segment `T_c` confidence band, or `None` for a fixed `T_c`.
   pub band: Option<CoalescentBand<'a>>,
+  /// Coalescent log-likelihood at the reported `T_c`, or `None` for a fixed `T_c`.
+  pub log_likelihood: Option<f64>,
 }
 
 /// Per-segment `T_c` confidence band bounds. Both bounds are present together, so a partial band is

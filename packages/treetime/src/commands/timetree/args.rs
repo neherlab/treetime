@@ -308,24 +308,24 @@ pub struct TreetimeTimetreeArgs {
   #[cfg_attr(feature = "clap", clap(long, visible_alias = "tracelog", value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_tracelog: Option<PathBuf>,
 
-  /// Path to output the inferred coalescent time scale as a flat TSV (one row per skyline segment).
+  /// Path to output the coalescent time scale as a flat TSV (one row per skyline segment).
   ///
-  /// Written only when a coalescent was inferred (`--coalescent`, `--coalescent-opt`, or
-  /// `--coalescent-skyline`). Takes precedence over paths configured with `--output-all` and
-  /// `--output-selection`.
+  /// Written when a coalescent model is set (`--coalescent`, `--coalescent-opt`, or
+  /// `--coalescent-skyline`). A fixed `--coalescent` writes one band-less segment over the tree
+  /// span. Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_coalescent_tsv: Option<PathBuf>,
 
-  /// Path to output the inferred coalescent time scale as a flat CSV (one row per skyline segment).
+  /// Path to output the coalescent time scale as a flat CSV (one row per skyline segment).
   ///
-  /// Written only when a coalescent was inferred. Takes precedence over paths configured with
+  /// Written when a coalescent model is set. Takes precedence over paths configured with
   /// `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_coalescent_csv: Option<PathBuf>,
 
-  /// Path to output the inferred coalescent time scale as a rich JSON document (inputs + segments).
+  /// Path to output the coalescent time scale as a rich JSON document (inputs + segments).
   ///
-  /// Written only when a coalescent was inferred. Takes precedence over paths configured with
+  /// Written when a coalescent model is set. Takes precedence over paths configured with
   /// `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_coalescent_json: Option<PathBuf>,

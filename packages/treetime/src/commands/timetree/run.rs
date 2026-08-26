@@ -262,7 +262,7 @@ fn write_coalescent_output(
     },
     None if explicit => {
       return make_error!(
-        "Coalescent output requested but no coalescent was inferred. \
+        "Coalescent output requested but no coalescent model was set. \
          Use --coalescent, --coalescent-opt, or --coalescent-skyline."
       );
     },
@@ -270,7 +270,7 @@ fn write_coalescent_output(
     // GTR and confidence outputs (near-universal in timetree, so worth a warning when missing),
     // report the skip at debug level to avoid warning noise on every non-coalescent run.
     None => debug!(
-      "Skipping coalescent output: no coalescent was inferred \
+      "Skipping coalescent output: no coalescent model was set \
        (use --coalescent, --coalescent-opt, or --coalescent-skyline)"
     ),
   }

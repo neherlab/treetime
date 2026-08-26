@@ -21,10 +21,13 @@ mod tests {
     let output = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Skyline,
+        n_points: None,
+        stiffness: None,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
       &CoalescentSolve {
+        log_likelihood: None,
         segment_boundaries: &[0.0, 5.0, 10.0],
         tc_values: &[2.0, 3.0],
         band: Some(CoalescentBand {
@@ -73,10 +76,13 @@ mod tests {
     let output = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Constant,
+        n_points: None,
+        stiffness: None,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
       &CoalescentSolve {
+        log_likelihood: None,
         segment_boundaries: &[0.0, 10.0],
         tc_values: &[2.0],
         band: Some(CoalescentBand {
@@ -99,10 +105,13 @@ mod tests {
     let output = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Fixed,
+        n_points: None,
+        stiffness: None,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: None,
       },
       &CoalescentSolve {
+        log_likelihood: None,
         segment_boundaries: &[0.0, 10.0],
         tc_values: &[2.0],
         band: None,
@@ -132,10 +141,13 @@ mod tests {
     let output = CoalescentOutput::new(
       CoalescentInputs {
         mode,
+        n_points: None,
+        stiffness: None,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: band.map(|_| 2.0),
       },
       &CoalescentSolve {
+        log_likelihood: None,
         segment_boundaries: boundaries,
         tc_values,
         band: band.map(|(lower, upper)| CoalescentBand { lower, upper }),
@@ -150,10 +162,13 @@ mod tests {
     let output = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Constant,
+        n_points: None,
+        stiffness: None,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
       &CoalescentSolve {
+        log_likelihood: None,
         segment_boundaries: &[0.0, 10.0],
         tc_values: &[2.0],
         band: Some(CoalescentBand {
@@ -183,10 +198,13 @@ mod tests {
     let output = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Fixed,
+        n_points: None,
+        stiffness: None,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: None,
       },
       &CoalescentSolve {
+        log_likelihood: None,
         segment_boundaries: &[0.0, 10.0],
         tc_values: &[2.0],
         band: None,
@@ -194,10 +212,50 @@ mod tests {
     )?;
 
     let json = coalescent_json_str(&output)?;
-    // No band, so the optional bound keys and confidence are omitted entirely.
+    // Fixed Tc: no band and no inference, so the confidence, skyline grid, and likelihood keys are
+    // all omitted.
     assert!(!json.contains("\"lower\""));
     assert!(!json.contains("\"upper\""));
     assert!(!json.contains("\"confidence_n_std\""));
+    assert!(!json.contains("\"n_points\""));
+    assert!(!json.contains("\"stiffness\""));
+    assert!(!json.contains("\"log_likelihood\""));
+    Ok(())
+  }
+
+  #[test]
+  fn test_coalescent_output_json_skyline_records_grid_and_likelihood() -> Result<(), Report> {
+    // A skyline records its grid inputs (n_points, stiffness) and the fit likelihood. JSON carries
+    // the full document; the flat rows carry only the per-segment projection.
+    let output = CoalescentOutput::new(
+      CoalescentInputs {
+        mode: CoalescentOutputMode::Skyline,
+        n_points: Some(3),
+        stiffness: Some(2.0),
+        confidence_n_std: Some(2.0),
+        gen_per_year: GEN_PER_YEAR,
+      },
+      &CoalescentSolve {
+        segment_boundaries: &[0.0, 3.0, 6.0, 9.0],
+        tc_values: &[2.0, 3.0, 4.0],
+        band: Some(CoalescentBand {
+          lower: &[1.0, 1.0, 1.0],
+          upper: &[4.0, 5.0, 6.0],
+        }),
+        log_likelihood: Some(-12.5),
+      },
+    )?;
+
+    let json = coalescent_json_str(&output)?;
+    assert!(json.contains("\"n_points\": 3"));
+    assert!(json.contains("\"stiffness\": 2.0"));
+    assert!(json.contains("\"log_likelihood\": -12.5"));
+
+    // The flat projection carries no inputs and no likelihood, only the per-segment columns.
+    let csv = coalescent_delimited_str(&output, b',')?;
+    assert!(!csv.contains("n_points"));
+    assert!(!csv.contains("stiffness"));
+    assert!(!csv.contains("log_likelihood"));
     Ok(())
   }
 
@@ -213,10 +271,13 @@ mod tests {
     let output = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Constant,
+        n_points: None,
+        stiffness: None,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
       &CoalescentSolve {
+        log_likelihood: None,
         segment_boundaries: &[0.0, 10.0],
         tc_values: &[2.0],
         band: Some(CoalescentBand {
@@ -238,10 +299,13 @@ mod tests {
     let constant = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Constant,
+        n_points: None,
+        stiffness: None,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
       &CoalescentSolve {
+        log_likelihood: None,
         segment_boundaries: &[0.0, 10.0],
         tc_values: &[2.0],
         band: Some(CoalescentBand {
@@ -256,10 +320,13 @@ mod tests {
     let fixed = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Fixed,
+        n_points: None,
+        stiffness: None,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: None,
       },
       &CoalescentSolve {
+        log_likelihood: None,
         segment_boundaries: &[0.0, 10.0],
         tc_values: &[2.0],
         band: None,
@@ -275,10 +342,13 @@ mod tests {
     let result = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Skyline,
+        n_points: None,
+        stiffness: None,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
       &CoalescentSolve {
+        log_likelihood: None,
         segment_boundaries: &[0.0, 5.0], // needs 3 boundaries for 2 segments
         tc_values: &[2.0, 3.0],
         band: None,
@@ -295,10 +365,13 @@ mod tests {
     let result = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Skyline,
+        n_points: None,
+        stiffness: None,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
       &CoalescentSolve {
+        log_likelihood: None,
         segment_boundaries: &[0.0, 5.0, 10.0],
         tc_values: &[2.0, 3.0],
         band: Some(CoalescentBand {
