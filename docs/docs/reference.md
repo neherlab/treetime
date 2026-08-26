@@ -170,9 +170,9 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
    Estimates a piecewise linear coalescent rate history. Requires --skyline-n-points to specify the number of grid points.
 * `--skyline-n-points <SKYLINE_N_POINTS>` — Number of grid points in skyline coalescent model.
 
-   Only used when --coalescent-skyline is set. Defines how many piecewise linear segments are used to model Tc(t) over time. Must be at least 2.
+   Only used when --coalescent-skyline is set. Defines how many piecewise linear segments are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.
 
-  Default value: `10`
+  Default value: `20`
 * `--skyline-stiffness <SKYLINE_STIFFNESS>` — Smoothing stiffness for the skyline coalescent.
 
    Penalizes log-fold-changes of the coalescent time scale Tc between adjacent skyline segments: with z = ln Tc, the objective adds `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the stiffness is dimensionless and scale-independent. Larger values enforce a smoother Tc(t). Only used when --coalescent-skyline is set.
@@ -277,6 +277,15 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--output-tracelog <OUTPUT_TRACELOG>` [alias: `tracelog`] — Path to output iteration-statistics tracelog CSV (monitors convergence).
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
+* `--output-coalescent-tsv <OUTPUT_COALESCENT_TSV>` — Path to output the inferred coalescent time scale as a flat TSV (one row per skyline segment).
+
+   Written only when a coalescent was inferred (`--coalescent`, `--coalescent-opt`, or `--coalescent-skyline`). Takes precedence over paths configured with `--output-all` and `--output-selection`.
+* `--output-coalescent-csv <OUTPUT_COALESCENT_CSV>` — Path to output the inferred coalescent time scale as a flat CSV (one row per skyline segment).
+
+   Written only when a coalescent was inferred. Takes precedence over paths configured with `--output-all` and `--output-selection`.
+* `--output-coalescent-json <OUTPUT_COALESCENT_JSON>` — Path to output the inferred coalescent time scale as a rich JSON document (inputs + segments).
+
+   Written only when a coalescent was inferred. Takes precedence over paths configured with `--output-all` and `--output-selection`.
 * `-O`, `--output-all <OUTPUT_ALL>` — Write all default output files into this directory.
 
    Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.
@@ -355,7 +364,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
 
-  Possible values: `all`, `nwk`, `nexus`, `auspice`, `phyloxml`, `phyloxml-json`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `clock-model`, `confidence-tsv`, `tracelog`
+  Possible values: `all`, `nwk`, `nexus`, `auspice`, `phyloxml`, `phyloxml-json`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `clock-model`, `confidence-tsv`, `tracelog`, `coalescent-tsv`, `coalescent-csv`, `coalescent-json`
 
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 
@@ -377,6 +386,11 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
   Possible values: `mean`, `median`
 
 * `--seed <SEED>` [alias: `rng-seed`] — Random seed
+* `--gen-per-year <GEN_PER_YEAR>` — Generations per year for converting the coalescent time scale Tc into an effective population size.
+
+   The coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is already in calendar years, so this factor rescales it into generation units, the standard axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.
+
+  Default value: `50`
 
 
 
