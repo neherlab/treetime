@@ -3,3 +3,4 @@ logLevel = "warn"
 
 [install]
 exact = true
+minimumReleaseAge = 604800
