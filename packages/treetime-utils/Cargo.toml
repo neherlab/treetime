@@ -58,6 +58,7 @@ proptest = { workspace = true }
 rand = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
+tempfile = { workspace = true }
 
 [lints]
 workspace = true

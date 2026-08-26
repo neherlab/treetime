@@ -1,7 +1,7 @@
 use crate::io::compression::remove_compression_ext;
 use crate::io::file::{create_file_or_stdout, open_file_or_stdin};
 use crate::io::fs::extension;
-use crate::io::yaml::yaml_write_file;
+use crate::io::yaml::{yaml_read_file, yaml_write_file};
 use eyre::{Report, WrapErr};
 use serde::{Deserialize, Serialize};
 use serde_json::{Deserializer, de::Read};
@@ -67,6 +67,19 @@ pub fn json_or_yaml_write_file<T: Serialize>(filepath: impl AsRef<Path>, obj: &T
   match serialization_format_from_path(filepath) {
     SerializationFormat::Json => json_write_file(filepath, &obj, JsonPretty(true)),
     SerializationFormat::Yaml => yaml_write_file(filepath, &obj),
+  }
+}
+
+/// Reads JSON or YAML file depending on file extension.
+///
+/// The format is chosen from the extension after any compression suffix is stripped (`.yaml`/`.yml`
+/// select YAML, everything else JSON), mirroring `json_or_yaml_write_file`. Both readers decompress
+/// transparently and accept `-` for stdin.
+pub fn json_or_yaml_read_file<T: for<'de> Deserialize<'de>>(filepath: impl AsRef<Path>) -> Result<T, Report> {
+  let filepath = filepath.as_ref();
+  match serialization_format_from_path(filepath) {
+    SerializationFormat::Json => json_read_file(filepath),
+    SerializationFormat::Yaml => yaml_read_file(filepath),
   }
 }
 
