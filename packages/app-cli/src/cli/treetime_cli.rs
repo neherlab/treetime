@@ -155,23 +155,27 @@ mod tests {
     // Defaults live in `TreetimeTimetreeArgs` (SmartDefault) and clap reads them via `default_value_t`.
     let args = parse_timetree(&[])?;
     pretty_assert_ulps_eq!(2.0, args.coalescent_confidence);
-    assert_eq!(10, args.skyline_n_points);
+    assert_eq!(20, args.skyline_n_points);
+    pretty_assert_ulps_eq!(50.0, args.gen_per_year);
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::confidence(&["--coalescent-confidence", "3.5"], 3.5, 10)]
-  #[case::n_points(  &["--skyline-n-points",      "4"],   2.0,  4)]
+  #[case::confidence(  &["--coalescent-confidence", "3.5"], 3.5, 20, 50.0)]
+  #[case::n_points(    &["--skyline-n-points",      "4"],   2.0,  4, 50.0)]
+  #[case::gen_per_year(&["--gen-per-year",          "30"],  2.0, 20, 30.0)]
   #[trace]
   fn test_treetime_cli_coalescent_args_parse(
     #[case] extra: &[&str],
     #[case] expected_confidence: f64,
     #[case] expected_n_points: usize,
+    #[case] expected_gen_per_year: f64,
   ) {
     let args = parse_timetree(extra).unwrap();
     pretty_assert_ulps_eq!(expected_confidence, args.coalescent_confidence);
     assert_eq!(expected_n_points, args.skyline_n_points);
+    pretty_assert_ulps_eq!(expected_gen_per_year, args.gen_per_year);
   }
 
   #[test]
