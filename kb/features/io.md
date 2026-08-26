@@ -40,3 +40,7 @@
 - [x] YAML serialization
 - [x] Compressed FASTA output
 - [x] Streaming readers/writers with automatic decompression
+
+## Configuration Input
+
+- [x] `--config` per-command configuration object (JSON or YAML, optionally compressed), in the shape the command serializes to. Precedence: explicit CLI flag, then config file, then default. Scope is a single command's own args; the broader multi-partition config system (multiple alignments, per-partition models) remains an open design in [kb/proposals/config-file-multi-partition.md](../proposals/config-file-multi-partition.md).
