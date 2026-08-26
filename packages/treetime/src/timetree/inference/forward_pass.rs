@@ -264,7 +264,10 @@ fn commit_node_time<N, E, D>(
   }
 }
 
-/// Whether the node was given an exact date, which pins it to a single time (else its time is inferred).
+/// Whether the node was given an exact date, which pins it to a single time.
+///
+/// Anything else -- an uncertain or ranged date, or no date at all -- leaves the node's time to be
+/// inferred, and so to be refined by the message coming down from its parent.
 fn has_exact_date(node: &impl TimetreeNode) -> bool {
   node.date_constraint().as_ref().is_some_and(|dist| dist.is_point())
 }
@@ -279,8 +282,9 @@ where
   dependencies.node(parent_key).time()
 }
 
-/// Assign the committed time from the peak of the time distribution, clamped no earlier than the
-/// parent. Returns `None` (node left undated) when the distribution yields no time.
+/// Assign the node's committed time from the peak of its time distribution, clamped to be no
+/// earlier than the parent's committed time. Returns the assigned time, or `None` when the time
+/// distribution is empty or degenerate and no time could be determined (the node is left undated).
 pub(super) fn set_likely_time(node: &mut impl TimetreeNode, parent_time: Option<f64>) -> Option<f64> {
   let time = node
     .time_distribution()
@@ -293,6 +297,10 @@ pub(super) fn set_likely_time(node: &mut impl TimetreeNode, parent_time: Option<
 }
 
 /// Trace what the refinement of one node did to its grid, for `RUST_LOG=debug`.
+///
+/// The grid a node ends up on is set by the operands it was built from, so a grid that grows or a
+/// support that drifts is read off the pair: `parent` is the distribution the message came from and
+/// `refined` is what the node now carries.
 fn log_refinement<N: TimetreeNode + Named>(node: &N, parent: &Distribution<NegLog>, refined: &Distribution<NegLog>) {
   if !log_enabled!(Level::Debug) {
     return;
@@ -325,6 +333,9 @@ fn log_kept_given_date<N: TimetreeNode + Named>(node: &N, dist_from_parent: &Dis
 }
 
 /// Grid size and support of a distribution: `n=<points>, [<t_min>, <t_max>]`.
+///
+/// The point count is what the distribution would be evaluated on: one for a point date, two for a
+/// range or a formula's end points, and the full grid for a function.
 fn describe_grid(dist: &Distribution<NegLog>) -> String {
   let n_points = dist.t().len();
   match dist.time_bounds() {
