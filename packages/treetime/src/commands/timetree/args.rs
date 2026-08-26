@@ -143,8 +143,8 @@ pub struct TreetimeTimetreeArgs {
   /// Number of grid points in skyline coalescent model.
   ///
   /// Only used when --coalescent-skyline is set. Defines how many piecewise linear segments
-  /// are used to model Tc(t) over time. Must be at least 2.
-  #[default = 10]
+  /// are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.
+  #[default = 20]
   #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().skyline_n_points))]
   #[cfg_attr(feature = "clap", clap(value_parser = parse_skyline_n_points))]
   pub skyline_n_points: usize,
