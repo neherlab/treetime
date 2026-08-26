@@ -1,3 +1,4 @@
+pub mod config;
 pub mod jobs;
 pub mod print_help_markdown;
 pub mod progress;

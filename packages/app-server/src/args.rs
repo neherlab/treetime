@@ -53,6 +53,7 @@ impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
     use treetime::commands::shared::model::ModelArgs;
     use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
+      config_args: treetime::commands::shared::config::ConfigArgs::default(),
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
       },
@@ -254,6 +255,7 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
     use treetime::commands::shared::model::ModelArgs;
     use treetime::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TopologyOrderArgs};
     Self {
+      config_args: treetime::commands::shared::config::ConfigArgs::default(),
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
       },
@@ -370,6 +372,7 @@ impl From<ServerMugrationArgs> for TreetimeMugrationArgs {
   fn from(s: ServerMugrationArgs) -> Self {
     use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
+      config_args: treetime::commands::shared::config::ConfigArgs::default(),
       tree: s.tree.map(PathBuf::from),
       attribute: s.attribute,
       metadata: PathBuf::from(s.states),
@@ -440,6 +443,7 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
     use treetime::commands::shared::model::ModelArgs;
     use treetime::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TopologyOrderArgs};
     Self {
+      config_args: treetime::commands::shared::config::ConfigArgs::default(),
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
       },
@@ -500,6 +504,7 @@ impl From<ServerPruneArgs> for TreetimePruneArgs {
     use treetime::commands::shared::alphabet::AlphabetArgs;
     use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
+      config_args: treetime::commands::shared::config::ConfigArgs::default(),
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
       },

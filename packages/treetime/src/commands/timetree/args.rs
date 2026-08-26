@@ -1,6 +1,7 @@
 use crate::ancestral::params::MethodAncestral;
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::model::ModelArgs;
@@ -29,6 +30,10 @@ pub use crate::timetree::params::TimeMarginalMode;
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeTimetreeArgs {
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(skip)]
+  pub config_args: ConfigArgs,
+
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub alignment: AlignmentArgs,
 

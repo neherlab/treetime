@@ -1,6 +1,7 @@
+use crate::cli::config::overlay_config;
 use crate::cli::jobs::Jobs;
 use crate::cli::verbosity::Verbosity;
-use clap::{CommandFactory, Parser, Subcommand, ValueEnum, ValueHint};
+use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_complete::{Shell, generate};
 use clap_complete_fig::Fig;
 use eyre::Report;
@@ -130,9 +131,33 @@ pub fn generate_shell_completions(shell: &str) -> Result<(), Report> {
 }
 
 pub fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
-  let args = TreetimeArgs::parse();
+  // `get_matches` (not `parse`) so we can consult per-argument value sources when merging `--config`.
+  let matches = TreetimeArgs::command().get_matches();
+  let mut args = TreetimeArgs::from_arg_matches(&matches)?;
   setup_logger(args.verbosity.get_filter_level());
+
+  if let Some((_, sub_matches)) = matches.subcommand() {
+    overlay_command_config(&mut args.command, sub_matches)?;
+  }
+
   Ok(args)
+}
+
+/// Merge a `--config` file into the selected command's args, if the command accepts one.
+///
+/// Commands without a configuration object (completions, schema, help) have no `--config` flag and
+/// are left untouched.
+fn overlay_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) -> Result<(), Report> {
+  match command {
+    TreetimeCommands::Timetree(args) => overlay_config(args.as_mut(), matches),
+    TreetimeCommands::Optimize(args) => overlay_config(args, matches),
+    TreetimeCommands::Prune(args) => overlay_config(args, matches),
+    TreetimeCommands::Ancestral(args) => overlay_config(args, matches),
+    TreetimeCommands::Clock(args) => overlay_config(args, matches),
+    TreetimeCommands::Homoplasy(args) => overlay_config(args, matches),
+    TreetimeCommands::Mugration(args) => overlay_config(args, matches),
+    _ => Ok(()),
+  }
 }
 
 #[cfg(test)]

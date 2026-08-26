@@ -1,3 +1,4 @@
+use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::metadata::MetadataIdArgs;
 use crate::commands::shared::output::{MugrationOutputSelection, OutputCoreArgs, TopologyOrderArgs};
 #[cfg(feature = "clap")]
@@ -11,6 +12,10 @@ use std::path::PathBuf;
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeMugrationArgs {
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(skip)]
+  pub config_args: ConfigArgs,
+
   /// Name of file containing the tree in newick, nexus, or phylip format.
   ///
   /// If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)

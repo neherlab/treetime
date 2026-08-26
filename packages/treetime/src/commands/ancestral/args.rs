@@ -3,6 +3,7 @@ use crate::ancestral::sample::SampleMode;
 use crate::commands::ancestral::aa_model::AaModelName;
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{AncestralOutputSelection, OutputCoreArgs, TopologyOrderArgs};
@@ -17,6 +18,10 @@ use std::path::PathBuf;
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeAncestralArgs {
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(skip)]
+  pub config_args: ConfigArgs,
+
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub alignment: AlignmentArgs,
 

@@ -2,6 +2,7 @@ use crate::ancestral::params::MethodAncestral;
 use crate::clock::clock_regression::ClockParams;
 use crate::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod};
 use crate::commands::shared::alignment::AlignmentArgs;
+use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{ClockOutputSelection, OutputCoreArgs, TopologyOrderArgs};
@@ -18,6 +19,10 @@ use std::path::PathBuf;
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeClockArgs {
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(skip)]
+  pub config_args: ConfigArgs,
+
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub alignment: AlignmentArgs,
 

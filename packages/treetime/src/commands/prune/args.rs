@@ -1,5 +1,6 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::output::{OutputCoreArgs, PruneOutputSelection, TopologyOrderArgs};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -12,6 +13,10 @@ use std::path::PathBuf;
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimePruneArgs {
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(skip)]
+  pub config_args: ConfigArgs,
+
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub alignment: AlignmentArgs,
 

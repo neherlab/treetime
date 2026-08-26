@@ -1,6 +1,7 @@
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{DivergenceUnits, OptimizeOutputSelection, OutputCoreArgs, TopologyOrderArgs};
@@ -36,6 +37,10 @@ impl From<OptimizeRerootMethod> for RerootMethod {
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeOptimizeArgs {
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(skip)]
+  pub config_args: ConfigArgs,
+
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub alignment: AlignmentArgs,
 
