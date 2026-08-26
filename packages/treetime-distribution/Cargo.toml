@@ -24,6 +24,7 @@ itertools = { workspace = true }
 num = { workspace = true }
 ordered-float = { workspace = true }
 serde = { workspace = true }
+strum_macros = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 ndarray = { workspace = true }

@@ -18,68 +18,22 @@ pub fn distribution_division<Y: YAxisPolicy>(
   divisor: &Distribution<Y>,
 ) -> Result<Distribution<Y>, Report> {
   match (dividend, divisor) {
-    (Distribution::Formula(_), Distribution::Empty) => {
-      make_error!("Cannot divide Formula by Empty: operation not implemented")
+    (Distribution::Formula(_), _) | (_, Distribution::Formula(_)) => {
+      make_error!("Cannot divide {dividend} by {divisor}: operation not implemented")
     },
-    (Distribution::Formula(_), Distribution::Point(_)) => {
-      make_error!("Cannot divide Formula by Point: operation not implemented")
+    (Distribution::Empty, _) => {
+      let dividend_domain = distribution_hard_domain(dividend);
+      let divisor_domain = distribution_hard_domain(divisor);
+      guarded_empty_result("division", dividend_domain, divisor_domain)
     },
-    (Distribution::Formula(_), Distribution::Range(_)) => {
-      make_error!("Cannot divide Formula by Range: operation not implemented")
-    },
-    (Distribution::Formula(_), Distribution::Function(_)) => {
-      make_error!("Cannot divide Formula by Function: operation not implemented")
-    },
-    (Distribution::Formula(_), Distribution::Formula(_)) => {
-      make_error!("Cannot divide Formula by Formula: operation not implemented")
-    },
-    (Distribution::Empty, Distribution::Formula(_)) => {
-      make_error!("Cannot divide Empty by Formula: operation not implemented")
-    },
-    (Distribution::Point(_), Distribution::Formula(_)) => {
-      make_error!("Cannot divide Point by Formula: operation not implemented")
-    },
-    (Distribution::Range(_), Distribution::Formula(_)) => {
-      make_error!("Cannot divide Range by Formula: operation not implemented")
-    },
-    (Distribution::Function(_), Distribution::Formula(_)) => {
-      make_error!("Cannot divide Function by Formula: operation not implemented")
-    },
-    (Distribution::Empty, _) => guarded_empty_result(
-      "division",
-      distribution_hard_domain(dividend),
-      distribution_hard_domain(divisor),
-    ),
-    (_, Distribution::Empty) => {
-      make_error!("Cannot divide by empty distribution") //
-    },
-    (Distribution::Point(_), Distribution::Point(_)) => {
-      make_error!("Cannot divide Point by Point: operation not well-defined") //
-    },
-    (Distribution::Range(_), Distribution::Point(_)) => {
-      make_error!("Cannot divide Range by Point: operation not well-defined") //
-    },
-    (Distribution::Function(_), Distribution::Point(_)) => {
-      make_error!("Cannot divide Function by Point: operation not well-defined") //
-    },
-    (Distribution::Point(_), Distribution::Range(_)) => {
-      make_error!("Cannot divide Point by Range: operation not well-defined") //
-    },
-    (Distribution::Range(_), Distribution::Range(_)) => {
-      make_error!("Cannot divide Range by Range: operation not well-defined") //
-    },
-    (Distribution::Function(_), Distribution::Range(_)) => {
-      make_error!("Cannot divide Function by Range: operation not well-defined") //
-    },
-    (Distribution::Point(a), Distribution::Function(b)) => {
-      divide_point_by_function::<Y>(a, b) //
-    },
-    (Distribution::Range(a), Distribution::Function(b)) => {
-      divide_range_by_function::<Y>(a, b) //
-    },
-    (Distribution::Function(a), Distribution::Function(b)) => {
-      divide_function_by_function::<Y>(a, b) //
-    },
+    (_, Distribution::Empty) => make_error!("Cannot divide by empty distribution"),
+    (
+      Distribution::Point(_) | Distribution::Range(_) | Distribution::Function(_),
+      Distribution::Point(_) | Distribution::Range(_),
+    ) => make_error!("Cannot divide {dividend} by {divisor}: operation not well-defined"),
+    (Distribution::Point(a), Distribution::Function(b)) => divide_point_by_function::<Y>(a, b),
+    (Distribution::Range(a), Distribution::Function(b)) => divide_range_by_function::<Y>(a, b),
+    (Distribution::Function(a), Distribution::Function(b)) => divide_function_by_function::<Y>(a, b),
   }
 }
 
@@ -128,7 +82,11 @@ fn divide_range_by_function<Y: YAxisPolicy>(
   let range_domain = range_hard_domain(range);
   let divisor_domain = function_hard_domain(divisor);
   match multiplication_support_intersection(&[range_domain, divisor_domain]) {
-    SupportIntersection::Disjoint => guarded_empty_result("division", Some(range_domain), Some(divisor_domain)),
+    SupportIntersection::Disjoint => {
+      let dividend_domain = Some(range_domain);
+      let divisor_domain = Some(divisor_domain);
+      guarded_empty_result("division", dividend_domain, divisor_domain)
+    },
     SupportIntersection::Point(t) => Ok(Distribution::point(
       t,
       Y::divide(range.amplitude(), Y::safe_divisor(divisor.interp(t)?)),
@@ -163,7 +121,11 @@ fn divide_function_by_function<Y: YAxisPolicy>(
   let dividend_domain = function_hard_domain(dividend);
   let divisor_domain = function_hard_domain(divisor);
   match multiplication_support_intersection(&[dividend_domain, divisor_domain]) {
-    SupportIntersection::Disjoint => guarded_empty_result("division", Some(dividend_domain), Some(divisor_domain)),
+    SupportIntersection::Disjoint => {
+      let dividend_domain = Some(dividend_domain);
+      let divisor_domain = Some(divisor_domain);
+      guarded_empty_result("division", dividend_domain, divisor_domain)
+    },
     SupportIntersection::Point(t) => Ok(Distribution::point(
       t,
       Y::divide(dividend.interp(t)?, Y::safe_divisor(divisor.interp(t)?)),

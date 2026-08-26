@@ -20,11 +20,11 @@ pub fn distribution_multiplication<Y: YAxisPolicy>(
   b: &Distribution<Y>,
 ) -> Result<Distribution<Y>, Report> {
   match (a, b) {
-    (Distribution::Empty, _) | (_, Distribution::Empty) => guarded_empty_result(
-      "multiplication",
-      distribution_hard_domain(a),
-      distribution_hard_domain(b),
-    ),
+    (Distribution::Empty, _) | (_, Distribution::Empty) => {
+      let a_domain = distribution_hard_domain(a);
+      let b_domain = distribution_hard_domain(b);
+      guarded_empty_result("multiplication", a_domain, b_domain)
+    },
     (Distribution::Point(a), Distribution::Point(b)) => {
       multiply_point_point::<Y>(a, b) //
     },
@@ -64,7 +64,9 @@ fn multiply_point_point<Y: YAxisPolicy>(
 ) -> Result<Distribution<Y>, Report> {
   const EPS: f64 = 1e-9;
   if (a.t() - b.t()).abs() > EPS {
-    return guarded_empty_result("multiplication", Some(point_hard_domain(a)), Some(point_hard_domain(b)));
+    let a_domain = Some(point_hard_domain(a));
+    let b_domain = Some(point_hard_domain(b));
+    return guarded_empty_result("multiplication", a_domain, b_domain);
   }
   let amplitude = Y::multiply(a.amplitude(), b.amplitude());
   Ok(Distribution::point(a.t(), amplitude))
@@ -77,11 +79,9 @@ fn multiply_point_range<Y: YAxisPolicy>(
   const EPS: f64 = 1e-9;
   let t = point.t();
   if t < range.start() - EPS || t > range.end() + EPS {
-    return guarded_empty_result(
-      "multiplication",
-      Some(point_hard_domain(point)),
-      Some(range_hard_domain(range)),
-    );
+    let point_domain = Some(point_hard_domain(point));
+    let range_domain = Some(range_hard_domain(range));
+    return guarded_empty_result("multiplication", point_domain, range_domain);
   }
   let amplitude = Y::multiply(point.amplitude(), range.amplitude());
   Ok(Distribution::point(t, amplitude))
@@ -104,21 +104,17 @@ fn multiply_point_function<Y: YAxisPolicy>(
     // so the point picks up a finite value. Beyond a hard boundary (`Hard`) or an undeclared one
     // (`Error`) the function carries no probability there and the product is empty.
     if !tail.is_soft() {
-      return guarded_empty_result(
-        "multiplication",
-        Some(point_hard_domain(point)),
-        Some(function_hard_domain(func)),
-      );
+      let point_domain = Some(point_hard_domain(point));
+      let function_domain = Some(function_hard_domain(func));
+      return guarded_empty_result("multiplication", point_domain, function_domain);
     }
   }
   let func_value = func.interp(t)?;
   let amplitude = Y::multiply(point.amplitude(), func_value);
   if !Y::is_defined(amplitude) {
-    return guarded_empty_result(
-      "multiplication",
-      Some(point_hard_domain(point)),
-      Some(function_hard_domain(func)),
-    );
+    let point_domain = Some(point_hard_domain(point));
+    let function_domain = Some(function_hard_domain(func));
+    return guarded_empty_result("multiplication", point_domain, function_domain);
   }
   Ok(Distribution::point(t, amplitude))
 }
@@ -131,7 +127,9 @@ fn multiply_range_range<Y: YAxisPolicy>(
   let overlap_end = a.end().min(b.end());
 
   if overlap_start >= overlap_end {
-    return guarded_empty_result("multiplication", Some(range_hard_domain(a)), Some(range_hard_domain(b)));
+    let a_domain = Some(range_hard_domain(a));
+    let b_domain = Some(range_hard_domain(b));
+    return guarded_empty_result("multiplication", a_domain, b_domain);
   }
 
   let amplitude = Y::multiply(a.amplitude(), b.amplitude());
@@ -148,7 +146,9 @@ fn multiply_range_function<Y: YAxisPolicy>(
   let b_tails = (func.left_extrap(), func.right_extrap());
   match multiplication_support_intersection(&[(a_bounds, a_tails), (b_bounds, b_tails)]) {
     SupportIntersection::Disjoint => {
-      guarded_empty_result("multiplication", Some((a_bounds, a_tails)), Some((b_bounds, b_tails)))
+      let a_domain = Some((a_bounds, a_tails));
+      let b_domain = Some((b_bounds, b_tails));
+      guarded_empty_result("multiplication", a_domain, b_domain)
     },
     SupportIntersection::Point(t) => {
       let amplitude = Y::multiply(range.amplitude(), func.interp(t)?);
@@ -362,7 +362,11 @@ fn multiply_formula_formula<Y: YAxisPolicy>(
   let a_domain = formula_hard_domain(a);
   let b_domain = formula_hard_domain(b);
   match multiplication_support_intersection(&[a_domain, b_domain]) {
-    SupportIntersection::Disjoint => guarded_empty_result("multiplication", Some(a_domain), Some(b_domain)),
+    SupportIntersection::Disjoint => {
+      let a_domain = Some(a_domain);
+      let b_domain = Some(b_domain);
+      guarded_empty_result("multiplication", a_domain, b_domain)
+    },
     SupportIntersection::Point(t) => Ok(Distribution::point(
       t,
       Y::multiply(a.eval_single(t)?, b.eval_single(t)?),
@@ -394,7 +398,9 @@ fn multiply_formula_function<Y: YAxisPolicy>(
   let b_tails = (b.left_extrap(), b.right_extrap());
   match multiplication_support_intersection(&[(a_bounds, a_tails), (b_bounds, b_tails)]) {
     SupportIntersection::Disjoint => {
-      guarded_empty_result("multiplication", Some((a_bounds, a_tails)), Some((b_bounds, b_tails)))
+      let a_domain = Some((a_bounds, a_tails));
+      let b_domain = Some((b_bounds, b_tails));
+      guarded_empty_result("multiplication", a_domain, b_domain)
     },
     SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.eval_single(t)?, b.interp(t)?))),
     SupportIntersection::Interval(bounds) => {
@@ -451,7 +457,11 @@ fn multiply_formula_range<Y: YAxisPolicy>(
   let a_domain = formula_hard_domain(a);
   let b_domain = range_hard_domain(b);
   match multiplication_support_intersection(&[a_domain, b_domain]) {
-    SupportIntersection::Disjoint => guarded_empty_result("multiplication", Some(a_domain), Some(b_domain)),
+    SupportIntersection::Disjoint => {
+      let a_domain = Some(a_domain);
+      let b_domain = Some(b_domain);
+      guarded_empty_result("multiplication", a_domain, b_domain)
+    },
     SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.eval_single(t)?, b.amplitude()))),
     SupportIntersection::Interval(bounds) => {
       let grid = Array1::linspace(bounds.0, bounds.1, FORMULA_GRID_SIZE);

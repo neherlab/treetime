@@ -25,23 +25,13 @@ pub fn distribution_convolution<Y: SupportsConvolution>(
   b: &Distribution<Y>,
 ) -> Result<Distribution<Y>, Report> {
   match (a, b) {
-    (Distribution::Formula(_), Distribution::Empty) | (Distribution::Empty, Distribution::Formula(_)) => {
-      make_error!("Cannot convolve Formula with Empty: operation not implemented")
-    },
-    (Distribution::Formula(_), Distribution::Point(_)) | (Distribution::Point(_), Distribution::Formula(_)) => {
-      make_error!("Cannot convolve Formula with Point: operation not implemented")
-    },
-    (Distribution::Formula(_), Distribution::Range(_)) | (Distribution::Range(_), Distribution::Formula(_)) => {
-      make_error!("Cannot convolve Formula with Range: operation not implemented")
-    },
-    (Distribution::Formula(_), Distribution::Function(_)) | (Distribution::Function(_), Distribution::Formula(_)) => {
-      make_error!("Cannot convolve Formula with Function: operation not implemented")
-    },
-    (Distribution::Formula(_), Distribution::Formula(_)) => {
-      make_error!("Cannot convolve Formula with Formula: operation not implemented")
+    (Distribution::Formula(_), _) | (_, Distribution::Formula(_)) => {
+      make_error!("Cannot convolve {a} with {b}: operation not implemented")
     },
     (Distribution::Empty, _) | (_, Distribution::Empty) => {
-      guarded_empty_result("convolution", distribution_hard_domain(a), distribution_hard_domain(b))
+      let a_domain = distribution_hard_domain(a);
+      let b_domain = distribution_hard_domain(b);
+      guarded_empty_result("convolution", a_domain, b_domain)
     },
     (Distribution::Point(a), Distribution::Point(b)) => {
       Ok(convolution_point_point::<Y>(a, b)) //
@@ -215,11 +205,9 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
   b: &DistributionFunction<f64, Y>,
 ) -> Result<Distribution<Y>, Report> {
   if a.is_empty() || b.is_empty() {
-    return guarded_empty_result(
-      "convolution",
-      conv_operand_domain(!a.is_empty()),
-      conv_operand_domain(!b.is_empty()),
-    );
+    let a_domain = conv_operand_domain(!a.is_empty());
+    let b_domain = conv_operand_domain(!b.is_empty());
+    return guarded_empty_result("convolution", a_domain, b_domain);
   }
 
   let dx_a = a.dx();
@@ -232,11 +220,9 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
   let a = a.resample_dx(dx)?;
   let b = b.resample_dx(dx)?;
   if a.is_empty() || b.is_empty() {
-    return guarded_empty_result(
-      "convolution",
-      conv_operand_domain(!a.is_empty()),
-      conv_operand_domain(!b.is_empty()),
-    );
+    let a_domain = conv_operand_domain(!a.is_empty());
+    let b_domain = conv_operand_domain(!b.is_empty());
+    return guarded_empty_result("convolution", a_domain, b_domain);
   }
 
   if a.len() == 1 && b.len() == 1 {
@@ -254,11 +240,9 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
   if !(peak_a.is_finite() && peak_b.is_finite()) {
     // A non-finite peak means that operand has no mass (all ordinates underflow to zero), so the
     // convolution is legitimately empty; the guard permits it via the massless operand.
-    return guarded_empty_result(
-      "convolution",
-      conv_operand_domain(peak_a.is_finite()),
-      conv_operand_domain(peak_b.is_finite()),
-    );
+    let a_domain = conv_operand_domain(peak_a.is_finite());
+    let b_domain = conv_operand_domain(peak_b.is_finite());
+    return guarded_empty_result("convolution", a_domain, b_domain);
   }
 
   let conv = convolve_fft(dx, &pa, &pb)?;
@@ -269,7 +253,9 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
     // Both operands carry mass (finite peaks), so their convolution has mass: a collapse to empty
     // here is numerical, never structural. Both operands are present (unbounded for the sum), so the
     // guard reports the internal error rather than silently returning empty.
-    return guarded_empty_result("convolution", conv_operand_domain(true), conv_operand_domain(true));
+    let a_domain = conv_operand_domain(true);
+    let b_domain = conv_operand_domain(true);
+    return guarded_empty_result("convolution", a_domain, b_domain);
   };
 
   // The raw convolution starts at `a.x_min() + b.x_min()`; the reconstruction crops leading
