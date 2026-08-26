@@ -132,7 +132,7 @@ impl CoalescentOutput {
 /// The run parameters that produced a coalescent result.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CoalescentInputs {
-  pub mode: CoalescentMode,
+  pub mode: CoalescentOutputMode,
   /// Generations per year used to map `T_c` to `N_e`.
   pub gen_per_year: f64,
   /// Confidence level, in standard deviations, of the `T_c` band. `None` for a fixed `T_c`, which
@@ -143,9 +143,12 @@ pub struct CoalescentInputs {
 
 /// How the reported `T_c` was produced. The disabled mode reports no coalescent, so it has no
 /// variant here.
+///
+/// Named distinctly from the pipeline's inference `CoalescentMode` (which also carries `Disabled`
+/// and a `Fixed` payload): this is the serialization tag written to `inputs.mode`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum CoalescentMode {
+pub enum CoalescentOutputMode {
   /// Fixed, user-supplied `T_c` (one segment, no band).
   Fixed,
   /// Optimized constant `T_c` (one segment).

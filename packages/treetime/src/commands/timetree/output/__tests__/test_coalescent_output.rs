@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::timetree::output::coalescent::{
-    CoalescentBand, CoalescentInputs, CoalescentMode, CoalescentOutput, CoalescentSegmentRow, CoalescentSolve,
+    CoalescentBand, CoalescentInputs, CoalescentOutputMode, CoalescentOutput, CoalescentSegmentRow, CoalescentSolve,
     Estimate, SegmentInterval, coalescent_delimited_str, coalescent_json_str,
   };
   use eyre::Report;
@@ -20,7 +20,7 @@ mod tests {
     // 1-based and flattens the nested segment/T_c/N_e objects to dotted scalar columns.
     let output = CoalescentOutput::new(
       CoalescentInputs {
-        mode: CoalescentMode::Skyline,
+        mode: CoalescentOutputMode::Skyline,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
@@ -72,7 +72,7 @@ mod tests {
   fn test_coalescent_output_ne_scales_tc_by_gen_per_year() -> Result<(), Report> {
     let output = CoalescentOutput::new(
       CoalescentInputs {
-        mode: CoalescentMode::Constant,
+        mode: CoalescentOutputMode::Constant,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
@@ -98,7 +98,7 @@ mod tests {
     // A fixed, user-supplied T_c carries no band, so T_c and the derived N_e report a value only.
     let output = CoalescentOutput::new(
       CoalescentInputs {
-        mode: CoalescentMode::Fixed,
+        mode: CoalescentOutputMode::Fixed,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: None,
       },
@@ -118,12 +118,12 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::fixed_one_segment(   CoalescentMode::Fixed,    &[0.0, 10.0],            &[2.0],           None,                                          1)]
-  #[case::constant_one_segment(CoalescentMode::Constant, &[0.0, 10.0],            &[2.0],           Some((&[1.0][..], &[4.0][..])),                1)]
-  #[case::skyline_three(       CoalescentMode::Skyline,  &[0.0, 3.0, 6.0, 9.0],   &[2.0, 3.0, 4.0], Some((&[1.0, 1.0, 1.0][..], &[4.0, 5.0, 6.0][..])), 3)]
+  #[case::fixed_one_segment(   CoalescentOutputMode::Fixed,    &[0.0, 10.0],            &[2.0],           None,                                          1)]
+  #[case::constant_one_segment(CoalescentOutputMode::Constant, &[0.0, 10.0],            &[2.0],           Some((&[1.0][..], &[4.0][..])),                1)]
+  #[case::skyline_three(       CoalescentOutputMode::Skyline,  &[0.0, 3.0, 6.0, 9.0],   &[2.0, 3.0, 4.0], Some((&[1.0, 1.0, 1.0][..], &[4.0, 5.0, 6.0][..])), 3)]
   #[trace]
   fn test_coalescent_output_segment_count(
-    #[case] mode: CoalescentMode,
+    #[case] mode: CoalescentOutputMode,
     #[case] boundaries: &[f64],
     #[case] tc_values: &[f64],
     #[case] band: Option<(&[f64], &[f64])>,
@@ -149,7 +149,7 @@ mod tests {
   fn test_coalescent_output_json_roundtrips_and_renames_keys() -> Result<(), Report> {
     let output = CoalescentOutput::new(
       CoalescentInputs {
-        mode: CoalescentMode::Constant,
+        mode: CoalescentOutputMode::Constant,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
@@ -182,7 +182,7 @@ mod tests {
   fn test_coalescent_output_json_fixed_omits_band_keys() -> Result<(), Report> {
     let output = CoalescentOutput::new(
       CoalescentInputs {
-        mode: CoalescentMode::Fixed,
+        mode: CoalescentOutputMode::Fixed,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: None,
       },
@@ -212,7 +212,7 @@ mod tests {
   ) -> Result<(), Report> {
     let output = CoalescentOutput::new(
       CoalescentInputs {
-        mode: CoalescentMode::Constant,
+        mode: CoalescentOutputMode::Constant,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
@@ -237,7 +237,7 @@ mod tests {
     // Constant: full band. Fixed: empty band columns (None serializes to an empty field).
     let constant = CoalescentOutput::new(
       CoalescentInputs {
-        mode: CoalescentMode::Constant,
+        mode: CoalescentOutputMode::Constant,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
@@ -255,7 +255,7 @@ mod tests {
 
     let fixed = CoalescentOutput::new(
       CoalescentInputs {
-        mode: CoalescentMode::Fixed,
+        mode: CoalescentOutputMode::Fixed,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: None,
       },
@@ -274,7 +274,7 @@ mod tests {
   fn test_coalescent_output_rejects_boundary_length_mismatch() {
     let result = CoalescentOutput::new(
       CoalescentInputs {
-        mode: CoalescentMode::Skyline,
+        mode: CoalescentOutputMode::Skyline,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
@@ -294,7 +294,7 @@ mod tests {
   fn test_coalescent_output_rejects_band_length_mismatch() {
     let result = CoalescentOutput::new(
       CoalescentInputs {
-        mode: CoalescentMode::Skyline,
+        mode: CoalescentOutputMode::Skyline,
         gen_per_year: GEN_PER_YEAR,
         confidence_n_std: Some(2.0),
       },
