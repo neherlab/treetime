@@ -12,7 +12,7 @@ use strum_macros::Display;
 /// alphabet='aa')` with `infer_gtr=True`). Empirical matrices are opt-in.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum AaModelName {
   /// Infer an amino-acid GTR from the data over the stop-inclusive alphabet. Matches augur.
   #[default]

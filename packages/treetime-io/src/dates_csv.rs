@@ -35,6 +35,7 @@ impl DateRange {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum DateValue {
   Exact(DateExact),
   Uncertain(DateRange),

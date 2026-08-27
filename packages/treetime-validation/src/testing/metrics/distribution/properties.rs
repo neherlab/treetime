@@ -13,6 +13,7 @@ pub struct DistributionProperties {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum TailBehavior {
   Light,
   Heavy,

@@ -42,12 +42,14 @@ impl Mutation {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case")]
 pub enum MutationTrack {
   Nucleotide,
   AminoAcid(String),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case")]
 pub enum MutationEvent {
   Substitution(Sub),
   Insertion(AlignedMutation),

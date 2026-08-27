@@ -49,6 +49,7 @@ pub struct TreetimeArgs {
 
 #[derive(Subcommand, Debug, Serialize)]
 #[clap(verbatim_doc_comment)]
+#[serde(rename_all = "kebab-case")]
 pub enum TreetimeCommands {
   /// Generate shell completions.
   ///

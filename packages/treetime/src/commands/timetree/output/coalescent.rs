@@ -157,7 +157,7 @@ pub struct CoalescentInputs {
 /// Named distinctly from the pipeline's inference `CoalescentMode` (which also carries `Disabled`
 /// and a `Fixed` payload): this is the serialization tag written to `inputs.mode`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
 pub enum CoalescentOutputMode {
   /// Fixed, user-supplied `T_c` (one segment, no band).
   Fixed,

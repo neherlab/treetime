@@ -62,6 +62,7 @@ pub struct NewickHybrid {
 
 /// Annotation value from BEAST `[&k=v]` or NHX `[&&NHX:k=v]` comments.
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum NewickValue {
   /// BEAST `TRUE`/`FALSE` (case-insensitive).
   Boolean(bool),
@@ -75,6 +76,7 @@ pub enum NewickValue {
 
 /// Output annotation style.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, SmartDefault, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum NwkStyle {
   /// Name and branch length only, no annotations.
   Plain,

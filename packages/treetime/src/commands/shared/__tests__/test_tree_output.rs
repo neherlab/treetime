@@ -232,9 +232,9 @@ mod tests {
 
     write_ancestral_tree_outputs(&graph, &outputs, &CommentProviders::new())?;
     let actual: Value = json_read_file(&path)?;
-    assert_eq!(Value::String("JC69".to_owned()), actual["data"]["model_name"]);
+    assert_eq!(Value::String("jc69".to_owned()), actual["data"]["model_name"]);
     assert_eq!(Value::Array(vec![Value::Bool(false); 3]), actual["data"]["mask"]);
-    assert!(actual["data"]["partition"]["Fitch"].is_object());
+    assert!(actual["data"]["partition"]["fitch"].is_object());
     assert_eq!(Value::from(0.0), helpers::edge_branch_length(&actual, "B"));
 
     Ok(())

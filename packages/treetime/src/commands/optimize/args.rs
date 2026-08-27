@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 /// in the timetree and clock commands.
 #[derive(Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum OptimizeRerootMethod {
   MinDev,
 }

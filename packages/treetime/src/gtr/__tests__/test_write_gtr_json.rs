@@ -59,7 +59,7 @@ mod tests {
     );
     assert!(parsed.get("states").is_none(), "states should be absent when None");
     assert_eq!(parsed["n_states"], 4);
-    assert_eq!(parsed["model_name"], "JC69");
+    assert_eq!(parsed["model_name"], "jc69");
     assert_eq!(parsed["model_type"], "named");
 
     Ok(())

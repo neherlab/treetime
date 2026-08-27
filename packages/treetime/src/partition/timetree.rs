@@ -27,6 +27,7 @@ pub type PartitionTimetreeRef = Arc<RwLock<PartitionTimetree>>;
 pub type PartitionTimetreeAllVec = Vec<PartitionTimetreeRef>;
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum PartitionTimetree {
   Dense(PartitionMarginalDense),
   Sparse(PartitionMarginalSparse),

@@ -107,6 +107,7 @@ impl ClockRegression {
 
 /// Clock model statistics - either estimated from data or fixed by user
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum ClockModelStats {
   /// Clock rate estimated from root-to-tip regression with full statistics
   Estimated(RegressionStats),

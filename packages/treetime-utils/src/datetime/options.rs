@@ -4,6 +4,7 @@ use smart_default::SmartDefault;
 
 /// Represents a time point within the day
 #[derive(Debug, SmartDefault, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum TimeOfDay {
   /// 00:00:00.000000
   Dawn,

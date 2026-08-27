@@ -18,6 +18,7 @@ unsafe extern "C" {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum ParallelMode {
   Sequential,       // 0
   ParallelPlatform, // 1

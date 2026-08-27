@@ -6,7 +6,7 @@ use treetime_utils::array::ndarray::argmax_first;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum SampleMode {
   #[default]
   Argmax,

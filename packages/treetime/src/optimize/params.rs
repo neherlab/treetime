@@ -3,7 +3,7 @@ use smart_default::SmartDefault;
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum BranchLengthMode {
   Input,
   #[default]
@@ -17,7 +17,7 @@ pub enum BranchLengthMode {
 /// vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum BranchOptMethod {
   /// Brent's method in $t$ space (derivative-free, bracket-based).
   ///
@@ -74,7 +74,7 @@ pub enum BranchOptMethod {
 /// better starting position.
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum InitialGuessMode {
   /// Estimate only edges with missing or invalid branch lengths, preserve
   /// valid input values. No-op when all edges have finite branch lengths.

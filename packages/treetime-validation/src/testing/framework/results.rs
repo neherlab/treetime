@@ -45,6 +45,7 @@ pub struct TestFailure<T: TestCase> {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum TestRunOutcome<T: TestCase> {
   Success(Box<TestResult<T>>),
   Failure(TestFailure<T>),

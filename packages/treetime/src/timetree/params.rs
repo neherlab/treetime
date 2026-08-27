@@ -10,7 +10,7 @@ use treetime_io::fasta::FastaRecord;
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum TimeMarginalMode {
   #[default]
   Never,

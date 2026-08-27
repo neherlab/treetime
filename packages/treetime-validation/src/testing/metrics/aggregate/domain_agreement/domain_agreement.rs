@@ -150,6 +150,7 @@ impl DomainAgreementMetrics {
 
 /// Assessment levels for domain agreement quality
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum AgreementAssessment {
   Excellent,
   VeryGood,

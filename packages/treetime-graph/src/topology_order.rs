@@ -109,6 +109,7 @@ impl TopologyOrderSpec {
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum TopologyOrderPreset {
   Keep,
   #[default]
@@ -142,6 +143,7 @@ impl TopologyOrderPreset {
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum TopologyOrderTargetAggregate {
   #[default]
   Mean,

@@ -26,6 +26,7 @@ use treetime_utils::{make_error, make_report};
 /// produced files by it. NWK annotation style is orthogonal and lives on `--output-nwk-style`, so
 /// the tree variants here are style-agnostic (`Nwk`, `Nexus`), not per-style.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize, strum_macros::EnumIter)]
+#[serde(rename_all = "kebab-case")]
 pub enum OutputSelection {
   All,
 
@@ -178,7 +179,7 @@ impl std::fmt::Display for OutputSelection {
 /// CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum NwkStyleArg {
   Plain,
   Beast,
@@ -863,7 +864,7 @@ impl TopologyOrderArgs {
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum DivergenceUnits {
   #[default]
   MutationsPerSite,
@@ -872,7 +873,7 @@ pub enum DivergenceUnits {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum LadderizeArg {
   None,
   Ascending,
@@ -881,7 +882,7 @@ pub enum LadderizeArg {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum TopologyOrderArg {
   Keep,
   #[cfg_attr(feature = "clap", value(alias = "ladderize"))]
@@ -925,7 +926,7 @@ impl From<TopologyOrderArg> for TopologyOrderPreset {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum TopologyOrderTargetSourceArg {
   Input,
   ReferenceTopology,
@@ -944,7 +945,7 @@ impl std::fmt::Display for TopologyOrderTargetSourceArg {
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum TopologyOrderTargetAggregateArg {
   #[default]
   Mean,

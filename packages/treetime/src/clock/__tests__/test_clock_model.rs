@@ -189,7 +189,7 @@ mod tests {
       "clock_rate": 0.003,
       "intercept": -6.0,
       "stats": {
-        "Estimated": {
+        "estimated": {
           "chisq": 1.5,
           "r_val": 0.9,
           "hessian": [

@@ -5,7 +5,7 @@ use crate::payload::clock_set::ClockSet;
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum RerootMethod {
   #[default]
   #[cfg_attr(feature = "clap", value(alias = "best"))]
@@ -17,6 +17,7 @@ pub enum RerootMethod {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum RerootSpec {
   Method(RerootMethod),
   Tips(Vec<String>),
@@ -29,6 +30,7 @@ impl Default for RerootSpec {
 }
 
 #[derive(Copy, Debug, Clone, PartialEq, SmartDefault, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum RootObjective {
   #[default]
   EstimatedRate,
@@ -46,6 +48,7 @@ impl RootObjective {
 
 /// Configuration for branch point optimization methods
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
+#[serde(rename_all = "kebab-case")]
 pub enum BranchPointOptimizationParams {
   /// Grid search with specified number of equally-spaced points
   #[default]
@@ -61,6 +64,7 @@ pub enum BranchPointOptimizationParams {
 /// Optimization method selection
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
 pub enum OptimizationMethod {
   /// Grid search with equally-spaced evaluation points
   #[default]

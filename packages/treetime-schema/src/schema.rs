@@ -14,6 +14,7 @@ use clap::ValueEnum;
 
 #[derive(Debug, Clone, Default, EnumIter, serde::Serialize)]
 #[cfg_attr(feature = "clap", derive(ValueEnum))]
+#[serde(rename_all = "kebab-case")]
 pub enum TreetimeSchemaFormat {
   #[default]
   All,

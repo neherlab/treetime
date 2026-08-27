@@ -45,6 +45,7 @@ pub struct AncestralInput {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum AncestralPartition {
   Fitch(Arc<RwLock<PartitionFitch>>),
   Sparse(Arc<RwLock<crate::partition::marginal_sparse::PartitionMarginalSparse>>),

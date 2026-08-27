@@ -17,7 +17,7 @@ pub const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "clap", value(rename_all = "kebab-case"))]
+#[serde(rename_all = "kebab-case")]
 pub enum AlphabetName {
   #[default]
   Nuc,

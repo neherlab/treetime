@@ -21,6 +21,7 @@ const FORMULA_GRID_SIZE: usize = 200;
 #[allow(variant_size_differences)]
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Display)]
 #[strum(serialize_all = "kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Distribution<Y: YAxisPolicy = Plain> {
   #[default]
   Empty,

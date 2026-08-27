@@ -23,6 +23,7 @@ pub const DEFAULT_TAIL_FIT_POINTS: usize = 5;
 /// an error at the fitting site, never a silent flat fallback, so no variant stands for "a law was
 /// wanted here but is missing".
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum BoundaryBehavior {
   /// Out-of-support evaluation is an error.
   #[default]

@@ -13,7 +13,7 @@ use treetime_utils::io::json::{JsonPretty, json_write_file, json_write_str};
 
 /// Classification of how the GTR model was obtained.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
 pub enum GtrModelType {
   /// Standard named model (JC69, K80, etc.)
   Named,
@@ -81,15 +81,21 @@ pub fn write_gtr_json(output: &GtrOutput, path: impl AsRef<Path>) -> Result<(), 
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "kebab-case")]
 pub enum GtrModelName {
   /// Infer GTR parameters from data via Fitch parsimony substitution counts.
   #[default]
   Infer,
+  // serde's `kebab-case` splits acronym runs (`JC69` -> `j-c69`); pin these to match the
+  // command-line spelling that clap derives via heck (`jc69`), keeping `--config` and CLI in sync.
+  #[serde(rename = "jc69")]
   JC69,
   K80,
   F81,
+  #[serde(rename = "hky85")]
   HKY85,
   T92,
+  #[serde(rename = "tn93")]
   TN93,
   #[cfg_attr(feature = "clap", value(name = "jtt92"))]
   Jtt92,

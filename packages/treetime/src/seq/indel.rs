@@ -58,6 +58,7 @@ impl InDel {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case")]
 pub enum InDelKind {
   Insertion,
   Deletion,

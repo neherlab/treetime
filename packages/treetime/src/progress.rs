@@ -5,6 +5,7 @@ use strum_macros::Display;
 
 #[derive(Debug, Clone, Copy, Display, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
 #[strum(serialize_all = "UPPERCASE")]
+#[serde(rename_all = "kebab-case")]
 pub enum LogLevel {
   Trace,
   Debug,

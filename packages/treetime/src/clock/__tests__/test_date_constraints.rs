@@ -134,9 +134,9 @@ mod tests {
     let actual = get_node_payloads(&graph);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"Point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"Point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"Point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "C", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
         {"name": "root", "time_distribution": null, "bad_branch": false}
       ]"#,
     )?;
@@ -158,9 +158,9 @@ mod tests {
     let actual = get_node_payloads(&graph);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"Point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"Point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"Point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "C", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
         {"name": "D", "time_distribution": null, "bad_branch": true},
         {"name": "root", "time_distribution": null, "bad_branch": false}
       ]"#,
@@ -183,9 +183,9 @@ mod tests {
     let actual = get_node_payloads(&graph);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"Range": {"range": [2020.0, 2020.25], "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"Point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"Point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "A", "time_distribution": {"range": {"range": [2020.0, 2020.25], "ampl": 0.0}}, "bad_branch": false},
+        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "C", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
         {"name": "root", "time_distribution": null, "bad_branch": false}
       ]"#,
     )?;
@@ -208,10 +208,10 @@ mod tests {
     let actual = get_node_payloads(&graph);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"Point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "AB", "time_distribution": {"Point": {"t": 2019.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"Point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"Point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "AB", "time_distribution": {"point": {"t": 2019.5, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "C", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
         {"name": "root", "time_distribution": null, "bad_branch": false}
       ]"#,
     )?;
@@ -233,10 +233,10 @@ mod tests {
     let actual = get_node_payloads(&graph);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"Point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
         {"name": "AB", "time_distribution": null, "bad_branch": false},
-        {"name": "B", "time_distribution": {"Point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"Point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "C", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
         {"name": "CD", "time_distribution": null, "bad_branch": false},
         {"name": "D", "time_distribution": null, "bad_branch": true},
         {"name": "root", "time_distribution": null, "bad_branch": false}
@@ -264,10 +264,10 @@ mod tests {
         {"name": "AB", "time_distribution": null, "bad_branch": true},
         {"name": "ABCD", "time_distribution": null, "bad_branch": false},
         {"name": "B", "time_distribution": null, "bad_branch": true},
-        {"name": "C", "time_distribution": {"Point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "C", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
         {"name": "CD", "time_distribution": null, "bad_branch": false},
-        {"name": "D", "time_distribution": {"Point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "E", "time_distribution": {"Point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "D", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "E", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
         {"name": "root", "time_distribution": null, "bad_branch": false}
       ]"#,
     )?;
@@ -306,10 +306,10 @@ mod tests {
     let actual = get_node_payloads(&graph);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"Point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
         {"name": "B", "time_distribution": null, "bad_branch": true},
-        {"name": "C", "time_distribution": {"Point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "D", "time_distribution": {"Point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "C", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "D", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
         {"name": "root", "time_distribution": null, "bad_branch": false}
       ]"#,
     )?;
@@ -336,11 +336,11 @@ mod tests {
       r#"[
         {"name": "A", "time_distribution": null, "bad_branch": true},
         {"name": "B", "time_distribution": null, "bad_branch": true},
-        {"name": "C", "time_distribution": {"Point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "D", "time_distribution": {"Point": {"t": 2020.25, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "E", "time_distribution": {"Point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "F", "time_distribution": {"Point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "G", "time_distribution": {"Point": {"t": 2021.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "C", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "D", "time_distribution": {"point": {"t": 2020.25, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "E", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "F", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "G", "time_distribution": {"point": {"t": 2021.0, "ampl": 0.0}}, "bad_branch": false},
         {"name": "L1", "time_distribution": null, "bad_branch": true},
         {"name": "L2", "time_distribution": null, "bad_branch": false},
         {"name": "L3", "time_distribution": null, "bad_branch": false},
@@ -371,17 +371,17 @@ mod tests {
     let actual = get_node_payloads(&graph);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"Point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
         {"name": "B", "time_distribution": null, "bad_branch": true},
-        {"name": "C", "time_distribution": {"Point": {"t": 2020.2, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "C", "time_distribution": {"point": {"t": 2020.2, "ampl": 0.0}}, "bad_branch": false},
         {"name": "D", "time_distribution": null, "bad_branch": true},
-        {"name": "E", "time_distribution": {"Point": {"t": 2020.4, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "E", "time_distribution": {"point": {"t": 2020.4, "ampl": 0.0}}, "bad_branch": false},
         {"name": "F", "time_distribution": null, "bad_branch": true},
-        {"name": "G", "time_distribution": {"Point": {"t": 2020.6, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "G", "time_distribution": {"point": {"t": 2020.6, "ampl": 0.0}}, "bad_branch": false},
         {"name": "H", "time_distribution": null, "bad_branch": true},
-        {"name": "I", "time_distribution": {"Point": {"t": 2020.8, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "I", "time_distribution": {"point": {"t": 2020.8, "ampl": 0.0}}, "bad_branch": false},
         {"name": "J", "time_distribution": null, "bad_branch": true},
-        {"name": "K", "time_distribution": {"Point": {"t": 2021.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "K", "time_distribution": {"point": {"t": 2021.0, "ampl": 0.0}}, "bad_branch": false},
         {"name": "L", "time_distribution": null, "bad_branch": true},
         {"name": "root", "time_distribution": null, "bad_branch": false}
       ]"#,
@@ -405,10 +405,10 @@ mod tests {
     let actual = get_node_payloads(&graph);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"Range": {"range": [2020.0, 2020.25], "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"Point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"Range": {"range": [2020.6, 2020.8], "ampl": 0.0}}, "bad_branch": false},
-        {"name": "D", "time_distribution": {"Point": {"t": 2021.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "A", "time_distribution": {"range": {"range": [2020.0, 2020.25], "ampl": 0.0}}, "bad_branch": false},
+        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "C", "time_distribution": {"range": {"range": [2020.6, 2020.8], "ampl": 0.0}}, "bad_branch": false},
+        {"name": "D", "time_distribution": {"point": {"t": 2021.0, "ampl": 0.0}}, "bad_branch": false},
         {"name": "root", "time_distribution": null, "bad_branch": false}
       ]"#,
     )?;
@@ -450,10 +450,10 @@ mod tests {
     let actual = get_node_payloads(&graph);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"Point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "AB", "time_distribution": {"Range": {"range": [2019.0, 2019.75], "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"Point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"Point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "AB", "time_distribution": {"range": {"range": [2019.0, 2019.75], "ampl": 0.0}}, "bad_branch": false},
+        {"name": "B", "time_distribution": {"point": {"t": 2020.5, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "C", "time_distribution": {"point": {"t": 2020.75, "ampl": 0.0}}, "bad_branch": false},
         {"name": "root", "time_distribution": null, "bad_branch": false}
       ]"#,
     )?;
@@ -475,9 +475,9 @@ mod tests {
     let actual = get_node_payloads(&graph);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
-        {"name": "A", "time_distribution": {"Point": {"t": -500.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "B", "time_distribution": {"Point": {"t": -250.0, "ampl": 0.0}}, "bad_branch": false},
-        {"name": "C", "time_distribution": {"Point": {"t": 0.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "A", "time_distribution": {"point": {"t": -500.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "B", "time_distribution": {"point": {"t": -250.0, "ampl": 0.0}}, "bad_branch": false},
+        {"name": "C", "time_distribution": {"point": {"t": 0.0, "ampl": 0.0}}, "bad_branch": false},
         {"name": "root", "time_distribution": null, "bad_branch": false}
       ]"#,
     )?;

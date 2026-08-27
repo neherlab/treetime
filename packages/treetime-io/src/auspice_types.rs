@@ -199,6 +199,7 @@ pub struct StartEnd {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
+#[serde(rename_all = "kebab-case")]
 pub enum Segments {
   OneSegment(StartEnd),
   MultipleSegments {
