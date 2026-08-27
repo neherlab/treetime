@@ -1,15 +1,16 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partitions};
+use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partition};
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::payload::ancestral::GraphAncestral;
 use pretty_assertions::assert_eq;
 use treetime_io::nwk::nwk_read_str;
+use treetime_utils::sync::random::get_random_number_generator;
 
-/// Two amino-acid partitions of different lengths reconstruct on one shared tree in a single
-/// multi-partition traversal. Each is independent (its own length), and the stop codon `*` is carried
-/// as a real state rather than rejected (the bug when reconstruction used the 20-state no-stop
-/// alphabet). Fully in-memory: the graph is parsed from a string and sequences are built directly.
+/// Two amino-acid partitions of different lengths reconstruct independently on one shared tree, one
+/// partition at a time. Each keeps its own length, and the stop codon `*` is carried as a real state
+/// rather than rejected (the bug when reconstruction used the 20-state no-stop alphabet). Fully
+/// in-memory: the graph is parsed from a string and sequences are built directly.
 #[test]
 fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
   let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
@@ -27,7 +28,13 @@ fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
     ignore_missing_alns: false,
   };
 
-  let reconstructed = reconstruct_marginal_partitions(&graph, plans, &params).unwrap();
+  let mut rng = get_random_number_generator(params.seed);
+  let reconstructed = plans
+    .into_iter()
+    .enumerate()
+    .map(|(index, plan)| reconstruct_marginal_partition(&graph, index, plan, &params, &mut rng))
+    .collect::<Result<Vec<_>, _>>()
+    .unwrap();
 
   let names = reconstructed.iter().map(|p| p.name.clone()).collect::<Vec<_>>();
   assert_eq!(vec!["S".to_owned(), "N".to_owned()], names);

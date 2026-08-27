@@ -12,7 +12,6 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
-use treetime_utils::sync::random::get_random_number_generator;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
 /// A partition to reconstruct on the shared tree.
@@ -38,90 +37,68 @@ pub struct MarginalPartitionParams {
   pub ignore_missing_alns: bool,
 }
 
-/// Reconstruct several marginal partitions on one shared tree in a single message-passing traversal.
+/// Reconstruct one marginal partition on the shared tree and return its per-node results.
 ///
-/// Multi-partition execution model: every partition is attached to the same graph
-/// and the backward+forward marginal passes run once over the whole partition vector, so the tree is
-/// walked once rather than once per partition. Per-partition results are then read back by node key
-/// (via [`AugurNodeDataJsonAncestralPartition`]), with no cross-graph join by node name.
+/// Each partition is independent: its GTR inference, backward and forward marginal passes, and node
+/// reconstruction touch only this partition's own message state, with no data shared across
+/// partitions (`update_marginal` and `ancestral_reconstruction_marginal` iterate partitions in a
+/// plain loop, so a single-element slice does the same work as a slice of many). Callers that
+/// reconstruct several partitions (per-CDS amino-acid alignments) therefore call this once per
+/// partition and consume each result before building the next, so the resident marginal state stays
+/// bounded to a single partition instead of scaling with the partition count.
 ///
-/// Inference is alphabet-agnostic and runs once per partition during construction
-/// (`create_marginal_partition` with `--model infer`), matching augur's single `infer_gtr=True`
-/// inference; there is no outer GTR-refinement loop here.
-pub fn reconstruct_marginal_partitions(
+/// `index` distinguishes partitions during construction. `rng` is passed in by the caller so that
+/// sampled reconstruction (`--sample-from-profile=root|all`) draws in a fixed partition order.
+///
+/// Inference is alphabet-agnostic and runs once during construction (`create_marginal_partition`
+/// with `--model infer`), matching augur's single `infer_gtr=True` inference; there is no outer
+/// GTR-refinement loop here.
+pub fn reconstruct_marginal_partition(
   graph: &GraphAncestral,
-  plans: Vec<PartitionPlan>,
+  index: usize,
+  plan: PartitionPlan,
   params: &MarginalPartitionParams,
-) -> Result<Vec<ReconstructedPartition>, Report> {
-  if plans.is_empty() {
-    return Ok(Vec::new());
-  }
+  rng: &mut dyn rand::RngCore,
+) -> Result<ReconstructedPartition, Report> {
+  let PartitionPlan {
+    name,
+    alphabet,
+    gtr_model,
+    sequences,
+    annotation,
+    reference_override,
+  } = plan;
 
-  let mut rng = get_random_number_generator(params.seed);
-  let mut partitions: Vec<Arc<RwLock<dyn MarginalAugurPartition>>> = Vec::with_capacity(plans.len());
-  let mut metas: Vec<PartitionMeta> = Vec::with_capacity(plans.len());
+  let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns)?;
+  let created = create_marginal_partition(graph, index, alphabet.clone(), &sequences, gtr_model, params.dense)?;
+  let partition: Arc<RwLock<dyn MarginalAugurPartition>> = match created.partition {
+    MarginalPartition::Sparse(partition) => Arc::new(RwLock::new(partition)),
+    MarginalPartition::Dense(partition) => Arc::new(RwLock::new(partition)),
+  };
 
-  for (index, plan) in plans.into_iter().enumerate() {
-    let PartitionPlan {
-      name,
-      alphabet,
-      gtr_model,
-      sequences,
-      annotation,
-      reference_override,
-    } = plan;
+  // Dense partitions attach their leaf sequences here; sparse partitions already carry them from
+  // construction (`attach_sequences` is a no-op for sparse), so the call is uniform and safe.
+  partition.write_arc().attach_sequences(graph, &sequences)?;
 
-    let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns)?;
-    let created = create_marginal_partition(graph, index, alphabet.clone(), &sequences, gtr_model, params.dense)?;
-    let partition: Arc<RwLock<dyn MarginalAugurPartition>> = match created.partition {
-      MarginalPartition::Sparse(partition) => Arc::new(RwLock::new(partition)),
-      MarginalPartition::Dense(partition) => Arc::new(RwLock::new(partition)),
-    };
+  let single = std::slice::from_ref(&partition);
+  update_marginal(graph, single)?;
+  ancestral_reconstruction_marginal(
+    graph,
+    params.reconstruct_tip_states,
+    single,
+    params.sample_from_profile,
+    rng,
+    |_node: &NodeAncestral, _seq: &Seq| Ok(()),
+  )?;
 
-    // Dense partitions attach their leaf sequences here; sparse partitions already carry them from
-    // construction (`attach_sequences` is a no-op for sparse), so the call is uniform and safe.
-    partition.write_arc().attach_sequences(graph, &sequences)?;
-
-    partitions.push(partition);
-    metas.push(PartitionMeta {
-      name,
-      alphabet,
-      model_name: created.model_name,
-      annotation,
-      reference_override,
-    });
-  }
-
-  // Single shared backward+forward marginal traversal over all partitions.
-  update_marginal(graph, &partitions)?;
-
-  // Resolve the per-node reconstructed states. Reconstruction reads `partitions[0]`, so resolve one
-  // partition at a time with a single-element slice; the expensive message passing above was shared.
-  for partition in &partitions {
-    ancestral_reconstruction_marginal(
-      graph,
-      params.reconstruct_tip_states,
-      std::slice::from_ref(partition),
-      params.sample_from_profile,
-      &mut rng,
-      |_node: &NodeAncestral, _seq: &Seq| Ok(()),
-    )?;
-  }
-
-  Ok(
-    partitions
-      .into_iter()
-      .zip(metas)
-      .map(|(partition, meta)| ReconstructedPartition {
-        name: meta.name,
-        partition,
-        alphabet: meta.alphabet,
-        model_name: meta.model_name,
-        annotation: meta.annotation,
-        reference_override: meta.reference_override,
-      })
-      .collect(),
-  )
+  Ok(ReconstructedPartition {
+    name,
+    partition,
+    alphabet,
+    model_name: created.model_name,
+    annotation,
+    reference_override,
+  })
 }
 
 /// A reconstructed partition and the metadata needed to serialize it into augur node data.
@@ -135,8 +112,8 @@ pub struct ReconstructedPartition {
 }
 
 /// A marginal partition that can both take part in the marginal traversal and be read back into augur
-/// node data. Both `PartitionMarginalSparse` and `PartitionMarginalDense` satisfy it, so a
-/// heterogeneous partition vector can be erased to `dyn MarginalAugurPartition`.
+/// node data. Both `PartitionMarginalSparse` and `PartitionMarginalDense` satisfy it, so a partition
+/// can be erased to `dyn MarginalAugurPartition`.
 pub trait MarginalAugurPartition:
   PartitionMarginalOps<NodeAncestral, EdgeAncestral> + AugurNodeDataJsonAncestralPartition
 {
@@ -145,12 +122,4 @@ pub trait MarginalAugurPartition:
 impl<T> MarginalAugurPartition for T where
   T: PartitionMarginalOps<NodeAncestral, EdgeAncestral> + AugurNodeDataJsonAncestralPartition
 {
-}
-
-struct PartitionMeta {
-  name: String,
-  alphabet: Alphabet,
-  model_name: GtrModelName,
-  annotation: Option<AugurNodeDataJsonAnnotationEntry>,
-  reference_override: Option<Seq>,
 }

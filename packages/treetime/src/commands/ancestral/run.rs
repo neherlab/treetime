@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::attach::sanitize_to_alphabet;
-use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partitions};
+use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partition};
 use crate::ancestral::pipeline::{self, AncestralInput, AncestralParams, AncestralPartition};
 use crate::commands::ancestral::aa_node_data::{
   AaNodeData, annotation_cds_nuc_length, collect_aa_cds_node_data, read_aa_root_sequences, read_gff3_annotations,
@@ -13,6 +13,7 @@ use crate::commands::shared::output::{CommandKind, OutputSelection};
 use crate::commands::shared::tree_output::write_ancestral_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
+use crate::partition::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::traits::MutationCommentProvider;
 use crate::payload::ancestral::GraphAncestral;
 use crate::progress::ProgressSink;
@@ -24,6 +25,7 @@ use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta}
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
+use treetime_utils::sync::random::get_random_number_generator;
 
 pub fn run_ancestral_reconstruction(
   ancestral_args: &TreetimeAncestralArgs,
@@ -291,8 +293,22 @@ fn run_aa_reconstructions(
   progress.check_cancelled()?;
   progress.report("AA ancestral reconstruction", 0.75, "");
 
-  let mut plans = Vec::with_capacity(cdses.len());
-  for cds in &cdses {
+  let params = MarginalPartitionParams {
+    dense: ancestral_args.dense,
+    reconstruct_tip_states: ancestral_args.reconstruct_tip_states,
+    sample_from_profile: ancestral_args.sample_from_profile,
+    seed: ancestral_args.seed,
+    ignore_missing_alns: ancestral_args.ignore_missing_alns,
+  };
+
+  // Reconstruct one CDS partition at a time and consume its result before building the next. A
+  // marginal partition holds per-edge probability vectors over the ~20-symbol amino-acid alphabet, so
+  // keeping every CDS partition resident at once made peak memory scale with the CDS count. The RNG is
+  // created once and passed to each partition so sampled reconstruction draws in a fixed CDS order,
+  // independent of how many partitions are resident.
+  let mut rng = get_random_number_generator(params.seed);
+  let mut aa_node_data = AaNodeData::default();
+  for (index, cds) in cdses.iter().enumerate() {
     let path = translation_path(translations, cds);
     let mut sequences = read_many_fasta(&[&path], &read_alphabet)?;
     let mut sanitized = 0_usize;
@@ -314,31 +330,19 @@ fn run_aa_reconstructions(
       );
     }
 
-    plans.push(PartitionPlan {
+    let plan = PartitionPlan {
       name: cds.clone(),
       alphabet: recon_alphabet.clone(),
       gtr_model: aa_model.gtr_model,
       sequences,
       annotation: annotations.get(cds).cloned(),
       reference_override: aa_root_sequences.get(cds).cloned(),
-    });
-  }
+    };
 
-  let params = MarginalPartitionParams {
-    dense: ancestral_args.dense,
-    reconstruct_tip_states: ancestral_args.reconstruct_tip_states,
-    sample_from_profile: ancestral_args.sample_from_profile,
-    seed: ancestral_args.seed,
-    ignore_missing_alns: ancestral_args.ignore_missing_alns,
-  };
+    let reconstructed = reconstruct_marginal_partition(graph, index, plan, &params, &mut rng)?;
+    let guard = reconstructed.partition.read_arc();
 
-  let reconstructed = reconstruct_marginal_partitions(graph, plans, &params)?;
-
-  let mut aa_node_data = AaNodeData::default();
-  for partition in &reconstructed {
-    let guard = partition.partition.read_arc();
-
-    if let Some(annotation) = &partition.annotation
+    if let Some(annotation) = &reconstructed.annotation
       && let Some(cds_len) = annotation_cds_nuc_length(annotation)
     {
       let aa_len = i64::try_from(guard.sequence_length())?;
@@ -346,43 +350,46 @@ fn run_aa_reconstructions(
         return make_error!(
           "Translated alignment for CDS '{}' has {aa_len} amino acids ({} nucleotides), which does not match \
            the annotated CDS length of {cds_len} nucleotides. Check that the annotation matches the translations.",
-          partition.name,
+          reconstructed.name,
           3 * aa_len
         );
       }
     }
 
-    let cds_data = collect_aa_cds_node_data(graph, &*guard, &partition.name, partition.reference_override.as_ref())?;
-    aa_node_data.add_cds(&partition.name, cds_data, partition.annotation.clone());
-  }
+    let cds_data = collect_aa_cds_node_data(
+      graph,
+      &*guard,
+      &reconstructed.name,
+      reconstructed.reference_override.as_ref(),
+    )?;
+    aa_node_data.add_cds(&reconstructed.name, cds_data, reconstructed.annotation.clone());
 
-  if let Some(aa_seq_template) = aa_fasta_template {
-    write_aa_sequences(graph, &reconstructed, aa_seq_template)?;
+    if let Some(aa_seq_template) = aa_fasta_template {
+      write_aa_partition_sequences(graph, &*guard, &reconstructed.name, aa_seq_template)?;
+    }
   }
 
   Ok(aa_node_data)
 }
 
-fn write_aa_sequences(
+fn write_aa_partition_sequences(
   graph: &GraphAncestral,
-  reconstructed: &[crate::ancestral::multi::ReconstructedPartition],
+  partition: &dyn AugurNodeDataJsonAncestralPartition,
+  name: &str,
   template: &str,
 ) -> Result<(), Report> {
-  for partition in reconstructed {
-    let path = translation_path(template, &partition.name);
-    let file = create_file_or_stdout(path)?;
-    let mut writer = FastaWriter::new(file);
-    let guard = partition.partition.read_arc();
+  let path = translation_path(template, name);
+  let file = create_file_or_stdout(path)?;
+  let mut writer = FastaWriter::new(file);
 
-    for node in graph.get_nodes() {
-      let node_guard = node.read_arc();
-      let payload = node_guard.payload().read_arc();
-      let name = payload
-        .name()
-        .map_or_else(|| format!("node_{}", node_guard.key().0), |n| n.as_ref().to_owned());
-      let seq = guard.node_sequence(node_guard.key());
-      writer.write(&name, &None, &seq)?;
-    }
+  for node in graph.get_nodes() {
+    let node_guard = node.read_arc();
+    let payload = node_guard.payload().read_arc();
+    let node_name = payload
+      .name()
+      .map_or_else(|| format!("node_{}", node_guard.key().0), |n| n.as_ref().to_owned());
+    let seq = partition.node_sequence(node_guard.key());
+    writer.write(&node_name, &None, &seq)?;
   }
 
   Ok(())

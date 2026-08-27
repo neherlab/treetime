@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_utils::io::json::json_read_str;
+  use treetime_utils::o;
   use util_augur_node_data_json::AugurNodeDataJsonAncestral;
 
   // --- Full output, hand-built Fitch partition with one mutation ---
@@ -160,6 +162,24 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
+  // End-to-end through run.rs with two per-CDS translation files. Each CDS partition is reconstructed
+  // and consumed in turn, so this guards the sequential per-CDS wiring: both CDSes must reach the
+  // output (not just the first), with correct per-CDS root sequences. Leaves share sequences within
+  // each CDS, so reconstruction is deterministic with no amino-acid mutations.
+  #[test]
+  fn test_augur_node_data_ancestral_multi_cds_translations_end_to_end() {
+    let data = helpers::reconstruct_json_with_translations();
+
+    assert_eq!(
+      Some(btreemap! { o!("M") => o!("WY"), o!("S") => o!("MKL") }),
+      data.nodes["root"].aa_sequences
+    );
+
+    let no_muts = btreemap! { o!("M") => Vec::<String>::new(), o!("S") => Vec::<String>::new() };
+    assert_eq!(Some(no_muts.clone()), data.nodes["A"].aa_muts);
+    assert_eq!(Some(no_muts), data.nodes["B"].aa_muts);
+  }
+
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::params::MethodAncestral;
@@ -182,7 +202,7 @@ mod tests {
     use treetime_graph::node::{GraphNodeKey, Named};
     use treetime_io::nwk::nwk_read_str;
     use treetime_primitives::{AsciiChar, Seq};
-    use treetime_utils::io::json::{JsonPretty, json_write_str};
+    use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use treetime_utils::o;
     use util_augur_node_data_json::{
       AugurNodeDataJsonAncestral, AugurNodeDataJsonAncestralMeta, AugurNodeDataJsonAncestralNode,
@@ -293,6 +313,48 @@ mod tests {
 
       run_ancestral_reconstruction(&args, &NoopProgress).unwrap();
       std::fs::read_to_string(node_data_path).unwrap()
+    }
+
+    /// Run the full ancestral command with two per-CDS amino-acid translation files (`S`, `M`) and
+    /// return the parsed augur node data. Leaves share sequences within each CDS, so reconstruction is
+    /// deterministic with no amino-acid mutations.
+    pub fn reconstruct_json_with_translations() -> AugurNodeDataJsonAncestral {
+      let dir = tempdir().unwrap();
+      let tree_path = dir.path().join("tree.nwk");
+      let fasta_path = dir.path().join("aln.fasta");
+      let node_data_path = dir.path().join("augur-node-data.json");
+      std::fs::write(&tree_path, "(A:0.1,B:0.1)root;").unwrap();
+      std::fs::write(&fasta_path, ">A\nACGACG\n>B\nACGACG\n").unwrap();
+
+      let translations_dir = dir.path().join("translations");
+      std::fs::create_dir_all(&translations_dir).unwrap();
+      std::fs::write(translations_dir.join("S.fasta"), ">A\nMKL\n>B\nMKL\n").unwrap();
+      std::fs::write(translations_dir.join("M.fasta"), ">A\nWY\n>B\nWY\n").unwrap();
+      let template = format!("{}/{{cds}}.fasta", translations_dir.display());
+
+      let args = TreetimeAncestralArgs {
+        alignment: AlignmentArgs {
+          alignment: vec![fasta_path],
+        },
+        tree: Some(tree_path),
+        method_anc: MethodAncestral::Marginal,
+        dense: Some(false),
+        model_args: ModelArgs {
+          model: GtrModelName::JC69,
+          ..ModelArgs::default()
+        },
+        translations: Some(template),
+        cdses: vec![o!("S"), o!("M")],
+        output: OutputCoreArgs {
+          output_tree_nwk: Some(dir.path().join("tree_out.nwk")),
+          ..Default::default()
+        },
+        output_augur_node_data: Some(node_data_path.clone()),
+        ..TreetimeAncestralArgs::default()
+      };
+
+      run_ancestral_reconstruction(&args, &NoopProgress).unwrap();
+      json_read_str(std::fs::read_to_string(node_data_path).unwrap()).unwrap()
     }
 
     pub fn build_json_with_aa() -> AugurNodeDataJsonAncestral {
