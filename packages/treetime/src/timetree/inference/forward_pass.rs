@@ -115,12 +115,17 @@ where
     return Ok(Refinement::Done);
   };
 
-  let dist_from_parent = message_from_parent(
-    parent_time_dist,
-    edge.msg_to_parent().as_deref(),
-    subtree_dist,
-    branch_dist,
-  )?;
+  // The parent sends its message down across the branch. This node's own contribution was folded
+  // into the parent's posterior during the backward pass, so it is divided back out first -- the
+  // cavity distribution -- then convolved across the branch. With no message on record there is
+  // nothing to divide out and the parent posterior is used as is.
+  let parent_except_subtree = match edge.msg_to_parent().as_deref() {
+    Some(msg_to_parent) => distribution_division(parent_time_dist, msg_to_parent)?,
+    None => parent_time_dist.as_ref().clone(),
+  };
+  // Tail policy (kb/decisions/distribution-tails-and-arithmetic.md): parent time is a hard lower
+  // bound (left Hard); the node's time is unbounded forward, so the right tail is soft and fitted.
+  let dist_from_parent = convolve_across_edge(&parent_except_subtree, branch_dist, Side::Right, EPS, GRID_POINTS)?;
 
   // Peak-normalize and store. The multiply is pointwise and does not resize the grid, so no further
   // mass sizing is needed.
@@ -136,95 +141,6 @@ where
   }
   slot.node.set_time_distribution(Some(Arc::new(combined)));
   Ok(Refinement::Done)
-}
-
-/// The message the parent sends down to this node across the branch.
-///
-/// This node's own contribution was folded into the parent's posterior during the backward pass, so
-/// it is divided back out first -- the cavity distribution -- then convolved across the branch. With
-/// no message on record there is nothing to divide out and the parent posterior is used as is.
-fn message_from_parent(
-  parent_time_dist: &Distribution<NegLog>,
-  msg_to_parent: Option<&Distribution<NegLog>>,
-  subtree_dist: &Distribution<NegLog>,
-  branch_dist: &Distribution<NegLog>,
-) -> Result<Distribution<NegLog>, Report> {
-  let parent_except_subtree = match msg_to_parent {
-    Some(msg_to_parent) => distribution_division(parent_time_dist, msg_to_parent)?,
-    None => parent_time_dist.clone(),
-  };
-
-  // TODO: remove or review (richard) -- analogous to the backward-pass regridding after message
-  // combination.
-  let parent_except_subtree = restrict_to_reachable(parent_except_subtree, subtree_dist, branch_dist)?;
-
-  // Tail policy (kb/decisions/distribution-tails-and-arithmetic.md): parent time is a hard lower
-  // bound (left Hard); the node's time is unbounded forward, so the right tail is soft and fitted.
-  convolve_across_edge(&parent_except_subtree, branch_dist, Side::Right, EPS, GRID_POINTS)
-}
-
-/// Cut the parent's distribution down to the times from which the branch can reach `target`.
-///
-/// The refinement multiplies the parent message by `target`, which is zero outside its own support,
-/// so parent times the branch cannot carry into that support contribute nothing: dropping them
-/// leaves the result unchanged. This keeps a narrow date range affordable against a parent grid that
-/// can span centuries. The parent is returned untouched when:
-/// - it is not gridded, or either support is unbounded
-/// - the window would save too little to pay for the resampling
-fn restrict_to_reachable(
-  parent: Distribution<NegLog>,
-  target: &Distribution<NegLog>,
-  branch: &Distribution<NegLog>,
-) -> Result<Distribution<NegLog>, Report> {
-  /// Fraction of the parent's support the window has to get under to be worth resampling.
-  const WORTHWHILE: f64 = 0.9;
-  /// Grid steps the window is widened to when the node's support is narrower than the parent's
-  /// resolution. Below two steps there is no grid to resample onto at all.
-  const MIN_STEPS: f64 = 4.0;
-
-  let (Distribution::Function(parent_fn), Some((t_min, t_max)), Some((d_min, d_max))) =
-    (&parent, target.time_bounds(), branch.time_bounds())
-  else {
-    return Ok(parent);
-  };
-  //TODO: we should be sampling into the  branch's tail if necessary.
-
-  let dx = parent_fn.dx();
-  let span = parent_fn.x_max() - parent_fn.x_min();
-  // Nothing to save on a grid already a few points wide, or if the geometry is not finite.
-  if !(dx.is_finite() && span.is_finite()) || dx <= 0.0 || span <= MIN_STEPS * dx {
-    return Ok(parent);
-  }
-
-  // Window around the reachable times, clamped to the parent's grid and widened to a few steps when
-  // the date range is narrower than the parent's resolution.
-  let reach_min = (t_min - d_max).max(parent_fn.x_min());
-  let reach_max = (t_max - d_min).min(parent_fn.x_max());
-  let centre = f64::midpoint(reach_min, reach_max);
-  let half_width = f64::max((reach_max - reach_min) / 2.0, MIN_STEPS * dx / 2.0);
-  let window_min = (centre - half_width).max(parent_fn.x_min());
-  let window_max = (centre + half_width).min(parent_fn.x_max());
-
-  // Snapped outwards onto the parent's own grid points, so the window holds values it already has
-  // and the convolution lands where it would have with nothing cut. Otherwise the cut shifts node
-  // times by a fraction of a grid step -- no worse, but gratuitously different.
-  let steps_from_start = |t: f64| (t - parent_fn.x_min()) / dx;
-  let window_min = parent_fn.x_min() + steps_from_start(window_min).floor().max(0.0) * dx;
-  let window_max = (parent_fn.x_min() + steps_from_start(window_max).ceil() * dx).min(parent_fn.x_max());
-
-  // Too narrow to grid, or saving too little to pay for the resampling: leave the parent as is.
-  let width = window_max - window_min;
-  if !width.is_finite() || width < 2.0 * dx || width > WORTHWHILE * span {
-    return Ok(parent);
-  }
-
-  // Clamped resample holds the boundary value where rounding overshoots the grid's end points; the
-  // parent's own tails are restored afterwards. Same treatment as `DistributionFunction::resample_dx`.
-  let restricted = parent_fn
-    .resample_range_dx_clamped((window_min, window_max), parent_fn.dx())?
-    .with_left_extrap(parent_fn.left_extrap())?
-    .with_right_extrap(parent_fn.right_extrap())?;
-  Ok(Distribution::Function(restricted))
 }
 
 /// Commit the node's point-estimate time from the peak of its refined time distribution.
