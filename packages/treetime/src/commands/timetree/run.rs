@@ -1,5 +1,6 @@
 use crate::clock::clock_output::write_clock_model;
-use crate::commands::shared::output::{CommandKind, DivergenceUnits, OutputSelection};
+use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
+use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_timetree_tree_outputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
@@ -32,26 +33,7 @@ pub fn run_timetree_estimation(
 
   // Resolve outputs up front so the tracelog path (which the pipeline writes during the run) is
   // known before the pipeline starts. Topology ordering is resolved separately, after the pipeline.
-  let selection: Vec<OutputSelection> = args
-    .output_selection
-    .iter()
-    .copied()
-    .map(OutputSelection::from)
-    .collect();
-  let resolved = args.output.resolve(
-    CommandKind::Timetree,
-    &selection,
-    &[
-      (OutputSelection::AugurNodeData, args.output_augur_node_data.as_deref()),
-      (OutputSelection::Gtr, args.output_gtr.as_deref()),
-      (OutputSelection::ClockModel, args.output_clock_model.as_deref()),
-      (OutputSelection::ConfidenceTsv, args.output_confidence_tsv.as_deref()),
-      (OutputSelection::Tracelog, args.output_tracelog.as_deref()),
-      (OutputSelection::CoalescentTsv, args.output_coalescent_tsv.as_deref()),
-      (OutputSelection::CoalescentCsv, args.output_coalescent_csv.as_deref()),
-      (OutputSelection::CoalescentJson, args.output_coalescent_json.as_deref()),
-    ],
-  )?;
+  let resolved = args.resolve_outputs()?;
   let tracelog: Option<Box<dyn std::io::Write + Send>> = match resolved.non_tree_outputs.get(&OutputSelection::Tracelog)
   {
     Some(path) => Some(Box::new(create_file_or_stdout(path)?)),

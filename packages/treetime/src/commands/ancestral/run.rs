@@ -9,7 +9,8 @@ use crate::commands::ancestral::aa_node_data::{
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with_aa;
 use crate::commands::ancestral::result::{AncestralGraphData, AncestralResult};
-use crate::commands::shared::output::{CommandKind, OutputSelection};
+use crate::commands::shared::output::OutputSelection;
+use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_ancestral_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
@@ -70,34 +71,7 @@ pub fn run_ancestral_reconstruction(
   let graph = nwk_read_file(ancestral_args.tree())?;
   let topology_order = ancestral_args.topology_order.resolve_topology_order(&graph, None)?;
 
-  let selection: Vec<OutputSelection> = ancestral_args
-    .output_selection
-    .iter()
-    .copied()
-    .map(OutputSelection::from)
-    .collect();
-  let resolved = ancestral_args.output.resolve(
-    CommandKind::Ancestral,
-    &selection,
-    &[
-      (
-        OutputSelection::AugurNodeData,
-        ancestral_args.output_augur_node_data.as_deref(),
-      ),
-      (OutputSelection::Gtr, ancestral_args.output_gtr.as_deref()),
-      (
-        OutputSelection::ReconstructedNucFasta,
-        ancestral_args.output_reconstructed_nuc_fasta.as_deref(),
-      ),
-      (
-        OutputSelection::ReconstructedAaFasta,
-        ancestral_args
-          .output_reconstructed_aa_fasta
-          .as_deref()
-          .map(std::path::Path::new),
-      ),
-    ],
-  )?;
+  let resolved = ancestral_args.resolve_outputs()?;
   let mut output_fasta = if resolved
     .non_tree_outputs
     .contains_key(&OutputSelection::ReconstructedNucFasta)

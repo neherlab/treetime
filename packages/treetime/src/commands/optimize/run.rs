@@ -2,7 +2,8 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::augur_node_data::write_augur_node_data_json;
 use crate::commands::optimize::result::{OptimizeGraphData, OptimizeResult};
-use crate::commands::shared::output::{CommandKind, DivergenceUnits, OutputSelection};
+use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
+use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_optimize_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
@@ -32,20 +33,7 @@ pub fn run_optimize(
   }
   let graph = nwk_read_file(args.tree())?;
 
-  let selection: Vec<OutputSelection> = args
-    .output_selection
-    .iter()
-    .copied()
-    .map(OutputSelection::from)
-    .collect();
-  let resolved = args.output.resolve(
-    CommandKind::Optimize,
-    &selection,
-    &[
-      (OutputSelection::AugurNodeData, args.output_augur_node_data.as_deref()),
-      (OutputSelection::Gtr, args.output_gtr.as_deref()),
-    ],
-  )?;
+  let resolved = args.resolve_outputs()?;
 
   let params = OptimizeParams {
     model: args.model_args.model,

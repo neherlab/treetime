@@ -1,6 +1,7 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::mugration::augur_node_data::write_augur_node_data_json;
-use crate::commands::shared::output::{CommandKind, OutputSelection};
+use crate::commands::shared::output::OutputSelection;
+use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_mugration_tree_outputs;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_report;
@@ -29,28 +30,7 @@ pub fn run_mugration(
     .ok_or_else(|| make_report!("Tree file is required"))?;
   let graph: GraphAncestral = nwk_read_file(tree_path)?;
 
-  let selection: Vec<OutputSelection> = mugration_args
-    .output_selection
-    .iter()
-    .copied()
-    .map(OutputSelection::from)
-    .collect();
-  let resolved = mugration_args.output.resolve(
-    CommandKind::Mugration,
-    &selection,
-    &[
-      (
-        OutputSelection::AugurNodeData,
-        mugration_args.output_augur_node_data.as_deref(),
-      ),
-      (OutputSelection::Gtr, mugration_args.output_gtr.as_deref()),
-      (
-        OutputSelection::ConfidenceCsv,
-        mugration_args.output_confidence_csv.as_deref(),
-      ),
-      (OutputSelection::TraitsCsv, mugration_args.output_traits_csv.as_deref()),
-    ],
-  )?;
+  let resolved = mugration_args.resolve_outputs()?;
 
   let (attr_values, _attr_name) = read_discrete_attrs::<String>(
     mugration_args.metadata(),

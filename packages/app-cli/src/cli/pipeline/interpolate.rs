@@ -185,7 +185,7 @@ fn collect_var_dependencies(
 fn minijinja_error(kind: &str, leaf: &str, err: &minijinja::Error) -> Report {
   match err.range() {
     Some(range) => {
-      let snippet = leaf.get(range.clone()).unwrap_or(leaf);
+      let snippet = leaf.get(range).unwrap_or(leaf);
       make_report!("invalid {kind} in `{leaf}`: {err} (near `{snippet}`)")
     },
     None => make_report!("invalid {kind} in `{leaf}`: {err}"),

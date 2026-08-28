@@ -572,6 +572,43 @@ pub struct ResolvedOutputs {
   pub non_tree_outputs: BTreeMap<OutputSelection, PathBuf>,
 }
 
+impl ResolvedOutputs {
+  /// Group every produced file under the `OutputSelection` it satisfies.
+  ///
+  /// A styled tree format (`nwk`, `nexus`) expands to one path per requested annotation style, so a
+  /// selection can map to several files. The pipeline uses this to resolve `{{ steps.x.outputs.<sel>
+  /// }}` chaining and to reject a reference whose selection is ambiguous (more than one file). Paths
+  /// within a selection are sorted for deterministic diagnostics.
+  pub fn paths_by_selection(&self) -> BTreeMap<OutputSelection, Vec<PathBuf>> {
+    let mut by_selection: BTreeMap<OutputSelection, Vec<PathBuf>> = BTreeMap::new();
+    for (kind, path) in &self.tree_outputs {
+      by_selection.entry(tree_write_kind_selection(kind)).or_default().push(path.clone());
+    }
+    for (selection, path) in &self.non_tree_outputs {
+      by_selection.entry(*selection).or_default().push(path.clone());
+    }
+    for paths in by_selection.values_mut() {
+      paths.sort();
+    }
+    by_selection
+  }
+}
+
+/// Invert the tree write dispatch tag back to the style-agnostic selection it was produced for.
+fn tree_write_kind_selection(kind: &TreeWriteKind) -> OutputSelection {
+  match kind {
+    TreeWriteKind::Nwk(_) => OutputSelection::Nwk,
+    TreeWriteKind::Nexus(_) => OutputSelection::Nexus,
+    TreeWriteKind::Auspice => OutputSelection::Auspice,
+    TreeWriteKind::Phyloxml => OutputSelection::Phyloxml,
+    TreeWriteKind::PhyloxmlJson => OutputSelection::PhyloxmlJson,
+    TreeWriteKind::MatPb => OutputSelection::MatPb,
+    TreeWriteKind::MatJson => OutputSelection::MatJson,
+    TreeWriteKind::GraphJson => OutputSelection::GraphJson,
+    TreeWriteKind::Dot => OutputSelection::Dot,
+  }
+}
+
 impl OutputCoreArgs {
   /// Resolve the three-tier output configuration into concrete file paths.
   ///

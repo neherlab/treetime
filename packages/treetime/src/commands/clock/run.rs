@@ -6,7 +6,8 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, Optimi
 use crate::clock::pipeline::{self, ClockInput, ClockPipelineParams};
 use crate::clock::rtt::{ClockRegressionResult, write_clock_regression_result_csv};
 use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
-use crate::commands::shared::output::{CommandKind, OutputSelection};
+use crate::commands::shared::output::OutputSelection;
+use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_clock_tree_outputs;
 use crate::make_error;
 use crate::make_report;
@@ -77,20 +78,7 @@ pub fn run_clock(
   )
   .wrap_err("When reading dates")?;
 
-  let selection: Vec<OutputSelection> = clock_args
-    .output_selection
-    .iter()
-    .copied()
-    .map(OutputSelection::from)
-    .collect();
-  let resolved = clock_args.output.resolve(
-    CommandKind::Clock,
-    &selection,
-    &[
-      (OutputSelection::ClockModel, clock_args.output_clock_model.as_deref()),
-      (OutputSelection::ClockCsv, clock_args.output_clock_csv.as_deref()),
-    ],
-  )?;
+  let resolved = clock_args.resolve_outputs()?;
 
   let clock_params = if clock_args.covariation {
     let seq_len = clock_args

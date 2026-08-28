@@ -3,12 +3,14 @@ use eyre::Report;
 use itertools::Itertools;
 use serde::Serialize;
 use serde_json::{Map, Value};
+use std::path::Path;
 use treetime::commands::ancestral::args::TreetimeAncestralArgs;
 use treetime::commands::clock::args::TreetimeClockArgs;
 use treetime::commands::mugration::args::TreetimeMugrationArgs;
 use treetime::commands::optimize::args::TreetimeOptimizeArgs;
 use treetime::commands::prune::args::TreetimePruneArgs;
-use treetime::commands::shared::output::CommandKind;
+use treetime::commands::shared::output::{CommandKind, ResolvedOutputs};
+use treetime::commands::shared::resolve_outputs::ResolveOutputs;
 use treetime::commands::timetree::args::TreetimeTimetreeArgs;
 use treetime_utils::make_error;
 
@@ -66,6 +68,31 @@ impl PipelineStepCommand {
     }
   }
 
+  /// Concrete output paths this command produces under its current configuration.
+  pub fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
+    match self {
+      Self::Timetree(args) => args.resolve_outputs(),
+      Self::Optimize(args) => args.resolve_outputs(),
+      Self::Prune(args) => args.resolve_outputs(),
+      Self::Ancestral(args) => args.resolve_outputs(),
+      Self::Clock(args) => args.resolve_outputs(),
+      Self::Mugration(args) => args.resolve_outputs(),
+    }
+  }
+
+  /// The step's configured output directory (`--output-all`), if any.
+  pub fn output_all(&self) -> Option<&Path> {
+    let output = match self {
+      Self::Timetree(args) => &args.output,
+      Self::Optimize(args) => &args.output,
+      Self::Prune(args) => &args.output,
+      Self::Ancestral(args) => &args.output,
+      Self::Clock(args) => &args.output,
+      Self::Mugration(args) => &args.output,
+    };
+    output.output_all.as_deref()
+  }
+
   /// Deserialize a command payload once its tag has been isolated.
   ///
   /// The tag is validated against the analysis set with a "did you mean?" hint, so a utility command
@@ -96,6 +123,26 @@ pub struct PipelineStep {
 
 impl PipelineStep {
   /// Parse one step object into a name and a typed command.
+  pub fn from_value(value: Value) -> Result<Self, Report> {
+    let RawStep { name, tag, payload } = RawStep::from_value(value)?;
+    let command = PipelineStepCommand::from_tag_and_value(&tag, payload)
+      .map_err(|err| eyre::eyre!("in pipeline step `{name}`: {err}"))?;
+    Ok(Self { name, command })
+  }
+}
+
+/// One step with its command payload still raw (un-deserialized).
+///
+/// The staged loader needs the payload as a `serde_json::Value` so it can interpolate `{{ ... }}`
+/// leaves before typing the command; typing first would fail on template strings in numeric fields.
+pub struct RawStep {
+  pub name: String,
+  pub tag: String,
+  pub payload: Value,
+}
+
+impl RawStep {
+  /// Extract a step's `name`, command tag, and raw payload without typing the command.
   ///
   /// Enforces the step shape directly, because `#[serde(deny_unknown_fields)]` is silently ignored
   /// on flattened structs: an object must carry a string `name` and exactly one command tag (a
@@ -116,10 +163,7 @@ impl PipelineStep {
     let tags: Vec<String> = map.keys().cloned().collect();
     let (tag, payload) = match tags.as_slice() {
       [] => return make_error!("pipeline step `{name}` has no command; expected one of {}", commands_list()),
-      [tag] => {
-        let payload = map.remove(tag).unwrap_or(Value::Null);
-        (tag.clone(), payload)
-      },
+      [tag] => (tag.clone(), map.remove(tag).unwrap_or(Value::Null)),
       _ => {
         return make_error!(
           "pipeline step `{name}` has more than one command ({}); a step runs exactly one command",
@@ -128,10 +172,7 @@ impl PipelineStep {
       },
     };
 
-    let command = PipelineStepCommand::from_tag_and_value(&tag, payload)
-      .map_err(|err| eyre::eyre!("in pipeline step `{name}`: {err}"))?;
-
-    Ok(Self { name, command })
+    Ok(Self { name, tag, payload })
   }
 }
 

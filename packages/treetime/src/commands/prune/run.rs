@@ -1,7 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::prune::result::{PruneGraphData, PruneResult};
-use crate::commands::shared::output::{CommandKind, OutputSelection};
+use crate::commands::shared::output::OutputSelection;
+use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_prune_tree_outputs;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_error;
@@ -35,17 +36,7 @@ pub fn run_prune(
   let input_order = leaf_order(&graph)?;
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 
-  let selection: Vec<OutputSelection> = args
-    .output_selection
-    .iter()
-    .copied()
-    .map(OutputSelection::from)
-    .collect();
-  let resolved = args.output.resolve(
-    CommandKind::Prune,
-    &selection,
-    &[(OutputSelection::Gtr, args.output_gtr.as_deref())],
-  )?;
+  let resolved = args.resolve_outputs()?;
 
   let needs_sequences = args.prune_empty || args.merge_shared_mutations;
   let sequences = if needs_sequences && !args.alignment.alignment.is_empty() {
