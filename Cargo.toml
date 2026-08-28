@@ -106,13 +106,15 @@ jsonschema = { version = "=0.48.1", default-features = false }
 lazy_static = "=1.5.0"
 log = "=0.4.28"
 maplit = { version = "=1.0.2", features = [] }
+miette = { version = "=7.6.0", features = ["fancy"] }
+minijinja = { version = "=2.24.0", features = ["debug", "deserialization"] }
 napi = { version = "=3.9.0", features = ["napi4", "serde-json"] }
 napi-build = "=2.3.2"
 napi-derive = "=3.5.6"
 ndarray-conv = { version = "=0.5.0", features = [] }
 num = "=0.4.3"
 num-traits = "=0.2.19"
-ordered-float = { version = "=5.0.0", default-features = false }
+ordered-float = { version = "=5.5.0", default-features = false }
 parking_lot = { version = "=0.12.4", features = ["arc_lock", "serde", "deadlock_detection", "hardware-lock-elision"] }
 percent-encoding = "=2.3.2"
 pest = "=2.8.6"
@@ -130,13 +132,16 @@ rayon = "=1.11.0"
 regex = { version = "=1.11.2", features = [] }
 rgb = "=0.8.52"
 rstest = "=0.26.1"
+saphyr = "=0.0.12"
 schemars = { version = "=1.2.1", features = ["derive"] }
 serde = { version = "=1.0.225", features = ["derive", "rc"] }
 serde_json = { version = "=1.0.145", features = ["preserve_order", "indexmap", "unbounded_depth"] }
+serde_path_to_error = "=0.1.20"
 serde_stacker = { version = "=0.1.14" }
 serde_yaml = "=0.9.34"
 smart-default = "=0.7.1"
 statrs = "=0.18.0"
+strsim = "=0.11.1"
 strum = "=0.27.2"
 strum_macros = "=0.27.2"
 tempfile = "=3.27.0"

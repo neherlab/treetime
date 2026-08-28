@@ -37,16 +37,24 @@ image = { workspace = true, optional = true }
 indicatif = { workspace = true }
 indoc = { workspace = true }
 itertools = { workspace = true }
+jsonschema = { workspace = true }
 log = { workspace = true }
 maplit = { workspace = true }
+miette = { workspace = true }
+minijinja = { workspace = true }
 parking_lot = { workspace = true }
 num-traits = { workspace = true }
 plotters = { workspace = true }
 rayon = { workspace = true }
 regex = { workspace = true }
 rgb = { workspace = true }
+saphyr = { workspace = true }
+schemars = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_path_to_error = { workspace = true }
+serde_yaml = { workspace = true }
+strsim = { workspace = true }
 textplots = { workspace = true }
 
 [target.'cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))'.dependencies]
