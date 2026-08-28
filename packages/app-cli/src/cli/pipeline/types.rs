@@ -80,6 +80,19 @@ impl PipelineStepCommand {
     }
   }
 
+  /// The command's argument object as a serde value, for reading input paths in the dry-run plan.
+  pub fn args_value(&self) -> Value {
+    let value = match self {
+      Self::Timetree(args) => serde_json::to_value(args),
+      Self::Optimize(args) => serde_json::to_value(args),
+      Self::Prune(args) => serde_json::to_value(args),
+      Self::Ancestral(args) => serde_json::to_value(args),
+      Self::Clock(args) => serde_json::to_value(args),
+      Self::Mugration(args) => serde_json::to_value(args),
+    };
+    value.unwrap_or(Value::Null)
+  }
+
   /// The step's configured output directory (`--output-all`), if any.
   pub fn output_all(&self) -> Option<&Path> {
     let output = match self {

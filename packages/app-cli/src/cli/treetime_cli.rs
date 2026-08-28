@@ -86,6 +86,14 @@ pub enum TreetimeCommands {
   /// Reconstructs discrete ancestral states, for example geographic location, host, or similar. In addition to ancestral states, a GTR model of state transitions is inferred.
   Mugration(TreetimeMugrationArgs),
 
+  /// Runs an ordered list of analysis commands from one config file, on one dataset, in one process.
+  ///
+  /// The config file (JSON or YAML) lists named steps, each an analysis command with its arguments.
+  /// Steps run sequentially; a step may reference an earlier step's outputs with
+  /// `{{ steps.<name>.outputs.<selection> }}`. Use `--check` to print the resolved plan without
+  /// running anything, and `--steps` to run only a subset.
+  Pipeline(TreetimePipelineArgs),
+
   /// Estimates ancestral reassortment graph (ARG).
   Arg(TreetimeAncestralReassortmentGraphArgs),
 
@@ -99,6 +107,23 @@ pub enum TreetimeCommands {
   /// Print system information for debugging
   #[clap(hide = true)]
   Debug,
+}
+
+#[derive(Parser, Debug, Serialize)]
+pub struct TreetimePipelineArgs {
+  /// Pipeline configuration file (JSON or YAML) describing an ordered list of steps.
+  #[clap(long, value_hint = ValueHint::FilePath)]
+  pub config: PathBuf,
+
+  /// Run only these named steps (comma-separated), in the pipeline's list order.
+  ///
+  /// A referenced upstream step that is not selected must already have its outputs on disk.
+  #[clap(long, value_delimiter = ',')]
+  pub steps: Vec<String>,
+
+  /// Resolve and print the plan (steps, inputs, outputs) without running any step.
+  #[clap(long)]
+  pub check: bool,
 }
 
 #[derive(Parser, Debug, Serialize)]
