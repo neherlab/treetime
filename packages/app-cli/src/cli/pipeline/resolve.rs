@@ -52,7 +52,10 @@ impl PipelineDoc {
 
     for key in map.keys() {
       if !TOP_LEVEL_KEYS.contains(&key.as_str()) {
-        return make_error!("unknown top-level key `{key}`; {}", suggestion_suffix(key, &TOP_LEVEL_KEYS));
+        return make_error!(
+          "unknown top-level key `{key}`; {}",
+          suggestion_suffix(key, &TOP_LEVEL_KEYS)
+        );
       }
     }
 
@@ -74,7 +77,9 @@ impl PipelineDoc {
       None => None,
     };
 
-    let steps_value = map.remove("steps").ok_or_else(|| make_report!("pipeline config has no `steps`"))?;
+    let steps_value = map
+      .remove("steps")
+      .ok_or_else(|| make_report!("pipeline config has no `steps`"))?;
     let Value::Array(step_values) = steps_value else {
       return make_error!("`steps` must be a list of steps");
     };
@@ -197,7 +202,9 @@ fn substitute_step_refs(
   all_names: &BTreeSet<&str>,
 ) -> Result<Value, Report> {
   match value {
-    Value::String(leaf) => Ok(Value::String(substitute_step_refs_in_leaf(leaf, resolved, index, step, all_names)?)),
+    Value::String(leaf) => Ok(Value::String(substitute_step_refs_in_leaf(
+      leaf, resolved, index, step, all_names,
+    )?)),
     Value::Array(items) => items
       .iter()
       .map(|item| substitute_step_refs(item, resolved, index, step, all_names))
@@ -205,7 +212,12 @@ fn substitute_step_refs(
       .map(Value::Array),
     Value::Object(map) => map
       .iter()
-      .map(|(key, val)| Ok((key.clone(), substitute_step_refs(val, resolved, index, step, all_names)?)))
+      .map(|(key, val)| {
+        Ok((
+          key.clone(),
+          substitute_step_refs(val, resolved, index, step, all_names)?,
+        ))
+      })
       .collect::<Result<Map<_, _>, Report>>()
       .map(Value::Object),
     other => Ok(other.clone()),
@@ -230,7 +242,11 @@ fn substitute_step_refs_in_leaf(
     let path = if captures.get(4).is_some() {
       producer_output_all(step, producer)?
     } else {
-      let selection = captures.get(2).or_else(|| captures.get(3)).expect("regex has a selection group").as_str();
+      let selection = captures
+        .get(2)
+        .or_else(|| captures.get(3))
+        .expect("regex has a selection group")
+        .as_str();
       resolve_selection_path(step, producer, selection)?
     };
     result.push_str(&path);
@@ -257,7 +273,10 @@ fn resolve_producer<'a>(
     );
   }
   let earlier: Vec<&str> = index.keys().map(String::as_str).collect();
-  make_error!("step `{step}` references unknown step `{producer}`; {}", suggestion_suffix(producer, &earlier))
+  make_error!(
+    "step `{step}` references unknown step `{producer}`; {}",
+    suggestion_suffix(producer, &earlier)
+  )
 }
 
 /// Concrete output directory of an earlier producer, for `{{ steps.x.output_all }}`.
@@ -318,7 +337,10 @@ fn set_output_all_if_absent(payload: &mut Value, dir: &Path) {
   };
   let already_set = matches!(output.get("output_all"), Some(value) if !value.is_null());
   if !already_set {
-    output.insert("output_all".to_owned(), Value::String(dir.to_string_lossy().into_owned()));
+    output.insert(
+      "output_all".to_owned(),
+      Value::String(dir.to_string_lossy().into_owned()),
+    );
   }
 }
 
@@ -366,7 +388,11 @@ mod tests {
   }
 
   fn step<'a>(pipeline: &'a ResolvedPipeline, name: &str) -> &'a ResolvedStep {
-    pipeline.steps.iter().find(|step| step.name == name).expect("step present")
+    pipeline
+      .steps
+      .iter()
+      .find(|step| step.name == name)
+      .expect("step present")
   }
 
   // A single-file chained reference resolves to the producer step's concrete output path.

@@ -29,7 +29,9 @@ pub fn load_pipeline(config: &Path) -> Result<ResolvedPipeline, Report> {
 
 /// The process environment as a template context object of string values.
 fn process_env() -> Value {
-  let env = std::env::vars().map(|(key, value)| (key, Value::String(value))).collect::<Map<_, _>>();
+  let env = std::env::vars()
+    .map(|(key, value)| (key, Value::String(value)))
+    .collect::<Map<_, _>>();
   Value::Object(env)
 }
 
@@ -55,7 +57,13 @@ pub fn select_steps<'a>(
     }
   }
 
-  Ok(pipeline.steps.iter().filter(|step| selected.contains(&step.name)).collect())
+  Ok(
+    pipeline
+      .steps
+      .iter()
+      .filter(|step| selected.contains(&step.name))
+      .collect(),
+  )
 }
 
 /// Run a resolved pipeline, one step at a time, stopping at the first failure.
@@ -97,8 +105,16 @@ fn run_step(step: &ResolvedStep, progress: &dyn ProgressSink) -> Result<(), Repo
     PipelineStepCommand::Clock(args) => {
       let result = run_clock(args, progress)?;
       if let Some(outdir) = &args.output.output_all {
-        write_clock_regression_chart_svg(&result.regression_results, &result.clock_model, outdir.join("clock.svg"))?;
-        write_clock_regression_chart_png(&result.regression_results, &result.clock_model, outdir.join("clock.png"))?;
+        write_clock_regression_chart_svg(
+          &result.regression_results,
+          &result.clock_model,
+          outdir.join("clock.svg"),
+        )?;
+        write_clock_regression_chart_png(
+          &result.regression_results,
+          &result.clock_model,
+          outdir.join("clock.png"),
+        )?;
       }
       Ok(())
     },
@@ -110,7 +126,10 @@ fn failure_report(failed: &ResolvedStep, completed: &[&ResolvedStep], remaining:
   let done = if completed.is_empty() {
     "none".to_owned()
   } else {
-    completed.iter().map(|step| format!("`{}`{}", step.name, output_dir_hint(step.outputs.output_all.as_deref()))).join(", ")
+    completed
+      .iter()
+      .map(|step| format!("`{}`{}", step.name, output_dir_hint(step.outputs.output_all.as_deref())))
+      .join(", ")
   };
   format!(
     "pipeline step `{}` failed; completed steps: {done}; resume the remaining steps with --steps={remaining}",
@@ -152,7 +171,10 @@ mod tests {
   fn test_runner_select_all_steps_in_order() {
     let pipeline = resolve(config());
     let selected = select_steps(&pipeline, None).unwrap();
-    assert_eq!(vec!["tt", "anc"], selected.iter().map(|step| step.name.as_str()).collect::<Vec<_>>());
+    assert_eq!(
+      vec!["tt", "anc"],
+      selected.iter().map(|step| step.name.as_str()).collect::<Vec<_>>()
+    );
   }
 
   // A subset runs only the named steps, still in list order.
@@ -160,7 +182,10 @@ mod tests {
   fn test_runner_select_subset_keeps_list_order() {
     let pipeline = resolve(config());
     let selected = select_steps(&pipeline, Some(&btreeset! { "anc".to_owned() })).unwrap();
-    assert_eq!(vec!["anc"], selected.iter().map(|step| step.name.as_str()).collect::<Vec<_>>());
+    assert_eq!(
+      vec!["anc"],
+      selected.iter().map(|step| step.name.as_str()).collect::<Vec<_>>()
+    );
   }
 
   // An unknown selected step name is rejected with a did-you-mean.
@@ -168,6 +193,9 @@ mod tests {
   fn test_runner_select_unknown_step_errors() {
     let pipeline = resolve(config());
     let result = select_steps(&pipeline, Some(&btreeset! { "tta".to_owned() }));
-    assert_error!(result, "unknown step `tta` in --steps; did you mean `tt`? Valid values: `anc`, `tt`");
+    assert_error!(
+      result,
+      "unknown step `tta` in --steps; did you mean `tt`? Valid values: `anc`, `tt`"
+    );
   }
 }

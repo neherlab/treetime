@@ -9,6 +9,7 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 use app_cli::cli::pipeline::check::print_pipeline_plan;
 use app_cli::cli::pipeline::runner::{load_pipeline, run_pipeline};
+use app_cli::cli::pipeline::safety::validate_plan;
 use app_cli::cli::print_help_markdown::print_help_markdown;
 use app_cli::cli::progress::{BarProgress, TextProgress};
 use app_cli::cli::rtt_chart::{
@@ -111,8 +112,14 @@ fn main() -> Result<(), Report> {
     },
     TreetimeCommands::Pipeline(pipeline_args) => {
       let pipeline = load_pipeline(&pipeline_args.config)?;
-      let selected = (!pipeline_args.steps.is_empty())
-        .then(|| pipeline_args.steps.iter().cloned().collect::<std::collections::BTreeSet<String>>());
+      let selected = (!pipeline_args.steps.is_empty()).then(|| {
+        pipeline_args
+          .steps
+          .iter()
+          .cloned()
+          .collect::<std::collections::BTreeSet<String>>()
+      });
+      validate_plan(&pipeline, selected.as_ref())?;
       if pipeline_args.check {
         print_pipeline_plan(&pipeline, selected.as_ref())?;
       } else {

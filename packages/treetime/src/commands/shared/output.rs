@@ -582,7 +582,10 @@ impl ResolvedOutputs {
   pub fn paths_by_selection(&self) -> BTreeMap<OutputSelection, Vec<PathBuf>> {
     let mut by_selection: BTreeMap<OutputSelection, Vec<PathBuf>> = BTreeMap::new();
     for (kind, path) in &self.tree_outputs {
-      by_selection.entry(tree_write_kind_selection(kind)).or_default().push(path.clone());
+      by_selection
+        .entry(tree_write_kind_selection(kind))
+        .or_default()
+        .push(path.clone());
     }
     for (selection, path) in &self.non_tree_outputs {
       by_selection.entry(*selection).or_default().push(path.clone());

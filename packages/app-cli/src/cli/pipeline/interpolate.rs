@@ -98,7 +98,11 @@ impl Interpolator {
 /// resolved in repeated passes until a fixed point. A var may not reference `steps` (steps are
 /// produced later). A set of vars that never becomes resolvable is a cycle (or an unknown reference)
 /// and is reported rather than looped forever.
-pub fn resolve_vars(interp: &Interpolator, raw: &Map<String, Value>, env: &Value) -> Result<Map<String, Value>, Report> {
+pub fn resolve_vars(
+  interp: &Interpolator,
+  raw: &Map<String, Value>,
+  env: &Value,
+) -> Result<Map<String, Value>, Report> {
   let mut resolved: Map<String, Value> = Map::new();
   let mut pending: Vec<(String, Value)> = raw.iter().map(|(name, value)| (name.clone(), value.clone())).collect();
 
@@ -287,7 +291,10 @@ mod tests {
   #[test]
   fn test_resolve_vars_cycle_errors() {
     let interp = Interpolator::default();
-    let raw = json!({ "a": "{{ vars.b }}", "b": "{{ vars.a }}" }).as_object().unwrap().clone();
+    let raw = json!({ "a": "{{ vars.b }}", "b": "{{ vars.a }}" })
+      .as_object()
+      .unwrap()
+      .clone();
     let result = resolve_vars(&interp, &raw, &empty_env());
     assert_error!(
       result,
@@ -299,8 +306,14 @@ mod tests {
   #[test]
   fn test_resolve_vars_rejects_steps_reference() {
     let interp = Interpolator::default();
-    let raw = json!({ "x": "{{ steps.tt.outputs.nwk }}" }).as_object().unwrap().clone();
+    let raw = json!({ "x": "{{ steps.tt.outputs.nwk }}" })
+      .as_object()
+      .unwrap()
+      .clone();
     let result = resolve_vars(&interp, &raw, &empty_env());
-    assert_error!(result, "pipeline var `x` references `steps`; vars may only use `vars` and `env`");
+    assert_error!(
+      result,
+      "pipeline var `x` references `steps`; vars may only use `vars` and `env`"
+    );
   }
 }

@@ -175,7 +175,12 @@ impl RawStep {
 
     let tags: Vec<String> = map.keys().cloned().collect();
     let (tag, payload) = match tags.as_slice() {
-      [] => return make_error!("pipeline step `{name}` has no command; expected one of {}", commands_list()),
+      [] => {
+        return make_error!(
+          "pipeline step `{name}` has no command; expected one of {}",
+          commands_list()
+        );
+      },
       [tag] => (tag.clone(), map.remove(tag).unwrap_or(Value::Null)),
       _ => {
         return make_error!(
@@ -211,7 +216,11 @@ pub struct Pipeline {
 
 /// Human-readable command list for error messages, in declared order.
 fn commands_list() -> String {
-  COMMAND_TAGS.iter().map(|tag| format!("`{tag}`")).collect::<Vec<_>>().join(", ")
+  COMMAND_TAGS
+    .iter()
+    .map(|tag| format!("`{tag}`"))
+    .collect::<Vec<_>>()
+    .join(", ")
 }
 
 #[cfg(test)]

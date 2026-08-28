@@ -1,18 +1,9 @@
+use crate::cli::pipeline::inputs::labeled_input_paths;
 use crate::cli::pipeline::resolve::{ResolvedPipeline, ResolvedStep};
 use crate::cli::pipeline::runner::select_steps;
 use eyre::Report;
-use serde_json::Value;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
-
-/// Input fields the dry-run plan reports, as (label, path into the args object).
-const INPUT_FIELDS: [(&str, &[&str]); 5] = [
-  ("tree", &["tree"]),
-  ("alignment", &["alignment", "alignment"]),
-  ("metadata", &["metadata"]),
-  ("weights", &["weights"]),
-  ("vcf-reference", &["vcf_reference"]),
-];
 
 /// Print the resolved pipeline plan without running anything.
 ///
@@ -52,13 +43,10 @@ fn producers_by_path(pipeline: &ResolvedPipeline) -> BTreeMap<String, String> {
 
 /// Print a step's resolved input paths, annotating any that an earlier step produces.
 fn print_inputs(step: &ResolvedStep, producers: &BTreeMap<String, String>) {
-  let args = step.command.args_value();
-  for (label, path_keys) in INPUT_FIELDS {
-    for path in lookup_paths(&args, path_keys) {
-      match producers.get(path) {
-        Some(producer) if producer != &step.name => println!("    {label}: {path} (from step {producer})"),
-        _ => println!("    {label}: {path}"),
-      }
+  for (label, path) in labeled_input_paths(&step.command) {
+    match producers.get(&path) {
+      Some(producer) if producer != &step.name => println!("    {label}: {path} (from step {producer})"),
+      _ => println!("    {label}: {path}"),
     }
   }
 }
@@ -80,24 +68,5 @@ fn print_outputs(step: &ResolvedStep) {
     for path in produced {
       println!("      {path}");
     }
-  }
-}
-
-/// Follow a dotted key path into the args object and return the string paths it holds.
-///
-/// A leaf may be a single string (`tree`, `metadata`) or a list of strings (`alignment` accepts
-/// several files); both are flattened to individual paths.
-fn lookup_paths<'a>(args: &'a Value, keys: &[&str]) -> Vec<&'a str> {
-  let mut current = args;
-  for key in keys {
-    let Some(next) = current.get(key) else {
-      return Vec::new();
-    };
-    current = next;
-  }
-  match current {
-    Value::String(path) => vec![path.as_str()],
-    Value::Array(items) => items.iter().filter_map(Value::as_str).collect(),
-    _ => Vec::new(),
   }
 }

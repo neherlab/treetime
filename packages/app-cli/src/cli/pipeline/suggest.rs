@@ -18,7 +18,11 @@ pub fn did_you_mean(input: &str, candidates: &[&str]) -> Option<String> {
 
 /// Render a sorted, comma-separated list of valid values for an error message.
 pub fn valid_values(candidates: &[&str]) -> String {
-  candidates.iter().sorted().map(|candidate| format!("`{candidate}`")).join(", ")
+  candidates
+    .iter()
+    .sorted()
+    .map(|candidate| format!("`{candidate}`"))
+    .join(", ")
 }
 
 /// Compose the trailing hint of an error message: an optional "did you mean" plus the valid set.
@@ -36,7 +40,10 @@ mod tests {
 
   #[test]
   fn test_suggest_did_you_mean_close_typo_matches() {
-    assert_eq!(Some("timetree".to_owned()), did_you_mean("timtree", &["timetree", "ancestral", "clock"]));
+    assert_eq!(
+      Some("timetree".to_owned()),
+      did_you_mean("timtree", &["timetree", "ancestral", "clock"])
+    );
   }
 
   #[test]
@@ -46,11 +53,17 @@ mod tests {
 
   #[test]
   fn test_suggest_did_you_mean_single_char_typo_short_token() {
-    assert_eq!(Some("clock".to_owned()), did_you_mean("clok", &["timetree", "clock", "prune"]));
+    assert_eq!(
+      Some("clock".to_owned()),
+      did_you_mean("clok", &["timetree", "clock", "prune"])
+    );
   }
 
   #[test]
   fn test_suggest_valid_values_sorted_and_quoted() {
-    assert_eq!("`ancestral`, `clock`, `timetree`", valid_values(&["timetree", "ancestral", "clock"]));
+    assert_eq!(
+      "`ancestral`, `clock`, `timetree`",
+      valid_values(&["timetree", "ancestral", "clock"])
+    );
   }
 }
