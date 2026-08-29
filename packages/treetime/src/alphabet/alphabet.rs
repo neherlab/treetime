@@ -4,6 +4,7 @@ use eyre::Report;
 use indexmap::{IndexMap, indexmap};
 use itertools::Itertools;
 use ndarray::{Array1, Array2, Axis, stack};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::borrow::Borrow;
@@ -15,7 +16,9 @@ pub const NON_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'.');
 pub const VARIABLE_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'~');
 pub const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize)]
+#[derive(
+  Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize, JsonSchema,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum AlphabetName {

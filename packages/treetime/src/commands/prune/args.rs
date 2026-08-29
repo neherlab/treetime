@@ -4,12 +4,13 @@ use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::output::{OutputCoreArgs, PruneOutputSelection, TopologyOrderArgs};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimePruneArgs {

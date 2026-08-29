@@ -8,6 +8,7 @@ use crate::commands::shared::output::{DivergenceUnits, OptimizeOutputSelection, 
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
@@ -18,7 +19,7 @@ use std::path::{Path, PathBuf};
 /// Only date-free methods are valid here because optimize has no sampling dates.
 /// Date-dependent methods (least-squares, oldest, clock-filter) are available
 /// in the timetree and clock commands.
-#[derive(Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum OptimizeRerootMethod {
@@ -33,7 +34,7 @@ impl From<OptimizeRerootMethod> for RerootMethod {
   }
 }
 
-#[derive(Debug, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeOptimizeArgs {

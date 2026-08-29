@@ -1,4 +1,5 @@
 use crate::seq::gap_fill::GapFill;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
@@ -8,7 +9,7 @@ use std::fmt::Debug;
 /// Extracted from the per-command duplication of `gap_fill` plus `keep_overhangs` plus
 /// `effective_gap_fill()`. The deprecated `--keep-overhangs` flag is retained, hidden, and overrides
 /// `--gap-fill` to `none` for backward compatibility with v0 invocations.
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct GapFillArgs {

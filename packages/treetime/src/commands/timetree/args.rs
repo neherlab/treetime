@@ -10,6 +10,7 @@ use crate::commands::shared::reroot::RerootArgs;
 use crate::optimize::params::BranchLengthMode;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
@@ -26,7 +27,7 @@ fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
 
 pub use crate::timetree::params::TimeMarginalMode;
 
-#[derive(Debug, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeTimetreeArgs {

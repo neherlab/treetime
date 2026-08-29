@@ -6,6 +6,7 @@ use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::{ClockEdge, ClockNode};
 use eyre::Report;
 use log::{debug, info};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
@@ -14,7 +15,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_graph::reroot::RerootResult;
 
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ClockParams {

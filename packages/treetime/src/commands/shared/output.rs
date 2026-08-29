@@ -2,6 +2,7 @@
 use clap::ValueHint;
 use eyre::{Report, WrapErr};
 use maplit::btreeset;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::{BTreeMap, BTreeSet};
@@ -25,7 +26,9 @@ use treetime_utils::{make_error, make_report};
 /// it (`From<XxxOutputSelection>`), `resolve` maps it to concrete paths, and command code looks up
 /// produced files by it. NWK annotation style is orthogonal and lives on `--output-nwk-style`, so
 /// the tree variants here are style-agnostic (`Nwk`, `Nexus`), not per-style.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize, strum_macros::EnumIter)]
+#[derive(
+  Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize, strum_macros::EnumIter, JsonSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 pub enum OutputSelection {
   All,
@@ -177,7 +180,7 @@ impl std::fmt::Display for OutputSelection {
 }
 
 /// CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum NwkStyleArg {
@@ -213,7 +216,7 @@ fn nwk_style_secondary_ext(style: NwkStyle) -> &'static str {
 /// clap rejects values outside the command's variant set.
 macro_rules! per_command_output_selection {
   ($name:ident { $($extra:ident),* $(,)? }) => {
-    #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
     #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
     pub enum $name {
       All,
@@ -443,7 +446,7 @@ fn expand_outputall_styles(
 /// NWK annotation style (`--output-nwk-style`) is orthogonal and expands every NWK/Nexus output
 /// across the selected styles. Topology ordering is a separate concern (`TopologyOrderArgs`) that
 /// each command flattens independently.
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct OutputCoreArgs {
@@ -755,7 +758,7 @@ fn ensure_unique_output_paths(
   Ok(())
 }
 
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct TopologyOrderArgs {
@@ -902,7 +905,7 @@ impl TopologyOrderArgs {
   }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum DivergenceUnits {
@@ -911,7 +914,7 @@ pub enum DivergenceUnits {
   Mutations,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum LadderizeArg {
@@ -920,7 +923,7 @@ pub enum LadderizeArg {
   Descending,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum TopologyOrderArg {
@@ -964,7 +967,7 @@ impl From<TopologyOrderArg> for TopologyOrderPreset {
   }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum TopologyOrderTargetSourceArg {
@@ -983,7 +986,7 @@ impl std::fmt::Display for TopologyOrderTargetSourceArg {
   }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum TopologyOrderTargetAggregateArg {

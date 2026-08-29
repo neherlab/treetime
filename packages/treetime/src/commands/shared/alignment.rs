@@ -1,5 +1,6 @@
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
@@ -10,7 +11,7 @@ use std::path::PathBuf;
 /// One flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing
 /// the earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one
 /// input alignment. When the list is empty, callers read uncompressed FASTA from standard input.
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct AlignmentArgs {

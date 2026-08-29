@@ -1,7 +1,8 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum BranchLengthMode {
@@ -15,7 +16,7 @@ pub enum BranchLengthMode {
 /// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
 /// length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
 /// vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum BranchOptMethod {
@@ -72,7 +73,7 @@ pub enum BranchOptMethod {
 /// well-calibrated branch lengths (e.g. from RAxML, IQ-TREE, or a previous
 /// TreeTime run), preserving those values lets Newton converge from a
 /// better starting position.
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum InitialGuessMode {

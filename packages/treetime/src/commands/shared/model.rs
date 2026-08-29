@@ -1,4 +1,5 @@
 use crate::gtr::get_gtr::GtrModelName;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
@@ -9,7 +10,7 @@ use std::fmt::Debug;
 /// (ancestral, optimize) and `--gtr` (clock, timetree). `--model` is preferred over `--gtr` because the
 /// value set includes non-GTR models (for example `jtt92`). `--model-params` (alias `--gtr-params`)
 /// carries model-specific `key=value` parameters.
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ModelArgs {

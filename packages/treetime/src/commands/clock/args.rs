@@ -10,12 +10,13 @@ use crate::commands::shared::reroot::RerootArgs;
 use crate::optimize::params::BranchLengthMode;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeClockArgs {
@@ -159,7 +160,7 @@ impl TreetimeClockArgs {
 }
 
 /// Branch split optimization parameters
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct BranchSplitArgs {
@@ -182,7 +183,7 @@ pub struct BranchSplitArgs {
 }
 
 /// Clock regression model parameters
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ClockRegressionArgs {

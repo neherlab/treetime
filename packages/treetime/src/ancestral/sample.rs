@@ -1,10 +1,11 @@
 use ndarray::ArrayView1;
 use rand::{Rng, RngCore};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime_utils::array::ndarray::argmax_first;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum SampleMode {

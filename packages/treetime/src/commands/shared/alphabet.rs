@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::AlphabetName;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
@@ -11,7 +12,7 @@ use std::fmt::Debug;
 /// fall back to the nucleotide alphabet when detection is ambiguous (see `detect_alphabet`).
 ///
 /// The flag has no short form: `-a` is reserved for `--alignment`.
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct AlphabetArgs {
