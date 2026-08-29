@@ -2,8 +2,7 @@ use crate::cli::pipeline::inputs::labeled_input_paths;
 use crate::cli::pipeline::resolve::{ResolvedPipeline, ResolvedStep};
 use crate::cli::pipeline::runner::select_steps;
 use eyre::Report;
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Print the resolved pipeline plan without running anything.
 ///

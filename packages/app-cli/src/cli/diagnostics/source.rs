@@ -1,6 +1,7 @@
 use eyre::Report;
 use miette::{Diagnostic, LabeledSpan, NamedSource, Severity, SourceCode, SourceSpan};
 use saphyr::{LoadableYamlNode, MarkedYaml, Scalar, YamlData};
+use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fmt::{self, Display, Formatter};
 use treetime_utils::make_error;
@@ -89,13 +90,6 @@ impl RawDiagnostic {
     self
   }
 
-  /// Replace the default caret label.
-  #[must_use]
-  pub fn label(mut self, label: impl Into<String>) -> Self {
-    self.label = label.into();
-    self
-  }
-
   /// Attach an actionable `help:` line (suggestions, valid values).
   #[must_use]
   pub fn help(mut self, help: impl Into<String>) -> Self {
@@ -149,6 +143,28 @@ pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawD
 
   let plural = if count == 1 { "" } else { "s" };
   make_error!("{top_message} ({count} problem{plural} reported above)")
+}
+
+/// Parse a config document (JSON or YAML), rendering a batched syntax diagnostic and bailing on error.
+///
+/// YAML is a superset of JSON, so one parser reads both. A parse failure is rendered as a
+/// caret-annotated report against `source` before returning a terse error, matching how every other
+/// config problem is surfaced.
+pub fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value, Report> {
+  match serde_yaml::from_str(text) {
+    Ok(value) => Ok(value),
+    Err(err) => {
+      render_and_bail(
+        source,
+        "invalid configuration",
+        vec![RawDiagnostic::new(
+          "config::syntax",
+          format!("could not parse config: {err}"),
+        )],
+      )?;
+      unreachable!("render_and_bail returns an error whenever diagnostics are present");
+    },
+  }
 }
 
 /// One rendered diagnostic: a message, code, optional caret, and optional help, over the document.
@@ -290,6 +306,6 @@ fn byte_of(table: &[usize], char_index: usize) -> usize {
 }
 
 /// Escape a mapping key for use as a JSON-pointer segment (RFC 6901).
-fn escape_pointer(segment: &str) -> String {
+pub(crate) fn escape_pointer(segment: &str) -> String {
   segment.replace('~', "~0").replace('/', "~1")
 }

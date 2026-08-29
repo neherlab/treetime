@@ -1,5 +1,5 @@
 use crate::cli::pipeline::inputs::input_paths;
-use crate::cli::pipeline::resolve::{ResolvedPipeline, ResolvedStep};
+use crate::cli::pipeline::resolve::{ResolvedPipeline, ResolvedStep, is_template_path};
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -7,9 +7,6 @@ use treetime_utils::make_error;
 
 /// The stdin/stdout placeholder path, rejected inside a pipeline.
 const STDIO_PATH: &str = "-";
-
-/// Placeholders that mark a per-CDS output path template rather than a concrete file.
-const CDS_PLACEHOLDERS: [&str; 2] = ["{cds}", "%GENE"];
 
 /// Validate a resolved pipeline before any step runs.
 ///
@@ -124,12 +121,6 @@ fn output_paths(step: &ResolvedStep) -> Vec<String> {
     .filter(|path| !is_template_path(path))
     .map(|path| path.to_string_lossy().into_owned())
     .collect()
-}
-
-/// Whether a path is a per-CDS template rather than a concrete file.
-fn is_template_path(path: &Path) -> bool {
-  let path = path.to_string_lossy();
-  CDS_PLACEHOLDERS.iter().any(|placeholder| path.contains(placeholder))
 }
 
 #[cfg(test)]

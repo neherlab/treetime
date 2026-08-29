@@ -1,6 +1,7 @@
 use crate::cli::diagnostics::entry::check_pipeline;
-use crate::cli::diagnostics::source::{ConfigSource, RawDiagnostic, render_and_bail};
+use crate::cli::diagnostics::source::{ConfigSource, parse_config_document};
 use crate::cli::pipeline::resolve::{PipelineDoc, ResolvedPipeline, ResolvedStep, resolve_pipeline};
+use crate::cli::pipeline::suggest::suggestion_suffix;
 use crate::cli::pipeline::types::PipelineStepCommand;
 use crate::cli::rtt_chart::{write_clock_regression_chart_png, write_clock_regression_chart_svg};
 use eyre::Report;
@@ -29,20 +30,7 @@ pub fn load_pipeline(config: &Path) -> Result<ResolvedPipeline, Report> {
   let text = read_file_to_string(config)?;
   let source = ConfigSource::new(config.display().to_string(), text.clone());
 
-  let value: Value = match serde_yaml::from_str(&text) {
-    Ok(value) => value,
-    Err(err) => {
-      render_and_bail(
-        &source,
-        "invalid configuration",
-        vec![RawDiagnostic::new(
-          "config::syntax",
-          format!("could not parse config: {err}"),
-        )],
-      )?;
-      unreachable!("render_and_bail returns an error whenever diagnostics are present");
-    },
-  };
+  let value = parse_config_document(&source, &text)?;
 
   check_pipeline(&source, &value)?;
   let doc = PipelineDoc::from_value(value)?;
@@ -74,7 +62,7 @@ pub fn select_steps<'a>(
       let candidates: Vec<&str> = names.iter().copied().collect();
       return make_error!(
         "unknown step `{name}` in --steps; {}",
-        crate::cli::pipeline::suggest::suggestion_suffix(name, &candidates)
+        suggestion_suffix(name, &candidates)
       );
     }
   }

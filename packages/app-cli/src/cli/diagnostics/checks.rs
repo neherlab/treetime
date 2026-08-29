@@ -1,8 +1,8 @@
-use crate::cli::diagnostics::source::RawDiagnostic;
+use crate::cli::diagnostics::source::{RawDiagnostic, escape_pointer};
 use crate::cli::pipeline::interpolate::{Interpolator, NAMESPACES};
 use crate::cli::pipeline::resolve::{STEP_REF, TOP_LEVEL_KEYS};
 use crate::cli::pipeline::suggest::suggestion_suffix;
-use crate::cli::pipeline::types::{COMMAND_TAGS, SCHEMA_KEY};
+use crate::cli::pipeline::types::{COMMAND_TAGS, SCHEMA_KEY, commands_list};
 use crate::cli::schema::command_schema_for;
 use itertools::Itertools;
 use jsonschema::error::ValidationErrorKind;
@@ -420,21 +420,11 @@ fn walk_leaves(value: &Value, pointer: &str, visit: &mut impl FnMut(&str, &str))
     },
     Value::Object(map) => {
       for (key, child) in map {
-        walk_leaves(child, &format!("{pointer}/{}", escape_segment(key)), visit);
+        walk_leaves(child, &format!("{pointer}/{}", escape_pointer(key)), visit);
       }
     },
     _ => {},
   }
-}
-
-/// Escape a mapping key for use as a JSON-pointer segment (RFC 6901).
-fn escape_segment(segment: &str) -> String {
-  segment.replace('~', "~0").replace('/', "~1")
-}
-
-/// Human-readable list of the accepted command tags, in declared order.
-fn commands_list() -> String {
-  COMMAND_TAGS.iter().map(|tag| format!("`{tag}`")).join(", ")
 }
 
 /// Extract the string entries of a JSON array (used for enum option lists).

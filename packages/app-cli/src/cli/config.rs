@@ -1,5 +1,5 @@
 use crate::cli::diagnostics::entry::check_command_config;
-use crate::cli::diagnostics::source::{ConfigSource, RawDiagnostic, render_and_bail};
+use crate::cli::diagnostics::source::{ConfigSource, parse_config_document};
 use crate::cli::schema::command_schema;
 use clap::ArgMatches;
 use clap::parser::ValueSource;
@@ -39,20 +39,7 @@ where
 
   let text = read_file_to_string(config_path)?;
   let source = ConfigSource::new(config_path.display().to_string(), text.clone());
-  let file_value: Value = match serde_yaml::from_str(&text) {
-    Ok(file_value) => file_value,
-    Err(err) => {
-      render_and_bail(
-        &source,
-        "invalid configuration",
-        vec![RawDiagnostic::new(
-          "config::syntax",
-          format!("could not parse config: {err}"),
-        )],
-      )?;
-      unreachable!("render_and_bail returns an error whenever diagnostics are present");
-    },
-  };
+  let file_value = parse_config_document(&source, &text)?;
 
   let mut merged = serde_json::to_value(T::default())?;
   merge_value(&mut merged, &file_value);

@@ -1,4 +1,4 @@
-use crate::cli::pipeline::interpolate::{Interpolator, resolve_vars};
+use crate::cli::pipeline::interpolate::{Interpolator, map_string_leaves, resolve_vars, template_context};
 use crate::cli::pipeline::suggest::{suggestion_suffix, valid_values};
 use crate::cli::pipeline::types::{PipelineStepCommand, RawStep};
 use eyre::Report;
@@ -15,7 +15,7 @@ use treetime_utils::{make_error, make_report};
 pub(crate) const TOP_LEVEL_KEYS: [&str; 4] = ["$schema", "vars", "output_all", "steps"];
 
 /// Placeholders that mark a per-CDS output path template, which is not a single concrete file.
-const CDS_PLACEHOLDERS: [&str; 2] = ["{cds}", "%GENE"];
+pub(crate) const CDS_PLACEHOLDERS: [&str; 2] = ["{cds}", "%GENE"];
 
 /// A whole `{{ steps.<name>.outputs.<sel> }}` reference (or `.output_all`), in dotted or subscript
 /// form. Steps references are resolved by this regex pass rather than by the template engine so that
@@ -135,7 +135,7 @@ pub fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<ResolvedPipeli
   let interp = Interpolator::default();
   let vars = resolve_vars(&interp, &doc.vars, env)?;
 
-  let value_context = context_object(&vars, env);
+  let value_context = template_context(&vars, env);
   let workdir = match &doc.output_all {
     Some(template) => Some(interpolate_to_path(&interp, template, &value_context, "output_all")?),
     None => None,
@@ -177,14 +177,6 @@ pub fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<ResolvedPipeli
   })
 }
 
-/// Build a template context object from the resolved vars and the environment.
-fn context_object(vars: &Map<String, Value>, env: &Value) -> Value {
-  let mut context = Map::new();
-  context.insert("vars".to_owned(), Value::Object(vars.clone()));
-  context.insert("env".to_owned(), env.clone());
-  Value::Object(context)
-}
-
 /// Interpolate a template that must resolve to a single string path.
 fn interpolate_to_path(interp: &Interpolator, template: &str, context: &Value, field: &str) -> Result<PathBuf, Report> {
   match interp.interpolate_str(template, context)? {
@@ -201,27 +193,11 @@ fn substitute_step_refs(
   step: &str,
   all_names: &BTreeSet<&str>,
 ) -> Result<Value, Report> {
-  match value {
-    Value::String(leaf) => Ok(Value::String(substitute_step_refs_in_leaf(
+  map_string_leaves(value, &mut |leaf| {
+    Ok(Value::String(substitute_step_refs_in_leaf(
       leaf, resolved, index, step, all_names,
-    )?)),
-    Value::Array(items) => items
-      .iter()
-      .map(|item| substitute_step_refs(item, resolved, index, step, all_names))
-      .collect::<Result<Vec<_>, _>>()
-      .map(Value::Array),
-    Value::Object(map) => map
-      .iter()
-      .map(|(key, val)| {
-        Ok((
-          key.clone(),
-          substitute_step_refs(val, resolved, index, step, all_names)?,
-        ))
-      })
-      .collect::<Result<Map<_, _>, Report>>()
-      .map(Value::Object),
-    other => Ok(other.clone()),
-  }
+    )?))
+  })
 }
 
 /// Replace step references in a single string leaf, validating each against earlier steps.
@@ -358,7 +334,7 @@ fn parse_selection(tag: &str) -> Option<OutputSelection> {
 }
 
 /// Whether a path is a per-CDS template rather than a concrete file.
-fn is_template_path(path: &Path) -> bool {
+pub(crate) fn is_template_path(path: &Path) -> bool {
   let path = path.to_string_lossy();
   CDS_PLACEHOLDERS.iter().any(|placeholder| path.contains(placeholder))
 }

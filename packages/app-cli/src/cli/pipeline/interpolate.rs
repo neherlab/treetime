@@ -60,20 +60,7 @@ impl Interpolator {
 
   /// Render every string leaf inside `value` against `context`, preserving structure and types.
   pub fn interpolate_value(&self, value: &Value, context: &Value) -> Result<Value, Report> {
-    match value {
-      Value::String(leaf) => self.interpolate_str(leaf, context),
-      Value::Array(items) => items
-        .iter()
-        .map(|item| self.interpolate_value(item, context))
-        .collect::<Result<Vec<_>, _>>()
-        .map(Value::Array),
-      Value::Object(map) => map
-        .iter()
-        .map(|(key, val)| Ok((key.clone(), self.interpolate_value(val, context)?)))
-        .collect::<Result<Map<_, _>, Report>>()
-        .map(Value::Object),
-      other => Ok(other.clone()),
-    }
+    map_string_leaves(value, &mut |leaf| self.interpolate_str(leaf, context))
   }
 
   /// Dotted references a leaf uses, e.g. `{"vars.data", "steps.tt.outputs.nwk"}`.
@@ -112,7 +99,7 @@ pub fn resolve_vars(
     for (name, value) in pending {
       let deps = var_dependencies(interp, &name, &value)?;
       if deps.iter().all(|dep| resolved.contains_key(dep)) {
-        let context = var_context(&resolved, env);
+        let context = template_context(&resolved, env);
         let rendered = interp
           .interpolate_value(&value, &context)
           .map_err(|err| eyre::eyre!("resolving var `{name}`: {err}"))?;
@@ -132,12 +119,36 @@ pub fn resolve_vars(
   Ok(resolved)
 }
 
-/// Wrap the currently-resolved vars and the process environment as a template context.
-fn var_context(resolved: &Map<String, Value>, env: &Value) -> Value {
+/// Wrap the `vars` mapping and the process environment as a `{ vars, env }` template context.
+pub(crate) fn template_context(vars: &Map<String, Value>, env: &Value) -> Value {
   let mut context = Map::new();
-  context.insert("vars".to_owned(), Value::Object(resolved.clone()));
+  context.insert("vars".to_owned(), Value::Object(vars.clone()));
   context.insert("env".to_owned(), env.clone());
   Value::Object(context)
+}
+
+/// Rebuild `value`, replacing every string leaf with the result of `f`, preserving structure.
+///
+/// Arrays and objects recurse; non-string scalars are cloned untouched. The one traversal is shared
+/// by typed interpolation and by the `{{ steps.* }}` substitution pass, which differ only in `f`.
+pub(crate) fn map_string_leaves(
+  value: &Value,
+  f: &mut impl FnMut(&str) -> Result<Value, Report>,
+) -> Result<Value, Report> {
+  match value {
+    Value::String(leaf) => f(leaf),
+    Value::Array(items) => items
+      .iter()
+      .map(|item| map_string_leaves(item, f))
+      .collect::<Result<Vec<_>, _>>()
+      .map(Value::Array),
+    Value::Object(map) => map
+      .iter()
+      .map(|(key, val)| Ok((key.clone(), map_string_leaves(val, f)?)))
+      .collect::<Result<Map<_, _>, Report>>()
+      .map(Value::Object),
+    other => Ok(other.clone()),
+  }
 }
 
 /// Names of other vars that `value` depends on, rejecting a `steps` reference from within `vars`.

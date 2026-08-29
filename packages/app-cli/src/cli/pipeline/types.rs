@@ -217,12 +217,8 @@ pub struct Pipeline {
 }
 
 /// Human-readable command list for error messages, in declared order.
-fn commands_list() -> String {
-  COMMAND_TAGS
-    .iter()
-    .map(|tag| format!("`{tag}`"))
-    .collect::<Vec<_>>()
-    .join(", ")
+pub(crate) fn commands_list() -> String {
+  COMMAND_TAGS.iter().map(|tag| format!("`{tag}`")).join(", ")
 }
 
 #[cfg(test)]
