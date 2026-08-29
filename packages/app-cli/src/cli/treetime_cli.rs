@@ -7,6 +7,7 @@ use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser, Subcommand, Value
 use clap_complete::{Shell, generate};
 use clap_complete_fig::Fig;
 use eyre::Report;
+use schemars::JsonSchema;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
@@ -193,7 +194,7 @@ fn resolve_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) 
 /// Overlay the `--config` file onto `args`, then validate the merged result.
 fn resolve<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
 where
-  T: Serialize + DeserializeOwned + Default + Validate,
+  T: Serialize + DeserializeOwned + Default + Validate + JsonSchema,
 {
   overlay_config(args, matches)?;
   args.validate()

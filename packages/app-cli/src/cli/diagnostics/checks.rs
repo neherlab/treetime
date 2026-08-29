@@ -361,7 +361,7 @@ fn leaf_reference_diagnostics(
       }
     },
     Err(err) => {
-      diags.push(RawDiagnostic::new("config::template", format!("invalid template: {err}")).at(pointer.to_owned()))
+      diags.push(RawDiagnostic::new("config::template", format!("invalid template: {err}")).at(pointer.to_owned()));
     },
   }
 }

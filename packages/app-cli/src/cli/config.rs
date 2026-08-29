@@ -1,22 +1,29 @@
+use crate::cli::diagnostics::entry::check_command_config;
+use crate::cli::diagnostics::source::{ConfigSource, RawDiagnostic, render_and_bail};
+use crate::cli::schema::command_schema;
 use clap::ArgMatches;
 use clap::parser::ValueSource;
 use eyre::Report;
+use schemars::JsonSchema;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use treetime_utils::io::json::json_or_yaml_read_file;
+use treetime_utils::io::fs::read_file_to_string;
 
 /// Overlay a `--config` file onto CLI-parsed command args when `--config` was given.
 ///
 /// Precedence, highest to lowest: an explicit command-line flag, then the config file, then the
-/// built-in default. The file holds the command's configuration object (JSON or YAML, optionally
-/// compressed), in the shape the command serializes to; serde `default` fills any omitted fields to
-/// a complete object before command-line overrides are applied.
+/// built-in default. The file holds the command's configuration object (JSON or YAML). It is layered
+/// over the serialized defaults, then explicit command-line leaves are layered on top, producing the
+/// effective configuration. That effective object is validated against the command's schema through
+/// the shared diagnostics layer, so a bad value renders a caret-annotated error pointing into the
+/// file (a leaf supplied only on the command line has no file span, so it falls back to a plain
+/// message). The typed value is materialized only after validation passes.
 pub fn overlay_config<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
 where
-  T: Serialize + DeserializeOwned + Default,
+  T: Serialize + DeserializeOwned + Default + JsonSchema,
 {
   let Some(config_path) = matches.get_one::<PathBuf>("config") else {
     return Ok(());
@@ -30,12 +37,45 @@ where
     .map(|id| id.to_string())
     .collect();
 
-  let config_args: T = json_or_yaml_read_file(config_path)?;
-  let mut merged = serde_json::to_value(&config_args)?;
+  let text = read_file_to_string(config_path)?;
+  let source = ConfigSource::new(config_path.display().to_string(), text.clone());
+  let file_value: Value = match serde_yaml::from_str(&text) {
+    Ok(file_value) => file_value,
+    Err(err) => {
+      render_and_bail(
+        &source,
+        "invalid configuration",
+        vec![RawDiagnostic::new(
+          "config::syntax",
+          format!("could not parse config: {err}"),
+        )],
+      )?;
+      unreachable!("render_and_bail returns an error whenever diagnostics are present");
+    },
+  };
+
+  let mut merged = serde_json::to_value(T::default())?;
+  merge_value(&mut merged, &file_value);
   let cli = serde_json::to_value(&*args)?;
   apply_cli_overrides(&mut merged, &cli, &explicit);
+
+  check_command_config(&source, &merged, &command_schema::<T>())?;
+
   *args = serde_json::from_value(merged)?;
   Ok(())
+}
+
+/// Layer `overlay` onto `base`, recursing through nested objects so a partial config overrides only
+/// the leaves it sets, leaving sibling defaults intact.
+fn merge_value(base: &mut Value, overlay: &Value) {
+  match (base, overlay) {
+    (Value::Object(base), Value::Object(overlay)) => {
+      for (key, value) in overlay {
+        merge_value(base.entry(key.clone()).or_insert(Value::Null), value);
+      }
+    },
+    (base, overlay) => *base = overlay.clone(),
+  }
 }
 
 /// Copy every explicitly-set command-line leaf from `cli` into `merged`, recursing through the
