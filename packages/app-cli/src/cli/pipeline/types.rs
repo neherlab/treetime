@@ -1,6 +1,7 @@
 use crate::cli::pipeline::suggest::suggestion_suffix;
 use eyre::Report;
 use itertools::Itertools;
+use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Map, Value};
 use std::path::Path;
@@ -32,7 +33,7 @@ pub const COMMAND_TAGS: [&str; 6] = ["timetree", "optimize", "prune", "ancestral
 /// Externally tagged and kebab-cased so a step's payload is exactly the command's serialized args
 /// object (the same shape the per-command `--config` accepts). `timetree` is boxed to match the
 /// CLI enum and keep the variant sizes balanced.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum PipelineStepCommand {
   Timetree(Box<TreetimeTimetreeArgs>),
@@ -127,7 +128,7 @@ impl PipelineStepCommand {
 ///
 /// The `name` is explicit (not the command name) because `--steps=` selection and
 /// `{{ steps.<name>... }}` references need stable ids and must allow the same command twice.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct PipelineStep {
   pub name: String,
   #[serde(flatten)]
@@ -200,7 +201,7 @@ impl RawStep {
 /// outputs are resolved in a staged, backward-only pass (interpolation depends on earlier results),
 /// after which the typed steps are assembled. This type fixes the on-disk shape that the staged pass
 /// and the generated schema must agree on.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct Pipeline {
   #[serde(rename = "$schema", skip_serializing_if = "Option::is_none")]
   pub schema_ref: Option<String>,

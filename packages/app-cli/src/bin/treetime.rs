@@ -15,6 +15,7 @@ use app_cli::cli::progress::{BarProgress, TextProgress};
 use app_cli::cli::rtt_chart::{
   print_clock_regression_chart, write_clock_regression_chart_png, write_clock_regression_chart_svg,
 };
+use app_cli::cli::schema::generate_schema;
 use app_cli::cli::treetime_cli::{
   TreetimeCommands, TreetimeSchemaArgs, generate_shell_completions, treetime_parse_cli_args,
 };
@@ -30,7 +31,6 @@ use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::prune::run::run_prune;
 use treetime::commands::timetree::run::run_timetree_estimation;
 use treetime::progress::{NoopProgress, ProgressSink};
-use treetime_schema::generate_schema;
 use treetime_utils::init::global::global_init;
 use treetime_utils::init::openblas::get_openblas_info_str;
 use treetime_utils::io::console::is_tty;
@@ -132,8 +132,8 @@ fn main() -> Result<(), Report> {
     TreetimeCommands::HelpMarkdown => {
       print_help_markdown()?;
     },
-    TreetimeCommands::Schema(TreetimeSchemaArgs { for_format, output }) => {
-      generate_schema(&for_format, output.as_ref())?;
+    TreetimeCommands::Schema(TreetimeSchemaArgs { target, output }) => {
+      generate_schema(target, output.as_ref())?;
     },
     TreetimeCommands::Arg(arg_args) => {},
     TreetimeCommands::Debug => {
