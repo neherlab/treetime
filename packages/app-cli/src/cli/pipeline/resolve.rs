@@ -12,7 +12,7 @@ use treetime::commands::shared::output::OutputSelection;
 use treetime_utils::{make_error, make_report};
 
 /// Top-level keys a pipeline document may carry.
-const TOP_LEVEL_KEYS: [&str; 4] = ["$schema", "vars", "output_all", "steps"];
+pub(crate) const TOP_LEVEL_KEYS: [&str; 4] = ["$schema", "vars", "output_all", "steps"];
 
 /// Placeholders that mark a per-CDS output path template, which is not a single concrete file.
 const CDS_PLACEHOLDERS: [&str; 2] = ["{cds}", "%GENE"];
@@ -21,7 +21,7 @@ const CDS_PLACEHOLDERS: [&str; 2] = ["{cds}", "%GENE"];
 /// form. Steps references are resolved by this regex pass rather than by the template engine so that
 /// hyphenated selection tags (e.g. `reconstructed-aa`) work: the engine would read the hyphen as a
 /// minus operator.
-static STEP_REF: LazyLock<Regex> = LazyLock::new(|| {
+pub(crate) static STEP_REF: LazyLock<Regex> = LazyLock::new(|| {
   Regex::new(
     r#"\{\{\s*steps\.([A-Za-z0-9_]+)\.(?:outputs\.([A-Za-z0-9_\-]+)|outputs\[\s*['"]([A-Za-z0-9_\-]+)['"]\s*\]|(output_all))\s*\}\}"#,
   )

@@ -1,4 +1,5 @@
 pub mod config;
+pub mod diagnostics;
 pub mod jobs;
 pub mod pipeline;
 pub mod print_help_markdown;

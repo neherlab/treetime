@@ -1,3 +1,5 @@
+use crate::cli::diagnostics::entry::check_pipeline;
+use crate::cli::diagnostics::source::{ConfigSource, RawDiagnostic, render_and_bail};
 use crate::cli::pipeline::resolve::{PipelineDoc, ResolvedPipeline, ResolvedStep, resolve_pipeline};
 use crate::cli::pipeline::types::PipelineStepCommand;
 use crate::cli::rtt_chart::{write_clock_regression_chart_png, write_clock_regression_chart_svg};
@@ -13,16 +15,36 @@ use treetime::commands::optimize::run::run_optimize;
 use treetime::commands::prune::run::run_prune;
 use treetime::commands::timetree::run::run_timetree_estimation;
 use treetime::progress::ProgressSink;
-use treetime_utils::io::json::json_or_yaml_read_file;
+use treetime_utils::io::fs::read_file_to_string;
 use treetime_utils::make_error;
 
-/// Load a pipeline config file and resolve it into concrete steps.
+/// Load a pipeline config file, diagnose it, and resolve it into concrete steps.
 ///
-/// Both JSON and YAML are accepted (format chosen by extension). The document is parsed into a
-/// permissive value, then resolved: vars, working directory, per-step output directories, and
-/// chained `{{ steps.* }}` references are all made concrete before anything runs.
+/// Both JSON and YAML are accepted (YAML is a superset, so one parser reads both). The raw text is
+/// kept so diagnostics can draw carets into the original file. Before anything runs, the document is
+/// checked (`check_pipeline`): structural, schema, and static interpolation errors are rendered as a
+/// batched, caret-annotated report and abort the load. Only then are vars, the working directory,
+/// per-step output directories, and chained `{{ steps.* }}` references resolved.
 pub fn load_pipeline(config: &Path) -> Result<ResolvedPipeline, Report> {
-  let value: Value = json_or_yaml_read_file(config)?;
+  let text = read_file_to_string(config)?;
+  let source = ConfigSource::new(config.display().to_string(), text.clone());
+
+  let value: Value = match serde_yaml::from_str(&text) {
+    Ok(value) => value,
+    Err(err) => {
+      render_and_bail(
+        &source,
+        "invalid configuration",
+        vec![RawDiagnostic::new(
+          "config::syntax",
+          format!("could not parse config: {err}"),
+        )],
+      )?;
+      unreachable!("render_and_bail returns an error whenever diagnostics are present");
+    },
+  };
+
+  check_pipeline(&source, &value)?;
   let doc = PipelineDoc::from_value(value)?;
   resolve_pipeline(&doc, &process_env())
 }

@@ -202,6 +202,7 @@ impl RawStep {
 /// after which the typed steps are assembled. This type fixes the on-disk shape that the staged pass
 /// and the generated schema must agree on.
 #[derive(Debug, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct Pipeline {
   #[serde(rename = "$schema", skip_serializing_if = "Option::is_none")]
   pub schema_ref: Option<String>,

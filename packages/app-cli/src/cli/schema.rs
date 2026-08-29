@@ -143,6 +143,24 @@ pub fn command_schema<T: JsonSchema>() -> Schema {
   draft2020_generator().into_root_schema_for::<T>()
 }
 
+/// The strict schema for the command a step names by its tag, or `None` for an unknown tag.
+///
+/// The diagnostics layer validates each step's command payload against this schema rather than the
+/// whole-pipeline schema: a step's `oneOf` over commands collapses a deep `enum`/`type` error into an
+/// opaque branch failure, whereas validating the payload directly against its command schema keeps the
+/// precise leaf error and its location.
+pub fn command_schema_for(tag: &str) -> Option<Schema> {
+  Some(match tag {
+    "timetree" => command_schema::<TreetimeTimetreeArgs>(),
+    "optimize" => command_schema::<TreetimeOptimizeArgs>(),
+    "prune" => command_schema::<TreetimePruneArgs>(),
+    "ancestral" => command_schema::<TreetimeAncestralArgs>(),
+    "clock" => command_schema::<TreetimeClockArgs>(),
+    "mugration" => command_schema::<TreetimeMugrationArgs>(),
+    _ => return None,
+  })
+}
+
 /// A draft 2020-12 generator, matching the dialect `jsonschema` validates against by default.
 fn draft2020_generator() -> SchemaGenerator {
   SchemaSettings::draft2020_12().into_generator()
