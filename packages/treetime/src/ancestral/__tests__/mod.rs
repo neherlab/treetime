@@ -19,6 +19,7 @@ mod test_marginal_normalization_prop;
 mod test_marginal_root_invariance_prop;
 mod test_marginal_sparse;
 mod test_marginal_stability;
+mod test_marginal_tip_reconstruction;
 mod test_marginal_topology;
 mod test_mask;
 mod test_multi;
