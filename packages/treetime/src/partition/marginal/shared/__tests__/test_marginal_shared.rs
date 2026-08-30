@@ -12,7 +12,7 @@ mod tests {
   /// therefore cancels from the cavity message. See
   /// https://doi.org/10.1007/s00239-020-09982-w.
   #[test]
-  fn test_marginal_core_forward_log_lh_remove_child_cancels_matching_neg_infinity() {
+  fn test_marginal_shared_forward_log_lh_remove_child_cancels_matching_neg_infinity() {
     let actual = forward_log_lh_remove_child(LogLh::IMPOSSIBLE, LogLh::IMPOSSIBLE).value();
     pretty_assert_abs_diff_eq!(0.0, actual, epsilon = 1e-12);
   }
@@ -20,7 +20,7 @@ mod tests {
   /// A degenerate normalization corresponds to the uniform fallback and has no
   /// finite scale contribution to a forward conditional message.
   #[test]
-  fn test_marginal_core_forward_log_lh_add_normalization_ignores_neg_infinity() {
+  fn test_marginal_shared_forward_log_lh_add_normalization_ignores_neg_infinity() {
     let expected = -3.0;
     let actual = forward_log_lh_add_normalization(LogLh::new(expected), f64::NEG_INFINITY).value();
     pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);
@@ -29,14 +29,14 @@ mod tests {
   /// Unexpected non-finite values remain visible instead of being treated as
   /// the negative-infinity fallback sentinel.
   #[test]
-  fn test_marginal_core_forward_log_lh_add_normalization_propagates_nan() {
+  fn test_marginal_shared_forward_log_lh_add_normalization_propagates_nan() {
     let actual = forward_log_lh_add_normalization(LogLh::new(-3.0), f64::NAN).value();
     assert!(actual.is_nan(), "NaN normalization must propagate, got {actual}");
   }
 
   /// Positive infinity is not the degenerate uniform-fallback sentinel.
   #[test]
-  fn test_marginal_core_forward_log_lh_add_normalization_propagates_positive_infinity() {
+  fn test_marginal_shared_forward_log_lh_add_normalization_propagates_positive_infinity() {
     let actual = forward_log_lh_add_normalization(LogLh::new(-3.0), f64::INFINITY).value();
     assert!(
       actual.is_infinite() && actual.is_sign_positive(),
@@ -46,7 +46,7 @@ mod tests {
 
   /// A non-matching negative-infinity scale remains an impossible factor.
   #[test]
-  fn test_marginal_core_forward_log_lh_remove_child_preserves_unmatched_neg_infinity() {
+  fn test_marginal_shared_forward_log_lh_remove_child_preserves_unmatched_neg_infinity() {
     let actual = forward_log_lh_remove_child(LogLh::IMPOSSIBLE, LogLh::new(-3.0)).value();
     assert!(
       actual.is_infinite() && actual.is_sign_negative(),
@@ -58,7 +58,7 @@ mod tests {
   /// observable as positive infinity rather than being mistaken for matching
   /// fallback sentinels.
   #[test]
-  fn test_marginal_core_forward_log_lh_remove_child_preserves_unmatched_positive_infinity() {
+  fn test_marginal_shared_forward_log_lh_remove_child_preserves_unmatched_positive_infinity() {
     let actual = forward_log_lh_remove_child(LogLh::new(-3.0), LogLh::IMPOSSIBLE).value();
     assert!(
       actual.is_infinite() && actual.is_sign_positive(),
@@ -100,7 +100,7 @@ mod tests {
   #[case::already_norm(  array![0.25, 0.75],    1.0, array![0.25, 0.75],      1.0_f64.ln())]
   #[case::three_states(  array![2.0, 2.0, 4.0], 1.0, array![0.25, 0.25, 0.5], 8.0_f64.ln())]
   #[trace]
-  fn test_marginal_core_normalize_1d_inplace_valid(
+  fn test_marginal_shared_normalize_1d_inplace_valid(
     #[case] dis: Array1<f64>,
     #[case] weight: f64,
     #[case] expected_dis: Array1<f64>,
@@ -120,7 +120,7 @@ mod tests {
   #[case::infinite_norm( array![f64::INFINITY, 1.0],     2.0)]
   #[case::nan_norm(      array![f64::NAN, 1.0],          1.0)]
   #[trace]
-  fn test_marginal_core_normalize_1d_inplace_fallback(#[case] dis: Array1<f64>, #[case] weight: f64) {
+  fn test_marginal_shared_normalize_1d_inplace_fallback(#[case] dis: Array1<f64>, #[case] weight: f64) {
     let mut dis = dis;
     let n = dis.len();
     let ll = normalize_1d_inplace(&mut dis, weight);

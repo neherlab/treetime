@@ -5,8 +5,8 @@ mod tests {
   use crate::optimize::topology::collapse::collapse_edge;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 
-  use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+  use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::mutation::Sub;

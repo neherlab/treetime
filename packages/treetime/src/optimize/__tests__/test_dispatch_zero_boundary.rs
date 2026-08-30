@@ -13,8 +13,8 @@ mod tests {
   use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::partition::optimize;
+  use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::partition::traits::PartitionOptimizeVec;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;

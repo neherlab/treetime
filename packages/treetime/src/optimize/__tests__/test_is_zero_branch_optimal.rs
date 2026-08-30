@@ -7,8 +7,8 @@ mod tests {
   use crate::gtr::gtr::GTR;
   use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
   use crate::optimize::zero_boundary::is_zero_branch_optimal;
-  use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::partition::optimize;
+  use crate::partition::optimize::contribution::OptimizationContribution;
   use approx::assert_abs_diff_eq;
   use ndarray::{Array2, array};
   use rstest::rstest;

@@ -7,6 +7,8 @@ use eyre::Report;
 use treetime_graph::reroot::{EdgeMergeInfo, RerootChanges};
 use treetime_primitives::Seq;
 
+// Split by codepath stage: these helpers sit beside the trait impl that consumes them.
+#[allow(clippy::multiple_inherent_impl)]
 impl PartitionMarginalSparse {
   // Phase 1: topology changes + root_sequence derivation + new node init.
   // Must complete before remove_trivial_root (phase 2) because

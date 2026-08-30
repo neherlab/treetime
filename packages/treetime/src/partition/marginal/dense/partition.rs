@@ -4,12 +4,12 @@ use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_report;
-use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::marginal::shared::MarginalData;
 use crate::partition::optimize::contribution::OptimizationContribution;
+use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::traits::{
-  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps,
-  PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps, TransitionCounting,
+  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps, PartitionOptimizeOps, PartitionRerootOps,
+  PartitionTimetreeOps, TransitionCounting,
 };
 use crate::seq::mutation::Sub;
 use eyre::Report;

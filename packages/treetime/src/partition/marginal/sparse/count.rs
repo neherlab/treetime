@@ -10,6 +10,8 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_utils::array::ndarray::argmax_first;
 
+// Split by codepath stage: these helpers sit beside the trait impl that consumes them.
+#[allow(clippy::multiple_inherent_impl)]
 impl PartitionMarginalSparse {
   fn count_transitions_impl<N, E>(&self, graph: &Graph<N, E, ()>) -> Result<MutationCounts, Report>
   where

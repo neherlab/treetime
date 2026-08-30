@@ -144,8 +144,8 @@ mod tests {
     use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
     use crate::gtr::gtr::{GTR, GTRParams};
     use crate::o;
-    use crate::partition::storage::discrete::DiscreteStates;
     use crate::partition::marginal::discrete::PartitionMarginalDiscrete;
+    use crate::partition::storage::discrete::DiscreteStates;
     use crate::payload::ancestral::GraphAncestral;
     use crate::test_utils::{find_edge_key, find_node_key_by_name};
     use eyre::Report;

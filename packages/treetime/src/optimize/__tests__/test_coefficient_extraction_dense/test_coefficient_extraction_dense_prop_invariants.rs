@@ -4,8 +4,8 @@ mod tests {
   use crate::gtr::gtr::GTR;
   use crate::optimize::dense_eval::evaluate_dense_contribution;
   use crate::optimize::sparse_eval::evaluate_sparse_contribution;
-  use crate::partition::optimize::dense::get_coefficients;
   use crate::partition::optimize;
+  use crate::partition::optimize::dense::get_coefficients;
   use ndarray::{Array1, Axis, array, concatenate};
 
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;

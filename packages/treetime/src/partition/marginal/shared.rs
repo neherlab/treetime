@@ -1,10 +1,13 @@
+#[cfg(test)]
+mod __tests__;
+
 use crate::constants::SUPERTINY_NUMBER;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{
   MutationCounts, accumulate_mutation_counts, get_branch_mutation_matrix, is_profile_informative,
 };
-use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
+use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use eyre::Report;
 use itertools::{Itertools, izip};
 use ndarray::prelude::*;

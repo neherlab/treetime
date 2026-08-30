@@ -1,12 +1,12 @@
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_error;
-use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
-use crate::partition::storage::discrete::DiscreteStates;
 use crate::partition::marginal::shared::{
   IndexedMarginalPartition, MarginalData, MarginalPartition, marginal_process_backward_indexed,
   marginal_process_forward_indexed,
 };
+use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
+use crate::partition::storage::discrete::DiscreteStates;
 use crate::partition::traits::{HasGtr, HasLogLh, PartitionMarginalPasses, TransitionCounting};
 use eyre::Report;
 use indexmap::IndexSet;
