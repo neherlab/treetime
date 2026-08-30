@@ -2,10 +2,10 @@
 mod __tests__;
 
 pub mod algo;
-pub mod augur;
 pub mod create;
 pub mod fitch;
 pub(crate) mod indexed_pass;
+pub mod io;
 pub mod likelihood;
 pub mod marginal_core;
 pub mod marginal_dense;

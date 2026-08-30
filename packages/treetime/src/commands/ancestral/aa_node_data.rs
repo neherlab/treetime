@@ -4,7 +4,7 @@ mod __tests__;
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::attach::sanitize_to_alphabet;
 use crate::make_error;
-use crate::partition::augur::AugurNodeDataJsonAncestralPartition;
+use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::traits::BranchTopology;
 use crate::payload::ancestral::GraphAncestral;
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};

@@ -3,7 +3,7 @@ use crate::ancestral::attach::complete_alignment_for_leaves;
 use crate::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
-use crate::partition::augur::AugurNodeDataJsonAncestralPartition;
+use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::traits::PartitionMarginalOps;
 use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};

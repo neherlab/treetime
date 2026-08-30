@@ -1,6 +1,6 @@
 use crate::ancestral::mask::mask_to_string;
 use crate::commands::ancestral::aa_node_data::AaNodeData;
-use crate::partition::augur::AugurNodeDataJsonAncestralPartition;
+use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::traits::BranchTopology;
 use crate::payload::ancestral::GraphAncestral;
 use crate::seq::mutation::Sub;

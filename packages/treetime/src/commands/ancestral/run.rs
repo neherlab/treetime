@@ -14,7 +14,7 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_ancestral_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
-use crate::partition::augur::AugurNodeDataJsonAncestralPartition;
+use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::traits::MutationCommentProvider;
 use crate::payload::ancestral::GraphAncestral;
 use crate::progress::ProgressSink;
