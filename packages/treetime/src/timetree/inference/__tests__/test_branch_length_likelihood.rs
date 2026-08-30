@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::optimization_contribution::OptimizationContribution;
+  use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
   use crate::timetree::inference::runner::{EPS, GRID_POINTS};
   use approx::assert_abs_diff_eq;

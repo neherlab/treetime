@@ -4,8 +4,8 @@ mod tests {
   use crate::gtr::gtr::GTR;
   use crate::optimize::dense_eval::evaluate_dense_contribution;
   use crate::optimize::sparse_eval::evaluate_sparse_contribution;
-  use crate::partition::optimize_dense::get_coefficients;
-  use crate::partition::optimize_sparse;
+  use crate::partition::optimize::dense::get_coefficients;
+  use crate::partition::optimize;
   use ndarray::{Array1, Axis, array, concatenate};
 
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
@@ -75,7 +75,7 @@ mod tests {
   mod prop_tests {
     use super::generators;
     use super::*;
-    use crate::partition::optimize_dense::PartitionContribution;
+    use crate::partition::optimize::dense::PartitionContribution;
     use proptest::prelude::*;
     use treetime_utils::{prop_assert_abs_diff_eq, prop_assert_relative_eq};
 
@@ -90,9 +90,9 @@ mod tests {
       child: &Array1<f64>,
       gtr: &GTR,
       multiplicity: f64,
-    ) -> optimize_sparse::SiteContribution {
+    ) -> optimize::sparse::SiteContribution {
       let coefficients = parent.dot(&gtr.v) * child.dot(&gtr.v_inv.t());
-      optimize_sparse::SiteContribution {
+      optimize::sparse::SiteContribution {
         multiplicity,
         coefficients,
       }
@@ -126,13 +126,13 @@ mod tests {
       ) {
         let gtr = test_gtr();
 
-        let single = optimize_sparse::PartitionContribution {
+        let single = optimize::sparse::PartitionContribution {
           site_contributions: vec![sparse_site_from(&parent, &child, &gtr, 1.0)],
           gtr: gtr.clone(),
         };
         let single_metrics = evaluate_sparse_contribution(&single, branch_length).expect("valid branch length");
 
-        let multi = optimize_sparse::PartitionContribution {
+        let multi = optimize::sparse::PartitionContribution {
           site_contributions: vec![sparse_site_from(&parent, &child, &gtr, multiplicity)],
           gtr: gtr.clone(),
         };
@@ -165,7 +165,7 @@ mod tests {
         );
         let dense_metrics = evaluate_dense_contribution(&dense_contrib, branch_length).expect("valid branch length");
 
-        let sparse_contrib = optimize_sparse::PartitionContribution {
+        let sparse_contrib = optimize::sparse::PartitionContribution {
           site_contributions: vec![sparse_site_from(&parent, &child, &gtr, n_rows as f64)],
           gtr: gtr.clone(),
         };
@@ -286,7 +286,7 @@ mod tests {
   mod cancellation_regime {
     use super::*;
     use crate::optimize::sparse_eval::evaluate_sparse_contribution;
-    use crate::partition::optimize_sparse::{PartitionContribution, SiteContribution};
+    use crate::partition::optimize::sparse::{PartitionContribution, SiteContribution};
     use approx::assert_abs_diff_eq;
     use rstest::rstest;
 

@@ -14,8 +14,8 @@ mod tests {
   use crate::optimize::method_newton::{chain_rule_log, chain_rule_sqrt};
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::zero_boundary::min_branch_length_for_indels;
-  use crate::partition::optimization_contribution::OptimizationContribution;
-  use crate::partition::optimize_dense;
+  use crate::partition::optimize::contribution::OptimizationContribution;
+  use crate::partition::optimize;
   use crate::partition::traits::PartitionOptimizeOps;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
@@ -95,7 +95,7 @@ mod tests {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
     let contribution = OptimizationContribution::Dense(
-      optimize_dense::PartitionContribution::new(coefficients, gtr),
+      optimize::dense::PartitionContribution::new(coefficients, gtr),
     );
     let contributions = vec![contribution];
 
@@ -135,7 +135,7 @@ mod tests {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
     let contribution = OptimizationContribution::Dense(
-      optimize_dense::PartitionContribution::new(coefficients, gtr),
+      optimize::dense::PartitionContribution::new(coefficients, gtr),
     );
     let contributions = vec![contribution];
 
@@ -178,7 +178,7 @@ mod tests {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
     let contribution = OptimizationContribution::Dense(
-      optimize_dense::PartitionContribution::new(coefficients, gtr),
+      optimize::dense::PartitionContribution::new(coefficients, gtr),
     );
     let contributions = vec![contribution];
 
@@ -218,7 +218,7 @@ mod tests {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
     let contribution = OptimizationContribution::Dense(
-      optimize_dense::PartitionContribution::new(coefficients, gtr),
+      optimize::dense::PartitionContribution::new(coefficients, gtr),
     );
     let contributions = vec![contribution];
 

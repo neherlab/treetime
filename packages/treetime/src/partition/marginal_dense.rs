@@ -13,7 +13,7 @@ use crate::partition::marginal_core::{
   IndexedMarginalPartition, MarginalData, MarginalPartition, marginal_process_backward_indexed,
   marginal_process_forward_indexed,
 };
-use crate::partition::optimization_contribution::OptimizationContribution;
+use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps, PartitionMarginalPasses,
   PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps, TransitionCounting,

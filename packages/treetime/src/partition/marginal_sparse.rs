@@ -4,7 +4,7 @@ use crate::constants::SUPERTINY_NUMBER;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{MutationCounts, is_profile_informative};
 use crate::partition::marginal_passes;
-use crate::partition::optimization_contribution::OptimizationContribution;
+use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, VarPos};
 use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps, PartitionMarginalPasses,

@@ -15,8 +15,8 @@ pub mod tests {
   use crate::optimize::zero_boundary::{is_zero_better_than_grid_best, is_zero_branch_optimal};
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::partition::optimization_contribution::OptimizationContribution;
-  use crate::partition::optimize_dense;
+  use crate::partition::optimize::contribution::OptimizationContribution;
+  use crate::partition::optimize;
   use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_neg_inf;
   use crate::seq::alignment::get_common_length;
@@ -538,7 +538,7 @@ pub mod tests {
   fn test_optimize_indel_zero_branch_no_indels_unchanged() {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.0, 1.0, 0.0, 0.0]];
-    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
 
     assert!(is_zero_branch_optimal(&[contribution]));
   }
@@ -553,7 +553,7 @@ pub mod tests {
     // Pure-state coefficients: substitution likelihood is maximized at t=0.
     // At t=0, L(0) = sum(coefficients) = 1.0. At t>0, eigenvalue decay reduces L(t).
     let coefficients = array![[1.0, 0.0, 0.0, 0.0]];
-    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let contributions = vec![contribution];
 
     let best_positive = 0.01;
@@ -604,7 +604,7 @@ pub mod tests {
   fn test_optimize_indel_grid_zero_comparison_allows_zero_without_indels() {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[1.0, 0.0, 0.0, 0.0]];
-    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let contributions = vec![contribution];
 
     // Production function: indel_count == 0 with pure-state coefficients selects zero
@@ -708,7 +708,7 @@ pub mod tests {
   ) {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.5, 0.3, 0.1, 0.1]];
-    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let contributions = vec![contribution];
 
     let sub_only = evaluate_mixed_log_lh_only(&contributions, t).expect("valid branch length").value();

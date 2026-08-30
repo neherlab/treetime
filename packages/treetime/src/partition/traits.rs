@@ -4,7 +4,7 @@ use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_internal_error;
 use crate::make_internal_report;
-use crate::partition::optimization_contribution::OptimizationContribution;
+use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub, mutation_event_strings};

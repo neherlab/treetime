@@ -7,9 +7,8 @@ mod tests {
   use crate::gtr::gtr::GTR;
   use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
   use crate::optimize::zero_boundary::is_zero_branch_optimal;
-  use crate::partition::optimization_contribution::OptimizationContribution;
-  use crate::partition::optimize_dense;
-  use crate::partition::optimize_sparse;
+  use crate::partition::optimize::contribution::OptimizationContribution;
+  use crate::partition::optimize;
   use approx::assert_abs_diff_eq;
   use ndarray::{Array2, array};
   use rstest::rstest;
@@ -21,7 +20,7 @@ mod tests {
   /// Per-site derivative ratio = (eigval-weighted row sum) / (row sum).
   fn make_dense_contribution(coefficients: Array2<f64>) -> OptimizationContribution {
     let gtr = jc69(JC69Params::default()).unwrap();
-    OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr))
+    OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
   }
 
   /// Create a sparse contribution with specified (multiplicity, coefficients) pairs.
@@ -30,13 +29,13 @@ mod tests {
 
     let site_contributions = sites
       .into_iter()
-      .map(|(multiplicity, coeffs)| optimize_sparse::SiteContribution {
+      .map(|(multiplicity, coeffs)| optimize::sparse::SiteContribution {
         multiplicity,
         coefficients: ndarray::Array1::from_vec(coeffs),
       })
       .collect();
 
-    OptimizationContribution::Sparse(optimize_sparse::PartitionContribution {
+    OptimizationContribution::Sparse(optimize::sparse::PartitionContribution {
       site_contributions,
       gtr,
     })
@@ -230,7 +229,7 @@ mod tests {
     let mut gtr = jc69(JC69Params::default()).unwrap();
     gtr.eigvals = array![-1e300, 0.0, 0.0, 0.0];
     let coefficients = array![[1.0, 0.0, 0.0, -1.0 + f64::EPSILON * 2.0]];
-    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
 
     // Site likelihood is positive and finite (2 * f64::EPSILON)
     assert!(contribution.all_sites_valid_at_zero());
@@ -321,7 +320,7 @@ mod tests {
   /// The zero-branch shortcut must not apply for this model.
   fn make_k80_dense_contribution(coefficients: Array2<f64>) -> OptimizationContribution {
     let gtr = k80(K80Params::default()).unwrap();
-    OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr))
+    OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
   }
 
   /// JC69 model is marked unimodal.
@@ -406,7 +405,7 @@ mod tests {
 
     // Coefficients with weight on a negative eigenvalue
     let coefficients = array![[0.0, 1.0, 0.0, 0.0]];
-    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     assert!(is_zero_branch_optimal(&[contribution]));
   }
 
@@ -415,11 +414,11 @@ mod tests {
   fn test_is_zero_branch_optimal_k80_sparse_bypasses_shortcut() {
     let gtr = k80(K80Params::default()).unwrap();
 
-    let site_contributions = vec![optimize_sparse::SiteContribution {
+    let site_contributions = vec![optimize::sparse::SiteContribution {
       multiplicity: 1.0,
       coefficients: array![0.0, 1.0, 0.0, 0.0],
     }];
-    let contribution = OptimizationContribution::Sparse(optimize_sparse::PartitionContribution {
+    let contribution = OptimizationContribution::Sparse(optimize::sparse::PartitionContribution {
       site_contributions,
       gtr,
     });
@@ -468,7 +467,7 @@ mod tests {
       [-0.04545042, 0.02261158, 0.02261158, 0.25],
       [ 0.04456328, -0.02228164, -0.02228164, 0.25],
     ];
-    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let contributions = [contribution];
 
     // Verify both sites have positive likelihood at t=0

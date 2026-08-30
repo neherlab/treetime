@@ -3,8 +3,8 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dense_eval::evaluate_dense_contribution;
   use crate::optimize::sparse_eval::evaluate_sparse_contribution;
-  use crate::partition::optimize_dense;
-  use crate::partition::optimize_sparse::{PartitionContribution, SiteContribution};
+  use crate::partition::optimize;
+  use crate::partition::optimize::sparse::{PartitionContribution, SiteContribution};
   use crate::pretty_assert_ulps_eq;
   use approx::assert_abs_diff_eq;
   use ndarray::{Array2, array};
@@ -180,7 +180,7 @@ mod tests {
     })
     .expect("shape mismatch");
 
-    let dense_contribution = optimize_dense::PartitionContribution::new(coefficients_2d, gtr);
+    let dense_contribution = optimize::dense::PartitionContribution::new(coefficients_2d, gtr);
 
     let sparse_metrics = evaluate_sparse_contribution(&sparse_contribution, branch_length).expect("valid branch length");
     let dense_metrics = evaluate_dense_contribution(&dense_contribution, branch_length).expect("valid branch length");

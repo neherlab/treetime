@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::optimize_dense::get_coefficients;
+  use crate::partition::optimize::dense::get_coefficients;
   use ndarray::array;
   use treetime_utils::pretty_assert_ulps_eq;
 

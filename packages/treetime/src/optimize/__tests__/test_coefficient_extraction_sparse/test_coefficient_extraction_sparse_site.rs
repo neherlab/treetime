@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::optimize_sparse::SiteContribution;
+  use crate::partition::optimize::sparse::SiteContribution;
   use ndarray::array;
   use treetime_utils::pretty_assert_ulps_eq;
 

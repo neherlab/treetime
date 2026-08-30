@@ -3,14 +3,14 @@ pub mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::likelihood::evaluate_mixed;
   use crate::optimize::zero_boundary::grid_search_branch_lengths;
-  use crate::partition::optimization_contribution::OptimizationContribution;
-  use crate::partition::optimize_dense;
+  use crate::partition::optimize::contribution::OptimizationContribution;
+  use crate::partition::optimize;
   use ndarray::Array2;
   use ordered_float::OrderedFloat;
 
   pub fn make_dense_contribution(coefficients: Array2<f64>) -> OptimizationContribution {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
-    OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr))
+    OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
   }
 
   pub fn grid_search(contributions: &[OptimizationContribution], branch_length: f64, one_mutation: f64) -> f64 {

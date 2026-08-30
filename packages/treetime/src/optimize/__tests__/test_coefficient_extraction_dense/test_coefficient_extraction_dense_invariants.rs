@@ -4,8 +4,8 @@ mod tests {
   use crate::gtr::gtr::GTR;
   use crate::optimize::dense_eval::evaluate_dense_contribution;
   use crate::optimize::sparse_eval::evaluate_sparse_contribution;
-  use crate::partition::optimize_dense::{PartitionContribution, get_coefficients};
-  use crate::partition::optimize_sparse;
+  use crate::partition::optimize::dense::{PartitionContribution, get_coefficients};
+  use crate::partition::optimize;
   use approx::assert_abs_diff_eq;
   use ndarray::{Array1, Axis, array, concatenate};
   use rstest::rstest;
@@ -30,9 +30,9 @@ mod tests {
     child: &Array1<f64>,
     gtr: &GTR,
     multiplicity: f64,
-  ) -> optimize_sparse::SiteContribution {
+  ) -> optimize::sparse::SiteContribution {
     let coefficients = parent.dot(&gtr.v) * child.dot(&gtr.v_inv.t());
-    optimize_sparse::SiteContribution {
+    optimize::sparse::SiteContribution {
       multiplicity,
       coefficients,
     }
@@ -83,14 +83,14 @@ mod tests {
     let branch_length = 0.05;
 
     // Single site with multiplicity 1
-    let single = optimize_sparse::PartitionContribution {
+    let single = optimize::sparse::PartitionContribution {
       site_contributions: vec![sparse_site(&parent, &child, &gtr, 1.0)],
       gtr: gtr.clone(),
     };
     let single_metrics = evaluate_sparse_contribution(&single, branch_length).expect("valid branch length");
 
     // Single site with multiplicity m
-    let multi = optimize_sparse::PartitionContribution {
+    let multi = optimize::sparse::PartitionContribution {
       site_contributions: vec![sparse_site(&parent, &child, &gtr, multiplicity)],
       gtr: gtr.clone(),
     };
@@ -131,7 +131,7 @@ mod tests {
     let dense_metrics = evaluate_dense_contribution(&dense_contrib, branch_length).expect("valid branch length");
 
     // Sparse: 1 site with multiplicity n_rows
-    let sparse_contrib = optimize_sparse::PartitionContribution {
+    let sparse_contrib = optimize::sparse::PartitionContribution {
       site_contributions: vec![sparse_site(&parent, &child, &gtr, n_rows as f64)],
       gtr: gtr.clone(),
     };

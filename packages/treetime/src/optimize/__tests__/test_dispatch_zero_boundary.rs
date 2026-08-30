@@ -13,8 +13,8 @@ mod tests {
   use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::partition::optimization_contribution::OptimizationContribution;
-  use crate::partition::optimize_dense;
+  use crate::partition::optimize::contribution::OptimizationContribution;
+  use crate::partition::optimize;
   use crate::partition::traits::PartitionOptimizeVec;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
@@ -252,7 +252,7 @@ mod tests {
       [-0.04545042,  0.02261158,  0.02261158, 0.25],
       [ 0.04456328, -0.02228164, -0.02228164, 0.25],
     ];
-    OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr))
+    OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
   }
 
   /// Reconciliation against a positive optimizer output that is worse than
@@ -360,7 +360,7 @@ mod tests {
     // classification.
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.0, 0.0, 0.0, 0.0]];
-    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let contributions = [contribution];
 
     assert!(
@@ -394,7 +394,7 @@ mod tests {
     // coefficients), site 1 is well-defined and prefers a positive
     // branch length.
     let coefficients = array![[0.0, 0.0, 0.0, 0.0], [0.5, 0.3, 0.1, 0.1]];
-    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let contributions = [contribution];
 
     assert!(
@@ -672,7 +672,7 @@ mod tests {
     // so $\ell'(0) < 0$ and zero is the unique global max.
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.0, 1.0, 0.0, 0.0]];
-    let contribution = OptimizationContribution::Dense(optimize_dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let contributions = [contribution];
 
     assert!(

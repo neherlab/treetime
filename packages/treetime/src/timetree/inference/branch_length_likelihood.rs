@@ -1,5 +1,5 @@
 use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
-use crate::partition::optimization_contribution::OptimizationContribution;
+use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::timetree::inference::runner::EPS;
 use eyre::{Report, WrapErr};
 use ndarray::Array1;

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::optimize_sparse::{PartitionContribution, SiteContribution};
+  use crate::partition::optimize::sparse::{PartitionContribution, SiteContribution};
   use crate::pretty_assert_ulps_eq;
   use ndarray::array;
 

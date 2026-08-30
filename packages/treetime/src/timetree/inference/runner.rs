@@ -1,7 +1,7 @@
 use crate::clock::clock_model::ClockModel;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::optimize::indel::estimate_indel_rate;
-use crate::partition::optimization_contribution::OptimizationContribution;
+use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::traits::PartitionTimetreeAll;
 use crate::payload::traits::ClockNode;
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};

@@ -1,8 +1,7 @@
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::partition::optimize_dense;
-use crate::partition::optimize_sparse;
+use crate::partition::optimize;
 use eyre::Report;
 use itertools::Either;
 use ndarray::ArrayView1;
@@ -10,8 +9,8 @@ use treetime_graph::edge::GraphEdgeKey;
 
 #[allow(clippy::large_enum_variant)]
 pub enum OptimizationContribution {
-  Dense(optimize_dense::PartitionContribution),
-  Sparse(optimize_sparse::PartitionContribution),
+  Dense(optimize::dense::PartitionContribution),
+  Sparse(optimize::sparse::PartitionContribution),
 }
 
 impl OptimizationContribution {
@@ -21,7 +20,7 @@ impl OptimizationContribution {
   /// matrix using the dense optimization approach.
   pub fn from_dense(edge_key: GraphEdgeKey, partition: &PartitionMarginalDense) -> Self {
     let edge_partition = &partition.data.edges[&edge_key];
-    let contribution = optimize_dense::get_coefficients(
+    let contribution = optimize::dense::get_coefficients(
       &edge_partition.msg_to_parent,
       &edge_partition.msg_to_child,
       &partition.data.gtr,
@@ -34,7 +33,7 @@ impl OptimizationContribution {
   /// Extracts variable positions and mutations from the sparse partition and
   /// computes site contributions for optimization.
   pub fn from_sparse(edge_key: GraphEdgeKey, partition: &PartitionMarginalSparse) -> Result<Self, Report> {
-    let contribution = optimize_sparse::get_coefficients(edge_key, partition)?;
+    let contribution = optimize::sparse::get_coefficients(edge_key, partition)?;
     Ok(OptimizationContribution::Sparse(contribution))
   }
 
