@@ -5,7 +5,7 @@ mod tests {
     discover_fixed_disagreements_backward, finalize_sequence_forward, resolve_nonroot_substitutions_forward,
     resolve_root_forward, resolve_variable_positions_backward,
   };
-  use crate::partition::sparse::{FitchSeqDistribution, SparseEdgePartition, SparseSeqInfo};
+  use crate::partition::storage::sparse::{FitchSeqDistribution, SparseEdgePartition, SparseSeqInfo};
   use crate::seq::composition::Composition;
   use eyre::Report;
   use maplit::btreemap;

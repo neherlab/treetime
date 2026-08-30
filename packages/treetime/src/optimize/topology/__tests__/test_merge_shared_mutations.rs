@@ -6,7 +6,7 @@ mod tests {
 
   use crate::gtr::jc_distance::jukes_cantor_distance;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;

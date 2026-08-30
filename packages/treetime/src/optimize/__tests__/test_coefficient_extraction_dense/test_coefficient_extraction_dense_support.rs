@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub mod tests {
-  use crate::partition::dense::DenseSeqDistribution;
+  use crate::partition::storage::dense::DenseSeqDistribution;
   use ndarray::Array2;
   use treetime_primitives::LogLh;
 

@@ -6,7 +6,7 @@ mod tests {
   use crate::prune::prune::{collapse_sparse_edges_from_leaf_recursive, get_edge_num_muts, prune_nodes};
 
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
   use crate::pretty_assert_ulps_eq;
   use crate::seq::indel::InDel;

@@ -192,7 +192,7 @@ mod tests {
     use crate::commands::shared::output::OutputCoreArgs;
     use crate::gtr::get_gtr::GtrModelName;
     use crate::partition::fitch::PartitionFitch;
-    use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
+    use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
     use crate::payload::ancestral::GraphAncestral;
     use crate::progress::NoopProgress;
     use crate::seq::mutation::Sub;

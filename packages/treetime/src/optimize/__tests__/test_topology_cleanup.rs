@@ -12,7 +12,7 @@ mod tests {
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;

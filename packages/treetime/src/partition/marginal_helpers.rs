@@ -3,7 +3,7 @@ mod __tests__;
 
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
-use crate::partition::sparse::{SparseSeqDistribution, VarPos};
+use crate::partition::storage::sparse::{SparseSeqDistribution, VarPos};
 use crate::seq::composition::Composition;
 use eyre::Report;
 use maplit::btreemap;

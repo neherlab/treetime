@@ -7,7 +7,7 @@ use crate::ancestral::fitch_sub::{
 use crate::make_report;
 use crate::partition::fitch::PartitionFitch;
 use crate::partition::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
-use crate::partition::sparse::{
+use crate::partition::storage::sparse::{
   FitchSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, SparseSeqInfo,
 };
 use crate::partition::traits::PartitionCompressed;

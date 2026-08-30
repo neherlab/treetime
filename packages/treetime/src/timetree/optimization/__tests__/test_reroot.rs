@@ -9,7 +9,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution};
+  use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution};
   use crate::partition::timetree::{GraphTimetree, PartitionTimetree};
   use crate::partition::traits::PartitionRerootOps;
   use crate::pretty_assert_ulps_eq;

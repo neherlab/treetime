@@ -8,7 +8,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::partition::sparse::SparseSeqDistribution;
+  use crate::partition::storage::sparse::SparseSeqDistribution;
   use crate::partition::traits::PartitionBranchOps;
   use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;

@@ -4,10 +4,10 @@ pub mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::gtr::GTR;
-  use crate::partition::dense::DenseSeqDistribution;
+  use crate::partition::storage::dense::DenseSeqDistribution;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::marginal_sparse::PartitionMarginalSparse;
-  use crate::partition::sparse::SparseSeqDistribution;
+  use crate::partition::storage::sparse::SparseSeqDistribution;
   use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;

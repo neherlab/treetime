@@ -5,7 +5,7 @@ use crate::partition::marginal_core::{
 };
 use crate::partition::marginal_helpers::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::partition::marginal_sparse::{PartitionMarginalSparse, reconstruct_map_seq};
-use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, VarPos};
+use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, VarPos};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;

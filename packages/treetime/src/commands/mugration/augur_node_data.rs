@@ -1,5 +1,5 @@
 use crate::mugration::result::MugrationResult;
-use crate::partition::discrete_states::DiscreteStates;
+use crate::partition::storage::discrete::DiscreteStates;
 use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
 use crate::partition::traits::HasGtr;
 use crate::payload::ancestral::GraphAncestral;

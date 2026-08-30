@@ -12,7 +12,7 @@ mod tests {
   };
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::fitch::PartitionFitch;
-  use crate::partition::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::partition::traits::BranchTopology;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
@@ -400,8 +400,8 @@ mod tests {
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::gtr::gtr::{GTR, GTRParams};
     use crate::mugration::result::{MugrationGraphData, MugrationResult};
-    use crate::partition::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
-    use crate::partition::discrete_states::DiscreteStates;
+    use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
+    use crate::partition::storage::discrete::DiscreteStates;
     use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
     use crate::partition::timetree::GraphTimetree;
     use crate::payload::clock_set::ClockSet;

@@ -4,7 +4,7 @@ mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
+  use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeRef};
   use crate::payload::timetree::NodeTimetree;

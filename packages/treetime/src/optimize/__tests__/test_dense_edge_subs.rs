@@ -4,7 +4,7 @@ mod tests {
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
+  use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
   use crate::partition::marginal_core::MarginalData;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::traits::PartitionBranchOps;
@@ -336,7 +336,7 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
-    use crate::partition::dense::DenseNodePartition;
+    use crate::partition::storage::dense::DenseNodePartition;
     use crate::seq::mutation::Sub;
     use treetime_utils::array::ndarray::argmax_first;
 
