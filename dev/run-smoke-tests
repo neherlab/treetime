@@ -214,6 +214,10 @@ TIMETREE_BATCH_RUNS = [
   ("flu/h3n2/20",                 "flu/h3n2/20/branch-input",          "--branch-length-mode=input"),
   ("ebola/20",                    "ebola/20/branch-input",             "--branch-length-mode=input"),
 
+  # Tip-state reconstruction (reconstructed ancestral-sequence FASTA)
+  ("flu/h3n2/20",                 "flu/h3n2/20/reconstruct-tips",      "--reconstruct-tip-states"),
+  ("ebola/20",                    "ebola/20/reconstruct-tips",         "--include-leaves --impute-missing-data"),
+
   # Time marginal modes
   ("flu/h3n2/20",                 "flu/h3n2/20/marginal-always",       "--time-marginal=always"),
   ("flu/h3n2/200",                "flu/h3n2/200/marginal-always",      "--time-marginal=always"),
