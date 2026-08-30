@@ -62,7 +62,9 @@
 
 ## CLI Options
 
-- [x] `--reconstruct-tip-states` (overwrite ambiguous tips, controls leaf emission)
+- [x] `--include-leaves` (emit reconstructed tip sequences)
+- [x] `--impute-missing-data` (resolve ambiguous/unknown tips to the marginal argmax, leaving gaps; no-op under parsimony). See [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md)
+- [x] `--reconstruct-tip-states` (v0-compatible alias enabling both `--include-leaves` and `--impute-missing-data`)
 - [x] `--model` relevant only on marginal paths (parsimony bypasses GTR)
 - [ ] `--keep-overhangs` (parsed but not wired; gap handling not implemented)
 - [ ] `--zero-based` indexing (parsed but not wired: [kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md](../issues/M-core-mutation-representation-and-format-projection-inconsistent.md))

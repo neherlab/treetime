@@ -159,7 +159,7 @@
 - [ ] `--method-anc`
 - [ ] `--keep-overhangs` (gap handling not implemented)
 - [ ] `--zero-based` ([kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md](../issues/M-core-mutation-representation-and-format-projection-inconsistent.md))
-- [ ] `--reconstruct-tip-states`
+- [ ] `--include-leaves` / `--impute-missing-data` / `--reconstruct-tip-states` (flags accepted, alias enabling both, threaded to `TimetreeParams`; tip-state output is not wired into `timetree`: [kb/issues/M-timetree-tip-state-flags-not-wired.md](../issues/M-timetree-tip-state-flags-not-wired.md))
 - [ ] `--report-ambiguous`
 - [ ] `--seed`
 - [x] `--gen-per-year` (generations per year, default 50.0; reports effective population size `N_e = Tc * gen_per_year` to the log for the constant, opt, and skyline modes, and to the coalescent output files above)
