@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::compress_sequences;
-  use crate::partition::fitch::PartitionFitch;
+  use crate::partition::fitch::partition::PartitionFitch;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;

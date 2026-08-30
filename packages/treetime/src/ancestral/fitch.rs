@@ -5,7 +5,7 @@ use crate::ancestral::fitch_sub::{
   resolve_root_forward, resolve_variable_positions_backward,
 };
 use crate::make_report;
-use crate::partition::fitch::PartitionFitch;
+use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
 use crate::partition::storage::sparse::{
   FitchSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, SparseSeqInfo,

@@ -1,4 +1,4 @@
-use crate::partition::fitch::PartitionFitch;
+use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
 use crate::partition::traits::{BranchTopology, PartitionBranchOps};

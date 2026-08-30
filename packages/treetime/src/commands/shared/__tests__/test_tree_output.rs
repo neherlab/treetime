@@ -11,7 +11,7 @@ mod tests {
     timetree_to_auspice, timetree_to_mat, timetree_to_phyloxml, write_ancestral_tree_outputs,
   };
   use crate::gtr::get_gtr::GtrModelName;
-  use crate::partition::fitch::PartitionFitch;
+  use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::partition::traits::BranchTopology;
   use crate::payload::ancestral::GraphAncestral;

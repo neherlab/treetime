@@ -5,7 +5,6 @@ pub mod algo;
 pub mod augur;
 pub mod create;
 pub mod fitch;
-pub mod fitch_config;
 pub(crate) mod indexed_pass;
 pub mod likelihood;
 pub mod marginal_core;

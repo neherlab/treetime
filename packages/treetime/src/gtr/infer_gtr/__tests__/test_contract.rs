@@ -17,7 +17,7 @@ mod tests {
   use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
   use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::fitch::PartitionFitch;
+  use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::marginal_dense::PartitionMarginalDense;
   use crate::partition::traits::TransitionCounting;
   use crate::seq::alignment::get_common_length;
