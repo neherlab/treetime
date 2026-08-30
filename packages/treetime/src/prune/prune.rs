@@ -1,6 +1,6 @@
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::partition::marginal_dense::PartitionMarginalDense;
-use crate::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use itertools::Itertools;

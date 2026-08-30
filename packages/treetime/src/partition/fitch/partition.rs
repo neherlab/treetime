@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal_dense::PartitionMarginalDense;
-use crate::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::partition::traits::{BranchTopology, PartitionBranchOps, PartitionCompressed};
 use eyre::Report;

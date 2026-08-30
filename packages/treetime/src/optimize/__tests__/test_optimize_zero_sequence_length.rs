@@ -6,7 +6,7 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::partition::marginal_dense::PartitionMarginalDense;
-  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::payload::ancestral::GraphAncestral;
 
   use parking_lot::RwLock;

@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
-  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;

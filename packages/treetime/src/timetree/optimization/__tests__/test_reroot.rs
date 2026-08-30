@@ -8,7 +8,7 @@ mod tests {
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
-  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution};
   use crate::partition::timetree::{GraphTimetree, PartitionTimetree};
   use crate::partition::traits::PartitionRerootOps;

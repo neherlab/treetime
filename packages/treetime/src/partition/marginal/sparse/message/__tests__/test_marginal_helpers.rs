@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::marginal_helpers::*;
+  use crate::partition::marginal::sparse::message::*;
   use crate::seq::composition::Composition;
   use approx::assert_abs_diff_eq;
   use ndarray::array;

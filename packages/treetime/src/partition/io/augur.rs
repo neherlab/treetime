@@ -1,6 +1,6 @@
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal_dense::PartitionMarginalDense;
-use crate::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::traits::{BranchTopology, PartitionBranchOps};
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;

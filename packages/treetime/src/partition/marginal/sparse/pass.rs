@@ -1,10 +1,11 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
-use crate::partition::marginal_core::{
-  forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_1d_inplace,
+use crate::partition::marginal::shared::{forward_log_lh_add_normalization, forward_log_lh_remove_child};
+use crate::partition::marginal::sparse::message::{
+  combine_messages, normalize_1d_inplace, propagate_raw, propagate_raw_per_site,
 };
-use crate::partition::marginal_helpers::{combine_messages, propagate_raw, propagate_raw_per_site};
-use crate::partition::marginal_sparse::{PartitionMarginalSparse, reconstruct_map_seq};
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::partition::marginal::sparse::reconstruct::reconstruct_map_seq;
 use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, VarPos};
 use crate::seq::mutation::Sub;
 use eyre::Report;

@@ -25,7 +25,7 @@ mod tests {
   ) -> Result<
     (
       GraphAncestral,
-      Arc<RwLock<crate::partition::marginal_sparse::PartitionMarginalSparse>>,
+      Arc<RwLock<crate::partition::marginal::sparse::partition::PartitionMarginalSparse>>,
     ),
     Report,
   > {

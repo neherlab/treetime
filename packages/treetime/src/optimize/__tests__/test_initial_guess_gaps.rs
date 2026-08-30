@@ -6,7 +6,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::partition::marginal_dense::PartitionMarginalDense;
-  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;

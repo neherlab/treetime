@@ -3,7 +3,7 @@ use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
 use crate::gtr::gtr::GTR;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
-use crate::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::payload::ancestral::GraphAncestral;
 use crate::prune::prune::prune_nodes;
 use eyre::Report;

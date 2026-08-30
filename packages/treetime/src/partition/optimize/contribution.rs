@@ -1,6 +1,6 @@
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal_dense::PartitionMarginalDense;
-use crate::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::optimize;
 use eyre::Report;
 use itertools::Either;

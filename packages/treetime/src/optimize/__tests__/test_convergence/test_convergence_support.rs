@@ -7,7 +7,7 @@ pub mod tests {
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::partition::marginal_dense::PartitionMarginalDense;
-  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::traits::PartitionOptimizeVec;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;

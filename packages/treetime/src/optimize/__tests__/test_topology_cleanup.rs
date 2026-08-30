@@ -11,7 +11,7 @@ mod tests {
   use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop};
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal_dense::PartitionMarginalDense;
-  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;

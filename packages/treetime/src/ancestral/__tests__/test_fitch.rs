@@ -8,7 +8,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
   use crate::partition::fitch::partition::PartitionFitch;
-  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::traits::{PartitionBranchOps, PartitionRerootOps};
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;

@@ -9,7 +9,7 @@ use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_report;
 use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
-use crate::partition::marginal_core::{
+use crate::partition::marginal::shared::{
   IndexedMarginalPartition, MarginalData, MarginalPartition, marginal_process_backward_indexed,
   marginal_process_forward_indexed,
 };

@@ -5,7 +5,7 @@ mod tests {
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal_dense::PartitionMarginalDense;
-  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
   use crate::partition::traits::PartitionOptimizeOps;
   use crate::payload::ancestral::GraphAncestral;

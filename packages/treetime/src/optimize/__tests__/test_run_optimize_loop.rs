@@ -6,7 +6,7 @@ mod tests {
   };
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
-  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;

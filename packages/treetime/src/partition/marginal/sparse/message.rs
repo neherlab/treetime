@@ -199,3 +199,22 @@ pub fn propagate_raw_per_site(
 fn is_site_resolved(dis: &Array1<f64>, epsilon: f64) -> bool {
   is_max_above(dis, 1.0 - epsilon)
 }
+
+/// Normalize a 1D sparse-site distribution in place.
+///
+/// Normalizes `dis` to sum to 1 and returns the log-likelihood contribution
+/// `weight * ln(norm)`, where `weight` is the number of sites sharing this
+/// distribution (`1.0` for a single variable site, the fixed-state count for a
+/// fixed block). When the norm is non-positive or non-finite, falls back to a
+/// uniform distribution and contributes `f64::NEG_INFINITY` (unweighted,
+/// matching the dense 2D normalization fallback).
+pub fn normalize_1d_inplace(dis: &mut Array1<f64>, weight: f64) -> f64 {
+  let norm = dis.sum();
+  if norm > 0.0 && norm.is_finite() {
+    *dis /= norm;
+    weight * norm.ln()
+  } else {
+    dis.fill(1.0 / dis.len() as f64);
+    f64::NEG_INFINITY
+  }
+}

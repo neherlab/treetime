@@ -52,7 +52,7 @@ pub struct AncestralInput {
 #[serde(rename_all = "kebab-case")]
 pub enum AncestralPartition {
   Fitch(Arc<RwLock<PartitionFitch>>),
-  Sparse(Arc<RwLock<crate::partition::marginal_sparse::PartitionMarginalSparse>>),
+  Sparse(Arc<RwLock<crate::partition::marginal::sparse::partition::PartitionMarginalSparse>>),
   Dense(Arc<RwLock<PartitionMarginalDense>>),
 }
 

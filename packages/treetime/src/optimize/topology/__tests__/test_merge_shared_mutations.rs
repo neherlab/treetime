@@ -5,7 +5,7 @@ mod tests {
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 
   use crate::gtr::jc_distance::jukes_cantor_distance;
-  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;

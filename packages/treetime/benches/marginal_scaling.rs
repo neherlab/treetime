@@ -40,7 +40,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
 
 fn setup() -> (
   GraphAncestral,
-  [Arc<RwLock<treetime::partition::marginal_sparse::PartitionMarginalSparse>>; 1],
+  [Arc<RwLock<treetime::partition::marginal::sparse::partition::PartitionMarginalSparse>>; 1],
 ) {
   ThreadPoolBuilder::new()
     .num_threads(1)
@@ -51,7 +51,7 @@ fn setup() -> (
 
 fn setup_inner() -> (
   GraphAncestral,
-  [Arc<RwLock<treetime::partition::marginal_sparse::PartitionMarginalSparse>>; 1],
+  [Arc<RwLock<treetime::partition::marginal::sparse::partition::PartitionMarginalSparse>>; 1],
 ) {
   let alphabet = Alphabet::default();
   let project_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");

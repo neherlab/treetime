@@ -8,7 +8,7 @@ use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 use crate::partition::marginal_dense::PartitionMarginalDense;
-use crate::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::traits::{HasGtr, PartitionOptimizeOps, PartitionOptimizeVec};
 use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;

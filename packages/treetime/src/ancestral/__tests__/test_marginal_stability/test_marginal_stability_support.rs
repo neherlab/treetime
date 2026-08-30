@@ -6,7 +6,7 @@ pub mod tests {
   use crate::gtr::gtr::GTR;
   use crate::partition::storage::dense::DenseSeqDistribution;
   use crate::partition::marginal_dense::PartitionMarginalDense;
-  use crate::partition::marginal_sparse::PartitionMarginalSparse;
+  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::SparseSeqDistribution;
   use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;

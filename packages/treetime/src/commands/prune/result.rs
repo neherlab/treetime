@@ -1,5 +1,5 @@
 use crate::gtr::gtr::GTR;
-use crate::partition::marginal_sparse::PartitionMarginalSparse;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::payload::ancestral::GraphAncestral;
 use parking_lot::RwLock;
 use serde::Serialize;
