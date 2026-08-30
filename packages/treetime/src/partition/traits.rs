@@ -219,6 +219,7 @@ where
     &mut self,
     node: &GraphNodeForward<N, E>,
     include_leaves: bool,
+    impute: bool,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq>;

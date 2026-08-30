@@ -134,6 +134,11 @@ where
         edge_data.transmission.as_deref(),
       )
     };
+    // Persist the down-message only for tips: reconstruct_node_sequence imputes missing tip states
+    // from it and has no branch length to recompute the propagation. Internal nodes never need it.
+    if graph.is_leaf(slot.key) {
+      edge_data.msg_from_parent = msg_from_parent.clone();
+    }
     let profile = combine_messages(
       &slot.node.seq.composition,
       &[msg_from_parent, edge_data.msg_to_parent.clone()],
@@ -144,7 +149,12 @@ where
     )?;
     slot.node.profile = profile;
 
-    if !parent.seq.sequence.is_empty() {
+    // Internal nodes derive their MAP sequence from the parent. Leaves keep their observed input:
+    // deriving a leaf from the parent discards observed states the leaf shares with the parent under
+    // Fitch compression, which corrupts both the emitted tip sequence and the leaf-edge `ml_subs`
+    // (dropping real parent->tip substitutions). The dense backend likewise preserves the observed
+    // leaf sequence through its forward pass.
+    if !graph.is_leaf(slot.key) && !parent.seq.sequence.is_empty() {
       slot.node.seq.sequence = reconstruct_map_seq(&parent.seq.sequence, Some(edge_data), &slot.node, alphabet);
     }
     edge_data.set_ml_subs(compute_ml_subs_for_nodes(alphabet, parent, &slot.node, edge_data)?);

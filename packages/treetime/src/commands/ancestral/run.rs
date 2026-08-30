@@ -86,7 +86,8 @@ pub fn run_ancestral_reconstruction(
     method: ancestral_args.method_anc,
     model: ancestral_args.model_args.model,
     dense: ancestral_args.dense,
-    reconstruct_tip_states: ancestral_args.reconstruct_tip_states,
+    include_leaves: ancestral_args.include_leaves || ancestral_args.reconstruct_tip_states,
+    impute_missing_data: ancestral_args.impute_missing_data || ancestral_args.reconstruct_tip_states,
     gtr_iterations: ancestral_args.gtr_iterations,
     site_specific_gtr: ancestral_args.site_specific_gtr,
     seed: ancestral_args.seed,
@@ -269,7 +270,8 @@ fn run_aa_reconstructions(
 
   let params = MarginalPartitionParams {
     dense: ancestral_args.dense,
-    reconstruct_tip_states: ancestral_args.reconstruct_tip_states,
+    include_leaves: ancestral_args.include_leaves || ancestral_args.reconstruct_tip_states,
+    impute_missing_data: ancestral_args.impute_missing_data || ancestral_args.reconstruct_tip_states,
     sample_from_profile: ancestral_args.sample_from_profile,
     seed: ancestral_args.seed,
     ignore_missing_alns: ancestral_args.ignore_missing_alns,

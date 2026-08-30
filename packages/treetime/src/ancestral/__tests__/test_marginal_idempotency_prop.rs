@@ -92,6 +92,7 @@ mod tests {
       ancestral_reconstruction_marginal(
         &graph,
         true,
+        false,
         &partitions,
         SampleMode::Argmax,
         &mut rng,

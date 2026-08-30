@@ -106,7 +106,7 @@ mod tests {
 
       let mut rng = StdRng::seed_from_u64(seed);
       let mut out = BTreeMap::new();
-      ancestral_reconstruction_marginal(&graph, false, &partitions, mode, &mut rng, |node, seq| {
+      ancestral_reconstruction_marginal(&graph, false, false, &partitions, mode, &mut rng, |node, seq| {
         out.insert(node.name.clone().unwrap_or_default(), seq.to_string());
         Ok(())
       })?;

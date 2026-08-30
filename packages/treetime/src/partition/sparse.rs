@@ -97,6 +97,17 @@ pub struct SparseEdgePartition {
   pub msg_to_parent: SparseSeqDistribution,
   pub msg_to_child: SparseSeqDistribution,
   pub msg_from_child: SparseSeqDistribution,
+
+  /// The parent posterior evolved across this branch to the child (the marginal down-message).
+  ///
+  /// Populated by the forward pass only for edges whose child is a leaf, where tip imputation needs it
+  /// at reconstruction time. `msg_to_child` stores the pre-propagation cavity message; the forward pass
+  /// already computes this propagated form for the profile update but otherwise discards it. At a tip
+  /// position with no observed state the leaf likelihood is uniform, so this down-message is the leaf's
+  /// marginal posterior there, matching v0's per-leaf marginal profile.
+  #[serde(default)]
+  pub msg_from_parent: SparseSeqDistribution,
+
   pub transmission: Option<Vec<(usize, usize)>>,
 }
 
@@ -169,6 +180,7 @@ impl SparseEdgePartition {
     }
     mem::swap(&mut self.msg_to_parent, &mut self.msg_to_child);
     self.msg_from_child = SparseSeqDistribution::default();
+    self.msg_from_parent = SparseSeqDistribution::default();
   }
 }
 

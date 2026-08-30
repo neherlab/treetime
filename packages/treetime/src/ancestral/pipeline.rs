@@ -30,7 +30,11 @@ pub struct AncestralParams {
   pub method: MethodAncestral,
   pub model: GtrModelName,
   pub dense: Option<bool>,
-  pub reconstruct_tip_states: bool,
+  /// Emit reconstructed leaf sequences in addition to internal nodes.
+  pub include_leaves: bool,
+  /// Resolve ambiguous and unknown tip states (`N` and IUPAC codes) to the most likely inferred
+  /// state. Only defined for marginal reconstruction; a no-op for Fitch parsimony.
+  pub impute_missing_data: bool,
   pub gtr_iterations: usize,
   pub site_specific_gtr: bool,
   pub seed: Option<u64>,
@@ -123,12 +127,16 @@ where
 
       compress_sequences(&graph, &partitions_parsimony, &sequences)?;
 
-      ancestral_reconstruction_fitch(
-        &graph,
-        params.reconstruct_tip_states,
-        &partitions_parsimony,
-        |node, seq| on_sequence(&node.payload, seq),
-      )?;
+      if params.impute_missing_data {
+        log::warn!(
+          "--impute-missing-data has no effect with --method-anc=parsimony: Fitch parsimony produces no \
+           posterior profile to impute missing tip states from. Leaf states are emitted as observed."
+        );
+      }
+
+      ancestral_reconstruction_fitch(&graph, params.include_leaves, &partitions_parsimony, |node, seq| {
+        on_sequence(&node.payload, seq)
+      })?;
 
       progress.report("Done", 1.0, "");
       Ok(AncestralOutputFull {
@@ -163,7 +171,8 @@ where
           progress.report("Reconstructing sequences", 0.6, "");
           ancestral_reconstruction_marginal(
             &graph,
-            params.reconstruct_tip_states,
+            params.include_leaves,
+            params.impute_missing_data,
             &partitions,
             params.sample_from_profile,
             &mut rng,
@@ -200,7 +209,8 @@ where
           progress.report("Reconstructing sequences", 0.6, "");
           ancestral_reconstruction_marginal(
             &graph,
-            params.reconstruct_tip_states,
+            params.include_leaves,
+            params.impute_missing_data,
             &partitions,
             params.sample_from_profile,
             &mut rng,

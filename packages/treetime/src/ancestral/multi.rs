@@ -31,7 +31,8 @@ pub struct PartitionPlan {
 /// Reconstruction parameters shared by every partition in a multi-partition run.
 pub struct MarginalPartitionParams {
   pub dense: Option<bool>,
-  pub reconstruct_tip_states: bool,
+  pub include_leaves: bool,
+  pub impute_missing_data: bool,
   pub sample_from_profile: SampleMode,
   pub seed: Option<u64>,
   pub ignore_missing_alns: bool,
@@ -84,7 +85,8 @@ pub fn reconstruct_marginal_partition(
   update_marginal(graph, single)?;
   ancestral_reconstruction_marginal(
     graph,
-    params.reconstruct_tip_states,
+    params.include_leaves,
+    params.impute_missing_data,
     single,
     params.sample_from_profile,
     rng,

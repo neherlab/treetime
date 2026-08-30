@@ -501,20 +501,48 @@ where
     &mut self,
     node: &GraphNodeForward<N, E>,
     include_leaves: bool,
+    impute: bool,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq> {
+    let seq = {
+      let seq_info = self.data.nodes.get(&node.key)?;
+      if node.is_leaf {
+        // The dense tip keeps its observed input (gaps and unknowns already stamped), so it never
+        // suffers the sparse tip corruption. Imputation resolves ambiguous/unknown positions (N and
+        // IUPAC codes, not gaps) to the argmax of the leaf marginal posterior. The forward pass folds
+        // the observed ambiguity mask into the leaf profile, so its argmax is the parent-informed
+        // most likely state, matching v0.
+        let mut seq = seq_info.seq.sequence.clone();
+        if impute && seq_info.profile.dis.nrows() == seq.len() {
+          for pos in 0..seq.len() {
+            let ch = seq[pos];
+            if !self.alphabet.is_canonical(ch) && !self.alphabet.is_gap(ch) {
+              if let Some(idx) = argmax_first(&seq_info.profile.dis.row(pos)) {
+                seq[pos] = self.alphabet.char(idx);
+              }
+            }
+          }
+        }
+        seq
+      } else {
+        let sample = sample_mode.samples_node(node.is_root);
+        assign_sequence_sampled(seq_info, &self.alphabet, sample, rng)
+      }
+    };
+
+    // Persist the reconstruction so the node-data serializer reads back this flag-aware sequence
+    // (the dense augur path returns `seq.sequence`), keeping the JSON and the reconstructed FASTA
+    // consistent and matching the sparse backend.
+    if let Some(node_data) = self.data.nodes.get_mut(&node.key) {
+      node_data.seq.sequence = seq.clone();
+    }
+
+    // A suppressed tip is still reconstructed above (so the node-data serializer reads the corrected
+    // sequence), but is not emitted to the reconstructed-FASTA visitor.
     if !include_leaves && node.is_leaf {
       return None;
     }
-
-    let seq_info = self.data.nodes.get(&node.key)?;
-    let seq = if node.is_leaf {
-      seq_info.seq.sequence.clone()
-    } else {
-      let sample = sample_mode.samples_node(node.is_root);
-      assign_sequence_sampled(seq_info, &self.alphabet, sample, rng)
-    };
 
     Some(seq)
   }

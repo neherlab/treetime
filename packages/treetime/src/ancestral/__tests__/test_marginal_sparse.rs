@@ -195,6 +195,7 @@ mod tests {
     ancestral_reconstruction_marginal(
       &graph,
       false,
+      false,
       &partitions_marginal_sparse,
       SampleMode::Argmax,
       &mut rand::thread_rng(),
@@ -521,6 +522,7 @@ mod tests {
     ancestral_reconstruction_marginal(
       &graph,
       true,
+      false,
       &partitions,
       SampleMode::Argmax,
       &mut rand::thread_rng(),

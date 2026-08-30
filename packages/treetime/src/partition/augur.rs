@@ -1,8 +1,7 @@
 use crate::partition::fitch::PartitionFitch;
 use crate::partition::marginal_dense::PartitionMarginalDense;
 use crate::partition::marginal_sparse::PartitionMarginalSparse;
-use crate::partition::traits::{BranchTopology, PartitionBranchOps, PartitionMarginalOps};
-use crate::payload::ancestral::{EdgeAncestral, NodeAncestral};
+use crate::partition::traits::{BranchTopology, PartitionBranchOps};
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -93,9 +92,11 @@ impl AugurNodeDataJsonAncestralPartition for PartitionMarginalDense {
   }
 
   fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    // Dense partitions do not store full sequences; they are derived from the
-    // per-site marginal posteriors (MAP states) via the marginal ops trait.
-    <Self as PartitionMarginalOps<NodeAncestral, EdgeAncestral>>::extract_ancestral_sequence(self, node_key)
+    // Read the sequence reconstructed by `reconstruct_node_sequence`, which the marginal
+    // reconstruction pass writes into every node's `seq.sequence`. Reading it here (rather than
+    // re-deriving MAP states from the profile) makes the node-data JSON reflect the flag-aware tip
+    // reconstruction (observed echo or imputation) and keeps dense output consistent with sparse.
+    self.data.nodes[&node_key].seq.sequence.clone()
   }
 
   fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {

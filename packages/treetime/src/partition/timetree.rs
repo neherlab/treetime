@@ -204,12 +204,13 @@ impl PartitionMarginalOps<NodeTimetree, EdgeTimetree> for PartitionTimetree {
     &mut self,
     node: &GraphNodeForward<NodeTimetree, EdgeTimetree>,
     include_leaves: bool,
+    impute: bool,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq> {
     match self {
-      Self::Dense(partition) => partition.reconstruct_node_sequence(node, include_leaves, sample_mode, rng),
-      Self::Sparse(partition) => partition.reconstruct_node_sequence(node, include_leaves, sample_mode, rng),
+      Self::Dense(partition) => partition.reconstruct_node_sequence(node, include_leaves, impute, sample_mode, rng),
+      Self::Sparse(partition) => partition.reconstruct_node_sequence(node, include_leaves, impute, sample_mode, rng),
     }
   }
 }

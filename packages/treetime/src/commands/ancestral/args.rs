@@ -62,7 +62,21 @@ pub struct TreetimeAncestralArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub zero_based: bool,
 
-  /// Overwrite ambiguous states on tips with the most likely inferred state
+  /// Emit reconstructed leaf (tip) sequences in addition to internal nodes.
+  #[cfg_attr(feature = "clap", clap(long))]
+  pub include_leaves: bool,
+
+  /// Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
+  /// inferred state.
+  ///
+  /// Gaps are left as deletions (inferred structure, not missing data). Only defined for marginal
+  /// reconstruction; a no-op with a warning under `--method-anc=parsimony`.
+  #[cfg_attr(feature = "clap", clap(long))]
+  pub impute_missing_data: bool,
+
+  /// v0-compatible alias for `--include-leaves --impute-missing-data`.
+  ///
+  /// Emits tip sequences and resolves ambiguous/unknown tip states to the most likely inferred state.
   #[cfg_attr(feature = "clap", clap(long))]
   pub reconstruct_tip_states: bool,
 

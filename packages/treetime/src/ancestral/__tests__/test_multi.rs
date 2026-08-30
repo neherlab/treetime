@@ -22,7 +22,8 @@ fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
   ];
   let params = MarginalPartitionParams {
     dense: Some(false),
-    reconstruct_tip_states: false,
+    include_leaves: false,
+    impute_missing_data: false,
     sample_from_profile: SampleMode::default(),
     seed: None,
     ignore_missing_alns: false,

@@ -544,13 +544,10 @@ where
     &mut self,
     node: &GraphNodeForward<N, E>,
     include_leaves: bool,
+    impute: bool,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq> {
-    if !include_leaves && node.is_leaf {
-      return None;
-    }
-
     let mut node_data = self.nodes.remove(&node.key)?;
 
     let (base_seq, edge) = if node.is_root {
@@ -562,12 +559,84 @@ where
       (&parent_data.seq.sequence, Some(edge_data))
     };
 
-    let sample = sample_mode.samples_node(node.is_root);
-    let seq = reconstruct_map_seq_sampled(base_seq, edge, &node_data, &self.alphabet, sample, rng);
+    // Tips reconstruct from their own observed state; the internal-node and root path is left
+    // byte-identical (it feeds optimize/timetree). The leaf branch fixes the tip corruption and,
+    // when requested, imputes missing states.
+    let seq = if node.is_leaf {
+      reconstruct_leaf_sequence(&node_data, edge, base_seq, impute, &self.alphabet)
+    } else {
+      let sample = sample_mode.samples_node(node.is_root);
+      reconstruct_map_seq_sampled(base_seq, edge, &node_data, &self.alphabet, sample, rng)
+    };
+
     node_data.seq.composition = Composition::with_seq(&seq, self.alphabet.chars(), self.alphabet.gap());
     node_data.seq.sequence = seq.clone();
     self.nodes.insert(node.key, node_data);
 
+    // A suppressed tip is still reconstructed above (so the node-data serializer reads the corrected
+    // sequence), but is not emitted to the reconstructed-FASTA visitor.
+    if !include_leaves && node.is_leaf {
+      return None;
+    }
+
     Some(seq)
   }
+}
+
+/// Reconstruct a leaf output sequence from its own observed data.
+///
+/// Mirrors the dense backend, which keeps the observed tip sequence and never chains a leaf through
+/// its parent. The forward pass leaves a leaf's `seq.sequence` equal to its observed input, so
+/// without imputation the tip emits exactly that. With imputation every ambiguous or unknown
+/// position (`N` and IUPAC codes, but not gaps) is resolved to the argmax of the leaf marginal
+/// posterior. That posterior is the parent marginal evolved across the branch (`msg_from_parent`)
+/// restricted by the observed ambiguity mask, matching v0's per-leaf marginal profile; on long tip
+/// branches this differs from simply copying the parent MAP state.
+fn reconstruct_leaf_sequence(
+  node: &SparseNodePartition,
+  edge: Option<&SparseEdgePartition>,
+  base_seq: &Seq,
+  impute: bool,
+  alphabet: &Alphabet,
+) -> Seq {
+  let mut seq = node.seq.sequence.clone();
+
+  // Fitch compression stores each observed IUPAC ambiguity as a single resolved canonical state in
+  // `seq.sequence`; restore the observed ambiguity code so a non-imputing tip echoes its true input.
+  // Unknown (`N`) positions already hold the unknown character in `seq.sequence`.
+  for (&pos, states) in &node.seq.fitch.variable {
+    seq[pos] = alphabet.set_to_char(*states);
+  }
+
+  // A tip with no parent edge (a single-node tree) has no down-message to impute from.
+  let (true, Some(edge)) = (impute, edge) else {
+    return seq;
+  };
+  let down = &edge.msg_from_parent;
+
+  // Impute every ambiguous or unknown position to the leaf marginal argmax. Imputable positions are
+  // the unknown (`N`) ranges and the IUPAC ambiguity positions detected from the partition structure,
+  // not from the character being non-canonical (Fitch may already have resolved an IUPAC code to a
+  // canonical state). Gaps are inferred deletions and are left untouched.
+  let unknown_positions = node.seq.unknown.iter().flat_map(|&(start, end)| start..end);
+  let ambiguous_positions = node.seq.fitch.variable.keys().copied();
+  for pos in unknown_positions.chain(ambiguous_positions) {
+    let observed = seq[pos];
+    // Parent posterior at this site: an explicit variable distribution when the parent varies here,
+    // otherwise the fixed-column distribution keyed by the parent MAP state.
+    let posterior = down
+      .variable
+      .get(&pos)
+      .map(|var| &var.dis)
+      .or_else(|| base_seq.get(pos).and_then(|parent_char| down.fixed.get(parent_char)));
+    let (Some(posterior), Ok(mask)) = (posterior, alphabet.get_profile(observed)) else {
+      continue;
+    };
+    let combined = posterior * mask;
+    if let Some(idx) = argmax_first(&combined.view()) {
+      seq[pos] = alphabet.char(idx);
+    }
+  }
+
+  seq
 }

@@ -253,7 +253,16 @@ pub struct TreetimeTimetreeArgs {
   #[cfg_attr(feature = "clap", clap(long))]
   pub zero_based: bool,
 
-  /// Overwrite ambiguous states on tips with the most likely inferred state
+  /// Emit reconstructed leaf (tip) sequences in addition to internal nodes.
+  #[cfg_attr(feature = "clap", clap(long))]
+  pub include_leaves: bool,
+
+  /// Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
+  /// inferred state. Gaps are left as deletions.
+  #[cfg_attr(feature = "clap", clap(long))]
+  pub impute_missing_data: bool,
+
+  /// v0-compatible alias for `--include-leaves --impute-missing-data`.
   #[cfg_attr(feature = "clap", clap(long))]
   pub reconstruct_tip_states: bool,
 

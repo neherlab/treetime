@@ -43,6 +43,7 @@ where
 pub fn ancestral_reconstruction_marginal<N, E, P>(
   graph: &Graph<N, E, ()>,
   include_leaves: bool,
+  impute: bool,
   partitions: &[Arc<RwLock<P>>],
   sample_mode: SampleMode,
   rng: &mut dyn rand::RngCore,
@@ -55,24 +56,27 @@ where
 {
   // Preorder traversal is sequential, so a single threaded RNG yields deterministic output under a
   // fixed seed: every node draws from the profile in a fixed traversal order.
+  // Reconstruct every node so each partition's stored `seq.sequence` reflects the final, flag-aware
+  // reconstruction that the node-data serializer reads back. `include_leaves` gates only whether tip
+  // sequences are emitted to the visitor (the reconstructed FASTA), not whether they are computed:
+  // `reconstruct_node_sequence` returns `None` for a suppressed tip after writing its `seq.sequence`.
   graph.iter_depth_first_preorder_forward(|node| {
-    if !include_leaves && node.is_leaf {
-      return Ok(());
+    if partitions.is_empty() {
+      if !include_leaves && node.is_leaf {
+        return Ok(());
+      }
+      return visitor(&node.payload, &seq![]);
     }
 
-    let seq: Seq = if !partitions.is_empty() {
+    let reconstructed = {
       let mut partition = partitions[0].write_arc();
-      partition
-        .reconstruct_node_sequence(&node, include_leaves, sample_mode, rng)
-        .unwrap_or_else(|| {
-          log::warn!("Missing reconstruction for node {:?}, using empty sequence", node.key);
-          seq![]
-        })
-    } else {
-      seq![]
+      partition.reconstruct_node_sequence(&node, include_leaves, impute, sample_mode, rng)
     };
 
-    visitor(&node.payload, &seq)
+    match reconstructed {
+      Some(seq) => visitor(&node.payload, &seq),
+      None => Ok(()),
+    }
   })
 }
 
