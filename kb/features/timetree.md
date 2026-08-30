@@ -134,7 +134,7 @@
 - [x] Clock model JSON with `timetree.*` basename
 - [x] Confidence TSV
 - [x] Coalescent time scale TSV/CSV/JSON (`--output-coalescent-{tsv,csv,json}`; per-segment $T_c$, $N_e$, and confidence band for skyline, optimized-constant, and fixed $T_c$; TSV in the default `--output-all` set, CSV and JSON opt-in; the `skyline.pdf` plot and the grid-points default remain, see [kb/issues/N-timetree-missing-skyline-output.md](../issues/N-timetree-missing-skyline-output.md))
-- [ ] Ancestral sequences FASTA ([kb/issues/N-timetree-ancestral-sequences-output-unimplemented.md](../issues/N-timetree-ancestral-sequences-output-unimplemented.md))
+- [x] Ancestral sequences FASTA (`--output-reconstructed-nuc-fasta`, default under `--output-all`; reuses the `ancestral` marginal reconstruction, internal nodes always, tips with `--include-leaves`)
 - [ ] Branch mutations table ([kb/issues/N-timetree-branch-mutations-output-unimplemented.md](../issues/N-timetree-branch-mutations-output-unimplemented.md))
 - [ ] Molecular clock text output or approved replacement ([kb/issues/N-timetree-molecular-clock-text-output-undecided.md](../issues/N-timetree-molecular-clock-text-output-undecided.md))
 - [ ] Sequence-evolution model text output or approved replacement ([kb/issues/N-timetree-sequence-evolution-model-text-output-undecided.md](../issues/N-timetree-sequence-evolution-model-text-output-undecided.md))
@@ -159,7 +159,7 @@
 - [ ] `--method-anc`
 - [ ] `--keep-overhangs` (gap handling not implemented)
 - [ ] `--zero-based` ([kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md](../issues/M-core-mutation-representation-and-format-projection-inconsistent.md))
-- [ ] `--include-leaves` / `--impute-missing-data` / `--reconstruct-tip-states` (flags accepted, alias enabling both, threaded to `TimetreeParams`; tip-state output is not wired into `timetree`: [kb/issues/M-timetree-tip-state-flags-not-wired.md](../issues/M-timetree-tip-state-flags-not-wired.md))
+- [x] `--include-leaves` / `--impute-missing-data` / `--reconstruct-tip-states` (drive the reconstructed FASTA: emit tips, impute ambiguous tip states, alias enabling both; see [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md))
 - [ ] `--report-ambiguous`
 - [ ] `--seed`
 - [x] `--gen-per-year` (generations per year, default 50.0; reports effective population size `N_e = Tc * gen_per_year` to the log for the constant, opt, and skyline modes, and to the coalescent output files above)
