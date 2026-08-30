@@ -305,6 +305,16 @@ pub struct TreetimeTimetreeArgs {
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   pub output_gtr: Option<PathBuf>,
 
+  /// Path to output reconstructed ancestral-sequence nucleotide FASTA.
+  ///
+  /// The v1 equivalent of TreeTime v0's `ancestral_sequences.fasta`: internal-node sequences
+  /// reconstructed by the marginal pass, plus reconstructed tip sequences when `--include-leaves`
+  /// (or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  pub output_reconstructed_nuc_fasta: Option<PathBuf>,
+
   /// Path to output clock model JSON.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.

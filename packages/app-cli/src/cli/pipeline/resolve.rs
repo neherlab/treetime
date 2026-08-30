@@ -479,7 +479,7 @@ mod tests {
     let result = resolve(config);
     assert_error!(
       result,
-      "step `anc` references `traits-csv` from step `tt`, which does not produce it; it produces: `augur-node-data`, `auspice`, `clock-model`, `coalescent-tsv`, `gtr`, `nexus`, `nwk`"
+      "step `anc` references `traits-csv` from step `tt`, which does not produce it; it produces: `augur-node-data`, `auspice`, `clock-model`, `coalescent-tsv`, `gtr`, `nexus`, `nwk`, `reconstructed-nuc-fasta`"
     );
   }
 

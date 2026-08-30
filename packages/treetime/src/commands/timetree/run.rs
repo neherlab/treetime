@@ -1,3 +1,5 @@
+use crate::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
+use crate::ancestral::sample::SampleMode;
 use crate::clock::clock_output::write_clock_model;
 use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
@@ -18,8 +20,12 @@ use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use eyre::{Report, WrapErr};
 use log::{debug, info, warn};
 use std::path::{Path, PathBuf};
+use treetime_graph::assign_node_names::assign_node_names;
+use treetime_graph::node::{Described, Named};
+use treetime_io::fasta::FastaWriter;
 use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
+use treetime_utils::sync::random::get_random_number_generator;
 
 pub fn run_timetree_estimation(
   args: &TreetimeTimetreeArgs,
@@ -85,6 +91,64 @@ pub fn run_timetree_estimation(
   };
 
   let output = pipeline::run(&params, input, tracelog, progress)?;
+
+  // Name any unnamed internal node before serialization. Rerooting introduces a fresh root node
+  // that the load-time naming pass never saw, and polytomy resolution only re-names when it changes
+  // the topology, so on a run without polytomy resolution the rerooted root reaches output unnamed.
+  // v0 and the `ancestral` command give every internal node a `NODE_<n>` name; assigning one here
+  // keeps the reconstructed FASTA, the augur node data, and the tree outputs consistent and matches
+  // v0 rather than leaking an empty label or a key-derived placeholder.
+  assign_node_names(&output.graph)?;
+
+  // Reconstructed ancestral-sequence FASTA: the v1 equivalent of v0's `ancestral_sequences.fasta`.
+  // The timetree pipeline computes marginal posteriors for branch-length optimization but never
+  // materializes the flag-aware per-node sequences, so this reuses the same reconstruction the
+  // `ancestral` command runs: `update_marginal` refreshes the posteriors against the final branch
+  // lengths, then `ancestral_reconstruction_marginal` writes each node's stored sequence and emits
+  // it. `--include-leaves` gates whether tip sequences are emitted; `--impute-missing-data` resolves
+  // ambiguous tip states. Reconstruction runs before mutation counting and tree output so every
+  // sequence-derived output reflects the same flag-aware states. The pass is opt-in (FASTA requested
+  // or a tip-state flag set), so runs that ask for neither leave all other outputs unchanged.
+  let reconstructed_nuc_fasta = resolved.non_tree_outputs.get(&OutputSelection::ReconstructedNucFasta);
+  if reconstructed_nuc_fasta.is_some() || params.include_leaves || params.impute_missing_data {
+    if output.partitions.is_empty() {
+      if reconstructed_nuc_fasta.is_some() {
+        return make_error!(
+          "Reconstructed sequence output requires ancestral reconstruction; \
+           incompatible with --branch-length-mode=input"
+        );
+      }
+      warn!(
+        "Ignoring tip-state flags (--include-leaves / --impute-missing-data / --reconstruct-tip-states): \
+         no ancestral reconstruction was performed under --branch-length-mode=input"
+      );
+    } else {
+      let mut writer = match reconstructed_nuc_fasta {
+        Some(path) => Some(FastaWriter::new(create_file_or_stdout(path)?)),
+        None => None,
+      };
+      update_marginal(&output.graph, &output.partitions)?;
+      let mut rng = get_random_number_generator(params.seed);
+      ancestral_reconstruction_marginal(
+        &output.graph,
+        params.include_leaves,
+        params.impute_missing_data,
+        &output.partitions,
+        SampleMode::Argmax,
+        &mut rng,
+        |node, seq| match writer.as_mut() {
+          Some(writer) => {
+            let name = node.name().map(|n| n.as_ref().to_owned()).unwrap_or_default();
+            writer.write(&name, node.desc(), seq)
+          },
+          None => Ok(()),
+        },
+      )?;
+      if let Some(path) = reconstructed_nuc_fasta {
+        info!("Wrote reconstructed nucleotide FASTA to {path}", path = path.display());
+      }
+    }
+  }
 
   let mutation_counts = match args.divergence_units {
     DivergenceUnits::Mutations => {

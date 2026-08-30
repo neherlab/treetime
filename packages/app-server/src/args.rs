@@ -332,6 +332,7 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
       divergence_units: DivergenceUnits::default(),
       output_augur_node_data: None,
       output_gtr: None,
+      output_reconstructed_nuc_fasta: None,
       output_clock_model: None,
       output_confidence_tsv: None,
       output_coalescent_tsv: None,

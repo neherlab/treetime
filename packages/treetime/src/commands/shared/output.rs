@@ -261,6 +261,7 @@ per_command_output_selection!(AncestralOutputSelection {
 per_command_output_selection!(TimetreeOutputSelection {
   AugurNodeData,
   Gtr,
+  ReconstructedNucFasta,
   ClockModel,
   ConfidenceTsv,
   Tracelog,
@@ -341,6 +342,7 @@ impl CommandKind {
       Self::Timetree => btreeset![
         AugurNodeData,
         Gtr,
+        ReconstructedNucFasta,
         ClockModel,
         ConfidenceTsv,
         Tracelog,

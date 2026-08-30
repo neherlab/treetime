@@ -63,6 +63,10 @@ impl ResolveOutputs for TreetimeTimetreeArgs {
       &[
         (OutputSelection::AugurNodeData, self.output_augur_node_data.as_deref()),
         (OutputSelection::Gtr, self.output_gtr.as_deref()),
+        (
+          OutputSelection::ReconstructedNucFasta,
+          self.output_reconstructed_nuc_fasta.as_deref(),
+        ),
         (OutputSelection::ClockModel, self.output_clock_model.as_deref()),
         (OutputSelection::ConfidenceTsv, self.output_confidence_tsv.as_deref()),
         (OutputSelection::Tracelog, self.output_tracelog.as_deref()),
