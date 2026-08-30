@@ -1,5 +1,5 @@
 use crate::gtr::gtr::GTR;
-use crate::partition::marginal_dense::PartitionMarginalDense;
+use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::optimize;
 use eyre::Report;

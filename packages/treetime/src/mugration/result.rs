@@ -1,4 +1,4 @@
-use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
+use crate::partition::marginal::discrete::PartitionMarginalDiscrete;
 use crate::payload::ancestral::GraphAncestral;
 use indexmap::IndexMap;
 use itertools::Itertools;

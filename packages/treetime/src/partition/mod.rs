@@ -8,8 +8,6 @@ pub(crate) mod indexed_pass;
 pub mod io;
 pub mod likelihood;
 pub mod marginal;
-pub mod marginal_dense;
-pub mod marginal_discrete;
 pub mod optimize;
 pub mod storage;
 pub mod timetree;

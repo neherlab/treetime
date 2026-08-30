@@ -9,7 +9,7 @@ pub mod tests {
   use crate::optimize::run_loop::{
     any_indel_edge_has_zero_branch_length, apply_initial_guess_mode, invalid_branch_length_warning,
   };
-  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;

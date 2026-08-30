@@ -11,7 +11,7 @@ mod tests {
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::utils::{

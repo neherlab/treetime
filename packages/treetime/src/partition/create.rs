@@ -3,7 +3,7 @@ use crate::ancestral::fitch::create_fitch_partition;
 use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
 use crate::partition::algo::infer_dense::infer_dense;
-use crate::partition::marginal_dense::PartitionMarginalDense;
+use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::seq::alignment::get_common_length;
 use eyre::Report;

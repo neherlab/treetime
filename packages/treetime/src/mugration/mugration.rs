@@ -4,7 +4,7 @@ use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::refinement::refine_gtr_iterative;
 use crate::mugration::result::MugrationResult;
 use crate::partition::storage::discrete::DiscreteStates;
-use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
+use crate::partition::marginal::discrete::PartitionMarginalDiscrete;
 use crate::payload::ancestral::GraphAncestral;
 use crate::{make_error, make_internal_report};
 use eyre::Report;

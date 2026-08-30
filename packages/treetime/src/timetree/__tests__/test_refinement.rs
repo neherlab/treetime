@@ -10,7 +10,7 @@ mod tests {
   use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use crate::payload::clock_set::ClockSet;
   use crate::pretty_assert_abs_diff_eq;

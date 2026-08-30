@@ -178,7 +178,7 @@ mod tests {
     use crate::optimize::dispatch::initial_guess_mixed;
     use crate::optimize::params::BranchOptMethod;
     use crate::optimize::run_loop::{collect_optimize_partitions, run_optimize_loop};
-    use crate::partition::marginal_dense::PartitionMarginalDense;
+    use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::seq::alignment::get_common_length;
 
     use crate::payload::ancestral::GraphAncestral;

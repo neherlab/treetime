@@ -6,7 +6,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
   use crate::partition::marginal::shared::MarginalData;
-  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::traits::PartitionBranchOps;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;

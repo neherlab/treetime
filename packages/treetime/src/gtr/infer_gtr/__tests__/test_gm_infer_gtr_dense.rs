@@ -10,7 +10,7 @@ mod tests {
   use crate::ancestral::marginal::initialize_marginal;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
-  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::traits::TransitionCounting;
   use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;

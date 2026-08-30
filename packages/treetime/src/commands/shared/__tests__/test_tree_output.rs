@@ -402,7 +402,7 @@ mod tests {
     use crate::mugration::result::{MugrationGraphData, MugrationResult};
     use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
     use crate::partition::storage::discrete::DiscreteStates;
-    use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
+    use crate::partition::marginal::discrete::PartitionMarginalDiscrete;
     use crate::partition::timetree::GraphTimetree;
     use crate::payload::clock_set::ClockSet;
     use jsonschema::{Retrieve, Uri, Validator};

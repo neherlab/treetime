@@ -5,7 +5,7 @@ mod tests {
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed, run_optimize_mixed_with_indel_rate};
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::collect_optimize_partitions;
-  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::payload::ancestral::GraphAncestral;
 

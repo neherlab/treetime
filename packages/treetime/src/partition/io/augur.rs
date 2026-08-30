@@ -1,5 +1,5 @@
 use crate::partition::fitch::partition::PartitionFitch;
-use crate::partition::marginal_dense::PartitionMarginalDense;
+use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::traits::{BranchTopology, PartitionBranchOps};
 use crate::seq::indel::InDel;

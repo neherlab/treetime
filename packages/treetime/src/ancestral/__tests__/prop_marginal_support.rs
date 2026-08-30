@@ -4,7 +4,7 @@ pub mod tests {
   use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{initialize_marginal, update_marginal};
-  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;

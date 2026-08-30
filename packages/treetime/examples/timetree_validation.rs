@@ -16,7 +16,7 @@ use treetime::clock::clock_regression::{ClockParams, estimate_clock_model_with_r
 use treetime::clock::date_constraints::load_date_constraints;
 use treetime::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
-use treetime::partition::marginal_dense::PartitionMarginalDense;
+use treetime::partition::marginal::dense::partition::PartitionMarginalDense;
 use treetime::partition::timetree::GraphTimetree;
 use treetime::partition::traits::PartitionTimetreeAll;
 use treetime::payload::timetree::{EdgeTimetree, NodeTimetree};

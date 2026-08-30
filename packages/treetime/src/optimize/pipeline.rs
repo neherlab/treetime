@@ -10,7 +10,7 @@ use crate::optimize::run_loop::{
   apply_initial_guess_mode, collect_optimize_partitions, normalize_partition_rates, run_optimize_loop,
 };
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
-use crate::partition::marginal_dense::PartitionMarginalDense;
+use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::traits::{HasGtr, PartitionOptimizeVec, PartitionRerootOps};
 use crate::payload::ancestral::GraphAncestral;

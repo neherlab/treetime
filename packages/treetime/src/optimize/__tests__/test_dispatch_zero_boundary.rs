@@ -11,7 +11,7 @@ mod tests {
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::optimize::run_loop::find_zero_optimal_internal_edges;
   use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
-  use crate::partition::marginal_dense::PartitionMarginalDense;
+  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::partition::optimize;

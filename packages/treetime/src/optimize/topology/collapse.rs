@@ -1,4 +1,4 @@
-use crate::partition::marginal_dense::PartitionMarginalDense;
+use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;

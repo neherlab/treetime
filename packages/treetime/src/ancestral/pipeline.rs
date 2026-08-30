@@ -10,7 +10,7 @@ use crate::gtr::gtr::GTR;
 use crate::gtr::refinement::refine_gtr_iterative;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::fitch::partition::PartitionFitch;
-use crate::partition::marginal_dense::PartitionMarginalDense;
+use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::traits::HasGtr;
 use crate::payload::ancestral::{GraphAncestral, NodeAncestral};
 use crate::progress::ProgressSink;

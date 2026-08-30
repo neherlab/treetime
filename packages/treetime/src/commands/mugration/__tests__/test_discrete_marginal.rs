@@ -145,7 +145,7 @@ mod tests {
     use crate::gtr::gtr::{GTR, GTRParams};
     use crate::o;
     use crate::partition::storage::discrete::DiscreteStates;
-    use crate::partition::marginal_discrete::PartitionMarginalDiscrete;
+    use crate::partition::marginal::discrete::PartitionMarginalDiscrete;
     use crate::payload::ancestral::GraphAncestral;
     use crate::test_utils::{find_edge_key, find_node_key_by_name};
     use eyre::Report;
