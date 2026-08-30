@@ -144,6 +144,11 @@ mod tests {
     use std::path::{Path, PathBuf};
     use tempfile::tempdir;
     use treetime::commands::ancestral::args::TreetimeAncestralArgs;
+    use treetime::commands::clock::args::TreetimeClockArgs;
+    use treetime::commands::homoplasy::args::TreetimeHomoplasyArgs;
+    use treetime::commands::mugration::args::TreetimeMugrationArgs;
+    use treetime::commands::optimize::args::TreetimeOptimizeArgs;
+    use treetime::commands::prune::args::TreetimePruneArgs;
     use treetime::commands::timetree::args::TreetimeTimetreeArgs;
     use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
@@ -243,6 +248,100 @@ mod tests {
         result,
         "the following required arguments were not provided:\n  --tree <TREE>"
       );
+    }
+
+    // Parse a subcommand and overlay the given `--config` file, returning the overlay result. Unlike
+    // the command-specific helpers this keeps the error so a rejection can be asserted.
+    fn overlay_result<T>(cmd: &str, config: &Path) -> Result<(), Report>
+    where
+      T: serde::Serialize + serde::de::DeserializeOwned + Default + schemars::JsonSchema + FromArgMatches,
+    {
+      let matches = TreetimeArgs::command().get_matches_from(["treetime", cmd, "--config", config.to_str().unwrap()]);
+      let sub = matches.subcommand_matches(cmd).unwrap();
+      let mut args = T::from_arg_matches(sub).unwrap();
+      overlay_config(&mut args, sub)
+    }
+
+    // C1: an unknown or misspelled top-level config key is rejected with a rendered diagnostic instead
+    // of being silently ignored. One negative test per command guards every command's strict schema.
+    macro_rules! reject_unknown_top_level_key {
+      ($test:ident, $cmd:literal, $ty:ty) => {
+        #[test]
+        fn $test() {
+          let dir = tempdir().unwrap();
+          let path = dir.path().join("config.yaml");
+          fs::write(&path, "definitely_not_a_real_field: 1\n").unwrap();
+          let result = overlay_result::<$ty>($cmd, &path);
+          assert_error!(result, "invalid configuration (1 problem reported above)");
+        }
+      };
+    }
+
+    reject_unknown_top_level_key!(
+      test_config_ancestral_rejects_unknown_key,
+      "ancestral",
+      TreetimeAncestralArgs
+    );
+    reject_unknown_top_level_key!(test_config_clock_rejects_unknown_key, "clock", TreetimeClockArgs);
+    reject_unknown_top_level_key!(
+      test_config_timetree_rejects_unknown_key,
+      "timetree",
+      TreetimeTimetreeArgs
+    );
+    reject_unknown_top_level_key!(
+      test_config_optimize_rejects_unknown_key,
+      "optimize",
+      TreetimeOptimizeArgs
+    );
+    reject_unknown_top_level_key!(test_config_prune_rejects_unknown_key, "prune", TreetimePruneArgs);
+    reject_unknown_top_level_key!(
+      test_config_mugration_rejects_unknown_key,
+      "mugration",
+      TreetimeMugrationArgs
+    );
+    reject_unknown_top_level_key!(
+      test_config_homoplasy_rejects_unknown_key,
+      "homoplasy",
+      TreetimeHomoplasyArgs
+    );
+
+    // C1: strictness reaches into nested arg groups too, so a typo inside a flattened struct (here
+    // `model_args`) is caught, not just top-level keys.
+    #[test]
+    fn test_config_ancestral_rejects_unknown_nested_key() {
+      let dir = tempdir().unwrap();
+      let path = dir.path().join("config.yaml");
+      fs::write(
+        &path,
+        indoc! {r"
+          model_args:
+            not_a_model_field: 1
+        "},
+      )
+      .unwrap();
+      let result = overlay_result::<TreetimeAncestralArgs>("ancestral", &path);
+      assert_error!(result, "invalid configuration (1 problem reported above)");
+    }
+
+    // C4: configs are parsed as YAML, and YAML is a superset of JSON, so a JSON document loads through
+    // the same path without any extension-based format selection.
+    #[test]
+    fn test_config_timetree_reads_json_document() {
+      let dir = tempdir().unwrap();
+      let path = dir.path().join("config.json");
+      fs::write(&path, r#"{ "skyline_n_points": 4 }"#).unwrap();
+      let args = parse_timetree(&["treetime", "timetree", "--config", path.to_str().unwrap()]);
+      assert_eq!(4, args.skyline_n_points);
+    }
+
+    // C4: a scientific-notation float keeps full f64 precision through the YAML parse and the merge.
+    #[test]
+    fn test_config_timetree_preserves_scientific_notation_precision() {
+      let dir = tempdir().unwrap();
+      let path = dir.path().join("config.yaml");
+      fs::write(&path, "clock_rate: 5.7e-05\n").unwrap();
+      let args = parse_timetree(&["treetime", "timetree", "--config", path.to_str().unwrap()]);
+      pretty_assert_ulps_eq!(5.7e-05, args.clock_rate.unwrap());
     }
   }
 }

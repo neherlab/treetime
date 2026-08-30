@@ -11,7 +11,7 @@ use std::fmt::Debug;
 /// value set includes non-GTR models (for example `jtt92`). `--model-params` (alias `--gtr-params`)
 /// carries model-specific `key=value` parameters.
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ModelArgs {
   /// Substitution model to use

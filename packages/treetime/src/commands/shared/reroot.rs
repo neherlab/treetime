@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct RerootArgs {
   /// Reroot the tree by temporal-signal optimization.

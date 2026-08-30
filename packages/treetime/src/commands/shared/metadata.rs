@@ -15,7 +15,7 @@ pub const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";
 /// Matching is case-insensitive (see `treetime-io` column detection). `--metadata-delimiters` lists
 /// candidate field separators; the delimiter actually present in the file is used.
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct MetadataIdArgs {
   /// Candidate column name(s) holding the taxon identifier that links metadata to tree tips
@@ -51,7 +51,7 @@ pub struct MetadataIdArgs {
 /// leftmost column whose name contains `date` (case-insensitive) is used. `--date-format` controls
 /// parsing of string dates; numeric, ISO, and uncertain dates parse regardless.
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct DateColumnArgs {
   /// Label of the column to be used as sampling date (auto-detected when omitted)

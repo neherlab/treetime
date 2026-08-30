@@ -13,7 +13,7 @@ use std::fmt::Debug;
 ///
 /// The flag has no short form: `-a` is reserved for `--alignment`.
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct AlphabetArgs {
   /// Sequence alphabet

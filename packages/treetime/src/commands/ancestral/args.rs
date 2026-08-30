@@ -16,7 +16,7 @@ use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeAncestralArgs {
   #[cfg_attr(feature = "clap", clap(flatten))]

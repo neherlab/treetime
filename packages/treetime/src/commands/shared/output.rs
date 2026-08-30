@@ -447,7 +447,7 @@ fn expand_outputall_styles(
 /// across the selected styles. Topology ordering is a separate concern (`TopologyOrderArgs`) that
 /// each command flattens independently.
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct OutputCoreArgs {
   /// Write all default output files into this directory.
@@ -759,7 +759,7 @@ fn ensure_unique_output_paths(
 }
 
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct TopologyOrderArgs {
   /// Order tree topology before writing output files.

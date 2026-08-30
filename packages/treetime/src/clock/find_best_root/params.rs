@@ -111,7 +111,7 @@ impl BranchPointOptimizationParams {
 
 /// Configuration for grid search optimization
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct GridSearchParams {
   /// Number of equally-spaced points to evaluate (grid method only)
@@ -122,7 +122,7 @@ pub struct GridSearchParams {
 
 /// Configuration for Brent's method optimization
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct BrentParams {
   /// Maximum number of iterations for Brent's method
@@ -137,7 +137,7 @@ pub struct BrentParams {
 
 /// Configuration for golden section search optimization
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct GoldenSectionParams {
   /// Maximum number of iterations for golden section search

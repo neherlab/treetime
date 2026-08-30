@@ -35,7 +35,7 @@ impl From<OptimizeRerootMethod> for RerootMethod {
 }
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeOptimizeArgs {
   #[cfg_attr(feature = "clap", clap(flatten))]

@@ -12,7 +12,7 @@ use std::path::PathBuf;
 /// the earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one
 /// input alignment. When the list is empty, callers read uncompressed FASTA from standard input.
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct AlignmentArgs {
   /// Path to one or multiple FASTA files with aligned input sequences

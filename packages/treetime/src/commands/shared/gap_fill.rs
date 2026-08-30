@@ -10,7 +10,7 @@ use std::fmt::Debug;
 /// `effective_gap_fill()`. The deprecated `--keep-overhangs` flag is retained, hidden, and overrides
 /// `--gap-fill` to `none` for backward compatibility with v0 invocations.
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct GapFillArgs {
   /// How to handle gap characters in input sequences

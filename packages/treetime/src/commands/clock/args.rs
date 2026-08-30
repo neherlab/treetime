@@ -17,7 +17,7 @@ use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeClockArgs {
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -161,7 +161,7 @@ impl TreetimeClockArgs {
 
 /// Branch split optimization parameters
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct BranchSplitArgs {
   /// Optimization method to use for finding the best root position
@@ -184,7 +184,7 @@ pub struct BranchSplitArgs {
 
 /// Clock regression model parameters
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ClockRegressionArgs {
   /// Clock regression model parameters

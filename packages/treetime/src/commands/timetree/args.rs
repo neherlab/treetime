@@ -28,7 +28,7 @@ fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
 pub use crate::timetree::params::TimeMarginalMode;
 
 #[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TreetimeTimetreeArgs {
   #[cfg_attr(feature = "clap", clap(flatten))]
