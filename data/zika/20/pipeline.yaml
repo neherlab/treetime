@@ -1,0 +1,37 @@
+# Phylodynamics + phylogeography in one file: time tree, then ancestral geography (zika/20).
+#
+# Run from the repository root:
+#   treetime pipeline --config data/zika/20/pipeline.yaml
+#
+# Inspect the plan first, or rerun only the second step after editing it:
+#   treetime pipeline --config data/zika/20/pipeline.yaml --check
+#   treetime pipeline --config data/zika/20/pipeline.yaml --steps timetree
+#   treetime pipeline --config data/zika/20/pipeline.yaml --steps mugration
+#
+# Step 1 dates the tree; step 2 reconstructs the sampling country on internal
+# nodes over that dated tree. The dated tree flows from step 1 to step 2 through
+# `{{ steps.timetree.outputs.nwk }}` with no hand-written path, and both steps
+# read the same metadata table.
+
+vars:
+  data: "data/zika/20"
+
+output_all: "tmp/examples/zika/20/pipeline"
+
+steps:
+  # Estimate a time-scaled tree and its clock model.
+  - name: "timetree"
+    timetree:
+      tree: "{{ vars.data }}/tree.nwk"
+      metadata: "{{ vars.data }}/metadata.tsv"
+      alignment:
+        alignment:
+          - "{{ vars.data }}/aln.fasta.xz"
+
+  # Reconstruct ancestral sampling country on the dated tree from step 1.
+  - name: "mugration"
+    mugration:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      metadata: "{{ vars.data }}/metadata.tsv"
+      attribute: "country"
+      pc: 1.0

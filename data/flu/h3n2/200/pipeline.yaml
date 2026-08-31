@@ -1,0 +1,40 @@
+# Optimize then date, with a fixed clock rate defined once (flu/h3n2/200).
+#
+# Run from the repository root:
+#   treetime pipeline --config data/flu/h3n2/200/pipeline.yaml
+#
+# `vars` holds the shared clock rate as a typed number: a whole-value reference
+# like `{{ vars.clock_rate }}` keeps its JSON type, so `clock_rate` stays a
+# number rather than becoming the string "0.003". Change the rate in one place
+# and both the definition and any future reuse follow.
+
+vars:
+  data: "data/flu/h3n2/200"
+  clock_rate: 0.003
+  clock_std_dev: 0.0006
+
+output_all: "tmp/examples/flu/h3n2/200/pipeline"
+
+steps:
+  # Optimize branch lengths under an inferred GTR model.
+  - name: "optimize"
+    optimize:
+      tree: "{{ vars.data }}/tree.nwk"
+      alignment:
+        alignment:
+          - "{{ vars.data }}/aln.fasta.xz"
+      model_args:
+        model: "infer"
+
+  # Date the optimized tree with the fixed clock rate from `vars`.
+  - name: "timetree"
+    timetree:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      metadata: "{{ vars.data }}/metadata.tsv"
+      alignment:
+        alignment:
+          - "{{ vars.data }}/aln.fasta.xz"
+      clock_rate: "{{ vars.clock_rate }}"
+      clock_std_dev: "{{ vars.clock_std_dev }}"
+      confidence: true
+      max_iter: 3

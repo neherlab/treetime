@@ -1,0 +1,48 @@
+# Full three-step build on a real epidemic dataset (ebola/362).
+#
+# Run from the repository root:
+#   treetime pipeline --config data/ebola/362/pipeline.yaml
+#
+# Preview the plan, or resume from a step after a failure:
+#   treetime pipeline --config data/ebola/362/pipeline.yaml --check
+#   treetime pipeline --config data/ebola/362/pipeline.yaml --steps ancestral,timetree
+#
+# optimize -> ancestral -> timetree, chained end to end. Each step consumes the
+# previous step's tree through `{{ steps.<name>.outputs.nwk }}`. The final
+# timetree fits a constant coalescent time scale analytically (`coalescent_opt`)
+# and writes an Auspice JSON ready for nextstrain.org.
+
+vars:
+  data: "data/ebola/362"
+
+output_all: "tmp/examples/ebola/362/pipeline"
+
+steps:
+  # 1. Optimize branch lengths and reroot on the min-divergence branch.
+  - name: "optimize"
+    optimize:
+      tree: "{{ vars.data }}/tree.nwk"
+      alignment:
+        alignment:
+          - "{{ vars.data }}/aln.fasta.xz"
+      reroot: "min-dev"
+
+  # 2. Reconstruct ancestral sequences and mutations on the optimized tree.
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      alignment:
+        alignment:
+          - "{{ vars.data }}/aln.fasta.xz"
+      method_anc: "marginal"
+
+  # 3. Date the optimized tree, keeping the branch lengths from step 1.
+  - name: "timetree"
+    timetree:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      metadata: "{{ vars.data }}/metadata.tsv"
+      alignment:
+        alignment:
+          - "{{ vars.data }}/aln.fasta.xz"
+      coalescent_opt: true
+      max_iter: 3
