@@ -1,18 +1,43 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
-use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot};
 use crate::partition::marginal::sparse::message::{combine_messages, propagate_raw, propagate_raw_per_site};
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, VarPos};
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeSet;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
+use treetime_graph::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
 use treetime_graph::node::{GraphNode, Named};
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
 
+pub fn process_backward_indexed<N, E>(
+  partition: &mut PartitionMarginalSparse,
+  graph: &Graph<N, E, ()>,
+) -> Result<(), Report>
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
+  let alphabet = partition.alphabet.clone();
+  let gtr = partition.gtr.clone();
+  let length = partition.length;
+  let (nodes, edges) = (&mut partition.nodes, &mut partition.edges);
+  let mut pass = IndexedPass::new(graph, nodes, edges, |key| {
+    treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass")
+  })?;
+  let result = pass.try_for_each_backward(|dependencies, slot| {
+    process_node_backward_indexed(graph, &alphabet, &gtr, length, dependencies, slot)
+  });
+  let (nodes, edges) = pass.into_maps()?;
+  partition.nodes = nodes;
+  partition.edges = edges;
+  result
+}
+
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn process_node_backward_indexed<N, E>(
+fn process_node_backward_indexed<N, E>(
   graph: &Graph<N, E, ()>,
   alphabet: &crate::alphabet::alphabet::Alphabet,
   gtr: &crate::gtr::gtr::GTR,
