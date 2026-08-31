@@ -27,6 +27,7 @@ pub struct TreetimeClockArgsRaw {
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub alignment: AlignmentArgs,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
@@ -47,9 +48,11 @@ pub struct TreetimeClockArgsRaw {
   pub metadata: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub metadata_id: MetadataIdArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub date_column: DateColumnArgs,
 
   /// Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
@@ -57,6 +60,7 @@ pub struct TreetimeClockArgsRaw {
   pub sequence_length: Option<usize>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub model_args: ModelArgs,
 
   /// If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.
@@ -73,6 +77,7 @@ pub struct TreetimeClockArgsRaw {
   pub clock_filter: f64,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub reroot: RerootArgs,
 
   /// don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
@@ -97,6 +102,7 @@ pub struct TreetimeClockArgsRaw {
   pub allow_negative_rate: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub output: OutputCoreArgs,
 
   /// Path to output clock model JSON.
@@ -123,6 +129,7 @@ pub struct TreetimeClockArgsRaw {
   pub output_selection: Vec<ClockOutputSelection>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub topology_order: TopologyOrderArgs,
 
   /// Random seed
@@ -246,14 +253,17 @@ pub struct BranchSplitArgs {
 
   /// Grid search parameters
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub grid_params: GridSearchParams,
 
   /// Brent's method parameters
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub brent_params: BrentParams,
 
   /// Golden section search parameters
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub golden_params: GoldenSectionParams,
 }
 
@@ -264,5 +274,6 @@ pub struct BranchSplitArgs {
 pub struct ClockRegressionArgs {
   /// Clock regression model parameters
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub clock_params: ClockParams,
 }

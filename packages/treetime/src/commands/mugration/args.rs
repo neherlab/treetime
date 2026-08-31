@@ -41,6 +41,7 @@ pub struct TreetimeMugrationArgsRaw {
   pub weights: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub metadata_id: MetadataIdArgs,
 
   /// Path to output state-probability-profile CSV.
@@ -118,6 +119,7 @@ pub struct TreetimeMugrationArgsRaw {
   pub seed: Option<u64>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub output: OutputCoreArgs,
 
   /// Comma-separated list of outputs to produce with `--output-all`.
@@ -132,6 +134,7 @@ pub struct TreetimeMugrationArgsRaw {
   pub output_selection: Vec<MugrationOutputSelection>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub topology_order: TopologyOrderArgs,
 }
 

@@ -26,6 +26,7 @@ pub struct TreetimeAncestralArgsRaw {
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub alignment: AlignmentArgs,
 
   /// FASTA file of the sequence the VCF was mapped to (only for vcf input)
@@ -41,9 +42,11 @@ pub struct TreetimeAncestralArgsRaw {
   pub tree: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub alphabet_args: AlphabetArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub model_args: ModelArgs,
 
   /// Method used for reconstructing ancestral sequences
@@ -58,6 +61,7 @@ pub struct TreetimeAncestralArgsRaw {
   pub dense: Option<bool>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub gap_fill_args: GapFillArgs,
 
   /// Zero-based mutation indexing
@@ -161,6 +165,7 @@ pub struct TreetimeAncestralArgsRaw {
   pub output_reconstructed_aa_fasta: Option<String>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub output: OutputCoreArgs,
 
   /// Comma-separated list of outputs to produce with `--output-all`.
@@ -175,6 +180,7 @@ pub struct TreetimeAncestralArgsRaw {
   pub output_selection: Vec<AncestralOutputSelection>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub topology_order: TopologyOrderArgs,
 
   /// Number of outer GTR refinement iterations.

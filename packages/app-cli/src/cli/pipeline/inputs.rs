@@ -7,7 +7,7 @@ use serde_json::Value;
 /// disagree about what a step reads.
 pub const INPUT_FIELDS: [(&str, &[&str]); 5] = [
   ("tree", &["tree"]),
-  ("alignment", &["alignment", "alignment"]),
+  ("alignment", &["alignment"]),
   ("metadata", &["metadata"]),
   ("weights", &["weights"]),
   ("vcf-reference", &["vcf_reference"]),

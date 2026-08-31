@@ -45,6 +45,7 @@ pub struct TreetimeOptimizeArgsRaw {
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub alignment: AlignmentArgs,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
@@ -55,9 +56,11 @@ pub struct TreetimeOptimizeArgsRaw {
   pub tree: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub alphabet_args: AlphabetArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub model_args: ModelArgs,
 
   /// Use dense representation of sequences on the tree
@@ -69,6 +72,7 @@ pub struct TreetimeOptimizeArgsRaw {
   pub dense: Option<bool>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub output: OutputCoreArgs,
 
   /// Units for divergence values in augur node data JSON output.
@@ -107,6 +111,7 @@ pub struct TreetimeOptimizeArgsRaw {
   pub output_selection: Vec<OptimizeOutputSelection>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub topology_order: TopologyOrderArgs,
 
   /// Maximum number of iterations
@@ -192,6 +197,7 @@ pub struct TreetimeOptimizeArgsRaw {
   pub keep_root: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub gap_fill_args: GapFillArgs,
 }
 

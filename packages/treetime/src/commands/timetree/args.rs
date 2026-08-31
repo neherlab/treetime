@@ -37,6 +37,7 @@ pub struct TreetimeTimetreeArgsRaw {
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub alignment: AlignmentArgs,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
@@ -57,9 +58,11 @@ pub struct TreetimeTimetreeArgsRaw {
   pub metadata: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub metadata_id: MetadataIdArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub date_column_args: DateColumnArgs,
 
   /// Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
@@ -213,6 +216,7 @@ pub struct TreetimeTimetreeArgsRaw {
   pub n_iqd: Option<f64>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub reroot: RerootArgs,
 
   /// don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
@@ -234,6 +238,7 @@ pub struct TreetimeTimetreeArgsRaw {
   pub covariation: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub model_args: ModelArgs,
 
   /// Method used for reconstructing ancestral sequences
@@ -241,6 +246,7 @@ pub struct TreetimeTimetreeArgsRaw {
   pub method_anc: MethodAncestral,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub alphabet_args: AlphabetArgs,
 
   /// Use dense representation for sequences (store full probability distributions)
@@ -248,6 +254,7 @@ pub struct TreetimeTimetreeArgsRaw {
   pub dense: Option<bool>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub gap_fill_args: GapFillArgs,
 
   /// Zero-based mutation indexing
@@ -357,6 +364,7 @@ pub struct TreetimeTimetreeArgsRaw {
   pub output_coalescent_json: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub output: OutputCoreArgs,
 
   /// Comma-separated list of outputs to produce with `--output-all`.
@@ -371,6 +379,7 @@ pub struct TreetimeTimetreeArgsRaw {
   pub output_selection: Vec<TimetreeOutputSelection>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub topology_order: TopologyOrderArgs,
 
   /// Random seed

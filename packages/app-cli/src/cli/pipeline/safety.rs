@@ -141,8 +141,8 @@ mod tests {
   fn test_safety_output_collision_rejected() {
     let pipeline = resolve(json!({
       "steps": [
-        { "name": "a", "ancestral": { "tree": "in.nwk", "output": { "output_tree_nwk": "shared.nwk" } } },
-        { "name": "b", "ancestral": { "tree": "in.nwk", "output": { "output_tree_nwk": "shared.nwk" } } }
+        { "name": "a", "ancestral": { "tree": "in.nwk", "output_tree_nwk": "shared.nwk" } },
+        { "name": "b", "ancestral": { "tree": "in.nwk", "output_tree_nwk": "shared.nwk" } }
       ]
     }));
     let result = validate_plan(&pipeline, None);
@@ -157,7 +157,7 @@ mod tests {
   fn test_safety_self_truncation_rejected() {
     let pipeline = resolve(json!({
       "steps": [
-        { "name": "a", "ancestral": { "tree": "same.nwk", "output": { "output_tree_nwk": "same.nwk" } } }
+        { "name": "a", "ancestral": { "tree": "same.nwk", "output_tree_nwk": "same.nwk" } }
       ]
     }));
     let result = validate_plan(&pipeline, None);

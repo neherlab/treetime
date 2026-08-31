@@ -21,6 +21,7 @@ pub struct TreetimePruneArgsRaw {
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub alignment: AlignmentArgs,
 
   /// Name of file containing the tree in newick, nexus, or phylip format.
@@ -29,9 +30,11 @@ pub struct TreetimePruneArgsRaw {
   pub tree: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub alphabet_args: AlphabetArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub output: OutputCoreArgs,
 
   /// Path to output GTR model JSON.
@@ -52,6 +55,7 @@ pub struct TreetimePruneArgsRaw {
   pub output_selection: Vec<PruneOutputSelection>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
   pub topology_order: TopologyOrderArgs,
 
   /// Threshold value for pruning of branches

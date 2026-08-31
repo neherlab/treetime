@@ -302,18 +302,15 @@ fn resolve_selection_path(step: &str, producer: &ResolvedStep, selection: &str) 
   }
 }
 
-/// Set `output.output_all` to `dir` unless the step already configured its own output directory.
+/// Set the top-level `output_all` to `dir` unless the step already configured its own output
+/// directory. `output_all` is a flattened field, so it sits at the top level of the step payload.
 fn set_output_all_if_absent(payload: &mut Value, dir: &Path) {
   let Value::Object(map) = payload else {
     return;
   };
-  let output = map.entry("output").or_insert_with(|| Value::Object(Map::new()));
-  let Value::Object(output) = output else {
-    return;
-  };
-  let already_set = matches!(output.get("output_all"), Some(value) if !value.is_null());
+  let already_set = matches!(map.get("output_all"), Some(value) if !value.is_null());
   if !already_set {
-    output.insert(
+    map.insert(
       "output_all".to_owned(),
       Value::String(dir.to_string_lossy().into_owned()),
     );
@@ -395,8 +392,8 @@ mod tests {
   fn test_resolve_chain_uses_explicit_step_output_all() {
     let config = json!({
       "steps": [
-        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "output": { "output_all": "out/tt" } } },
-        { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}", "output": { "output_all": "out/anc" } } }
+        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "output_all": "out/tt" } },
+        { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}", "output_all": "out/anc" } }
       ]
     });
     let resolved = resolve(config).unwrap();
@@ -409,7 +406,7 @@ mod tests {
     let config = json!({
       "output_all": "tmp/run",
       "steps": [
-        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "output": { "output_nwk_style": ["plain", "beast"] } } },
+        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "output_nwk_style": ["plain", "beast"] } },
         { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}" } }
       ]
     });
