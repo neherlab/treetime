@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod __tests__;
-
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::partition::storage::sparse::{SparseSeqDistribution, VarPos};

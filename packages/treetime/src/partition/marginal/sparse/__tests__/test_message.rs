@@ -1,13 +1,17 @@
 #[cfg(test)]
 mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::marginal::sparse::message::*;
+  use crate::partition::marginal::sparse::message::propagate_raw_per_site;
+  use crate::partition::storage::sparse::{SparseSeqDistribution, VarPos};
   use crate::seq::composition::Composition;
   use approx::assert_abs_diff_eq;
-  use ndarray::array;
+  use maplit::btreemap;
+  use ndarray::{Array1, array};
+  use std::collections::BTreeSet;
+  use treetime_primitives::{AsciiChar, LogLh};
 
   #[test]
-  fn test_propagate_raw_per_site_forward() {
+  fn test_message_propagate_raw_per_site_forward() {
     let a = AsciiChar::from_byte_unchecked(b'A');
     let c = AsciiChar::from_byte_unchecked(b'C');
     let g = AsciiChar::from_byte_unchecked(b'G');
@@ -63,7 +67,7 @@ mod tests {
   }
 
   #[test]
-  fn test_propagate_raw_per_site_backward() {
+  fn test_message_propagate_raw_per_site_backward() {
     let a = AsciiChar::from_byte_unchecked(b'A');
     let c = AsciiChar::from_byte_unchecked(b'C');
     let g = AsciiChar::from_byte_unchecked(b'G');
