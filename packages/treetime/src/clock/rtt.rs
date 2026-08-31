@@ -1,13 +1,10 @@
 use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_model::{ClockLine, ClockModel};
-use crossbeam_queue::ArrayQueue;
-use crossbeam_skiplist::SkipMap;
 use eyre::Report;
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::HasBranchLength;
+use treetime_graph::pass::with_graph_payloads;
 use treetime_io::csv::CsvStructFileWriter;
 use treetime_utils::array::serde::skip_serializing_if_false;
 
@@ -29,45 +26,43 @@ pub fn gather_clock_regression_results(
   graph: &GraphClock,
   clock_model: &ClockModel,
 ) -> Result<Vec<ClockRegressionResult>, Report> {
-  let result = ArrayQueue::new(graph.num_nodes());
-  let divs = SkipMap::new();
-
-  graph.par_iter_breadth_first_forward(|node| {
-    let div = node.get_exactly_one_parent().map_or(0.0, |(parent, edge)| {
-      let branch_length = edge.read_arc().branch_length().unwrap_or_default();
-      let parent_div = parent.read_arc().div;
-      parent_div + branch_length
-    });
-
-    let is_leaf = node.is_leaf;
-
-    let mut node = node.payload;
-    node.div = div;
-
-    let name = node.name.clone();
-    let time = node.time;
-    let is_outlier = node.is_outlier;
-    let predicted_date = clock_model.date(div);
-    let clock_deviation = node.time.map(|time| clock_model.clock_deviation(time, div));
-
-    divs.insert(name.clone(), div);
-
-    result
-      .push(ClockRegressionResult {
-        name,
-        div,
-        date: time,
-        predicted_date,
-        clock_deviation,
-        is_outlier,
-        is_leaf,
-      })
-      .expect("ArrayQueue::push() failed. Queue is full.");
-
-    Ok(GraphTraversalContinuation::Continue)
+  // Assign divergence to each node: div = parent.div + branch_length, parents before children.
+  with_graph_payloads(graph, |pass| {
+    pass.try_for_each_forward(|dependencies, slot| {
+      let div = match (slot.parent_key, slot.parent_edge.as_ref()) {
+        (Some(parent_key), Some((_, edge))) => {
+          dependencies.node(parent_key).div + edge.branch_length().unwrap_or_default()
+        },
+        _ => 0.0,
+      };
+      slot.node.div = div;
+      Ok(())
+    })
   })?;
 
-  Ok(result.into_iter().collect_vec())
+  // One result per node, in node order.
+  graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let node = node.read_arc();
+      let is_leaf = node.is_leaf();
+      let payload = node.payload();
+      let payload = payload.read();
+      let div = payload.div;
+      let predicted_date = clock_model.date(div);
+      let clock_deviation = payload.time.map(|time| clock_model.clock_deviation(time, div));
+      Ok(ClockRegressionResult {
+        name: payload.name.clone(),
+        div,
+        date: payload.time,
+        predicted_date,
+        clock_deviation,
+        is_outlier: payload.is_outlier,
+        is_leaf,
+      })
+    })
+    .collect()
 }
 
 pub fn write_clock_regression_result_csv(

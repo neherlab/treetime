@@ -5,10 +5,10 @@ use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use rayon::prelude::*;
-use treetime_graph::breadth_first::GraphTraversalContinuation;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
+use treetime_graph::pass::with_graph_payloads;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ClockFilterResult {
@@ -30,8 +30,8 @@ pub fn clock_filter_inplace<N, E, D>(
   threshold: f64,
 ) -> Result<ClockFilterResult, Report>
 where
-  N: GraphNode + ClockNode,
-  E: GraphEdge + ClockEdge,
+  N: GraphNode + ClockNode + Default,
+  E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
   log::info!("### Filtering outliers (threshold={threshold})");
@@ -41,15 +41,18 @@ where
     clock_line.intercept()
   );
 
-  // assign divergence to each node
-  graph.par_iter_breadth_first_forward(|mut node| {
-    let div = node.get_exactly_one_parent().map_or(0.0, |(parent, edge)| {
-      let branch_length = edge.read_arc().branch_length().unwrap_or_default();
-      let parent_div = parent.read_arc().div();
-      parent_div + branch_length
-    });
-    node.payload.set_div(div);
-    Ok(GraphTraversalContinuation::Continue)
+  // Assign divergence to each node: div = parent.div + branch_length, parents before children.
+  with_graph_payloads(graph, |pass| {
+    pass.try_for_each_forward(|dependencies, slot| {
+      let div = match (slot.parent_key, slot.parent_edge.as_ref()) {
+        (Some(parent_key), Some((_, edge))) => {
+          dependencies.node(parent_key).div() + edge.branch_length().unwrap_or_default()
+        },
+        _ => 0.0,
+      };
+      slot.node.set_div(div);
+      Ok(())
+    })
   })?;
 
   // collect clock_deviation of leaf nodes into a vector

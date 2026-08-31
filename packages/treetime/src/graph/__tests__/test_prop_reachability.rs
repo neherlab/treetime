@@ -2,7 +2,7 @@
 mod tests {
   use proptest::prelude::*;
   use proptest::proptest;
-  use treetime_graph::find_paths::exists_forward_path_between;
+  use treetime_graph::reachability::exists_forward_path_between;
 
   use self::helpers::graph_chain;
 

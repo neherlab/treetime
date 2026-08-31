@@ -11,8 +11,8 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::pass::{GraphPassDependencies, GraphPassSlot, with_graph_payloads};
 use treetime_graph::reroot::RerootResult;
 
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
@@ -98,7 +98,7 @@ where
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
-  with_indexed_graph_payloads(graph, |pass| {
+  with_graph_payloads(graph, |pass| {
     pass.try_for_each_backward(|dependencies, slot| {
       clock_regression_backward_slot(graph, options, prev_clock_rate, dependencies, slot)
     })
@@ -109,8 +109,8 @@ fn clock_regression_backward_slot<N, E, D>(
   graph: &Graph<N, E, D>,
   options: &ClockParams,
   prev_clock_rate: Option<f64>,
-  dependencies: &IndexedPassDependencies<N, E>,
-  slot: &mut IndexedPassSlot<N, E>,
+  dependencies: &GraphPassDependencies<N, E>,
+  slot: &mut GraphPassSlot<N, E>,
 ) -> Result<(), Report>
 where
   N: GraphNode + ClockNode,
@@ -172,7 +172,7 @@ where
   E: GraphEdge + ClockEdge + Default,
   D: Sync + Send,
 {
-  with_indexed_graph_payloads(graph, |pass| {
+  with_graph_payloads(graph, |pass| {
     pass.try_for_each_forward(|dependencies, slot| {
       if let Some(parent_key) = slot.parent_key {
         let parent = dependencies.node(parent_key);

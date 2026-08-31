@@ -1,14 +1,13 @@
 pub mod assign_node_names;
-pub mod breadth_first;
 pub mod common_ancestor;
 pub mod dependency_queue;
 pub mod edge;
-pub mod find_paths;
 pub mod graph;
 pub mod graph_ops;
 pub mod graph_traverse;
-pub mod indexed_pass;
 pub mod node;
+pub mod pass;
+pub mod reachability;
 pub mod reroot;
 pub mod topology_order;
 

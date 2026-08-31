@@ -7,8 +7,8 @@ use maplit::btreemap;
 use std::collections::BTreeSet;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
-use treetime_graph::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
 use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::pass::{GraphPass, GraphPassDependencies, GraphPassSlot};
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
 
@@ -24,7 +24,7 @@ where
   let gtr = partition.gtr.clone();
   let length = partition.length;
   let (nodes, edges) = (&mut partition.nodes, &mut partition.edges);
-  let mut pass = IndexedPass::new(graph, nodes, edges, |key| {
+  let mut pass = GraphPass::new(graph, nodes, edges, |key| {
     treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass")
   })?;
   let result = pass.try_for_each_backward(|dependencies, slot| {
@@ -42,8 +42,8 @@ fn process_node_backward_indexed<N, E>(
   alphabet: &crate::alphabet::alphabet::Alphabet,
   gtr: &crate::gtr::gtr::GTR,
   length: usize,
-  dependencies: &IndexedPassDependencies<SparseNodePartition, SparseEdgePartition>,
-  slot: &mut IndexedPassSlot<SparseNodePartition, SparseEdgePartition>,
+  dependencies: &GraphPassDependencies<SparseNodePartition, SparseEdgePartition>,
+  slot: &mut GraphPassSlot<SparseNodePartition, SparseEdgePartition>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,

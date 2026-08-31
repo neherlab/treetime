@@ -11,8 +11,8 @@ use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::pass::{GraphPassDependencies, GraphPassSlot, with_graph_payloads};
 use treetime_grid::Side;
 
 pub fn propagate_distributions_forward<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
@@ -22,7 +22,7 @@ where
   D: Send + Sync,
 {
   let contradicted = AtomicUsize::new(0);
-  with_indexed_graph_payloads(graph, |pass| {
+  with_graph_payloads(graph, |pass| {
     pass.try_for_each_forward(|dependencies, slot| {
       propagate_distributions_forward_slot(graph, dependencies, slot, &contradicted)
     })
@@ -46,8 +46,8 @@ where
 /// Refine the node's time distribution from its parent, then commit its point-estimate time.
 fn propagate_distributions_forward_slot<N, E, D>(
   graph: &Graph<N, E, D>,
-  dependencies: &IndexedPassDependencies<N, E>,
-  slot: &mut IndexedPassSlot<N, E>,
+  dependencies: &GraphPassDependencies<N, E>,
+  slot: &mut GraphPassSlot<N, E>,
   contradicted: &AtomicUsize,
 ) -> Result<(), Report>
 where
@@ -77,8 +77,8 @@ enum Refinement {
 /// node's own subtree evidence. When the two have disjoint support the product is empty; the given
 /// date is then kept rather than refined away, and the caller told so it can report the disagreement.
 fn refine_distribution_from_parent<N, E>(
-  dependencies: &IndexedPassDependencies<N, E>,
-  slot: &mut IndexedPassSlot<N, E>,
+  dependencies: &GraphPassDependencies<N, E>,
+  slot: &mut GraphPassSlot<N, E>,
 ) -> Result<Refinement, Report>
 where
   N: GraphNode + Named + TimetreeNode,
@@ -150,8 +150,8 @@ where
 /// gets no time, and warns when the node was dateable.
 fn commit_node_time<N, E, D>(
   graph: &Graph<N, E, D>,
-  dependencies: &IndexedPassDependencies<N, E>,
-  slot: &mut IndexedPassSlot<N, E>,
+  dependencies: &GraphPassDependencies<N, E>,
+  slot: &mut GraphPassSlot<N, E>,
 ) where
   N: GraphNode + Named + TimetreeNode,
   E: GraphEdge + TimetreeEdge,
@@ -189,7 +189,7 @@ fn has_exact_date(node: &impl TimetreeNode) -> bool {
 }
 
 /// Committed time of the slot's parent, if it has one and it is set.
-fn parent_time<N, E>(dependencies: &IndexedPassDependencies<N, E>, slot: &IndexedPassSlot<N, E>) -> Option<f64>
+fn parent_time<N, E>(dependencies: &GraphPassDependencies<N, E>, slot: &GraphPassSlot<N, E>) -> Option<f64>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + TimetreeEdge,

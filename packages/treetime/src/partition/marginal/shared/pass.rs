@@ -8,8 +8,8 @@ use itertools::Itertools;
 use std::collections::BTreeMap;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
-use treetime_graph::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
 use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::pass::{GraphPass, GraphPassDependencies, GraphPassSlot};
 use treetime_primitives::LogLh;
 
 pub fn marginal_process_backward_indexed<N, E>(
@@ -29,7 +29,7 @@ where
   }
   partition.marginal_data_mut().nodes.append(&mut missing_nodes);
   let (nodes, edges) = partition.indexed_storage_mut();
-  let mut pass = IndexedPass::new(graph, nodes, edges, |_| unreachable!("Missing nodes were initialized"))?;
+  let mut pass = GraphPass::new(graph, nodes, edges, |_| unreachable!("Missing nodes were initialized"))?;
   let result = pass.try_for_each_backward(|dependencies, slot| {
     marginal_process_node_backward_indexed(partition, graph, dependencies, slot)
   });
@@ -42,8 +42,8 @@ where
 fn marginal_process_node_backward_indexed<N, E>(
   partition: &impl IndexedMarginalPartition<N, E>,
   graph: &Graph<N, E, ()>,
-  dependencies: &IndexedPassDependencies<DenseNodePartition, DenseEdgePartition>,
-  slot: &mut IndexedPassSlot<DenseNodePartition, DenseEdgePartition>,
+  dependencies: &GraphPassDependencies<DenseNodePartition, DenseEdgePartition>,
+  slot: &mut GraphPassSlot<DenseNodePartition, DenseEdgePartition>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,
@@ -128,7 +128,7 @@ where
   E: EdgeOptimizeOps,
 {
   let (nodes, edges) = partition.indexed_storage_mut();
-  let mut pass = IndexedPass::new(graph, nodes, edges, |key| {
+  let mut pass = GraphPass::new(graph, nodes, edges, |key| {
     treetime_utils::make_internal_error!("Partition node {key} is missing before the marginal forward pass")
   })?;
   let result = pass.try_for_each_forward(|dependencies, slot| {
@@ -144,8 +144,8 @@ where
 fn marginal_process_node_forward_indexed<N, E>(
   partition: &impl IndexedMarginalPartition<N, E>,
   graph: &Graph<N, E, ()>,
-  dependencies: &IndexedPassDependencies<DenseNodePartition, DenseEdgePartition>,
-  slot: &mut IndexedPassSlot<DenseNodePartition, DenseEdgePartition>,
+  dependencies: &GraphPassDependencies<DenseNodePartition, DenseEdgePartition>,
+  slot: &mut GraphPassSlot<DenseNodePartition, DenseEdgePartition>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,

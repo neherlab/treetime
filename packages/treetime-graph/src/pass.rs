@@ -11,16 +11,16 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::OnceLock;
 use treetime_utils::make_internal_report;
 
-pub fn with_indexed_graph_payloads<N, E, D, R>(
+pub fn with_graph_payloads<N, E, D, R>(
   graph: &Graph<N, E, D>,
-  visit: impl FnOnce(&mut IndexedPass<N, E>) -> Result<R, Report>,
+  visit: impl FnOnce(&mut GraphPass<N, E>) -> Result<R, Report>,
 ) -> Result<R, Report>
 where
   N: GraphNode + Default,
   E: GraphEdge + Default,
   D: Send + Sync,
 {
-  let topology = IndexedPassTopology::new(graph)?;
+  let topology = GraphPassTopology::new(graph)?;
   let mut nodes = graph
     .get_nodes()
     .iter()
@@ -42,7 +42,7 @@ where
     })
     .collect::<BTreeMap<_, _>>();
 
-  let mut pass = IndexedPass::from_topology(&topology, &mut nodes, &mut edges, |_| {
+  let mut pass = GraphPass::from_topology(&topology, &mut nodes, &mut edges, |_| {
     unreachable!("graph payload extraction includes every node")
   })?;
   let result = visit(&mut pass);
@@ -62,28 +62,28 @@ where
   result
 }
 
-pub struct IndexedPass<N, E> {
-  slots: Vec<IndexedPassSlot<N, E>>,
+pub struct GraphPass<N, E> {
+  slots: Vec<GraphPassSlot<N, E>>,
   node_indices: Vec<Option<usize>>,
   edge_indices: Vec<Option<usize>>,
   parents: Vec<Option<usize>>,
   children: Vec<Vec<usize>>,
 }
 
-pub struct IndexedPassSlot<N, E> {
+pub struct GraphPassSlot<N, E> {
   pub key: GraphNodeKey,
   pub node: N,
   pub parent_key: Option<GraphNodeKey>,
   pub parent_edge: Option<(GraphEdgeKey, E)>,
 }
 
-pub struct IndexedPassDependencies<'a, N, E> {
-  slots: &'a [OnceLock<IndexedPassSlot<N, E>>],
+pub struct GraphPassDependencies<'a, N, E> {
+  slots: &'a [OnceLock<GraphPassSlot<N, E>>],
   node_indices: &'a [Option<usize>],
   edge_indices: &'a [Option<usize>],
 }
 
-impl<N, E> IndexedPass<N, E> {
+impl<N, E> GraphPass<N, E> {
   pub fn new<GN, GE>(
     graph: &Graph<GN, GE, impl Send + Sync>,
     nodes: &mut BTreeMap<GraphNodeKey, N>,
@@ -94,13 +94,13 @@ impl<N, E> IndexedPass<N, E> {
     GN: GraphNode,
     GE: GraphEdge,
   {
-    let topology = IndexedPassTopology::new(graph)?;
+    let topology = GraphPassTopology::new(graph)?;
     Self::from_topology(&topology, nodes, edges, missing_node)
   }
 
   pub fn try_for_each_backward(
     &mut self,
-    visit: impl Fn(&IndexedPassDependencies<N, E>, &mut IndexedPassSlot<N, E>) -> Result<(), Report> + Sync + Send,
+    visit: impl Fn(&GraphPassDependencies<N, E>, &mut GraphPassSlot<N, E>) -> Result<(), Report> + Sync + Send,
   ) -> Result<(), Report>
   where
     N: Send + Sync,
@@ -117,7 +117,7 @@ impl<N, E> IndexedPass<N, E> {
 
   pub fn try_for_each_forward(
     &mut self,
-    visit: impl Fn(&IndexedPassDependencies<N, E>, &mut IndexedPassSlot<N, E>) -> Result<(), Report> + Sync + Send,
+    visit: impl Fn(&GraphPassDependencies<N, E>, &mut GraphPassSlot<N, E>) -> Result<(), Report> + Sync + Send,
   ) -> Result<(), Report>
   where
     N: Send + Sync,
@@ -154,7 +154,7 @@ impl<N, E> IndexedPass<N, E> {
   }
 
   fn from_topology(
-    topology: &IndexedPassTopology,
+    topology: &GraphPassTopology,
     nodes: &mut BTreeMap<GraphNodeKey, N>,
     edges: &mut BTreeMap<GraphEdgeKey, E>,
     mut missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
@@ -215,7 +215,7 @@ impl<N, E> IndexedPass<N, E> {
       if let Some((edge_key, _)) = &parent_edge {
         edge_indices[edge_key.as_usize()] = Some(index);
       }
-      slots.push(IndexedPassSlot {
+      slots.push(GraphPassSlot {
         key: node.key,
         node: data,
         parent_key,
@@ -254,7 +254,7 @@ impl<N, E> IndexedPass<N, E> {
     &mut self,
     prerequisites: &[usize],
     successors: &[Vec<usize>],
-    visit: impl Fn(&IndexedPassDependencies<N, E>, &mut IndexedPassSlot<N, E>) -> Result<(), Report> + Sync + Send,
+    visit: impl Fn(&GraphPassDependencies<N, E>, &mut GraphPassSlot<N, E>) -> Result<(), Report> + Sync + Send,
   ) -> Result<(), Report>
   where
     N: Send + Sync,
@@ -267,7 +267,7 @@ impl<N, E> IndexedPass<N, E> {
     let completed = std::iter::repeat_with(OnceLock::new)
       .take(pending.len())
       .collect::<Vec<_>>();
-    let dependencies = IndexedPassDependencies {
+    let dependencies = GraphPassDependencies {
       slots: &completed,
       node_indices: &self.node_indices,
       edge_indices: &self.edge_indices,
@@ -300,8 +300,8 @@ impl<N, E> IndexedPass<N, E> {
   }
 }
 
-impl<N, E> IndexedPassDependencies<'_, N, E> {
-  pub fn slot(&self, key: GraphNodeKey) -> &IndexedPassSlot<N, E> {
+impl<N, E> GraphPassDependencies<'_, N, E> {
+  pub fn slot(&self, key: GraphNodeKey) -> &GraphPassSlot<N, E> {
     let index = self.node_indices[key.as_usize()].expect("Indexed dependency node must have a slot");
     self.slots[index]
       .get()
@@ -324,11 +324,11 @@ impl<N, E> IndexedPassDependencies<'_, N, E> {
   }
 }
 
-struct IndexedPassTopology {
-  nodes: Vec<IndexedPassTopologyNode>,
+struct GraphPassTopology {
+  nodes: Vec<GraphPassTopologyNode>,
 }
 
-impl IndexedPassTopology {
+impl GraphPassTopology {
   fn new<N, E>(graph: &Graph<N, E, impl Send + Sync>) -> Result<Self, Report>
   where
     N: GraphNode,
@@ -344,7 +344,7 @@ impl IndexedPassTopology {
         } else {
           None
         };
-        Ok(IndexedPassTopologyNode { key, parent })
+        Ok(GraphPassTopologyNode { key, parent })
       })
       .collect::<Result<Vec<_>, Report>>()?;
     let node_indices = nodes
@@ -372,7 +372,7 @@ impl IndexedPassTopology {
   }
 }
 
-struct IndexedPassTopologyNode {
+struct GraphPassTopologyNode {
   key: GraphNodeKey,
   parent: Option<(GraphNodeKey, GraphEdgeKey)>,
 }

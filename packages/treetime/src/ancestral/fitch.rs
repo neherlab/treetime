@@ -23,8 +23,8 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
-use treetime_graph::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
 use treetime_graph::node::{GraphNode, NodeAncestralOps};
+use treetime_graph::pass::{GraphPass, GraphPassDependencies, GraphPassSlot};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
@@ -123,7 +123,7 @@ where
     let alphabet = partition.alphabet().clone();
     let length = partition.length();
     let (nodes, edges) = partition.storage_mut();
-    let mut pass = IndexedPass::new(graph, nodes, edges, |_| Ok(SparseNodePartition::empty(&alphabet)))?;
+    let mut pass = GraphPass::new(graph, nodes, edges, |_| Ok(SparseNodePartition::empty(&alphabet)))?;
     let result = pass.try_for_each_backward(|dependencies, slot| {
       run_fitch_backward_indexed(graph, &alphabet, length, dependencies, slot)
     });
@@ -139,8 +139,8 @@ fn run_fitch_backward_indexed<N, E>(
   graph: &Graph<N, E, ()>,
   alphabet: &Alphabet,
   length: usize,
-  dependencies: &IndexedPassDependencies<SparseNodePartition, SparseEdgePartition>,
-  slot: &mut IndexedPassSlot<SparseNodePartition, SparseEdgePartition>,
+  dependencies: &GraphPassDependencies<SparseNodePartition, SparseEdgePartition>,
+  slot: &mut GraphPassSlot<SparseNodePartition, SparseEdgePartition>,
 ) -> Result<(), Report>
 where
   N: GraphNode,
@@ -234,7 +234,7 @@ where
     let mut partition = partition.write_arc();
     let alphabet = partition.alphabet().clone();
     let (nodes, edges) = partition.storage_mut();
-    let mut pass = IndexedPass::new(graph, nodes, edges, |key| {
+    let mut pass = GraphPass::new(graph, nodes, edges, |key| {
       Err(make_report!(
         "Partition node {key} is missing before the Fitch forward pass"
       ))
@@ -251,8 +251,8 @@ where
 
 fn run_fitch_forward_indexed(
   alphabet: &Alphabet,
-  dependencies: &IndexedPassDependencies<SparseNodePartition, SparseEdgePartition>,
-  slot: &mut IndexedPassSlot<SparseNodePartition, SparseEdgePartition>,
+  dependencies: &GraphPassDependencies<SparseNodePartition, SparseEdgePartition>,
+  slot: &mut GraphPassSlot<SparseNodePartition, SparseEdgePartition>,
 ) -> Result<(), Report> {
   let node_data = &mut slot.node;
   if let Some(parent_key) = slot.parent_key {

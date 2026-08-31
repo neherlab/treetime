@@ -1,14 +1,11 @@
 #[cfg(test)]
 mod tests {
   use std::collections::BTreeSet;
-  use std::sync::Arc;
 
   use eyre::Report;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use treetime_utils::make_error;
 
-  use treetime_graph::breadth_first::GraphTraversalContinuation;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::Named;
@@ -72,159 +69,6 @@ mod tests {
     })?;
 
     assert_eq!(vec!["D", "C", "B", "A", "CD", "AB", "root"], actual);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_graph_traversal_forward_frontiers_complete_predecessors() -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>("(((A:0.1)A1:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;")?;
-
-    let actual = graph
-      .breadth_first_frontiers_forward()?
-      .into_iter()
-      .map(|frontier| {
-        frontier
-          .into_iter()
-          .map(|key| {
-            let node = graph.get_node(key).unwrap().read_arc();
-            node.payload().read_arc().name().unwrap().as_ref().to_owned()
-          })
-          .collect::<Vec<_>>()
-      })
-      .collect::<Vec<_>>();
-
-    // Root-to-leaf dynamic programming requires every parent in an earlier frontier.
-    let expected = vec![vec!["root"], vec!["AB", "C"], vec!["A1", "B"], vec!["A"]];
-    assert_eq!(expected, actual);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_graph_traversal_backward_frontiers_complete_successors() -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>("(((A:0.1)A1:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;")?;
-
-    let actual = graph
-      .breadth_first_frontiers_backward()?
-      .into_iter()
-      .map(|frontier| {
-        frontier
-          .into_iter()
-          .map(|key| {
-            let node = graph.get_node(key).unwrap().read_arc();
-            node.payload().read_arc().name().unwrap().as_ref().to_owned()
-          })
-          .collect::<Vec<_>>()
-      })
-      .collect::<Vec<_>>();
-
-    // Leaf-to-root dynamic programming requires every child in an earlier frontier.
-    let expected = vec![vec!["A", "B", "C"], vec!["A1"], vec!["AB"], vec!["root"]];
-    assert_eq!(expected, actual);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_graph_traversal_parallel_breadth_first_forward() -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-
-    let actual = Arc::new(RwLock::new(vec![]));
-    graph.par_iter_breadth_first_forward(|node| {
-      actual
-        .write_arc()
-        .push(node.payload.name().unwrap().as_ref().to_owned());
-      Ok(GraphTraversalContinuation::Continue)
-    })?;
-
-    assert_eq!(&vec!["root", "AB", "CD", "A", "B", "C", "D"], &*actual.read());
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_graph_traversal_parallel_breadth_first_backward() -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-
-    let actual = Arc::new(RwLock::new(vec![]));
-    graph.par_iter_breadth_first_backward(|node| {
-      actual
-        .write_arc()
-        .push(node.payload.name().unwrap().as_ref().to_owned());
-      Ok(GraphTraversalContinuation::Continue)
-    })?;
-
-    assert_eq!(&vec!["D", "C", "B", "A", "CD", "AB", "root"], &*actual.read());
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_graph_traversal_try_parallel_breadth_first_forward_ok() -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-
-    let actual = Arc::new(RwLock::new(vec![]));
-    graph.par_iter_breadth_first_forward(|node| {
-      actual
-        .write_arc()
-        .push(node.payload.name().unwrap().as_ref().to_owned());
-      Ok(GraphTraversalContinuation::Continue)
-    })?;
-
-    assert_eq!(&vec!["root", "AB", "CD", "A", "B", "C", "D"], &*actual.read());
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_graph_traversal_try_parallel_breadth_first_forward_error() -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-
-    // Only one node errors, so the captured error is deterministic.
-    let result = graph.par_iter_breadth_first_forward(|node| {
-      let name = node.payload.name().unwrap().as_ref().to_owned();
-      if name == "B" {
-        return make_error!("boom {name}");
-      }
-      Ok(GraphTraversalContinuation::Continue)
-    });
-
-    assert_eq!("boom B", result.unwrap_err().to_string());
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_graph_traversal_try_parallel_breadth_first_backward_ok() -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-
-    let actual = Arc::new(RwLock::new(vec![]));
-    graph.par_iter_breadth_first_backward(|node| {
-      actual
-        .write_arc()
-        .push(node.payload.name().unwrap().as_ref().to_owned());
-      Ok(GraphTraversalContinuation::Continue)
-    })?;
-
-    assert_eq!(&vec!["D", "C", "B", "A", "CD", "AB", "root"], &*actual.read());
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_graph_traversal_try_parallel_breadth_first_backward_error() -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-
-    let result = graph.par_iter_breadth_first_backward(|node| {
-      let name = node.payload.name().unwrap().as_ref().to_owned();
-      if name == "B" {
-        return make_error!("boom {name}");
-      }
-      Ok(GraphTraversalContinuation::Continue)
-    });
-
-    assert_eq!("boom B", result.unwrap_err().to_string());
 
     Ok(())
   }

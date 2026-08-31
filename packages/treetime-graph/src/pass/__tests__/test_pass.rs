@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::indexed_pass::{IndexedPass, with_indexed_graph_payloads};
+  use crate::pass::{GraphPass, with_graph_payloads};
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -9,10 +9,10 @@ mod tests {
   use self::helpers::{edge_lengths, fixture_tree, key_payloads, node_names, pass_values, values_by_name};
 
   #[test]
-  fn test_indexed_pass_backward_visits_children_before_parent() -> Result<(), Report> {
+  fn test_pass_backward_visits_children_before_parent() -> Result<(), Report> {
     let graph = fixture_tree()?;
     let (mut nodes, mut edges) = pass_values(&graph);
-    let mut pass = IndexedPass::new(&graph, &mut nodes, &mut edges, |_| Ok(0))?;
+    let mut pass = GraphPass::new(&graph, &mut nodes, &mut edges, |_| Ok(0))?;
 
     pass.try_for_each_backward(|dependencies, slot| {
       let graph_node = graph.get_node(slot.key).expect("Indexed node must exist");
@@ -39,10 +39,10 @@ mod tests {
   }
 
   #[test]
-  fn test_indexed_pass_forward_visits_parent_before_children() -> Result<(), Report> {
+  fn test_pass_forward_visits_parent_before_children() -> Result<(), Report> {
     let graph = fixture_tree()?;
     let (mut nodes, mut edges) = pass_values(&graph);
-    let mut pass = IndexedPass::new(&graph, &mut nodes, &mut edges, |_| Ok(0))?;
+    let mut pass = GraphPass::new(&graph, &mut nodes, &mut edges, |_| Ok(0))?;
 
     pass.try_for_each_forward(|dependencies, slot| {
       slot.node = slot.parent_key.map_or(0, |parent| dependencies.node(parent) + 1);
@@ -63,13 +63,13 @@ mod tests {
   }
 
   #[test]
-  fn test_indexed_pass_roundtrip_preserves_all_values() -> Result<(), Report> {
+  fn test_pass_roundtrip_preserves_all_values() -> Result<(), Report> {
     let graph = fixture_tree()?;
     let (mut nodes, mut edges) = key_payloads(&graph);
     let expected_nodes = nodes.clone();
     let expected_edges = edges.clone();
 
-    let pass = IndexedPass::new(&graph, &mut nodes, &mut edges, |_| {
+    let pass = GraphPass::new(&graph, &mut nodes, &mut edges, |_| {
       unreachable!("all graph nodes are present")
     })?;
     let (actual_nodes, actual_edges) = pass.into_maps()?;
@@ -80,12 +80,12 @@ mod tests {
   }
 
   #[test]
-  fn test_indexed_pass_error_restores_all_values() -> Result<(), Report> {
+  fn test_pass_error_restores_all_values() -> Result<(), Report> {
     let graph = fixture_tree()?;
     let (mut nodes, mut edges) = key_payloads(&graph);
     let expected_nodes = nodes.clone();
     let expected_edges = edges.clone();
-    let mut pass = IndexedPass::new(&graph, &mut nodes, &mut edges, |_| {
+    let mut pass = GraphPass::new(&graph, &mut nodes, &mut edges, |_| {
       unreachable!("all graph nodes are present")
     })?;
 
@@ -104,7 +104,7 @@ mod tests {
     let expected_nodes = node_names(&graph);
     let expected_edges = edge_lengths(&graph);
 
-    let result = with_indexed_graph_payloads(&graph, |_| Err::<(), _>(make_report!("injected graph pass failure")));
+    let result = with_graph_payloads(&graph, |_| Err::<(), _>(make_report!("injected graph pass failure")));
     assert_error!(result, "injected graph pass failure");
     let actual_nodes = node_names(&graph);
     let actual_edges = edge_lengths(&graph);

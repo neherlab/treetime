@@ -11,8 +11,8 @@ use treetime_distribution::distribution_multiply_by_fn;
 use treetime_distribution::distribution_product;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use treetime_graph::node::GraphNode;
+use treetime_graph::pass::{GraphPassDependencies, GraphPassSlot, with_graph_payloads};
 use treetime_grid::Side;
 
 /// Propagates time distributions backward from leaves to root.
@@ -28,7 +28,7 @@ where
   E: GraphEdge + TimetreeEdge + Default,
   D: Send + Sync,
 {
-  with_indexed_graph_payloads(graph, |pass| {
+  with_graph_payloads(graph, |pass| {
     pass.try_for_each_backward(|dependencies, slot| {
       propagate_distributions_backward_slot(graph, coalescent_model, dependencies, slot)
     })
@@ -44,8 +44,8 @@ where
 fn propagate_distributions_backward_slot<N, E, D>(
   graph: &Graph<N, E, D>,
   coalescent_model: Option<&CoalescentModel>,
-  dependencies: &IndexedPassDependencies<N, E>,
-  slot: &mut IndexedPassSlot<N, E>,
+  dependencies: &GraphPassDependencies<N, E>,
+  slot: &mut GraphPassSlot<N, E>,
 ) -> Result<(), Report>
 where
   N: GraphNode + TimetreeNode,
@@ -78,8 +78,8 @@ where
 /// A bad-branch child carries no usable message and is skipped.
 fn gather_child_messages<N, E, D>(
   graph: &Graph<N, E, D>,
-  dependencies: &IndexedPassDependencies<N, E>,
-  slot: &IndexedPassSlot<N, E>,
+  dependencies: &GraphPassDependencies<N, E>,
+  slot: &GraphPassSlot<N, E>,
 ) -> Vec<Arc<Distribution<NegLog>>>
 where
   N: GraphNode + TimetreeNode,
@@ -136,7 +136,7 @@ fn combine_child_messages(messages: &[Arc<Distribution<NegLog>>]) -> Result<Dist
 fn apply_coalescent_prior<N, E, D>(
   graph: &Graph<N, E, D>,
   coalescent_model: Option<&CoalescentModel>,
-  slot: &IndexedPassSlot<N, E>,
+  slot: &GraphPassSlot<N, E>,
   distribution: Distribution<NegLog>,
 ) -> Result<Distribution<NegLog>, Report>
 where
@@ -170,7 +170,7 @@ where
 /// back to the parent on the next round would count the parent's own message toward the node a second
 /// time.
 fn apply_date_constraint<N, E>(
-  slot: &IndexedPassSlot<N, E>,
+  slot: &GraphPassSlot<N, E>,
   distribution: Distribution<NegLog>,
 ) -> Result<Distribution<NegLog>, Report>
 where
@@ -195,7 +195,7 @@ where
 fn send_backward_message<N, E>(
   coalescent_model: Option<&CoalescentModel>,
   is_leaf: bool,
-  slot: &mut IndexedPassSlot<N, E>,
+  slot: &mut GraphPassSlot<N, E>,
 ) -> Result<(), Report>
 where
   N: GraphNode + TimetreeNode,
