@@ -2,29 +2,29 @@
 
 [Back to index](README.md)
 
-## Parallel BFS
+## Work-first Parallel Pass
 
-Frontier-based parallel breadth-first traversal (<a id="cite-1"></a>[Leiserson and Schardl 2010](https://doi.org/10.1145/1810479.1810534) [[1](#ref-1)]) using Rayon for work distribution across CPU cores. Each BFS level is processed in parallel, with synchronization between levels. Deterministic forward and backward frontier builders expose the level structure for callers that require it.
+The single parallel tree traversal (<a id="cite-1"></a>[Leiserson and Schardl 2010](https://doi.org/10.1145/1810479.1810534) [[1](#ref-1)]). Fitch, marginal, clock, and timetree passes arrange partition payloads in stable indexed slots and run them in one Rayon scope. Roots seed forward passes and leaves seed backward passes. Each completed node decrements an atomic prerequisite counter for its successors; a successor enters the shared work queue as soon as its counter reaches zero, so a ready node runs without waiting on a per-level barrier.
 
-v1: [`packages/treetime-graph/src/breadth_first.rs`](../../packages/treetime-graph/src/breadth_first.rs), [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs).
+Workers take ownership of one mutable slot and publish it once after processing. Domain callbacks receive read-only access to completed dependency payloads and the writable current slot. Payloads are moved into and out of the pass, so scheduling does not clone sequence or probability-matrix state, while parent-before-child (forward) or child-before-parent (backward) ordering is preserved.
 
----
-
-## Dependency-ready Indexed Passes
-
-Fitch, marginal, clock, and timetree passes arrange partition payloads in stable indexed slots and execute them in one Rayon scope. Roots seed forward passes and leaves seed backward passes. Each completed node decrements an atomic prerequisite counter for its successors; a successor enters the shared work queue as soon as its counter reaches zero.
-
-Workers take ownership of one mutable slot and publish it once after processing. Domain callbacks receive read-only access to completed dependency payloads and the writable current slot. Payloads are moved into and out of the pass, so scheduling does not clone sequence or probability-matrix state. The queue removes per-depth fork/join barriers while preserving parent-before-child or child-before-parent ordering.
-
-v1: [`packages/treetime/src/partition/indexed_pass.rs`](../../packages/treetime/src/partition/indexed_pass.rs).
+v1: [`packages/treetime-graph/src/pass.rs`](../../packages/treetime-graph/src/pass.rs), scheduler in [`packages/treetime-graph/src/dependency_queue.rs`](../../packages/treetime-graph/src/dependency_queue.rs).
 
 ---
 
 ## DFS Preorder/Postorder
 
-Iterative stack-based depth-first traversal (<a id="cite-2"></a>[Cormen et al. 2022](https://mitpress.mit.edu/9780262046305/introduction-to-algorithms/) [[2](#ref-2)], Chapter 22.3) supporting both preorder (parent before children) and postorder (children before parent) visitation. Postorder is used for leaf-to-root passes (Fitch backward, marginal backward, clock regression backward). Preorder is used for root-to-leaf passes (Fitch forward, marginal forward, clock regression forward).
+Iterative stack-based depth-first traversal (<a id="cite-2"></a>[Cormen et al. 2022](https://mitpress.mit.edu/9780262046305/introduction-to-algorithms/) [[2](#ref-2)], Chapter 22.3) supporting both preorder (parent before children) and postorder (children before parent) visitation. These serial walks are used where the callback must capture mutable outer state (a parallel callback cannot): deterministic-order output, IO serialization, and local aggregation.
 
-v1: [`packages/treetime-graph/src/graph_traverse.rs#L256-L321`](../../packages/treetime-graph/src/graph_traverse.rs#L256-L321).
+v1: [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs).
+
+---
+
+## Reachability
+
+Serial forward-reachability query: whether a directed path runs from one node to another along edge directions. A depth-first walk over outbound edges with a visited set for cycle termination.
+
+v1: [`packages/treetime-graph/src/reachability.rs`](../../packages/treetime-graph/src/reachability.rs).
 
 ---
 
@@ -62,11 +62,11 @@ v1: [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-gr
 
 ## File Index
 
-| File                                                                                                   | Algorithms                             |
-| ------------------------------------------------------------------------------------------------------ | -------------------------------------- |
-| [`packages/treetime-graph/src/breadth_first.rs`](../../packages/treetime-graph/src/breadth_first.rs)   | Parallel BFS                           |
-| [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs) | DFS preorder/postorder, sequential BFS, deterministic BFS frontiers |
-| [`packages/treetime-graph/src/find_paths.rs`](../../packages/treetime-graph/src/find_paths.rs)         | Path finding                           |
-| [`packages/treetime-graph/src/graph_ops.rs`](../../packages/treetime-graph/src/graph_ops.rs)           | Edge collapse                          |
-| [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-graph/src/topology_order.rs) | Topology ordering                      |
-| [`packages/treetime/src/partition/indexed_pass.rs`](../../packages/treetime/src/partition/indexed_pass.rs) | Dependency-ready indexed passes     |
+| File                                                                                                       | Algorithms                         |
+| ---------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| [`packages/treetime-graph/src/pass.rs`](../../packages/treetime-graph/src/pass.rs)                         | Work-first parallel pass           |
+| [`packages/treetime-graph/src/dependency_queue.rs`](../../packages/treetime-graph/src/dependency_queue.rs) | Work-first scheduler               |
+| [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs)     | DFS preorder/postorder, serial BFS |
+| [`packages/treetime-graph/src/reachability.rs`](../../packages/treetime-graph/src/reachability.rs)         | Forward reachability query         |
+| [`packages/treetime-graph/src/graph_ops.rs`](../../packages/treetime-graph/src/graph_ops.rs)               | Edge collapse                      |
+| [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-graph/src/topology_order.rs)     | Topology ordering                  |

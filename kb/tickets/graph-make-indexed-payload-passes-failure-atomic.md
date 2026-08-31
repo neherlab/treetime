@@ -4,7 +4,7 @@ Prevent shared graph readers from observing default payloads and commit indexed-
 
 ## Required changes
 
-- Apply the scratch-state design to every pass using `with_indexed_graph_payloads()`. These passes read stable graph topology and transform node and edge payloads; they do not intrinsically mutate topology.
+- Apply the scratch-state design to every pass using `with_graph_payloads()`. These passes read stable graph topology and transform node and edge payloads; they do not intrinsically mutate topology.
 - Snapshot the complete valid node and edge payload maps without replacing published graph payloads with defaults.
 - Run the indexed pass entirely against independent scratch maps. On callback error or panic, discard the scratch maps and leave every published payload unchanged.
 - Add a graph-level payload transaction gate. Every logical operation that reads or writes one or more published payloads must hold its typed shared guard for the operation's complete lifetime; direct unguarded multi-payload access is no longer part of the API. Audit all payload callers and migrate them to the guard.

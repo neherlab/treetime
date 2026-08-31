@@ -2,11 +2,11 @@
 
 ## Problem
 
-`with_indexed_graph_payloads()` removes payload maps from the graph with `mem::take`, releases the locks, and runs fallible work while the shared graph contains default payloads. Extraction occurs one payload lock at a time, so concurrent readers and a second indexed pass can observe a mixture of default and original payloads. A concurrent writer can update a default payload and have that update overwritten during restoration. Panic or restoration failure can leave defaults permanently installed.
+`with_graph_payloads()` removes payload maps from the graph with `mem::take`, releases the locks, and runs fallible work while the shared graph contains default payloads. Extraction occurs one payload lock at a time, so concurrent readers and a second pass can observe a mixture of default and original payloads. A concurrent writer can update a default payload and have that update overwritten during restoration. Panic or restoration failure can leave defaults permanently installed.
 
-The extraction and restoration transaction is implemented in `fn with_indexed_graph_payloads()` [packages/treetime/src/partition/indexed_pass.rs#L10-L61](../../packages/treetime/src/partition/indexed_pass.rs#L10-L61). Marginal and timetree passes invoke fallible dependency-ready callbacks while those payloads are detached [packages/treetime/src/partition/marginal_passes.rs#L33-L72](../../packages/treetime/src/partition/marginal_passes.rs#L33-L72).
+The extraction and restoration transaction is implemented in `fn with_graph_payloads()` [packages/treetime-graph/src/pass.rs#L14-L63](../../packages/treetime-graph/src/pass.rs#L14-L63). Marginal, timetree, and clock passes invoke fallible dependency-ready callbacks while those payloads are detached [packages/treetime/src/partition/marginal/shared/pass.rs](../../packages/treetime/src/partition/marginal/shared/pass.rs), [packages/treetime/src/clock/clock_filter.rs](../../packages/treetime/src/clock/clock_filter.rs), [packages/treetime/src/clock/rtt.rs](../../packages/treetime/src/clock/rtt.rs).
 
-The restoration path publishes modified slots before returning either `Ok` or `Err`. Work already running under Rayon's best-effort cancellation can therefore commit a scheduling-dependent subset after one visitor fails. The existing error test returns an error before mutating a slot, so it verifies payload presence rather than rollback [packages/treetime/src/partition/__tests__/test_indexed_pass.rs#L100-L131](../../packages/treetime/src/partition/__tests__/test_indexed_pass.rs#L100-L131).
+The restoration path publishes modified slots before returning either `Ok` or `Err`. Work already running under Rayon's best-effort cancellation can therefore commit a scheduling-dependent subset after one visitor fails. The existing error test returns an error before mutating a slot, so it verifies payload presence rather than rollback [packages/treetime-graph/src/pass/**tests**/test_pass.rs](../../packages/treetime-graph/src/pass/__tests__/test_pass.rs).
 
 ## Options
 
@@ -17,7 +17,7 @@ Recommendation: O2 when parallel work does not require graph mutation; it keeps 
 
 ## Recommendation
 
-Use O2 for `with_indexed_graph_payloads()` and every current caller: snapshot valid payloads, compute complete replacement maps in scratch state, then atomically commit only after successful computation and structural validation. The affected passes read stable topology, so no current caller needs the O1 extraction/restoration design. O1 remains an option only for a future operation that intrinsically mutates topology and must not be mixed into this ticket.
+Use O2 for `with_graph_payloads()` and every current caller: snapshot valid payloads, compute complete replacement maps in scratch state, then atomically commit only after successful computation and structural validation. The affected passes read stable topology, so no current caller needs the O1 extraction/restoration design. O1 remains an option only for a future operation that intrinsically mutates topology and must not be mixed into this ticket.
 
 ## Related issues
 
