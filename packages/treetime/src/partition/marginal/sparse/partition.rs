@@ -156,11 +156,11 @@ where
   E: EdgeOptimizeOps,
 {
   fn process_backward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
-    pass::process_backward_indexed(self, graph)
+    pass::driver::process_backward_indexed(self, graph)
   }
 
   fn process_forward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
-    pass::process_forward_indexed(self, graph)
+    pass::driver::process_forward_indexed(self, graph)
   }
 
   fn get_sequence_length(&self) -> usize {
