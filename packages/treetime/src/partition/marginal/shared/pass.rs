@@ -1,4 +1,3 @@
-use crate::partition::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
 use crate::partition::marginal::shared::data::IndexedMarginalPartition;
 use crate::partition::marginal::shared::normalize::{
   forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_from_log, normalize_inplace,
@@ -9,6 +8,7 @@ use itertools::Itertools;
 use std::collections::BTreeMap;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
+use treetime_graph::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
 use treetime_graph::node::{GraphNode, Named};
 use treetime_primitives::LogLh;
 

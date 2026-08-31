@@ -4867,11 +4867,13 @@ dependencies = [
 name = "treetime-graph"
 version = "1.0.0"
 dependencies = [
+ "crossbeam-channel",
  "ctor 0.5.0",
  "derive_more",
  "eyre",
  "getset",
  "itertools 0.14.0",
+ "maplit",
  "ordered-float",
  "parking_lot",
  "pretty_assertions",

@@ -1,7 +1,6 @@
 use crate::clock::clock_model::{ClockModel, ClockRegression};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::reroot::{RerootParams, reroot_in_place};
-use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::{ClockEdge, ClockNode};
 use eyre::Report;
@@ -12,6 +11,7 @@ use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
+use treetime_graph::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use treetime_graph::node::{GraphNode, Named};
 use treetime_graph::reroot::RerootResult;
 

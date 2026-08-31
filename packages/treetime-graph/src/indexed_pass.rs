@@ -1,11 +1,14 @@
-use crate::partition::dependency_queue::{run_dependency_queue, validate_dependency_graph};
+#[cfg(test)]
+mod __tests__;
+
+use crate::dependency_queue::{run_dependency_queue, validate_dependency_graph};
+use crate::edge::{GraphEdge, GraphEdgeKey};
+use crate::graph::Graph;
+use crate::node::{GraphNode, GraphNodeKey};
 use eyre::Report;
 use parking_lot::Mutex;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::OnceLock;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
-use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_utils::make_internal_report;
 
 pub fn with_indexed_graph_payloads<N, E, D, R>(

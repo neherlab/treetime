@@ -1,4 +1,3 @@
-use crate::partition::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use eyre::Report;
@@ -12,6 +11,7 @@ use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
+use treetime_graph::indexed_pass::{IndexedPassDependencies, IndexedPassSlot, with_indexed_graph_payloads};
 use treetime_graph::node::{GraphNode, Named};
 use treetime_grid::Side;
 

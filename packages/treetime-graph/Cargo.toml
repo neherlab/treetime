@@ -15,6 +15,7 @@ version.workspace = true
 treetime-utils = { workspace = true }
 
 # [external]
+crossbeam-channel = { workspace = true }
 derive_more = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }
@@ -27,6 +28,7 @@ traversal = { workspace = true }
 
 [dev-dependencies]
 ctor = { workspace = true }
+maplit = { workspace = true }
 pretty_assertions = { workspace = true }
 
 [lints]

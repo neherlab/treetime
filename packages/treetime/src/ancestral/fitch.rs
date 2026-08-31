@@ -6,7 +6,6 @@ use crate::ancestral::fitch_sub::{
 };
 use crate::make_report;
 use crate::partition::fitch::partition::PartitionFitch;
-use crate::partition::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
 use crate::partition::storage::sparse::{
   FitchSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, SparseSeqInfo,
 };
@@ -24,6 +23,7 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
+use treetime_graph::indexed_pass::{IndexedPass, IndexedPassDependencies, IndexedPassSlot};
 use treetime_graph::node::{GraphNode, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, LogLh, Seq, seq};
