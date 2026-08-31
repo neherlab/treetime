@@ -1,0 +1,20 @@
+# Discrete ancestral geography ("mugration") over sampling country (zika/20).
+#
+# Run from the repository root:
+#   treetime mugration --config data/zika/20/mugration.yaml
+#
+# `mugration` treats a discrete metadata column (here `country`) like a
+# sequence character and reconstructs it on internal nodes, inferring a GTR
+# model of transitions between states. `weights` supplies a prior on state
+# equilibrium frequencies; `pc` is the pseudo-count that flattens the model.
+
+tree: "data/zika/20/tree.nwk"
+metadata: "data/zika/20/metadata.tsv"
+attribute: "country"
+
+weights: "data/zika/country_weights.csv"
+pc: 1.0
+
+output:
+  output_all: "tmp/examples/zika/20/mugration"
+output_confidence_csv: "tmp/examples/zika/20/mugration/confidence.csv"

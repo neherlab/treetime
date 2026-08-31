@@ -1,0 +1,19 @@
+# Ancestral reconstruction by Fitch parsimony (ebola/20).
+#
+# Run from the repository root:
+#   treetime ancestral --config data/ebola/20/ancestral-parsimony.yaml
+#
+# A per-command config is the command's own argument object. Every value here
+# has a matching `--flag`; the file is a saved, reviewable, version-controlled
+# invocation. An explicit flag on the command line still overrides the file.
+
+tree: "data/ebola/20/tree.nwk"
+alignment:
+  alignment:
+    - "data/ebola/20/aln.fasta.xz"
+
+# Fitch parsimony: fast, model-free ancestral states and mutations.
+method_anc: "parsimony"
+
+output:
+  output_all: "tmp/examples/ebola/20/ancestral-parsimony"

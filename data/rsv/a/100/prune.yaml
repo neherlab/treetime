@@ -1,0 +1,20 @@
+# Tree cleanup: drop short and uninformative branches, collapse shared mutations (rsv/a/100).
+#
+# Run from the repository root:
+#   treetime prune --config data/rsv/a/100/prune.yaml
+#
+# `prune` removes tree-builder artifacts before a downstream analysis: branches
+# shorter than a threshold, branches carrying no mutation, and sibling branches
+# in a polytomy that share identical mutations (regrouped under one edge).
+
+tree: "data/rsv/a/100/tree.nwk"
+alignment:
+  alignment:
+    - "data/rsv/a/100/aln.fasta.xz"
+
+prune_short: 1.0e-6
+prune_empty: true
+merge_shared_mutations: true
+
+output:
+  output_all: "tmp/examples/rsv/a/100/prune"

@@ -1,0 +1,18 @@
+# Root-to-tip clock regression (dengue/100).
+#
+# Run from the repository root:
+#   treetime clock --config data/dengue/100/clock.yaml
+#
+# `clock` reroots the tree to maximize the temporal signal, then fits the
+# root-to-tip regression and reports the clock rate. The taxon identifier lives
+# in a non-default metadata column here, named once in the config instead of a
+# `--metadata-id-columns genbank_accession` flag repeated on every run.
+
+tree: "data/dengue/100/tree.nwk"
+metadata: "data/dengue/100/metadata.tsv"
+metadata_id:
+  metadata_id_columns:
+    - "genbank_accession"
+
+output:
+  output_all: "tmp/examples/dengue/100/clock"

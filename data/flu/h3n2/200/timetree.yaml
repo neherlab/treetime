@@ -1,0 +1,27 @@
+# Time-scaled tree with a fixed clock rate and date confidence intervals (flu/h3n2/200).
+#
+# Run from the repository root:
+#   treetime timetree --config data/flu/h3n2/200/timetree.yaml
+#
+# `timetree` turns divergence into calendar time. Fixing the clock rate
+# (`clock_rate`) skips rate estimation and is common for well-characterized
+# pathogens like seasonal influenza. `confidence` adds date confidence
+# intervals, which need a rate uncertainty (`clock_std_dev`) when the rate is
+# fixed; `coalescent_opt` fits a constant coalescent time scale analytically.
+
+tree: "data/flu/h3n2/200/tree.nwk"
+metadata: "data/flu/h3n2/200/metadata.tsv"
+alignment:
+  alignment:
+    - "data/flu/h3n2/200/aln.fasta.xz"
+
+clock_rate: 0.003
+clock_std_dev: 0.0006
+confidence: true
+coalescent_opt: true
+max_iter: 3
+
+output:
+  output_all: "tmp/examples/flu/h3n2/200/timetree"
+# Confidence intervals are written to their own TSV when a path is given.
+output_confidence_tsv: "tmp/examples/flu/h3n2/200/timetree/confidence.tsv"
