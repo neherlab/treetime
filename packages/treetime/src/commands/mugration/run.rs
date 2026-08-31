@@ -7,7 +7,7 @@ use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_report;
 use crate::mugration::mugration::execute_mugration;
 use crate::mugration::result::MugrationResult;
-use crate::partition::marginal::discrete::DiscreteCommentProvider;
+use crate::partition::marginal::discrete::comment::DiscreteCommentProvider;
 use crate::partition::traits::HasGtr;
 use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;

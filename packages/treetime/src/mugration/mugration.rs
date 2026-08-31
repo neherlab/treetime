@@ -3,7 +3,7 @@ use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::refinement::refine_gtr_iterative;
 use crate::mugration::result::MugrationResult;
-use crate::partition::marginal::discrete::PartitionMarginalDiscrete;
+use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::storage::discrete::DiscreteStates;
 use crate::payload::ancestral::GraphAncestral;
 use crate::{make_error, make_internal_report};
