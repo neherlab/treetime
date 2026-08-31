@@ -1,4 +1,4 @@
-use crate::partition::timetree::GraphTimetree;
+use crate::partition::timetree::partition::GraphTimetree;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{HasBranchLength, TimeLength};

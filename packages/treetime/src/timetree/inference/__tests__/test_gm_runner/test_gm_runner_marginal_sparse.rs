@@ -15,7 +15,7 @@ mod tests {
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
   };
 
-  use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
+  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use eyre::Report;
 
   use parking_lot::RwLock;

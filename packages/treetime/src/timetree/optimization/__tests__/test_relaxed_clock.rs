@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::timetree::partition::GraphTimetree;
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;

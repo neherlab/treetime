@@ -1,5 +1,5 @@
 use crate::clock::clock_model::ClockModel;
-use crate::partition::timetree::GraphTimetree;
+use crate::partition::timetree::partition::GraphTimetree;
 use crate::partition::traits::BranchTopology;
 use crate::timetree::confidence::NodeConfidenceInterval;
 use eyre::Report;

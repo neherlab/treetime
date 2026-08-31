@@ -1,5 +1,5 @@
 use crate::clock::clock_model::{ClockLine, ClockModel};
-use crate::partition::timetree::GraphTimetree;
+use crate::partition::timetree::partition::GraphTimetree;
 use crate::payload::traits::ClockNode;
 use eyre::Report;
 use itertools::Itertools;

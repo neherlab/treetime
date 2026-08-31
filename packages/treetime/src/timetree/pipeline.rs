@@ -20,7 +20,9 @@ use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::iteration::{apply_damping, save_branch_lengths};
 use crate::optimize::params::{BranchLengthMode, BranchOptMethod};
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
-use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{
+  GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec, PartitionTimetreeRef,
+};
 use crate::partition::traits::HasGtr;
 use crate::progress::ProgressSink;
 use crate::timetree::confidence::{
@@ -760,7 +762,7 @@ mod tests {
   };
   use crate::clock::date_constraints::load_date_constraints;
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
-  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::timetree::partition::GraphTimetree;
   use eyre::Report;
   use maplit::btreemap;
   use ndarray::array;

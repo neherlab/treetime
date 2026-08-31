@@ -154,7 +154,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::partition::timetree::GraphTimetree;
+    use crate::partition::timetree::partition::GraphTimetree;
     use crate::payload::timetree::NodeTimetree;
     use crate::timetree::convergence::node_times::NodeTimeChange;
 

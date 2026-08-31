@@ -403,7 +403,7 @@ mod tests {
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
     use crate::partition::storage::discrete::DiscreteStates;
-    use crate::partition::timetree::GraphTimetree;
+    use crate::partition::timetree::partition::GraphTimetree;
     use crate::payload::clock_set::ClockSet;
     use jsonschema::{Retrieve, Uri, Validator};
     use ndarray::array;

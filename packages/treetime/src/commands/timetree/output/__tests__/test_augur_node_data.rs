@@ -157,7 +157,7 @@ mod tests {
   mod helpers {
     use crate::clock::clock_model::{ClockModel, ClockModelStats, RegressionStats};
     use crate::commands::timetree::output::augur_node_data::build_augur_node_data_json;
-    use crate::partition::timetree::GraphTimetree;
+    use crate::partition::timetree::partition::GraphTimetree;
     use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
     use crate::timetree::confidence::NodeConfidenceInterval;
     use ndarray::array;

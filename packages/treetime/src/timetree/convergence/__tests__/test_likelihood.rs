@@ -6,7 +6,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
-  use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeRef};
+  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeRef};
   use crate::payload::timetree::NodeTimetree;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::convergence::likelihood::{

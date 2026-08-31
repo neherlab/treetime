@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
+  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
   use crate::payload::clock_set::ClockSet;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};

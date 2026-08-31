@@ -3,7 +3,7 @@ mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::coalescent::events::collect_tree_events;
   use crate::coalescent::time_coordinate::CalendarTime;
-  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::timetree::partition::GraphTimetree;
   use crate::payload::timetree::NodeTimetree;
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;

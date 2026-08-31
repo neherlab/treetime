@@ -1,7 +1,7 @@
 use crate::clock::clock_model::{ClockModel, ClockModelStats};
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::make_error;
-use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::payload::traits::TimetreeNode;
 use crate::timetree::inference::runner::run_timetree;
 use eyre::{Report, WrapErr};

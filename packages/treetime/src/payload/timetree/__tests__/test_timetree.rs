@@ -4,7 +4,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
-  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::timetree::partition::GraphTimetree;
   use crate::partition::traits::MutationCommentProvider;
   use crate::seq::mutation::Sub;
   use eyre::Report;

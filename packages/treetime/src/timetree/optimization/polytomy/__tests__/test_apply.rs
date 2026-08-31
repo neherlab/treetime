@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::timetree::partition::GraphTimetree;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
   use crate::timetree::optimization::polytomy::sweep::{Merger, SubtreePlan};

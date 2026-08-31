@@ -1,5 +1,5 @@
 use crate::coalescent::total_lh::compute_coalescent_total_lh;
-use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::graph_log_lh;
 use log::{debug, warn};
 use treetime_distribution::Distribution;

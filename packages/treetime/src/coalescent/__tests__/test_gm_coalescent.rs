@@ -4,7 +4,7 @@ mod tests {
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::o;
-  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::timetree::partition::GraphTimetree;
   use eyre::{Report, WrapErr};
   use indexmap::IndexMap;
   use ndarray::Array1;

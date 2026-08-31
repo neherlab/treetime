@@ -3,7 +3,7 @@ use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
-use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::PartitionRerootOps;
 use eyre::{Report, WrapErr};
 use log::info;

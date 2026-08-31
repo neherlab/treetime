@@ -1,8 +1,8 @@
 use crate::clock::clock_model::ClockModel;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
-use crate::partition::timetree::GraphTimetree;
-use crate::partition::timetree::PartitionTimetreeAllVec;
+use crate::partition::timetree::partition::GraphTimetree;
+use crate::partition::timetree::partition::PartitionTimetreeAllVec;
 use crate::timetree::confidence::NodeConfidenceInterval;
 use serde::Serialize;
 use std::collections::BTreeMap;

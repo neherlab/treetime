@@ -3,7 +3,7 @@ mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
-  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::timetree::partition::GraphTimetree;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;

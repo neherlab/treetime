@@ -3,7 +3,7 @@ mod tests {
   use super::super::helpers::setup_graph;
   use crate::clock::date_constraints::load_date_constraints;
   use crate::coalescent::optimize_tc::optimize_tc;
-  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::timetree::partition::GraphTimetree;
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use maplit::btreemap;

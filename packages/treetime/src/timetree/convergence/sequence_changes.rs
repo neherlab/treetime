@@ -1,4 +1,4 @@
-use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::PartitionMarginalOps;
 use log::debug;
 use std::collections::BTreeMap;

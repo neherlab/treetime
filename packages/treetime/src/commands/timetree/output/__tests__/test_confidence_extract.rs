@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::timetree::GraphTimetree;
+  use crate::partition::timetree::partition::GraphTimetree;
   use crate::payload::timetree::NodeTimetree;
   use crate::timetree::confidence::{extract_confidence_intervals, write_confidence_intervals};
   use approx::assert_relative_eq;

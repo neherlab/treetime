@@ -9,7 +9,7 @@ use crate::make_report;
 use crate::optimize::params::BranchLengthMode;
 use crate::partition::algo::infer_dense::infer_dense;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
 use crate::seq::alignment::get_common_length;
 use crate::seq::gap_fill::apply_gap_fill;
 use crate::timetree::utils::initialize_node_divergences;

@@ -1,4 +1,4 @@
-use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::timetree::convergence::likelihood::{
   compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
 };

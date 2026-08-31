@@ -3,7 +3,7 @@ use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::{PartitionMarginalPasses, PartitionTimetreeOps};
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};

@@ -21,7 +21,7 @@ pub mod sweep;
 mod __tests__;
 
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
-use crate::partition::timetree::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::PartitionBranchOps;
 use crate::payload::clock_set::ClockSet;
 use crate::payload::timetree::NodeTimetree;

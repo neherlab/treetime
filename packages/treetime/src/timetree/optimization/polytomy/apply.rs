@@ -3,7 +3,7 @@
 //! Kept apart from [`super::sweep`] so the simulation stays free of graph state. Every
 //! mutation of the tree for one polytomy happens here, in a single pass over the plan.
 
-use crate::partition::timetree::GraphTimetree;
+use crate::partition::timetree::partition::GraphTimetree;
 use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use crate::timetree::optimization::polytomy::sweep::SubtreePlan;
 use eyre::Report;

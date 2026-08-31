@@ -9,7 +9,7 @@ mod tests {
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::timetree::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
+  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::utils::{
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,

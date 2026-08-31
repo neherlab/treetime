@@ -17,7 +17,7 @@ use treetime::clock::date_constraints::load_date_constraints;
 use treetime::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::partition::marginal::dense::partition::PartitionMarginalDense;
-use treetime::partition::timetree::GraphTimetree;
+use treetime::partition::timetree::partition::GraphTimetree;
 use treetime::partition::traits::PartitionTimetreeAll;
 use treetime::payload::timetree::{EdgeTimetree, NodeTimetree};
 use treetime::timetree::inference::backward_pass::propagate_distributions_backward;
