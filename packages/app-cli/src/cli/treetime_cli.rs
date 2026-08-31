@@ -1,7 +1,6 @@
 use crate::cli::config::overlay_config;
 use crate::cli::jobs::Jobs;
 use crate::cli::schema::SchemaTarget;
-use crate::cli::validate::Validate;
 use crate::cli::verbosity::Verbosity;
 use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_complete::{Shell, generate};
@@ -14,13 +13,13 @@ use std::fmt::Debug;
 use std::io;
 use std::path::PathBuf;
 use std::sync::LazyLock;
-use treetime::commands::ancestral::args::TreetimeAncestralArgs;
-use treetime::commands::clock::args::TreetimeClockArgs;
-use treetime::commands::homoplasy::args::TreetimeHomoplasyArgs;
-use treetime::commands::mugration::args::TreetimeMugrationArgs;
-use treetime::commands::optimize::args::TreetimeOptimizeArgs;
-use treetime::commands::prune::args::TreetimePruneArgs;
-use treetime::commands::timetree::args::TreetimeTimetreeArgs;
+use treetime::commands::ancestral::args::TreetimeAncestralArgsRaw;
+use treetime::commands::clock::args::TreetimeClockArgsRaw;
+use treetime::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
+use treetime::commands::mugration::args::TreetimeMugrationArgsRaw;
+use treetime::commands::optimize::args::TreetimeOptimizeArgsRaw;
+use treetime::commands::prune::args::TreetimePruneArgsRaw;
+use treetime::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use treetime_utils::init::clap_styles::styles;
 use treetime_utils::init::global::setup_logger;
 use treetime_utils::make_report;
@@ -67,25 +66,25 @@ pub enum TreetimeCommands {
   },
 
   /// Estimates time trees from an initial tree topology, a set of date constraints (e.g. tip dates), and an alignment (optional).
-  Timetree(Box<TreetimeTimetreeArgs>),
+  Timetree(Box<TreetimeTimetreeArgsRaw>),
 
   /// Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned sequences.
-  Optimize(TreetimeOptimizeArgs),
+  Optimize(TreetimeOptimizeArgsRaw),
 
   /// Prunes short branches and/or branches without mutations from a phylogenetic tree.
-  Prune(TreetimePruneArgs),
+  Prune(TreetimePruneArgsRaw),
 
   /// Reconstructs ancestral sequences and maps mutations to the tree. The output consists of a file 'ancestral.fasta' with ancestral sequences and a tree 'ancestral.nexus' with mutations added as comments like A45G,G136T,..., number in SNPs used 1-based index by default. The inferred GTR model is written to stdout.
-  Ancestral(TreetimeAncestralArgs),
+  Ancestral(TreetimeAncestralArgsRaw),
 
   /// Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with --keep_root.
-  Clock(TreetimeClockArgs),
+  Clock(TreetimeClockArgsRaw),
 
   /// Reconstructs ancestral sequences and maps mutations to the tree. The tree is then scanned for homoplasies. An excess number of homoplasies might suggest contamination, recombination, culture adaptation or similar.
-  Homoplasy(TreetimeHomoplasyArgs),
+  Homoplasy(TreetimeHomoplasyArgsRaw),
 
   /// Reconstructs discrete ancestral states, for example geographic location, host, or similar. In addition to ancestral states, a GTR model of state transitions is inferred.
-  Mugration(TreetimeMugrationArgs),
+  Mugration(TreetimeMugrationArgsRaw),
 
   /// Runs an ordered list of analysis commands from one config file, on one dataset, in one process.
   ///
@@ -172,12 +171,12 @@ pub fn treetime_parse_cli_args() -> Result<TreetimeArgs, Report> {
   Ok(args)
 }
 
-/// Merge a `--config` file into the selected command's args, then validate the merged result.
+/// Merge a `--config` file into the selected command's raw args.
 ///
-/// Merge (`overlay_config`) and validation (`Validate`) are applied together so a value supplied only
-/// by the config file both wins with the right precedence and satisfies required-argument checks.
-/// Commands without a configuration object (completions, schema, help) have no `--config` flag and
-/// are left untouched.
+/// The overlay layers the config file over the CLI-parsed raw args with the right precedence.
+/// Required-argument presence is enforced later, when the raw args are converted to their validated
+/// form at dispatch. Commands without a configuration object (completions, schema, help) have no
+/// `--config` flag and are left untouched.
 fn resolve_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) -> Result<(), Report> {
   match command {
     TreetimeCommands::Timetree(args) => resolve(args.as_mut(), matches),
@@ -191,13 +190,12 @@ fn resolve_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) 
   }
 }
 
-/// Overlay the `--config` file onto `args`, then validate the merged result.
+/// Overlay the `--config` file onto the raw command args.
 fn resolve<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
 where
-  T: Serialize + DeserializeOwned + Default + Validate + JsonSchema,
+  T: Serialize + DeserializeOwned + Default + JsonSchema,
 {
-  overlay_config(args, matches)?;
-  args.validate()
+  overlay_config(args, matches)
 }
 
 #[cfg(test)]
@@ -206,18 +204,18 @@ mod tests {
   use clap::error::ErrorKind;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime::commands::timetree::args::TreetimeTimetreeArgs;
+  use treetime::commands::timetree::args::TreetimeTimetreeArgsRaw;
   use treetime_utils::pretty_assert_ulps_eq;
 
   // Timetree declares no clap-required arguments, so a bare invocation exercises defaults.
-  fn parse_timetree(extra: &[&str]) -> Result<TreetimeTimetreeArgs, clap::Error> {
+  fn parse_timetree(extra: &[&str]) -> Result<TreetimeTimetreeArgsRaw, clap::Error> {
     let argv = std::iter::once("timetree").chain(extra.iter().copied());
-    TreetimeTimetreeArgs::try_parse_from(argv)
+    TreetimeTimetreeArgsRaw::try_parse_from(argv)
   }
 
   #[test]
   fn test_treetime_cli_coalescent_defaults() -> Result<(), clap::Error> {
-    // Defaults live in `TreetimeTimetreeArgs` (SmartDefault) and clap reads them via `default_value_t`.
+    // Defaults live in `TreetimeTimetreeArgsRaw` (SmartDefault) and clap reads them via `default_value_t`.
     let args = parse_timetree(&[])?;
     pretty_assert_ulps_eq!(2.0, args.coalescent_confidence);
     assert_eq!(20, args.skyline_n_points);

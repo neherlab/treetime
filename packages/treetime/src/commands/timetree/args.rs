@@ -10,6 +10,7 @@ use crate::commands::shared::reroot::RerootArgs;
 use crate::optimize::params::BranchLengthMode;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
@@ -27,10 +28,10 @@ fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
 
 pub use crate::timetree::params::TimeMarginalMode;
 
-#[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-pub struct TreetimeTimetreeArgs {
+pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
   pub config_args: ConfigArgs,
@@ -115,7 +116,7 @@ pub struct TreetimeTimetreeArgs {
   /// maximal number of iterations the inference cycle is run. For polytomy resolution and
   /// coalescence models max_iter should be at least 2
   #[default = 2]
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().max_iter))]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().max_iter))]
   pub max_iter: usize,
 
   /// Coalescent time scale in years.
@@ -151,7 +152,7 @@ pub struct TreetimeTimetreeArgs {
   /// Only used when --coalescent-skyline is set. Defines how many piecewise linear segments
   /// are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.
   #[default = 20]
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().skyline_n_points))]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().skyline_n_points))]
   #[cfg_attr(feature = "clap", clap(value_parser = parse_skyline_n_points))]
   pub skyline_n_points: usize,
 
@@ -163,7 +164,7 @@ pub struct TreetimeTimetreeArgs {
   /// stiffness is dimensionless and scale-independent. Larger values enforce a
   /// smoother Tc(t). Only used when --coalescent-skyline is set.
   #[default = 2.0]
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().skyline_stiffness))]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().skyline_stiffness))]
   pub skyline_stiffness: f64,
 
   /// Confidence level for coalescent time scale (Tc) bands, in standard deviations.
@@ -173,7 +174,7 @@ pub struct TreetimeTimetreeArgs {
   /// the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed
   /// --coalescent value is not inferred and therefore has no band.
   #[default = 2.0]
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgs::default().coalescent_confidence))]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().coalescent_confidence))]
   pub coalescent_confidence: f64,
 
   /// add posterior LH to coalescent model: use the posterior probability distributions of
@@ -398,7 +399,7 @@ pub struct TreetimeTimetreeArgs {
   #[default = 50.0]
   #[cfg_attr(
     feature = "clap",
-    clap(long, default_value_t = TreetimeTimetreeArgs::default().gen_per_year)
+    clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().gen_per_year)
   )]
   pub gen_per_year: f64,
 
@@ -409,4 +410,152 @@ pub struct TreetimeTimetreeArgs {
   /// Use stochastic polytomy resolution (not yet implemented)
   #[cfg_attr(feature = "clap", clap(long, hide = true))]
   pub stochastic_resolve: bool,
+}
+
+/// Timetree arguments after the `--config` overlay.
+///
+/// Produced from [`TreetimeTimetreeArgsRaw`] by [`TryFrom`]. Timetree has no required-only argument,
+/// so the conversion is infallible and only drops `config_args`; the split keeps a uniform shape
+/// across every command.
+#[derive(Debug, Clone)]
+pub struct TreetimeTimetreeArgs {
+  pub alignment: AlignmentArgs,
+  pub tree: Option<PathBuf>,
+  pub vcf_reference: Option<PathBuf>,
+  pub metadata: Option<PathBuf>,
+  pub metadata_id: MetadataIdArgs,
+  pub date_column_args: DateColumnArgs,
+  pub sequence_length: Option<usize>,
+  pub clock_rate: Option<f64>,
+  pub clock_std_dev: Option<f64>,
+  pub branch_length_mode: BranchLengthMode,
+  pub time_marginal: TimeMarginalMode,
+  pub confidence: bool,
+  pub keep_polytomies: bool,
+  pub resolve_polytomies: bool,
+  pub relax: Vec<f64>,
+  pub max_iter: usize,
+  pub coalescent: Option<f64>,
+  pub coalescent_opt: bool,
+  pub coalescent_skyline: bool,
+  pub skyline_n_points: usize,
+  pub skyline_stiffness: f64,
+  pub coalescent_confidence: f64,
+  pub n_branches_posterior: Option<usize>,
+  pub plot_tree: Option<PathBuf>,
+  pub plot_rtt: Option<PathBuf>,
+  pub tip_labels: bool,
+  pub no_tip_labels: bool,
+  pub clock_filter: f64,
+  pub n_iqd: Option<f64>,
+  pub reroot: RerootArgs,
+  pub keep_root: bool,
+  pub allow_negative_rate: bool,
+  pub tip_slack: Option<f64>,
+  pub covariation: bool,
+  pub model_args: ModelArgs,
+  pub method_anc: MethodAncestral,
+  pub alphabet_args: AlphabetArgs,
+  pub dense: Option<bool>,
+  pub gap_fill_args: GapFillArgs,
+  pub zero_based: bool,
+  pub include_leaves: bool,
+  pub impute_missing_data: bool,
+  pub reconstruct_tip_states: bool,
+  pub report_ambiguous: bool,
+  pub no_indels: bool,
+  pub divergence_units: DivergenceUnits,
+  pub output_augur_node_data: Option<PathBuf>,
+  pub output_gtr: Option<PathBuf>,
+  pub output_reconstructed_nuc_fasta: Option<PathBuf>,
+  pub output_clock_model: Option<PathBuf>,
+  pub output_confidence_tsv: Option<PathBuf>,
+  pub output_tracelog: Option<PathBuf>,
+  pub output_coalescent_tsv: Option<PathBuf>,
+  pub output_coalescent_csv: Option<PathBuf>,
+  pub output_coalescent_json: Option<PathBuf>,
+  pub output: OutputCoreArgs,
+  pub output_selection: Vec<TimetreeOutputSelection>,
+  pub topology_order: TopologyOrderArgs,
+  pub seed: Option<u64>,
+  pub aa: bool,
+  pub custom_gtr: Option<PathBuf>,
+  pub clock_filter_method: Option<String>,
+  pub gen_per_year: f64,
+  pub greedy_resolve: bool,
+  pub stochastic_resolve: bool,
+}
+
+impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
+  type Error = Report;
+
+  fn try_from(raw: TreetimeTimetreeArgsRaw) -> Result<Self, Report> {
+    Ok(Self {
+      alignment: raw.alignment,
+      tree: raw.tree,
+      vcf_reference: raw.vcf_reference,
+      metadata: raw.metadata,
+      metadata_id: raw.metadata_id,
+      date_column_args: raw.date_column_args,
+      sequence_length: raw.sequence_length,
+      clock_rate: raw.clock_rate,
+      clock_std_dev: raw.clock_std_dev,
+      branch_length_mode: raw.branch_length_mode,
+      time_marginal: raw.time_marginal,
+      confidence: raw.confidence,
+      keep_polytomies: raw.keep_polytomies,
+      resolve_polytomies: raw.resolve_polytomies,
+      relax: raw.relax,
+      max_iter: raw.max_iter,
+      coalescent: raw.coalescent,
+      coalescent_opt: raw.coalescent_opt,
+      coalescent_skyline: raw.coalescent_skyline,
+      skyline_n_points: raw.skyline_n_points,
+      skyline_stiffness: raw.skyline_stiffness,
+      coalescent_confidence: raw.coalescent_confidence,
+      n_branches_posterior: raw.n_branches_posterior,
+      plot_tree: raw.plot_tree,
+      plot_rtt: raw.plot_rtt,
+      tip_labels: raw.tip_labels,
+      no_tip_labels: raw.no_tip_labels,
+      clock_filter: raw.clock_filter,
+      n_iqd: raw.n_iqd,
+      reroot: raw.reroot,
+      keep_root: raw.keep_root,
+      allow_negative_rate: raw.allow_negative_rate,
+      tip_slack: raw.tip_slack,
+      covariation: raw.covariation,
+      model_args: raw.model_args,
+      method_anc: raw.method_anc,
+      alphabet_args: raw.alphabet_args,
+      dense: raw.dense,
+      gap_fill_args: raw.gap_fill_args,
+      zero_based: raw.zero_based,
+      include_leaves: raw.include_leaves,
+      impute_missing_data: raw.impute_missing_data,
+      reconstruct_tip_states: raw.reconstruct_tip_states,
+      report_ambiguous: raw.report_ambiguous,
+      no_indels: raw.no_indels,
+      divergence_units: raw.divergence_units,
+      output_augur_node_data: raw.output_augur_node_data,
+      output_gtr: raw.output_gtr,
+      output_reconstructed_nuc_fasta: raw.output_reconstructed_nuc_fasta,
+      output_clock_model: raw.output_clock_model,
+      output_confidence_tsv: raw.output_confidence_tsv,
+      output_tracelog: raw.output_tracelog,
+      output_coalescent_tsv: raw.output_coalescent_tsv,
+      output_coalescent_csv: raw.output_coalescent_csv,
+      output_coalescent_json: raw.output_coalescent_json,
+      output: raw.output,
+      output_selection: raw.output_selection,
+      topology_order: raw.topology_order,
+      seed: raw.seed,
+      aa: raw.aa,
+      custom_gtr: raw.custom_gtr,
+      clock_filter_method: raw.clock_filter_method,
+      gen_per_year: raw.gen_per_year,
+      greedy_resolve: raw.greedy_resolve,
+      stochastic_resolve: raw.stochastic_resolve,
+    })
+  }
 }

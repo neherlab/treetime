@@ -358,7 +358,12 @@ mod tests {
 
   fn tree_of(step: &ResolvedStep) -> String {
     match &step.command {
-      PipelineStepCommand::Ancestral(args) => args.tree().to_string_lossy().into_owned(),
+      PipelineStepCommand::Ancestral(args) => args
+        .tree
+        .as_deref()
+        .expect("ancestral step has a tree")
+        .to_string_lossy()
+        .into_owned(),
       _ => panic!("expected ancestral step"),
     }
   }

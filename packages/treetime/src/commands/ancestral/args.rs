@@ -7,18 +7,20 @@ use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{AncestralOutputSelection, OutputCoreArgs, TopologyOrderArgs};
+use crate::commands::shared::required::missing_required_args;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-pub struct TreetimeAncestralArgs {
+pub struct TreetimeAncestralArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
   pub config_args: ConfigArgs,
@@ -220,12 +222,95 @@ pub struct TreetimeAncestralArgs {
   pub sample_from_profile: SampleMode,
 }
 
+/// Ancestral reconstruction arguments with required inputs proven present.
+///
+/// Produced from [`TreetimeAncestralArgsRaw`] by [`TryFrom`] once the `--config` overlay has run, so
+/// the run code reads `tree` without an `Option`.
+#[derive(Debug, Clone)]
+pub struct TreetimeAncestralArgs {
+  pub alignment: AlignmentArgs,
+  pub vcf_reference: Option<PathBuf>,
+  pub tree: PathBuf,
+  pub alphabet_args: AlphabetArgs,
+  pub model_args: ModelArgs,
+  pub method_anc: MethodAncestral,
+  pub dense: Option<bool>,
+  pub gap_fill_args: GapFillArgs,
+  pub zero_based: bool,
+  pub include_leaves: bool,
+  pub impute_missing_data: bool,
+  pub reconstruct_tip_states: bool,
+  pub report_ambiguous: bool,
+  pub ignore_missing_alns: bool,
+  pub output_augur_node_data: Option<PathBuf>,
+  pub output_gtr: Option<PathBuf>,
+  pub output_reconstructed_nuc_fasta: Option<PathBuf>,
+  pub translations: Option<String>,
+  pub cdses: Vec<String>,
+  pub annotation: Option<PathBuf>,
+  pub aa_root_sequence: Option<PathBuf>,
+  pub aa_model: AaModelName,
+  pub output_reconstructed_aa_fasta: Option<String>,
+  pub output: OutputCoreArgs,
+  pub output_selection: Vec<AncestralOutputSelection>,
+  pub topology_order: TopologyOrderArgs,
+  pub gtr_iterations: usize,
+  pub site_specific_gtr: bool,
+  pub seed: Option<u64>,
+  pub aa: bool,
+  pub marginal: bool,
+  pub custom_gtr: Option<PathBuf>,
+  pub sample_from_profile: SampleMode,
+}
+
 impl TreetimeAncestralArgs {
-  /// Input tree path. Present by construction: required-field validation runs during CLI parsing.
+  /// Input tree path.
   pub fn tree(&self) -> &Path {
-    self
+    &self.tree
+  }
+}
+
+impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
+  type Error = Report;
+
+  fn try_from(raw: TreetimeAncestralArgsRaw) -> Result<Self, Report> {
+    let tree = raw
       .tree
-      .as_deref()
-      .expect("`--tree` is required and is validated during CLI parsing")
+      .ok_or_else(|| missing_required_args::<TreetimeAncestralArgsRaw>(&["tree"]))?;
+    Ok(Self {
+      alignment: raw.alignment,
+      vcf_reference: raw.vcf_reference,
+      tree,
+      alphabet_args: raw.alphabet_args,
+      model_args: raw.model_args,
+      method_anc: raw.method_anc,
+      dense: raw.dense,
+      gap_fill_args: raw.gap_fill_args,
+      zero_based: raw.zero_based,
+      include_leaves: raw.include_leaves,
+      impute_missing_data: raw.impute_missing_data,
+      reconstruct_tip_states: raw.reconstruct_tip_states,
+      report_ambiguous: raw.report_ambiguous,
+      ignore_missing_alns: raw.ignore_missing_alns,
+      output_augur_node_data: raw.output_augur_node_data,
+      output_gtr: raw.output_gtr,
+      output_reconstructed_nuc_fasta: raw.output_reconstructed_nuc_fasta,
+      translations: raw.translations,
+      cdses: raw.cdses,
+      annotation: raw.annotation,
+      aa_root_sequence: raw.aa_root_sequence,
+      aa_model: raw.aa_model,
+      output_reconstructed_aa_fasta: raw.output_reconstructed_aa_fasta,
+      output: raw.output,
+      output_selection: raw.output_selection,
+      topology_order: raw.topology_order,
+      gtr_iterations: raw.gtr_iterations,
+      site_specific_gtr: raw.site_specific_gtr,
+      seed: raw.seed,
+      aa: raw.aa,
+      marginal: raw.marginal,
+      custom_gtr: raw.custom_gtr,
+      sample_from_profile: raw.sample_from_profile,
+    })
   }
 }

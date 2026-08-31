@@ -32,12 +32,15 @@ pub fn run_mugration(
 
   let resolved = mugration_args.resolve_outputs()?;
 
+  // The attribute names the metadata column to read discrete states from.
+  let attribute_column = Some(mugration_args.attribute().to_owned());
+
   let (attr_values, _attr_name) = read_discrete_attrs::<String>(
     mugration_args.metadata(),
     &mugration_args.metadata_id.metadata_delimiters,
     &mugration_args.metadata_id.metadata_id_columns,
     &None,
-    &mugration_args.attribute,
+    &attribute_column,
     |s| Ok(s.to_owned()),
   )?;
   let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
@@ -47,7 +50,7 @@ pub fn run_mugration(
       weights_filepath,
       &mugration_args.metadata_id.metadata_delimiters,
       &[],
-      &mugration_args.attribute,
+      &attribute_column,
       &Some("weight".to_owned()),
       |s| Ok(s.parse::<f64>()?),
     )?;

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
-  use crate::commands::optimize::args::{OptimizeRerootMethod, TreetimeOptimizeArgs};
+  use crate::commands::optimize::args::{OptimizeRerootMethod, TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
   use crate::o;
   use pretty_assertions::assert_eq;
 
@@ -10,17 +10,20 @@ mod tests {
     reroot_tips: Vec<String>,
     keep_root: bool,
   ) -> TreetimeOptimizeArgs {
-    TreetimeOptimizeArgs {
+    // A tree is required to build the validated args; `reroot_spec` does not depend on it.
+    TreetimeOptimizeArgs::try_from(TreetimeOptimizeArgsRaw {
+      tree: Some("tree.nwk".into()),
       reroot,
       reroot_tips,
       keep_root,
-      ..TreetimeOptimizeArgs::default()
-    }
+      ..Default::default()
+    })
+    .unwrap()
   }
 
   #[test]
   fn test_optimize_args_reroot_spec_default_keeps_root() {
-    let args = TreetimeOptimizeArgs::default();
+    let args = args_with(None, vec![], false);
     assert_eq!(None, args.reroot_spec());
   }
 

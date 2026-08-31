@@ -6,20 +6,22 @@ use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{ClockOutputSelection, OutputCoreArgs, TopologyOrderArgs};
+use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::RerootArgs;
 use crate::optimize::params::BranchLengthMode;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-pub struct TreetimeClockArgs {
+pub struct TreetimeClockArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
   pub config_args: ConfigArgs,
@@ -149,13 +151,86 @@ pub struct TreetimeClockArgs {
   pub clock_regression: ClockRegressionArgs,
 }
 
+/// Clock arguments with required inputs proven present.
+///
+/// Produced from [`TreetimeClockArgsRaw`] by [`TryFrom`] once the `--config` overlay has run, so the
+/// run code reads `metadata` without an `Option`.
+#[derive(Debug, Clone)]
+pub struct TreetimeClockArgs {
+  pub alignment: AlignmentArgs,
+  pub tree: Option<PathBuf>,
+  pub vcf_reference: Option<PathBuf>,
+  pub metadata: PathBuf,
+  pub metadata_id: MetadataIdArgs,
+  pub date_column: DateColumnArgs,
+  pub sequence_length: Option<usize>,
+  pub model_args: ModelArgs,
+  pub branch_length_mode: BranchLengthMode,
+  pub method_anc: MethodAncestral,
+  pub clock_filter: f64,
+  pub reroot: RerootArgs,
+  pub keep_root: bool,
+  pub prune_short: bool,
+  pub tip_slack: Option<f64>,
+  pub covariation: bool,
+  pub allow_negative_rate: bool,
+  pub output: OutputCoreArgs,
+  pub output_clock_model: Option<PathBuf>,
+  pub output_clock_csv: Option<PathBuf>,
+  pub output_selection: Vec<ClockOutputSelection>,
+  pub topology_order: TopologyOrderArgs,
+  pub seed: Option<u64>,
+  pub clock_filter_method: Option<String>,
+  pub plot_rtt: Option<PathBuf>,
+  pub prune_outliers: bool,
+  pub branch_split: BranchSplitArgs,
+  pub clock_regression: ClockRegressionArgs,
+}
+
 impl TreetimeClockArgs {
-  /// Metadata (dates) path. Present by construction: required-field validation runs during CLI parsing.
+  /// Metadata (dates) path.
   pub fn metadata(&self) -> &Path {
-    self
+    &self.metadata
+  }
+}
+
+impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
+  type Error = Report;
+
+  fn try_from(raw: TreetimeClockArgsRaw) -> Result<Self, Report> {
+    let metadata = raw
       .metadata
-      .as_deref()
-      .expect("`--metadata` is required and is validated during CLI parsing")
+      .ok_or_else(|| missing_required_args::<TreetimeClockArgsRaw>(&["metadata"]))?;
+    Ok(Self {
+      alignment: raw.alignment,
+      tree: raw.tree,
+      vcf_reference: raw.vcf_reference,
+      metadata,
+      metadata_id: raw.metadata_id,
+      date_column: raw.date_column,
+      sequence_length: raw.sequence_length,
+      model_args: raw.model_args,
+      branch_length_mode: raw.branch_length_mode,
+      method_anc: raw.method_anc,
+      clock_filter: raw.clock_filter,
+      reroot: raw.reroot,
+      keep_root: raw.keep_root,
+      prune_short: raw.prune_short,
+      tip_slack: raw.tip_slack,
+      covariation: raw.covariation,
+      allow_negative_rate: raw.allow_negative_rate,
+      output: raw.output,
+      output_clock_model: raw.output_clock_model,
+      output_clock_csv: raw.output_clock_csv,
+      output_selection: raw.output_selection,
+      topology_order: raw.topology_order,
+      seed: raw.seed,
+      clock_filter_method: raw.clock_filter_method,
+      plot_rtt: raw.plot_rtt,
+      prune_outliers: raw.prune_outliers,
+      branch_split: raw.branch_split,
+      clock_regression: raw.clock_regression,
+    })
   }
 }
 

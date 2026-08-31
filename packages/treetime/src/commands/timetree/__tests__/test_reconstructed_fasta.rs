@@ -104,7 +104,7 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::commands::shared::alignment::AlignmentArgs;
-    use crate::commands::timetree::args::TreetimeTimetreeArgs;
+    use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use crate::commands::timetree::run::run_timetree_estimation;
     use crate::progress::NoopProgress;
     use eyre::Report;
@@ -141,7 +141,7 @@ mod tests {
       std::fs::create_dir_all(&outdir)?;
       let fasta = outdir.join("ancestral_sequences.fasta");
 
-      let mut args = TreetimeTimetreeArgs {
+      let mut args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
         alignment: AlignmentArgs {
           alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
         },
@@ -149,8 +149,9 @@ mod tests {
         metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
         max_iter: 2,
         output_reconstructed_nuc_fasta: Some(fasta.clone()),
-        ..TreetimeTimetreeArgs::default()
-      };
+        ..TreetimeTimetreeArgsRaw::default()
+      })
+      .unwrap();
       configure(&mut args);
 
       run_timetree_estimation(&args, &NoopProgress)?;

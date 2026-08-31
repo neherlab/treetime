@@ -2,18 +2,20 @@ use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::output::{OutputCoreArgs, PruneOutputSelection, TopologyOrderArgs};
+use crate::commands::shared::required::missing_required_args;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-pub struct TreetimePruneArgs {
+pub struct TreetimePruneArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
   pub config_args: ConfigArgs,
@@ -110,12 +112,57 @@ pub struct TreetimePruneArgs {
   pub prune_nodes_list_file_delimiter: char,
 }
 
+/// Prune arguments with required inputs proven present.
+///
+/// Produced from [`TreetimePruneArgsRaw`] by [`TryFrom`] once the `--config` overlay has run, so the
+/// run code reads `tree` without an `Option`.
+#[derive(Debug, Clone)]
+pub struct TreetimePruneArgs {
+  pub alignment: AlignmentArgs,
+  pub tree: PathBuf,
+  pub alphabet_args: AlphabetArgs,
+  pub output: OutputCoreArgs,
+  pub output_gtr: Option<PathBuf>,
+  pub output_selection: Vec<PruneOutputSelection>,
+  pub topology_order: TopologyOrderArgs,
+  pub prune_short: Option<f64>,
+  pub prune_empty: bool,
+  pub merge_shared_mutations: bool,
+  pub prune_nodes_list: Option<String>,
+  pub prune_nodes_list_delimiter: char,
+  pub prune_nodes_list_file: Option<PathBuf>,
+  pub prune_nodes_list_file_delimiter: char,
+}
+
 impl TreetimePruneArgs {
-  /// Input tree path. Present by construction: required-field validation runs during CLI parsing.
+  /// Input tree path.
   pub fn tree(&self) -> &Path {
-    self
+    &self.tree
+  }
+}
+
+impl TryFrom<TreetimePruneArgsRaw> for TreetimePruneArgs {
+  type Error = Report;
+
+  fn try_from(raw: TreetimePruneArgsRaw) -> Result<Self, Report> {
+    let tree = raw
       .tree
-      .as_deref()
-      .expect("`--tree` is required and is validated during CLI parsing")
+      .ok_or_else(|| missing_required_args::<TreetimePruneArgsRaw>(&["tree"]))?;
+    Ok(Self {
+      alignment: raw.alignment,
+      tree,
+      alphabet_args: raw.alphabet_args,
+      output: raw.output,
+      output_gtr: raw.output_gtr,
+      output_selection: raw.output_selection,
+      topology_order: raw.topology_order,
+      prune_short: raw.prune_short,
+      prune_empty: raw.prune_empty,
+      merge_shared_mutations: raw.merge_shared_mutations,
+      prune_nodes_list: raw.prune_nodes_list,
+      prune_nodes_list_delimiter: raw.prune_nodes_list_delimiter,
+      prune_nodes_list_file: raw.prune_nodes_list_file,
+      prune_nodes_list_file_delimiter: raw.prune_nodes_list_file_delimiter,
+    })
   }
 }

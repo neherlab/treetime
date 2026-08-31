@@ -8,12 +8,12 @@ use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde_json::{Value, json};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use treetime::commands::ancestral::args::TreetimeAncestralArgs;
-use treetime::commands::clock::args::TreetimeClockArgs;
-use treetime::commands::mugration::args::TreetimeMugrationArgs;
-use treetime::commands::optimize::args::TreetimeOptimizeArgs;
-use treetime::commands::prune::args::TreetimePruneArgs;
-use treetime::commands::timetree::args::TreetimeTimetreeArgs;
+use treetime::commands::ancestral::args::TreetimeAncestralArgsRaw;
+use treetime::commands::clock::args::TreetimeClockArgsRaw;
+use treetime::commands::mugration::args::TreetimeMugrationArgsRaw;
+use treetime::commands::optimize::args::TreetimeOptimizeArgsRaw;
+use treetime::commands::prune::args::TreetimePruneArgsRaw;
+use treetime::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use treetime_schema::{TreetimeSchemaFormat, generate_schema as generate_data_schema};
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
@@ -113,12 +113,12 @@ fn generate_one(target: SchemaTarget, output: &Path) -> Result<(), Report> {
 
   let schema = match target {
     SchemaTarget::Pipeline => pipeline_schema(),
-    SchemaTarget::Timetree => command_schema::<TreetimeTimetreeArgs>(),
-    SchemaTarget::Optimize => command_schema::<TreetimeOptimizeArgs>(),
-    SchemaTarget::Prune => command_schema::<TreetimePruneArgs>(),
-    SchemaTarget::Ancestral => command_schema::<TreetimeAncestralArgs>(),
-    SchemaTarget::Clock => command_schema::<TreetimeClockArgs>(),
-    SchemaTarget::Mugration => command_schema::<TreetimeMugrationArgs>(),
+    SchemaTarget::Timetree => command_schema::<TreetimeTimetreeArgsRaw>(),
+    SchemaTarget::Optimize => command_schema::<TreetimeOptimizeArgsRaw>(),
+    SchemaTarget::Prune => command_schema::<TreetimePruneArgsRaw>(),
+    SchemaTarget::Ancestral => command_schema::<TreetimeAncestralArgsRaw>(),
+    SchemaTarget::Clock => command_schema::<TreetimeClockArgsRaw>(),
+    SchemaTarget::Mugration => command_schema::<TreetimeMugrationArgsRaw>(),
     SchemaTarget::All | SchemaTarget::VersionInfo | SchemaTarget::ProgressEvent | SchemaTarget::ErrorResponse => {
       unreachable!("aggregate and data-type targets are handled earlier")
     },
@@ -151,12 +151,12 @@ pub fn command_schema<T: JsonSchema>() -> Schema {
 /// precise leaf error and its location.
 pub fn command_schema_for(tag: &str) -> Option<Schema> {
   Some(match tag {
-    "timetree" => command_schema::<TreetimeTimetreeArgs>(),
-    "optimize" => command_schema::<TreetimeOptimizeArgs>(),
-    "prune" => command_schema::<TreetimePruneArgs>(),
-    "ancestral" => command_schema::<TreetimeAncestralArgs>(),
-    "clock" => command_schema::<TreetimeClockArgs>(),
-    "mugration" => command_schema::<TreetimeMugrationArgs>(),
+    "timetree" => command_schema::<TreetimeTimetreeArgsRaw>(),
+    "optimize" => command_schema::<TreetimeOptimizeArgsRaw>(),
+    "prune" => command_schema::<TreetimePruneArgsRaw>(),
+    "ancestral" => command_schema::<TreetimeAncestralArgsRaw>(),
+    "clock" => command_schema::<TreetimeClockArgsRaw>(),
+    "mugration" => command_schema::<TreetimeMugrationArgsRaw>(),
     _ => return None,
   })
 }
@@ -238,7 +238,7 @@ mod tests {
   // loosened and no template pattern appears anywhere in the document.
   #[test]
   fn test_schema_command_is_strict_without_templates() {
-    let schema = serde_json::to_value(command_schema::<TreetimeAncestralArgs>()).unwrap();
+    let schema = serde_json::to_value(command_schema::<TreetimeAncestralArgsRaw>()).unwrap();
     assert!(
       !helpers::contains_template_pattern(&schema),
       "a per-command schema must not loosen any leaf to a template string"

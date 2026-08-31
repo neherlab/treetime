@@ -184,7 +184,7 @@ mod tests {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::params::MethodAncestral;
     use crate::commands::ancestral::aa_node_data::{AaCdsNodeData, AaNodeData};
-    use crate::commands::ancestral::args::TreetimeAncestralArgs;
+    use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
     use crate::commands::ancestral::augur_node_data::build_augur_node_data_json;
     use crate::commands::ancestral::run::run_ancestral_reconstruction;
     use crate::commands::shared::alignment::AlignmentArgs;
@@ -292,7 +292,7 @@ mod tests {
       std::fs::write(&tree_path, "(A:0.1,B:0.1)root;").unwrap();
       std::fs::write(&fasta_path, ">A\nACGT\n>B\nACGT\n").unwrap();
 
-      let args = TreetimeAncestralArgs {
+      let args = TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw {
         alignment: AlignmentArgs {
           alignment: vec![fasta_path],
         },
@@ -308,8 +308,9 @@ mod tests {
           ..Default::default()
         },
         output_augur_node_data: Some(node_data_path.clone()),
-        ..TreetimeAncestralArgs::default()
-      };
+        ..TreetimeAncestralArgsRaw::default()
+      })
+      .unwrap();
 
       run_ancestral_reconstruction(&args, &NoopProgress).unwrap();
       std::fs::read_to_string(node_data_path).unwrap()
@@ -332,7 +333,7 @@ mod tests {
       std::fs::write(translations_dir.join("M.fasta"), ">A\nWY\n>B\nWY\n").unwrap();
       let template = format!("{}/{{cds}}.fasta", translations_dir.display());
 
-      let args = TreetimeAncestralArgs {
+      let args = TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw {
         alignment: AlignmentArgs {
           alignment: vec![fasta_path],
         },
@@ -350,8 +351,9 @@ mod tests {
           ..Default::default()
         },
         output_augur_node_data: Some(node_data_path.clone()),
-        ..TreetimeAncestralArgs::default()
-      };
+        ..TreetimeAncestralArgsRaw::default()
+      })
+      .unwrap();
 
       run_ancestral_reconstruction(&args, &NoopProgress).unwrap();
       json_read_str(std::fs::read_to_string(node_data_path).unwrap()).unwrap()

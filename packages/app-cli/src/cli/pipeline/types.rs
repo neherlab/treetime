@@ -5,14 +5,14 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Map, Value};
 use std::path::Path;
-use treetime::commands::ancestral::args::TreetimeAncestralArgs;
-use treetime::commands::clock::args::TreetimeClockArgs;
-use treetime::commands::mugration::args::TreetimeMugrationArgs;
-use treetime::commands::optimize::args::TreetimeOptimizeArgs;
-use treetime::commands::prune::args::TreetimePruneArgs;
+use treetime::commands::ancestral::args::TreetimeAncestralArgsRaw;
+use treetime::commands::clock::args::TreetimeClockArgsRaw;
+use treetime::commands::mugration::args::TreetimeMugrationArgsRaw;
+use treetime::commands::optimize::args::TreetimeOptimizeArgsRaw;
+use treetime::commands::prune::args::TreetimePruneArgsRaw;
 use treetime::commands::shared::output::{CommandKind, ResolvedOutputs};
 use treetime::commands::shared::resolve_outputs::ResolveOutputs;
-use treetime::commands::timetree::args::TreetimeTimetreeArgs;
+use treetime::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use treetime_utils::make_error;
 
 /// Reserved top-level key that associates a JSON config with its schema in an editor.
@@ -31,17 +31,19 @@ pub const COMMAND_TAGS: [&str; 6] = ["timetree", "optimize", "prune", "ancestral
 /// A single analysis command invocation within a pipeline.
 ///
 /// Externally tagged and kebab-cased so a step's payload is exactly the command's serialized args
-/// object (the same shape the per-command `--config` accepts). `timetree` is boxed to match the
-/// CLI enum and keep the variant sizes balanced.
+/// object (the same shape the per-command `--config` accepts, i.e. the raw args). `timetree` is boxed
+/// to match the CLI enum and keep the variant sizes balanced. The runner converts each raw command to
+/// its validated form before executing it, so a missing required input is a proper error rather than a
+/// panic.
 #[derive(Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum PipelineStepCommand {
-  Timetree(Box<TreetimeTimetreeArgs>),
-  Optimize(TreetimeOptimizeArgs),
-  Prune(TreetimePruneArgs),
-  Ancestral(TreetimeAncestralArgs),
-  Clock(TreetimeClockArgs),
-  Mugration(TreetimeMugrationArgs),
+  Timetree(Box<TreetimeTimetreeArgsRaw>),
+  Optimize(TreetimeOptimizeArgsRaw),
+  Prune(TreetimePruneArgsRaw),
+  Ancestral(TreetimeAncestralArgsRaw),
+  Clock(TreetimeClockArgsRaw),
+  Mugration(TreetimeMugrationArgsRaw),
 }
 
 impl PipelineStepCommand {

@@ -23,12 +23,19 @@ use app_cli::cli::verbosity::Verbosity;
 use ctor::ctor;
 use eyre::Report;
 use log::info;
+use treetime::commands::ancestral::args::TreetimeAncestralArgs;
 use treetime::commands::ancestral::run::run_ancestral_reconstruction;
+use treetime::commands::clock::args::TreetimeClockArgs;
 use treetime::commands::clock::run::run_clock;
+use treetime::commands::homoplasy::args::TreetimeHomoplasyArgs;
 use treetime::commands::homoplasy::run::run_homoplasy;
+use treetime::commands::mugration::args::TreetimeMugrationArgs;
 use treetime::commands::mugration::run::run_mugration;
+use treetime::commands::optimize::args::TreetimeOptimizeArgs;
 use treetime::commands::optimize::run::run_optimize;
+use treetime::commands::prune::args::TreetimePruneArgs;
 use treetime::commands::prune::run::run_prune;
+use treetime::commands::timetree::args::TreetimeTimetreeArgs;
 use treetime::commands::timetree::run::run_timetree_estimation;
 use treetime::progress::{NoopProgress, ProgressSink};
 use treetime_utils::init::global::global_init;
@@ -75,18 +82,23 @@ fn main() -> Result<(), Report> {
 
   match args.command {
     TreetimeCommands::Timetree(timetree_args) => {
+      let timetree_args = TreetimeTimetreeArgs::try_from(*timetree_args)?;
       run_timetree_estimation(&timetree_args, &*progress)?;
     },
     TreetimeCommands::Optimize(optimize_args) => {
+      let optimize_args = TreetimeOptimizeArgs::try_from(optimize_args)?;
       run_optimize(&optimize_args, &*progress)?;
     },
     TreetimeCommands::Prune(prune_args) => {
+      let prune_args = TreetimePruneArgs::try_from(prune_args)?;
       run_prune(&prune_args, &*progress)?;
     },
     TreetimeCommands::Ancestral(ancestral_args) => {
+      let ancestral_args = TreetimeAncestralArgs::try_from(ancestral_args)?;
       run_ancestral_reconstruction(&ancestral_args, &*progress)?;
     },
     TreetimeCommands::Clock(clock_args) => {
+      let clock_args = TreetimeClockArgs::try_from(clock_args)?;
       let result = run_clock(&clock_args, &*progress)?;
       if let Some(outdir) = &clock_args.output.output_all {
         write_clock_regression_chart_svg(
@@ -105,9 +117,10 @@ fn main() -> Result<(), Report> {
       }
     },
     TreetimeCommands::Homoplasy(homoplasy_args) => {
-      run_homoplasy(homoplasy_args)?;
+      run_homoplasy(TreetimeHomoplasyArgs::try_from(homoplasy_args)?)?;
     },
     TreetimeCommands::Mugration(mugration_args) => {
+      let mugration_args = TreetimeMugrationArgs::try_from(mugration_args)?;
       run_mugration(&mugration_args, &*progress)?;
     },
     TreetimeCommands::Pipeline(pipeline_args) => {

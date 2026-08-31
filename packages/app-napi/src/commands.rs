@@ -2,8 +2,9 @@ use crate::progress::{self, NapiProgressSink};
 use app_api::datasets::discover_datasets;
 use app_api::progress::{CancelledError, NoopProgress};
 use app_api::{
-  TreetimeAncestralArgs, TreetimeClockArgs, TreetimeMugrationArgs, TreetimeOptimizeArgs, TreetimePruneArgs,
-  TreetimeTimetreeArgs,
+  TreetimeAncestralArgs, TreetimeAncestralArgsRaw, TreetimeClockArgs, TreetimeClockArgsRaw, TreetimeMugrationArgs,
+  TreetimeMugrationArgsRaw, TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw, TreetimePruneArgs, TreetimePruneArgsRaw,
+  TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw,
 };
 use napi::Task;
 use napi::threadsafe_function::ThreadsafeFunction;
@@ -27,7 +28,8 @@ pub fn datasets() -> String {
 #[napi]
 #[allow(clippy::needless_pass_by_value)]
 pub fn ancestral_sync(args_json: String) -> napi::Result<String> {
-  let args: TreetimeAncestralArgs = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
+  let raw: TreetimeAncestralArgsRaw = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
+  let args = TreetimeAncestralArgs::try_from(raw).map_err(|e| eyre_to_napi(&e))?;
   let result = app_api::commands::ancestral(&args, &NoopProgress).map_err(|e| eyre_to_napi(&e))?;
   serde_json::to_string(&result).map_err(|e| json_to_napi(&e))
 }
@@ -50,7 +52,7 @@ fn json_to_napi(err: &serde_json::Error) -> napi::Error {
 }
 
 macro_rules! define_task {
-  ($task_name:ident, $args_type:ty, $api_fn:path, $napi_fn:ident) => {
+  ($task_name:ident, $raw_type:ty, $args_type:ty, $api_fn:path, $napi_fn:ident) => {
     pub struct $task_name {
       args: $args_type,
       on_event: Arc<ThreadsafeFunction<String, ()>>,
@@ -81,7 +83,8 @@ macro_rules! define_task {
       args_json: String,
       on_event: Arc<ThreadsafeFunction<String, ()>>,
     ) -> napi::Result<napi::bindgen_prelude::AsyncTask<$task_name>> {
-      let args: $args_type = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
+      let raw: $raw_type = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
+      let args: $args_type = raw.try_into().map_err(|e| eyre_to_napi(&e))?;
       Ok(napi::bindgen_prelude::AsyncTask::new($task_name { args, on_event }))
     }
   };
@@ -115,27 +118,43 @@ pub fn ancestral(
   args_json: String,
   _on_event: Arc<ThreadsafeFunction<String, ()>>,
 ) -> napi::Result<napi::bindgen_prelude::AsyncTask<AncestralTaskNoop>> {
-  let args: TreetimeAncestralArgs = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
+  let raw: TreetimeAncestralArgsRaw = serde_json::from_str(&args_json).map_err(|e| json_to_napi(&e))?;
+  let args = TreetimeAncestralArgs::try_from(raw).map_err(|e| eyre_to_napi(&e))?;
   Ok(napi::bindgen_prelude::AsyncTask::new(AncestralTaskNoop { args }))
 }
 
-define_task!(ClockTask, TreetimeClockArgs, app_api::commands::clock, clock);
+define_task!(
+  ClockTask,
+  TreetimeClockArgsRaw,
+  TreetimeClockArgs,
+  app_api::commands::clock,
+  clock
+);
 define_task!(
   TimetreeTask,
+  TreetimeTimetreeArgsRaw,
   TreetimeTimetreeArgs,
   app_api::commands::timetree,
   timetree
 );
 define_task!(
   MugrationTask,
+  TreetimeMugrationArgsRaw,
   TreetimeMugrationArgs,
   app_api::commands::mugration,
   mugration
 );
 define_task!(
   OptimizeTask,
+  TreetimeOptimizeArgsRaw,
   TreetimeOptimizeArgs,
   app_api::commands::optimize,
   optimize
 );
-define_task!(PruneTask, TreetimePruneArgs, app_api::commands::prune, prune);
+define_task!(
+  PruneTask,
+  TreetimePruneArgsRaw,
+  TreetimePruneArgs,
+  app_api::commands::prune,
+  prune
+);

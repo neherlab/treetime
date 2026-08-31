@@ -5,6 +5,7 @@ pub mod gap_fill;
 pub mod metadata;
 pub mod model;
 pub mod output;
+pub mod required;
 pub mod reroot;
 pub mod resolve_outputs;
 pub mod tree_output;

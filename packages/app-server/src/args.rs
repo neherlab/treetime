@@ -55,12 +55,11 @@ impl From<ServerAncestralArgs> for TreetimeAncestralArgs {
     use treetime::commands::shared::model::ModelArgs;
     use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
-      config_args: treetime::commands::shared::config::ConfigArgs::default(),
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
       },
       vcf_reference: s.vcf_reference.map(PathBuf::from),
-      tree: Some(PathBuf::from(s.tree)),
+      tree: PathBuf::from(s.tree),
       alphabet_args: AlphabetArgs { alphabet: s.alphabet },
       model_args: ModelArgs {
         model: s.model_name,
@@ -136,17 +135,18 @@ pub struct ServerClockArgs {
 
 impl From<ServerClockArgs> for TreetimeClockArgs {
   fn from(s: ServerClockArgs) -> Self {
+    use treetime::commands::clock::args::{BranchSplitArgs, ClockRegressionArgs};
     use treetime::commands::shared::alignment::AlignmentArgs;
     use treetime::commands::shared::metadata::DateColumnArgs;
     use treetime::commands::shared::model::ModelArgs;
-    use treetime::commands::shared::output::OutputCoreArgs;
+    use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
       alignment: AlignmentArgs {
         alignment: s.aln.into_iter().map(PathBuf::from).collect(),
       },
       tree: s.tree.map(PathBuf::from),
       vcf_reference: s.vcf_reference.map(PathBuf::from),
-      metadata: Some(PathBuf::from(s.dates)),
+      metadata: PathBuf::from(s.dates),
       metadata_id: {
         let mut id = treetime::commands::shared::metadata::MetadataIdArgs::default();
         if let Some(name_col) = s.name_column {
@@ -179,8 +179,16 @@ impl From<ServerClockArgs> for TreetimeClockArgs {
         output_all: Some(PathBuf::from(s.outdir)),
         ..Default::default()
       },
+      output_clock_model: None,
+      output_clock_csv: None,
+      output_selection: vec![],
+      topology_order: TopologyOrderArgs::default(),
       seed: s.seed,
-      ..TreetimeClockArgs::default()
+      clock_filter_method: None,
+      plot_rtt: None,
+      prune_outliers: false,
+      branch_split: BranchSplitArgs::default(),
+      clock_regression: ClockRegressionArgs::default(),
     }
   }
 }
@@ -261,7 +269,6 @@ impl From<ServerTimetreeArgs> for TreetimeTimetreeArgs {
     use treetime::commands::shared::model::ModelArgs;
     use treetime::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TopologyOrderArgs};
     Self {
-      config_args: treetime::commands::shared::config::ConfigArgs::default(),
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
       },
@@ -381,10 +388,9 @@ impl From<ServerMugrationArgs> for TreetimeMugrationArgs {
   fn from(s: ServerMugrationArgs) -> Self {
     use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
-      config_args: treetime::commands::shared::config::ConfigArgs::default(),
       tree: s.tree.map(PathBuf::from),
-      attribute: Some(s.attribute),
-      metadata: Some(PathBuf::from(s.states)),
+      attribute: s.attribute,
+      metadata: PathBuf::from(s.states),
       weights: s.weights.map(PathBuf::from),
       metadata_id: {
         let mut id = treetime::commands::shared::metadata::MetadataIdArgs::default();
@@ -452,11 +458,10 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
     use treetime::commands::shared::model::ModelArgs;
     use treetime::commands::shared::output::{DivergenceUnits, OutputCoreArgs, TopologyOrderArgs};
     Self {
-      config_args: treetime::commands::shared::config::ConfigArgs::default(),
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
       },
-      tree: Some(PathBuf::from(s.tree)),
+      tree: PathBuf::from(s.tree),
       alphabet_args: AlphabetArgs { alphabet: s.alphabet },
       model_args: ModelArgs {
         model: s.model_name,
@@ -513,11 +518,10 @@ impl From<ServerPruneArgs> for TreetimePruneArgs {
     use treetime::commands::shared::alphabet::AlphabetArgs;
     use treetime::commands::shared::output::{OutputCoreArgs, TopologyOrderArgs};
     Self {
-      config_args: treetime::commands::shared::config::ConfigArgs::default(),
       alignment: AlignmentArgs {
         alignment: s.input_fastas.into_iter().map(PathBuf::from).collect(),
       },
-      tree: Some(PathBuf::from(s.tree)),
+      tree: PathBuf::from(s.tree),
       alphabet_args: AlphabetArgs { alphabet: s.alphabet },
       output: OutputCoreArgs {
         output_all: Some(PathBuf::from(s.outdir)),

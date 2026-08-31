@@ -9,11 +9,17 @@ use itertools::Itertools;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 use std::path::Path;
+use treetime::commands::ancestral::args::TreetimeAncestralArgs;
 use treetime::commands::ancestral::run::run_ancestral_reconstruction;
+use treetime::commands::clock::args::TreetimeClockArgs;
 use treetime::commands::clock::run::run_clock;
+use treetime::commands::mugration::args::TreetimeMugrationArgs;
 use treetime::commands::mugration::run::run_mugration;
+use treetime::commands::optimize::args::TreetimeOptimizeArgs;
 use treetime::commands::optimize::run::run_optimize;
+use treetime::commands::prune::args::TreetimePruneArgs;
 use treetime::commands::prune::run::run_prune;
+use treetime::commands::timetree::args::TreetimeTimetreeArgs;
 use treetime::commands::timetree::run::run_timetree_estimation;
 use treetime::progress::ProgressSink;
 use treetime_utils::io::fs::read_file_to_string;
@@ -107,13 +113,29 @@ pub fn run_pipeline(
 /// clock step. The interactive terminal chart is intentionally skipped: a pipeline is non-interactive.
 fn run_step(step: &ResolvedStep, progress: &dyn ProgressSink) -> Result<(), Report> {
   match &step.command {
-    PipelineStepCommand::Timetree(args) => run_timetree_estimation(args, progress).map(|_| ()),
-    PipelineStepCommand::Optimize(args) => run_optimize(args, progress).map(|_| ()),
-    PipelineStepCommand::Prune(args) => run_prune(args, progress).map(|_| ()),
-    PipelineStepCommand::Ancestral(args) => run_ancestral_reconstruction(args, progress).map(|_| ()),
-    PipelineStepCommand::Mugration(args) => run_mugration(args, progress).map(|_| ()),
+    PipelineStepCommand::Timetree(args) => {
+      let args = TreetimeTimetreeArgs::try_from((**args).clone())?;
+      run_timetree_estimation(&args, progress).map(|_| ())
+    },
+    PipelineStepCommand::Optimize(args) => {
+      let args = TreetimeOptimizeArgs::try_from(args.clone())?;
+      run_optimize(&args, progress).map(|_| ())
+    },
+    PipelineStepCommand::Prune(args) => {
+      let args = TreetimePruneArgs::try_from(args.clone())?;
+      run_prune(&args, progress).map(|_| ())
+    },
+    PipelineStepCommand::Ancestral(args) => {
+      let args = TreetimeAncestralArgs::try_from(args.clone())?;
+      run_ancestral_reconstruction(&args, progress).map(|_| ())
+    },
+    PipelineStepCommand::Mugration(args) => {
+      let args = TreetimeMugrationArgs::try_from(args.clone())?;
+      run_mugration(&args, progress).map(|_| ())
+    },
     PipelineStepCommand::Clock(args) => {
-      let result = run_clock(args, progress)?;
+      let args = TreetimeClockArgs::try_from(args.clone())?;
+      let result = run_clock(&args, progress)?;
       if let Some(outdir) = &args.output.output_all {
         write_clock_regression_chart_svg(
           &result.regression_results,

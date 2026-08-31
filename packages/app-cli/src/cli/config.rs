@@ -21,6 +21,16 @@ use treetime_utils::io::fs::read_file_to_string;
 /// the shared diagnostics layer, so a bad value renders a caret-annotated error pointing into the
 /// file (a leaf supplied only on the command line has no file span, so it falls back to a plain
 /// message). The typed value is materialized only after validation passes.
+///
+/// Two invariants of `T` keep the merge lossless:
+///
+/// - Symmetric serde round-trip: `from_value(to_value(x))` reproduces `x`. The merge serializes the
+///   defaults and the CLI args to JSON, layers them, and deserializes the result back, so an
+///   asymmetric field serializer would corrupt every load. The `test_config_*_round_trip` tests pin
+///   this per command.
+/// - Per-struct `#[serde(default)]`: the config file is partial, so every field the file omits must
+///   deserialize from the layered defaults rather than error as missing. Each command args struct and
+///   each nested arg group therefore carries `#[serde(default)]`.
 pub fn overlay_config<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
 where
   T: Serialize + DeserializeOwned + Default + JsonSchema,
@@ -135,7 +145,6 @@ mod tests {
   mod end_to_end {
     use crate::cli::config::overlay_config;
     use crate::cli::treetime_cli::TreetimeArgs;
-    use crate::cli::validate::Validate;
     use clap::{CommandFactory, FromArgMatches};
     use eyre::Report;
     use indoc::indoc;
@@ -143,21 +152,21 @@ mod tests {
     use std::fs;
     use std::path::{Path, PathBuf};
     use tempfile::tempdir;
-    use treetime::commands::ancestral::args::TreetimeAncestralArgs;
-    use treetime::commands::clock::args::TreetimeClockArgs;
-    use treetime::commands::homoplasy::args::TreetimeHomoplasyArgs;
-    use treetime::commands::mugration::args::TreetimeMugrationArgs;
-    use treetime::commands::optimize::args::TreetimeOptimizeArgs;
-    use treetime::commands::prune::args::TreetimePruneArgs;
-    use treetime::commands::timetree::args::TreetimeTimetreeArgs;
+    use treetime::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use treetime::commands::clock::args::TreetimeClockArgsRaw;
+    use treetime::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
+    use treetime::commands::mugration::args::TreetimeMugrationArgsRaw;
+    use treetime::commands::optimize::args::TreetimeOptimizeArgsRaw;
+    use treetime::commands::prune::args::TreetimePruneArgsRaw;
+    use treetime::commands::timetree::args::TreetimeTimetreeArgsRaw;
     use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
     // Drive the real parse path: full clap parse (which records value sources), then the `--config`
     // overlay, exactly as `treetime_parse_cli_args` does for a subcommand.
-    fn parse_timetree(argv: &[&str]) -> TreetimeTimetreeArgs {
+    fn parse_timetree(argv: &[&str]) -> TreetimeTimetreeArgsRaw {
       let matches = TreetimeArgs::command().get_matches_from(argv);
       let sub = matches.subcommand_matches("timetree").unwrap();
-      let mut args = TreetimeTimetreeArgs::from_arg_matches(sub).unwrap();
+      let mut args = TreetimeTimetreeArgsRaw::from_arg_matches(sub).unwrap();
       overlay_config(&mut args, sub).unwrap();
       args
     }
@@ -212,14 +221,14 @@ mod tests {
       pretty_assert_ulps_eq!(2.0, args.coalescent_confidence);
     }
 
-    // Full resolve path for a command with a required argument: parse, overlay `--config`, validate.
+    // Full resolve path for a command with a required argument: parse the raw args, overlay
+    // `--config`, then convert to the validated form (which enforces required-argument presence).
     fn resolve_ancestral(argv: &[&str]) -> Result<TreetimeAncestralArgs, Report> {
       let matches = TreetimeArgs::command().get_matches_from(argv);
       let sub = matches.subcommand_matches("ancestral").unwrap();
-      let mut args = TreetimeAncestralArgs::from_arg_matches(sub).unwrap();
+      let mut args = TreetimeAncestralArgsRaw::from_arg_matches(sub).unwrap();
       overlay_config(&mut args, sub)?;
-      args.validate()?;
-      Ok(args)
+      TreetimeAncestralArgs::try_from(args)
     }
 
     // The headline of Part 1: a required argument may be supplied entirely by the config file, with no
@@ -280,29 +289,29 @@ mod tests {
     reject_unknown_top_level_key!(
       test_config_ancestral_rejects_unknown_key,
       "ancestral",
-      TreetimeAncestralArgs
+      TreetimeAncestralArgsRaw
     );
-    reject_unknown_top_level_key!(test_config_clock_rejects_unknown_key, "clock", TreetimeClockArgs);
+    reject_unknown_top_level_key!(test_config_clock_rejects_unknown_key, "clock", TreetimeClockArgsRaw);
     reject_unknown_top_level_key!(
       test_config_timetree_rejects_unknown_key,
       "timetree",
-      TreetimeTimetreeArgs
+      TreetimeTimetreeArgsRaw
     );
     reject_unknown_top_level_key!(
       test_config_optimize_rejects_unknown_key,
       "optimize",
-      TreetimeOptimizeArgs
+      TreetimeOptimizeArgsRaw
     );
-    reject_unknown_top_level_key!(test_config_prune_rejects_unknown_key, "prune", TreetimePruneArgs);
+    reject_unknown_top_level_key!(test_config_prune_rejects_unknown_key, "prune", TreetimePruneArgsRaw);
     reject_unknown_top_level_key!(
       test_config_mugration_rejects_unknown_key,
       "mugration",
-      TreetimeMugrationArgs
+      TreetimeMugrationArgsRaw
     );
     reject_unknown_top_level_key!(
       test_config_homoplasy_rejects_unknown_key,
       "homoplasy",
-      TreetimeHomoplasyArgs
+      TreetimeHomoplasyArgsRaw
     );
 
     // C1: strictness reaches into nested arg groups too, so a typo inside a flattened struct (here
@@ -319,7 +328,7 @@ mod tests {
         "},
       )
       .unwrap();
-      let result = overlay_result::<TreetimeAncestralArgs>("ancestral", &path);
+      let result = overlay_result::<TreetimeAncestralArgsRaw>("ancestral", &path);
       assert_error!(result, "invalid configuration (1 problem reported above)");
     }
 
@@ -343,5 +352,144 @@ mod tests {
       let args = parse_timetree(&["treetime", "timetree", "--config", path.to_str().unwrap()]);
       pretty_assert_ulps_eq!(5.7e-05, args.clock_rate.unwrap());
     }
+  }
+
+  // C2/C3: the raw -> validated conversion enforces required-argument presence and reports every
+  // missing flag with the clap-style message, built from the command's clap metadata so a flag
+  // rename cannot desync it.
+  mod required_args {
+    use pretty_assertions::assert_eq;
+    use treetime::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use treetime::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
+    use treetime::commands::homoplasy::args::{TreetimeHomoplasyArgs, TreetimeHomoplasyArgsRaw};
+    use treetime::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
+    use treetime::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
+    use treetime::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
+    use treetime::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
+    use treetime_utils::assert_error;
+
+    #[test]
+    fn test_config_required_ancestral_missing_tree_errors() {
+      assert_error!(
+        TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw::default()),
+        "the following required arguments were not provided:\n  --tree <TREE>"
+      );
+    }
+
+    #[test]
+    fn test_config_required_ancestral_with_tree_ok() {
+      let raw = TreetimeAncestralArgsRaw {
+        tree: Some("tree.nwk".into()),
+        ..Default::default()
+      };
+      let args = TreetimeAncestralArgs::try_from(raw).unwrap();
+      assert_eq!(std::path::Path::new("tree.nwk"), args.tree());
+    }
+
+    #[test]
+    fn test_config_required_optimize_missing_tree_errors() {
+      assert_error!(
+        TreetimeOptimizeArgs::try_from(TreetimeOptimizeArgsRaw::default()),
+        "the following required arguments were not provided:\n  --tree <TREE>"
+      );
+    }
+
+    #[test]
+    fn test_config_required_prune_missing_tree_errors() {
+      assert_error!(
+        TreetimePruneArgs::try_from(TreetimePruneArgsRaw::default()),
+        "the following required arguments were not provided:\n  --tree <TREE>"
+      );
+    }
+
+    #[test]
+    fn test_config_required_clock_missing_metadata_errors() {
+      assert_error!(
+        TreetimeClockArgs::try_from(TreetimeClockArgsRaw::default()),
+        "the following required arguments were not provided:\n  --metadata <METADATA>"
+      );
+    }
+
+    #[test]
+    fn test_config_required_mugration_missing_both_lists_both() {
+      assert_error!(
+        TreetimeMugrationArgs::try_from(TreetimeMugrationArgsRaw::default()),
+        "the following required arguments were not provided:\n  --metadata <METADATA>\n  --attribute <ATTRIBUTE>"
+      );
+    }
+
+    #[test]
+    fn test_config_required_mugration_only_attribute_missing_lists_attribute() {
+      let raw = TreetimeMugrationArgsRaw {
+        metadata: Some("metadata.tsv".into()),
+        ..Default::default()
+      };
+      assert_error!(
+        TreetimeMugrationArgs::try_from(raw),
+        "the following required arguments were not provided:\n  --attribute <ATTRIBUTE>"
+      );
+    }
+
+    #[test]
+    fn test_config_required_mugration_only_metadata_missing_lists_metadata() {
+      let raw = TreetimeMugrationArgsRaw {
+        attribute: Some("country".to_owned()),
+        ..Default::default()
+      };
+      assert_error!(
+        TreetimeMugrationArgs::try_from(raw),
+        "the following required arguments were not provided:\n  --metadata <METADATA>"
+      );
+    }
+
+    #[test]
+    fn test_config_required_homoplasy_missing_tree_errors() {
+      // Homoplasy has no required field of its own; its required `--tree` lives in the embedded
+      // ancestral args and is enforced through the nested conversion.
+      assert_error!(
+        TreetimeHomoplasyArgs::try_from(TreetimeHomoplasyArgsRaw::default()),
+        "the following required arguments were not provided:\n  --tree <TREE>"
+      );
+    }
+
+    #[test]
+    fn test_config_required_timetree_defaults_ok() {
+      // Timetree has no required-only argument, so the conversion is infallible.
+      TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw::default()).unwrap();
+    }
+  }
+
+  // C5: the `--config` overlay serializes the args to JSON, layers the file, then deserializes back,
+  // so every raw args type must round-trip losslessly. A field with an asymmetric serializer, or a
+  // nested struct missing `#[serde(default)]`, fails here rather than corrupting a user's config load.
+  mod round_trip {
+    use pretty_assertions::assert_eq;
+    use serde_json::{Value, from_value, to_value};
+    use treetime::commands::ancestral::args::TreetimeAncestralArgsRaw;
+    use treetime::commands::clock::args::TreetimeClockArgsRaw;
+    use treetime::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
+    use treetime::commands::mugration::args::TreetimeMugrationArgsRaw;
+    use treetime::commands::optimize::args::TreetimeOptimizeArgsRaw;
+    use treetime::commands::prune::args::TreetimePruneArgsRaw;
+    use treetime::commands::timetree::args::TreetimeTimetreeArgsRaw;
+
+    macro_rules! round_trip {
+      ($test:ident, $ty:ty) => {
+        #[test]
+        fn $test() {
+          let value: Value = to_value(<$ty>::default()).unwrap();
+          let back: $ty = from_value(value.clone()).unwrap();
+          assert_eq!(value, to_value(back).unwrap());
+        }
+      };
+    }
+
+    round_trip!(test_config_round_trip_ancestral, TreetimeAncestralArgsRaw);
+    round_trip!(test_config_round_trip_clock, TreetimeClockArgsRaw);
+    round_trip!(test_config_round_trip_homoplasy, TreetimeHomoplasyArgsRaw);
+    round_trip!(test_config_round_trip_mugration, TreetimeMugrationArgsRaw);
+    round_trip!(test_config_round_trip_optimize, TreetimeOptimizeArgsRaw);
+    round_trip!(test_config_round_trip_prune, TreetimePruneArgsRaw);
+    round_trip!(test_config_round_trip_timetree, TreetimeTimetreeArgsRaw);
   }
 }

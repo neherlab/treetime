@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::optimize::args::TreetimeOptimizeArgs;
+  use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
   use crate::optimize::params::BranchOptMethod;
   use clap::Parser;
   use pretty_assertions::assert_eq;
@@ -19,7 +19,7 @@ mod tests {
   #[case::newton_log("newton-log", BranchOptMethod::NewtonLog)]
   #[trace]
   fn test_args_opt_method_kebab_case_parses(#[case] flag: &str, #[case] expected: BranchOptMethod) {
-    let args = TreetimeOptimizeArgs::try_parse_from([
+    let args = TreetimeOptimizeArgsRaw::try_parse_from([
       "treetime",
       "--tree=/dev/null",
       "--output-all=/dev/null",
@@ -35,7 +35,7 @@ mod tests {
   #[test]
   fn test_args_opt_method_default_is_brent_sqrt() {
     let args =
-      TreetimeOptimizeArgs::try_parse_from(["treetime", "--tree=/dev/null", "--output-all=/dev/null"]).unwrap();
+      TreetimeOptimizeArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-all=/dev/null"]).unwrap();
     assert_eq!(BranchOptMethod::BrentSqrt, args.opt_method);
   }
 
@@ -44,7 +44,7 @@ mod tests {
   /// fallback variant.
   #[test]
   fn test_args_opt_method_rejects_unknown() {
-    let result = TreetimeOptimizeArgs::try_parse_from([
+    let result = TreetimeOptimizeArgsRaw::try_parse_from([
       "treetime",
       "--tree=/dev/null",
       "--output-all=/dev/null",

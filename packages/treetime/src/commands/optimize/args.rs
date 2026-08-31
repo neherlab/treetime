@@ -5,9 +5,11 @@ use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{DivergenceUnits, OptimizeOutputSelection, OutputCoreArgs, TopologyOrderArgs};
+use crate::commands::shared::required::missing_required_args;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
@@ -34,10 +36,10 @@ impl From<OptimizeRerootMethod> for RerootMethod {
   }
 }
 
-#[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-pub struct TreetimeOptimizeArgs {
+pub struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
   pub config_args: ConfigArgs,
@@ -193,13 +195,39 @@ pub struct TreetimeOptimizeArgs {
   pub gap_fill_args: GapFillArgs,
 }
 
+/// Optimize arguments with required inputs proven present.
+///
+/// Produced from [`TreetimeOptimizeArgsRaw`] by [`TryFrom`] once the `--config` overlay has run, so
+/// the run code reads `tree` without an `Option`.
+#[derive(Debug, Clone)]
+pub struct TreetimeOptimizeArgs {
+  pub alignment: AlignmentArgs,
+  pub tree: PathBuf,
+  pub alphabet_args: AlphabetArgs,
+  pub model_args: ModelArgs,
+  pub dense: Option<bool>,
+  pub output: OutputCoreArgs,
+  pub divergence_units: DivergenceUnits,
+  pub output_augur_node_data: Option<PathBuf>,
+  pub output_gtr: Option<PathBuf>,
+  pub output_selection: Vec<OptimizeOutputSelection>,
+  pub topology_order: TopologyOrderArgs,
+  pub max_iter: usize,
+  pub dp: f64,
+  pub damping: f64,
+  pub branch_length_initial_guess: InitialGuessMode,
+  pub opt_method: BranchOptMethod,
+  pub no_indels: bool,
+  pub reroot: Option<OptimizeRerootMethod>,
+  pub reroot_tips: Vec<String>,
+  pub keep_root: bool,
+  pub gap_fill_args: GapFillArgs,
+}
+
 impl TreetimeOptimizeArgs {
-  /// Input tree path. Present by construction: required-field validation runs during CLI parsing.
+  /// Input tree path.
   pub fn tree(&self) -> &Path {
-    self
-      .tree
-      .as_deref()
-      .expect("`--tree` is required and is validated during CLI parsing")
+    &self.tree
   }
 
   /// Resolve the requested reroot policy.
@@ -220,5 +248,38 @@ impl TreetimeOptimizeArgs {
     }
 
     None
+  }
+}
+
+impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
+  type Error = Report;
+
+  fn try_from(raw: TreetimeOptimizeArgsRaw) -> Result<Self, Report> {
+    let tree = raw
+      .tree
+      .ok_or_else(|| missing_required_args::<TreetimeOptimizeArgsRaw>(&["tree"]))?;
+    Ok(Self {
+      alignment: raw.alignment,
+      tree,
+      alphabet_args: raw.alphabet_args,
+      model_args: raw.model_args,
+      dense: raw.dense,
+      output: raw.output,
+      divergence_units: raw.divergence_units,
+      output_augur_node_data: raw.output_augur_node_data,
+      output_gtr: raw.output_gtr,
+      output_selection: raw.output_selection,
+      topology_order: raw.topology_order,
+      max_iter: raw.max_iter,
+      dp: raw.dp,
+      damping: raw.damping,
+      branch_length_initial_guess: raw.branch_length_initial_guess,
+      opt_method: raw.opt_method,
+      no_indels: raw.no_indels,
+      reroot: raw.reroot,
+      reroot_tips: raw.reroot_tips,
+      keep_root: raw.keep_root,
+      gap_fill_args: raw.gap_fill_args,
+    })
   }
 }

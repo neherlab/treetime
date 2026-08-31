@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::output::{LadderizeArg, OutputCoreArgs, TimetreeOutputSelection, TopologyOrderArgs};
-  use crate::commands::timetree::args::TreetimeTimetreeArgs;
+  use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::output::coalescent::{CoalescentOutput, CoalescentOutputMode};
   use crate::commands::timetree::run::run_timetree_estimation;
   use crate::progress::NoopProgress;
@@ -20,7 +20,7 @@ mod tests {
     std::fs::create_dir_all(&outdir)?;
     let tracelog_path = outdir.join("tracelog.csv");
 
-    let args = TreetimeTimetreeArgs {
+    let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
       alignment: AlignmentArgs {
         alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
       },
@@ -32,8 +32,9 @@ mod tests {
         ..Default::default()
       },
       output_tracelog: Some(tracelog_path.clone()),
-      ..TreetimeTimetreeArgs::default()
-    };
+      ..TreetimeTimetreeArgsRaw::default()
+    })
+    .unwrap();
 
     run_timetree_estimation(&args, &NoopProgress)?;
 
@@ -100,7 +101,7 @@ mod tests {
   fn test_pipeline_timetree_ladderize_applies_to_auspice() -> Result<(), Report> {
     let root = project_root();
     let output = tempfile::tempdir()?;
-    let args = TreetimeTimetreeArgs {
+    let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
       alignment: AlignmentArgs {
         alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
       },
@@ -116,8 +117,9 @@ mod tests {
         ladderize: Some(LadderizeArg::Descending),
         ..TopologyOrderArgs::default()
       },
-      ..TreetimeTimetreeArgs::default()
-    };
+      ..TreetimeTimetreeArgsRaw::default()
+    })
+    .unwrap();
 
     run_timetree_estimation(&args, &NoopProgress)?;
 
@@ -135,7 +137,7 @@ mod tests {
   fn test_pipeline_timetree_writes_coalescent_outputs() -> Result<(), Report> {
     let root = project_root();
     let output = tempfile::tempdir()?;
-    let args = TreetimeTimetreeArgs {
+    let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
       alignment: AlignmentArgs {
         alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
       },
@@ -148,8 +150,9 @@ mod tests {
         ..Default::default()
       },
       output_coalescent_json: Some(output.path().join("timetree.coalescent.json")),
-      ..TreetimeTimetreeArgs::default()
-    };
+      ..TreetimeTimetreeArgsRaw::default()
+    })
+    .unwrap();
 
     run_timetree_estimation(&args, &NoopProgress)?;
 

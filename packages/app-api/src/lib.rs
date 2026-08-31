@@ -3,16 +3,16 @@ pub mod datasets;
 pub mod pipelines;
 pub mod progress;
 
-pub use treetime::commands::ancestral::args::TreetimeAncestralArgs;
+pub use treetime::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
 pub use treetime::commands::ancestral::result::AncestralResult;
-pub use treetime::commands::clock::args::TreetimeClockArgs;
+pub use treetime::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
 pub use treetime::commands::clock::run::ClockResult;
-pub use treetime::commands::mugration::args::TreetimeMugrationArgs;
-pub use treetime::commands::optimize::args::TreetimeOptimizeArgs;
+pub use treetime::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
+pub use treetime::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
 pub use treetime::commands::optimize::result::OptimizeResult;
-pub use treetime::commands::prune::args::TreetimePruneArgs;
+pub use treetime::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
 pub use treetime::commands::prune::result::PruneResult;
-pub use treetime::commands::timetree::args::TreetimeTimetreeArgs;
+pub use treetime::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
 pub use treetime::commands::timetree::result::TimetreeResult;
 pub use treetime::mugration::result::MugrationResult;
 

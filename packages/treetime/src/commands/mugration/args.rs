@@ -1,18 +1,20 @@
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::metadata::MetadataIdArgs;
 use crate::commands::shared::output::{MugrationOutputSelection, OutputCoreArgs, TopologyOrderArgs};
+use crate::commands::shared::required::missing_required_args;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-pub struct TreetimeMugrationArgs {
+pub struct TreetimeMugrationArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
   pub config_args: ConfigArgs,
@@ -133,20 +135,83 @@ pub struct TreetimeMugrationArgs {
   pub topology_order: TopologyOrderArgs,
 }
 
+/// Mugration arguments with required inputs proven present.
+///
+/// Produced from [`TreetimeMugrationArgsRaw`] by [`TryFrom`] once the `--config` overlay has run, so
+/// the run code reads `metadata` and `attribute` without an `Option`.
+#[derive(Debug, Clone)]
+pub struct TreetimeMugrationArgs {
+  pub tree: Option<PathBuf>,
+  pub attribute: String,
+  pub metadata: PathBuf,
+  pub weights: Option<PathBuf>,
+  pub metadata_id: MetadataIdArgs,
+  pub output_confidence_csv: Option<PathBuf>,
+  pub pc: Option<f64>,
+  pub missing_data: String,
+  pub missing_weights_threshold: f64,
+  pub iterations: usize,
+  pub sampling_bias_correction: Option<f64>,
+  pub smooth_initial_pi: bool,
+  pub filter_uninformative_root: bool,
+  pub output_augur_node_data: Option<PathBuf>,
+  pub output_gtr: Option<PathBuf>,
+  pub output_traits_csv: Option<PathBuf>,
+  pub seed: Option<u64>,
+  pub output: OutputCoreArgs,
+  pub output_selection: Vec<MugrationOutputSelection>,
+  pub topology_order: TopologyOrderArgs,
+}
+
 impl TreetimeMugrationArgs {
-  /// Metadata (states) path. Present by construction: required-field validation runs during CLI parsing.
+  /// Metadata (states) path.
   pub fn metadata(&self) -> &Path {
-    self
-      .metadata
-      .as_deref()
-      .expect("`--metadata` is required and is validated during CLI parsing")
+    &self.metadata
   }
 
-  /// Attribute to reconstruct. Present by construction: required-field validation runs during CLI parsing.
+  /// Attribute to reconstruct.
   pub fn attribute(&self) -> &str {
-    self
-      .attribute
-      .as_deref()
-      .expect("`--attribute` is required and is validated during CLI parsing")
+    &self.attribute
+  }
+}
+
+impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
+  type Error = Report;
+
+  fn try_from(raw: TreetimeMugrationArgsRaw) -> Result<Self, Report> {
+    match (raw.metadata, raw.attribute) {
+      (Some(metadata), Some(attribute)) => Ok(Self {
+        tree: raw.tree,
+        attribute,
+        metadata,
+        weights: raw.weights,
+        metadata_id: raw.metadata_id,
+        output_confidence_csv: raw.output_confidence_csv,
+        pc: raw.pc,
+        missing_data: raw.missing_data,
+        missing_weights_threshold: raw.missing_weights_threshold,
+        iterations: raw.iterations,
+        sampling_bias_correction: raw.sampling_bias_correction,
+        smooth_initial_pi: raw.smooth_initial_pi,
+        filter_uninformative_root: raw.filter_uninformative_root,
+        output_augur_node_data: raw.output_augur_node_data,
+        output_gtr: raw.output_gtr,
+        output_traits_csv: raw.output_traits_csv,
+        seed: raw.seed,
+        output: raw.output,
+        output_selection: raw.output_selection,
+        topology_order: raw.topology_order,
+      }),
+      (metadata, attribute) => {
+        let mut missing = Vec::new();
+        if metadata.is_none() {
+          missing.push("metadata");
+        }
+        if attribute.is_none() {
+          missing.push("attribute");
+        }
+        Err(missing_required_args::<TreetimeMugrationArgsRaw>(&missing))
+      },
+    }
   }
 }

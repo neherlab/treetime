@@ -1,14 +1,14 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::ancestral::args::TreetimeAncestralArgs;
-  use crate::commands::clock::args::TreetimeClockArgs;
-  use crate::commands::mugration::args::TreetimeMugrationArgs;
-  use crate::commands::optimize::args::TreetimeOptimizeArgs;
-  use crate::commands::prune::args::TreetimePruneArgs;
+  use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
+  use crate::commands::clock::args::TreetimeClockArgsRaw;
+  use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
+  use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
+  use crate::commands::prune::args::TreetimePruneArgsRaw;
   use crate::commands::shared::output::{
     AncestralOutputSelection, ClockOutputSelection, MugrationOutputSelection, NwkStyleArg, TimetreeOutputSelection,
   };
-  use crate::commands::timetree::args::TreetimeTimetreeArgs;
+  use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
   use clap::Parser;
   use pretty_assertions::assert_eq;
   use std::path::Path;
@@ -16,13 +16,13 @@ mod tests {
   #[test]
   fn test_output_args_output_all_parses() {
     let args =
-      TreetimeAncestralArgs::try_parse_from(["treetime", "--tree=/dev/null", "--output-all=/tmp/out"]).unwrap();
+      TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-all=/tmp/out"]).unwrap();
     assert_eq!(args.output.output_all.as_deref(), Some(Path::new("/tmp/out")));
   }
 
   #[test]
   fn test_output_args_output_selection_parses_csv() {
-    let args = TreetimeAncestralArgs::try_parse_from([
+    let args = TreetimeAncestralArgsRaw::try_parse_from([
       "treetime",
       "--tree=/dev/null",
       "--output-all=/tmp/out",
@@ -41,21 +41,22 @@ mod tests {
 
   #[test]
   fn test_output_args_output_selection_requires_output_all() {
-    let result = TreetimeAncestralArgs::try_parse_from(["treetime", "--tree=/dev/null", "--output-selection=nwk"]);
+    let result = TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-selection=nwk"]);
     assert!(result.is_err(), "--output-selection without --output-all should fail");
   }
 
   #[test]
   fn test_output_args_per_file_tree_nwk_parses() {
     let args =
-      TreetimeAncestralArgs::try_parse_from(["treetime", "--tree=/dev/null", "--output-tree-nwk=/tmp/my.nwk"]).unwrap();
+      TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-tree-nwk=/tmp/my.nwk"])
+        .unwrap();
     assert_eq!(args.output.output_tree_nwk.as_deref(), Some(Path::new("/tmp/my.nwk")));
   }
 
   #[test]
   fn test_output_args_per_file_tree_nexus_parses() {
     let args =
-      TreetimeOptimizeArgs::try_parse_from(["treetime", "--tree=/dev/null", "--output-tree-nexus=/tmp/tree.nexus"])
+      TreetimeOptimizeArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-tree-nexus=/tmp/tree.nexus"])
         .unwrap();
     assert_eq!(
       args.output.output_tree_nexus.as_deref(),
@@ -65,7 +66,7 @@ mod tests {
 
   #[test]
   fn test_output_args_nwk_style_parses_csv() {
-    let args = TreetimeAncestralArgs::try_parse_from([
+    let args = TreetimeAncestralArgsRaw::try_parse_from([
       "treetime",
       "--tree=/dev/null",
       "--output-tree-nwk=/tmp/my.nwk",
@@ -80,13 +81,13 @@ mod tests {
 
   #[test]
   fn test_output_args_short_flag_o_for_output_all() {
-    let args = TreetimeAncestralArgs::try_parse_from(["treetime", "--tree=/dev/null", "-O", "/tmp/out"]).unwrap();
+    let args = TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "-O", "/tmp/out"]).unwrap();
     assert_eq!(args.output.output_all.as_deref(), Some(Path::new("/tmp/out")));
   }
 
   #[test]
   fn test_output_args_output_selection_all_variant_parses() {
-    let args = TreetimeAncestralArgs::try_parse_from([
+    let args = TreetimeAncestralArgsRaw::try_parse_from([
       "treetime",
       "--tree=/dev/null",
       "--output-all=/tmp/out",
@@ -98,7 +99,7 @@ mod tests {
 
   #[test]
   fn test_output_args_rejects_unknown_selection_value() {
-    let result = TreetimeAncestralArgs::try_parse_from([
+    let result = TreetimeAncestralArgsRaw::try_parse_from([
       "treetime",
       "--tree=/dev/null",
       "--output-all=/tmp/out",
@@ -110,7 +111,7 @@ mod tests {
   #[test]
   fn test_output_args_rejects_out_of_command_selection_variant() {
     // `tracelog` is timetree-only; the ancestral selection enum has no such variant.
-    let result = TreetimeAncestralArgs::try_parse_from([
+    let result = TreetimeAncestralArgsRaw::try_parse_from([
       "treetime",
       "--tree=/dev/null",
       "--output-all=/tmp/out",
@@ -124,7 +125,7 @@ mod tests {
 
   #[test]
   fn test_ancestral_output_augur_node_data_parses() {
-    let args = TreetimeAncestralArgs::try_parse_from([
+    let args = TreetimeAncestralArgsRaw::try_parse_from([
       "treetime",
       "--tree=/dev/null",
       "--output-augur-node-data=/tmp/node.json",
@@ -139,13 +140,13 @@ mod tests {
   #[test]
   fn test_ancestral_output_gtr_parses() {
     let args =
-      TreetimeAncestralArgs::try_parse_from(["treetime", "--tree=/dev/null", "--output-gtr=/tmp/gtr.json"]).unwrap();
+      TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-gtr=/tmp/gtr.json"]).unwrap();
     assert_eq!(args.output_gtr.as_deref(), Some(Path::new("/tmp/gtr.json")));
   }
 
   #[test]
   fn test_timetree_output_clock_model_parses() {
-    let args = TreetimeTimetreeArgs::try_parse_from([
+    let args = TreetimeTimetreeArgsRaw::try_parse_from([
       "treetime",
       "--metadata=/dev/null",
       "--output-clock-model=/tmp/clock.json",
@@ -156,7 +157,7 @@ mod tests {
 
   #[test]
   fn test_timetree_output_confidence_tsv_parses() {
-    let args = TreetimeTimetreeArgs::try_parse_from([
+    let args = TreetimeTimetreeArgsRaw::try_parse_from([
       "treetime",
       "--metadata=/dev/null",
       "--output-confidence-tsv=/tmp/conf.tsv",
@@ -168,18 +169,19 @@ mod tests {
   #[test]
   fn test_timetree_output_tracelog_parses_with_alias() {
     let canonical =
-      TreetimeTimetreeArgs::try_parse_from(["treetime", "--metadata=/dev/null", "--output-tracelog=/tmp/trace.csv"])
+      TreetimeTimetreeArgsRaw::try_parse_from(["treetime", "--metadata=/dev/null", "--output-tracelog=/tmp/trace.csv"])
         .unwrap();
     assert_eq!(canonical.output_tracelog.as_deref(), Some(Path::new("/tmp/trace.csv")));
 
     let aliased =
-      TreetimeTimetreeArgs::try_parse_from(["treetime", "--metadata=/dev/null", "--tracelog=/tmp/trace.csv"]).unwrap();
+      TreetimeTimetreeArgsRaw::try_parse_from(["treetime", "--metadata=/dev/null", "--tracelog=/tmp/trace.csv"])
+        .unwrap();
     assert_eq!(aliased.output_tracelog.as_deref(), Some(Path::new("/tmp/trace.csv")));
   }
 
   #[test]
   fn test_timetree_selection_confidence_tsv_parses() {
-    let args = TreetimeTimetreeArgs::try_parse_from([
+    let args = TreetimeTimetreeArgsRaw::try_parse_from([
       "treetime",
       "--metadata=/dev/null",
       "--output-all=/tmp/out",
@@ -198,7 +200,7 @@ mod tests {
   #[test]
   fn test_clock_output_clock_csv_parses() {
     let args =
-      TreetimeClockArgs::try_parse_from(["treetime", "--metadata=/dev/null", "--output-clock-csv=/tmp/clock.csv"])
+      TreetimeClockArgsRaw::try_parse_from(["treetime", "--metadata=/dev/null", "--output-clock-csv=/tmp/clock.csv"])
         .unwrap();
     assert_eq!(args.output_clock_csv.as_deref(), Some(Path::new("/tmp/clock.csv")));
   }
@@ -206,7 +208,7 @@ mod tests {
   #[test]
   fn test_clock_rejects_augur_node_data_selection() {
     // Clock does not produce augur node data; its selection enum has no such variant.
-    let result = TreetimeClockArgs::try_parse_from([
+    let result = TreetimeClockArgsRaw::try_parse_from([
       "treetime",
       "--metadata=/dev/null",
       "--output-all=/tmp/out",
@@ -217,7 +219,7 @@ mod tests {
 
   #[test]
   fn test_clock_selection_clock_model_parses() {
-    let args = TreetimeClockArgs::try_parse_from([
+    let args = TreetimeClockArgsRaw::try_parse_from([
       "treetime",
       "--metadata=/dev/null",
       "--output-all=/tmp/out",
@@ -232,7 +234,7 @@ mod tests {
 
   #[test]
   fn test_mugration_output_traits_csv_parses() {
-    let args = TreetimeMugrationArgs::try_parse_from([
+    let args = TreetimeMugrationArgsRaw::try_parse_from([
       "treetime",
       "--metadata=/dev/null",
       "--attribute=country",
@@ -244,7 +246,7 @@ mod tests {
 
   #[test]
   fn test_mugration_output_confidence_csv_parses_with_alias() {
-    let canonical = TreetimeMugrationArgs::try_parse_from([
+    let canonical = TreetimeMugrationArgsRaw::try_parse_from([
       "treetime",
       "--metadata=/dev/null",
       "--attribute=country",
@@ -256,7 +258,7 @@ mod tests {
       Some(Path::new("/tmp/conf.csv"))
     );
 
-    let aliased = TreetimeMugrationArgs::try_parse_from([
+    let aliased = TreetimeMugrationArgsRaw::try_parse_from([
       "treetime",
       "--metadata=/dev/null",
       "--attribute=country",
@@ -271,7 +273,7 @@ mod tests {
 
   #[test]
   fn test_mugration_selection_confidence_csv_parses() {
-    let args = TreetimeMugrationArgs::try_parse_from([
+    let args = TreetimeMugrationArgsRaw::try_parse_from([
       "treetime",
       "--metadata=/dev/null",
       "--attribute=country",
@@ -285,13 +287,13 @@ mod tests {
   #[test]
   fn test_prune_output_gtr_parses() {
     let args =
-      TreetimePruneArgs::try_parse_from(["treetime", "--tree=/dev/null", "--output-gtr=/tmp/gtr.json"]).unwrap();
+      TreetimePruneArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-gtr=/tmp/gtr.json"]).unwrap();
     assert_eq!(args.output_gtr.as_deref(), Some(Path::new("/tmp/gtr.json")));
   }
 
   #[test]
   fn test_combined_output_all_and_per_file_parse() {
-    let args = TreetimeAncestralArgs::try_parse_from([
+    let args = TreetimeAncestralArgsRaw::try_parse_from([
       "treetime",
       "--tree=/dev/null",
       "--output-all=/tmp/out",

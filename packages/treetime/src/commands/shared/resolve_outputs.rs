@@ -1,10 +1,10 @@
-use crate::commands::ancestral::args::TreetimeAncestralArgs;
-use crate::commands::clock::args::TreetimeClockArgs;
-use crate::commands::mugration::args::TreetimeMugrationArgs;
-use crate::commands::optimize::args::TreetimeOptimizeArgs;
-use crate::commands::prune::args::TreetimePruneArgs;
+use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
+use crate::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
+use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
+use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
 use crate::commands::shared::output::{CommandKind, OutputSelection, ResolvedOutputs};
-use crate::commands::timetree::args::TreetimeTimetreeArgs;
+use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
 use eyre::Report;
 use std::path::Path;
 
@@ -26,121 +26,66 @@ fn selection<S: Copy + Into<OutputSelection>>(selection: &[S]) -> Vec<OutputSele
   selection.iter().copied().map(Into::into).collect()
 }
 
-impl ResolveOutputs for TreetimeAncestralArgs {
-  fn command_kind(&self) -> CommandKind {
-    CommandKind::Ancestral
-  }
+/// Implement [`ResolveOutputs`] for each listed type from one output-field mapping.
+///
+/// The mapping reads only the shared output fields, which are identical between a command's raw and
+/// validated args, so both get one input-independent implementation. Output resolution never touches
+/// required inputs: a pipeline step's outputs must resolve during planning, before its inputs are
+/// proven present.
+macro_rules! impl_resolve_outputs {
+  ($kind:ident; $($ty:ty),+ $(,)?; |$s:ident| $files:expr) => {
+    $(
+      impl ResolveOutputs for $ty {
+        fn command_kind(&self) -> CommandKind {
+          CommandKind::$kind
+        }
 
-  fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
-    self.output.resolve(
-      CommandKind::Ancestral,
-      &selection(&self.output_selection),
-      &[
-        (OutputSelection::AugurNodeData, self.output_augur_node_data.as_deref()),
-        (OutputSelection::Gtr, self.output_gtr.as_deref()),
-        (
-          OutputSelection::ReconstructedNucFasta,
-          self.output_reconstructed_nuc_fasta.as_deref(),
-        ),
-        (
-          OutputSelection::ReconstructedAaFasta,
-          self.output_reconstructed_aa_fasta.as_deref().map(Path::new),
-        ),
-      ],
-    )
-  }
+        fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
+          let $s = self;
+          $s.output
+            .resolve(CommandKind::$kind, &selection(&$s.output_selection), &$files)
+        }
+      }
+    )+
+  };
 }
 
-impl ResolveOutputs for TreetimeTimetreeArgs {
-  fn command_kind(&self) -> CommandKind {
-    CommandKind::Timetree
-  }
+impl_resolve_outputs!(Ancestral; TreetimeAncestralArgs, TreetimeAncestralArgsRaw; |s| [
+  (OutputSelection::AugurNodeData, s.output_augur_node_data.as_deref()),
+  (OutputSelection::Gtr, s.output_gtr.as_deref()),
+  (OutputSelection::ReconstructedNucFasta, s.output_reconstructed_nuc_fasta.as_deref()),
+  (OutputSelection::ReconstructedAaFasta, s.output_reconstructed_aa_fasta.as_deref().map(Path::new)),
+]);
 
-  fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
-    self.output.resolve(
-      CommandKind::Timetree,
-      &selection(&self.output_selection),
-      &[
-        (OutputSelection::AugurNodeData, self.output_augur_node_data.as_deref()),
-        (OutputSelection::Gtr, self.output_gtr.as_deref()),
-        (
-          OutputSelection::ReconstructedNucFasta,
-          self.output_reconstructed_nuc_fasta.as_deref(),
-        ),
-        (OutputSelection::ClockModel, self.output_clock_model.as_deref()),
-        (OutputSelection::ConfidenceTsv, self.output_confidence_tsv.as_deref()),
-        (OutputSelection::Tracelog, self.output_tracelog.as_deref()),
-        (OutputSelection::CoalescentTsv, self.output_coalescent_tsv.as_deref()),
-        (OutputSelection::CoalescentCsv, self.output_coalescent_csv.as_deref()),
-        (OutputSelection::CoalescentJson, self.output_coalescent_json.as_deref()),
-      ],
-    )
-  }
-}
+impl_resolve_outputs!(Timetree; TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw; |s| [
+  (OutputSelection::AugurNodeData, s.output_augur_node_data.as_deref()),
+  (OutputSelection::Gtr, s.output_gtr.as_deref()),
+  (OutputSelection::ReconstructedNucFasta, s.output_reconstructed_nuc_fasta.as_deref()),
+  (OutputSelection::ClockModel, s.output_clock_model.as_deref()),
+  (OutputSelection::ConfidenceTsv, s.output_confidence_tsv.as_deref()),
+  (OutputSelection::Tracelog, s.output_tracelog.as_deref()),
+  (OutputSelection::CoalescentTsv, s.output_coalescent_tsv.as_deref()),
+  (OutputSelection::CoalescentCsv, s.output_coalescent_csv.as_deref()),
+  (OutputSelection::CoalescentJson, s.output_coalescent_json.as_deref()),
+]);
 
-impl ResolveOutputs for TreetimeClockArgs {
-  fn command_kind(&self) -> CommandKind {
-    CommandKind::Clock
-  }
+impl_resolve_outputs!(Clock; TreetimeClockArgs, TreetimeClockArgsRaw; |s| [
+  (OutputSelection::ClockModel, s.output_clock_model.as_deref()),
+  (OutputSelection::ClockCsv, s.output_clock_csv.as_deref()),
+]);
 
-  fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
-    self.output.resolve(
-      CommandKind::Clock,
-      &selection(&self.output_selection),
-      &[
-        (OutputSelection::ClockModel, self.output_clock_model.as_deref()),
-        (OutputSelection::ClockCsv, self.output_clock_csv.as_deref()),
-      ],
-    )
-  }
-}
+impl_resolve_outputs!(Mugration; TreetimeMugrationArgs, TreetimeMugrationArgsRaw; |s| [
+  (OutputSelection::AugurNodeData, s.output_augur_node_data.as_deref()),
+  (OutputSelection::Gtr, s.output_gtr.as_deref()),
+  (OutputSelection::ConfidenceCsv, s.output_confidence_csv.as_deref()),
+  (OutputSelection::TraitsCsv, s.output_traits_csv.as_deref()),
+]);
 
-impl ResolveOutputs for TreetimeMugrationArgs {
-  fn command_kind(&self) -> CommandKind {
-    CommandKind::Mugration
-  }
+impl_resolve_outputs!(Optimize; TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw; |s| [
+  (OutputSelection::AugurNodeData, s.output_augur_node_data.as_deref()),
+  (OutputSelection::Gtr, s.output_gtr.as_deref()),
+]);
 
-  fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
-    self.output.resolve(
-      CommandKind::Mugration,
-      &selection(&self.output_selection),
-      &[
-        (OutputSelection::AugurNodeData, self.output_augur_node_data.as_deref()),
-        (OutputSelection::Gtr, self.output_gtr.as_deref()),
-        (OutputSelection::ConfidenceCsv, self.output_confidence_csv.as_deref()),
-        (OutputSelection::TraitsCsv, self.output_traits_csv.as_deref()),
-      ],
-    )
-  }
-}
-
-impl ResolveOutputs for TreetimeOptimizeArgs {
-  fn command_kind(&self) -> CommandKind {
-    CommandKind::Optimize
-  }
-
-  fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
-    self.output.resolve(
-      CommandKind::Optimize,
-      &selection(&self.output_selection),
-      &[
-        (OutputSelection::AugurNodeData, self.output_augur_node_data.as_deref()),
-        (OutputSelection::Gtr, self.output_gtr.as_deref()),
-      ],
-    )
-  }
-}
-
-impl ResolveOutputs for TreetimePruneArgs {
-  fn command_kind(&self) -> CommandKind {
-    CommandKind::Prune
-  }
-
-  fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
-    self.output.resolve(
-      CommandKind::Prune,
-      &selection(&self.output_selection),
-      &[(OutputSelection::Gtr, self.output_gtr.as_deref())],
-    )
-  }
-}
+impl_resolve_outputs!(Prune; TreetimePruneArgs, TreetimePruneArgsRaw; |s| [
+  (OutputSelection::Gtr, s.output_gtr.as_deref()),
+]);
