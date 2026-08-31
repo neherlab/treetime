@@ -1,9 +1,7 @@
 use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::partition::marginal::dense::partition::{PartitionMarginalDense, assign_sequence};
-use crate::partition::marginal::shared::{
-  IndexedMarginalPartition, MarginalData, MarginalPartition, marginal_process_backward_indexed,
-  marginal_process_forward_indexed,
-};
+use crate::partition::marginal::shared::data::{IndexedMarginalPartition, MarginalData, MarginalPartition};
+use crate::partition::marginal::shared::pass::{marginal_process_backward_indexed, marginal_process_forward_indexed};
 use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::traits::PartitionMarginalPasses;
 use eyre::Report;

@@ -4,7 +4,7 @@ use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_report;
-use crate::partition::marginal::shared::MarginalData;
+use crate::partition::marginal::shared::data::MarginalData;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::traits::{

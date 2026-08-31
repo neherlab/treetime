@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::marginal::shared::{forward_log_lh_add_normalization, forward_log_lh_remove_child};
+  use crate::partition::marginal::shared::normalize::{forward_log_lh_add_normalization, forward_log_lh_remove_child};
   use crate::partition::marginal::sparse::message::normalize_1d_inplace;
   use ndarray::{Array1, array};
   use proptest::prelude::*;

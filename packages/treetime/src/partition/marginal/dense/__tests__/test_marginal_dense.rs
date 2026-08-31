@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::marginal::shared::{normalize_from_log, normalize_inplace};
+  use crate::partition::marginal::shared::normalize::{normalize_from_log, normalize_inplace};
   use crate::pretty_assert_neg_inf;
   use approx::assert_abs_diff_eq;
   use ndarray::{Array2, array};
