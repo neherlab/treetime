@@ -160,11 +160,6 @@ where
   ) {
     (&mut self.data.nodes, &mut self.data.edges)
   }
-
-  fn leaf_profile(&self, node_key: GraphNodeKey) -> Result<DenseSeqDistribution, Report> {
-    let node = &self.data.nodes[&node_key];
-    Ok(node.profile.clone())
-  }
 }
 
 impl<N, E> IndexedMarginalPartition<N, E> for PartitionMarginalDiscrete

@@ -9,10 +9,8 @@ use itertools::Itertools;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNodeKey, NodeAncestralOps};
 use treetime_primitives::LogLh;
-use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
 
 impl<N, E> MarginalPartition<N, E> for PartitionMarginalDense
@@ -35,104 +33,6 @@ where
     &mut BTreeMap<GraphEdgeKey, DenseEdgePartition>,
   ) {
     (&mut self.data.nodes, &mut self.data.edges)
-  }
-
-  fn leaf_profile(&self, node_key: GraphNodeKey) -> Result<DenseSeqDistribution, Report> {
-    let seq_info = &self.data.nodes[&node_key];
-    Ok(DenseSeqDistribution {
-      dis: self.alphabet.seq2prof(&seq_info.seq.sequence)?,
-      log_lh: LogLh::ZERO,
-    })
-  }
-
-  fn backward_internal_pre(&mut self, node: &GraphNodeBackward<N, E>) {
-    let child_non_chars: Vec<&Vec<(usize, usize)>> = node
-      .child_keys
-      .iter()
-      .map(|(child_key, _)| &self.data.nodes[child_key].seq.non_char)
-      .collect_vec();
-    let child_gaps: Vec<&Vec<(usize, usize)>> = node
-      .child_keys
-      .iter()
-      .map(|(child_key, _)| &self.data.nodes[child_key].seq.gaps)
-      .collect_vec();
-
-    let ranges = compute_node_ranges(&child_non_chars, &child_gaps);
-    let non_char = ranges.non_char;
-    let unknown = ranges.unknown;
-
-    let child_unknown: Vec<&Vec<(usize, usize)>> = node
-      .child_keys
-      .iter()
-      .map(|(child_key, _)| &self.data.nodes[child_key].seq.unknown)
-      .collect_vec();
-    let child_variable_indels: Vec<&_> = node
-      .child_keys
-      .iter()
-      .map(|(child_key, _)| &self.data.nodes[child_key].seq.variable_indel)
-      .collect_vec();
-
-    let indels_bw = resolve_indels_backward(&child_gaps, &child_unknown, &child_variable_indels, self.length);
-
-    let seq = DenseSeqInfo {
-      gaps: indels_bw.resolved_gaps,
-      unknown,
-      non_char,
-      variable_indel: indels_bw.variable_indel,
-      ..DenseSeqInfo::default()
-    };
-
-    self.data.nodes.insert(
-      node.key,
-      DenseNodePartition {
-        seq,
-        profile: DenseSeqDistribution::default(),
-      },
-    );
-  }
-
-  fn forward_post(&mut self, graph: &Graph<N, E, ()>, node: &GraphNodeForward<N, E>) -> Result<(), Report> {
-    if node.is_root {
-      let node_data = self.data.nodes.get_mut(&node.key).unwrap();
-      node_data.seq.variable_indel.clear();
-      let seq = assign_sequence(node_data, &self.alphabet);
-      node_data.seq.sequence = seq;
-      node_data.seq.non_char = range_union(&[node_data.seq.gaps.clone(), node_data.seq.unknown.clone()]);
-    } else {
-      if !node.is_leaf {
-        let node_data = self.data.nodes.get_mut(&node.key).unwrap();
-        node_data.seq.sequence = assign_sequence(node_data, &self.alphabet);
-      }
-
-      let (parent_key, edge_key) =
-        get_exactly_one(&node.parent_keys).expect("Non-root dense node must have exactly one parent");
-      let parent_gaps = self.data.nodes[parent_key].seq.gaps.clone();
-      let parent_sequence = self.data.nodes[parent_key].seq.sequence.clone();
-
-      let node_data = self.data.nodes.get_mut(&node.key).unwrap();
-      let variable_indel = std::mem::take(&mut node_data.seq.variable_indel);
-
-      let (indels, new_gaps) = resolve_indels_forward(
-        &variable_indel,
-        &node_data.seq.gaps,
-        &node_data.seq.non_char,
-        &parent_gaps,
-        &parent_sequence,
-        &node_data.seq.sequence,
-      );
-      node_data.seq.gaps = new_gaps;
-      node_data.seq.non_char = range_union(&[node_data.seq.gaps.clone(), node_data.seq.unknown.clone()]);
-      for gap in &node_data.seq.gaps {
-        node_data.seq.sequence[gap.0..gap.1].fill(self.alphabet.gap());
-      }
-      for unk in &node_data.seq.unknown {
-        node_data.seq.sequence[unk.0..unk.1].fill(self.alphabet.unknown());
-      }
-
-      let edge_data = self.data.edges.get_mut(edge_key).unwrap();
-      edge_data.indels = indels;
-    }
-    Ok(())
   }
 }
 

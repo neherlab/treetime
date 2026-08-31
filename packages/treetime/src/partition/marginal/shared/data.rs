@@ -10,7 +10,6 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::{GraphNodeBackward, GraphNodeForward};
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_utils::array::ndarray::argmax_first;
 
@@ -88,14 +87,6 @@ where
     &mut BTreeMap<GraphNodeKey, DenseNodePartition>,
     &mut BTreeMap<GraphEdgeKey, DenseEdgePartition>,
   );
-
-  fn leaf_profile(&self, node_key: GraphNodeKey) -> Result<DenseSeqDistribution, Report>;
-
-  fn backward_internal_pre(&mut self, _node: &GraphNodeBackward<N, E>) {}
-
-  fn forward_post(&mut self, _graph: &Graph<N, E, ()>, _node: &GraphNodeForward<N, E>) -> Result<(), Report> {
-    Ok(())
-  }
 }
 
 pub trait IndexedMarginalPartition<N, E>: MarginalPartition<N, E>
