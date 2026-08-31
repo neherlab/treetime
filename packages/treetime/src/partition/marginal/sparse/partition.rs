@@ -2,8 +2,8 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::gtr::GTR;
 use crate::make_error;
-use crate::partition::marginal::sparse::pass;
 use crate::partition::marginal::sparse::reconstruct::{reconstruct_leaf_sequence, reconstruct_map_seq_sampled};
+use crate::partition::marginal::sparse::{backward, forward};
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::partition::traits::{
@@ -156,11 +156,11 @@ where
   E: EdgeOptimizeOps,
 {
   fn process_backward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
-    pass::backward::process_backward_indexed(self, graph)
+    backward::process_backward_indexed(self, graph)
   }
 
   fn process_forward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
-    pass::forward::process_forward_indexed(self, graph)
+    forward::process_forward_indexed(self, graph)
   }
 
   fn get_sequence_length(&self) -> usize {
