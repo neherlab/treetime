@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json
+
 # Tree cleanup: drop short and uninformative branches, collapse shared mutations (rsv/a/100).
 #
 # Run from the repository root:

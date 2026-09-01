@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json
+
 # Branch-length optimization with divergence-based rerooting (flu/h3n2/20).
 #
 # Run from the repository root:

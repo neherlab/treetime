@@ -68,10 +68,10 @@ This is not a replacement for a full multi-sample workflow manager: incremental 
 
 ## Editor support
 
-Both file kinds are plain JSON or YAML (one parser reads both). Generate the JSON schemas that back completion and validation with:
+Each example begins with a `yaml-language-server` modeline pointing at the committed schema for its own command in [`packages/schemas`](../packages/schemas), so an editor gives completion, hover documentation, and inline validation with no extra setup. The URL names the command (or `pipeline` for a pipeline file):
 
-```bash
-treetime schema --for all -o tmp/schemas
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json
 ```
 
-A pipeline file may carry a top-level `$schema` key pointing at `pipeline.schema.json`; the loader ignores it and editors use it. A per-command config has no `$schema` key (the strict commands reject unknown keys), so map its schema in the editor by filename instead, for example with the YAML extension's `yaml.schemas` setting keyed on `optimize.schema.json`, `timetree.schema.json`, and so on.
+A JSON config, which cannot carry a comment, uses a top-level `$schema` key with the same URL instead; the loader accepts and ignores it either way. Regenerate the schemas after changing any command's arguments with `treetime schema --for all -o packages/schemas`.

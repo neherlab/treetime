@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
 # Phylodynamics + phylogeography in one file: time tree, then ancestral geography (zika/20).
 #
 # Run from the repository root:

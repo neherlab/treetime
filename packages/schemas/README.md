@@ -24,13 +24,13 @@ The runtime data-contract schemas (`version-info`, `progress-event`, `error-resp
 
 ## Associating a schema with a config file
 
-Add a top-level `$schema` key whose value is the URL of the matching schema. It works in both YAML and JSON, the editor reads it for completion and validation, and the config loader accepts and ignores it.
+For a YAML config, add a `yaml-language-server` modeline as the first line, pointing at the matching schema. The editor reads it for completion and validation.
 
 ```yaml
-"$schema": "https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json"
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
 ```
 
-The example configs under `data/` carry such a key pointing at the `rust` branch. For a local checkout you may instead point at a relative path (resolved from the config file's location by the [Red Hat YAML extension](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml)).
+The example configs under `data/` carry such a modeline pointing at the `rust` branch. A JSON config, which cannot carry a comment, uses a top-level `$schema` key with the same URL instead; the loader accepts and ignores it. The [Red Hat YAML extension](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) resolves a relative path from the config file's location if you prefer a local checkout to the branch URL.
 
 ## Regenerating
 

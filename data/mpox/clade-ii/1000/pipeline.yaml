@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
 # Nextstrain mpox build (clade IIb, hmpxv1), TreeTime part in one file (mpox/clade-ii/1000).
 #
 # Run from the repository root:

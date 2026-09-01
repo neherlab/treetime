@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
 # Seasonal influenza H3N2 build: optimize, reconstruct, date (flu/h3n2/500).
 #
 # Run from the repository root:
