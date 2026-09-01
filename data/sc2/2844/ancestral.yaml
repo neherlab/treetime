@@ -1,0 +1,18 @@
+# Marginal ancestral reconstruction on 2844 SARS-CoV-2 genomes (sc2/2844).
+#
+# Run from the repository root:
+#   treetime ancestral --config data/sc2/2844/ancestral.yaml
+#
+# A large single-command run: marginal reconstruction treats every site
+# independently, fits a GTR rate matrix from the data (the default
+# `model: infer`), and maps nucleotide mutations onto the tree. The sparse
+# representation (the default) stores only variable sites, which keeps a
+# genome-length SARS-CoV-2 alignment tractable.
+
+tree: "data/sc2/2844/tree.nwk"
+alignment:
+  - "data/sc2/2844/aln.fasta.xz"
+
+method_anc: "marginal"
+
+output_all: "tmp/examples/sc2/2844/ancestral"

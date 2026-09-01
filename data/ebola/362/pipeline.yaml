@@ -23,8 +23,7 @@ steps:
     optimize:
       tree: "{{ vars.data }}/tree.nwk"
       alignment:
-        alignment:
-          - "{{ vars.data }}/aln.fasta.xz"
+        - "{{ vars.data }}/aln.fasta.xz"
       reroot: "min-dev"
 
   # 2. Reconstruct ancestral sequences and mutations on the optimized tree.
@@ -32,8 +31,7 @@ steps:
     ancestral:
       tree: "{{ steps.optimize.outputs.nwk }}"
       alignment:
-        alignment:
-          - "{{ vars.data }}/aln.fasta.xz"
+        - "{{ vars.data }}/aln.fasta.xz"
       method_anc: "marginal"
 
   # 3. Date the optimized tree, keeping the branch lengths from step 1.
@@ -42,7 +40,6 @@ steps:
       tree: "{{ steps.optimize.outputs.nwk }}"
       metadata: "{{ vars.data }}/metadata.tsv"
       alignment:
-        alignment:
-          - "{{ vars.data }}/aln.fasta.xz"
+        - "{{ vars.data }}/aln.fasta.xz"
       coalescent_opt: true
       max_iter: 3

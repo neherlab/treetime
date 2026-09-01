@@ -12,8 +12,7 @@
 tree: "data/flu/h3n2/200/tree.nwk"
 metadata: "data/flu/h3n2/200/metadata.tsv"
 alignment:
-  alignment:
-    - "data/flu/h3n2/200/aln.fasta.xz"
+  - "data/flu/h3n2/200/aln.fasta.xz"
 
 clock_rate: 0.003
 clock_std_dev: 0.0006
@@ -21,7 +20,6 @@ confidence: true
 coalescent_opt: true
 max_iter: 3
 
-output:
-  output_all: "tmp/examples/flu/h3n2/200/timetree"
+output_all: "tmp/examples/flu/h3n2/200/timetree"
 # Confidence intervals are written to their own TSV when a path is given.
 output_confidence_tsv: "tmp/examples/flu/h3n2/200/timetree/confidence.tsv"

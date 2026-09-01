@@ -15,6 +15,5 @@ attribute: "country"
 weights: "data/zika/country_weights.csv"
 pc: 1.0
 
-output:
-  output_all: "tmp/examples/zika/20/mugration"
+output_all: "tmp/examples/zika/20/mugration"
 output_confidence_csv: "tmp/examples/zika/20/mugration/confidence.csv"

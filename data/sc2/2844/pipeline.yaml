@@ -1,0 +1,35 @@
+# SARS-CoV-2 branch-length optimization and ancestral reconstruction (sc2/2844).
+#
+# Run from the repository root:
+#   treetime pipeline --config data/sc2/2844/pipeline.yaml
+#
+# Preview the plan without running anything:
+#   treetime pipeline --config data/sc2/2844/pipeline.yaml --check
+#
+# A date-free build on 2844 SARS-CoV-2 genomes: `optimize` re-estimates branch
+# lengths and reroots on the minimum-divergence branch, then `ancestral` maps
+# nucleotide mutations onto that tree. Neither step needs sampling dates, so this
+# runs on the tree and alignment alone. `{{ steps.optimize.outputs.nwk }}` passes
+# the optimized tree to the second step.
+
+vars:
+  data: "data/sc2/2844"
+
+output_all: "tmp/examples/sc2/2844/pipeline"
+
+steps:
+  # Re-estimate branch lengths under an inferred GTR model and reroot.
+  - name: "optimize"
+    optimize:
+      tree: "{{ vars.data }}/tree.nwk"
+      alignment:
+        - "{{ vars.data }}/aln.fasta.xz"
+      reroot: "min-dev"
+
+  # Reconstruct ancestral sequences and mutations on the optimized tree.
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      alignment:
+        - "{{ vars.data }}/aln.fasta.xz"
+      method_anc: "marginal"

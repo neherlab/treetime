@@ -9,11 +9,9 @@
 
 tree: "data/ebola/20/tree.nwk"
 alignment:
-  alignment:
-    - "data/ebola/20/aln.fasta.xz"
+  - "data/ebola/20/aln.fasta.xz"
 
 # Fitch parsimony: fast, model-free ancestral states and mutations.
 method_anc: "parsimony"
 
-output:
-  output_all: "tmp/examples/ebola/20/ancestral-parsimony"
+output_all: "tmp/examples/ebola/20/ancestral-parsimony"

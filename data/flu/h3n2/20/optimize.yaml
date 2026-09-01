@@ -9,11 +9,7 @@
 
 tree: "data/flu/h3n2/20/tree.nwk"
 alignment:
-  alignment:
-    - "data/flu/h3n2/20/aln.fasta.xz"
-
-model_args:
-  model: "infer"
+  - "data/flu/h3n2/20/aln.fasta.xz"
 
 # Per-edge optimizer: Brent's method in sqrt(t) space (the default, matches v0).
 opt_method: "brent-sqrt"
@@ -21,5 +17,4 @@ opt_method: "brent-sqrt"
 # Reroot by minimizing root-to-tip divergence variance (a date-free method).
 reroot: "min-dev"
 
-output:
-  output_all: "tmp/examples/flu/h3n2/20/optimize"
+output_all: "tmp/examples/flu/h3n2/20/optimize"

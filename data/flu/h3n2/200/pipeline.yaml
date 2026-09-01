@@ -16,15 +16,12 @@ vars:
 output_all: "tmp/examples/flu/h3n2/200/pipeline"
 
 steps:
-  # Optimize branch lengths under an inferred GTR model.
+  # Optimize branch lengths under an inferred GTR model (the default).
   - name: "optimize"
     optimize:
       tree: "{{ vars.data }}/tree.nwk"
       alignment:
-        alignment:
-          - "{{ vars.data }}/aln.fasta.xz"
-      model_args:
-        model: "infer"
+        - "{{ vars.data }}/aln.fasta.xz"
 
   # Date the optimized tree with the fixed clock rate from `vars`.
   - name: "timetree"
@@ -32,8 +29,7 @@ steps:
       tree: "{{ steps.optimize.outputs.nwk }}"
       metadata: "{{ vars.data }}/metadata.tsv"
       alignment:
-        alignment:
-          - "{{ vars.data }}/aln.fasta.xz"
+        - "{{ vars.data }}/aln.fasta.xz"
       clock_rate: "{{ vars.clock_rate }}"
       clock_std_dev: "{{ vars.clock_std_dev }}"
       confidence: true

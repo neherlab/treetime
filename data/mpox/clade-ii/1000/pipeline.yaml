@@ -1,0 +1,65 @@
+# Nextstrain mpox build (clade IIb, hmpxv1), TreeTime part in one file (mpox/clade-ii/1000).
+#
+# Run from the repository root:
+#   treetime pipeline --config data/mpox/clade-ii/1000/pipeline.yaml
+#
+# Preview the whole plan, or resume after a failure, without recomputing earlier steps:
+#   treetime pipeline --config data/mpox/clade-ii/1000/pipeline.yaml --check
+#   treetime pipeline --config data/mpox/clade-ii/1000/pipeline.yaml --steps ancestral,timetree
+#
+# On the nextstrain/mpox `WIP/new_tt` phylogenetic workflow, three Snakemake
+# rules drive TreeTime: `treetime optimize` (replacing `augur refine`), then
+# `treetime ancestral` (folding in `augur translate`), then `treetime timetree`.
+# This file runs that same chain in one process.
+#
+# mpox is a slow-evolving DNA virus: divergence is measured in absolute mutations
+# (`divergence_units: mutations`), the clock rate is fixed rather than estimated
+# (`clock_rate` 5.7e-5 substitutions/site/year, with `clock_std_dev` for date
+# confidence), and indels are excluded from the branch-length likelihood
+# (`no_indels`). The clock constants live in `vars` as typed numbers, defined
+# once and reused. `{{ steps.optimize.outputs.nwk }}` carries the optimized tree
+# to the later steps with no hand-written path.
+
+vars:
+  data: "data/mpox/clade-ii/1000"
+  clock_rate: 5.7e-5
+  clock_std_dev: 2e-5
+
+output_all: "tmp/examples/mpox/clade-ii/1000/pipeline"
+
+steps:
+  # 1. Optimize branch lengths and reroot on the minimum-divergence branch.
+  - name: "optimize"
+    optimize:
+      tree: "{{ vars.data }}/tree.nwk"
+      alignment:
+        - "{{ vars.data }}/aln.fasta.xz"
+      reroot: "min-dev"
+      divergence_units: "mutations"
+      no_indels: true
+
+  # 2. Reconstruct ancestral sequences and mutations on the optimized tree.
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      alignment:
+        - "{{ vars.data }}/aln.fasta.xz"
+      method_anc: "marginal"
+
+  # 3. Date the optimized tree with the fixed clock, keeping its root and polytomies.
+  - name: "timetree"
+    timetree:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      metadata: "{{ vars.data }}/metadata.tsv"
+      metadata_id_columns:
+        - "accession"
+      alignment:
+        - "{{ vars.data }}/aln.fasta.xz"
+      clock_rate: "{{ vars.clock_rate }}"
+      clock_std_dev: "{{ vars.clock_std_dev }}"
+      keep_root: true
+      keep_polytomies: true
+      divergence_units: "mutations"
+      no_indels: true
+      confidence: true
+      max_iter: 3

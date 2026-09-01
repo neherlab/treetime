@@ -9,12 +9,10 @@
 
 tree: "data/rsv/a/100/tree.nwk"
 alignment:
-  alignment:
-    - "data/rsv/a/100/aln.fasta.xz"
+  - "data/rsv/a/100/aln.fasta.xz"
 
 prune_short: 1.0e-6
 prune_empty: true
 merge_shared_mutations: true
 
-output:
-  output_all: "tmp/examples/rsv/a/100/prune"
+output_all: "tmp/examples/rsv/a/100/prune"

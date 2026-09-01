@@ -1,0 +1,49 @@
+# Seasonal influenza H3N2 build: optimize, reconstruct, date (flu/h3n2/500).
+#
+# Run from the repository root:
+#   treetime pipeline --config data/flu/h3n2/500/pipeline.yaml
+#
+# Preview the plan, or resume from a later step after editing it:
+#   treetime pipeline --config data/flu/h3n2/500/pipeline.yaml --check
+#   treetime pipeline --config data/flu/h3n2/500/pipeline.yaml --steps timetree
+#
+# optimize -> ancestral -> timetree on 500 H3N2 hemagglutinin sequences. Seasonal
+# influenza has a well-characterized clock, so the rate is fixed
+# (`clock_rate` 0.003 substitutions/site/year) instead of estimated, defined once
+# in `vars` as a typed number. The optimized tree flows to the later steps through
+# `{{ steps.optimize.outputs.nwk }}`.
+
+vars:
+  data: "data/flu/h3n2/500"
+  clock_rate: 0.003
+  clock_std_dev: 0.0006
+
+output_all: "tmp/examples/flu/h3n2/500/pipeline"
+
+steps:
+  # Optimize branch lengths under an inferred GTR model.
+  - name: "optimize"
+    optimize:
+      tree: "{{ vars.data }}/tree.nwk"
+      alignment:
+        - "{{ vars.data }}/aln.fasta.xz"
+
+  # Reconstruct ancestral sequences and mutations on the optimized tree.
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      alignment:
+        - "{{ vars.data }}/aln.fasta.xz"
+      method_anc: "marginal"
+
+  # Date the optimized tree with the fixed clock rate from `vars`.
+  - name: "timetree"
+    timetree:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      metadata: "{{ vars.data }}/metadata.tsv"
+      alignment:
+        - "{{ vars.data }}/aln.fasta.xz"
+      clock_rate: "{{ vars.clock_rate }}"
+      clock_std_dev: "{{ vars.clock_std_dev }}"
+      confidence: true
+      max_iter: 3

@@ -10,9 +10,7 @@
 
 tree: "data/dengue/100/tree.nwk"
 metadata: "data/dengue/100/metadata.tsv"
-metadata_id:
-  metadata_id_columns:
-    - "genbank_accession"
+metadata_id_columns:
+  - "genbank_accession"
 
-output:
-  output_all: "tmp/examples/dengue/100/clock"
+output_all: "tmp/examples/dengue/100/clock"

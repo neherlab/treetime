@@ -25,8 +25,7 @@ steps:
       tree: "{{ vars.data }}/tree.nwk"
       metadata: "{{ vars.data }}/metadata.tsv"
       alignment:
-        alignment:
-          - "{{ vars.data }}/aln.fasta.xz"
+        - "{{ vars.data }}/aln.fasta.xz"
 
   # Reconstruct ancestral sampling country on the dated tree from step 1.
   - name: "mugration"
