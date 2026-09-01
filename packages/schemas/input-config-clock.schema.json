@@ -1,0 +1,586 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TreetimeClockArgsRaw",
+  "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing\nthe earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one\ninput alignment. When the list is empty, callers read uncompressed FASTA from standard input.",
+  "type": "object",
+  "properties": {
+    "alignment": {
+      "description": "Path to one or multiple FASTA files with aligned input sequences\n\nAccepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently\ndecompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file\nextension. If there's multiple input files, then different files can have different compression formats.\n\nIf no input files provided, the plain fasta input is read from standard input (stdin).\n\nSee: https://en.wikipedia.org/wiki/FASTA_format",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "tree": {
+      "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "vcf_reference": {
+      "description": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "metadata": {
+      "description": "CSV/TSV file with metadata including sampling dates",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "metadata_id_columns": {
+      "description": "Candidate column name(s) holding the taxon identifier that links metadata to tree tips\n\nThe first listed column that is present in the header is used. Matching is case-insensitive.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "strain",
+        "name",
+        "accession"
+      ]
+    },
+    "metadata_delimiters": {
+      "description": "Candidate field delimiter(s) for the metadata table\n\nThe delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1
+      },
+      "default": [
+        ",",
+        "\t",
+        ";"
+      ]
+    },
+    "date_column": {
+      "description": "Label of the column to be used as sampling date (auto-detected when omitted)",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "date_format": {
+      "description": "Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)",
+      "type": "string",
+      "default": "%Y-%m-%d"
+    },
+    "sequence_length": {
+      "description": "Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint",
+      "minimum": 0,
+      "default": null
+    },
+    "model": {
+      "description": "Substitution model to use\n\n`--model infer` infers a model from the data. Alternatively, specify the model type. If the\nspecified model requires additional options, use `--model-params` to specify those.",
+      "$ref": "#/$defs/GtrModelName",
+      "default": "infer"
+    },
+    "model_params": {
+      "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.\n\nSee the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py\nor treetime/aa_models.py",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "branch_length_mode": {
+      "description": "If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.",
+      "$ref": "#/$defs/BranchLengthMode",
+      "default": "marginal"
+    },
+    "method_anc": {
+      "description": "Method used for reconstructing ancestral sequences",
+      "$ref": "#/$defs/MethodAncestral",
+      "default": "marginal"
+    },
+    "clock_filter": {
+      "description": "ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off.",
+      "type": "number",
+      "format": "double",
+      "default": 3.0
+    },
+    "reroot": {
+      "description": "Reroot the tree by temporal-signal optimization.\n\nDefaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RerootMethod"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "reroot_tips": {
+      "description": "Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "keep_root": {
+      "description": "don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of\nroot-to-tip distance and sampling time",
+      "type": "boolean",
+      "default": false
+    },
+    "prune_short": {
+      "type": "boolean",
+      "default": false
+    },
+    "tip_slack": {
+      "description": "excess variance associated with terminal nodes accounting for overdispersion of the molecular\nclock",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double",
+      "default": null
+    },
+    "covariation": {
+      "description": "Account for covariation when estimating rates or rerooting using root-to-tip regression",
+      "type": "boolean",
+      "default": false
+    },
+    "allow_negative_rate": {
+      "description": "By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.",
+      "type": "boolean",
+      "default": false
+    },
+    "output_all": {
+      "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_nwk_style": {
+      "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/NwkStyleArg"
+      },
+      "default": []
+    },
+    "output_tree_nwk": {
+      "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_nexus": {
+      "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_auspice": {
+      "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_phyloxml": {
+      "description": "Path to output PhyloXML tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_phyloxml_json": {
+      "description": "Path to output PhyloXML-JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_mat_pb": {
+      "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_mat_json": {
+      "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_graph_json": {
+      "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_dot": {
+      "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_clock_model": {
+      "description": "Path to output clock model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_clock_csv": {
+      "description": "Path to output clock regression CSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_selection": {
+      "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ClockOutputSelection"
+      },
+      "default": []
+    },
+    "ladderize": {
+      "description": "Order tree topology before writing output files.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LadderizeArg"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "topology_order": {
+      "description": "Canonical topology ordering preset.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TopologyOrderArg"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "topology_order_target_source": {
+      "description": "Source for target-order topology sorting.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TopologyOrderTargetSourceArg"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "topology_order_target_file": {
+      "description": "File used by list or reference-topology target-order sources.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "topology_order_target_aggregate": {
+      "description": "Aggregate used to map a subtree to a target-order position.",
+      "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
+      "default": "mean"
+    },
+    "seed": {
+      "description": "Random seed",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0,
+      "default": null
+    },
+    "clock_filter_method": {
+      "description": "Method for clock filter outlier detection (not yet implemented)",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "plot_rtt": {
+      "description": "Filename to save root-to-tip regression plot (not yet implemented)",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "prune_outliers": {
+      "description": "Prune clock outlier tips from the tree (not yet implemented)",
+      "type": "boolean",
+      "default": false
+    },
+    "branch_split": {
+      "description": "Branch split optimization parameters",
+      "$ref": "#/$defs/BranchSplitArgs",
+      "default": {
+        "method": "grid",
+        "n_points": 11,
+        "brent_max_iters": 50,
+        "brent_tolerance": 1e-12,
+        "golden_max_iters": 50,
+        "golden_tolerance": 1e-12
+      }
+    },
+    "clock_regression": {
+      "description": "Clock regression model parameters",
+      "$ref": "#/$defs/ClockRegressionArgs",
+      "default": {
+        "variance_factor": 0.0,
+        "variance_offset": 0.0,
+        "variance_offset_leaf": 1.0
+      }
+    },
+    "$schema": {
+      "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "GtrModelName": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "jc69",
+            "k80",
+            "f81",
+            "hky85",
+            "t92",
+            "tn93",
+            "jtt92"
+          ]
+        },
+        {
+          "description": "Infer GTR parameters from data via Fitch parsimony substitution counts.",
+          "type": "string",
+          "const": "infer"
+        }
+      ]
+    },
+    "BranchLengthMode": {
+      "type": "string",
+      "enum": [
+        "input",
+        "marginal"
+      ]
+    },
+    "MethodAncestral": {
+      "type": "string",
+      "enum": [
+        "marginal",
+        "parsimony",
+        "joint"
+      ]
+    },
+    "RerootMethod": {
+      "type": "string",
+      "enum": [
+        "least-squares",
+        "min-dev",
+        "oldest",
+        "clock-filter"
+      ]
+    },
+    "NwkStyleArg": {
+      "description": "CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.",
+      "type": "string",
+      "enum": [
+        "plain",
+        "beast",
+        "nhx"
+      ]
+    },
+    "ClockOutputSelection": {
+      "type": "string",
+      "enum": [
+        "All",
+        "Nwk",
+        "Nexus",
+        "Auspice",
+        "Phyloxml",
+        "PhyloxmlJson",
+        "MatPb",
+        "MatJson",
+        "GraphJson",
+        "Dot",
+        "ClockModel",
+        "ClockCsv"
+      ]
+    },
+    "LadderizeArg": {
+      "type": "string",
+      "enum": [
+        "none",
+        "ascending",
+        "descending"
+      ]
+    },
+    "TopologyOrderArg": {
+      "type": "string",
+      "enum": [
+        "keep",
+        "descendant-count",
+        "descendant-count-reverse",
+        "height",
+        "height-reverse",
+        "divergence",
+        "divergence-reverse",
+        "label",
+        "label-reverse",
+        "target-order",
+        "target-order-reverse"
+      ]
+    },
+    "TopologyOrderTargetSourceArg": {
+      "type": "string",
+      "enum": [
+        "input",
+        "reference-topology",
+        "list"
+      ]
+    },
+    "TopologyOrderTargetAggregateArg": {
+      "type": "string",
+      "enum": [
+        "mean",
+        "median"
+      ]
+    },
+    "BranchSplitArgs": {
+      "description": "Branch split optimization parameters",
+      "type": "object",
+      "properties": {
+        "method": {
+          "description": "Optimization method to use for finding the best root position",
+          "$ref": "#/$defs/OptimizationMethod",
+          "default": "grid"
+        },
+        "n_points": {
+          "description": "Number of equally-spaced points to evaluate (grid method only)",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 11
+        },
+        "brent_max_iters": {
+          "description": "Maximum number of iterations for Brent's method",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 50
+        },
+        "brent_tolerance": {
+          "description": "Convergence tolerance for Brent's method",
+          "type": "number",
+          "format": "double",
+          "default": 1e-12
+        },
+        "golden_max_iters": {
+          "description": "Maximum number of iterations for golden section search",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 50
+        },
+        "golden_tolerance": {
+          "description": "Convergence tolerance for golden section search",
+          "type": "number",
+          "format": "double",
+          "default": 1e-12
+        }
+      },
+      "additionalProperties": false
+    },
+    "OptimizationMethod": {
+      "description": "Optimization method selection",
+      "oneOf": [
+        {
+          "description": "Grid search with equally-spaced evaluation points",
+          "type": "string",
+          "const": "grid"
+        },
+        {
+          "description": "Brent's method for robust 1D optimization",
+          "type": "string",
+          "const": "brent"
+        },
+        {
+          "description": "Golden section search optimization",
+          "type": "string",
+          "const": "golden-section"
+        }
+      ]
+    },
+    "ClockRegressionArgs": {
+      "description": "Clock regression model parameters",
+      "type": "object",
+      "properties": {
+        "variance_factor": {
+          "description": "Variance scaling factor proportional to branch length",
+          "type": "number",
+          "format": "double",
+          "default": 0.0
+        },
+        "variance_offset": {
+          "description": "Constant variance offset for all branches",
+          "type": "number",
+          "format": "double",
+          "default": 0.0
+        },
+        "variance_offset_leaf": {
+          "description": "Additional variance offset for leaf (terminal) nodes",
+          "type": "number",
+          "format": "double",
+          "default": 1.0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

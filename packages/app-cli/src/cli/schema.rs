@@ -1,4 +1,4 @@
-use crate::cli::pipeline::types::Pipeline;
+use crate::cli::pipeline::types::{Pipeline, SCHEMA_KEY};
 use clap::ValueEnum;
 use eyre::Report;
 use log::info;
@@ -58,13 +58,13 @@ impl SchemaTarget {
       SchemaTarget::VersionInfo => Some("version-info.schema.json"),
       SchemaTarget::ProgressEvent => Some("progress-event.schema.json"),
       SchemaTarget::ErrorResponse => Some("error-response.schema.json"),
-      SchemaTarget::Pipeline => Some("pipeline.schema.json"),
-      SchemaTarget::Timetree => Some("timetree.schema.json"),
-      SchemaTarget::Optimize => Some("optimize.schema.json"),
-      SchemaTarget::Prune => Some("prune.schema.json"),
-      SchemaTarget::Ancestral => Some("ancestral.schema.json"),
-      SchemaTarget::Clock => Some("clock.schema.json"),
-      SchemaTarget::Mugration => Some("mugration.schema.json"),
+      SchemaTarget::Pipeline => Some("input-config-pipeline.schema.json"),
+      SchemaTarget::Timetree => Some("input-config-timetree.schema.json"),
+      SchemaTarget::Optimize => Some("input-config-optimize.schema.json"),
+      SchemaTarget::Prune => Some("input-config-prune.schema.json"),
+      SchemaTarget::Ancestral => Some("input-config-ancestral.schema.json"),
+      SchemaTarget::Clock => Some("input-config-clock.schema.json"),
+      SchemaTarget::Mugration => Some("input-config-mugration.schema.json"),
     }
   }
 }
@@ -139,8 +139,29 @@ pub fn pipeline_schema() -> Schema {
 }
 
 /// A strict per-command config schema (no template loosening).
+///
+/// The reserved `$schema` key is declared as an allowed optional property so an editor validating a
+/// config that carries a `$schema` association does not flag it against the strict
+/// `additionalProperties: false`. The loader itself strips `$schema` before validating.
 pub fn command_schema<T: JsonSchema>() -> Schema {
-  draft2020_generator().into_root_schema_for::<T>()
+  let mut schema = draft2020_generator().into_root_schema_for::<T>();
+  allow_schema_ref(&mut schema);
+  schema
+}
+
+/// Declare the reserved `$schema` key as an allowed optional string property on a config schema.
+fn allow_schema_ref(schema: &mut Schema) {
+  let object = schema.ensure_object();
+  let properties = object.entry("properties").or_insert_with(|| json!({}));
+  if let Some(properties) = properties.as_object_mut() {
+    properties.insert(
+      SCHEMA_KEY.to_owned(),
+      json!({
+        "type": "string",
+        "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader."
+      }),
+    );
+  }
 }
 
 /// The strict schema for the command a step names by its tag, or `None` for an unknown tag.
@@ -215,9 +236,32 @@ impl Transform for AllowTemplateStrings {
 mod tests {
   use super::*;
   use pretty_assertions::assert_eq;
+  use std::fs;
+  use tempfile::tempdir;
 
   /// The regex a template-string branch carries, as it appears in the schema value (one backslash).
   const TEMPLATE_PATTERN: &str = r"\{\{.*\}\}";
+
+  // The schemas committed under `packages/schemas` must match what the generator emits, so a change to
+  // a command's arguments or the pipeline shape cannot silently leave a stale schema on disk. The test
+  // regenerates every schema into a temp directory through the same path the `schema` subcommand uses
+  // and compares each committed document, parsed so formatting is irrelevant.
+  #[test]
+  fn test_schema_committed_files_match_generated() {
+    let dir = tempdir().unwrap();
+    generate_schema(SchemaTarget::All, Some(&dir.path().to_path_buf())).unwrap();
+
+    let committed_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../schemas");
+    for target in all_targets() {
+      let filename = target.default_filename().expect("non-aggregate target has a filename");
+      let generated: Value = serde_json::from_str(&fs::read_to_string(dir.path().join(filename)).unwrap()).unwrap();
+      let committed: Value = serde_json::from_str(&fs::read_to_string(committed_dir.join(filename)).unwrap()).unwrap();
+      assert_eq!(
+        committed, generated,
+        "committed schema `{filename}` is stale; regenerate with `treetime schema --for all -o packages/schemas`"
+      );
+    }
+  }
 
   // The pipeline schema loosens scalar leaves so a whole-value template is accepted where a typed
   // value is expected: the step `name` leaf becomes `anyOf: [string, template string]`.

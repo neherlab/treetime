@@ -1,0 +1,470 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TreetimeOptimizeArgsRaw",
+  "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing\nthe earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one\ninput alignment. When the list is empty, callers read uncompressed FASTA from standard input.",
+  "type": "object",
+  "properties": {
+    "alignment": {
+      "description": "Path to one or multiple FASTA files with aligned input sequences\n\nAccepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently\ndecompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file\nextension. If there's multiple input files, then different files can have different compression formats.\n\nIf no input files provided, the plain fasta input is read from standard input (stdin).\n\nSee: https://en.wikipedia.org/wiki/FASTA_format",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "tree": {
+      "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "alphabet": {
+      "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AlphabetName"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "model": {
+      "description": "Substitution model to use\n\n`--model infer` infers a model from the data. Alternatively, specify the model type. If the\nspecified model requires additional options, use `--model-params` to specify those.",
+      "$ref": "#/$defs/GtrModelName",
+      "default": "infer"
+    },
+    "model_params": {
+      "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.\n\nSee the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py\nor treetime/aa_models.py",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "dense": {
+      "description": "Use dense representation of sequences on the tree\n\nDense mode stores full probability vectors at every alignment position for each\nnode. Sparse mode stores only variable positions. Dense is more accurate when\nbranches are long and many sites change, but uses more memory.",
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "default": null
+    },
+    "output_all": {
+      "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_nwk_style": {
+      "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/NwkStyleArg"
+      },
+      "default": []
+    },
+    "output_tree_nwk": {
+      "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_nexus": {
+      "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_auspice": {
+      "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_phyloxml": {
+      "description": "Path to output PhyloXML tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_phyloxml_json": {
+      "description": "Path to output PhyloXML-JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_mat_pb": {
+      "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_mat_json": {
+      "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_graph_json": {
+      "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_dot": {
+      "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "divergence_units": {
+      "description": "Units for divergence values in augur node data JSON output.\n\n`mutations-per-site` (default): branch divergence as substitutions per site.\n`mutations`: absolute count of reconstructed substitutions per branch,\nexcluding ambiguous and gap positions.",
+      "$ref": "#/$defs/DivergenceUnits",
+      "default": "mutations-per-site"
+    },
+    "output_augur_node_data": {
+      "description": "Path to output augur-compatible node data JSON.\n\nContains per-node optimized branch lengths (divergence, substitutions per\nsite) and the input alignment and tree paths. The output is compatible with\naugur export v2 --node-data.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_gtr": {
+      "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_selection": {
+      "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/OptimizeOutputSelection"
+      },
+      "default": []
+    },
+    "ladderize": {
+      "description": "Order tree topology before writing output files.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LadderizeArg"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "topology_order": {
+      "description": "Canonical topology ordering preset.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TopologyOrderArg"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "topology_order_target_source": {
+      "description": "Source for target-order topology sorting.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TopologyOrderTargetSourceArg"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "topology_order_target_file": {
+      "description": "File used by list or reference-topology target-order sources.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "topology_order_target_aggregate": {
+      "description": "Aggregate used to map a subtree to a target-order position.",
+      "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
+      "default": "mean"
+    },
+    "max_iter": {
+      "description": "Maximum number of iterations",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0,
+      "default": 10
+    },
+    "dp": {
+      "description": "Likelihood convergence threshold. The loop stops when successive\nlikelihoods differ by less than this value, or when a 2-cycle with\namplitude below this value is detected.",
+      "type": "number",
+      "format": "double",
+      "default": 0.1
+    },
+    "damping": {
+      "description": "Damping factor for outer-loop branch length updates.\n\nControls how aggressively new branch lengths replace old ones during\niterative optimization. At each iteration i, the update is:\n  bl = bl_new * (1 - d) + bl_old * d\nwhere d = max(damping^(i+1), 0.01). The 1% floor prevents fully\nundamped late iterations on non-monotone objectives.\n\nHigher values are more conservative (slower convergence, less oscillation).\nSet to 0.0 to disable damping (full update each iteration, no floor).\nMust be in [0.0, 1.0).",
+      "type": "number",
+      "format": "double",
+      "default": 0.75
+    },
+    "branch_length_initial_guess": {
+      "description": "Initial branch length estimate before Newton optimization.\n\n- auto: estimate only edges with missing or invalid branch lengths,\n  preserve valid input values (default)\n- always: estimate all edges, overwriting input branch lengths\n- never: use input branch lengths as-is; fails if any are missing",
+      "$ref": "#/$defs/InitialGuessMode",
+      "default": "auto"
+    },
+    "opt_method": {
+      "description": "Per-edge branch length optimization method.\n\nAlgorithm x parameterization:\n- brent: Brent's method in t space (derivative-free)\n- brent-sqrt: Brent's method in sqrt(t) space (default, matches v0)\n- brent-log: Brent's method in ln(t) space\n- newton: Newton-Raphson in t space\n- newton-sqrt: Newton-Raphson in sqrt(t) space\n- newton-log: Newton-Raphson in ln(t) space",
+      "$ref": "#/$defs/BranchOptMethod",
+      "default": "brent-sqrt"
+    },
+    "no_indels": {
+      "description": "Disable indel (insertion/deletion) contributions to branch-length\noptimization.\n\nWhen set, the optimizer uses substitution-only likelihood, matching\nstandard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and\nenabling v0 parity testing. Default: indels enabled.",
+      "type": "boolean",
+      "default": false
+    },
+    "reroot": {
+      "description": "Reroot the tree by minimizing root-to-tip divergence variance.\n\nBy default, optimize keeps the input root. Pass --reroot or --reroot=min-dev\nto enable divergence-based rerooting. Date-dependent methods (least-squares,\noldest, clock-filter) are available in the timetree and clock commands.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OptimizeRerootMethod"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "reroot_tips": {
+      "description": "Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "keep_root": {
+      "description": "Keep the input tree root instead of rerooting.\n\nOptimize keeps the input root by default; this flag is the explicit form and\nis mutually exclusive with the reroot options.",
+      "type": "boolean",
+      "default": false
+    },
+    "gap_fill": {
+      "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
+      "$ref": "#/$defs/GapFill",
+      "default": "only-terminal"
+    },
+    "keep_overhangs": {
+      "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
+      "type": "boolean",
+      "default": false
+    },
+    "$schema": {
+      "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "AlphabetName": {
+      "type": "string",
+      "enum": [
+        "nuc",
+        "aa",
+        "aa-no-stop"
+      ]
+    },
+    "GtrModelName": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "jc69",
+            "k80",
+            "f81",
+            "hky85",
+            "t92",
+            "tn93",
+            "jtt92"
+          ]
+        },
+        {
+          "description": "Infer GTR parameters from data via Fitch parsimony substitution counts.",
+          "type": "string",
+          "const": "infer"
+        }
+      ]
+    },
+    "NwkStyleArg": {
+      "description": "CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.",
+      "type": "string",
+      "enum": [
+        "plain",
+        "beast",
+        "nhx"
+      ]
+    },
+    "DivergenceUnits": {
+      "type": "string",
+      "enum": [
+        "mutations-per-site",
+        "mutations"
+      ]
+    },
+    "OptimizeOutputSelection": {
+      "type": "string",
+      "enum": [
+        "All",
+        "Nwk",
+        "Nexus",
+        "Auspice",
+        "Phyloxml",
+        "PhyloxmlJson",
+        "MatPb",
+        "MatJson",
+        "GraphJson",
+        "Dot",
+        "AugurNodeData",
+        "Gtr"
+      ]
+    },
+    "LadderizeArg": {
+      "type": "string",
+      "enum": [
+        "none",
+        "ascending",
+        "descending"
+      ]
+    },
+    "TopologyOrderArg": {
+      "type": "string",
+      "enum": [
+        "keep",
+        "descendant-count",
+        "descendant-count-reverse",
+        "height",
+        "height-reverse",
+        "divergence",
+        "divergence-reverse",
+        "label",
+        "label-reverse",
+        "target-order",
+        "target-order-reverse"
+      ]
+    },
+    "TopologyOrderTargetSourceArg": {
+      "type": "string",
+      "enum": [
+        "input",
+        "reference-topology",
+        "list"
+      ]
+    },
+    "TopologyOrderTargetAggregateArg": {
+      "type": "string",
+      "enum": [
+        "mean",
+        "median"
+      ]
+    },
+    "InitialGuessMode": {
+      "description": "Controls the initial branch length estimate that runs before Newton\noptimization.\n\nThe estimate computes `#substitutions / effective_alignment_length` per\nedge from the marginal reconstruction. When input trees already carry\nwell-calibrated branch lengths (e.g. from RAxML, IQ-TREE, or a previous\nTreeTime run), preserving those values lets Newton converge from a\nbetter starting position.",
+      "oneOf": [
+        {
+          "description": "Estimate only edges with missing or invalid branch lengths, preserve\nvalid input values. No-op when all edges have finite branch lengths.",
+          "type": "string",
+          "const": "auto"
+        },
+        {
+          "description": "Estimate all edges, overwriting input branch lengths.",
+          "type": "string",
+          "const": "always"
+        },
+        {
+          "description": "Use input branch lengths as-is. Fails if any edge has a missing or\ninvalid branch length.",
+          "type": "string",
+          "const": "never"
+        }
+      ]
+    },
+    "BranchOptMethod": {
+      "description": "Per-edge branch length optimization method.\n\nControls how `run_optimize_mixed()` finds the maximum-likelihood branch\nlength for each edge. Two orthogonal axes: algorithm (Newton-Raphson\nvs Brent's method) and parameterization ($t$, $\\sqrt{t}$, $\\ln(t)$).",
+      "oneOf": [
+        {
+          "description": "Brent's method in $t$ space (derivative-free, bracket-based).\n\nFinds the maximum within a bracket derived from the grid search bounds.\nConvergence is independent of Hessian conditioning. Uses `argmin::BrentOpt`.\nIncluded for completeness; `brent-sqrt` dominates for convergence speed.",
+          "type": "string",
+          "const": "brent"
+        },
+        {
+          "description": "Brent's method in $\\sqrt{t}$ space.\n\nMatches v0 exactly (same algorithm, same parameterization). The $\\sqrt{t}$\nreparameterization smooths the objective, giving parabolic interpolation\na better fit. Default method for golden master comparison against v0.",
+          "type": "string",
+          "const": "brent-sqrt"
+        },
+        {
+          "description": "Brent's method in $\\ln(t)$ space.\n\nSmoothest objective of all parameterizations, giving the best parabolic\ninterpolation. Requires a finite lower bound in log-space.",
+          "type": "string",
+          "const": "brent-log"
+        },
+        {
+          "description": "Newton-Raphson in $t$ space.\n\nBaseline Newton method matching RAxML-NG/IQ-TREE. The Poisson indel\nHessian ($-k/t^2$) can dominate the substitution Hessian on short\nbranches, causing the step-size convergence criterion to fire before\nthe combined gradient reaches zero.",
+          "type": "string",
+          "const": "newton"
+        },
+        {
+          "description": "Newton-Raphson in $\\sqrt{t}$ space.\n\nReparameterizes the optimization variable as $s = \\sqrt{t}$ and applies\nthe chain rule to transform derivatives. Reduces the indel Hessian\nsingularity from $O(1/t^2)$ to $O(1/t)$. Residual dominance on extreme\ncases ($t < 0.001$, $k > 10$).",
+          "type": "string",
+          "const": "newton-sqrt"
+        },
+        {
+          "description": "Newton-Raphson in $\\ln(t)$ space.\n\nEliminates the indel singularity entirely ($\\ell''_{\\text{indel}} = -\\mu t$,\nbounded). Natural relative tolerance. Best conditioning of all Newton\nvariants.",
+          "type": "string",
+          "const": "newton-log"
+        }
+      ]
+    },
+    "OptimizeRerootMethod": {
+      "description": "Reroot methods available in the optimize command.\n\nOnly date-free methods are valid here because optimize has no sampling dates.\nDate-dependent methods (least-squares, oldest, clock-filter) are available\nin the timetree and clock commands.",
+      "type": "string",
+      "enum": [
+        "min-dev"
+      ]
+    },
+    "GapFill": {
+      "type": "string",
+      "enum": [
+        "only-terminal",
+        "all",
+        "none"
+      ]
+    }
+  }
+}

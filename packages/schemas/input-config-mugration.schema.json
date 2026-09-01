@@ -1,0 +1,373 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TreetimeMugrationArgsRaw",
+  "description": "Metadata identity and delimiter options shared by every command that reads a metadata table\n(`timetree`, `clock`, `mugration`).\n\n`--metadata-id-columns` (alias `--name-column`) lists the candidate columns holding the taxon\nidentifier that links a metadata row to a tree tip; the first column present in the header wins.\nMatching is case-insensitive (see `treetime-io` column detection). `--metadata-delimiters` lists\ncandidate field separators; the delimiter actually present in the file is used.",
+  "type": "object",
+  "properties": {
+    "tree": {
+      "description": "Name of file containing the tree in newick, nexus, or phylip format.\n\nIf none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "attribute": {
+      "description": "Attribute to reconstruct, e.g. country",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "metadata": {
+      "description": "CSV or TSV file with discrete characters. #name,country,continent taxon1,micronesia,oceania ...",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "weights": {
+      "description": "CSV or TSV file with probabilities of that a randomly sampled sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.: #country,weight micronesia,0.1 ...",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "metadata_id_columns": {
+      "description": "Candidate column name(s) holding the taxon identifier that links metadata to tree tips\n\nThe first listed column that is present in the header is used. Matching is case-insensitive.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "strain",
+        "name",
+        "accession"
+      ]
+    },
+    "metadata_delimiters": {
+      "description": "Candidate field delimiter(s) for the metadata table\n\nThe delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1
+      },
+      "default": [
+        ",",
+        "\t",
+        ";"
+      ]
+    },
+    "output_confidence_csv": {
+      "description": "Path to output state-probability-profile CSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "pc": {
+      "description": "Pseudo-counts. Higher numbers results in 'flatter' models. Default: 1.0.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double",
+      "default": null
+    },
+    "missing_data": {
+      "description": "String indicating missing data",
+      "type": "string",
+      "default": "?"
+    },
+    "missing_weights_threshold": {
+      "description": "Portion of attribute values that is allowed to not have weights in the weights file",
+      "type": "number",
+      "format": "double",
+      "default": 0.5
+    },
+    "iterations": {
+      "description": "Number of iterations for GTR model refinement from data.",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0,
+      "default": 5
+    },
+    "sampling_bias_correction": {
+      "description": "Rough estimate of how many more events would have been observed if sequences represented an\neven sample.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double",
+      "default": null
+    },
+    "smooth_initial_pi": {
+      "description": "Smooth the initial equilibrium frequencies with the pseudo-count before the first\nreconstruction pass.\n\nOff by default (TreeTime v0 builds the initial model from raw frequencies and applies the\npseudo-count only as infer_gtr regularization). Enabling this flattens the prior for the first\npass; it only affects weighted models.",
+      "type": "boolean",
+      "default": false
+    },
+    "filter_uninformative_root": {
+      "description": "Exclude near-uniform root positions from the equilibrium-frequency prior.\n\nOff by default (TreeTime v0 always folds the root's most-likely state into the prior). Enabling\nthis drops root positions whose posterior carries no phylogenetic signal, removing a\nstate-order-dependent bias at ambiguous roots.",
+      "type": "boolean",
+      "default": false
+    },
+    "output_augur_node_data": {
+      "description": "Path to output augur-compatible node data JSON.\n\nContains per-node discrete trait assignments, confidence profiles, entropy,\nthe inferred substitution model, and branch state-change labels. The output\nis compatible with augur export v2 --node-data for Nextstrain pipeline\nintegration.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_gtr": {
+      "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_traits_csv": {
+      "description": "Path to output traits CSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "seed": {
+      "description": "Random seed",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0,
+      "default": null
+    },
+    "output_all": {
+      "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_nwk_style": {
+      "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/NwkStyleArg"
+      },
+      "default": []
+    },
+    "output_tree_nwk": {
+      "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_nexus": {
+      "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_auspice": {
+      "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_phyloxml": {
+      "description": "Path to output PhyloXML tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_phyloxml_json": {
+      "description": "Path to output PhyloXML-JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_mat_pb": {
+      "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_mat_json": {
+      "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_graph_json": {
+      "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_dot": {
+      "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_selection": {
+      "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/MugrationOutputSelection"
+      },
+      "default": []
+    },
+    "ladderize": {
+      "description": "Order tree topology before writing output files.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LadderizeArg"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "topology_order": {
+      "description": "Canonical topology ordering preset.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TopologyOrderArg"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "topology_order_target_source": {
+      "description": "Source for target-order topology sorting.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TopologyOrderTargetSourceArg"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "topology_order_target_file": {
+      "description": "File used by list or reference-topology target-order sources.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "topology_order_target_aggregate": {
+      "description": "Aggregate used to map a subtree to a target-order position.",
+      "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
+      "default": "mean"
+    },
+    "$schema": {
+      "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "NwkStyleArg": {
+      "description": "CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.",
+      "type": "string",
+      "enum": [
+        "plain",
+        "beast",
+        "nhx"
+      ]
+    },
+    "MugrationOutputSelection": {
+      "type": "string",
+      "enum": [
+        "All",
+        "Nwk",
+        "Nexus",
+        "Auspice",
+        "Phyloxml",
+        "PhyloxmlJson",
+        "MatPb",
+        "MatJson",
+        "GraphJson",
+        "Dot",
+        "AugurNodeData",
+        "Gtr",
+        "ConfidenceCsv",
+        "TraitsCsv"
+      ]
+    },
+    "LadderizeArg": {
+      "type": "string",
+      "enum": [
+        "none",
+        "ascending",
+        "descending"
+      ]
+    },
+    "TopologyOrderArg": {
+      "type": "string",
+      "enum": [
+        "keep",
+        "descendant-count",
+        "descendant-count-reverse",
+        "height",
+        "height-reverse",
+        "divergence",
+        "divergence-reverse",
+        "label",
+        "label-reverse",
+        "target-order",
+        "target-order-reverse"
+      ]
+    },
+    "TopologyOrderTargetSourceArg": {
+      "type": "string",
+      "enum": [
+        "input",
+        "reference-topology",
+        "list"
+      ]
+    },
+    "TopologyOrderTargetAggregateArg": {
+      "type": "string",
+      "enum": [
+        "mean",
+        "median"
+      ]
+    }
+  }
+}

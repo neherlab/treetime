@@ -1,5 +1,6 @@
 use crate::cli::diagnostics::entry::check_command_config;
 use crate::cli::diagnostics::source::{ConfigSource, parse_config_document};
+use crate::cli::pipeline::types::SCHEMA_KEY;
 use crate::cli::schema::command_schema;
 use clap::ArgMatches;
 use clap::parser::ValueSource;
@@ -49,7 +50,13 @@ where
 
   let text = read_file_to_string(config_path)?;
   let source = ConfigSource::new(config_path.display().to_string(), text.clone());
-  let file_value = parse_config_document(&source, &text)?;
+  let mut file_value = parse_config_document(&source, &text)?;
+
+  // `$schema` is an editor-only association key (a path or URL to this command's schema). The loader
+  // ignores it; strip it before the strict merge so `deny_unknown_fields` does not reject it.
+  if let Value::Object(map) = &mut file_value {
+    map.remove(SCHEMA_KEY);
+  }
 
   let mut merged = serde_json::to_value(T::default())?;
   merge_value(&mut merged, &file_value);
@@ -242,6 +249,24 @@ mod tests {
         indoc! {r"
         tree: from-config.nwk
       "},
+      )
+      .unwrap();
+      let args = resolve_ancestral(&["treetime", "ancestral", "--config", path.to_str().unwrap()]).unwrap();
+      assert_eq!(Path::new("from-config.nwk"), args.tree());
+    }
+
+    // A top-level `$schema` association key is accepted and ignored: the strict schema declares it and
+    // the loader strips it, so a config that carries an editor `$schema` still loads.
+    #[test]
+    fn test_config_ancestral_accepts_schema_key() {
+      let dir = tempdir().unwrap();
+      let path = dir.path().join("ancestral.yaml");
+      fs::write(
+        &path,
+        indoc! {r#"
+          "$schema": "https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json"
+          tree: from-config.nwk
+        "#},
       )
       .unwrap();
       let args = resolve_ancestral(&["treetime", "ancestral", "--config", path.to_str().unwrap()]).unwrap();

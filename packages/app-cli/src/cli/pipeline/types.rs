@@ -311,7 +311,7 @@ mod tests {
   // A reserved `$schema` key is ignored, not treated as a command tag.
   #[test]
   fn test_types_step_ignores_schema_key() {
-    let value = json!({ "$schema": "./pipeline.schema.json", "name": "tt", "timetree": {} });
+    let value = json!({ "$schema": "./input-config-pipeline.schema.json", "name": "tt", "timetree": {} });
     let step = PipelineStep::from_value(value).unwrap();
     assert_eq!("timetree", step.command.tag());
   }

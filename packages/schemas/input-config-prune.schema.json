@@ -1,0 +1,317 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TreetimePruneArgsRaw",
+  "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) is used across every command, replacing\nthe earlier mix of positional arguments and `--aln`. Multiple files are accepted; each is one\ninput alignment. When the list is empty, callers read uncompressed FASTA from standard input.",
+  "type": "object",
+  "properties": {
+    "alignment": {
+      "description": "Path to one or multiple FASTA files with aligned input sequences\n\nAccepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently\ndecompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file\nextension. If there's multiple input files, then different files can have different compression formats.\n\nIf no input files provided, the plain fasta input is read from standard input (stdin).\n\nSee: https://en.wikipedia.org/wiki/FASTA_format",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "tree": {
+      "description": "Name of file containing the tree in newick, nexus, or phylip format.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "alphabet": {
+      "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AlphabetName"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "output_all": {
+      "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_nwk_style": {
+      "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/NwkStyleArg"
+      },
+      "default": []
+    },
+    "output_tree_nwk": {
+      "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_nexus": {
+      "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_auspice": {
+      "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_phyloxml": {
+      "description": "Path to output PhyloXML tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_phyloxml_json": {
+      "description": "Path to output PhyloXML-JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_mat_pb": {
+      "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_mat_json": {
+      "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_graph_json": {
+      "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_tree_dot": {
+      "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_gtr": {
+      "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "output_selection": {
+      "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PruneOutputSelection"
+      },
+      "default": []
+    },
+    "ladderize": {
+      "description": "Order tree topology before writing output files.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LadderizeArg"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "topology_order": {
+      "description": "Canonical topology ordering preset.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TopologyOrderArg"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "topology_order_target_source": {
+      "description": "Source for target-order topology sorting.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TopologyOrderTargetSourceArg"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "topology_order_target_file": {
+      "description": "File used by list or reference-topology target-order sources.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "topology_order_target_aggregate": {
+      "description": "Aggregate used to map a subtree to a target-order position.",
+      "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
+      "default": "mean"
+    },
+    "prune_short": {
+      "description": "Threshold value for pruning of branches\n\nIf set, prune branches with a length below this value",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double",
+      "default": null
+    },
+    "prune_empty": {
+      "description": "Prune empty branches\n\nIf set, prune any branch that does not have a mutation or other state transition mapped to it.\n\nRequires --alignment",
+      "type": "boolean",
+      "default": false
+    },
+    "merge_shared_mutations": {
+      "description": "Merge branches in polytomies that share identical mutations\n\nWhen sibling branches in a polytomy (node with >2 children) carry identical substitutions,\nthey are grouped under a new internal node. The shared mutations move to the new branch\n(parent to new node), and only unique mutations remain on children's edges.\nReduces tree builder artifacts from arbitrary binary resolution of polytomies.\n\nRequires --alignment",
+      "type": "boolean",
+      "default": false
+    },
+    "prune_nodes_list": {
+      "description": "List of node names to prune\n\nList of node names to remove from the tree, comma-separated (,)\n\nUse --prune-nodes-list-delimiter to specify a different delimiter.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "prune_nodes_list_delimiter": {
+      "description": "Name separator for `--prune-nodes-list`\n\nString used to separate node names in the list given to (--prune-nodes-list). Make sure to correctly quote and escape the delimiter according to your shell.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1,
+      "default": ","
+    },
+    "prune_nodes_list_file": {
+      "description": "File containing list of node names to prune\n\nPath to a file containing node names to remove from the tree, newline-delimited (\\n).\n\nUse '-' to read from standard input (stdin).\n\nUse --prune-nodes-list-file-delimiter to specify a different delimiter.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "prune_nodes_list_file_delimiter": {
+      "description": "Separator for node names in the list file\n\nCharacter or string used to separate node names in the list file.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1,
+      "default": "\n"
+    },
+    "$schema": {
+      "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "AlphabetName": {
+      "type": "string",
+      "enum": [
+        "nuc",
+        "aa",
+        "aa-no-stop"
+      ]
+    },
+    "NwkStyleArg": {
+      "description": "CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.",
+      "type": "string",
+      "enum": [
+        "plain",
+        "beast",
+        "nhx"
+      ]
+    },
+    "PruneOutputSelection": {
+      "type": "string",
+      "enum": [
+        "All",
+        "Nwk",
+        "Nexus",
+        "Auspice",
+        "Phyloxml",
+        "PhyloxmlJson",
+        "MatPb",
+        "MatJson",
+        "GraphJson",
+        "Dot",
+        "Gtr"
+      ]
+    },
+    "LadderizeArg": {
+      "type": "string",
+      "enum": [
+        "none",
+        "ascending",
+        "descending"
+      ]
+    },
+    "TopologyOrderArg": {
+      "type": "string",
+      "enum": [
+        "keep",
+        "descendant-count",
+        "descendant-count-reverse",
+        "height",
+        "height-reverse",
+        "divergence",
+        "divergence-reverse",
+        "label",
+        "label-reverse",
+        "target-order",
+        "target-order-reverse"
+      ]
+    },
+    "TopologyOrderTargetSourceArg": {
+      "type": "string",
+      "enum": [
+        "input",
+        "reference-topology",
+        "list"
+      ]
+    },
+    "TopologyOrderTargetAggregateArg": {
+      "type": "string",
+      "enum": [
+        "mean",
+        "median"
+      ]
+    }
+  }
+}
