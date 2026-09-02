@@ -391,6 +391,67 @@ mod tests {
   }
 
   #[test]
+  fn test_optimize_prune_and_merge_hoists_reversion_without_collapse() -> Result<(), Report> {
+    // Reversion polytomy with no zero-optimal edge to collapse. The loop must still resolve
+    // it: merge C1+C2 (shared reversion), hoist the reverting group, retire the helper.
+    // Tree: root -> U -> V -> {C1, C2, C3}. U->V carries {A0T, C5G}; C1 and C2 revert A0T,
+    // C3 keeps it. Parsimony optimum is 2 mutations.
+    let mut graph: GraphAncestral = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+
+    let mut partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::new(AlphabetName::Nuc)?,
+      length: 100,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+      root_sequence: seq![],
+    };
+    populate_test_nodes(&mut partition, &graph);
+
+    let uv = find_edge_key(&graph, "U", "V").unwrap();
+    let vc1 = find_edge_key(&graph, "V", "C1").unwrap();
+    let vc2 = find_edge_key(&graph, "V", "C2").unwrap();
+    let vc3 = find_edge_key(&graph, "V", "C3").unwrap();
+    partition.edges.insert(
+      uv,
+      SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]),
+    );
+    partition
+      .edges
+      .insert(vc1, SparseEdgePartition::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
+    partition
+      .edges
+      .insert(vc2, SparseEdgePartition::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
+    partition.edges.insert(vc3, SparseEdgePartition::default());
+
+    let sparse = vec![Arc::new(RwLock::new(partition))];
+    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+
+    // Empty zero-optimal list: the old loop was a no-op here. The hoist must still fire.
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[])?;
+    assert!(changed, "reversion polytomy must be resolved even without a collapse");
+
+    let p = sparse[0].read_arc();
+    let total_subs: usize = graph
+      .get_edges()
+      .iter()
+      .filter_map(|e| p.edges.get(&e.read_arc().key()))
+      .map(|e| e.fitch_subs().len())
+      .sum();
+    assert_eq!(total_subs, 2, "reaches the parsimony optimum");
+
+    let reversion_remains = graph
+      .get_edges()
+      .iter()
+      .filter_map(|e| p.edges.get(&e.read_arc().key()))
+      .any(|e| e.fitch_subs().contains(&sub(b'T', 0, b'A')));
+    assert!(!reversion_remains, "reversion must be removed");
+
+    Ok(())
+  }
+
+  #[test]
   fn test_optimize_cascading_collapse_parent_child_both_zero() -> Result<(), Report> {
     // Parent and child internal edges are both zero-optimal.
     // Tree: root -> I1 (bl=0.0) -> I2 (bl=0.0) -> A, B
