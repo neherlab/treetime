@@ -58,6 +58,17 @@ v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with 
 - [ ] Bifurcating root special handling (v0 optimizes combined root-children length, preserves ratio)
 - [ ] Convergence by sequence change count (v0 joint mode: stops when zero nucleotides change)
 
+## Topology Cleanup (v1-only)
+
+Once per iteration, `prune_and_merge_in_loop` simplifies the tree. Sparse partitions only; dense partitions carry no per-edge mutation lists, so the reversion and merge steps are inert under a dense-only run.
+
+- [x] Zero-optimal edge collapse: internal edges the per-edge optimizer drove to exactly zero, carrying no substitutions or indels, are contracted into polytomies. Mirrors v0's `prune_short_branches` inside the loop.
+- [x] Shared-mutation merge: siblings in a polytomy that carry identical substitutions are grouped under a new internal node (`merge_shared_mutation_branches`).
+- [x] Reversion hoist: when a child edge reverts a substitution on the node's parent edge, a new node is inserted grouping that child with its sibling subtree, lifting the non-reverted substitutions above it. Removes one mutation per reverted position and adds none; branch lengths split proportionally to preserve root-to-node distances ([kb/decisions/optimize-polytomy-reversion-resolution.md](../decisions/optimize-polytomy-reversion-resolution.md)).
+- [x] Helper-node retirement: mutation-free edges to nodes created during the routine are collapsed, dissolving the transient helpers the merge and hoist leave behind.
+
+The merge, hoist, and retire steps form one per-polytomy routine (`resolve_polytomies`) run every iteration and driven to a fixpoint by a monotone (mutation count, node count) potential. A polytomy whose children all revert the same position collapses to a single reverting child that the two-children guard leaves in place ([kb/issues/M-optimize-reversion-hoist-single-child-residual.md](../issues/M-optimize-reversion-hoist-single-child-residual.md)).
+
 ## GTR Integration
 
 - [x] `--model` flag wired through `get_gtr_sparse()`/`get_gtr_dense()` for all named models and inference

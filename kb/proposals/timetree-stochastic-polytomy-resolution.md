@@ -64,16 +64,16 @@ parent's time is reached; survivors attach to the parent as a residual polytomy.
 This is the main translation hazard. v0 works in `time_before_present`, increasing into the
 past; v1 uses calendar time with `parent.time < child.time`. Every comparison inverts:
 
-| v0 | v1 |
-| --- | --- |
-| `tmax = parent.time_before_present` | `t_stop = parent.time` (lower bound) |
-| sort children ascending by `time_before_present` | sort **descending** by `time` |
-| `t` starts at most recent child, increases | `t` starts at `max(child.time)`, **decreases** |
-| `while t < tmax` | `while t > t_stop` |
-| `t += dt` | `t -= dt` |
-| pop when `t > to_come[0].tbp` | pop when `t < to_come[0].time` |
-| `b.branch_length = tmax - b.time` | `time_length = b.time - t_stop` |
-| early return `if t >= tmax` | early return if `max(child.time) <= t_stop` |
+| v0                                               | v1                                             |
+| ------------------------------------------------ | ---------------------------------------------- |
+| `tmax = parent.time_before_present`              | `t_stop = parent.time` (lower bound)           |
+| sort children ascending by `time_before_present` | sort **descending** by `time`                  |
+| `t` starts at most recent child, increases       | `t` starts at `max(child.time)`, **decreases** |
+| `while t < tmax`                                 | `while t > t_stop`                             |
+| `t += dt`                                        | `t -= dt`                                      |
+| pop when `t > to_come[0].tbp`                    | pop when `t < to_come[0].time`                 |
+| `b.branch_length = tmax - b.time`                | `time_length = b.time - t_stop`                |
+| early return `if t >= tmax`                      | early return if `max(child.time) <= t_stop`    |
 
 ### Rates
 
@@ -297,5 +297,5 @@ characterise the change in resolved topology.
 - [kb/issues/N-timetree-unused-cli-flags.md](../issues/N-timetree-unused-cli-flags.md) --
   `--keep-polytomies`
 - [kb/features/timetree.md](../features/timetree.md) -- polytomy resolution checklist
-- [kb/proposals/optimize-polytomy-reversion-resolution.md](optimize-polytomy-reversion-resolution.md) --
-  the `optimize` loop's polytomy handling, which also wants `Graph::reparent_edge`
+- [kb/decisions/optimize-polytomy-reversion-resolution.md](../decisions/optimize-polytomy-reversion-resolution.md) --
+  the `optimize` loop's polytomy handling, which also uses `Graph::reparent_edge`
