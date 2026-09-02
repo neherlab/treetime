@@ -6,7 +6,7 @@ use crate::optimize::indel::{estimate_indel_rate, total_indel_log_lh};
 use crate::optimize::iteration::{apply_damping, restore_branch_lengths, save_branch_lengths};
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 use crate::optimize::topology::collapse::collapse_edge;
-use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
+use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::traits::{HasGtr, PartitionOptimizeOps, PartitionOptimizeVec};
@@ -297,13 +297,23 @@ pub fn find_zero_optimal_internal_edges(
     .collect_vec()
 }
 
-/// Collapse zero-optimal internal edges and merge shared mutations in resulting polytomies.
+/// Collapse zero-optimal internal edges, then resolve polytomies in the resulting tree.
 ///
-/// Analogous to v0's `prune_short_branches()` inside the optimization loop:
-/// edges whose optimal branch length is zero are collapsed, simplifying the tree
-/// progressively across iterations. After collapsing, sibling branches in newly
-/// formed polytomies that share identical substitutions are merged under new
-/// internal nodes (sparse partitions only, requires discrete substitution data).
+/// Two topology-cleanup steps run per iteration:
+///
+/// 1. Collapse zero-optimal internal edges. Analogous to v0's `prune_short_branches()`:
+///    edges whose optimal branch length is zero are collapsed, simplifying the tree
+///    progressively across iterations and producing polytomies.
+/// 2. Resolve polytomies ([`resolve_polytomies`], sparse partitions only): merge siblings
+///    that share substitutions, hoist a reverting child under a new node to remove one
+///    mutation per reversion, and retire the helper nodes left behind.
+///
+/// Step 2 runs every iteration, not only after a collapse fired, because reverting-child and
+/// shared-mutation polytomies exist in the input and in polytomies formed by earlier
+/// iterations, independent of any zero-optimal collapse in the current one. The combined
+/// (mutation count, node count) potential is monotone non-increasing, so the two steps cannot
+/// oscillate across iterations even though the hoist deliberately relocates mutation-carrying
+/// edges that [`find_zero_optimal_internal_edges`] refuses to collapse.
 ///
 /// Returns true if any topology change occurred.
 pub fn prune_and_merge_in_loop(
@@ -312,44 +322,45 @@ pub fn prune_and_merge_in_loop(
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   zero_optimal_edges: &[GraphEdgeKey],
 ) -> Result<bool, Report> {
-  if zero_optimal_edges.is_empty() {
-    return Ok(false);
-  }
+  let mut topology_changed = false;
 
-  // Override damped branch lengths back to zero for edges the optimizer identified
-  // as zero-optimal. Damping is a convergence aid for continuous values; it should
-  // not prevent collapsing degenerate edges.
-  for &edge_key in zero_optimal_edges {
-    if let Some(edge) = graph.get_edge(edge_key) {
-      edge.write_arc().payload().write_arc().set_branch_length(Some(0.0));
+  if !zero_optimal_edges.is_empty() {
+    // Override damped branch lengths back to zero for edges the optimizer identified
+    // as zero-optimal. Damping is a convergence aid for continuous values; it should
+    // not prevent collapsing degenerate edges.
+    for &edge_key in zero_optimal_edges {
+      if let Some(edge) = graph.get_edge(edge_key) {
+        edge.write_arc().payload().write_arc().set_branch_length(Some(0.0));
+      }
+    }
+
+    let mut collapsed = 0_usize;
+    for &edge_key in zero_optimal_edges {
+      // Edge may already be gone if a prior collapse in this batch removed it
+      // (e.g., collapsing a parent also removed a child edge that was zero-optimal)
+      if graph.get_edge(edge_key).is_none() {
+        continue;
+      }
+      collapse_edge(graph, sparse_partitions, dense_partitions, edge_key)?;
+      collapsed += 1;
+    }
+
+    if collapsed > 0 {
+      debug!("Collapsed {collapsed} zero-optimal internal edges");
+      topology_changed = true;
     }
   }
 
-  let mut collapsed = 0_usize;
-  for &edge_key in zero_optimal_edges {
-    // Edge may already be gone if a prior collapse in this batch removed it
-    // (e.g., collapsing a parent also removed a child edge that was zero-optimal)
-    if graph.get_edge(edge_key).is_none() {
-      continue;
-    }
-    collapse_edge(graph, sparse_partitions, dense_partitions, edge_key)?;
-    collapsed += 1;
+  if resolve_polytomies(graph, sparse_partitions, dense_partitions)? > 0 {
+    topology_changed = true;
   }
 
-  if collapsed == 0 {
-    return Ok(false);
+  if topology_changed {
+    graph.build()?;
+    assign_node_names(graph)?;
   }
 
-  debug!("Collapsed {collapsed} zero-optimal internal edges");
-
-  // Merge shared mutations in newly formed polytomies (sparse only)
-  if !sparse_partitions.is_empty() {
-    merge_shared_mutation_branches(graph, sparse_partitions)?;
-  }
-
-  graph.build()?;
-  assign_node_names(graph)?;
-  Ok(true)
+  Ok(topology_changed)
 }
 
 /// Whether any edge that carries indels has a zero branch length.

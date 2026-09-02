@@ -61,7 +61,7 @@ pub fn merge_shared_mutation_branches(
 /// internal nodes that would result from repeated pairwise merging.
 ///
 /// Returns number of new internal nodes created.
-fn merge_single_polytomy(
+pub(crate) fn merge_single_polytomy(
   graph: &mut GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   node_key: GraphNodeKey,
