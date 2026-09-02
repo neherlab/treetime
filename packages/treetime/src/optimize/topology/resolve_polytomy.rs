@@ -98,8 +98,15 @@ fn resolve_one(
   Ok(any_changed)
 }
 
-/// Hoist the best reverting child of a node, if the node has a parent edge and any child
-/// reverts one of its substitutions. Returns whether a hoist was applied.
+/// Hoist the best reverting child of a node, if the node has a parent edge, at least two
+/// children, and any child reverts one of its substitutions. Returns whether a hoist applied.
+///
+/// The two-children requirement keeps the node a valid internal node: the hoist moves the
+/// reverting child under the new node `N`, so the node must retain at least one other child
+/// or it would become a childless stub. A node whose children all revert the same position is
+/// merged into a single reverting child first, dropping it below this threshold; the residual
+/// reversion on that single child is left in place (a greedy limitation, tracked in the
+/// knowledge base), rather than removing the pre-existing node the input asserted.
 fn try_hoist_reverting_child(
   graph: &mut GraphAncestral,
   sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
@@ -109,6 +116,10 @@ fn try_hoist_reverting_child(
   let Some(parent_edge_key) = single_inbound_edge(graph, node_key) else {
     return Ok(false);
   };
+  let degree_out = graph.get_node(node_key).map_or(0, |node| node.read_arc().degree_out());
+  if degree_out < 2 {
+    return Ok(false);
+  }
   let Some(child_edge_key) = best_reverting_child(graph, sparse, node_key, parent_edge_key) else {
     return Ok(false);
   };
