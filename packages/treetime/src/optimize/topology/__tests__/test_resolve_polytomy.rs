@@ -86,6 +86,52 @@ mod tests {
   }
 
   #[test]
+  fn test_resolve_polytomy_bifurcating_root_cross_root_reversion() -> Result<(), Report> {
+    // Bifurcating root: root -> {V, S}. At position 0 the majority under V is A, so V's parent
+    // edge is empty there; the distinguishing G sits on the sibling edge root->S and on V's two
+    // G-state children G1, G2, which the arbitrary root placement scatters as homoplasy. The
+    // per-node scan sees nothing on V's own parent edge, but looking across the bifurcating root
+    // exposes the reversion: the routine hoists the G-group above V and reaches the parsimony
+    // optimum of one mutation (a single A->G change separating the A-clade {A1, A2}).
+    //
+    // Oracle: position 0 partitions the unrooted tree into one clade, so one change is the
+    // analytical parsimony minimum, the same value the routine reaches on any rooting of this
+    // tree (compare test_resolve_polytomy_merge_hoist_retire_worked_example, where the same
+    // reversion sits on a genuine internal edge).
+    let mut graph: GraphAncestral = nwk_read_str("((G1:0.1,G2:0.1,A1:0.1,A2:0.1)V:0.1,S:0.1)root:0.0;")?;
+    let partition = helpers::make_partition(
+      &graph,
+      0,
+      100,
+      &[
+        ("root", "S", vec![sub(b'A', 0, b'G')]),
+        ("V", "G1", vec![sub(b'A', 0, b'G')]),
+        ("V", "G2", vec![sub(b'A', 0, b'G')]),
+        ("V", "A1", vec![]),
+        ("V", "A2", vec![]),
+      ],
+    );
+    let sparse = vec![partition];
+
+    let before = total_subs(&graph, &sparse[0].read_arc());
+    let changed = resolve_polytomies(&mut graph, &sparse, &no_dense(), TopologyOps::default())?;
+    let after = total_subs(&graph, &sparse[0].read_arc());
+
+    assert_eq!(before, 3);
+    assert!(changed > 0);
+    assert_eq!(after, 1);
+    assert!(!reversion_present(&graph, &sparse[0].read_arc(), &sub(b'A', 0, b'G')));
+
+    for leaf in ["G1", "G2", "A1", "A2", "S"] {
+      assert!(
+        find_node_key_by_name(&graph, leaf).is_some(),
+        "leaf {leaf} must survive"
+      );
+    }
+    Ok(())
+  }
+
+  #[test]
   fn test_resolve_polytomy_retirement_preserves_preexisting_internal_node() -> Result<(), Report> {
     // W is a pre-existing internal node reached by a mutation-free edge from V. Helper
     // retirement must dissolve only nodes it created, never W, even though V->W is empty.

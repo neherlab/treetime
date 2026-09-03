@@ -70,6 +70,33 @@ mod tests {
       }
       prop_assert_eq!(roots, 1, "expected exactly one root");
     }
+
+    /// A site whose distinguishing substitution is scattered across a bifurcating root reduces to
+    /// its reroot-invariant parsimony cost of one mutation. Under `root -> {V, S}`, V holds `a`
+    /// majority-A children and `g` children matching the sibling S's G state; the routine hoists
+    /// the G-group above V and leaves a single A->G change, independent of how many children carry
+    /// it (that is, independent of where the root sits relative to the bipartition). Independent
+    /// per-child substitutions at distinct sites are never touched, so the total settles at
+    /// `1 + own`, and the count still falls strictly whenever anything changes.
+    #[test]
+    fn test_prop_resolve_polytomy_bifurcating_root_reduces_to_bipartition_cost(
+      g in 1_usize..5,
+      a in 2_usize..5,
+      own_counts in prop::collection::vec(0_usize..3, 9),
+    ) {
+      let (mut graph, partition, before, expected_after) =
+        helpers::build_bifurcating_case(g, a, &own_counts);
+      let sparse = vec![partition];
+
+      let changed = resolve_polytomies(&mut graph, &sparse, &helpers::no_dense(), TopologyOps::default()).unwrap();
+      let after = helpers::total_subs(&graph, &sparse[0].read_arc());
+
+      prop_assert_eq!(after, expected_after, "did not reach the bipartition cost");
+      prop_assert!(after <= before);
+      if changed > 0 {
+        prop_assert!(after < before, "changed but count did not fall: before={} after={}", before, after);
+      }
+    }
   }
 
   mod helpers {
@@ -154,6 +181,56 @@ mod tests {
       let total: usize = edge_mutations.iter().map(|(_, _, subs)| subs.len()).sum();
       let partition = make_partition(&graph, length, &edge_mutations);
       (graph, partition, total)
+    }
+
+    /// Build a bifurcating-root case `root -> {V, S}`. V has `g` children in the sibling's G
+    /// state (each reverts the site across the root) and `a` children in the majority A state.
+    /// The single distinguishing site is position 0: the sibling edge root->S and every G-child
+    /// edge carry `A->G`, V's parent edge is empty there. Each child also carries `own_counts`
+    /// independent substitutions at distinct high positions, which no move removes. Returns the
+    /// graph, partition, the initial total, and the expected post-resolve total (`1 + own`).
+    pub fn build_bifurcating_case(
+      g: usize,
+      a: usize,
+      own_counts: &[usize],
+    ) -> (GraphAncestral, Arc<RwLock<PartitionMarginalSparse>>, usize, usize) {
+      let length = 200_usize;
+      let g_names: Vec<String> = (0..g).map(|i| format!("G{i}")).collect();
+      let a_names: Vec<String> = (0..a).map(|i| format!("A{i}")).collect();
+      let children = g_names
+        .iter()
+        .chain(&a_names)
+        .map(|name| format!("{name}:0.1"))
+        .join(",");
+      let newick = format!("(({children})V:0.1,S:0.1)root:0.0;");
+      let graph: GraphAncestral = nwk_read_str(&newick).unwrap();
+
+      let mut edge_mutations: Vec<(String, String, Vec<Sub>)> = vec![(
+        "root".to_owned(),
+        "S".to_owned(),
+        vec![Sub::new(c(b'A'), 0_usize, c(b'G')).unwrap()],
+      )];
+
+      let mut own_pos = 10_usize;
+      let mut own_total = 0_usize;
+      for (i, name) in g_names.iter().chain(&a_names).enumerate() {
+        let is_g = i < g;
+        let mut subs: Vec<Sub> = Vec::new();
+        if is_g {
+          subs.push(Sub::new(c(b'A'), 0_usize, c(b'G')).unwrap());
+        }
+        for _ in 0..own_counts[i % own_counts.len()] {
+          subs.push(Sub::new(c(b'G'), own_pos, c(b'T')).unwrap());
+          own_pos += 2;
+          own_total += 1;
+        }
+        subs.sort_by_key(Sub::pos);
+        edge_mutations.push(("V".to_owned(), name.clone(), subs));
+      }
+
+      let before: usize = edge_mutations.iter().map(|(_, _, subs)| subs.len()).sum();
+      let partition = make_partition(&graph, length, &edge_mutations);
+      (graph, partition, before, 1 + own_total)
     }
 
     fn make_partition(

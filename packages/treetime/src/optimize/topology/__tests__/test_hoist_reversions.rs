@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::topology::hoist_reversions::hoist_reverting_child;
+  use crate::optimize::topology::hoist_reversions::{hoist_reverting_child, slide_bifurcating_root_for_child};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::payload::ancestral::GraphAncestral;
@@ -308,6 +308,79 @@ mod tests {
     assert_eq!(edge_indels(&p, h.un), vec![parent_del]);
     assert_eq!(edge_indels(&p, h.nv), Vec::<InDel>::new());
     assert_eq!(edge_indels(&p, h.nc), vec![child_del]);
+    Ok(())
+  }
+
+  // Bifurcating root: root -> {V, S}. V groups two children; S is the sibling leaf. A site
+  // where V equals the root but S differs carries its substitution on the sibling edge root->S,
+  // and a child of V that makes the same change reverts it across the root.
+  const NWK_BIFURCATING: &str = "((C1:0.1,C2:0.1)V:0.1,S:0.1)root:0.0;";
+
+  #[test]
+  fn test_hoist_reversions_slide_moves_sibling_sub_to_parent() -> Result<(), Report> {
+    // Sibling edge root->S carries A3G (root=A, S=G); V's parent edge is empty at 3 (V=A);
+    // child V->C1 carries A3G (the same change). The slide re-roots the site onto the
+    // sibling's state: root becomes G, the sibling edge empties, and the parent edge gains the
+    // inverse G3A. The root's clamped MAP sequence moves with root_sequence.
+    let graph: GraphAncestral = nwk_read_str(NWK_BIFURCATING)?;
+    let root_key = find_node_key_by_name(&graph, "root").unwrap();
+    let root_v = find_edge_key(&graph, "root", "V").unwrap();
+    let root_s = find_edge_key(&graph, "root", "S").unwrap();
+    let v_c1 = find_edge_key(&graph, "V", "C1").unwrap();
+
+    let partition = make_partition(
+      &graph,
+      0,
+      100,
+      &[
+        ("root", "S", vec![sub(b'A', 3, b'G')]),
+        ("V", "C1", vec![sub(b'A', 3, b'G')]),
+      ],
+    );
+    let sparse = vec![partition];
+
+    slide_bifurcating_root_for_child(&sparse, root_key, root_v, root_s, v_c1)?;
+
+    let p = sparse[0].read_arc();
+    assert_eq!(p.root_sequence[3], c(b'G'));
+    assert_eq!(p.nodes[&root_key].seq.sequence[3], c(b'G'));
+    assert_eq!(edge_subs(&p, root_s), Vec::<Sub>::new());
+    assert_eq!(edge_subs(&p, root_v), vec![sub(b'G', 3, b'A')]);
+    Ok(())
+  }
+
+  #[test]
+  fn test_hoist_reversions_slide_then_hoist_removes_cross_root_reversion() -> Result<(), Report> {
+    // The slide exposes the reversion on V's parent edge; the standard hoist then removes it.
+    // Two mutations before (sibling A3G plus the child's A3G), one after (delta = -1): a single
+    // G3A on the branch to the A-state V, exactly the reroot-invariant parsimony cost of the
+    // site. The slide alone is count-neutral, so the reduction comes from the hoist it enables.
+    let mut graph: GraphAncestral = nwk_read_str(NWK_BIFURCATING)?;
+    let root_key = find_node_key_by_name(&graph, "root").unwrap();
+    let root_v = find_edge_key(&graph, "root", "V").unwrap();
+    let root_s = find_edge_key(&graph, "root", "S").unwrap();
+    let v_c1 = find_edge_key(&graph, "V", "C1").unwrap();
+
+    let partition = make_partition(
+      &graph,
+      0,
+      100,
+      &[
+        ("root", "S", vec![sub(b'A', 3, b'G')]),
+        ("V", "C1", vec![sub(b'A', 3, b'G')]),
+      ],
+    );
+    let sparse = vec![partition];
+
+    let before = helpers::total_subs(&graph, &sparse[0].read_arc());
+    slide_bifurcating_root_for_child(&sparse, root_key, root_v, root_s, v_c1)?;
+    let after_slide = helpers::total_subs(&graph, &sparse[0].read_arc());
+    hoist_reverting_child(&mut graph, &sparse, &no_dense(), root_v, v_c1)?;
+    let after_hoist = helpers::total_subs(&graph, &sparse[0].read_arc());
+
+    assert_eq!(before, 2);
+    assert_eq!(after_slide, 2); // the slide moves a substitution, it does not remove one
+    assert_eq!(after_hoist, 1);
     Ok(())
   }
 
