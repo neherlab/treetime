@@ -278,6 +278,21 @@
       "type": "boolean",
       "default": false
     },
+    "no_collapse_short_branches": {
+      "description": "Disable collapsing of internal branches whose optimized length is zero.\n\nBy default the optimize loop contracts internal edges the per-edge optimizer drove to\nexactly zero that carry no substitutions or indels, turning the resulting binary nodes into\npolytomies. When set, such edges are kept in the output tree with length zero.",
+      "type": "boolean",
+      "default": false
+    },
+    "no_merge_siblings": {
+      "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. Requires the sparse sequence representation, so this step has no\neffect under `--dense` and the flag is then a no-op.",
+      "type": "boolean",
+      "default": false
+    },
+    "no_flip_parent_child": {
+      "description": "Disable the flip-parent-child step (reversion hoist) in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. Requires the\nsparse sequence representation, so this step has no effect under `--dense` and the flag is\nthen a no-op.",
+      "type": "boolean",
+      "default": false
+    },
     "gap_fill": {
       "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
       "$ref": "#/$defs/GapFill",

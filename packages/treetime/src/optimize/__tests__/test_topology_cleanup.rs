@@ -6,9 +6,9 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::iteration::{apply_damping, save_branch_lengths};
-  use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::collect_optimize_partitions;
-  use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop};
+  use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop, run_optimize_loop};
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -114,7 +114,7 @@ mod tests {
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[])?;
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], TopologyOps::default())?;
     assert!(!changed);
     assert_eq!(graph.get_nodes().len(), 4);
     Ok(())
@@ -172,7 +172,7 @@ mod tests {
       edge.write_arc().payload().write_arc().set_branch_length(Some(0.0));
     }
 
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key])?;
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key], TopologyOps::default())?;
     assert!(changed);
 
     // I should be gone
@@ -248,7 +248,7 @@ mod tests {
 
       apply_damping(&graph, &old_branch_lengths, 0.75, i);
 
-      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges)?;
+      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default())?;
 
       lh_prev = total_lh;
     }
@@ -321,7 +321,7 @@ mod tests {
 
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions);
       apply_damping(&graph, &old_branch_lengths, 0.75, i);
-      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges)?;
+      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default())?;
 
       lh_prev = total_lh;
     }
@@ -429,7 +429,7 @@ mod tests {
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
     // Empty zero-optimal list: the old loop was a no-op here. The hoist must still fire.
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[])?;
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], TopologyOps::default())?;
     assert!(changed, "reversion polytomy must be resolved even without a collapse");
 
     let p = sparse[0].read_arc();
@@ -467,7 +467,13 @@ mod tests {
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri1_key, i1i2_key])?;
+    let changed = prune_and_merge_in_loop(
+      &mut graph,
+      &sparse,
+      &dense,
+      &[ri1_key, i1i2_key],
+      TopologyOps::default(),
+    )?;
     assert!(changed);
 
     // Both I1 and I2 should be gone. A, B become children of root.
@@ -535,7 +541,7 @@ mod tests {
 
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions);
       apply_damping(&graph, &old_branch_lengths, 0.75, i);
-      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges)?;
+      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default())?;
 
       lh_prev = dense_lh;
     }
@@ -603,7 +609,7 @@ mod tests {
       edge.write_arc().payload().write_arc().set_branch_length(Some(0.0));
     }
 
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key])?;
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key], TopologyOps::default())?;
     assert!(changed);
 
     let mut names: Vec<String> = graph
@@ -615,6 +621,247 @@ mod tests {
 
     // I collapsed, A+B+C merged under a new NODE_0000000
     assert_eq!(names, vec!["A", "B", "C", "D", "NODE_0000000", "root"]);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_prune_and_merge_merge_disabled_keeps_polytomy() -> Result<(), Report> {
+    // Same setup as the collapse+merge test, but with merge-siblings disabled. Collapsing the
+    // zero-length internal edge still forms the polytomy; without merge, the shared-mutation
+    // siblings A, B, C stay as direct children of root rather than being grouped under a node.
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+
+    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
+
+    let mut partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::new(AlphabetName::Nuc)?,
+      length: 100,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+      root_sequence: seq![],
+    };
+    populate_test_nodes(&mut partition, &graph);
+    partition.edges.insert(ri_key, SparseEdgePartition::default());
+
+    let ia_key = find_edge_key(&graph, "I", "A").unwrap();
+    let ib_key = find_edge_key(&graph, "I", "B").unwrap();
+    let rc_key = find_edge_key(&graph, "root", "C").unwrap();
+    let rd_key = find_edge_key(&graph, "root", "D").unwrap();
+    partition
+      .edges
+      .insert(ia_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+    partition
+      .edges
+      .insert(ib_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+    partition
+      .edges
+      .insert(rc_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+    partition
+      .edges
+      .insert(rd_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
+
+    let sparse = vec![Arc::new(RwLock::new(partition))];
+    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+
+    if let Some(edge) = graph.get_edge(ri_key) {
+      edge.write_arc().payload().write_arc().set_branch_length(Some(0.0));
+    }
+
+    let ops = TopologyOps {
+      merge_siblings: false,
+      ..TopologyOps::default()
+    };
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key], ops)?;
+    assert!(changed, "collapse still fires even with merge disabled");
+
+    // I collapsed away.
+    assert!(find_node_key_by_name(&graph, "I").is_none());
+
+    // Without merge, root keeps all four children A, B, C, D (no grouping under a new node).
+    let root_key = find_node_key_by_name(&graph, "root").unwrap();
+    let root_node = graph.get_node(root_key).unwrap();
+    assert_eq!(root_node.read_arc().degree_out(), 4);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_prune_and_merge_flip_disabled_keeps_reversion() -> Result<(), Report> {
+    // Reversion polytomy. With flip-parent-child disabled, merge still groups the two reverting
+    // children, but the reverting mutation is not hoisted away, so it remains in the tree.
+    let mut graph: GraphAncestral = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+
+    let mut partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::new(AlphabetName::Nuc)?,
+      length: 100,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+      root_sequence: seq![],
+    };
+    populate_test_nodes(&mut partition, &graph);
+
+    let uv = find_edge_key(&graph, "U", "V").unwrap();
+    let vc1 = find_edge_key(&graph, "V", "C1").unwrap();
+    let vc2 = find_edge_key(&graph, "V", "C2").unwrap();
+    let vc3 = find_edge_key(&graph, "V", "C3").unwrap();
+    partition.edges.insert(
+      uv,
+      SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]),
+    );
+    partition
+      .edges
+      .insert(vc1, SparseEdgePartition::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
+    partition
+      .edges
+      .insert(vc2, SparseEdgePartition::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
+    partition.edges.insert(vc3, SparseEdgePartition::default());
+
+    let sparse = vec![Arc::new(RwLock::new(partition))];
+    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+
+    let ops = TopologyOps {
+      flip_parent_child: false,
+      ..TopologyOps::default()
+    };
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], ops)?;
+    assert!(changed, "merge still groups the reverting siblings");
+
+    let p = sparse[0].read_arc();
+    let reversion_remains = graph
+      .get_edges()
+      .iter()
+      .filter_map(|e| p.edges.get(&e.read_arc().key()))
+      .any(|e| e.fitch_subs().contains(&sub(b'T', 0, b'A')));
+    assert!(
+      reversion_remains,
+      "reversion is kept when flip-parent-child is disabled"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_prune_and_merge_all_ops_disabled_is_noop() -> Result<(), Report> {
+    // With every topology step disabled, the reversion polytomy is left untouched: no collapse,
+    // no merge, no hoist. The tree shape and its mutation content are unchanged.
+    let mut graph: GraphAncestral = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+
+    let mut partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet: Alphabet::new(AlphabetName::Nuc)?,
+      length: 100,
+      nodes: btreemap! {},
+      edges: btreemap! {},
+      root_sequence: seq![],
+    };
+    populate_test_nodes(&mut partition, &graph);
+
+    let uv = find_edge_key(&graph, "U", "V").unwrap();
+    let vc1 = find_edge_key(&graph, "V", "C1").unwrap();
+    let vc2 = find_edge_key(&graph, "V", "C2").unwrap();
+    let vc3 = find_edge_key(&graph, "V", "C3").unwrap();
+    partition.edges.insert(
+      uv,
+      SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]),
+    );
+    partition
+      .edges
+      .insert(vc1, SparseEdgePartition::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
+    partition
+      .edges
+      .insert(vc2, SparseEdgePartition::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
+    partition.edges.insert(vc3, SparseEdgePartition::default());
+
+    let sparse = vec![Arc::new(RwLock::new(partition))];
+    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+
+    let node_count_before = graph.get_nodes().len();
+    let ops = TopologyOps {
+      collapse_short_branches: false,
+      merge_siblings: false,
+      flip_parent_child: false,
+    };
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], ops)?;
+    assert!(!changed, "no topology step runs when all are disabled");
+    assert_eq!(graph.get_nodes().len(), node_count_before);
+
+    let p = sparse[0].read_arc();
+    let total_subs: usize = graph
+      .get_edges()
+      .iter()
+      .filter_map(|e| p.edges.get(&e.read_arc().key()))
+      .map(|e| e.fitch_subs().len())
+      .sum();
+    assert_eq!(total_subs, 4, "mutation content is unchanged");
+
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::brent_sqrt(BranchOptMethod::BrentSqrt)]
+  #[case::newton(    BranchOptMethod::Newton)]
+  #[trace]
+  fn test_run_optimize_loop_collapse_disabled_keeps_zero_edge(#[case] method: BranchOptMethod) -> Result<(), Report> {
+    // A and B are identical, so the AB internal edge optimizes toward zero. With collapse
+    // disabled, run_optimize_loop must leave that edge in place: the node count is unchanged.
+    let nuc = Alphabet::new(AlphabetName::Nuc)?;
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+        >A
+        ACGTACGTACGT
+        >B
+        ACGTACGTACGT
+        >C
+        ACGTACGTACGG
+        >D
+        TCGTACGTACGT
+      "#},
+      &nuc,
+    )?;
+
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln)?;
+    let sparse_partitions = vec![Arc::new(RwLock::new(
+      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
+    ))];
+    update_marginal(&graph, &sparse_partitions)?.value();
+
+    let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
+    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
+
+    let initial_node_count = graph.get_nodes().len();
+
+    let ops = TopologyOps {
+      collapse_short_branches: false,
+      ..TopologyOps::default()
+    };
+    run_optimize_loop(
+      &mut graph,
+      &sparse_partitions,
+      &dense_partitions,
+      &mixed_partitions,
+      10,
+      1e-2,
+      0.75,
+      method,
+      false,
+      ops,
+    )?;
+
+    assert_eq!(
+      graph.get_nodes().len(),
+      initial_node_count,
+      "no collapse when collapse_short_branches is disabled"
+    );
 
     Ok(())
   }

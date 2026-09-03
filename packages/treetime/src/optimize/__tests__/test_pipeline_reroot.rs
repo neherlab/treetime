@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use crate::gtr::get_gtr::GtrModelName;
-  use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
+  use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
   use crate::payload::ancestral::GraphAncestral;
   use crate::progress::NoopProgress;
@@ -37,6 +37,7 @@ mod tests {
       initial_guess: InitialGuessMode::default(),
       no_indels: false,
       reroot_spec,
+      topology_ops: TopologyOps::default(),
     }
   }
 

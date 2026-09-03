@@ -10,7 +10,7 @@ use treetime::commands::optimize::args::OptimizeRerootMethod;
 use treetime::commands::shared::reroot::RerootArgs;
 use treetime::commands::timetree::args::TimeMarginalMode;
 use treetime::gtr::get_gtr::GtrModelName;
-use treetime::optimize::params::{BranchLengthMode, BranchOptMethod, InitialGuessMode};
+use treetime::optimize::params::{BranchLengthMode, BranchOptMethod, InitialGuessMode, TopologyOps};
 use treetime::seq::gap_fill::GapFill;
 
 use app_api::{
@@ -483,6 +483,7 @@ impl From<ServerOptimizeArgs> for TreetimeOptimizeArgs {
       reroot: s.reroot,
       reroot_tips: s.reroot_tips,
       keep_root: s.keep_root,
+      topology_ops: TopologyOps::default(),
       divergence_units: DivergenceUnits::default(),
       gap_fill_args: GapFillArgs {
         gap_fill: s.gap_fill,

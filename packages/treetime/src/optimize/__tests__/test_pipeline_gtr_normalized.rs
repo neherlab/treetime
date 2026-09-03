@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::gtr::get_gtr::GtrModelName;
-  use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
+  use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
   use crate::partition::traits::HasGtr;
   use crate::payload::ancestral::GraphAncestral;
@@ -44,6 +44,7 @@ mod tests {
       initial_guess: InitialGuessMode::default(),
       no_indels: false,
       reroot_spec: None,
+      topology_ops: TopologyOps::default(),
     };
 
     let input = OptimizeInput {

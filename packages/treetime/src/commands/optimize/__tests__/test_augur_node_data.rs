@@ -127,7 +127,7 @@ mod tests {
   fn test_augur_node_data_optimize_end_to_end() {
     use crate::alphabet::alphabet::Alphabet;
     use crate::gtr::get_gtr::GtrModelName;
-    use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
+    use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
     use crate::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
     use crate::progress::NoopProgress;
     use treetime_io::fasta::read_many_fasta;
@@ -148,6 +148,7 @@ mod tests {
       initial_guess: InitialGuessMode::default(),
       no_indels: false,
       reroot_spec: None,
+      topology_ops: TopologyOps::default(),
     };
 
     let input = OptimizeInput {

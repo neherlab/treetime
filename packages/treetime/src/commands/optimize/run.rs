@@ -45,6 +45,7 @@ pub fn run_optimize(
     initial_guess: args.branch_length_initial_guess,
     no_indels: args.no_indels,
     reroot_spec: args.reroot_spec(),
+    topology_ops: args.topology_ops,
   };
 
   let input = OptimizeInput {

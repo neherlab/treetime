@@ -1,3 +1,4 @@
+use crate::optimize::params::TopologyOps;
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::hoist_reversions::{count_child_reversions, hoist_reverting_child};
 use crate::optimize::topology::merge_shared_mutations::merge_single_polytomy;
@@ -32,8 +33,10 @@ pub fn resolve_polytomies(
   graph: &mut GraphAncestral,
   sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense: &[Arc<RwLock<PartitionMarginalDense>>],
+  topology_ops: TopologyOps,
 ) -> Result<usize, Report> {
-  if sparse.is_empty() {
+  // Sparse-only, and skipped entirely when both moves this routine performs are disabled.
+  if sparse.is_empty() || !(topology_ops.merge_siblings || topology_ops.flip_parent_child) {
     return Ok(0);
   }
 
@@ -42,7 +45,7 @@ pub fn resolve_polytomies(
     let polytomy_keys = find_polytomy_nodes(graph);
     let mut round_changed = 0;
     for node_key in polytomy_keys {
-      if resolve_one(graph, sparse, dense, node_key)? {
+      if resolve_one(graph, sparse, dense, node_key, topology_ops)? {
         round_changed += 1;
       }
     }
@@ -80,13 +83,16 @@ fn resolve_one(
   sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense: &[Arc<RwLock<PartitionMarginalDense>>],
   node_key: GraphNodeKey,
+  topology_ops: TopologyOps,
 ) -> Result<bool, Report> {
   let preexisting: BTreeSet<GraphNodeKey> = graph.get_nodes().iter().map(|node| node.read_arc().key()).collect();
 
   let mut any_changed = false;
   loop {
-    let merged = merge_single_polytomy(graph, sparse, node_key)? > 0;
-    let hoisted = try_hoist_reverting_child(graph, sparse, dense, node_key)?;
+    // Each move is gated independently; retirement stays unconditional because it only ever
+    // collapses helper edges the enabled moves just created, so it is a no-op when neither ran.
+    let merged = topology_ops.merge_siblings && merge_single_polytomy(graph, sparse, node_key)? > 0;
+    let hoisted = topology_ops.flip_parent_child && try_hoist_reverting_child(graph, sparse, dense, node_key)?;
     let retired = retire_created_helpers(graph, sparse, dense, &preexisting)?;
 
     if !(merged || hoisted || retired) {

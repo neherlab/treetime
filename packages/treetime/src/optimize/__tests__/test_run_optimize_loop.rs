@@ -4,7 +4,7 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
-  use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::payload::ancestral::GraphAncestral;
@@ -103,6 +103,7 @@ mod tests {
       0.75,
       BranchOptMethod::BrentSqrt,
       false,
+      TopologyOps::default(),
     )?;
 
     // One entry per executed iteration, regardless of how the loop stopped.
@@ -145,6 +146,7 @@ mod tests {
       0.75,
       BranchOptMethod::BrentSqrt,
       false,
+      TopologyOps::default(),
     )?;
 
     assert_eq!(result.lh_history.len(), 1);
@@ -178,6 +180,7 @@ mod tests {
       0.0,
       BranchOptMethod::BrentSqrt,
       false,
+      TopologyOps::default(),
     )?;
 
     assert_eq!(result.stopped_at, Some((1, ConvergenceReason::Converged)));
@@ -202,6 +205,7 @@ mod tests {
       0.75,
       BranchOptMethod::BrentSqrt,
       false,
+      TopologyOps::default(),
     )?;
 
     assert!(result.lh_history.is_empty());
@@ -229,6 +233,7 @@ mod tests {
       0.75,
       BranchOptMethod::BrentSqrt,
       false,
+      TopologyOps::default(),
     )?;
 
     for (i, lh) in result.lh_history.iter().map(|log_lh| log_lh.value()).enumerate() {
@@ -272,6 +277,7 @@ mod tests {
       0.75,
       BranchOptMethod::BrentSqrt,
       false,
+      TopologyOps::default(),
     )?;
 
     let final_sparse_lh = update_marginal(&graph, &sparse_partitions)?.value();

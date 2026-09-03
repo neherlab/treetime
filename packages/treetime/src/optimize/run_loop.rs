@@ -4,7 +4,7 @@ use crate::optimize::dispatch::initial_guess_mixed;
 use crate::optimize::dispatch::run_optimize_mixed_inner;
 use crate::optimize::indel::{estimate_indel_rate, total_indel_log_lh};
 use crate::optimize::iteration::{apply_damping, restore_branch_lengths, save_branch_lengths};
-use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
+use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -69,6 +69,7 @@ pub fn run_optimize_loop(
   damping: f64,
   opt_method: BranchOptMethod,
   no_indels: bool,
+  topology_ops: TopologyOps,
 ) -> Result<OptimizeLoopResult, Report> {
   let indel_rate = if no_indels {
     0.0
@@ -141,11 +142,21 @@ pub fn run_optimize_loop(
     let old_branch_lengths = save_branch_lengths(graph);
     run_optimize_mixed_inner(graph, mixed_partitions, opt_method, indel_rate, no_indels)?;
 
-    let zero_optimal_edges = find_zero_optimal_internal_edges(graph, sparse_partitions);
+    let zero_optimal_edges = if topology_ops.collapse_short_branches {
+      find_zero_optimal_internal_edges(graph, sparse_partitions)
+    } else {
+      vec![]
+    };
 
     apply_damping(graph, &old_branch_lengths, damping, i);
 
-    let topology_changed = prune_and_merge_in_loop(graph, sparse_partitions, dense_partitions, &zero_optimal_edges)?;
+    let topology_changed = prune_and_merge_in_loop(
+      graph,
+      sparse_partitions,
+      dense_partitions,
+      &zero_optimal_edges,
+      topology_ops,
+    )?;
     if topology_changed {
       best_lh = LogLh::IMPOSSIBLE;
     }
@@ -321,6 +332,7 @@ pub fn prune_and_merge_in_loop(
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   zero_optimal_edges: &[GraphEdgeKey],
+  topology_ops: TopologyOps,
 ) -> Result<bool, Report> {
   let mut topology_changed = false;
 
@@ -351,7 +363,7 @@ pub fn prune_and_merge_in_loop(
     }
   }
 
-  if resolve_polytomies(graph, sparse_partitions, dense_partitions)? > 0 {
+  if resolve_polytomies(graph, sparse_partitions, dense_partitions, topology_ops)? > 0 {
     topology_changed = true;
   }
 

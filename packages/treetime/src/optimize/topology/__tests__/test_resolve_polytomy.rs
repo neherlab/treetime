@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::optimize::params::TopologyOps;
   use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -36,7 +37,7 @@ mod tests {
     );
     let sparse = vec![partition];
 
-    let changed = resolve_polytomies(&mut graph, &sparse, &no_dense())?;
+    let changed = resolve_polytomies(&mut graph, &sparse, &no_dense(), TopologyOps::default())?;
     assert!(changed > 0);
 
     let p = sparse[0].read_arc();
@@ -76,7 +77,7 @@ mod tests {
     let sparse = vec![partition];
 
     let before = total_subs(&graph, &sparse[0].read_arc());
-    resolve_polytomies(&mut graph, &sparse, &no_dense())?;
+    resolve_polytomies(&mut graph, &sparse, &no_dense(), TopologyOps::default())?;
     let after = total_subs(&graph, &sparse[0].read_arc());
 
     assert_eq!(before, 5);
@@ -102,7 +103,7 @@ mod tests {
     );
     let sparse = vec![partition];
 
-    resolve_polytomies(&mut graph, &sparse, &no_dense())?;
+    resolve_polytomies(&mut graph, &sparse, &no_dense(), TopologyOps::default())?;
 
     assert!(
       find_node_key_by_name(&graph, "W").is_some(),
@@ -138,7 +139,7 @@ mod tests {
     let sparse = vec![partition];
     let nodes_before = graph.get_nodes().len();
 
-    let changed = resolve_polytomies(&mut graph, &sparse, &no_dense())?;
+    let changed = resolve_polytomies(&mut graph, &sparse, &no_dense(), TopologyOps::default())?;
 
     assert_eq!(changed, 0);
     assert_eq!(graph.get_nodes().len(), nodes_before);
@@ -164,7 +165,7 @@ mod tests {
     let sparse = vec![partition];
     let nodes_before = graph.get_nodes().len();
 
-    let changed = resolve_polytomies(&mut graph, &sparse, &no_dense())?;
+    let changed = resolve_polytomies(&mut graph, &sparse, &no_dense(), TopologyOps::default())?;
 
     assert_eq!(changed, 0);
     assert_eq!(graph.get_nodes().len(), nodes_before);

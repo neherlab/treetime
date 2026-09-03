@@ -4,7 +4,7 @@ mod tests {
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
   use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping, restore_branch_lengths, save_branch_lengths};
-  use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, collect_optimize_partitions, run_optimize_loop};
   use crate::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
@@ -117,6 +117,7 @@ mod tests {
       0.75,
       BranchOptMethod::BrentSqrt,
       false,
+      TopologyOps::default(),
     )?;
 
     let (iter, reason) = result.stopped_at.expect("loop should have stopped");
@@ -147,6 +148,7 @@ mod tests {
       0.0,
       BranchOptMethod::BrentSqrt,
       false,
+      TopologyOps::default(),
     )?;
 
     match result.stopped_at {
@@ -191,6 +193,7 @@ mod tests {
       0.75,
       BranchOptMethod::BrentSqrt,
       false,
+      TopologyOps::default(),
     )?;
 
     let (iter, reason) = result.stopped_at.expect("loop should have stopped");
@@ -223,6 +226,7 @@ mod tests {
       0.75,
       BranchOptMethod::BrentSqrt,
       false,
+      TopologyOps::default(),
     )?;
 
     assert_eq!(result.lh_history.len(), 2);
@@ -255,6 +259,7 @@ mod tests {
       0.75,
       BranchOptMethod::BrentSqrt,
       false,
+      TopologyOps::default(),
     )?;
 
     assert!(

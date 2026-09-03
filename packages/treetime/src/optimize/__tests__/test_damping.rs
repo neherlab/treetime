@@ -4,7 +4,7 @@ mod tests {
     TREE_NEWICK, compute_total_lh, setup_partitions, simple_alignment,
   };
   use crate::optimize::iteration::{apply_damping, save_branch_lengths};
-  use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::run_optimize_loop;
   use crate::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
@@ -171,6 +171,7 @@ mod tests {
       damping,
       method,
       false,
+      TopologyOps::default(),
     )?;
 
     assert!(
@@ -225,6 +226,7 @@ mod tests {
       0.75,
       method,
       false,
+      TopologyOps::default(),
     )?;
 
     // Strict non-regression: damped optimization must not degrade likelihood.

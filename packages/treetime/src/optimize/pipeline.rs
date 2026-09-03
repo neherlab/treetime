@@ -5,7 +5,7 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::iteration::{apply_damping, save_branch_lengths};
-use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
+use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::run_loop::{
   apply_initial_guess_mode, collect_optimize_partitions, normalize_partition_rates, run_optimize_loop,
 };
@@ -21,7 +21,7 @@ use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_in
 use crate::reroot::params::BrentParams;
 use crate::reroot::variance::VarianceModel;
 use eyre::Report;
-use log::info;
+use log::{info, warn};
 use parking_lot::RwLock;
 use serde::Serialize;
 use std::sync::Arc;
@@ -47,6 +47,8 @@ pub struct OptimizeParams {
   pub no_indels: bool,
   /// Reroot policy before optimization. `None` keeps the input root.
   pub reroot_spec: Option<RerootSpec>,
+  /// Which per-iteration topology-cleanup steps run. All on by default.
+  pub topology_ops: TopologyOps,
 }
 
 pub struct OptimizeInput {
@@ -101,6 +103,22 @@ pub fn run(
     },
   }
 
+  // `merge_siblings` and `flip_parent_child` operate on discrete per-edge mutation lists, which
+  // only sparse partitions carry. Under a dense build these steps never run, so disabling them
+  // has no effect; warn the user their flag did nothing rather than failing silently.
+  if sparse_partitions.is_empty() {
+    if !params.topology_ops.merge_siblings {
+      warn!(
+        "--no-merge-siblings has no effect in dense mode: sibling merging requires the sparse sequence representation"
+      );
+    }
+    if !params.topology_ops.flip_parent_child {
+      warn!(
+        "--no-flip-parent-child has no effect in dense mode: the reversion hoist requires the sparse sequence representation"
+      );
+    }
+  }
+
   update_marginal(&input.graph, &sparse_partitions)?;
   if !dense_partitions.is_empty() {
     initialize_marginal(&input.graph, &dense_partitions, &input.sequences)?;
@@ -145,6 +163,7 @@ pub fn run(
     params.damping,
     params.opt_method,
     params.no_indels,
+    params.topology_ops,
   )?;
 
   info!("Re-running marginal to populate subs_ml after optimization loop");

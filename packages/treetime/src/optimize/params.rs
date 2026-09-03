@@ -2,6 +2,29 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
+/// Which topology-cleanup steps run during the optimize loop.
+///
+/// Each step is applied once per iteration unless disabled here. All default to
+/// on, so an optimize run with no topology flags behaves as it did before the
+/// switches existed. The steps map to the loop's cleanup passes:
+///
+/// - `collapse_short_branches`: contract internal edges the per-edge optimizer
+///   drove to exactly zero that carry no mutations (v0's `prune_short_branches`).
+/// - `merge_siblings`: group polytomy siblings that share substitutions under a
+///   new internal node. Requires discrete per-edge mutations, so sparse only.
+/// - `flip_parent_child`: hoist a child that carries the exact reversion of a
+///   parent-edge substitution under a new node, removing one mutation per
+///   reverted position. Requires discrete per-edge mutations, so sparse only.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault)]
+pub struct TopologyOps {
+  #[default = true]
+  pub collapse_short_branches: bool,
+  #[default = true]
+  pub merge_siblings: bool,
+  #[default = true]
+  pub flip_parent_child: bool,
+}
+
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]

@@ -12,7 +12,7 @@ mod tests {
     inject_indels_on_first_edge, setup_identical_partitions,
   };
   use crate::optimize::dispatch::run_optimize_mixed_inner;
-  use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
+  use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::run_loop::apply_initial_guess_mode;
   use crate::optimize::run_loop::run_optimize_loop;
   use crate::payload::ancestral::GraphAncestral;
@@ -69,6 +69,7 @@ mod tests {
       0.75,
       BranchOptMethod::BrentSqrt,
       false,
+      TopologyOps::default(),
     )?;
 
     let result_without = run_optimize_loop(
@@ -81,6 +82,7 @@ mod tests {
       0.75,
       BranchOptMethod::BrentSqrt,
       true,
+      TopologyOps::default(),
     )?;
 
     assert!(
@@ -150,6 +152,7 @@ mod tests {
       0.75,
       BranchOptMethod::BrentSqrt,
       false,
+      TopologyOps::default(),
     )?;
 
     let result_flag = run_optimize_loop(
@@ -162,6 +165,7 @@ mod tests {
       0.75,
       BranchOptMethod::BrentSqrt,
       true,
+      TopologyOps::default(),
     )?;
 
     assert_eq!(

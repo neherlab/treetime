@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::optimize::params::TopologyOps;
   use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::payload::ancestral::GraphAncestral;
@@ -25,7 +26,7 @@ mod tests {
       let (mut graph, partition, before) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
       let sparse = vec![partition];
 
-      let changed = resolve_polytomies(&mut graph, &sparse, &helpers::no_dense()).unwrap();
+      let changed = resolve_polytomies(&mut graph, &sparse, &helpers::no_dense(), TopologyOps::default()).unwrap();
       let after = helpers::total_subs(&graph, &sparse[0].read_arc());
 
       prop_assert!(after <= before, "mutation count increased: before={before} after={after}");
@@ -48,7 +49,7 @@ mod tests {
       let leaves_before = helpers::leaf_names(&graph);
       let sparse = vec![partition];
 
-      resolve_polytomies(&mut graph, &sparse, &helpers::no_dense()).unwrap();
+      resolve_polytomies(&mut graph, &sparse, &helpers::no_dense(), TopologyOps::default()).unwrap();
 
       prop_assert_eq!(helpers::leaf_names(&graph), leaves_before);
 

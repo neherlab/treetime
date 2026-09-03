@@ -6,7 +6,7 @@ use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output::{DivergenceUnits, OptimizeOutputSelection, OutputCoreArgs, TopologyOrderArgs};
 use crate::commands::shared::required::missing_required_args;
-use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
+use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::Report;
@@ -196,6 +196,32 @@ pub struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "reroot_tips"]))]
   pub keep_root: bool,
 
+  /// Disable collapsing of internal branches whose optimized length is zero.
+  ///
+  /// By default the optimize loop contracts internal edges the per-edge optimizer drove to
+  /// exactly zero that carry no substitutions or indels, turning the resulting binary nodes into
+  /// polytomies. When set, such edges are kept in the output tree with length zero.
+  #[cfg_attr(feature = "clap", clap(long))]
+  pub no_collapse_short_branches: bool,
+
+  /// Disable merging of polytomy siblings that share substitutions.
+  ///
+  /// By default, sibling branches in a polytomy that carry identical substitutions are grouped
+  /// under a new internal node. Requires the sparse sequence representation, so this step has no
+  /// effect under `--dense` and the flag is then a no-op.
+  #[cfg_attr(feature = "clap", clap(long))]
+  pub no_merge_siblings: bool,
+
+  /// Disable the flip-parent-child step (reversion hoist) in polytomies.
+  ///
+  /// By default, when a child branch carries the exact reversion of a substitution on the node's
+  /// parent branch, a new node is inserted that groups the node with that child, removing one
+  /// mutation per reverted position. When set, those reversions are left in place. Requires the
+  /// sparse sequence representation, so this step has no effect under `--dense` and the flag is
+  /// then a no-op.
+  #[cfg_attr(feature = "clap", clap(long))]
+  pub no_flip_parent_child: bool,
+
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
   pub gap_fill_args: GapFillArgs,
@@ -227,6 +253,7 @@ pub struct TreetimeOptimizeArgs {
   pub reroot: Option<OptimizeRerootMethod>,
   pub reroot_tips: Vec<String>,
   pub keep_root: bool,
+  pub topology_ops: TopologyOps,
   pub gap_fill_args: GapFillArgs,
 }
 
@@ -285,6 +312,11 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
       reroot: raw.reroot,
       reroot_tips: raw.reroot_tips,
       keep_root: raw.keep_root,
+      topology_ops: TopologyOps {
+        collapse_short_branches: !raw.no_collapse_short_branches,
+        merge_siblings: !raw.no_merge_siblings,
+        flip_parent_child: !raw.no_flip_parent_child,
+      },
       gap_fill_args: raw.gap_fill_args,
     })
   }
