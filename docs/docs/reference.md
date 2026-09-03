@@ -31,6 +31,7 @@ If you have TreeTime CLI installed, you can type `treetime --help` to read the l
 * [`treetime clock`↴](#treetime-clock)
 * [`treetime homoplasy`↴](#treetime-homoplasy)
 * [`treetime mugration`↴](#treetime-mugration)
+* [`treetime pipeline`↴](#treetime-pipeline)
 * [`treetime arg`↴](#treetime-arg)
 * [`treetime schema`↴](#treetime-schema)
 * [`treetime help-markdown`↴](#treetime-help-markdown)
@@ -54,6 +55,7 @@ Publication:   https://academic.oup.com/ve/article/4/1/vex042/4794731
 * `clock` — Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with --keep_root
 * `homoplasy` — Reconstructs ancestral sequences and maps mutations to the tree. The tree is then scanned for homoplasies. An excess number of homoplasies might suggest contamination, recombination, culture adaptation or similar
 * `mugration` — Reconstructs discrete ancestral states, for example geographic location, host, or similar. In addition to ancestral states, a GTR model of state transitions is inferred
+* `pipeline` — Runs an ordered list of analysis commands from one config file, on one dataset, in one process
 * `arg` — Estimates ancestral reassortment graph (ARG)
 * `schema` — Write JSON Schema definitions for TreeTime data types
 * `help-markdown` — Print CLI reference documentation in Markdown format
@@ -105,6 +107,11 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
 ###### **Options:**
 
+* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
+
+   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
+
+   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Path to one or multiple FASTA files with aligned input sequences
 
    Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file extension. If there's multiple input files, then different files can have different compression formats.
@@ -247,7 +254,9 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
   Possible values: `only-terminal`, `all`, `none`
 
 * `--zero-based` — Zero-based mutation indexing
-* `--reconstruct-tip-states` — Overwrite ambiguous states on tips with the most likely inferred state
+* `--include-leaves` — Emit reconstructed leaf (tip) sequences in addition to internal nodes
+* `--impute-missing-data` — Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state. Gaps are left as deletions
+* `--reconstruct-tip-states` — v0-compatible alias for `--include-leaves --impute-missing-data`
 * `--report-ambiguous` — Include transitions involving ambiguous states
 * `--no-indels` — Disable indel (insertion/deletion) contributions to branch-length optimization and branch-length distributions.
 
@@ -266,6 +275,11 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
 * `--output-gtr <OUTPUT_GTR>` — Path to output GTR model JSON.
+
+   Takes precedence over paths configured with `--output-all` and `--output-selection`.
+* `--output-reconstructed-nuc-fasta <OUTPUT_RECONSTRUCTED_NUC_FASTA>` — Path to output reconstructed ancestral-sequence nucleotide FASTA.
+
+   The v1 equivalent of TreeTime v0's `ancestral_sequences.fasta`: internal-node sequences reconstructed by the marginal pass, plus reconstructed tip sequences when `--include-leaves` (or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
 * `--output-clock-model <OUTPUT_CLOCK_MODEL>` — Path to output clock model JSON.
@@ -364,7 +378,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
 
-  Possible values: `all`, `nwk`, `nexus`, `auspice`, `phyloxml`, `phyloxml-json`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `clock-model`, `confidence-tsv`, `tracelog`, `coalescent-tsv`, `coalescent-csv`, `coalescent-json`
+  Possible values: `all`, `nwk`, `nexus`, `auspice`, `phyloxml`, `phyloxml-json`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `clock-model`, `confidence-tsv`, `tracelog`, `coalescent-tsv`, `coalescent-csv`, `coalescent-json`
 
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 
@@ -398,10 +412,15 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
 Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned sequences
 
-**Usage:** `treetime optimize [OPTIONS] --tree <TREE>`
+**Usage:** `treetime optimize [OPTIONS]`
 
 ###### **Options:**
 
+* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
+
+   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
+
+   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Path to one or multiple FASTA files with aligned input sequences
 
    Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file extension. If there's multiple input files, then different files can have different compression formats.
@@ -621,6 +640,15 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 * `--keep-root` — Keep the input tree root instead of rerooting.
 
    Optimize keeps the input root by default; this flag is the explicit form and is mutually exclusive with the reroot options.
+* `--no-collapse-short-branches` — Disable collapsing of internal branches whose optimized length is zero.
+
+   By default the optimize loop contracts internal edges the per-edge optimizer drove to exactly zero that carry no substitutions or indels, turning the resulting binary nodes into polytomies. When set, such edges are kept in the output tree with length zero.
+* `--no-merge-siblings` — Disable merging of polytomy siblings that share substitutions.
+
+   By default, sibling branches in a polytomy that carry identical substitutions are grouped under a new internal node. Requires the sparse sequence representation, so this step has no effect under `--dense` and the flag is then a no-op.
+* `--no-flip-parent-child` — Disable the flip-parent-child step (reversion hoist) in polytomies.
+
+   By default, when a child branch carries the exact reversion of a substitution on the node's parent branch, a new node is inserted that groups the node with that child, removing one mutation per reverted position. When set, those reversions are left in place. Requires the sparse sequence representation, so this step has no effect under `--dense` and the flag is then a no-op.
 * `--gap-fill <GAP_FILL>` — How to handle gap characters in input sequences
 
    'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0). 'all': replace all gap characters with the ambiguous character. 'none': leave all gap characters unchanged.
@@ -636,10 +664,15 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
 Prunes short branches and/or branches without mutations from a phylogenetic tree
 
-**Usage:** `treetime prune [OPTIONS] --tree <TREE>`
+**Usage:** `treetime prune [OPTIONS]`
 
 ###### **Options:**
 
+* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
+
+   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
+
+   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Path to one or multiple FASTA files with aligned input sequences
 
    Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file extension. If there's multiple input files, then different files can have different compression formats.
@@ -799,10 +832,15 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
 Reconstructs ancestral sequences and maps mutations to the tree. The output consists of a file 'ancestral.fasta' with ancestral sequences and a tree 'ancestral.nexus' with mutations added as comments like A45G,G136T,..., number in SNPs used 1-based index by default. The inferred GTR model is written to stdout
 
-**Usage:** `treetime ancestral [OPTIONS] --tree <TREE>`
+**Usage:** `treetime ancestral [OPTIONS]`
 
 ###### **Options:**
 
+* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
+
+   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
+
+   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Path to one or multiple FASTA files with aligned input sequences
 
    Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file extension. If there's multiple input files, then different files can have different compression formats.
@@ -863,7 +901,13 @@ Reconstructs ancestral sequences and maps mutations to the tree. The output cons
   Possible values: `only-terminal`, `all`, `none`
 
 * `--zero-based` — Zero-based mutation indexing
-* `--reconstruct-tip-states` — Overwrite ambiguous states on tips with the most likely inferred state
+* `--include-leaves` — Emit reconstructed leaf (tip) sequences in addition to internal nodes
+* `--impute-missing-data` — Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.
+
+   Gaps are left as deletions (inferred structure, not missing data). Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`.
+* `--reconstruct-tip-states` — v0-compatible alias for `--include-leaves --impute-missing-data`.
+
+   Emits tip sequences and resolves ambiguous/unknown tip states to the most likely inferred state.
 * `--report-ambiguous` — Include transitions involving ambiguous states
 * `--ignore-missing-alns` — Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
 
@@ -1026,10 +1070,15 @@ Reconstructs ancestral sequences and maps mutations to the tree. The output cons
 
 Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with --keep_root
 
-**Usage:** `treetime clock [OPTIONS] --metadata <METADATA>`
+**Usage:** `treetime clock [OPTIONS]`
 
 ###### **Options:**
 
+* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
+
+   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
+
+   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Path to one or multiple FASTA files with aligned input sequences
 
    Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file extension. If there's multiple input files, then different files can have different compression formats.
@@ -1255,10 +1304,15 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 
 Reconstructs ancestral sequences and maps mutations to the tree. The tree is then scanned for homoplasies. An excess number of homoplasies might suggest contamination, recombination, culture adaptation or similar
 
-**Usage:** `treetime homoplasy [OPTIONS] --tree <TREE>`
+**Usage:** `treetime homoplasy [OPTIONS]`
 
 ###### **Options:**
 
+* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
+
+   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
+
+   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Path to one or multiple FASTA files with aligned input sequences
 
    Accepts plain or compressed FASTA files. If a compressed fasta file is provided, it will be transparently decompressed. Supported compression formats: `gz`, `bz2`, `xz`, `zstd`. Decompressor is chosen based on file extension. If there's multiple input files, then different files can have different compression formats.
@@ -1319,7 +1373,13 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
   Possible values: `only-terminal`, `all`, `none`
 
 * `--zero-based` — Zero-based mutation indexing
-* `--reconstruct-tip-states` — Overwrite ambiguous states on tips with the most likely inferred state
+* `--include-leaves` — Emit reconstructed leaf (tip) sequences in addition to internal nodes
+* `--impute-missing-data` — Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.
+
+   Gaps are left as deletions (inferred structure, not missing data). Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`.
+* `--reconstruct-tip-states` — v0-compatible alias for `--include-leaves --impute-missing-data`.
+
+   Emits tip sequences and resolves ambiguous/unknown tip states to the most likely inferred state.
 * `--report-ambiguous` — Include transitions involving ambiguous states
 * `--ignore-missing-alns` — Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
 
@@ -1489,10 +1549,15 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
 Reconstructs discrete ancestral states, for example geographic location, host, or similar. In addition to ancestral states, a GTR model of state transitions is inferred
 
-**Usage:** `treetime mugration [OPTIONS] --attribute <ATTRIBUTE> --metadata <METADATA>`
+**Usage:** `treetime mugration [OPTIONS]`
 
 ###### **Options:**
 
+* `--config <CONFIG>` — Load command configuration from a file (optionally compressed: `.gz`, `.bz2`, `.xz`, `.zst`).
+
+   The file holds this command's configuration object, in the same shape the command serializes to. It is parsed as YAML, which also accepts JSON. Use `-` to read from stdin.
+
+   Explicit command-line flags override values from the file; the file overrides defaults. A boolean enabled in the config cannot be disabled from the command line (a flag has no `false` spelling); edit the config instead.
 * `-t`, `--tree <TREE>` — Name of file containing the tree in newick, nexus, or phylip format.
 
    If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml (assuming they are installed)
@@ -1643,6 +1708,24 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 
 
 
+## `treetime pipeline`
+
+Runs an ordered list of analysis commands from one config file, on one dataset, in one process.
+
+The config file (JSON or YAML) lists named steps, each an analysis command with its arguments. Steps run sequentially; a step may reference an earlier step's outputs with `{{ steps.<name>.outputs.<selection> }}`. Use `--check` to print the resolved plan without running anything, and `--steps` to run only a subset.
+
+**Usage:** `treetime pipeline [OPTIONS] --config <CONFIG>`
+
+###### **Options:**
+
+* `--config <CONFIG>` — Pipeline configuration file (JSON or YAML) describing an ordered list of steps
+* `--steps <STEPS>` — Run only these named steps (comma-separated), in the pipeline's list order.
+
+   A referenced upstream step that is not selected must already have its outputs on disk.
+* `--check` — Resolve and print the plan (steps, inputs, outputs) without running any step
+
+
+
 ## `treetime arg`
 
 Estimates ancestral reassortment graph (ARG)
@@ -1659,11 +1742,11 @@ Write JSON Schema definitions for TreeTime data types
 
 ###### **Options:**
 
-* `--for <FOR_FORMAT>` — Which schema to generate
+* `--for <TARGET>` — Which schema to generate
 
   Default value: `all`
 
-  Possible values: `all`, `version-info`, `progress-event`, `error-response`
+  Possible values: `all`, `version-info`, `progress-event`, `error-response`, `pipeline`, `timetree`, `optimize`, `prune`, `ancestral`, `clock`, `mugration`
 
 * `-o`, `--output <OUTPUT>` — Output file or directory (use "-" for stdout). Directory required when --for=all
 
