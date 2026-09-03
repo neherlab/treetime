@@ -1,0 +1,15 @@
+##gff-version 3
+##sequence-region EPI_ISL_412866 1 15225
+EPI_ISL_412866	annotation	remark	1	15225	.	.	.	molecule_type=cRNA;organism=Human orthopneumovirus;taxonomy=Viruses,Riboviria,Orthornavirae,Negarnaviricota,Haploviricotina,Monjiviricetes,Mononegavirales,Pneumoviridae,Orthopneumovirus,Orthopneumovirus hominis
+EPI_ISL_412866	feature	source	1	15225	.	.	.	mol_type=viral cRNA;organism=Human orthopneumovirus
+EPI_ISL_412866	feature	CDS	70	489	.	.	0	codon_start=1;db_xref=GeneID:37607636;gene=NS1;gene_name=NS1;Name=NS1;product=nonstructural protein 1
+EPI_ISL_412866	feature	CDS	599	973	.	.	0	codon_start=1;db_xref=GeneID:37607637;gene=NS2;gene_name=NS2;Name=NS2;product=nonstructural protein 2
+EPI_ISL_412866	feature	CDS	1111	2286	.	.	0	codon_start=1;db_xref=GeneID:37607638;gene=N;gene_name=N;Name=N;product=nucleoprotein
+EPI_ISL_412866	feature	CDS	2318	3043	.	.	0	codon_start=1;db_xref=GeneID:37607639;gene=P;gene_name=P;Name=P;product=phosphoprotein
+EPI_ISL_412866	feature	CDS	3226	3996	.	.	0	codon_start=1;db_xref=GeneID:37607640;gene=M;gene_name=M;Name=M;product=matrix protein
+EPI_ISL_412866	feature	CDS	4266	4460	.	.	0	codon_start=1;db_xref=GeneID:37607641;gene=SH;gene_name=SH;Name=SH;product=small hydrophobic protein
+EPI_ISL_412866	feature	CDS	4652	5617	.	.	0	codon_start=1;db_xref=GeneID:37607642;gene=G;gene_name=G;Name=G;product=attachment glycoprotein
+EPI_ISL_412866	feature	CDS	5697	7421	.	.	0	codon_start=1;db_xref=GeneID:37607643;gene=F;gene_name=F;Name=F;product=fusion glycoprotein
+EPI_ISL_412866	feature	CDS	7640	8224	.	.	0	codon_start=1;db_xref=GeneID:37607644;gene=M2;gene_name=M2-1;Name=M2-1;note=ORF 1%2C matrix protein 2;product=M2-1 protein
+EPI_ISL_412866	feature	CDS	8199	8465	.	.	0	codon_start=1;db_xref=GeneID:37607644;gene=M2;gene_name=M2-2;Name=M2-2;note=ORF 2%2C RNA processivity factor;product=M2-2 protein
+EPI_ISL_412866	feature	CDS	8532	15029	.	.	0	codon_start=1;db_xref=GeneID:37607645;gene=L;gene_name=L;Name=L;note=RNA dependant RNA polymerase%3B RdRp;product=polymerase protein
