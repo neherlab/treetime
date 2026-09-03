@@ -8,9 +8,11 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use treetime_graph::node::GraphNodeKey;
+use treetime_primitives::AsciiChar;
 
 /// Count the substitution reversions a child edge applies to its parent edge, summed
 /// across sparse partitions.
@@ -19,9 +21,16 @@ use treetime_graph::node::GraphNodeKey;
 /// carries the exact inverse $b \to a$, so composing the two edges cancels the change.
 /// This is the gain $\lvert R\rvert$ of hoisting that child (see [`hoist_reverting_child`]);
 /// each reversion is one mutation the move removes.
+///
+/// When `sibling_edge_key` is `Some`, the node sits directly under a bifurcating (degree-2)
+/// root and the parent set is augmented with the inverted sibling substitutions at
+/// parent-empty positions (see [`augment_parent_with_sibling`]), so a reversion split across
+/// the root is counted. The augmentation is scoring only; [`slide_bifurcating_root_for_child`]
+/// materializes it before the hoist.
 pub(crate) fn count_child_reversions(
   sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
   parent_edge_key: GraphEdgeKey,
+  sibling_edge_key: Option<GraphEdgeKey>,
   child_edge_key: GraphEdgeKey,
 ) -> usize {
   sparse
@@ -30,9 +39,135 @@ pub(crate) fn count_child_reversions(
       let partition = partition.read_arc();
       let parent_subs: &[Sub] = partition.edges.get(&parent_edge_key).map_or(&[], |e| e.fitch_subs());
       let child_subs: &[Sub] = partition.edges.get(&child_edge_key).map_or(&[], |e| e.fitch_subs());
-      count_reversions(parent_subs, child_subs)
+      match sibling_edge_key {
+        Some(sibling_edge_key) => {
+          let sibling_subs: &[Sub] = partition.edges.get(&sibling_edge_key).map_or(&[], |e| e.fitch_subs());
+          let (augmented, _) = augment_parent_with_sibling(parent_subs, sibling_subs);
+          count_reversions(&augmented, child_subs)
+        },
+        None => count_reversions(parent_subs, child_subs),
+      }
     })
     .sum()
+}
+
+/// Build the parent-edge substitution set as seen across a bifurcating root.
+///
+/// A degree-2 root is a reversible pass-through: the edge above a child `v` is one half of the
+/// single unrooted edge `v--s` to the sibling `s`. At a site where `v` equals the root but `s`
+/// differs, the distinguishing substitution sits on the sibling edge (`root_char -> s_char`),
+/// not on `v`'s parent edge. The effective parent substitution there is its inverse
+/// (`s_char -> v_char`, with `v_char` the root char), which a child of `v` can revert.
+///
+/// Returns the augmented, position-sorted parent substitutions and the set of positions
+/// contributed by the sibling. A site carried by both edges is skipped rather than composed:
+/// under Fitch a degree-2 root state is always one of its two children's states, so no site is
+/// ever non-empty on both root edges, and skipping keeps the augmentation exactly invertible by
+/// the slide, which only rewrites parent-empty sites.
+fn augment_parent_with_sibling(parent_subs: &[Sub], sibling_subs: &[Sub]) -> (Vec<Sub>, BTreeSet<usize>) {
+  let parent_positions: BTreeSet<usize> = parent_subs.iter().map(Sub::pos).collect();
+  let mut augmented = parent_subs.to_vec();
+  let mut sibling_sourced = BTreeSet::new();
+  for sibling_sub in sibling_subs {
+    if parent_positions.contains(&sibling_sub.pos()) {
+      continue;
+    }
+    let mut inverted = sibling_sub.clone();
+    inverted.invert();
+    augmented.push(inverted);
+    sibling_sourced.insert(sibling_sub.pos());
+  }
+  augmented.sort_by_key(Sub::pos);
+  (augmented, sibling_sourced)
+}
+
+/// Re-root a bifurcating root toward the sibling at the positions the chosen child reverts.
+///
+/// For each sparse partition, a site qualifies when the sibling edge carries a substitution
+/// there, the parent edge is empty there, and `child_edge_key` carries the same substitution
+/// (the child changes the root char to the sibling char). Such a site is re-rooted onto the
+/// sibling's state: the root char becomes `s_char`, the sibling substitution is dropped, and its
+/// inverse (`s_char -> v_char`) is added to the parent edge. The reversion is then local to the
+/// parent edge and [`hoist_reverting_child`] removes it unchanged.
+///
+/// The re-rooting preserves every leaf and internal MAP sequence and the total mutation count;
+/// it only moves one substitution from the sibling half of the root edge to the parent half. It
+/// is therefore substitution-count neutral on its own, so the caller MUST follow it immediately
+/// with the hoist that consumes the exposed reversion. Restricting to a degree-2 root guarantees
+/// both root edges are rewritten consistently, because the root has exactly these two children.
+///
+/// The root's clamped MAP sequence (`root_sequence` and the root node's `seq.sequence`) is moved
+/// in lock-step, so the marginal pass that reads the clamp on the next optimizer iteration stays
+/// consistent with the rewritten edges.
+pub(crate) fn slide_bifurcating_root_for_child(
+  sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
+  root_key: GraphNodeKey,
+  parent_edge_key: GraphEdgeKey,
+  sibling_edge_key: GraphEdgeKey,
+  child_edge_key: GraphEdgeKey,
+) -> Result<(), Report> {
+  for partition in sparse {
+    let mut partition = partition.write_arc();
+
+    let parent_subs = partition
+      .edges
+      .get(&parent_edge_key)
+      .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
+    let sibling_subs = partition
+      .edges
+      .get(&sibling_edge_key)
+      .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
+    let child_by_pos: BTreeMap<usize, (AsciiChar, AsciiChar)> = partition
+      .edges
+      .get(&child_edge_key)
+      .map_or(Vec::new(), |e| e.fitch_subs().to_vec())
+      .iter()
+      .map(|c| (c.pos(), (c.reff(), c.qry())))
+      .collect();
+    let parent_positions: BTreeSet<usize> = parent_subs.iter().map(Sub::pos).collect();
+
+    let mut hoisted_parent = parent_subs;
+    let mut remaining_sibling = Vec::new();
+    let mut slid_any = false;
+    for sibling_sub in sibling_subs {
+      let reverted_by_child = child_by_pos
+        .get(&sibling_sub.pos())
+        .is_some_and(|&(reff, qry)| reff == sibling_sub.reff() && qry == sibling_sub.qry());
+      if !parent_positions.contains(&sibling_sub.pos()) && reverted_by_child {
+        let pos = sibling_sub.pos();
+        partition.root_sequence[pos] = sibling_sub.qry();
+        // Keep the root node's clamped MAP sequence in step with `root_sequence`. The forward
+        // pass only clamps the root MAP when it is empty, so a bare `root_sequence` edit would
+        // leave the populated root MAP stale for the next iteration's marginal reconstruction.
+        if let Some(root_node) = partition.nodes.get_mut(&root_key) {
+          if pos < root_node.seq.sequence.len() {
+            root_node.seq.sequence[pos] = sibling_sub.qry();
+          }
+        }
+        let mut inverted = sibling_sub.clone();
+        inverted.invert();
+        hoisted_parent.push(inverted);
+        slid_any = true;
+      } else {
+        remaining_sibling.push(sibling_sub);
+      }
+    }
+
+    if !slid_any {
+      continue;
+    }
+    hoisted_parent.sort_by_key(Sub::pos);
+
+    if let Some(sibling_edge) = partition.edges.get_mut(&sibling_edge_key) {
+      sibling_edge.set_fitch_subs(remaining_sibling);
+    }
+    partition
+      .edges
+      .entry(parent_edge_key)
+      .or_default()
+      .set_fitch_subs(hoisted_parent);
+  }
+  Ok(())
 }
 
 /// Insert a new node $N$ between $u$ and $v$ that groups $v$ and one reverting child $c$,

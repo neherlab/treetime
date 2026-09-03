@@ -1,6 +1,8 @@
 use crate::optimize::params::TopologyOps;
 use crate::optimize::topology::collapse::collapse_edge;
-use crate::optimize::topology::hoist_reversions::{count_child_reversions, hoist_reverting_child};
+use crate::optimize::topology::hoist_reversions::{
+  count_child_reversions, hoist_reverting_child, slide_bifurcating_root_for_child,
+};
 use crate::optimize::topology::merge_shared_mutations::merge_single_polytomy;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -126,28 +128,65 @@ fn try_hoist_reverting_child(
   if degree_out < 2 {
     return Ok(false);
   }
-  let Some(child_edge_key) = best_reverting_child(graph, sparse, node_key, parent_edge_key) else {
+  // A node under a bifurcating root may carry its distinguishing substitutions on the sibling
+  // edge; scoring and the slide look across the root when that is the case.
+  let root_and_sibling = bifurcating_root_sibling_edge(graph, parent_edge_key);
+  let sibling_edge_key = root_and_sibling.map(|(_, sibling_edge_key)| sibling_edge_key);
+  let Some(child_edge_key) = best_reverting_child(graph, sparse, node_key, parent_edge_key, sibling_edge_key) else {
     return Ok(false);
   };
+  // Re-root the cross-root reverting positions onto the parent edge before hoisting, so the
+  // existing surgery consumes them. A no-op when the winning child reverts only parent-edge
+  // substitutions; never applied without the hoist that follows it.
+  if let Some((root_key, sibling_edge_key)) = root_and_sibling {
+    slide_bifurcating_root_for_child(sparse, root_key, parent_edge_key, sibling_edge_key, child_edge_key)?;
+  }
   hoist_reverting_child(graph, sparse, dense, parent_edge_key, child_edge_key)?;
   Ok(true)
+}
+
+/// The bifurcating (degree-2) root and the sibling child-edge of a node under it.
+///
+/// A degree-2 root is a reversible pass-through: the substitutions distinguishing its two
+/// subtrees may sit on either child edge, so the sibling edge participates in reversion
+/// detection and in the root slide. Returns `None` when the parent node is not the root or the
+/// root has other than two children, where every edge is a genuine tree edge and no slide
+/// applies.
+fn bifurcating_root_sibling_edge(
+  graph: &GraphAncestral,
+  parent_edge_key: GraphEdgeKey,
+) -> Option<(GraphNodeKey, GraphEdgeKey)> {
+  let root_key = graph.get_source_node_key(parent_edge_key).ok()?;
+  let root = graph.get_node(root_key)?;
+  let root = root.read_arc();
+  if !root.is_root() || root.degree_out() != 2 {
+    return None;
+  }
+  let sibling_edge_key = root
+    .outbound()
+    .iter()
+    .copied()
+    .find(|&edge_key| edge_key != parent_edge_key)?;
+  Some((root_key, sibling_edge_key))
 }
 
 /// Pick the child edge with the most reversions against the parent edge.
 ///
 /// Chooses the largest reversion count, breaking ties by smallest edge key for determinism.
-/// Returns `None` when no child reverts any parent substitution.
+/// Returns `None` when no child reverts any parent substitution. With `sibling_edge_key` set,
+/// reversions are counted across a bifurcating root (see [`count_child_reversions`]).
 fn best_reverting_child(
   graph: &GraphAncestral,
   sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
   node_key: GraphNodeKey,
   parent_edge_key: GraphEdgeKey,
+  sibling_edge_key: Option<GraphEdgeKey>,
 ) -> Option<GraphEdgeKey> {
   let child_edges = graph.get_node(node_key)?.read_arc().outbound().to_vec();
 
   let mut best: Option<(usize, GraphEdgeKey)> = None;
   for child_edge_key in child_edges {
-    let reversions = count_child_reversions(sparse, parent_edge_key, child_edge_key);
+    let reversions = count_child_reversions(sparse, parent_edge_key, sibling_edge_key, child_edge_key);
     if reversions == 0 {
       continue;
     }
