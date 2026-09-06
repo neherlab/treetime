@@ -39,6 +39,13 @@ pub(crate) fn reconstruct_map_seq_sampled(
     base_seq.clone()
   };
 
+  // Positions this node resolved out of `profile.variable`, at which the chaining above cannot be
+  // trusted because the parent's own state deviates from the parsimony reference it assumes. Applied
+  // with the reference chain, so the unknown and deletion masks below still take precedence.
+  for (&pos, &state) in &node.map_overrides {
+    seq[pos] = state;
+  }
+
   for r in &node.seq.unknown {
     seq[r.0..r.1].fill(alphabet.unknown());
   }

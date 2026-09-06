@@ -10,7 +10,7 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
@@ -125,6 +125,7 @@ where
       None,
     )?;
     slot.node.profile = profile;
+    slot.node.map_overrides = collect_map_overrides(parent, &slot.node, &variable_pos);
 
     // Internal nodes derive their MAP sequence from the parent. Leaves keep their observed input:
     // deriving a leaf from the parent discards observed states the leaf shares with the parent under
@@ -140,6 +141,36 @@ where
   }
 
   Ok(())
+}
+
+/// States a node must write explicitly because it cannot inherit them from its parent.
+///
+/// `combine_messages` drops a candidate position from `profile.variable` once its posterior resolves
+/// to a single state, and `reconstruct_map_seq_sampled` then takes that position from the parent's
+/// reconstructed sequence plus the parsimony substitutions on the edge. That fallback is only valid
+/// while the parent's own state agrees with its parsimony reference. It does not agree wherever the
+/// parent still holds a distribution for the position and picks a state Fitch did not: the marginal
+/// argmax can differ from the reference state, and under `--sample-from-profile` the draw can too.
+/// Without a correction the parent's state is copied into every descendant that resolved the
+/// position, turning a single node's legitimate state change into a subtree-wide one.
+///
+/// So every position the parent still carries in `profile.variable` and this node resolved gets
+/// written back explicitly. Such positions always reach this node as candidates, since
+/// `compute_msg_to_child` seeds `msg_to_child.variable` from the parent's `profile.variable`, and
+/// `variable_pos` holds the reference state each one collapsed onto. The write is a no-op whenever
+/// the parent did agree with parsimony, so this does not depend on predicting the parent's state.
+fn collect_map_overrides(
+  parent: &SparseNodePartition,
+  node: &SparseNodePartition,
+  variable_pos: &BTreeMap<usize, AsciiChar>,
+) -> BTreeMap<usize, AsciiChar> {
+  parent
+    .profile
+    .variable
+    .keys()
+    .filter(|pos| !node.profile.variable.contains_key(pos) && !range_contains(&node.seq.non_char, **pos))
+    .filter_map(|pos| Some((*pos, *variable_pos.get(pos)?)))
+    .collect()
 }
 
 fn compute_msg_to_child(

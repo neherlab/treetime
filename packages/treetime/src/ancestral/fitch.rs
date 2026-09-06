@@ -220,6 +220,7 @@ where
       fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
       log_lh: LogLh::ZERO,
     },
+    map_overrides: btreemap! {},
   };
   Ok(())
 }
