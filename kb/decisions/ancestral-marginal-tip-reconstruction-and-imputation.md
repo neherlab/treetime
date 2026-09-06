@@ -16,7 +16,7 @@ The same overwrite ran before the per-edge maximum-likelihood substitutions (`ml
 
 The dense backend never had this defect: it keeps each leaf's observed sequence and derives leaf mutations by comparing most-likely states.
 
-Removing leaves from the parent chain did not remove the chain itself, and the same inheritance defect remained on internal nodes wherever an ancestor's most-likely state deviates from parsimony. That case is recorded in [Sparse marginal reconstruction pins states the parent chain cannot supply](ancestral-marginal-sparse-map-overrides.md).
+Removing leaves from the parent chain did not remove the chain itself, and the same inheritance defect remained on internal nodes wherever an ancestor's most-likely state deviates from parsimony, and wherever a node inherited a deletion. Those cases, and the representation change that resolves them, are recorded in [The sparse stored sequence is the parsimony chain](ancestral-marginal-sparse-parsimony-chain.md).
 
 ## Problem: missing data never resolved (C1)
 

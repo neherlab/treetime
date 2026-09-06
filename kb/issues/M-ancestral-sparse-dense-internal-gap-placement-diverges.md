@@ -19,7 +19,9 @@ The sparse backend is the default. Its internal-node sequences differ from the d
 
 ## Root cause
 
-Not established. The two backends resolve indels through different code paths (`fn resolve_indels_forward()` / `resolve_indels_backward()` for dense; the sparse indel track carried on edges), and they diverge on which internal positions are deleted. A focused comparison against v0 is needed to determine which backend, if either, matches the reference and where the divergence originates.
+Partly established. One contributor is fixed: sparse reconstruction re-applied only the deletions recorded on a node's *own* parent edge, so a node whose gap was inherited from further up had a residue written back by the posterior. See [The sparse stored sequence is the parsimony chain](../decisions/ancestral-marginal-sparse-parsimony-chain.md). On `data/sc2/4500` position 28369 that accounted for ~4470 internal nodes reported as a residue where dense reports a gap; sparse now matches dense there.
+
+A residual divergence remains and is what this issue now tracks. On the same dataset, sparse reports the unknown character `N` at 25 internal nodes (position 28369) and 72 (position 23009) where dense reports a gap or a residue. That residual predates the fix above and is unchanged by it, so it has a separate cause - most likely in how the two backends classify a position as `non_char` versus deleted, rather than in the reconstruction step. The two backends resolve indels through different code paths (`fn resolve_indels_forward()` / `resolve_indels_backward()` for dense; the sparse indel track carried on edges). A focused comparison against v0 is still needed to determine which backend matches the reference.
 
 ## Fix approach
 
