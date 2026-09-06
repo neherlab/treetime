@@ -4,19 +4,18 @@ use crate::partition::marginal::sparse::message::{
   combine_messages, normalize_1d_inplace, propagate_raw, propagate_raw_per_site,
 };
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::marginal::sparse::reconstruct::reconstruct_map_seq;
+use crate::partition::marginal::sparse::reconstruct::{map_state, parsimony_seq};
 use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, VarPos};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_graph::pass::{GraphPass, GraphPassDependencies, GraphPassSlot};
-use treetime_primitives::{AsciiChar, LogLh};
-use treetime_utils::array::ndarray::argmax_first;
+use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
 
 pub fn process_forward_indexed<N, E>(
@@ -125,15 +124,12 @@ where
       None,
     )?;
     slot.node.profile = profile;
-    slot.node.map_overrides = collect_map_overrides(parent, &slot.node, &variable_pos);
 
-    // Internal nodes derive their MAP sequence from the parent. Leaves keep their observed input:
-    // deriving a leaf from the parent discards observed states the leaf shares with the parent under
-    // Fitch compression, which corrupts both the emitted tip sequence and the leaf-edge `ml_subs`
-    // (dropping real parent->tip substitutions). The dense backend likewise preserves the observed
-    // leaf sequence through its forward pass.
+    // Extend the parsimony chain. Leaves already hold their observed sequence, which is their
+    // parsimony sequence; rebuilding it from the parent would discard the observed states a leaf
+    // shares with its parent under Fitch compression.
     if !graph.is_leaf(slot.key) && !parent.seq.sequence.is_empty() {
-      slot.node.seq.sequence = reconstruct_map_seq(&parent.seq.sequence, Some(edge_data), &slot.node, alphabet);
+      slot.node.seq.sequence = parsimony_seq(&parent.seq.sequence, edge_data, &slot.node, alphabet);
     }
     edge_data.set_ml_subs(compute_ml_subs_for_nodes(alphabet, parent, &slot.node, edge_data)?);
   } else if slot.node.seq.sequence.is_empty() {
@@ -141,36 +137,6 @@ where
   }
 
   Ok(())
-}
-
-/// States a node must write explicitly because it cannot inherit them from its parent.
-///
-/// `combine_messages` drops a candidate position from `profile.variable` once its posterior resolves
-/// to a single state, and `reconstruct_map_seq_sampled` then takes that position from the parent's
-/// reconstructed sequence plus the parsimony substitutions on the edge. That fallback is only valid
-/// while the parent's own state agrees with its parsimony reference. It does not agree wherever the
-/// parent still holds a distribution for the position and picks a state Fitch did not: the marginal
-/// argmax can differ from the reference state, and under `--sample-from-profile` the draw can too.
-/// Without a correction the parent's state is copied into every descendant that resolved the
-/// position, turning a single node's legitimate state change into a subtree-wide one.
-///
-/// So every position the parent still carries in `profile.variable` and this node resolved gets
-/// written back explicitly. Such positions always reach this node as candidates, since
-/// `compute_msg_to_child` seeds `msg_to_child.variable` from the parent's `profile.variable`, and
-/// `variable_pos` holds the reference state each one collapsed onto. The write is a no-op whenever
-/// the parent did agree with parsimony, so this does not depend on predicting the parent's state.
-fn collect_map_overrides(
-  parent: &SparseNodePartition,
-  node: &SparseNodePartition,
-  variable_pos: &BTreeMap<usize, AsciiChar>,
-) -> BTreeMap<usize, AsciiChar> {
-  parent
-    .profile
-    .variable
-    .keys()
-    .filter(|pos| !node.profile.variable.contains_key(pos) && !range_contains(&node.seq.non_char, **pos))
-    .filter_map(|pos| Some((*pos, *variable_pos.get(pos)?)))
-    .collect()
 }
 
 fn compute_msg_to_child(
@@ -264,22 +230,10 @@ fn compute_ml_subs_for_nodes(
       if range_contains(&parent.seq.non_char, pos) || range_contains(&child.seq.non_char, pos) {
         return None;
       }
-      let parent_state = resolve_map_state(parent, pos, alphabet);
-      let child_state = resolve_map_state(child, pos, alphabet);
+      let parent_state = map_state(parent, pos, alphabet);
+      let child_state = map_state(child, pos, alphabet);
       (parent_state != child_state && alphabet.is_canonical(parent_state) && alphabet.is_canonical(child_state))
         .then(|| Sub::new(parent_state, pos, child_state))
     })
     .collect()
-}
-
-fn resolve_map_state(
-  node: &SparseNodePartition,
-  pos: usize,
-  alphabet: &crate::alphabet::alphabet::Alphabet,
-) -> AsciiChar {
-  if let Some(var) = node.profile.variable.get(&pos) {
-    alphabet.char(argmax_first(&var.dis.view()).unwrap_or(0))
-  } else {
-    node.seq.sequence.get(pos).copied().unwrap_or_else(|| alphabet.char(0))
-  }
 }

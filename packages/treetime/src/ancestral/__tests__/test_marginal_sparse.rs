@@ -210,12 +210,17 @@ mod tests {
       json_write_str(&actual, JsonPretty(false))?
     );
 
+    // `seq.composition` describes the stored parsimony sequence, not the emitted MAP sequence. That is
+    // the accounting `combine_messages` and `infer_gtr` both assume: the former subtracts one count
+    // per variable position keyed by that position's parsimony state, the latter pairs the counts with
+    // the edges' Fitch substitutions. Reconstruction must leave both untouched.
     let partition = partitions_marginal_sparse[0].read_arc();
-    for (name, expected_seq) in &expected {
+    for name in expected.keys() {
       let node_key = find_node_key_by_name(&graph, name).expect("expected internal node must exist");
-      let expected_composition =
-        Composition::with_seq(expected_seq, partition.alphabet.chars(), partition.alphabet.gap());
-      assert_eq!(expected_composition, partition.nodes[&node_key].seq.composition);
+      let node = &partition.nodes[&node_key];
+      let stored_composition =
+        Composition::with_seq(&node.seq.sequence, partition.alphabet.chars(), partition.alphabet.gap());
+      assert_eq!(stored_composition, node.seq.composition);
     }
 
     // test overall likelihood

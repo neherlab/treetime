@@ -82,7 +82,9 @@ mod tests {
       prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
     }
 
-    /// MAP reconstruction keeps each sparse node's cached composition equal to its sequence.
+    /// Each sparse node's cached composition describes its stored parsimony sequence, and MAP
+    /// reconstruction leaves both untouched. `combine_messages` and `infer_gtr` both depend on this
+    /// pairing, so an output pass must not rewrite either.
     #[test]
     fn test_prop_marginal_sparse_map_composition_matches_sequence(input in arb_marginal_input_small()) {
       let graph: GraphAncestral = nwk_read_str(&input.newick).unwrap();

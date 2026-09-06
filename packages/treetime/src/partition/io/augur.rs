@@ -70,7 +70,10 @@ impl AugurNodeDataJsonAncestralPartition for PartitionMarginalSparse {
   }
 
   fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    self.nodes[&node_key].seq.sequence.clone()
+    // `seq.sequence` holds the parsimony chain, so go through the branch-ops accessor, which resolves
+    // it against the posterior. Reading the field directly would emit parsimony states in the JSON
+    // while the reconstructed FASTA carried MAP states.
+    PartitionBranchOps::node_sequence(self, node_key)
   }
 
   fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {

@@ -71,6 +71,53 @@ mod tests {
     Ok(())
   }
 
+  /// A deletion inherited from an ancestor must survive the posterior resolution.
+  ///
+  /// Position 0 is deleted in the whole `DEL` clade and polymorphic (`A`/`T`) in the sister clade, so
+  /// it is a variable position tree-wide. Resolving a posterior must never put a residue back at a
+  /// site the node reports as deleted, whether the gap is the node's own or inherited from further up.
+  ///
+  /// This is an invariant guard, not a reproduction: on this topology the deleted clade's nodes carry
+  /// no posterior at position 0, so it passes on the pre-parsimony-chain reconstruction too. A real
+  /// reproduction needs a node that is `non_char` at a position its own upward message still reports
+  /// as variable - see the `data/sc2/4500` positions 28369 and 23009, where the old code emitted a
+  /// residue at ~4500 internal nodes that both dense and the parsimony chain report as gaps.
+  #[test]
+  fn test_marginal_map_deviation_keeps_inherited_deletions() -> Result<(), Report> {
+    let aln = parse_aln(indoc! {r#"
+      >D1
+      -CGTACGTAC
+      >D2
+      -CGTACGTAC
+      >D3
+      -CGTACGTAC
+      >A1
+      ACGTACGTAC
+      >A2
+      TCGTACGTAC
+    "#})?;
+    let graph: GraphAncestral =
+      nwk_read_str("(((D1:0.05,D2:0.05)DD:0.05,D3:0.05)DEL:0.2,(A1:0.05,A2:0.05)POLY:0.2)root:0.0;")?;
+
+    let sparse = reconstruct_sparse(&graph, &aln)?;
+
+    // `DD` sits below the edge that carries the deletion, so its gap is inherited rather than its own.
+    for node in ["DEL", "DD"] {
+      assert_eq!(
+        '-',
+        nuc_at(&sparse, node, 0),
+        "{node} is deleted at position 0 and must not have a residue restored"
+      );
+    }
+
+    assert_eq!(
+      reconstruct_dense(&graph, &aln)?,
+      sparse,
+      "sparse must reproduce the dense reconstruction"
+    );
+    Ok(())
+  }
+
   fn nuc_at(seqs: &BTreeMap<String, String>, node: &str, pos: usize) -> char {
     seqs[node].chars().nth(pos).expect("position within sequence")
   }

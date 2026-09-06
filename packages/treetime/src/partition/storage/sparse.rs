@@ -18,18 +18,15 @@ pub struct SparseNodePartition {
   pub seq: SparseSeqInfo,
   pub profile: SparseSeqDistribution,
 
-  /// MAP states for positions this node dropped from `profile.variable`, at which the parent's MAP
-  /// sequence deviates from the parsimony reference.
+  /// The emitted sequence, when it is not a function of `seq.sequence` and `profile`.
   ///
-  /// `reconstruct_map_seq_sampled` chains a node's sequence off its parent's reconstructed sequence
-  /// by applying the *parsimony* substitutions on the edge, so a position absent from
-  /// `profile.variable` silently inherits whatever the parent holds. That is only the intended
-  /// reference state while the parent's MAP state agrees with parsimony; where the marginal argmax
-  /// picks a different state than Fitch did, every descendant that resolved the position (and so
-  /// carries no explicit distribution for it) would inherit the parent's deviation instead of its
-  /// own state. These overrides stop that leak at the first descendant.
+  /// Reconstruction normally derives the MAP sequence on demand, so nothing needs storing. Two cases
+  /// are not derivable and are recorded here so that every output path reports the same sequence: a
+  /// `--sample-from-profile` draw, which is one realization of the posterior rather than a property
+  /// of it, and an imputed tip, whose resolved states depend on the `--impute-missing-data` flag.
+  /// `None` under the defaults.
   #[serde(default)]
-  pub map_overrides: BTreeMap<usize, AsciiChar>,
+  pub emitted: Option<Seq>,
 }
 
 impl SparseNodePartition {
@@ -50,7 +47,7 @@ impl SparseNodePartition {
         },
       },
       profile: SparseSeqDistribution::default(),
-      map_overrides: btreemap! {},
+      emitted: None,
     }
   }
 
@@ -88,7 +85,7 @@ impl SparseNodePartition {
         fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
         log_lh: LogLh::ZERO,
       },
-      map_overrides: btreemap! {},
+      emitted: None,
     })
   }
 }
