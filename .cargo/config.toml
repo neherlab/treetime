@@ -50,9 +50,11 @@ frequency = 'always'
 codegen-units = 4096
 incremental = true
 lto = "off"
+opt-level = 1 # workspace crates: message-passing loops stay tolerable without paying full -O3 on every edit
 
 [profile.dev.package."*"]
-opt-level = 2
+opt-level = 3 # deps (ndarray/linalg/rayon) are compiled once and cached; unoptimized dot products dominate runtime
+debug = false # deps do not need debuginfo, and generating/linking it is a large share of build time
 [profile.dev.package.backtrace]
 opt-level = 3
 [profile.dev.package.color-spantrace]
@@ -94,6 +96,16 @@ lto = "fat"
 opt-level = 3
 panic = "abort"
 strip = false
+
+# Fast-to-build optimized profile for iterating on real datasets: `cargo build --profile quick`.
+# `release` stays the tuned artifact (fat LTO, one codegen unit); this trades some runtime speed for
+# a much cheaper build+link. Do not benchmark against this profile - use `release` or `profiling`.
+[profile.quick]
+inherits = "release"
+codegen-units = 16
+debug = false
+incremental = true
+lto = "off"
 
 [profile.bench]
 codegen-units = 1
