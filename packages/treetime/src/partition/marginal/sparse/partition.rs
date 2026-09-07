@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::gtr::GTR;
 use crate::make_error;
-use crate::partition::marginal::sparse::reconstruct::{reconstruct_leaf_sequence, reconstruct_map_seq_sampled};
+use crate::partition::marginal::sparse::reconstruct::{map_seq, map_seq_sampled, reconstruct_leaf_sequence};
 use crate::partition::marginal::sparse::{backward, forward};
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
@@ -10,7 +10,6 @@ use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps, PartitionMarginalPasses,
   PartitionOptimizeOps, PartitionTimetreeOps,
 };
-use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
@@ -20,7 +19,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::fasta::FastaRecord;
-use treetime_primitives::{AlphabetLike, LogLh, Seq, seq};
+use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
 
@@ -91,7 +90,10 @@ impl PartitionBranchOps for PartitionMarginalSparse {
   }
 
   fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    self.nodes[&node_key].seq.sequence.clone()
+    match self.nodes.get(&node_key) {
+      Some(node) => node.emitted.clone().unwrap_or_else(|| map_seq(node, &self.alphabet)),
+      None => seq![],
+    }
   }
 
   fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
@@ -178,15 +180,7 @@ where
   }
 
   fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    if let Some(node_data) = self.nodes.get(&node_key) {
-      if !node_data.seq.sequence.is_empty() {
-        node_data.seq.sequence.clone()
-      } else {
-        seq![]
-      }
-    } else {
-      seq![]
-    }
+    self.node_sequence(node_key)
   }
 
   fn reconstruct_node_sequence(
@@ -197,30 +191,28 @@ where
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq> {
-    let mut node_data = self.nodes.remove(&node.key)?;
-
-    let (base_seq, edge) = if node.is_root {
-      (&self.root_sequence, None)
-    } else {
-      let (parent_key, edge_key) = get_exactly_one(&node.parent_keys).ok()?;
-      let parent_data = self.nodes.get(parent_key)?;
-      let edge_data = self.edges.get(edge_key)?;
-      (&parent_data.seq.sequence, Some(edge_data))
+    let (parent_data, edge_data) = match node.is_root {
+      true => (None, None),
+      false => {
+        let (parent_key, edge_key) = get_exactly_one(&node.parent_keys).ok()?;
+        (self.nodes.get(parent_key), self.edges.get(edge_key))
+      }
     };
 
-    // Tips reconstruct from their own observed state; the internal-node and root path is left
-    // byte-identical (it feeds optimize/timetree). The leaf branch fixes the tip corruption and,
-    // when requested, imputes missing states.
+    let node_data = self.nodes.get(&node.key)?;
+    let sample = sample_mode.samples_node(node.is_root);
     let seq = if node.is_leaf {
-      reconstruct_leaf_sequence(&node_data, edge, base_seq, impute, &self.alphabet)
+      reconstruct_leaf_sequence(node_data, edge_data, parent_data, impute, &self.alphabet)
     } else {
-      let sample = sample_mode.samples_node(node.is_root);
-      reconstruct_map_seq_sampled(base_seq, edge, &node_data, &self.alphabet, sample, rng)
+      map_seq_sampled(node_data, &self.alphabet, sample, rng)
     };
 
-    node_data.seq.composition = Composition::with_seq(&seq, self.alphabet.chars(), self.alphabet.gap());
-    node_data.seq.sequence = seq.clone();
-    self.nodes.insert(node.key, node_data);
+    // Record the result only where the accessors cannot derive it again: a posterior draw, or a tip,
+    // whose observed ambiguity and optional imputation are not a function of the parsimony chain and
+    // the posterior. Everything else stays derivable, keeping one source of truth.
+    if sample || node.is_leaf {
+      self.nodes.get_mut(&node.key)?.emitted = Some(seq.clone());
+    }
 
     // A suppressed tip is still reconstructed above (so the node-data serializer reads the corrected
     // sequence), but is not emitted to the reconstructed-FASTA visitor.

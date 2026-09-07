@@ -17,6 +17,16 @@ use treetime_utils::interval::range_union::range_union;
 pub struct SparseNodePartition {
   pub seq: SparseSeqInfo,
   pub profile: SparseSeqDistribution,
+
+  /// The emitted sequence, when it is not a function of `seq.sequence` and `profile`.
+  ///
+  /// Reconstruction normally derives the MAP sequence on demand, so nothing needs storing. Two cases
+  /// are not derivable and are recorded here so that every output path reports the same sequence: a
+  /// `--sample-from-profile` draw, which is one realization of the posterior rather than a property
+  /// of it, and an imputed tip, whose resolved states depend on the `--impute-missing-data` flag.
+  /// `None` under the defaults.
+  #[serde(default)]
+  pub emitted: Option<Seq>,
 }
 
 impl SparseNodePartition {
@@ -37,6 +47,7 @@ impl SparseNodePartition {
         },
       },
       profile: SparseSeqDistribution::default(),
+      emitted: None,
     }
   }
 
@@ -74,6 +85,7 @@ impl SparseNodePartition {
         fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
         log_lh: LogLh::ZERO,
       },
+      emitted: None,
     })
   }
 }

@@ -96,9 +96,9 @@ fn augment_parent_with_sibling(parent_subs: &[Sub], sibling_subs: &[Sub]) -> (Ve
 /// with the hoist that consumes the exposed reversion. Restricting to a degree-2 root guarantees
 /// both root edges are rewritten consistently, because the root has exactly these two children.
 ///
-/// The root's clamped MAP sequence (`root_sequence` and the root node's `seq.sequence`) is moved
-/// in lock-step, so the marginal pass that reads the clamp on the next optimizer iteration stays
-/// consistent with the rewritten edges.
+/// The root's parsimony sequence (`root_sequence` and the root node's `seq.sequence`) is moved in
+/// lock-step, so the marginal pass that reads it on the next optimizer iteration stays consistent
+/// with the rewritten edges.
 pub(crate) fn slide_bifurcating_root_for_child(
   sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
   root_key: GraphNodeKey,
@@ -136,9 +136,9 @@ pub(crate) fn slide_bifurcating_root_for_child(
       if !parent_positions.contains(&sibling_sub.pos()) && reverted_by_child {
         let pos = sibling_sub.pos();
         partition.root_sequence[pos] = sibling_sub.qry();
-        // Keep the root node's clamped MAP sequence in step with `root_sequence`. The forward
-        // pass only clamps the root MAP when it is empty, so a bare `root_sequence` edit would
-        // leave the populated root MAP stale for the next iteration's marginal reconstruction.
+        // Keep the root node's parsimony sequence in step with `root_sequence`. The forward pass
+        // only seeds the root from `root_sequence` when it is empty, so a bare `root_sequence` edit
+        // would leave the populated root stale for the next iteration's marginal reconstruction.
         if let Some(root_node) = partition.nodes.get_mut(&root_key) {
           if pos < root_node.seq.sequence.len() {
             root_node.seq.sequence[pos] = sibling_sub.qry();
