@@ -8,7 +8,7 @@ This is the internal-node counterpart of the tip corruption recorded in [Margina
 
 The sparse backend does not store a posterior at every position. `combine_messages` (`packages/treetime/src/partition/marginal/sparse/message.rs:17`) keeps an explicit distribution only for positions that stay genuinely uncertain; once a position's posterior concentrates on one state above `1 - EPS` (`EPS = 1e-4`, `message.rs:15`) and every incoming message agrees with the parsimony reference state, the position is dropped from `profile.variable` and represented by the shared per-character `fixed` vector instead.
 
-Reconstruction used to rebuild each node's sequence by cloning the parent's *reconstructed* sequence, applying the parsimony substitutions and indels on the edge, and overwriting the positions the node still held in `profile.variable`. Positions absent from `variable` were taken from the parent unchanged.
+Reconstruction used to rebuild each node's sequence by cloning the parent's _reconstructed_ sequence, applying the parsimony substitutions and indels on the edge, and overwriting the positions the node still held in `profile.variable`. Positions absent from `variable` were taken from the parent unchanged.
 
 ## Problem: a deviating state propagates through a whole clade
 
@@ -30,9 +30,9 @@ Zero-length branches are clamped to `MIN_BRANCH_LENGTH_FRACTION / seq_length` (`
 
 ## Problem: inherited deletions were overwritten
 
-The same routine re-applied deletions *last*, to stop a posterior from resurrecting a residue at a deleted site - but only the deletions recorded on the node's own parent edge. A node whose gap was inherited from further up carries no indel on its own edge, so nothing masked the position again and the posterior's residue stood.
+The same routine re-applied deletions _last_, to stop a posterior from resurrecting a residue at a deleted site - but only the deletions recorded on the node's own parent edge. A node whose gap was inherited from further up carries no indel on its own edge, so nothing masked the position again and the posterior's residue stood.
 
-On `data/sc2/4500` position 28369 (4332 of 5100 tips deleted), the old reconstruction emitted `A` at 5014 internal nodes; dense reports 4555 gaps and 544 `A`. At position 23009 it emitted `A` at 864 nodes that dense reports as gaps. Both are now fixed.
+On `data/sc2/4500` position 28369 (4332 of 5100 tips deleted), the old reconstruction emitted `A` at 5014 internal nodes. Dense reports 4555 gaps and 544 `A`. At position 23009 it emitted `A` at 864 nodes that dense reports as gaps. Both are now fixed.
 
 Parsimony reconstruction and `--dense=true` were never affected by either defect: neither chains a node's sequence off its parent this way.
 
