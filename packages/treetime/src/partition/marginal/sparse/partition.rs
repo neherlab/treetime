@@ -191,12 +191,11 @@ where
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq> {
-    let (parent_data, edge_data) = match node.is_root {
-      true => (None, None),
-      false => {
-        let (parent_key, edge_key) = get_exactly_one(&node.parent_keys).ok()?;
-        (self.nodes.get(parent_key), self.edges.get(edge_key))
-      }
+    let (parent_data, edge_data) = if node.is_root {
+      (None, None)
+    } else {
+      let (parent_key, edge_key) = get_exactly_one(&node.parent_keys).ok()?;
+      (self.nodes.get(parent_key), self.edges.get(edge_key))
     };
 
     let node_data = self.nodes.get(&node.key)?;
