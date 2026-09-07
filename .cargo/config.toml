@@ -95,6 +95,16 @@ opt-level = 3
 panic = "abort"
 strip = false
 
+# Fast-to-build optimized profile for iterating on real datasets: `cargo build --profile quick`.
+# `release` stays the tuned artifact (fat LTO, one codegen unit); this trades some runtime speed for
+# a much cheaper build+link. Do not benchmark against this profile - use `release` or `profiling`.
+[profile.quick]
+inherits = "release"
+codegen-units = 16
+debug = false
+incremental = true
+lto = "off"
+
 [profile.bench]
 codegen-units = 1
 incremental = false
