@@ -38,6 +38,8 @@ v1 stores sequences as `Seq` (`packages/treetime-primitives/src/seq.rs:7-11`), a
 - `fixed: BTreeMap<AsciiChar, Array1<f64>>` - one shared K-element vector per character type, covering all invariant positions of that character
 - `fixed_counts: Composition` - count of invariant positions per character type
 
+`SparseSeqInfo::sequence` holds the *parsimony* sequence, not the reconstructed one: the MAP sequence is derived from it plus `variable` on demand, so a node's inferred states are never chained into its descendants. A node also carries `emitted: Option<Seq>` for the two cases that are not derivable (a `--sample-from-profile` draw, and tips). See [The sparse stored sequence is the parsimony chain](ancestral-marginal-sparse-parsimony-chain.md).
+
 The `Composition` struct (`packages/treetime/src/seq/composition.rs:9-12`) tracks how many positions have each character. For an alignment with 25,000 invariant 'A' positions, 3,000 invariant 'C' positions, etc., the fixed contribution to likelihood is computed once per character type and multiplied by its count, rather than computed 25,000 times.
 
 ### Compression pipeline

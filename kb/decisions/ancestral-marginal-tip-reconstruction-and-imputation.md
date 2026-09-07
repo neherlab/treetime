@@ -16,6 +16,8 @@ The same overwrite ran before the per-edge maximum-likelihood substitutions (`ml
 
 The dense backend never had this defect: it keeps each leaf's observed sequence and derives leaf mutations by comparing most-likely states.
 
+Removing leaves from the parent chain did not remove the chain itself, and the same inheritance defect remained on internal nodes wherever an ancestor's most-likely state deviates from parsimony, and wherever a node inherited a deletion. Those cases, and the representation change that resolves them, are recorded in [The sparse stored sequence is the parsimony chain](ancestral-marginal-sparse-parsimony-chain.md).
+
 ## Problem: missing data never resolved (C1)
 
 Ambiguous (`N`, IUPAC) and unknown tip positions were stored as unresolved and re-filled with the unknown character. They were never resolved to an inferred state, regardless of any flag. v0 resolves them: its marginal leaf pass computes a full posterior at each tip and assigns the most-likely state, replacing ambiguous characters with the inferred value (`def TreeAnc.preorder_traversal_marginal()` in `packages/legacy/treetime/treetime/treeanc.py`).
