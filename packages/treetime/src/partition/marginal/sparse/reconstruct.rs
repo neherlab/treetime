@@ -52,11 +52,11 @@ pub(crate) fn map_seq(node: &SparseNodePartition, alphabet: &Alphabet) -> Seq {
   map_seq_sampled(node, alphabet, false, &mut rand::thread_rng())
 }
 
-/// The node's MAP sequence, or one draw from its posterior when `sample` is set.
+/// The node's most likely sequence, or one draw from its posterior when `sample` is set.
 ///
-/// A gap is inferred structure rather than an uncertain residue, so a variable position sitting on a
-/// deletion keeps its gap. Unknown (`N`) positions do get resolved: the parsimony chain masks them,
-/// and a posterior at such a position is exactly the inference that fills them in.
+/// Gaps stay gaps: a gap marks missing data, not an uncertain base, so a variable position on a
+/// deletion is left alone. Unknown (`N`) positions are resolved from the posterior, which is the
+/// inference that fills them in.
 pub(crate) fn map_seq_sampled(
   node: &SparseNodePartition,
   alphabet: &Alphabet,
