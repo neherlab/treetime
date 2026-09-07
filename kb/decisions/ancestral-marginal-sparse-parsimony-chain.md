@@ -44,7 +44,7 @@ The MAP sequence is a derived view: `map_seq` (`reconstruct.rs:50`) takes the pa
 
 Both defects follow from the separation rather than being patched:
 
-- The chain never carries a MAP state, so a node whose argmax disagrees with Fitch has nothing to propagate. The earlier `map_overrides` patch, which recorded per-node corrections for exactly the positions that could leak, is deleted.
+- The chain never carries a MAP state, so a node whose argmax disagrees with Fitch has nothing to propagate.
 - A variable position whose parsimony character is already a gap is skipped, which covers the node's full inherited gap set rather than just its own edge's deletions.
 
 Two things are not derivable and are recorded in `SparseNodePartition::emitted` (`packages/treetime/src/partition/storage/sparse.rs:21`) so that every output path reports the same sequence: a `--sample-from-profile` draw, which is one realization of the posterior rather than a property of it, and a tip, whose observed ambiguity and optional imputation depend on flags. Under the defaults, tips aside, nothing is stored and every accessor derives.
