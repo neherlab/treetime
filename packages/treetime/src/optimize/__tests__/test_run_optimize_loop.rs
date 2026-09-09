@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::update_marginal;
+  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
@@ -131,8 +131,8 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
-    let sparse_lh = update_marginal(&graph, &sparse_partitions)?.value();
-    let dense_lh = update_marginal(&graph, &dense_partitions)?.value();
+    let sparse_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+    let dense_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
     let indel_lh = manual_total_indel_log_lh(&graph, &sparse_partitions);
     let expected_total_lh = sparse_lh + dense_lh + indel_lh;
 
@@ -263,8 +263,8 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
-    let initial_sparse_lh = update_marginal(&graph, &sparse_partitions)?.value();
-    let initial_dense_lh = update_marginal(&graph, &dense_partitions)?.value();
+    let initial_sparse_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+    let initial_dense_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
     let initial_lh = initial_sparse_lh + initial_dense_lh + manual_total_indel_log_lh(&graph, &sparse_partitions);
 
     run_optimize_loop(
@@ -280,8 +280,8 @@ mod tests {
       TopologyOps::default(),
     )?;
 
-    let final_sparse_lh = update_marginal(&graph, &sparse_partitions)?.value();
-    let final_dense_lh = update_marginal(&graph, &dense_partitions)?.value();
+    let final_sparse_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+    let final_dense_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
     let final_lh = final_sparse_lh + final_dense_lh + manual_total_indel_log_lh(&graph, &sparse_partitions);
 
     assert!(

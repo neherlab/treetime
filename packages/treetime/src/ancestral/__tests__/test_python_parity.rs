@@ -2,7 +2,9 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
+  use crate::ancestral::marginal::{
+    ancestral_reconstruction_marginal, initialize_marginal, marginal_update, profile_branch_lengths,
+  };
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
@@ -496,7 +498,7 @@ mod tests {
     // Sparse partition
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
     let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
-    let sparse_log_lh = update_marginal(&graph, from_ref(&sparse_partition))?.value();
+    let sparse_log_lh = marginal_update(&graph, &profile_branch_lengths(&graph), from_ref(&sparse_partition))?.value();
 
     // Log-likelihoods should match for clean sequences
     pretty_assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);

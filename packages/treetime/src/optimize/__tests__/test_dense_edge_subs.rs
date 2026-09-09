@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -171,7 +171,7 @@ mod tests {
     )))];
 
     initialize_marginal(&graph, &partitions, &aln)?.value();
-    update_marginal(&graph, &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     let partition = partitions[0].read_arc();
 
@@ -295,7 +295,7 @@ mod tests {
     )))];
 
     initialize_marginal(&graph, &partitions, &aln)?.value();
-    update_marginal(&graph, &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     let partition = partitions[0].read_arc();
     for edge_ref in graph.get_edges() {

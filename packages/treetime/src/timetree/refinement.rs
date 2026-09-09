@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::update_marginal;
+use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -133,7 +133,7 @@ impl Refinement<'_> {
   fn rebuild_inference(&mut self, topology_changed: bool) -> Result<(), Report> {
     if !self.partitions.is_empty() {
       info!("Updating ancestral sequences via marginal reconstruction");
-      update_marginal(self.graph, self.partitions)?;
+      marginal_update(self.graph, &profile_branch_lengths(self.graph), self.partitions)?;
     }
 
     if topology_changed {

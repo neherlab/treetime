@@ -2,7 +2,9 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
+  use crate::ancestral::marginal::{
+    ancestral_reconstruction_marginal, initialize_marginal, marginal_update, profile_branch_lengths,
+  };
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
@@ -113,7 +115,7 @@ mod tests {
   /// distributions.
   ///
   /// The sparse path first runs `compress_sequences` (Fitch parsimony), then
-  /// `update_marginal` which performs the backward pass (leaves to root) and
+  /// `marginal_update` which performs the backward pass (leaves to root) and
   /// forward pass (root to leaves) on the compressed representation.
   ///
   /// Returns the total log-likelihood and the populated partition.
@@ -127,7 +129,7 @@ mod tests {
     let partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, graph)?));
     let partitions = [Arc::clone(&partition)];
 
-    let log_lh = update_marginal(graph, &partitions)?.value();
+    let log_lh = marginal_update(graph, &profile_branch_lengths(graph), &partitions)?.value();
     Ok((log_lh, partition))
   }
 

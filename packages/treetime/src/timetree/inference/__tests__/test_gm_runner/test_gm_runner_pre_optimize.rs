@@ -119,7 +119,11 @@ mod tests {
       .map(|p| Arc::clone(p) as Arc<RwLock<dyn PartitionOptimizeOps>>)
       .collect();
     run_optimize_mixed(&graph, &opt_partitions, BranchOptMethod::BrentSqrt)?;
-    crate::ancestral::marginal::update_marginal(&graph, &partitions)?;
+    crate::ancestral::marginal::marginal_update(
+      &graph,
+      &crate::ancestral::marginal::profile_branch_lengths(&graph),
+      &partitions,
+    )?;
 
     let clock_model = estimate_clock_model_with_reroot(
       &mut graph,

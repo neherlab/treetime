@@ -1,7 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
 use crate::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences};
-use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
+use crate::ancestral::marginal::{
+  ancestral_reconstruction_marginal, initialize_marginal, marginal_update, profile_branch_lengths,
+};
 use crate::ancestral::mask::create_mask;
 use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::sample::SampleMode;
@@ -161,7 +163,7 @@ where
 
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          update_marginal(&graph, &partitions)?;
+          marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?;
 
           if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
             refine_gtr_iterative(&graph, &partitions[0], params.gtr_iterations, None, 1.0, None, false)?;
@@ -199,7 +201,7 @@ where
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
           initialize_marginal(&graph, &partitions, &sequences)?;
-          update_marginal(&graph, &partitions)?;
+          marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?;
 
           if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
             refine_gtr_iterative(&graph, &partitions[0], params.gtr_iterations, None, 1.0, None, false)?;

@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::update_marginal;
+use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;
 use crate::optimize::dispatch::run_optimize_mixed_inner;
@@ -32,7 +32,7 @@ use treetime_utils::make_error;
 ///
 /// - `graph` has initial branch lengths (e.g. from [`apply_initial_guess_mode`]).
 /// - Sparse partitions have compressed sequences ([`compress_sequences`]).
-/// - Dense partitions have populated profiles ([`initialize_marginal`] + [`update_marginal`]).
+/// - Dense partitions have populated profiles ([`initialize_marginal`] + [`marginal_update`]).
 /// - `mixed_partitions` contains both partition families (see [`collect_optimize_partitions`]).
 /// - Each partition's `gtr` field is the final model (resolved before partition construction).
 ///
@@ -44,7 +44,7 @@ use treetime_utils::make_error;
 ///
 /// Per-iteration sequence:
 ///
-/// 1. Run `update_marginal` on sparse and dense partitions and sum the joint
+/// 1. Run `marginal_update` on sparse and dense partitions and sum the joint
 ///    substitution + indel log-likelihood using the pre-computed indel rate.
 /// 2. Check three stopping conditions (converged, oscillating, worsened).
 /// 3. Save current branch lengths ([`save_branch_lengths`]).
@@ -109,8 +109,8 @@ pub fn run_optimize_loop(
     if !iteration_lh.total_lh.value().is_finite() {
       if best_branch_lengths.len() == graph.get_edges().len() {
         restore_branch_lengths(graph, &best_branch_lengths);
-        update_marginal(graph, sparse_partitions)?;
-        update_marginal(graph, dense_partitions)?;
+        marginal_update(graph, &profile_branch_lengths(graph), sparse_partitions)?;
+        marginal_update(graph, &profile_branch_lengths(graph), dense_partitions)?;
       }
       stopped_at = Some((i, ConvergenceReason::NumericalFailure));
       break;
@@ -133,8 +133,8 @@ pub fn run_optimize_loop(
 
     if i >= 2 && iteration_lh.total_lh < lh_prev && lh_prev >= best_lh {
       restore_branch_lengths(graph, &best_branch_lengths);
-      update_marginal(graph, sparse_partitions)?;
-      update_marginal(graph, dense_partitions)?;
+      marginal_update(graph, &profile_branch_lengths(graph), sparse_partitions)?;
+      marginal_update(graph, &profile_branch_lengths(graph), dense_partitions)?;
       stopped_at = Some((i, ConvergenceReason::Worsened));
       break;
     }
@@ -237,8 +237,8 @@ fn compute_iteration_likelihood(
   indel_rate: f64,
   no_indels: bool,
 ) -> Result<OptimizeIterationLikelihood, Report> {
-  let sparse_lh = update_marginal(graph, sparse_partitions)?;
-  let dense_lh = update_marginal(graph, dense_partitions)?;
+  let sparse_lh = marginal_update(graph, &profile_branch_lengths(graph), sparse_partitions)?;
+  let dense_lh = marginal_update(graph, &profile_branch_lengths(graph), dense_partitions)?;
   let indel_lh = if no_indels {
     LogLh::ZERO
   } else {

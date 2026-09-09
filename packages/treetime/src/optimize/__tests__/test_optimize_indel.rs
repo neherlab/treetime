@@ -2,7 +2,7 @@
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
@@ -88,7 +88,7 @@ pub mod tests {
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
     initialize_marginal(graph, &dense_partitions, &aln)?.value();
-    update_marginal(graph, &sparse_partitions)?.value();
+    marginal_update(graph, &profile_branch_lengths(graph), &sparse_partitions)?.value();
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
     initial_guess_mixed(graph, &mixed_partitions, true, false)?;
@@ -328,7 +328,7 @@ pub mod tests {
     let aln = simple_alignment()?;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
-    // Inject indels AFTER setup (which includes update_marginal) to avoid being wiped
+    // Inject indels AFTER setup (which includes marginal_update) to avoid being wiped
     // by the backward pass that recreates DenseEdgePartition from scratch.
     let indels = vec![
       InDel::del((0, 3), Seq::try_from_str("ACG")?)?,
@@ -400,7 +400,7 @@ pub mod tests {
     }
 
     // Inject indels into sparse partition only (production path: dense indels are wiped
-    // by update_marginal, so only sparse contributes in the real CLI flow)
+    // by marginal_update, so only sparse contributes in the real CLI flow)
     let first_edge_key = graph.get_edges()[0].read_arc().key();
     sparse_partitions[0]
       .write_arc()
@@ -424,8 +424,8 @@ pub mod tests {
     );
 
     // Run marginal + optimize
-    update_marginal(&graph, &dense_partitions)?.value();
-    update_marginal(&graph, &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
     let bl_final = graph.get_edges()[0]
@@ -677,8 +677,8 @@ pub mod tests {
       .write_arc()
       .set_branch_length(Some(1e-15));
 
-    update_marginal(&graph, &dense_partitions)?.value();
-    update_marginal(&graph, &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
     let bl = edge_ref.read_arc().payload().read_arc().branch_length().unwrap();

@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::update_marginal;
+  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -497,7 +497,7 @@ mod tests {
     let initial_leaf_count = graph.get_leaves().len();
 
     // Initialize marginal for the sparse partition
-    update_marginal(&graph, &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     // First reroot call (simulating keep_root=false flow)
     let clock_model_1 = reroot_tree(

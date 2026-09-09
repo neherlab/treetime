@@ -2,7 +2,7 @@
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
-  use crate::ancestral::marginal::update_marginal;
+  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
@@ -44,7 +44,7 @@ TCGGCCGTGTRTTG--
     })
   }
 
-  /// Verify that `update_marginal` is a fixed-point operation on a dense partition.
+  /// Verify that `marginal_update` is a fixed-point operation on a dense partition.
   ///
   /// Felsenstein's pruning algorithm (sum-product message passing on the tree) computes
   /// exact marginal posteriors via two passes:
@@ -57,10 +57,10 @@ TCGGCCGTGTRTTG--
   /// On acyclic graphs, the sum-product algorithm produces exact marginals in a single
   /// application of these two passes. Since tip data and model parameters are unchanged
   /// between calls, all intermediate quantities are deterministic functions of the
-  /// inputs. Re-running `update_marginal` on already-computed partition data must
+  /// inputs. Re-running `marginal_update` on already-computed partition data must
   /// produce an identical log-likelihood.
   ///
-  /// Invariant: `update_marginal(g, p) == update_marginal(g, p)` for successive calls
+  /// Invariant: `marginal_update(g, p) == marginal_update(g, p)` for successive calls
   /// on the same graph `g` and partition state `p`, where the return value is the total
   /// log-likelihood.
   ///
@@ -68,7 +68,7 @@ TCGGCCGTGTRTTG--
   /// incorrect in-place mutation of node/edge profiles.
   ///
   /// The test first calls `run_dense_marginal` (which runs `initialize_marginal`:
-  /// sequence attachment + first `update_marginal`), then calls `update_marginal` twice
+  /// sequence attachment + first `marginal_update`), then calls `marginal_update` twice
   /// more and compares the returned log-likelihoods.
   ///
   /// Uses a fixed 4-taxon tree with JC69 model and dense (full profile matrix)
@@ -79,23 +79,23 @@ TCGGCCGTGTRTTG--
     let graph: GraphAncestral = nwk_read_str(&input.newick)?;
     let (_, partitions) = run_dense_marginal(&input)?;
 
-    let log_lh_first = update_marginal(&graph, &partitions)?.value();
-    let log_lh_second = update_marginal(&graph, &partitions)?.value();
+    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())
   }
 
-  /// Verify that `update_marginal` is a fixed-point operation on a sparse partition.
+  /// Verify that `marginal_update` is a fixed-point operation on a sparse partition.
   ///
   /// Same idempotency invariant as the dense variant: two consecutive calls to
-  /// `update_marginal` must yield identical log-likelihoods. The sparse representation
+  /// `marginal_update` must yield identical log-likelihoods. The sparse representation
   /// uses Fitch parsimony compression to identify variable vs. fixed positions, then
   /// stores probability vectors only at variable positions while grouping fixed
   /// characters by their conserved nucleotide. This introduces different accumulation
   /// and normalization code paths that must also be idempotent.
   ///
-  /// Invariant: `update_marginal(g, p) == update_marginal(g, p)` for successive calls
+  /// Invariant: `marginal_update(g, p) == marginal_update(g, p)` for successive calls
   /// on the same graph `g` and partition state `p`.
   ///
   /// Uses the same fixed 4-taxon tree and JC69 model as the dense variant.
@@ -106,8 +106,8 @@ TCGGCCGTGTRTTG--
     let graph: GraphAncestral = nwk_read_str(&input.newick)?;
     let (_, partitions) = run_sparse_marginal(&input)?;
 
-    let log_lh_first = update_marginal(&graph, &partitions)?.value();
-    let log_lh_second = update_marginal(&graph, &partitions)?.value();
+    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())

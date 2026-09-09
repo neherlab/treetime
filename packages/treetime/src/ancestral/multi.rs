@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
-use crate::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
+use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update, profile_branch_lengths};
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
@@ -42,7 +42,7 @@ pub struct MarginalPartitionParams {
 ///
 /// Each partition is independent: its GTR inference, backward and forward marginal passes, and node
 /// reconstruction touch only this partition's own message state, with no data shared across
-/// partitions (`update_marginal` and `ancestral_reconstruction_marginal` iterate partitions in a
+/// partitions (`marginal_update` and `ancestral_reconstruction_marginal` iterate partitions in a
 /// plain loop, so a single-element slice does the same work as a slice of many). Callers that
 /// reconstruct several partitions (per-CDS amino-acid alignments) therefore call this once per
 /// partition and consume each result before building the next, so the resident marginal state stays
@@ -82,7 +82,7 @@ pub fn reconstruct_marginal_partition(
   partition.write_arc().attach_sequences(graph, &sequences)?;
 
   let single = std::slice::from_ref(&partition);
-  update_marginal(graph, single)?;
+  marginal_update(graph, &profile_branch_lengths(graph), single)?;
   ancestral_reconstruction_marginal(
     graph,
     params.include_leaves,

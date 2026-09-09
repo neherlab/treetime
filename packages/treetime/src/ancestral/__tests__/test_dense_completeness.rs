@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -68,7 +68,12 @@ NNGTACGTAC
     let partition = Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ));
-    update_marginal(&graph, std::slice::from_ref(&partition))?.value();
+    marginal_update(
+      &graph,
+      &profile_branch_lengths(&graph),
+      std::slice::from_ref(&partition),
+    )?
+    .value();
     Ok((graph, partition))
   }
 
@@ -236,7 +241,12 @@ ACGTACGTAC
     let partition = Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ));
-    update_marginal(&graph, std::slice::from_ref(&partition))?.value();
+    marginal_update(
+      &graph,
+      &profile_branch_lengths(&graph),
+      std::slice::from_ref(&partition),
+    )?
+    .value();
     Ok((graph, partition))
   }
 

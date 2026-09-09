@@ -7,7 +7,7 @@ use std::path::Path;
 use std::sync::Arc;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::fitch::create_fitch_partition;
-use treetime::ancestral::marginal::update_marginal;
+use treetime::ancestral::marginal::{marginal_update, profile_branch_lengths};
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::payload::ancestral::GraphAncestral;
 use treetime_io::fasta::read_many_fasta;
@@ -30,7 +30,13 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
     group.bench_with_input(BenchmarkId::new("sparse", threads), &threads, |bencher, _| {
       bencher.iter(|| {
         pool
-          .install(|| update_marginal(black_box(&graph), black_box(&partitions)))
+          .install(|| {
+            marginal_update(
+              black_box(&graph),
+              &profile_branch_lengths(black_box(&graph)),
+              black_box(&partitions),
+            )
+          })
           .unwrap();
       });
     });
@@ -61,7 +67,7 @@ fn setup_inner() -> (
   let gtr = jc69(JC69Params::default()).unwrap();
   let partition = fitch.into_marginal_sparse(gtr, &graph).unwrap();
   let partitions = [Arc::new(RwLock::new(partition))];
-  update_marginal(&graph, &partitions).unwrap();
+  marginal_update(&graph, &profile_branch_lengths(&graph), &partitions).unwrap();
   (graph, partitions)
 }
 

@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::marginal::{initialize_marginal, update_marginal};
+use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
@@ -119,10 +119,10 @@ pub fn run(
     }
   }
 
-  update_marginal(&input.graph, &sparse_partitions)?;
+  marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &sparse_partitions)?;
   if !dense_partitions.is_empty() {
     initialize_marginal(&input.graph, &dense_partitions, &input.sequences)?;
-    update_marginal(&input.graph, &dense_partitions)?;
+    marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &dense_partitions)?;
   }
 
   let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
@@ -167,8 +167,8 @@ pub fn run(
   )?;
 
   info!("Re-running marginal to populate subs_ml after optimization loop");
-  update_marginal(&input.graph, &sparse_partitions)?;
-  update_marginal(&input.graph, &dense_partitions)?;
+  marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &sparse_partitions)?;
+  marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &dense_partitions)?;
 
   // Read the GTR back from the owning partition, not from a snapshot taken at
   // creation time. For `--gtr=infer` the partition's `mu` is normalized to 1.0
@@ -210,8 +210,8 @@ fn pre_reroot_optimize(
   }
 
   apply_damping(graph, &old_branch_lengths, PRE_REROOT_DAMPING, 0);
-  update_marginal(graph, sparse_partitions)?;
-  update_marginal(graph, dense_partitions)?;
+  marginal_update(graph, &profile_branch_lengths(graph), sparse_partitions)?;
+  marginal_update(graph, &profile_branch_lengths(graph), dense_partitions)?;
   Ok(())
 }
 
@@ -262,8 +262,8 @@ fn reroot_optimize(
     partition.write_arc().apply_reroot(&changes)?;
   }
 
-  update_marginal(graph, sparse_partitions)?;
-  update_marginal(graph, dense_partitions)?;
+  marginal_update(graph, &profile_branch_lengths(graph), sparse_partitions)?;
+  marginal_update(graph, &profile_branch_lengths(graph), dense_partitions)?;
   Ok(())
 }
 

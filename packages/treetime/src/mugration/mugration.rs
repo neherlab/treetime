@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::update_marginal;
+use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::refinement::refine_gtr_iterative;
@@ -161,7 +161,11 @@ pub fn execute_mugration(
 
   let partition = Arc::new(RwLock::new(partition));
 
-  let log_lh = update_marginal(&graph, std::slice::from_ref(&partition))?;
+  let log_lh = marginal_update(
+    &graph,
+    &profile_branch_lengths(&graph),
+    std::slice::from_ref(&partition),
+  )?;
   info!("Mugration: initial log likelihood = {:.4}", log_lh.value());
 
   let log_lh = refine_gtr_iterative(

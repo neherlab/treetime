@@ -58,7 +58,7 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::fitch::create_fitch_partition;
-    use crate::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
+    use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update, profile_branch_lengths};
     use crate::ancestral::sample::SampleMode;
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::payload::ancestral::GraphAncestral;
@@ -102,7 +102,7 @@ mod tests {
         fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
       ))];
 
-      update_marginal(&graph, &partitions)?.value();
+      marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
       let mut rng = StdRng::seed_from_u64(seed);
       let mut out = BTreeMap::new();

@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
@@ -61,7 +61,7 @@ mod tests {
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
     initialize_marginal(&graph, &dense_partitions, &aln)?.value();
-    update_marginal(&graph, &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 

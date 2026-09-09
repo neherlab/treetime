@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::iteration::{apply_damping, save_branch_lengths};
@@ -222,7 +222,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
-    update_marginal(&graph, &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
     let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
@@ -234,7 +234,7 @@ mod tests {
     // Run optimize loop with topology cleanup
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
-      let sparse_lh = update_marginal(&graph, &sparse_partitions)?.value();
+      let sparse_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
       let total_lh = sparse_lh;
 
       if (total_lh - lh_prev).abs() < 1e-2 {
@@ -300,7 +300,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
-    update_marginal(&graph, &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
     let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
@@ -311,7 +311,7 @@ mod tests {
 
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
-      let total_lh = update_marginal(&graph, &sparse_partitions)?.value();
+      let total_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
       if (total_lh - lh_prev).abs() < 1e-2 {
         break;
       }
@@ -334,7 +334,7 @@ mod tests {
 
   #[test]
   fn test_optimize_merge_then_marginal_finite_likelihood() -> Result<(), Report> {
-    // After merge creates new internal nodes, update_marginal must produce
+    // After merge creates new internal nodes, marginal_update must produce
     // finite log-likelihood. This exercises the composition propagation fix:
     // merge-created nodes inherit the parent's composition so the backward
     // pass computes correct fixed-site contributions.
@@ -366,7 +366,7 @@ mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    update_marginal(&graph, &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
     let initial_node_count = graph.get_nodes().len();
 
@@ -380,10 +380,10 @@ mod tests {
       "merge should have created new internal nodes"
     );
 
-    // The critical test: update_marginal after merge must produce finite log-likelihood.
+    // The critical test: marginal_update after merge must produce finite log-likelihood.
     // Before the composition fix, the merge-created node had zero composition,
     // causing the backward pass to produce incorrect values.
-    let lh = update_marginal(&graph, &sparse_partitions)?.value();
+    let lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
     assert!(lh.is_finite(), "log-likelihood must be finite after merge: {lh}");
     assert!(lh < 0.0, "log-likelihood must be negative: {lh}");
 
@@ -520,7 +520,7 @@ mod tests {
     let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, nuc, get_common_length(&aln)?)))];
 
     initialize_marginal(&graph, &dense_partitions, &aln)?.value();
-    update_marginal(&graph, &dense_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
 
     let sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
@@ -531,7 +531,7 @@ mod tests {
 
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
-      let dense_lh = update_marginal(&graph, &dense_partitions)?.value();
+      let dense_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
       if (dense_lh - lh_prev).abs() < 1e-2 {
         break;
       }
@@ -832,7 +832,7 @@ mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    update_marginal(&graph, &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
     let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);

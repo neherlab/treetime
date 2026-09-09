@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::fitch::create_fitch_partition;
-use crate::ancestral::marginal::{initialize_marginal, update_marginal};
+use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::payload::ancestral::GraphAncestral;
@@ -33,5 +33,5 @@ pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) ->
   let partition = fitch.into_marginal_sparse(gtr, &graph)?;
   let partitions = [Arc::new(RwLock::new(partition))];
 
-  update_marginal(&graph, &partitions).map(|log_lh| log_lh.value())
+  marginal_update(&graph, &profile_branch_lengths(&graph), &partitions).map(|log_lh| log_lh.value())
 }

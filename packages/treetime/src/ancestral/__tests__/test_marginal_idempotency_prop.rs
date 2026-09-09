@@ -2,7 +2,7 @@
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::arb_marginal_input_small;
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
-  use crate::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
+  use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update, profile_branch_lengths};
   use crate::ancestral::sample::SampleMode;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::composition::Composition;
@@ -15,7 +15,7 @@ mod tests {
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(50))]
 
-    /// Property test: `update_marginal` is a fixed-point operation on dense partitions
+    /// Property test: `marginal_update` is a fixed-point operation on dense partitions
     /// across randomly generated trees, alignments, and GTR parameters.
     ///
     /// Felsenstein's two-pass pruning algorithm - backward (postorder, leaves to root)
@@ -26,7 +26,7 @@ mod tests {
     /// partial likelihoods after the backward pass, is therefore a deterministic
     /// function of the input data and model parameters alone.
     ///
-    /// Re-running `update_marginal` on partition state that already contains computed
+    /// Re-running `marginal_update` on partition state that already contains computed
     /// profiles must reproduce the same log-likelihood. Any deviation indicates state
     /// corruption during a pass, accumulation into node profiles without clearing
     /// previous values, or the algorithm incorrectly depending on intermediate state
@@ -37,7 +37,7 @@ mod tests {
     /// and substitution rate matrices to ensure the invariant holds regardless of
     /// parameterization.
     ///
-    /// Invariant: let `(L1, P') = update_marginal(P)` and `(L2, _) = update_marginal(P')`,
+    /// Invariant: let `(L1, P') = marginal_update(P)` and `(L2, _) = marginal_update(P')`,
     /// then `L1 == L2`.
     ///
     /// Companion example test: `test_marginal_idempotency_example_dense`.
@@ -46,13 +46,17 @@ mod tests {
       let graph: GraphAncestral = nwk_read_str(&input.newick).unwrap();
       let (_, partitions) = run_dense_marginal(&input).unwrap();
 
-      let log_lh_first = update_marginal(&graph, &partitions).unwrap().value();
-      let log_lh_second = update_marginal(&graph, &partitions).unwrap().value();
+      let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)
+        .unwrap()
+        .value();
+      let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)
+        .unwrap()
+        .value();
 
       prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
     }
 
-    /// Property test: `update_marginal` is a fixed-point operation on sparse partitions
+    /// Property test: `marginal_update` is a fixed-point operation on sparse partitions
     /// across randomly generated trees, alignments, and GTR parameters.
     ///
     /// The sparse representation compresses sequences via Fitch parsimony: only
@@ -67,7 +71,7 @@ mod tests {
     /// algorithm on already-computed partition state must reproduce the same
     /// log-likelihood.
     ///
-    /// Invariant: let `(L1, P') = update_marginal(P)` and `(L2, _) = update_marginal(P')`,
+    /// Invariant: let `(L1, P') = marginal_update(P)` and `(L2, _) = marginal_update(P')`,
     /// then `L1 == L2`.
     ///
     /// Companion example test: `test_marginal_idempotency_example_sparse`.
@@ -76,8 +80,12 @@ mod tests {
       let graph: GraphAncestral = nwk_read_str(&input.newick).unwrap();
       let (_, partitions) = run_sparse_marginal(&input).unwrap();
 
-      let log_lh_first = update_marginal(&graph, &partitions).unwrap().value();
-      let log_lh_second = update_marginal(&graph, &partitions).unwrap().value();
+      let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)
+        .unwrap()
+        .value();
+      let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)
+        .unwrap()
+        .value();
 
       prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
     }

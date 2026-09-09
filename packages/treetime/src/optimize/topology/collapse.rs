@@ -65,7 +65,7 @@ pub fn collapse_edge(
   }
 
   // Drop stale entries for the removed node and removed edge in every partition.
-  // Downstream passes (e.g. `update_marginal`) recompute any state they need from
+  // Downstream passes (e.g. `marginal_update`) recompute any state they need from
   // the remaining entries.
   for partition in sparse_partitions {
     let mut partition = partition.write_arc();

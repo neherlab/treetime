@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{F81Params, JC69Params, f81, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -63,7 +63,7 @@ mod tests {
   }
 
   /// Regression: after replacing the dummy JC69 with a non-uniform GTR,
-  /// update_marginal must be re-run before initial_guess_mixed. Stale JC69
+  /// marginal_update must be re-run before initial_guess_mixed. Stale JC69
   /// node posteriors produce a different (biased) initial branch length guess
   /// than fresh posteriors computed with the real model.
   #[test]
@@ -75,21 +75,21 @@ mod tests {
     })?;
 
     // Scenario 1: stale JC69 messages (the bug)
-    // Replace GTR but do NOT re-run update_marginal.
+    // Replace GTR but do NOT re-run marginal_update.
     let graph_stale: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions_stale = setup_dense_jc69(&graph_stale, &aln)?;
-    update_marginal(&graph_stale, &partitions_stale)?.value();
+    marginal_update(&graph_stale, &profile_branch_lengths(&graph_stale), &partitions_stale)?.value();
     partitions_stale[0].write_arc().data.gtr = f81_gtr.clone();
     initial_guess_mixed(&graph_stale, &partitions_stale, true, false)?;
     let bl_stale = get_branch_lengths(&graph_stale);
 
     // Scenario 2: fresh F81 messages (the fix)
-    // Replace GTR AND re-run update_marginal.
+    // Replace GTR AND re-run marginal_update.
     let graph_fresh: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions_fresh = setup_dense_jc69(&graph_fresh, &aln)?;
-    update_marginal(&graph_fresh, &partitions_fresh)?.value();
+    marginal_update(&graph_fresh, &profile_branch_lengths(&graph_fresh), &partitions_fresh)?.value();
     partitions_fresh[0].write_arc().data.gtr = f81_gtr;
-    update_marginal(&graph_fresh, &partitions_fresh)?.value();
+    marginal_update(&graph_fresh, &profile_branch_lengths(&graph_fresh), &partitions_fresh)?.value();
     initial_guess_mixed(&graph_fresh, &partitions_fresh, true, false)?;
     let bl_fresh = get_branch_lengths(&graph_fresh);
 
@@ -102,7 +102,7 @@ mod tests {
   }
 
   /// After the initialization sequence with the fix, a redundant
-  /// update_marginal should not change the initial guess: the messages
+  /// marginal_update should not change the initial guess: the messages
   /// are already computed with the real GTR.
   #[test]
   fn test_initial_guess_idempotent_after_gtr_update() -> Result<(), Report> {
@@ -115,23 +115,23 @@ mod tests {
     // Run full initialization with the fix: JC69, update, replace, update, guess
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions = setup_dense_jc69(&graph, &aln)?;
-    update_marginal(&graph, &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     partitions[0].write_arc().data.gtr = f81_gtr.clone();
-    update_marginal(&graph, &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     initial_guess_mixed(&graph, &partitions, true, false)?;
     let bl_first = get_branch_lengths(&graph);
 
-    // Run update_marginal + initial_guess again on the same graph.
-    // Branch lengths changed from initial_guess, so update_marginal
+    // Run marginal_update + initial_guess again on the same graph.
+    // Branch lengths changed from initial_guess, so marginal_update
     // recomputes messages with the new branch lengths. The resulting
     // initial guess may differ from bl_first (new transition matrices).
     // But running the SAME sequence twice from identical state must
     // produce the same result.
     let graph2: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions2 = setup_dense_jc69(&graph2, &aln)?;
-    update_marginal(&graph2, &partitions2)?.value();
+    marginal_update(&graph2, &profile_branch_lengths(&graph2), &partitions2)?.value();
     partitions2[0].write_arc().data.gtr = f81_gtr;
-    update_marginal(&graph2, &partitions2)?.value();
+    marginal_update(&graph2, &profile_branch_lengths(&graph2), &partitions2)?.value();
     initial_guess_mixed(&graph2, &partitions2, true, false)?;
     let bl_second = get_branch_lengths(&graph2);
 

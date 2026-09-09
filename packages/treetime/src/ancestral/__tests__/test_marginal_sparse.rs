@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
+  use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update, profile_branch_lengths};
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
@@ -122,7 +122,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(graph, 0, alphabet, aln)?;
     let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, graph)?))];
-    let log_lh = update_marginal(graph, &partitions)?.value();
+    let log_lh = marginal_update(graph, &profile_branch_lengths(graph), &partitions)?.value();
     Ok((log_lh, partitions))
   }
 
@@ -188,7 +188,7 @@ mod tests {
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
 
-    let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?.value();
+    let log_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions_marginal_sparse)?.value();
 
     // generate ancestral reconstruction and test against expectation
     let mut actual = BTreeMap::new();
@@ -274,7 +274,7 @@ mod tests {
     Ok(())
   }
 
-  /// Verify that `update_marginal()` is a fixed-point operation: calling it twice produces
+  /// Verify that `marginal_update()` is a fixed-point operation: calling it twice produces
   /// the same log-likelihood.
   ///
   /// Sum-product message passing on a tree (acyclic graph) computes exact marginal posteriors
@@ -304,8 +304,8 @@ mod tests {
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
     let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?))];
 
-    let log_lh_first = update_marginal(&graph, &partitions)?.value();
-    let log_lh_second = update_marginal(&graph, &partitions)?.value();
+    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     // Verify log-likelihood value matches expected (same tree/alignment as normalization test)
     pretty_assert_ulps_eq!(-55.33813399214274, log_lh_first, epsilon = 1e-6);
@@ -466,7 +466,7 @@ mod tests {
           let fitch = create_fitch_partition(&graph, 0, alphabet.clone(), &aln)?;
           let partitions_marginal_sparse = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr.clone(), &graph)?))];
 
-          let log_lh = update_marginal(&graph, &partitions_marginal_sparse)?.value();
+          let log_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions_marginal_sparse)?.value();
           total_lh += log_lh.exp();
         }
       }
@@ -506,7 +506,7 @@ mod tests {
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?,
     ))];
-    update_marginal(&graph, &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     let actual_by_edge = {
       let partition = partitions[0].read_arc();

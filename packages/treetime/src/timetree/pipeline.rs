@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::marginal::{initialize_marginal, update_marginal};
+use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
@@ -225,7 +225,7 @@ pub fn run(
       },
       BranchLengthMode::Marginal => {
         info!("### ML branch-length optimization (post-reroot)");
-        update_marginal(&input.graph, &partitions)?;
+        marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &partitions)?;
         optimize_branch_lengths_pre_step(&input.graph, &partitions, params.no_indels)
           .wrap_err("ML branch-length optimization (post-reroot) failed")?;
       },
@@ -443,7 +443,7 @@ pub fn run(
     commit_clock_branch_lengths(&input.graph, clock_model.clock_rate(), 1.0);
 
     if !partitions.is_empty() {
-      update_marginal(&input.graph, &partitions)?;
+      marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &partitions)?;
     }
   }
 
@@ -748,7 +748,7 @@ fn optimize_branch_lengths_pre_step(
   .wrap_err("ML branch-length optimization pre-step failed")?;
 
   apply_damping(graph, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
-  update_marginal(graph, partitions)?;
+  marginal_update(graph, &profile_branch_lengths(graph), partitions)?;
 
   Ok(())
 }

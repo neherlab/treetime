@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::run_optimize_mixed_inner;
   use crate::optimize::params::BranchOptMethod;
@@ -29,7 +29,7 @@ mod tests {
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
     let partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![Arc::new(RwLock::new(partition))];
     initialize_marginal(&graph, &partitions, &aln)?.value();
-    update_marginal(&graph, &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     let mixed: Vec<Arc<RwLock<dyn PartitionOptimizeOps>>> = partitions
       .into_iter()
       .map(|p| -> Arc<RwLock<dyn PartitionOptimizeOps>> { p })

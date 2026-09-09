@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::{ancestral_reconstruction_marginal, update_marginal};
+use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update, profile_branch_lengths};
 use crate::ancestral::sample::SampleMode;
 use crate::clock::clock_output::write_clock_model;
 use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
@@ -103,7 +103,7 @@ pub fn run_timetree_estimation(
   // Reconstructed ancestral-sequence FASTA: the v1 equivalent of v0's `ancestral_sequences.fasta`.
   // The timetree pipeline computes marginal posteriors for branch-length optimization but never
   // materializes the flag-aware per-node sequences, so this reuses the same reconstruction the
-  // `ancestral` command runs: `update_marginal` refreshes the posteriors against the final branch
+  // `ancestral` command runs: `marginal_update` refreshes the posteriors against the final branch
   // lengths, then `ancestral_reconstruction_marginal` writes each node's stored sequence and emits
   // it. `--include-leaves` gates whether tip sequences are emitted; `--impute-missing-data` resolves
   // ambiguous tip states. Reconstruction runs before mutation counting and tree output so every
@@ -127,7 +127,11 @@ pub fn run_timetree_estimation(
         Some(path) => Some(FastaWriter::new(create_file_or_stdout(path)?)),
         None => None,
       };
-      update_marginal(&output.graph, &output.partitions)?;
+      marginal_update(
+        &output.graph,
+        &profile_branch_lengths(&output.graph),
+        &output.partitions,
+      )?;
       let mut rng = get_random_number_generator(params.seed);
       ancestral_reconstruction_marginal(
         &output.graph,

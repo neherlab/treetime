@@ -58,7 +58,7 @@ mod tests {
     /// and forward pass (root to tips, computing outgroup profiles).
     ///
     /// Sparse (optimized): first runs Fitch parsimony compression (`compress_sequences`)
-    /// to classify positions as invariant or variable, then calls `update_marginal` on
+    /// to classify positions as invariant or variable, then calls `marginal_update` on
     /// variable positions only, accumulating fixed-site contributions separately.
     ///
     /// Invariant tested: the total log-likelihood

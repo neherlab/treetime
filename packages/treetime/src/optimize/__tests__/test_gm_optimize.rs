@@ -173,7 +173,7 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::fitch::create_fitch_partition;
-    use crate::ancestral::marginal::{initialize_marginal, update_marginal};
+    use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::optimize::dispatch::initial_guess_mixed;
     use crate::optimize::params::{BranchOptMethod, TopologyOps};
@@ -256,8 +256,8 @@ mod tests {
       )))];
 
       initialize_marginal(&graph, &dense_partitions, &aln)?.value();
-      update_marginal(&graph, &sparse_partitions)?.value();
-      update_marginal(&graph, &dense_partitions)?.value();
+      marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+      marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
 
       let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
       initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
@@ -280,8 +280,8 @@ mod tests {
       // AFTER the final in-loop branch-length update (`run_optimize_loop` records the LH
       // at the START of each iteration, before that iteration's update).
       let mut lh_history = result.lh_history.into_iter().map(LogLh::value).collect_vec();
-      let sparse_lh = update_marginal(&graph, &sparse_partitions)?.value();
-      let dense_lh = update_marginal(&graph, &dense_partitions)?.value();
+      let sparse_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+      let dense_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
       lh_history.push(sparse_lh + dense_lh);
 
       Ok(OptimizeResult {

@@ -3,7 +3,7 @@ pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::payload::ancestral::GraphAncestral;
@@ -66,7 +66,7 @@ pub mod tests {
   ///     sequences, backward pass, forward pass, cleanup) to reconstruct ancestral states
   ///     and produce the sparse representation - each node stores only mutations relative
   ///     to its parent, not the full sequence.
-  ///  2. Marginal reconstruction via `update_marginal`: runs both the backward pass
+  ///  2. Marginal reconstruction via `marginal_update`: runs both the backward pass
   ///     (ingroup partial likelihoods) and forward pass (outgroup profiles) on the
   ///     variable positions only, computing the log-likelihood between passes.
   ///
@@ -83,7 +83,7 @@ pub mod tests {
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(input.gtr.clone(), &graph)?,
     ))];
-    let log_lh = update_marginal(&graph, &partitions)?.value();
+    let log_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     Ok((log_lh, partitions))
   }
 }

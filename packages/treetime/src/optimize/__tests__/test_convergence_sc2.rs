@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
 
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::update_marginal;
+  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
@@ -41,7 +41,7 @@ mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    update_marginal(&graph, &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
     let dense_partitions = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
@@ -91,7 +91,7 @@ mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    update_marginal(&graph, &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
     let dense_partitions = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);

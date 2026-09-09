@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::update_marginal;
+  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
   use crate::payload::ancestral::GraphAncestral;
@@ -27,16 +27,16 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions = setup_dense_only(&graph, &aln)?;
 
-    let initial_lh = update_marginal(&graph, &partitions)?.value();
+    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
       run_optimize_mixed(&graph, &partitions, method)?;
-      let lh = update_marginal(&graph, &partitions)?.value();
+      let lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }
 
-    let final_lh = update_marginal(&graph, &partitions)?.value();
+    let final_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     // Final log-LH should be in expected range for this simple tree
     // 16 sites, 4 leaves, mostly identical sequences -> log-LH between -100 and -10
@@ -81,16 +81,16 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
     let partitions = setup_sparse_only(&graph, &aln)?;
 
-    let initial_lh = update_marginal(&graph, &partitions)?.value();
+    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
       run_optimize_mixed(&graph, &partitions, method)?;
-      let lh = update_marginal(&graph, &partitions)?.value();
+      let lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }
 
-    let final_lh = update_marginal(&graph, &partitions)?.value();
+    let final_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     // Final log-LH should be in expected range for this simple tree
     // 16 sites, 4 leaves, mostly identical sequences -> log-LH between -100 and -10

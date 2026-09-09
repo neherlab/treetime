@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::update_marginal;
+  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::o;
-  use crate::partition::traits::PartitionMarginalPasses;
+  use crate::partition::marginal::shared::pass::{marginal_process_backward_indexed, marginal_process_forward_indexed};
   use crate::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -83,7 +83,8 @@ mod tests {
 
     partition.attach_traits(&graph, &traits)?;
 
-    partition.process_backward_pass(&graph)?;
+    let branch_lengths = profile_branch_lengths(&graph);
+    marginal_process_backward_indexed(&mut partition, &graph, &branch_lengths)?;
 
     let root_profile = helpers::get_node_profile(&graph, &partition, "root");
     helpers::assert_profile_normalized(&root_profile);
@@ -94,7 +95,7 @@ mod tests {
     let leaf_to_inner_msg = helpers::get_edge_msg_from_child(&graph, &partition, "inner", "A");
     helpers::assert_profile_normalized(&leaf_to_inner_msg);
 
-    partition.process_forward_pass(&graph)?;
+    marginal_process_forward_indexed(&mut partition, &graph, &branch_lengths)?;
 
     let root_profile = helpers::get_node_profile(&graph, &partition, "root");
     helpers::assert_profile_normalized(&root_profile);
@@ -120,7 +121,12 @@ mod tests {
     partition.attach_traits(&graph, &traits)?;
 
     let partition = Arc::new(RwLock::new(partition));
-    let actual_log_lh = update_marginal(&graph, std::slice::from_ref(&partition))?.value();
+    let actual_log_lh = marginal_update(
+      &graph,
+      &profile_branch_lengths(&graph),
+      std::slice::from_ref(&partition),
+    )?
+    .value();
 
     assert!(actual_log_lh.is_finite());
     assert!(

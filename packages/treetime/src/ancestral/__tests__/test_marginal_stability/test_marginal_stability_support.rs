@@ -2,7 +2,7 @@
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{initialize_marginal, update_marginal};
+  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::gtr::gtr::GTR;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -89,7 +89,7 @@ pub mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
     let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?))];
-    let log_lh = update_marginal(&graph, &partitions)?.value();
+    let log_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     Ok((log_lh, partitions))
   }
 }

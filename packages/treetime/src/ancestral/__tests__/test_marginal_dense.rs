@@ -2,7 +2,9 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::alphabet::alphabet::AlphabetName;
-  use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
+  use crate::ancestral::marginal::{
+    ancestral_reconstruction_marginal, initialize_marginal, marginal_update, profile_branch_lengths,
+  };
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
@@ -239,17 +241,17 @@ mod tests {
     Ok(())
   }
 
-  /// Verify that `update_marginal` is idempotent: running it twice produces
+  /// Verify that `marginal_update` is idempotent: running it twice produces
   /// the same log-likelihood.
   ///
   /// Two-pass sum-product message passing (belief propagation) on a tree
   /// converges exactly in a single backward + forward pass - no iterative
-  /// refinement is needed. Calling `update_marginal` a second time must
+  /// refinement is needed. Calling `marginal_update` a second time must
   /// produce identical results because the message-passing equations have a
   /// unique fixed point on tree-structured factor graphs.
   ///
   /// This test first runs `initialize_marginal` (which includes one
-  /// `update_marginal` call), then calls `update_marginal` twice more and
+  /// `marginal_update` call), then calls `marginal_update` twice more and
   /// verifies both calls return the same log-likelihood. Any deviation would
   /// indicate state corruption, accumulating numerical drift, or incorrect
   /// in-place mutation of node/edge profiles.
@@ -263,8 +265,8 @@ mod tests {
 
     let (log_lh_init, partitions) = run_dense_marginal(&graph, &ALN_7_TAXON, gtr)?;
 
-    let log_lh_first = update_marginal(&graph, &partitions)?.value();
-    let log_lh_second = update_marginal(&graph, &partitions)?.value();
+    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     // Repeated updates must produce identical log-likelihood to initialization
     pretty_assert_ulps_eq!(log_lh_init, log_lh_first, epsilon = 1e-10);

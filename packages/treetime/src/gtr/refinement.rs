@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::{marginal_backward, update_marginal};
+use crate::ancestral::marginal::{marginal_backward, marginal_update, profile_branch_lengths};
 use crate::gtr::brent_bracketed::BrentBracketed;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
@@ -9,8 +9,9 @@ use eyre::Report;
 use log::{debug, info, warn};
 use ndarray::Array1;
 use parking_lot::RwLock;
+use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_primitives::LogLh;
@@ -75,7 +76,7 @@ where
   }
 
   let partitions = std::slice::from_ref(partition);
-  let log_lh = update_marginal(graph, partitions)?;
+  let log_lh = marginal_update(graph, &profile_branch_lengths(graph), partitions)?;
 
   let guard = partition.read_arc();
   let gtr = guard.gtr();
@@ -113,10 +114,15 @@ where
 
   let partitions = std::slice::from_ref(partition);
 
+  // Branch lengths stay fixed while only the substitution rate is optimized, so collect them once
+  // and thread the same map into every backward pass the Brent search evaluates.
+  let branch_lengths = profile_branch_lengths(graph);
+
   let cost_fn = GtrRateCostFn {
     graph,
     partition,
     partitions,
+    branch_lengths,
     root_key,
   };
 
@@ -159,6 +165,7 @@ struct GtrRateCostFn<'a, N: GraphNode, E: EdgeOptimizeOps, P> {
   graph: &'a Graph<N, E, ()>,
   partition: &'a Arc<RwLock<P>>,
   partitions: &'a [Arc<RwLock<P>>],
+  branch_lengths: BTreeMap<GraphEdgeKey, f64>,
   root_key: treetime_graph::node::GraphNodeKey,
 }
 
@@ -174,7 +181,7 @@ where
       guard.gtr_mut().mu = sqrt_mu * sqrt_mu;
       guard.reset_node_log_likelihoods();
     }
-    match marginal_backward(self.graph, self.partitions) {
+    match marginal_backward(self.graph, &self.branch_lengths, self.partitions) {
       Ok(()) => -self.partition.read_arc().get_log_lh(self.root_key),
       Err(e) => {
         warn!(

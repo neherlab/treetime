@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::update_marginal;
+  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
   use crate::payload::ancestral::GraphAncestral;
@@ -126,8 +126,8 @@ mod tests {
     // Run several optimization iterations
     for _ in 0..10 {
       run_optimize_mixed(&graph, &mixed_partitions, method)?;
-      update_marginal(&graph, &dense_partitions)?.value();
-      update_marginal(&graph, &sparse_partitions)?.value();
+      marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
+      marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
     }
 
     // Verify all branch lengths are in valid range

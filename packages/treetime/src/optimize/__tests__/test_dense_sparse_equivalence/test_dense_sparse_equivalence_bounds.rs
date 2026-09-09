@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::update_marginal;
+  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
   use crate::payload::ancestral::GraphAncestral;
@@ -30,10 +30,10 @@ mod tests {
 
     for _ in 0..10 {
       run_optimize_mixed(&graph_dense, &dense_partitions, method)?;
-      update_marginal(&graph_dense, &dense_partitions)?.value();
+      marginal_update(&graph_dense, &profile_branch_lengths(&graph_dense), &dense_partitions)?.value();
     }
 
-    let log_lh_dense = update_marginal(&graph_dense, &dense_partitions)?.value();
+    let log_lh_dense = marginal_update(&graph_dense, &profile_branch_lengths(&graph_dense), &dense_partitions)?.value();
 
     // Run sparse-only optimization
     let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
@@ -41,10 +41,10 @@ mod tests {
 
     for _ in 0..10 {
       run_optimize_mixed(&graph_sparse, &sparse_partitions, method)?;
-      update_marginal(&graph_sparse, &sparse_partitions)?.value();
+      marginal_update(&graph_sparse, &profile_branch_lengths(&graph_sparse), &sparse_partitions)?.value();
     }
 
-    let log_lh_sparse = update_marginal(&graph_sparse, &sparse_partitions)?.value();
+    let log_lh_sparse = marginal_update(&graph_sparse, &profile_branch_lengths(&graph_sparse), &sparse_partitions)?.value();
 
     // Both modes should produce finite log-LH in expected range
     assert!(
@@ -86,7 +86,7 @@ mod tests {
 
     for _ in 0..10 {
       run_optimize_mixed(&graph_dense, &dense_partitions, method)?;
-      update_marginal(&graph_dense, &dense_partitions)?.value();
+      marginal_update(&graph_dense, &profile_branch_lengths(&graph_dense), &dense_partitions)?.value();
     }
 
     let branch_lengths_dense = get_branch_lengths(&graph_dense);
@@ -97,7 +97,7 @@ mod tests {
 
     for _ in 0..10 {
       run_optimize_mixed(&graph_sparse, &sparse_partitions, method)?;
-      update_marginal(&graph_sparse, &sparse_partitions)?.value();
+      marginal_update(&graph_sparse, &profile_branch_lengths(&graph_sparse), &sparse_partitions)?.value();
     }
 
     let branch_lengths_sparse = get_branch_lengths(&graph_sparse);

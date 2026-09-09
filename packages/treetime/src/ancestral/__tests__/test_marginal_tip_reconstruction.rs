@@ -2,7 +2,9 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, update_marginal};
+  use crate::ancestral::marginal::{
+    ancestral_reconstruction_marginal, initialize_marginal, marginal_update, profile_branch_lengths,
+  };
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -65,7 +67,7 @@ mod tests {
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    update_marginal(&graph, &partitions)?;
+    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?;
 
     let seqs = reconstruct_named(&graph, &partitions, false)?;
 
@@ -190,7 +192,7 @@ mod tests {
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
-    update_marginal(graph, &partitions)?;
+    marginal_update(graph, &profile_branch_lengths(graph), &partitions)?;
     Ok(to_strings(reconstruct_named(graph, &partitions, impute)?))
   }
 
