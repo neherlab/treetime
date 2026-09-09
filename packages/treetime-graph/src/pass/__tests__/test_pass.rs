@@ -1,14 +1,14 @@
 #[cfg(test)]
 mod tests {
-  use crate::pass::{GraphPass, with_graph_payloads};
+  use crate::pass::{GraphMapOutputs, GraphPass, GraphPassNodeOutput, with_graph_payloads};
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_utils::{assert_error, make_report, o};
 
   use self::helpers::{
-    edge_lengths, edge_values_by_child_name, fixture_tree, key_payloads, node_names, pass_values, run_backward_sum,
-    run_forward_sum, values_by_name,
+    edge_lengths, edge_values_by_child_name, fixture_tree, key_payloads, node_names, own_value_pass_values,
+    pass_values, run_backward_sum, run_forward_sum, values_by_name,
   };
 
   #[test]
@@ -89,6 +89,36 @@ mod tests {
 
     assert_eq!(single.nodes, multi.nodes);
     assert_eq!(single.edges, multi.edges);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pass_map_backward_without_edge_messages_collects_nodes_only() -> Result<(), Report> {
+    // A node-only backward map: every visitor returns `parent_message: None` (here `EdgeOut = ()`), so
+    // no node emits an upward edge message. The map must complete without panic, collect every node
+    // output, and leave the per-edge map empty because no message travelled any edge.
+    let graph = fixture_tree()?;
+    let (mut nodes, mut edges) = own_value_pass_values(&graph);
+    let pass = GraphPass::new(&graph, &mut nodes, &mut edges, |_| Ok(0))?;
+
+    let outputs: GraphMapOutputs<usize, ()> = pass.try_map_backward(|context| {
+      let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
+      Ok(GraphPassNodeOutput {
+        node: context.input + children_sum,
+        parent_message: None,
+      })
+    })?;
+
+    assert!(outputs.edges.is_empty());
+    let actual_nodes = values_by_name(&graph, &outputs.nodes);
+    let expected_nodes = btreemap! {
+      o!("A") => 1,
+      o!("B") => 2,
+      o!("C") => 3,
+      o!("AB") => 13,
+      o!("root") => 116,
+    };
+    assert_eq!(expected_nodes, actual_nodes);
     Ok(())
   }
 
@@ -220,9 +250,7 @@ mod tests {
     use crate::edge::{GraphEdge, GraphEdgeKey};
     use crate::graph::Graph;
     use crate::node::{GraphNode, GraphNodeKey};
-    use crate::pass::{
-      GraphBackwardOutputs, GraphForwardOutputs, GraphPass, GraphPassNodeBackward, GraphPassNodeForward,
-    };
+    use crate::pass::{GraphMapOutputs, GraphPass, GraphPassNodeOutput};
     use eyre::Report;
     use maplit::btreemap;
     use rayon::ThreadPoolBuilder;
@@ -296,7 +324,7 @@ mod tests {
     pub fn run_backward_sum(
       graph: &Graph<TestNode, TestEdge, ()>,
       threads: usize,
-    ) -> Result<GraphBackwardOutputs<usize, usize>, Report> {
+    ) -> Result<GraphMapOutputs<usize, usize>, Report> {
       let (mut nodes, mut edges) = own_value_pass_values(graph);
       let pass = GraphPass::new(graph, &mut nodes, &mut edges, |_| Ok(0))?;
       let pool = ThreadPoolBuilder::new().num_threads(threads).build()?;
@@ -305,7 +333,7 @@ mod tests {
           let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
           let node = context.input + children_sum;
           let parent_message = (!context.is_root).then_some(node);
-          Ok(GraphPassNodeBackward { node, parent_message })
+          Ok(GraphPassNodeOutput { node, parent_message })
         })
       })
     }
@@ -315,7 +343,7 @@ mod tests {
     pub fn run_forward_sum(
       graph: &Graph<TestNode, TestEdge, ()>,
       threads: usize,
-    ) -> Result<GraphForwardOutputs<usize, usize>, Report> {
+    ) -> Result<GraphMapOutputs<usize, usize>, Report> {
       let (mut nodes, mut edges) = own_value_pass_values(graph);
       let pass = GraphPass::new(graph, &mut nodes, &mut edges, |_| Ok(0))?;
       let pool = ThreadPoolBuilder::new().num_threads(threads).build()?;
@@ -324,7 +352,7 @@ mod tests {
           let parent_sum = context.parent.copied().unwrap_or(0);
           let node = context.input + parent_sum;
           let parent_message = (!context.is_root).then_some(node);
-          Ok(GraphPassNodeForward { node, parent_message })
+          Ok(GraphPassNodeOutput { node, parent_message })
         })
       })
     }

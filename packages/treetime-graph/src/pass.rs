@@ -84,12 +84,12 @@ pub struct GraphPassDependencies<'a, N, E> {
 }
 
 /// One completed child seen by a backward-mapping visitor: the child's returned node output and the
-/// output it produced for the edge connecting it to the current (parent) node.
+/// optional message it produced for the edge connecting it to the current (parent) node.
 pub struct GraphPassChildBackward<'a, NodeOut, EdgeOut> {
   pub node_key: GraphNodeKey,
   pub edge_key: GraphEdgeKey,
   pub node: &'a NodeOut,
-  pub edge: &'a EdgeOut,
+  pub edge: Option<&'a EdgeOut>,
 }
 
 /// Input handed to a backward-mapping visitor for one node: the node's own moved-in input, its
@@ -103,20 +103,6 @@ pub struct GraphPassBackwardContext<'a, N, E, NodeOut, EdgeOut> {
   pub children: &'a [GraphPassChildBackward<'a, NodeOut, EdgeOut>],
 }
 
-/// Output returned by a backward-mapping visitor for one node: the node's output and the message it
-/// sends up its own parent edge (`None` at the root, which has no parent edge).
-pub struct GraphPassNodeBackward<NodeOut, EdgeOut> {
-  pub node: NodeOut,
-  pub parent_message: Option<EdgeOut>,
-}
-
-/// Collected outputs of a backward map: node outputs keyed by node, and per-edge upward messages
-/// keyed by the edge each message travelled along.
-pub struct GraphBackwardOutputs<NodeOut, EdgeOut> {
-  pub nodes: BTreeMap<GraphNodeKey, NodeOut>,
-  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
-}
-
 /// Input handed to a forward-mapping visitor for one node: the node's own moved-in input, its
 /// moved-in parent-edge input, and the already-completed forward output of its single parent.
 pub struct GraphPassForwardContext<'a, N, E, NodeOut> {
@@ -128,16 +114,17 @@ pub struct GraphPassForwardContext<'a, N, E, NodeOut> {
   pub parent: Option<&'a NodeOut>,
 }
 
-/// Output returned by a forward-mapping visitor for one node: the node's output and the message it
-/// sends down its own parent edge (`None` at the root, which has no parent edge).
-pub struct GraphPassNodeForward<NodeOut, EdgeOut> {
+/// Output returned by a mapping visitor for one node: the node's output and the optional message it
+/// sends along its own parent edge (`None` at the root, which has no parent edge, or whenever the
+/// node produces no message for that edge).
+pub struct GraphPassNodeOutput<NodeOut, EdgeOut> {
   pub node: NodeOut,
   pub parent_message: Option<EdgeOut>,
 }
 
-/// Collected outputs of a forward map: node outputs keyed by node, and per-edge downward messages
-/// keyed by the edge each message travelled along.
-pub struct GraphForwardOutputs<NodeOut, EdgeOut> {
+/// Collected outputs of a graph map: node outputs keyed by node, and per-edge messages keyed by the
+/// edge each message travelled along.
+pub struct GraphMapOutputs<NodeOut, EdgeOut> {
   pub nodes: BTreeMap<GraphNodeKey, NodeOut>,
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
 }
@@ -195,10 +182,10 @@ impl<N, E> GraphPass<N, E> {
     mut self,
     visit: impl Fn(
       GraphPassBackwardContext<'_, N, E, NodeOut, EdgeOut>,
-    ) -> Result<GraphPassNodeBackward<NodeOut, EdgeOut>, Report>
+    ) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
     + Sync
     + Send,
-  ) -> Result<GraphBackwardOutputs<NodeOut, EdgeOut>, Report>
+  ) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report>
   where
     N: Send + Sync,
     E: Send + Sync,
@@ -225,7 +212,7 @@ impl<N, E> GraphPass<N, E> {
       .into_iter()
       .map(|slot| Mutex::new(Some(slot)))
       .collect::<Vec<_>>();
-    let completed = std::iter::repeat_with(OnceLock::<GraphPassNodeBackward<NodeOut, EdgeOut>>::new)
+    let completed = std::iter::repeat_with(OnceLock::<GraphPassNodeOutput<NodeOut, EdgeOut>>::new)
       .take(pending.len())
       .collect::<Vec<_>>();
 
@@ -248,10 +235,7 @@ impl<N, E> GraphPass<N, E> {
             node_key: node_keys[child_index],
             edge_key: parent_edge_keys[child_index].expect("Backward child must have a parent edge"),
             node: &child.node,
-            edge: child
-              .parent_message
-              .as_ref()
-              .expect("Backward child must produce a message toward its parent"),
+            edge: child.parent_message.as_ref(),
           }
         })
         .collect::<Vec<_>>();
@@ -272,36 +256,15 @@ impl<N, E> GraphPass<N, E> {
       Ok(())
     })?;
 
-    let mut nodes = BTreeMap::new();
-    let mut edges = BTreeMap::new();
-    for (index, slot) in completed.into_iter().enumerate() {
-      let output = slot
-        .into_inner()
-        .expect("Every indexed slot must publish an output after a successful backward map");
-      if nodes.insert(node_keys[index], output.node).is_some() {
-        return Err(make_internal_report!(
-          "Duplicate node {} while collecting a backward map",
-          node_keys[index]
-        ));
-      }
-      if let Some(edge) = output.parent_message {
-        let edge_key = parent_edge_keys[index].expect("Backward parent message must belong to a parent edge");
-        if edges.insert(edge_key, edge).is_some() {
-          return Err(make_internal_report!(
-            "Duplicate edge {edge_key} while collecting a backward map"
-          ));
-        }
-      }
-    }
-    Ok(GraphBackwardOutputs { nodes, edges })
+    collect_map_outputs(completed, &node_keys, &parent_edge_keys)
   }
 
   pub fn try_map_forward<NodeOut, EdgeOut>(
     mut self,
-    visit: impl Fn(GraphPassForwardContext<'_, N, E, NodeOut>) -> Result<GraphPassNodeForward<NodeOut, EdgeOut>, Report>
+    visit: impl Fn(GraphPassForwardContext<'_, N, E, NodeOut>) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
     + Sync
     + Send,
-  ) -> Result<GraphForwardOutputs<NodeOut, EdgeOut>, Report>
+  ) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report>
   where
     N: Send + Sync,
     E: Send + Sync,
@@ -329,7 +292,7 @@ impl<N, E> GraphPass<N, E> {
       .into_iter()
       .map(|slot| Mutex::new(Some(slot)))
       .collect::<Vec<_>>();
-    let completed = std::iter::repeat_with(OnceLock::<GraphPassNodeForward<NodeOut, EdgeOut>>::new)
+    let completed = std::iter::repeat_with(OnceLock::<GraphPassNodeOutput<NodeOut, EdgeOut>>::new)
       .take(pending.len())
       .collect::<Vec<_>>();
 
@@ -363,28 +326,7 @@ impl<N, E> GraphPass<N, E> {
       Ok(())
     })?;
 
-    let mut nodes = BTreeMap::new();
-    let mut edges = BTreeMap::new();
-    for (index, slot) in completed.into_iter().enumerate() {
-      let output = slot
-        .into_inner()
-        .expect("Every indexed slot must publish an output after a successful forward map");
-      if nodes.insert(node_keys[index], output.node).is_some() {
-        return Err(make_internal_report!(
-          "Duplicate node {} while collecting a forward map",
-          node_keys[index]
-        ));
-      }
-      if let Some(edge) = output.parent_message {
-        let edge_key = parent_edge_keys[index].expect("Forward parent message must belong to a parent edge");
-        if edges.insert(edge_key, edge).is_some() {
-          return Err(make_internal_report!(
-            "Duplicate edge {edge_key} while collecting a forward map"
-          ));
-        }
-      }
-    }
-    Ok(GraphForwardOutputs { nodes, edges })
+    collect_map_outputs(completed, &node_keys, &parent_edge_keys)
   }
 
   pub fn into_maps(self) -> Result<(BTreeMap<GraphNodeKey, N>, BTreeMap<GraphEdgeKey, E>), Report> {
@@ -553,6 +495,38 @@ impl<N, E> GraphPass<N, E> {
       .collect();
     result
   }
+}
+
+/// Drain the per-index completed outputs of a graph map into key-addressed maps: each node output is
+/// keyed by its node, and each node's optional parent-edge message is keyed by that parent edge.
+/// Duplicate keys signal a scheduling bug, so they are reported as internal errors.
+fn collect_map_outputs<NodeOut, EdgeOut>(
+  completed: Vec<OnceLock<GraphPassNodeOutput<NodeOut, EdgeOut>>>,
+  node_keys: &[GraphNodeKey],
+  parent_edge_keys: &[Option<GraphEdgeKey>],
+) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report> {
+  let mut nodes = BTreeMap::new();
+  let mut edges = BTreeMap::new();
+  for (index, slot) in completed.into_iter().enumerate() {
+    let output = slot
+      .into_inner()
+      .expect("Every indexed slot must publish an output after a successful map");
+    if nodes.insert(node_keys[index], output.node).is_some() {
+      return Err(make_internal_report!(
+        "Duplicate node {} while collecting a graph map",
+        node_keys[index]
+      ));
+    }
+    if let Some(edge) = output.parent_message {
+      let edge_key = parent_edge_keys[index].expect("Parent message must belong to a parent edge");
+      if edges.insert(edge_key, edge).is_some() {
+        return Err(make_internal_report!(
+          "Duplicate edge {edge_key} while collecting a graph map"
+        ));
+      }
+    }
+  }
+  Ok(GraphMapOutputs { nodes, edges })
 }
 
 impl<N, E> GraphPassDependencies<'_, N, E> {
