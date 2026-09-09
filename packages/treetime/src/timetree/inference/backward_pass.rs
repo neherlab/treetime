@@ -1,6 +1,7 @@
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
+use crate::timetree::timetree_state::{DateEdgeState, DateNodeState, TimetreeState};
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -13,27 +14,32 @@ use treetime_distribution::distribution_product;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
-use treetime_graph::pass::{
-  GraphPassBackwardContext, GraphPassChildBackward, GraphPassNodeOutput, with_graph_payloads_map,
-};
+use treetime_graph::pass::{GraphPassBackwardContext, GraphPassChildBackward, GraphPassNodeOutput};
 use treetime_grid::Side;
 
 /// Propagates time distributions backward from leaves to root.
 ///
 /// If a coalescent model is provided, applies one role-specific contribution
 /// after all child messages have been combined.
+///
+/// Runs on a [`TimetreeState`] value seeded from the graph payloads, and writes the refined node
+/// posteriors and backward messages back into the payloads at the end: the refinement loop, coalescent
+/// statistics, confidence extraction, and tree writers still read them off the graph.
 pub fn propagate_distributions_backward<N, E, D>(
   graph: &Graph<N, E, D>,
   coalescent_model: Option<&CoalescentModel>,
 ) -> Result<(), Report>
 where
-  N: GraphNode + TimetreeNode + Default,
-  E: GraphEdge + TimetreeEdge + Default,
+  N: GraphNode + TimetreeNode,
+  E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  with_graph_payloads_map(graph, |pass| {
-    pass.try_map_backward::<N, E>(|context| propagate_distributions_backward_node(graph, coalescent_model, context))
-  })
+  let mut state = TimetreeState::seed_from_payloads(graph);
+  state.map_backward(graph, |context| {
+    propagate_distributions_backward_node(graph, coalescent_model, context)
+  })?;
+  state.write_to_payloads(graph);
+  Ok(())
 }
 
 /// Computes a node's time distribution and the backward message it sends to its parent.
@@ -42,14 +48,14 @@ where
 /// coalescent prior and the input date constraint into the node's time distribution, which is stored
 /// peak-normalized. Second, the distribution is convolved across the branch into the backward message
 /// the parent folds in.
-fn propagate_distributions_backward_node<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn propagate_distributions_backward_node<GN, GE, D>(
+  graph: &Graph<GN, GE, D>,
   coalescent_model: Option<&CoalescentModel>,
-  context: GraphPassBackwardContext<'_, N, E, N, E>,
-) -> Result<GraphPassNodeOutput<N, E>, Report>
+  context: GraphPassBackwardContext<'_, DateNodeState, DateEdgeState, DateNodeState, DateEdgeState>,
+) -> Result<GraphPassNodeOutput<DateNodeState, DateEdgeState>, Report>
 where
-  N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
+  GN: GraphNode,
+  GE: GraphEdge,
   D: Send + Sync,
 {
   // take child messages and date constraint --> determine xmin, xmax, and grid
@@ -60,14 +66,14 @@ where
   let messages = gather_child_messages(graph, context.key, context.children);
   let distribution = combine_child_messages(&messages)?;
   let distribution = apply_coalescent_prior(graph, coalescent_model, context.key, distribution)?;
-  let distribution = apply_date_constraint(&node, distribution)?;
+  let distribution = apply_date_constraint(node.date_constraint.as_ref(), distribution)?;
 
   if !matches!(distribution, Distribution::Empty) {
     // Peak-normalize the combined posterior. Every downstream consumer (likely_time, quantile, and
     // the outgoing convolution via to_plain_normalized) is shift-invariant, so the peak offset
     // removed here has no effect on inferred times or likelihoods.
     let distribution = distribution.normalize();
-    node.set_time_distribution(Some(Arc::new(distribution)));
+    node.time_distribution = Some(Arc::new(distribution));
   }
 
   let parent_message = send_backward_message(coalescent_model, context.is_leaf, &node, context.parent_edge)?;
@@ -80,14 +86,14 @@ where
 /// `children_of`. Index the child outputs by node key so the messages are gathered in the fixed,
 /// canonical `children_of` order as before, keeping the floating-point result byte-for-byte
 /// identical. A bad-branch child carries no usable message and is skipped.
-fn gather_child_messages<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn gather_child_messages<GN, GE, D>(
+  graph: &Graph<GN, GE, D>,
   key: GraphNodeKey,
-  children: &[GraphPassChildBackward<'_, N, E>],
+  children: &[GraphPassChildBackward<'_, DateNodeState, DateEdgeState>],
 ) -> Vec<Arc<Distribution<NegLog>>>
 where
-  N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
+  GN: GraphNode,
+  GE: GraphEdge,
   D: Send + Sync,
 {
   let child_outputs: BTreeMap<_, _> = children.iter().map(|child| (child.node_key, child)).collect();
@@ -96,11 +102,11 @@ where
   for (child, _) in graph.children_of(&node.read_arc()) {
     let child_key = child.read_arc().key();
     let child = child_outputs.get(&child_key).expect("Indexed child must exist");
-    if child.node.bad_branch() {
+    if child.node.bad_branch {
       continue;
     }
     let edge = child.edge.expect("Non-root indexed node must own its parent edge");
-    if let Some(parent_message) = edge.msg_to_parent() {
+    if let Some(parent_message) = &edge.msg_to_parent {
       messages.push(Arc::clone(parent_message));
     }
   }
@@ -134,15 +140,15 @@ fn combine_child_messages(messages: &[Arc<Distribution<NegLog>>]) -> Result<Dist
 /// the stored node distribution, so it is added later when the message is formed in
 /// [`send_backward_message`]. A node with no coalescent model, or an `Empty` distribution (no child
 /// left a message), is returned unchanged.
-fn apply_coalescent_prior<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn apply_coalescent_prior<GN, GE, D>(
+  graph: &Graph<GN, GE, D>,
   coalescent_model: Option<&CoalescentModel>,
   key: GraphNodeKey,
   distribution: Distribution<NegLog>,
 ) -> Result<Distribution<NegLog>, Report>
 where
-  N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
+  GN: GraphNode,
+  GE: GraphEdge,
   D: Send + Sync,
 {
   let Some(model) = coalescent_model else {
@@ -170,11 +176,11 @@ where
 /// time distribution of a node whose date is uncertain in place, and sending that refined distribution
 /// back to the parent on the next round would count the parent's own message toward the node a second
 /// time.
-fn apply_date_constraint<N>(node: &N, distribution: Distribution<NegLog>) -> Result<Distribution<NegLog>, Report>
-where
-  N: GraphNode + TimetreeNode,
-{
-  let Some(constraint) = node.date_constraint() else {
+fn apply_date_constraint(
+  date_constraint: Option<&Arc<Distribution<NegLog>>>,
+  distribution: Distribution<NegLog>,
+) -> Result<Distribution<NegLog>, Report> {
+  let Some(constraint) = date_constraint else {
     return Ok(distribution);
   };
   if matches!(distribution, Distribution::Empty) {
@@ -192,27 +198,23 @@ where
 ///
 /// The root has no parent edge and returns `None`. Every non-root node returns `Some(edge)`, including
 /// the early-return paths that leave the edge unchanged, so the value engine's write-back keeps every
-/// edge payload.
-fn send_backward_message<N, E>(
+/// edge message.
+fn send_backward_message(
   coalescent_model: Option<&CoalescentModel>,
   is_leaf: bool,
-  node: &N,
-  parent_edge: Option<(GraphEdgeKey, E)>,
-) -> Result<Option<E>, Report>
-where
-  N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
-{
+  node: &DateNodeState,
+  parent_edge: Option<(GraphEdgeKey, DateEdgeState)>,
+) -> Result<Option<DateEdgeState>, Report> {
   let Some((_, mut edge)) = parent_edge else {
     return Ok(None);
   };
-  if node.bad_branch() {
+  if node.bad_branch {
     return Ok(Some(edge));
   }
-  let Some(distribution) = node.time_distribution() else {
+  let Some(distribution) = &node.time_distribution else {
     return Ok(Some(edge));
   };
-  let Some(branch_length_distribution) = edge.branch_length_distribution() else {
+  let Some(branch_length_distribution) = &edge.branch_length_distribution else {
     return Ok(Some(edge));
   };
 
@@ -227,7 +229,7 @@ where
 
   let negated_branch = branch_length_distribution.negate()?;
   let message = convolve_across_edge(outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)?;
-  edge.set_msg_to_parent(Some(Arc::new(message)));
+  edge.msg_to_parent = Some(Arc::new(message));
 
   Ok(Some(edge))
 }

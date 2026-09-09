@@ -5,6 +5,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::forward_pass::{propagate_distributions_forward, set_likely_time};
+  use crate::timetree::timetree_state::DateNodeState;
   use eyre::Report;
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
@@ -22,14 +23,14 @@ mod tests {
   fn test_forward_pass_set_likely_time_empty_distribution_returns_none() {
     let mut node = node_with_distribution(Some(Distribution::empty()));
     assert_eq!(None, set_likely_time(&mut node, None));
-    assert_eq!(None, node.time());
+    assert_eq!(None, node.time);
   }
 
   #[test]
   fn test_forward_pass_set_likely_time_missing_distribution_returns_none() {
     let mut node = node_with_distribution(None);
     assert_eq!(None, set_likely_time(&mut node, None));
-    assert_eq!(None, node.time());
+    assert_eq!(None, node.time);
   }
 
   #[rustfmt::skip]
@@ -45,7 +46,7 @@ mod tests {
     let mut node = node_with_distribution(Some(Distribution::point(5.0, 1.0)));
     let assigned = set_likely_time(&mut node, parent_time).expect("a time should be assigned");
     pretty_assert_ulps_eq!(assigned, expected, max_ulps = 4);
-    let committed = node.time().expect("node time should be committed");
+    let committed = node.time.expect("node time should be committed");
     pretty_assert_ulps_eq!(committed, expected, max_ulps = 4);
   }
 
@@ -255,10 +256,10 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub(super) fn node_with_distribution(distribution: Option<Distribution<NegLog>>) -> NodeTimetree {
-      NodeTimetree {
+    pub(super) fn node_with_distribution(distribution: Option<Distribution<NegLog>>) -> DateNodeState {
+      DateNodeState {
         time_distribution: distribution.map(Arc::new),
-        ..NodeTimetree::default()
+        ..DateNodeState::default()
       }
     }
 
