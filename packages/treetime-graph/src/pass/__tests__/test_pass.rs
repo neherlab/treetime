@@ -8,7 +8,7 @@ mod tests {
 
   use self::helpers::{
     edge_lengths, edge_values_by_child_name, fixture_tree, key_payloads, node_names, pass_values, run_backward_sum,
-    values_by_name,
+    run_forward_sum, values_by_name,
   };
 
   #[test]
@@ -86,6 +86,54 @@ mod tests {
 
     let single = run_backward_sum(&graph, 1)?;
     let multi = run_backward_sum(&graph, 4)?;
+
+    assert_eq!(single.nodes, multi.nodes);
+    assert_eq!(single.edges, multi.edges);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pass_map_forward_accumulates_root_to_leaf() -> Result<(), Report> {
+    // Tree `((A,B)AB,C)root` with distinct own-values per node:
+    //   A=1, B=2, C=3, AB=10, root=100.
+    // Each node returns NodeOut = own-value + parent's NodeOut (0 at the root), and sends its own
+    // NodeOut down as the message on its own parent edge. These are root-to-leaf prefix sums,
+    // derived by hand from the tree:
+    //   root=100, AB=100+10=110, A=110+1=111, B=110+2=112, C=100+3=103.
+    let graph = fixture_tree()?;
+    let outputs = run_forward_sum(&graph, 4)?;
+
+    let actual_nodes = values_by_name(&graph, &outputs.nodes);
+    let expected_nodes = btreemap! {
+      o!("root") => 100,
+      o!("AB") => 110,
+      o!("A") => 111,
+      o!("B") => 112,
+      o!("C") => 103,
+    };
+    assert_eq!(expected_nodes, actual_nodes);
+
+    // Each edge carries the child's downward message, equal to that child's NodeOut. The root has no
+    // parent edge, so it contributes no message.
+    let actual_edges = edge_values_by_child_name(&graph, &outputs.edges)?;
+    let expected_edges = btreemap! {
+      o!("AB") => 110,
+      o!("A") => 111,
+      o!("B") => 112,
+      o!("C") => 103,
+    };
+    assert_eq!(expected_edges, actual_edges);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_pass_map_forward_is_thread_count_independent() -> Result<(), Report> {
+    // Publication must be race-free: identical outputs under a 1-thread and a 4-thread rayon pool.
+    let graph = fixture_tree()?;
+
+    let single = run_forward_sum(&graph, 1)?;
+    let multi = run_forward_sum(&graph, 4)?;
 
     assert_eq!(single.nodes, multi.nodes);
     assert_eq!(single.edges, multi.edges);
@@ -172,7 +220,9 @@ mod tests {
     use crate::edge::{GraphEdge, GraphEdgeKey};
     use crate::graph::Graph;
     use crate::node::{GraphNode, GraphNodeKey};
-    use crate::pass::{GraphBackwardOutputs, GraphPass, GraphPassNodeBackward};
+    use crate::pass::{
+      GraphBackwardOutputs, GraphForwardOutputs, GraphPass, GraphPassNodeBackward, GraphPassNodeForward,
+    };
     use eyre::Report;
     use maplit::btreemap;
     use rayon::ThreadPoolBuilder;
@@ -256,6 +306,25 @@ mod tests {
           let node = context.input + children_sum;
           let parent_message = (!context.is_root).then_some(node);
           Ok(GraphPassNodeBackward { node, parent_message })
+        })
+      })
+    }
+
+    /// Run the value-returning forward map on a pool of `threads` workers, computing each node's
+    /// root-to-leaf prefix sum and sending it down as the parent-edge message.
+    pub fn run_forward_sum(
+      graph: &Graph<TestNode, TestEdge, ()>,
+      threads: usize,
+    ) -> Result<GraphForwardOutputs<usize, usize>, Report> {
+      let (mut nodes, mut edges) = own_value_pass_values(graph);
+      let pass = GraphPass::new(graph, &mut nodes, &mut edges, |_| Ok(0))?;
+      let pool = ThreadPoolBuilder::new().num_threads(threads).build()?;
+      pool.install(|| {
+        pass.try_map_forward(|context| {
+          let parent_sum = context.parent.copied().unwrap_or(0);
+          let node = context.input + parent_sum;
+          let parent_message = (!context.is_root).then_some(node);
+          Ok(GraphPassNodeForward { node, parent_message })
         })
       })
     }
