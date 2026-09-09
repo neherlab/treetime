@@ -13,6 +13,7 @@ use log::warn;
 use maplit::btreeset;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
+use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
@@ -69,7 +70,11 @@ pub fn run_prune(
   progress.report("Pruning", 0.4, "");
   let output = pipeline::run(&params, input)?;
   let pipeline::PruneOutput { graph, gtr, partitions } = output;
-  let mut graph = graph.map_data(PruneGraphData::new(gtr, partitions));
+  // Share the sparse sequence partition Arc (no sequence data copied) and the fitted GTR into the
+  // value-shaped result. The tree writers still read the partition and model from the graph data
+  // slot until that read moves onto the result value; both copies leave the graph then.
+  let seq = partitions.first().map(Arc::clone);
+  let mut graph = graph.map_data(PruneGraphData::new(gtr.clone(), partitions));
   let topology_order = args.topology_order.resolve_topology_order(&graph, Some(input_order))?;
   topology_order.apply(&mut graph)?;
   progress.report("Writing output", 0.8, "");
@@ -94,7 +99,7 @@ pub fn run_prune(
   }
 
   progress.report("Done", 1.0, "");
-  Ok(PruneResult { graph })
+  Ok(PruneResult { graph, seq, gtr })
 }
 
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
