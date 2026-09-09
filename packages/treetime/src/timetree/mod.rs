@@ -5,6 +5,7 @@ pub mod optimization;
 pub mod params;
 pub mod pipeline;
 pub mod refinement;
+pub mod timetree_state;
 pub mod utils;
 
 #[cfg(test)]
