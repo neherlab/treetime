@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::augur_node_data::write_augur_node_data_json;
-use crate::commands::optimize::result::{OptimizeGraphData, OptimizeResult};
+use crate::commands::optimize::result::{EdgeOut, OptimizeGraphData, OptimizeResult};
 use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_optimize_tree_outputs;
@@ -14,6 +14,7 @@ use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
 use log::info;
 use std::path::PathBuf;
+use treetime_graph::edge::HasBranchLength;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
@@ -117,5 +118,30 @@ pub fn run_optimize(
   }
 
   progress.report("Done", 1.0, "");
-  Ok(OptimizeResult { graph })
+
+  // Gather the optimized per-edge branch lengths into a keyed value alongside the sequence
+  // partitions and substitution model. The output writers still read the tree, so `graph` is
+  // retained; the value fields are what later steps consume once the writers move off the graph.
+  let edges = graph
+    .get_edges()
+    .iter()
+    .map(|edge_ref| {
+      let edge = edge_ref.read_arc();
+      let branch_length = edge.payload().read_arc().branch_length();
+      (edge.key(), EdgeOut { branch_length })
+    })
+    .collect();
+  let gtr = graph.data().gtr.clone();
+  let model_name = graph.data().model_name;
+  let sparse_partitions = graph.data().sparse_partitions.clone();
+  let dense_partitions = graph.data().dense_partitions.clone();
+
+  Ok(OptimizeResult {
+    graph,
+    edges,
+    gtr,
+    model_name,
+    sparse_partitions,
+    dense_partitions,
+  })
 }
