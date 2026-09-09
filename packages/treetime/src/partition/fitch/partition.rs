@@ -3,7 +3,7 @@ use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
-use crate::partition::traits::{BranchTopology, PartitionBranchOps, PartitionCompressed};
+use crate::partition::traits::{BranchTopology, PartitionBranchOps};
 use eyre::Report;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -48,45 +48,6 @@ impl PartitionFitch {
 
   pub fn into_marginal_dense(self, gtr: GTR) -> PartitionMarginalDense {
     PartitionMarginalDense::new(self.index, gtr, self.alphabet, self.length)
-  }
-}
-
-impl PartitionCompressed for PartitionFitch {
-  fn index(&self) -> usize {
-    self.index
-  }
-
-  fn alphabet(&self) -> &Alphabet {
-    &self.alphabet
-  }
-
-  fn length(&self) -> usize {
-    self.length
-  }
-
-  fn nodes(&self) -> &BTreeMap<GraphNodeKey, SparseNodePartition> {
-    &self.nodes
-  }
-
-  fn edges(&self) -> &BTreeMap<GraphEdgeKey, SparseEdgePartition> {
-    &self.edges
-  }
-
-  fn nodes_mut(&mut self) -> &mut BTreeMap<GraphNodeKey, SparseNodePartition> {
-    &mut self.nodes
-  }
-
-  fn edges_mut(&mut self) -> &mut BTreeMap<GraphEdgeKey, SparseEdgePartition> {
-    &mut self.edges
-  }
-
-  fn storage_mut(
-    &mut self,
-  ) -> (
-    &mut BTreeMap<GraphNodeKey, SparseNodePartition>,
-    &mut BTreeMap<GraphEdgeKey, SparseEdgePartition>,
-  ) {
-    (&mut self.nodes, &mut self.edges)
   }
 }
 

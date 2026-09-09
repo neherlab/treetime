@@ -1,6 +1,6 @@
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
-use crate::partition::traits::PartitionCompressed;
+use crate::partition::fitch::partition::PartitionFitch;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use ndarray::{Array1, Array2};
@@ -9,7 +9,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 
 /// Infer GTR model from Fitch substitution counts on a compressed partition.
-pub fn infer_gtr_fitch<N, E, D>(partition: &impl PartitionCompressed, graph: &Graph<N, E, D>) -> Result<GTR, Report>
+pub fn infer_gtr_fitch<N, E, D>(partition: &PartitionFitch, graph: &Graph<N, E, D>) -> Result<GTR, Report>
 where
   N: GraphNode,
   E: GraphEdge + HasBranchLength,
@@ -17,7 +17,7 @@ where
 {
   let counts = get_mutation_counts_fitch(graph, partition)?;
   let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
-  let n_states = partition.alphabet().n_canonical();
+  let n_states = partition.alphabet.n_canonical();
   let W = Some(W);
   GTR::new(GTRParams { n_states, mu, W, pi })
 }
@@ -29,19 +29,19 @@ where
 /// are available at this point.
 pub fn get_mutation_counts_fitch<N, E, D>(
   graph: &Graph<N, E, D>,
-  partition: &impl PartitionCompressed,
+  partition: &PartitionFitch,
 ) -> Result<MutationCounts, Report>
 where
   N: GraphNode,
   E: GraphEdge + HasBranchLength,
   D: Send + Sync,
 {
-  let alphabet = partition.alphabet();
+  let alphabet = &partition.alphabet;
 
   let root_state = {
     let root = graph.get_exactly_one_root()?;
     let root_key = root.read_arc().key();
-    let root_composition = &partition.nodes()[&root_key].seq.composition;
+    let root_composition = &partition.nodes[&root_key].seq.composition;
     Array1::<f64>::from_iter(
       alphabet
         .canonical()
@@ -59,14 +59,14 @@ where
     let target_key = edge_arc.target();
     let edge_key = edge_arc.key();
 
-    let node_composition = &partition.nodes()[&target_key].seq.composition;
+    let node_composition = &partition.nodes[&target_key].seq.composition;
 
     for (i, nuc) in alphabet.canonical().enumerate() {
       Ti[i] += branch_length * node_composition.get(nuc).unwrap_or(0) as f64;
     }
 
     let empty: &[Sub] = &[];
-    let subs = partition.edges().get(&edge_key).map_or(empty, |e| e.fitch_subs());
+    let subs = partition.edges.get(&edge_key).map_or(empty, |e| e.fitch_subs());
     for m in subs {
       m.check_canonical(alphabet)?;
       let i = alphabet.index(m.qry())?;

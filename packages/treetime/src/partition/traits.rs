@@ -1,4 +1,3 @@
-use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
@@ -7,7 +6,6 @@ use crate::make_internal_report;
 use crate::partition::marginal::shared::data::IndexedMarginalPartition;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::optimize::contribution::OptimizationContribution;
-use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub, mutation_event_strings};
 use eyre::Report;
@@ -238,45 +236,6 @@ where
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq>;
-}
-
-pub trait PartitionCompressed: Sync + Send {
-  fn index(&self) -> usize;
-
-  fn alphabet(&self) -> &Alphabet;
-
-  fn length(&self) -> usize;
-
-  fn nodes(&self) -> &BTreeMap<GraphNodeKey, SparseNodePartition>;
-
-  fn edges(&self) -> &BTreeMap<GraphEdgeKey, SparseEdgePartition>;
-
-  fn nodes_mut(&mut self) -> &mut BTreeMap<GraphNodeKey, SparseNodePartition>;
-
-  fn edges_mut(&mut self) -> &mut BTreeMap<GraphEdgeKey, SparseEdgePartition>;
-
-  fn storage_mut(
-    &mut self,
-  ) -> (
-    &mut BTreeMap<GraphNodeKey, SparseNodePartition>,
-    &mut BTreeMap<GraphEdgeKey, SparseEdgePartition>,
-  );
-
-  fn node(&self, key: &GraphNodeKey) -> &SparseNodePartition {
-    self.nodes().get(key).expect("Node not found")
-  }
-
-  fn edge(&self, key: &GraphEdgeKey) -> &SparseEdgePartition {
-    self.edges().get(key).expect("Edge not found")
-  }
-
-  fn node_mut(&mut self, key: &GraphNodeKey) -> &mut SparseNodePartition {
-    self.nodes_mut().get_mut(key).expect("Node not found")
-  }
-
-  fn edge_mut(&mut self, key: &GraphEdgeKey) -> &mut SparseEdgePartition {
-    self.edges_mut().get_mut(key).expect("Edge not found")
-  }
 }
 
 pub trait HasLogLh {
