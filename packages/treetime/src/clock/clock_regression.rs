@@ -13,9 +13,7 @@ use std::fmt::Debug;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
-use treetime_graph::pass::{
-  GraphPassBackwardContext, GraphPassNodeOutput, with_graph_payloads, with_graph_payloads_map,
-};
+use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput, with_graph_payloads_map};
 use treetime_graph::reroot::RerootResult;
 
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
@@ -185,14 +183,11 @@ where
   E: GraphEdge + ClockEdge + Default,
   D: Sync + Send,
 {
-  with_graph_payloads(graph, |pass| {
-    pass.try_for_each_forward(|dependencies, slot| {
-      if let Some(parent_key) = slot.parent_key {
-        let parent = dependencies.node(parent_key);
-        let (_, edge) = slot
-          .parent_edge
-          .as_mut()
-          .expect("Non-root indexed node must own its parent edge");
+  with_graph_payloads_map(graph, |pass| {
+    pass.try_map_forward::<N, E>(|context| {
+      let mut node = context.input;
+      let parent_message = if let Some((_, mut edge)) = context.parent_edge {
+        let parent = context.parent.expect("Non-root node must have a parent");
         let mut q_to_child = parent.clock_set().clone();
         q_to_child -= edge.from_child();
         *edge.to_child_mut() = q_to_child;
@@ -201,9 +196,12 @@ where
         let branch_variance = options.variance_factor * edge_len + options.variance_offset;
         let mut q_dest = edge.to_parent().clone();
         q_dest += edge.to_child().propagate_averages(edge_len, branch_variance);
-        *slot.node.clock_set_mut() = q_dest;
-      }
-      Ok(())
+        *node.clock_set_mut() = q_dest;
+        Some(edge)
+      } else {
+        None
+      };
+      Ok(GraphPassNodeOutput { node, parent_message })
     })
   })
 }
