@@ -1,10 +1,10 @@
 use crate::clock::clock_regression::ClockParams;
+use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::params::RootObjective;
 use crate::payload::clock_set::ClockSet;
-use crate::payload::traits::{ClockEdge, ClockNode};
 use argmin::core::{CostFunction, Error};
 use eyre::Report;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_utils::make_report;
@@ -24,33 +24,37 @@ pub struct BranchPointCostFunction<'a> {
 impl<'a> BranchPointCostFunction<'a> {
   pub fn new<N, E, D>(
     graph: &Graph<N, E, D>,
+    state: &ClockState,
     edge: GraphEdgeKey,
     options: &'a ClockParams,
     objective: RootObjective,
   ) -> Result<BranchPointCostFunction<'a>, Report>
   where
-    N: GraphNode + ClockNode,
-    E: GraphEdge + ClockEdge,
+    N: GraphNode,
+    E: GraphEdge + HasBranchLength,
     D: Send + Sync,
   {
     let edge_obj = graph
       .get_edge(edge)
       .ok_or_else(|| make_report!("Edge not found: {edge}"))?;
-    let edge_payload = edge_obj.read_arc().payload().read_arc();
+    let target_key = edge_obj.read_arc().target();
     let target_node = graph
-      .get_node(edge_obj.read_arc().target())
+      .get_node(target_key)
       .ok_or_else(|| make_report!("Target node not found for edge: {edge}"))?;
-    let target_node_payload = target_node.read_arc().payload().read_arc();
     let is_leaf = target_node.read_arc().is_leaf();
-    let node_time = target_node_payload.likely_time();
-    let branch_length = edge_payload
+    let node_time = state.node(target_key).likely_time();
+    let branch_length = edge_obj
+      .read_arc()
+      .payload()
+      .read_arc()
       .branch_length()
       .ok_or_else(|| make_report!("Edge {edge} has no weight"))?;
     let branch_variance = options.variance_factor * branch_length + options.variance_offset;
 
+    let edge_state = state.edge(edge);
     Ok(BranchPointCostFunction {
-      to_parent: edge_payload.to_parent().clone(),
-      to_child: edge_payload.to_child().clone(),
+      to_parent: edge_state.clock_to_parent.clone(),
+      to_child: edge_state.clock_to_child.clone(),
       branch_length,
       branch_variance,
       is_leaf,

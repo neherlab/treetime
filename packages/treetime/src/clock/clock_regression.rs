@@ -1,4 +1,5 @@
 use crate::clock::clock_model::{ClockModel, ClockRegression};
+use crate::clock::clock_state::{ClockEdgeState, ClockNodeState, ClockState};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::reroot::{RerootParams, reroot_in_place};
 use crate::payload::clock_set::ClockSet;
@@ -10,10 +11,10 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
-use treetime_graph::edge::GraphEdge;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
-use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput, with_graph_payloads_map};
+use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_graph::reroot::RerootResult;
 
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
@@ -91,16 +92,17 @@ impl ClockRerootResult {
 /// as divergence (re-estimation mode). When `None`, uses input `branch_length()` (initial estimation).
 pub fn clock_regression_backward<N, E, D>(
   graph: &Graph<N, E, D>,
+  state: &mut ClockState,
   options: &ClockParams,
   prev_clock_rate: Option<f64>,
 ) -> Result<(), Report>
 where
-  N: GraphNode + ClockNode + Default,
-  E: GraphEdge + ClockEdge + Default,
+  N: GraphNode,
+  E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
-  with_graph_payloads_map(graph, |pass| {
-    pass.try_map_backward(|context| clock_regression_backward_node(graph, options, prev_clock_rate, context))
+  state.map_backward(graph, |context| {
+    clock_regression_backward_node(graph, options, prev_clock_rate, context)
   })
 }
 
@@ -108,10 +110,10 @@ fn clock_regression_backward_node<N, E, D>(
   graph: &Graph<N, E, D>,
   options: &ClockParams,
   prev_clock_rate: Option<f64>,
-  context: GraphPassBackwardContext<'_, N, E, N, E>,
-) -> Result<GraphPassNodeOutput<N, E>, Report>
+  context: GraphPassBackwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState, ClockEdgeState>,
+) -> Result<GraphPassNodeOutput<ClockNodeState, ClockEdgeState>, Report>
 where
-  N: GraphNode + ClockNode,
+  N: GraphNode,
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
@@ -119,7 +121,7 @@ where
   let is_leaf = context.is_leaf;
   let date = node.likely_time();
   let q_to_parent = if is_leaf {
-    if node.is_outlier() {
+    if node.is_outlier {
       ClockSet::outlier_contribution()
     } else {
       ClockSet::leaf_contribution(date)
@@ -145,28 +147,52 @@ where
         let edge = child_edges
           .get(&edge_key)
           .expect("Non-root indexed node must own its parent edge");
-        total += edge.from_child();
+        total += &edge.clock_from_child;
         total
       })
   };
 
-  let parent_message = if let Some((_, mut edge)) = context.parent_edge {
-    *edge.to_parent_mut() = q_to_parent;
-    let edge_len = edge_divergence(edge.branch_length(), edge.time_length(), edge.gamma(), prev_clock_rate);
+  let parent_message = if let Some((edge_key, mut edge)) = context.parent_edge {
+    edge.clock_to_parent = q_to_parent;
+    let edge_len = edge_divergence_from_graph(graph, edge_key, prev_clock_rate);
     let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
-    *edge.from_child_mut() = if is_leaf {
+    edge.clock_from_child = if is_leaf {
       branch_variance += options.variance_offset_leaf;
       ClockSet::leaf_contribution_to_parent(date, edge_len, branch_variance)
     } else {
-      edge.to_parent().propagate_averages(edge_len, branch_variance)
+      edge.clock_to_parent.propagate_averages(edge_len, branch_variance)
     };
     Some(edge)
   } else {
-    *node.clock_set_mut() = q_to_parent;
+    node.clock_set = q_to_parent;
     None
   };
 
   Ok(GraphPassNodeOutput { node, parent_message })
+}
+
+/// Divergence of an edge, reading its branch length, time length, and relaxed-clock multiplier from
+/// the graph payload (all inputs, not clock-inference state) and combining them via
+/// [`edge_divergence`].
+fn edge_divergence_from_graph<N, E, D>(
+  graph: &Graph<N, E, D>,
+  edge_key: GraphEdgeKey,
+  prev_clock_rate: Option<f64>,
+) -> f64
+where
+  N: GraphNode,
+  E: GraphEdge + ClockEdge,
+  D: Send + Sync,
+{
+  let edge = graph.get_edge(edge_key).expect("Edge must exist");
+  let edge = edge.read_arc();
+  let payload = edge.payload().read_arc();
+  edge_divergence(
+    payload.branch_length(),
+    payload.time_length(),
+    payload.gamma(),
+    prev_clock_rate,
+  )
 }
 
 /// Runs forward clock regression pass.
@@ -175,34 +201,33 @@ where
 /// as divergence (re-estimation mode). When `None`, uses input `branch_length()` (initial estimation).
 pub fn clock_regression_forward<N, E, D>(
   graph: &Graph<N, E, D>,
+  state: &mut ClockState,
   options: &ClockParams,
   prev_clock_rate: Option<f64>,
 ) -> Result<(), Report>
 where
-  N: GraphNode + ClockNode + Default,
-  E: GraphEdge + ClockEdge + Default,
+  N: GraphNode,
+  E: GraphEdge + ClockEdge,
   D: Sync + Send,
 {
-  with_graph_payloads_map(graph, |pass| {
-    pass.try_map_forward::<N, E>(|context| {
-      let mut node = context.input;
-      let parent_message = if let Some((_, mut edge)) = context.parent_edge {
-        let parent = context.parent.expect("Non-root node must have a parent");
-        let mut q_to_child = parent.clock_set().clone();
-        q_to_child -= edge.from_child();
-        *edge.to_child_mut() = q_to_child;
+  state.map_forward(graph, |context| {
+    let mut node = context.input;
+    let parent_message = if let Some((edge_key, mut edge)) = context.parent_edge {
+      let parent = context.parent.expect("Non-root node must have a parent");
+      let mut q_to_child = parent.clock_set.clone();
+      q_to_child -= &edge.clock_from_child;
+      edge.clock_to_child = q_to_child;
 
-        let edge_len = edge_divergence(edge.branch_length(), edge.time_length(), edge.gamma(), prev_clock_rate);
-        let branch_variance = options.variance_factor * edge_len + options.variance_offset;
-        let mut q_dest = edge.to_parent().clone();
-        q_dest += edge.to_child().propagate_averages(edge_len, branch_variance);
-        *node.clock_set_mut() = q_dest;
-        Some(edge)
-      } else {
-        None
-      };
-      Ok(GraphPassNodeOutput { node, parent_message })
-    })
+      let edge_len = edge_divergence_from_graph(graph, edge_key, prev_clock_rate);
+      let branch_variance = options.variance_factor * edge_len + options.variance_offset;
+      let mut q_dest = edge.clock_to_parent.clone();
+      q_dest += edge.clock_to_child.propagate_averages(edge_len, branch_variance);
+      node.clock_set = q_dest;
+      Some(edge)
+    } else {
+      None
+    };
+    Ok(GraphPassNodeOutput { node, parent_message })
   })
 }
 
@@ -224,8 +249,10 @@ where
   D: Send + Sync,
 {
   let reroot_params = RerootParams::default();
+  let mut state = ClockState::seed_from_payloads(graph);
   let result = estimate_clock_model_with_reroot_policy(
     graph,
+    &mut state,
     options,
     clock_rate,
     keep_root,
@@ -242,6 +269,7 @@ where
 /// converted to divergence (re-estimation mode). When `None`, uses input branch lengths.
 pub fn estimate_clock_model_with_reroot_policy<N, E, D>(
   graph: &mut Graph<N, E, D>,
+  state: &mut ClockState,
   options: &ClockParams,
   clock_rate: Option<f64>,
   keep_root: bool,
@@ -250,7 +278,7 @@ pub fn estimate_clock_model_with_reroot_policy<N, E, D>(
   prev_clock_rate: Option<f64>,
 ) -> Result<ClockRerootResult, Report>
 where
-  N: GraphNode + ClockNode + Named + Default,
+  N: GraphNode + Named + Default,
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
@@ -261,12 +289,12 @@ where
   }
 
   info!("### Running backward regression");
-  clock_regression_backward(graph, options, prev_clock_rate)?;
+  clock_regression_backward(graph, state, options, prev_clock_rate)?;
   debug!("Backward regression completed");
 
   let reroot_result = if !keep_root {
     info!("### Running forward regression to find optimal root");
-    clock_regression_forward(graph, options, prev_clock_rate)?;
+    clock_regression_forward(graph, state, options, prev_clock_rate)?;
     debug!("Forward regression completed");
 
     info!("### Finding best root and rerooting tree");
@@ -274,7 +302,7 @@ where
       || reroot_params.clone(),
       |rate| reroot_params.with_objective(RootObjective::FixedRate(rate)),
     );
-    let reroot_result = reroot_in_place(graph, options, optimization_params, &reroot_params)?;
+    let reroot_result = reroot_in_place(graph, state, options, optimization_params, &reroot_params)?;
     info!("Rerooted to node {}", reroot_result.new_root_key.0);
     debug!("Rerooting completed");
     Some(reroot_result)
@@ -284,15 +312,15 @@ where
   };
 
   info!("### Extracting clock model from root");
-  let root = graph.get_exactly_one_root()?;
-  let root = root.read_arc().payload().read_arc();
+  let root_key = graph.get_exactly_one_root()?.read_arc().key();
+  let root_clock_set = state.node(root_key).clock_set.clone();
 
   let (regression, clock_model) = if let Some(rate) = clock_rate {
     info!("### Using fixed clock rate: {rate:.6e}");
-    (None, Some(ClockModel::with_fixed_rate(root.clock_set(), rate)?))
+    (None, Some(ClockModel::with_fixed_rate(&root_clock_set, rate)?))
   } else {
     info!("### Using estimated clock rate");
-    let regression = ClockRegression::from_clock_set(root.clock_set())?;
+    let regression = ClockRegression::from_clock_set(&root_clock_set)?;
     (Some(regression), None)
   };
 

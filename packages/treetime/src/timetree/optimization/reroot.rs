@@ -1,6 +1,7 @@
 use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
 use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
@@ -33,9 +34,13 @@ pub fn reroot_tree(
     reroot_params.split_edge, reroot_params.remove_trivial_root
   );
 
-  // Perform clock-based rerooting
+  // Perform clock-based rerooting. Seed the clock state from the payloads and discard it after: the
+  // topology change is carried by the graph and applied to the partitions below, and timetree does
+  // not read the clock estimate's per-node clock fields.
+  let mut clock_state = ClockState::seed_from_payloads(graph);
   let clock_reroot_result = estimate_clock_model_with_reroot_policy(
     graph,
+    &mut clock_state,
     clock_params,
     clock_rate,
     false,

@@ -3,6 +3,7 @@ use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
@@ -30,6 +31,8 @@ pub struct ClockInput {
 pub struct ClockOutput {
   #[serde(skip)]
   pub graph: GraphClock,
+  #[serde(skip)]
+  pub state: ClockState,
   pub clock_model: ClockModel,
   pub regression_results: Vec<ClockRegressionResult>,
 }
@@ -41,12 +44,14 @@ pub fn run(
 ) -> Result<ClockOutput, Report> {
   progress.check_cancelled()?;
   progress.report("Assigning dates", 0.1, "");
-  assign_dates(&input.graph, &input.dates)?;
+  let mut state = ClockState::new(&input.graph);
+  assign_dates(&input.graph, &input.dates, &mut state)?;
 
   progress.check_cancelled()?;
   progress.report("Clock regression", 0.3, "");
   let (clock_model, new_outliers) = estimate_clock_model_with_prefilter(
     &mut input.graph,
+    &mut state,
     &params.clock_params,
     params.keep_root,
     &params.branch_params,
@@ -59,11 +64,12 @@ pub fn run(
     info!("Clock filter changed outlier status for {delta} leaf nodes");
   }
 
-  let regression_results = gather_clock_regression_results(&input.graph, &clock_model)?;
+  let regression_results = gather_clock_regression_results(&input.graph, &mut state, &clock_model)?;
 
   progress.report("Done", 1.0, "");
   Ok(ClockOutput {
     graph: input.graph,
+    state,
     clock_model,
     regression_results,
   })
@@ -71,6 +77,7 @@ pub fn run(
 
 fn estimate_clock_model_with_prefilter(
   graph: &mut GraphClock,
+  state: &mut ClockState,
   options: &ClockParams,
   keep_root: bool,
   branch_params: &BranchPointOptimizationParams,
@@ -88,8 +95,16 @@ fn estimate_clock_model_with_prefilter(
         force_positive_rate: false,
         ..RerootParams::default()
       };
-      let result =
-        estimate_clock_model_with_reroot_policy(graph, options, None, keep_root, branch_params, &reroot_params, None)?;
+      let result = estimate_clock_model_with_reroot_policy(
+        graph,
+        state,
+        options,
+        None,
+        keep_root,
+        branch_params,
+        &reroot_params,
+        None,
+      )?;
       let regression = result.regression();
       if regression.clock_rate() < 0.0 {
         // IQD-based filtering uses |deviation| > IQD * threshold, so the absolute-value
@@ -100,7 +115,7 @@ fn estimate_clock_model_with_prefilter(
           regression.clock_rate()
         );
       }
-      Ok(clock_filter_inplace(graph, regression, clock_filter_threshold)?.new_outliers)
+      Ok(clock_filter_inplace(graph, state, regression, clock_filter_threshold)?.new_outliers)
     })
     .transpose()?;
 
@@ -109,7 +124,7 @@ fn estimate_clock_model_with_prefilter(
     force_positive_rate: !allow_negative_rate,
     ..RerootParams::default()
   };
-  let result = estimate_clock_model_with_reroot_policy(graph, options, None, keep_root, branch_params, &reroot_params, None)
+  let result = estimate_clock_model_with_reroot_policy(graph, state, options, None, keep_root, branch_params, &reroot_params, None)
     .wrap_err_with(|| {
       if delta.is_some() {
         "Clock model estimation failed after outlier filtering. The pre-filter step removed outliers but the clock rate remains negative at all root positions.".to_owned()

@@ -3,6 +3,7 @@ use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_b
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_state::ClockState;
 use crate::clock::date_constraints::load_date_constraints;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
@@ -163,8 +164,14 @@ pub fn run(
     force_positive_rate: !params.allow_negative_rate,
     ..RerootParams::default()
   };
+  // The shared clock machinery works on the `ClockState` value. Timetree keeps its durable clock
+  // inputs (`time`, `is_outlier`, `div`) on the graph payloads between calls, so seed a fresh state
+  // from them here. The estimate's clock outputs are not read by timetree's own downstream, so no
+  // repopulation is needed after this call.
+  let mut clock_state = ClockState::seed_from_payloads(&input.graph);
   let mut clock_model = estimate_clock_model_with_reroot_policy(
     &mut input.graph,
+    &mut clock_state,
     &ClockParams::default(),
     params.clock_rate,
     params.keep_root,
@@ -213,7 +220,12 @@ pub fn run(
   }
 
   if params.clock_filter > 0.0 {
-    let result = clock_filter_inplace(&input.graph, &clock_model, params.clock_filter)?;
+    // Seed the clock state from the payloads, run the filter on the value, then write the divergence
+    // and outlier flag back: timetree's own downstream (outlier bad-branch propagation, confidence
+    // intervals, tree writers) reads these off `NodeTimetree`.
+    let mut clock_state = ClockState::seed_from_payloads(&input.graph);
+    let result = clock_filter_inplace(&input.graph, &mut clock_state, &clock_model, params.clock_filter)?;
+    clock_state.write_div_is_outlier_to_payloads(&input.graph);
     report_bad_branches(&input.graph, &clock_model, result.iqd);
     apply_outlier_bad_branches(&input.graph)?;
   }

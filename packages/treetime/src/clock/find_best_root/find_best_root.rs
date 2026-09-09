@@ -1,9 +1,10 @@
 use crate::clock::clock_regression::ClockParams;
+use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::make_error;
 use crate::payload::clock_set::ClockSet;
-use crate::payload::traits::{ClockEdge, ClockNode};
+use crate::payload::traits::ClockEdge;
 use eyre::Report;
 use log::{debug, info};
 use rayon::prelude::*;
@@ -19,13 +20,14 @@ use treetime_utils::collections::container::get_exactly_one;
 // when force_positive is true), then optimize position along surrounding branches.
 pub fn find_best_root<N, E, D>(
   graph: &Graph<N, E, D>,
+  state: &ClockState,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   force_positive: bool,
   objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
-  N: GraphNode + ClockNode,
+  N: GraphNode,
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
@@ -36,7 +38,7 @@ where
 
   // Initialize with the current root, only accepting it if it has a positive clock rate
   // (or if force_positive is false)
-  let root_clock_set = root.read_arc().payload().read_arc().clock_set().clone();
+  let root_clock_set = state.node(root.read_arc().key()).clock_set.clone();
   let root_acceptable = !force_positive || has_positive_clock_rate(&root_clock_set);
   let mut best_chisq = if root_acceptable {
     objective.score(&root_clock_set)
@@ -63,9 +65,7 @@ where
     .get_nodes()
     .par_iter()
     .map(|node| {
-      let node_guard = node.read_arc();
-      let payload_guard = node_guard.payload().read_arc();
-      let clock_set = payload_guard.clock_set();
+      let clock_set = &state.node(node.read_arc().key()).clock_set;
       let acceptable = !force_positive || has_positive_clock_rate(clock_set);
       (Arc::clone(node), acceptable.then(|| objective.score(clock_set)))
     })
@@ -95,7 +95,7 @@ where
     debug!("Optimizing position on parent branch");
     let inbound = best_root_node.inbound();
     let edge = get_exactly_one(inbound).expect("Not implemented: multiple parent nodes");
-    let res = find_best_split(graph, *edge, options, params, objective)?;
+    let res = find_best_split(graph, state, *edge, options, params, objective)?;
     debug!(
       "Parent branch optimization result: chi-squared = {:.6e}, split = {:.6}",
       res.chisq, res.split
@@ -114,7 +114,7 @@ where
   // Check if some place on a child branch is better
   for (child_branch_count, e) in best_root_node.outbound().iter().enumerate() {
     debug!("Optimizing position on child branch {child_branch_count}");
-    let res = find_best_split(graph, *e, options, params, objective)?;
+    let res = find_best_split(graph, state, *e, options, params, objective)?;
     debug!(
       "Child branch {} optimization result: chi-squared = {:.6e}, split = {:.6}",
       child_branch_count, res.chisq, res.split

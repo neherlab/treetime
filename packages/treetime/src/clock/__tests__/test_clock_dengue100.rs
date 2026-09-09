@@ -5,6 +5,7 @@ mod tests {
   use crate::clock::clock_graph::GraphClock;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
+  use crate::clock::clock_state::ClockState;
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
   use crate::clock::pipeline::{self, ClockInput, ClockPipelineParams};
   use crate::clock::reroot::RerootParams;
@@ -15,14 +16,14 @@ mod tests {
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use std::path::Path;
-  use treetime_graph::node::{Named, Outlier};
+  use treetime_graph::node::Named;
   use treetime_io::dates_csv::read_dates;
   use treetime_io::nwk::nwk_read_file;
 
   const DATA_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/dengue/100");
 
-  /// Load dengue/100 graph with dates assigned.
-  fn load_dengue100() -> Result<GraphClock, Report> {
+  /// Load dengue/100 graph with dates assigned into a fresh clock state.
+  fn load_dengue100() -> Result<(GraphClock, ClockState), Report> {
     let data_dir = Path::new(DATA_DIR);
     let graph: GraphClock = nwk_read_file(data_dir.join("tree.nwk"))?;
     let dates = read_dates(
@@ -32,13 +33,18 @@ mod tests {
       &Some(o!("genbank_accession")),
       &Some(o!("date")),
     )?;
-    assign_dates(&graph, &dates)?;
-    Ok(graph)
+    let mut state = ClockState::new(&graph);
+    assign_dates(&graph, &dates, &mut state)?;
+    Ok((graph, state))
   }
 
   /// Run the full prefilter pipeline: pre-filter with force_positive=false,
   /// IQD-based outlier filtering, then final regression with force_positive=true.
-  fn run_prefilter_pipeline(graph: &mut GraphClock, clock_params: &ClockParams) -> Result<(ClockModel, i32), Report> {
+  fn run_prefilter_pipeline(
+    graph: &mut GraphClock,
+    state: &mut ClockState,
+    clock_params: &ClockParams,
+  ) -> Result<(ClockModel, i32), Report> {
     let params = BranchPointOptimizationParams::default();
 
     // Pre-filter: allow negative rates (matching v1's estimate_clock_model_with_prefilter)
@@ -48,6 +54,7 @@ mod tests {
     };
     let prefilter_result = estimate_clock_model_with_reroot_policy(
       graph,
+      state,
       clock_params,
       None,
       false,
@@ -58,25 +65,32 @@ mod tests {
     let pre_regression = prefilter_result.regression();
 
     // Filter outliers
-    let filter_result = clock_filter_inplace(graph, pre_regression, 3.0)?;
+    let filter_result = clock_filter_inplace(graph, state, pre_regression, 3.0)?;
 
     // Final regression: require positive rate
     let final_reroot_params = RerootParams::default();
-    let final_result =
-      estimate_clock_model_with_reroot_policy(graph, clock_params, None, false, &params, &final_reroot_params, None)?;
+    let final_result = estimate_clock_model_with_reroot_policy(
+      graph,
+      state,
+      clock_params,
+      None,
+      false,
+      &params,
+      &final_reroot_params,
+      None,
+    )?;
 
     Ok((final_result.into_clock_model()?, filter_result.new_outliers))
   }
 
-  fn get_outlier_names(graph: &GraphClock) -> Vec<String> {
+  fn get_outlier_names(graph: &GraphClock, state: &ClockState) -> Vec<String> {
     graph
       .get_leaves()
       .iter()
       .filter_map(|leaf| {
         let node = leaf.read_arc();
-        let payload = node.payload().read_arc();
-        if payload.is_outlier() {
-          payload.name().map(|n| n.as_ref().to_owned())
+        if state.node(node.key()).is_outlier {
+          node.payload().read_arc().name().map(|n| n.as_ref().to_owned())
         } else {
           None
         }
@@ -93,10 +107,10 @@ mod tests {
   /// The pre-filter step must use force_positive_rate=false to proceed.
   #[test]
   fn test_dengue100_clock_pipeline_structural_properties() -> Result<(), Report> {
-    let mut graph = load_dengue100()?;
+    let (mut graph, mut state) = load_dengue100()?;
 
-    let (clock_model, new_outliers) = run_prefilter_pipeline(&mut graph, &ClockParams::default())?;
-    let outlier_names = get_outlier_names(&graph);
+    let (clock_model, new_outliers) = run_prefilter_pipeline(&mut graph, &mut state, &ClockParams::default())?;
+    let outlier_names = get_outlier_names(&graph, &state);
 
     // Pipeline completes with positive rate
     assert!(
@@ -147,10 +161,10 @@ mod tests {
   /// these values should converge toward v0 and this test should be updated.
   #[test]
   fn test_dengue100_clock_pipeline_golden_master() -> Result<(), Report> {
-    let mut graph = load_dengue100()?;
+    let (mut graph, mut state) = load_dengue100()?;
 
-    let (clock_model, _) = run_prefilter_pipeline(&mut graph, &ClockParams::default())?;
-    let outlier_names = get_outlier_names(&graph);
+    let (clock_model, _) = run_prefilter_pipeline(&mut graph, &mut state, &ClockParams::default())?;
+    let outlier_names = get_outlier_names(&graph, &state);
 
     // v1 golden master values (captured from current implementation)
     assert_abs_diff_eq!(clock_model.clock_rate(), 6.787225349993138e-04, epsilon = 1e-10);
@@ -181,13 +195,14 @@ mod tests {
       variance_offset_leaf: 1e-4,
     };
 
-    let mut expected_graph = load_dengue100()?;
-    let (_expected_clock_model, _) = run_prefilter_pipeline(&mut expected_graph, &custom_params)?;
-    let expected_outliers = get_outlier_names(&expected_graph);
+    let (mut expected_graph, mut expected_state) = load_dengue100()?;
+    let (_expected_clock_model, _) = run_prefilter_pipeline(&mut expected_graph, &mut expected_state, &custom_params)?;
+    let expected_outliers = get_outlier_names(&expected_graph, &expected_state);
 
-    let mut default_graph = load_dengue100()?;
-    let (_default_clock_model, _) = run_prefilter_pipeline(&mut default_graph, &ClockParams::default())?;
-    let default_outliers = get_outlier_names(&default_graph);
+    let (mut default_graph, mut default_state) = load_dengue100()?;
+    let (_default_clock_model, _) =
+      run_prefilter_pipeline(&mut default_graph, &mut default_state, &ClockParams::default())?;
+    let default_outliers = get_outlier_names(&default_graph, &default_state);
     assert_ne!(default_outliers, expected_outliers);
 
     let data_dir = Path::new(DATA_DIR);
@@ -208,7 +223,7 @@ mod tests {
       reroot_spec: RerootSpec::default(),
     };
     let output = pipeline::run(&params, ClockInput { graph, dates }, &NoopProgress)?;
-    let actual_outliers = get_outlier_names(&output.graph);
+    let actual_outliers = get_outlier_names(&output.graph, &output.state);
 
     assert_eq!(expected_outliers, actual_outliers);
     Ok(())

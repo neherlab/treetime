@@ -3,12 +3,13 @@ mod tests {
   use crate::clock::clock_filter::clock_filter_inplace;
   use crate::clock::clock_graph::GraphClock;
   use crate::clock::clock_model::ClockModel;
+  use crate::clock::clock_state::ClockState;
   use crate::o;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_graph::node::{Named, Outlier};
+  use treetime_graph::node::Named;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 
@@ -41,15 +42,14 @@ mod tests {
     Ok(graph)
   }
 
-  fn get_outlier_names(graph: &GraphClock) -> Vec<String> {
+  fn get_outlier_names(graph: &GraphClock, state: &ClockState) -> Vec<String> {
     let mut names: Vec<String> = graph
       .get_leaves()
       .iter()
       .filter_map(|leaf| {
         let node = leaf.read_arc();
-        let payload = node.payload().read_arc();
-        if payload.is_outlier() {
-          payload.name().map(|n| n.as_ref().to_owned())
+        if state.node(node.key()).is_outlier {
+          node.payload().read_arc().name().map(|n| n.as_ref().to_owned())
         } else {
           None
         }
@@ -64,10 +64,11 @@ mod tests {
     let graph = setup_outlier_graph()?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let result = clock_filter_inplace(&graph, &clock_model, 3.0)?;
+    let mut state = ClockState::seed_from_payloads(&graph);
+    let result = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0)?;
 
     assert!(result.iqd > 0.0, "IQD should be positive");
-    let outliers = get_outlier_names(&graph);
+    let outliers = get_outlier_names(&graph, &state);
     assert_eq!(outliers, vec![o!("G"), o!("H")]);
 
     Ok(())
@@ -81,10 +82,11 @@ mod tests {
     // comparison makes outlier detection slope-sign-invariant for extreme outliers.
     let clock_model = ClockModel::for_testing(-0.005, 10.5);
 
-    let result = clock_filter_inplace(&graph, &clock_model, 3.0)?;
+    let mut state = ClockState::seed_from_payloads(&graph);
+    let result = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0)?;
 
     assert!(result.iqd > 0.0, "IQD should be positive");
-    let outliers = get_outlier_names(&graph);
+    let outliers = get_outlier_names(&graph, &state);
     assert_eq!(outliers, vec![o!("G"), o!("H")]);
 
     Ok(())
@@ -95,7 +97,8 @@ mod tests {
     let graph = helpers::setup_low_cardinality_graph(0)?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let result = clock_filter_inplace(&graph, &clock_model, 3.0);
+    let mut state = ClockState::seed_from_payloads(&graph);
+    let result = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0);
 
     assert_error!(result, "Clock filtering requires at least one dated leaf");
     Ok(())
@@ -113,7 +116,8 @@ mod tests {
     let graph = helpers::setup_low_cardinality_graph(dated_leaf_count)?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let result = clock_filter_inplace(&graph, &clock_model, 3.0)?;
+    let mut state = ClockState::seed_from_payloads(&graph);
+    let result = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0)?;
 
     assert!(result.iqd.is_finite());
     Ok(())

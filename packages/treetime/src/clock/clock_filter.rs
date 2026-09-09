@@ -1,14 +1,14 @@
 use crate::clock::clock_model::ClockLine;
+use crate::clock::clock_state::ClockState;
 use crate::make_error;
-use crate::payload::traits::{ClockEdge, ClockNode};
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use rayon::prelude::*;
-use treetime_graph::edge::GraphEdge;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
-use treetime_graph::pass::{GraphPassNodeOutput, with_graph_payloads_map};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::pass::GraphPassNodeOutput;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ClockFilterResult {
@@ -26,12 +26,13 @@ pub struct ClockFilterResult {
 #[allow(clippy::integer_division_remainder_used)]
 pub fn clock_filter_inplace<N, E, D>(
   graph: &Graph<N, E, D>,
+  state: &mut ClockState,
   clock_line: &(impl ClockLine + Sync),
   threshold: f64,
 ) -> Result<ClockFilterResult, Report>
 where
-  N: GraphNode + ClockNode + Default,
-  E: GraphEdge + ClockEdge + Default,
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
   D: Send + Sync,
 {
   log::info!("### Filtering outliers (threshold={threshold})");
@@ -42,20 +43,17 @@ where
   );
 
   // Assign divergence to each node: div = parent.div + branch_length, parents before children.
-  with_graph_payloads_map(graph, |pass| {
-    pass.try_map_forward::<N, E>(|context| {
-      let mut node = context.input;
-      let parent_message = if let Some((_, edge)) = context.parent_edge {
-        let parent = context.parent.expect("Non-root node must have a parent");
-        let div = parent.div() + edge.branch_length().unwrap_or_default();
-        node.set_div(div);
-        Some(edge)
-      } else {
-        node.set_div(0.0);
-        None
-      };
-      Ok(GraphPassNodeOutput { node, parent_message })
-    })
+  state.map_forward(graph, |context| {
+    let mut node = context.input;
+    let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
+      let parent = context.parent.expect("Non-root node must have a parent");
+      node.div = parent.div + edge_branch_length(graph, edge_key);
+      Some(edge)
+    } else {
+      node.div = 0.0;
+      None
+    };
+    Ok(GraphPassNodeOutput { node, parent_message })
   })?;
 
   // collect clock_deviation of leaf nodes into a vector
@@ -63,11 +61,9 @@ where
     .get_leaves()
     .par_iter()
     .filter_map(|leaf| {
-      let node = leaf.read_arc();
-      let payload_arc = node.payload();
-      let payload = payload_arc.read();
-      let div = payload.div();
-      let time = payload.likely_time();
+      let node = state.node(leaf.read_arc().key());
+      let div = node.div;
+      let time = node.likely_time();
       time.map(|time| clock_line.clock_deviation(time, div))
     })
     .collect::<Vec<_>>()
@@ -86,27 +82,30 @@ where
   let iq25 = n / 4;
   let iqd = leaf_clock_deviations[iq75] - leaf_clock_deviations[iq25];
 
-  // loop over the leaf nodes and mark the outliers if the absolute value of the deviation is greater than the threshold
-  let new_outliers = graph
+  // Compute each leaf's outlier decision in parallel from the clock state (read-only), then apply
+  // the results serially. A `BTreeMap` cannot be mutated concurrently, so the write phase is split
+  // out; the decisions are per-leaf independent and the count is order-free, so this is bit-identical
+  // to the payload-based per-node locked write.
+  let outlier_updates: Vec<(GraphNodeKey, bool, i32)> = graph
     .get_leaves()
     .par_iter()
-    .map(|leaf| {
-      let node = leaf.read_arc();
-      let payload_arc = node.payload();
-      let (div, time, was_outlier) = {
-        let payload = payload_arc.read();
-        (payload.div(), payload.likely_time(), payload.is_outlier())
-      };
-      if let Some(time) = time {
+    .filter_map(|leaf| {
+      let key = leaf.read_arc().key();
+      let node = state.node(key);
+      let div = node.div;
+      let was_outlier = node.is_outlier;
+      node.likely_time().map(|time| {
         let clock_deviation = clock_line.clock_deviation(time, div);
         let is_outlier = clock_deviation.abs() > iqd * threshold;
-        payload_arc.write().set_is_outlier(is_outlier);
-        i32::from(was_outlier != is_outlier)
-      } else {
-        0
-      }
+        (key, is_outlier, i32::from(was_outlier != is_outlier))
+      })
     })
-    .sum();
+    .collect();
+
+  let new_outliers = outlier_updates.iter().map(|(_, _, changed)| *changed).sum();
+  for (key, is_outlier, _) in outlier_updates {
+    state.node_mut(key).is_outlier = is_outlier;
+  }
 
   log::info!("Outlier filtering: {new_outliers} leaves changed status, IQD={iqd:.6e}");
   log::debug!(
@@ -119,4 +118,21 @@ where
   );
 
   Ok(ClockFilterResult { new_outliers, iqd })
+}
+
+/// Branch length of an edge (an input), read off the graph payload, defaulting to `0.0` when unset.
+fn edge_branch_length<N, E, D>(graph: &Graph<N, E, D>, edge_key: GraphEdgeKey) -> f64
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
+  graph
+    .get_edge(edge_key)
+    .expect("Edge must exist")
+    .read_arc()
+    .payload()
+    .read_arc()
+    .branch_length()
+    .unwrap_or_default()
 }

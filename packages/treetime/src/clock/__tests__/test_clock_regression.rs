@@ -3,9 +3,9 @@ mod tests {
   use crate::clock::clock_graph::GraphClock;
   use crate::clock::clock_model::{ClockModel, ClockRegression};
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward};
+  use crate::clock::clock_state::ClockState;
   use crate::o;
   use crate::payload::clock_set::ClockSet;
-  use crate::payload::traits::ClockNode;
   use crate::seq::div::{OnlyLeaves, compute_divs};
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
@@ -41,12 +41,11 @@ mod tests {
       n.write_arc().payload().write_arc().time = Some(dates[&name]);
     }
 
-    clock_regression_backward(&graph, &ClockParams::default(), None)?;
-    let clock = {
-      let root = graph.get_exactly_one_root()?;
-      let root = root.read_arc().payload().read_arc();
-      ClockModel::from_regression(&ClockRegression::from_clock_set(root.clock_set())?)
-    }?;
+    let mut state = ClockState::seed_from_payloads(&graph);
+    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+
+    clock_regression_backward(&graph, &mut state, &ClockParams::default(), None)?;
+    let clock = ClockModel::from_regression(&ClockRegression::from_clock_set(&state.node(root_key).clock_set)?)?;
     pretty_assert_abs_diff_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-10);
 
     let options = &ClockParams {
@@ -55,12 +54,8 @@ mod tests {
       variance_offset_leaf: 1.0,
     };
 
-    clock_regression_backward(&graph, options, None)?;
-    let clock = {
-      let root = graph.get_exactly_one_root()?;
-      let root = root.read_arc().payload().read_arc();
-      ClockModel::from_regression(&ClockRegression::from_clock_set(root.clock_set())?)
-    }?;
+    clock_regression_backward(&graph, &mut state, options, None)?;
+    let clock = ClockModel::from_regression(&ClockRegression::from_clock_set(&state.node(root_key).clock_set)?)?;
     pretty_assert_ulps_eq!(0.007710610618916924, clock.clock_rate(), max_ulps = 4);
 
     Ok(())
@@ -94,9 +89,10 @@ mod tests {
         node.write_arc().payload().write_arc().time = dates.get(&name).copied();
       }
 
-      clock_regression_backward(&graph, &ClockParams::default(), None)?;
-      let root = graph.get_exactly_one_root()?;
-      let clock_set = root.read_arc().payload().read_arc().clock_set().clone();
+      let mut state = ClockState::seed_from_payloads(&graph);
+      clock_regression_backward(&graph, &mut state, &ClockParams::default(), None)?;
+      let root_key = graph.get_exactly_one_root()?.read_arc().key();
+      let clock_set = state.node(root_key).clock_set.clone();
       Ok(clock_set)
     }
   }

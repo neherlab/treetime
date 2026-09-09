@@ -1,18 +1,19 @@
 use crate::clock::clock_regression::ClockParams;
+use crate::clock::clock_state::{ClockEdgeState, ClockNodeState, ClockState};
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootMethod, RerootSpec, RootObjective};
 use crate::make_error;
 use crate::payload::clock_set::ClockSet;
-use crate::payload::traits::{ClockEdge, ClockNode};
+use crate::payload::traits::ClockEdge;
 use approx::ulps_eq;
 use eyre::Report;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime_graph::common_ancestor::common_ancestor;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::reroot::{self as topology_reroot, remove_node_if_trivial, split_edge};
@@ -57,18 +58,19 @@ impl RerootParams {
 
 pub fn reroot_in_place<N, E, D>(
   graph: &mut Graph<N, E, D>,
+  state: &mut ClockState,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
 ) -> Result<RerootResult, Report>
 where
-  N: GraphNode + ClockNode + Named + Default,
+  N: GraphNode + Named + Default,
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
   let FindRootResult {
     edge, split, clock_set, ..
-  } = select_root(graph, options, params, reroot_params)?;
+  } = select_root(graph, state, options, params, reroot_params)?;
 
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
   let Some(edge_key) = edge else {
@@ -93,14 +95,14 @@ where
   } else if ulps_eq!(split, 1.0, max_ulps = 5) {
     (target_key, None)
   } else if reroot_params.split_edge {
-    let split_info = create_new_root_node(graph, edge_key, split, clock_set)?;
+    let split_info = create_new_root_node(graph, state, edge_key, split, clock_set)?;
     (split_info.new_node_key, Some(split_info))
   } else {
     (if split < 0.5 { source_key } else { target_key }, None)
   };
 
   let (inverted_edge_keys, edge_merge) = if new_root_key != old_root_key {
-    let mut inverted = apply_reroot(graph, old_root_key, new_root_key, options)?;
+    let mut inverted = apply_reroot(graph, state, old_root_key, new_root_key, options)?;
 
     let merge = if reroot_params.remove_trivial_root {
       remove_node_if_trivial(graph, old_root_key)?
@@ -111,6 +113,13 @@ where
     // Remove edges consumed by the merge (they no longer exist in the graph)
     if let Some(merge) = &merge {
       inverted.retain(|k| *k != merge.parent_edge_key && *k != merge.child_edge_key);
+      // Keep the clock state consistent with the mutated node/edge set: the removed node and the two
+      // edges it joined are gone; the merged edge takes their place with default messages (recomputed
+      // by the next backward pass; a keep-root pass never reads them).
+      state.nodes.remove(&merge.removed_node_key);
+      state.edges.remove(&merge.parent_edge_key);
+      state.edges.remove(&merge.child_edge_key);
+      state.edges.insert(merge.merged_edge_key, ClockEdgeState::default());
     }
 
     (inverted, merge)
@@ -126,63 +135,80 @@ where
   })
 }
 
-/// Create new root node by splitting the edge into two, then setting clock data on the new node.
+/// Create new root node by splitting the edge into two, then recording clock data for the new node
+/// in the clock state.
 fn create_new_root_node<N, E, D>(
   graph: &mut Graph<N, E, D>,
+  state: &mut ClockState,
   edge_key: GraphEdgeKey,
   split: f64,
   clock_set: ClockSet,
 ) -> Result<EdgeSplitInfo, Report>
 where
-  N: GraphNode + ClockNode + Default,
-  E: GraphEdge + ClockEdge + Default,
+  N: GraphNode + Default,
+  E: GraphEdge + HasBranchLength + Default,
   D: Send + Sync,
 {
   let split_info = split_edge(graph, edge_key, split)?;
 
-  // Set clock-specific data on the new split node
-  let new_node = graph
-    .get_node(split_info.new_node_key)
-    .expect("New split node not found");
-  new_node.write_arc().payload().write_arc().set_clock_set(clock_set);
+  // Keep the clock state consistent with the mutated node/edge set: the split replaces one edge with
+  // two and inserts one node. The new node carries the evaluated clock set at the split point; its
+  // two edges start with default messages (recomputed by the next backward pass).
+  state.edges.remove(&split_info.old_edge_key);
+  state
+    .edges
+    .insert(split_info.parent_side_edge_key, ClockEdgeState::default());
+  state
+    .edges
+    .insert(split_info.child_side_edge_key, ClockEdgeState::default());
+  state.nodes.insert(
+    split_info.new_node_key,
+    ClockNodeState {
+      clock_set,
+      ..ClockNodeState::default()
+    },
+  );
 
   Ok(split_info)
 }
 
 fn select_root<N, E, D>(
   graph: &Graph<N, E, D>,
+  state: &ClockState,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
 ) -> Result<FindRootResult, Report>
 where
-  N: GraphNode + ClockNode + Named,
+  N: GraphNode + Named,
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
   match &reroot_params.spec {
     RerootSpec::Method(RerootMethod::LeastSquares | RerootMethod::ClockFilter) => find_best_root(
       graph,
+      state,
       options,
       params,
       reroot_params.force_positive_rate,
       reroot_params.objective,
     ),
     RerootSpec::Method(RerootMethod::MinDev) => {
-      find_best_root(graph, options, params, false, RootObjective::FixedRate(0.0))
+      find_best_root(graph, state, options, params, false, RootObjective::FixedRate(0.0))
     },
-    RerootSpec::Method(RerootMethod::Oldest) => find_oldest_root(graph, options, reroot_params.objective),
-    RerootSpec::Tips(tips) => find_tip_group_root(graph, options, tips, reroot_params.objective),
+    RerootSpec::Method(RerootMethod::Oldest) => find_oldest_root(graph, state, options, reroot_params.objective),
+    RerootSpec::Tips(tips) => find_tip_group_root(graph, state, options, tips, reroot_params.objective),
   }
 }
 
 fn find_oldest_root<N, E, D>(
   graph: &Graph<N, E, D>,
+  state: &ClockState,
   options: &ClockParams,
   objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
-  N: GraphNode + ClockNode,
+  N: GraphNode,
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
@@ -190,9 +216,9 @@ where
     .get_leaves()
     .into_iter()
     .filter_map(|node| {
-      let node = node.read_arc();
-      let time = node.payload().read_arc().likely_time()?;
-      Some((time, node.key()))
+      let key = node.read_arc().key();
+      let time = state.node(key).likely_time()?;
+      Some((time, key))
     })
     .min_by(|(lhs, _), (rhs, _)| lhs.total_cmp(rhs))
     .map(|(_, key)| key)
@@ -200,17 +226,18 @@ where
     return make_error!("Cannot reroot to oldest tip because no dated leaves were found");
   };
 
-  find_named_root_point(graph, options, oldest_key, objective)
+  find_named_root_point(graph, state, options, oldest_key, objective)
 }
 
 fn find_tip_group_root<N, E, D>(
   graph: &Graph<N, E, D>,
+  state: &ClockState,
   options: &ClockParams,
   tips: &[String],
   objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
-  N: GraphNode + ClockNode + Named,
+  N: GraphNode + Named,
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
@@ -223,23 +250,24 @@ where
     .map(|tip| find_node_key_by_name(graph, tip).ok_or_else(|| eyre::eyre!("Reroot tip not found: {tip}")))
     .try_collect::<_, Vec<_>, _>()?;
   let mrca_key = common_ancestor(graph, &tip_keys)?;
-  find_named_root_point(graph, options, mrca_key, objective)
+  find_named_root_point(graph, state, options, mrca_key, objective)
 }
 
 fn find_named_root_point<N, E, D>(
   graph: &Graph<N, E, D>,
+  state: &ClockState,
   options: &ClockParams,
   node_key: GraphNodeKey,
   objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
-  N: GraphNode + ClockNode,
+  N: GraphNode,
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
   let Some(edge) = graph.parent_inbound_edge(node_key)? else {
     let root = graph.get_exactly_one_root()?;
-    let clock_set = root.read_arc().payload().read_arc().clock_set().clone();
+    let clock_set = state.node(root.read_arc().key()).clock_set.clone();
     return Ok(FindRootResult {
       edge: None,
       split: 0.0,
@@ -249,7 +277,7 @@ where
   };
 
   let split = 0.5;
-  let cost_fn = BranchPointCostFunction::new(graph, edge, options, objective)?;
+  let cost_fn = BranchPointCostFunction::new(graph, state, edge, options, objective)?;
   let clock_set = cost_fn.evaluate_clock_set(split)?;
   Ok(FindRootResult {
     edge: Some(edge),
@@ -269,29 +297,37 @@ where
 }
 
 /// Modify graph topology to make the newly identified root the actual root,
-/// then update clock-specific edge messages.
+/// then update clock-specific edge messages in the clock state.
 fn apply_reroot<N, E, D>(
   graph: &mut Graph<N, E, D>,
+  state: &mut ClockState,
   old_root_key: GraphNodeKey,
   new_root_key: GraphNodeKey,
   options: &ClockParams,
 ) -> Result<Vec<GraphEdgeKey>, Report>
 where
-  N: GraphNode + ClockNode,
-  E: GraphEdge + ClockEdge,
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
   D: Send + Sync,
 {
   let inverted_edge_keys = topology_reroot::apply_reroot_topology(graph, old_root_key, new_root_key)?;
 
   for edge_key in &inverted_edge_keys {
-    let edge = graph.get_edge(*edge_key).expect("Inverted edge not found");
-    let mut edge_payload = edge.read_arc().payload().write_arc();
-    let edge_len = edge_payload.branch_length().unwrap();
+    let edge_len = {
+      let edge = graph.get_edge(*edge_key).expect("Inverted edge not found");
+      let edge = edge.read_arc();
+      let branch_length = edge.payload().read_arc().branch_length();
+      branch_length.unwrap()
+    };
     let branch_variance = options.variance_factor * edge_len + options.variance_offset;
-    let tmp_to_parent = edge_payload.to_parent().clone();
-    *edge_payload.to_parent_mut() = edge_payload.to_child().clone();
-    *edge_payload.to_child_mut() = tmp_to_parent;
-    *edge_payload.from_child_mut() = edge_payload.to_parent().propagate_averages(edge_len, branch_variance);
+    let edge_state = state
+      .edges
+      .get_mut(edge_key)
+      .unwrap_or_else(|| panic!("Clock state is missing inverted edge {edge_key}"));
+    let tmp_to_parent = edge_state.clock_to_parent.clone();
+    edge_state.clock_to_parent = edge_state.clock_to_child.clone();
+    edge_state.clock_to_child = tmp_to_parent;
+    edge_state.clock_from_child = edge_state.clock_to_parent.propagate_averages(edge_len, branch_variance);
   }
 
   Ok(inverted_edge_keys)

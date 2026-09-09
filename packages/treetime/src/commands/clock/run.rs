@@ -2,6 +2,7 @@ use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_output::write_clock_model;
 use crate::clock::clock_regression::ClockParams;
+use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, OptimizationMethod};
 use crate::clock::pipeline::{self, ClockInput, ClockPipelineParams};
 use crate::clock::rtt::{ClockRegressionResult, write_clock_regression_result_csv};
@@ -82,6 +83,7 @@ impl std::ops::Deref for ClockResult {
 /// as a standalone value the output writers consume.
 fn gather_clock_outputs(
   graph: &GraphClock<ClockGraphData>,
+  state: &ClockState,
 ) -> (BTreeMap<GraphNodeKey, ClockNodeOut>, BTreeMap<GraphEdgeKey, EdgeOut>) {
   let nodes = graph
     .get_nodes()
@@ -89,13 +91,16 @@ fn gather_clock_outputs(
     .map(|node| {
       let node = node.read_arc();
       let key = node.key();
-      let payload = node.payload().read_arc();
+      // Name is an input field carried on the payload; the clock inference fields come from the
+      // clock state value the pipeline routed through estimation and rerooting.
+      let name = node.payload().read_arc().name.clone();
+      let node_state = state.node(key);
       let out = ClockNodeOut {
-        name: payload.name.clone(),
-        div: payload.div,
-        time: payload.time,
-        is_outlier: payload.is_outlier,
-        bad_branch: payload.bad_branch,
+        name,
+        div: node_state.div,
+        time: node_state.time,
+        is_outlier: node_state.is_outlier,
+        bad_branch: node_state.bad_branch,
       };
       (key, out)
     })
@@ -177,6 +182,7 @@ pub fn run_clock(
   let output = pipeline::run(&params, input, progress)?;
   let pipeline::ClockOutput {
     graph,
+    state,
     clock_model,
     regression_results,
   } = output;
@@ -187,7 +193,7 @@ pub fn run_clock(
   topology_order.apply(&mut graph)?;
   progress.report("Writing output", 0.8, "");
 
-  let (nodes, edges) = gather_clock_outputs(&graph);
+  let (nodes, edges) = gather_clock_outputs(&graph, &state);
 
   if !resolved.tree_outputs.is_empty() {
     write_clock_tree_outputs(

@@ -5,6 +5,7 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
+  use crate::clock::clock_state::ClockState;
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
@@ -91,8 +92,9 @@ mod tests {
     )));
 
     let clock_params = ClockParams::default();
-    clock_regression_backward(&graph, &clock_params, None)?;
-    clock_regression_forward(&graph, &clock_params, None)?;
+    let mut clock_state = ClockState::seed_from_payloads(&graph);
+    clock_regression_backward(&graph, &mut clock_state, &clock_params, None)?;
+    clock_regression_forward(&graph, &mut clock_state, &clock_params, None)?;
 
     let partitions = vec![sparse_partition];
 
@@ -488,8 +490,9 @@ mod tests {
     )));
 
     let clock_params = ClockParams::default();
-    clock_regression_backward(&graph, &clock_params, None)?;
-    clock_regression_forward(&graph, &clock_params, None)?;
+    let mut clock_state = ClockState::seed_from_payloads(&graph);
+    clock_regression_backward(&graph, &mut clock_state, &clock_params, None)?;
+    clock_regression_forward(&graph, &mut clock_state, &clock_params, None)?;
 
     let partitions = vec![sparse_partition];
 

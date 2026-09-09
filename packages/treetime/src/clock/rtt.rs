@@ -1,10 +1,11 @@
-use crate::clock::clock_graph::{EdgeClock, GraphClock, NodeClock};
+use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_model::{ClockLine, ClockModel};
+use crate::clock::clock_state::ClockState;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use treetime_graph::edge::HasBranchLength;
-use treetime_graph::pass::{GraphPassNodeOutput, with_graph_payloads_map};
+use treetime_graph::pass::GraphPassNodeOutput;
 use treetime_io::csv::CsvStructFileWriter;
 use treetime_utils::array::serde::skip_serializing_if_false;
 
@@ -24,23 +25,29 @@ pub struct ClockRegressionResult {
 /// Get results of the root-to-tip clock inference.
 pub fn gather_clock_regression_results(
   graph: &GraphClock,
+  state: &mut ClockState,
   clock_model: &ClockModel,
 ) -> Result<Vec<ClockRegressionResult>, Report> {
   // Assign divergence to each node: div = parent.div + branch_length, parents before children.
-  with_graph_payloads_map(graph, |pass| {
-    pass.try_map_forward::<NodeClock, EdgeClock>(|context| {
-      let mut node = context.input;
-      let parent_message = if let Some((_, edge)) = context.parent_edge {
-        let parent = context.parent.expect("Non-root node must have a parent");
-        let div = parent.div + edge.branch_length().unwrap_or_default();
-        node.div = div;
-        Some(edge)
-      } else {
-        node.div = 0.0;
-        None
-      };
-      Ok(GraphPassNodeOutput { node, parent_message })
-    })
+  state.map_forward(graph, |context| {
+    let mut node = context.input;
+    let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
+      let parent = context.parent.expect("Non-root node must have a parent");
+      let branch_length = graph
+        .get_edge(edge_key)
+        .expect("Edge must exist")
+        .read_arc()
+        .payload()
+        .read_arc()
+        .branch_length()
+        .unwrap_or_default();
+      node.div = parent.div + branch_length;
+      Some(edge)
+    } else {
+      node.div = 0.0;
+      None
+    };
+    Ok(GraphPassNodeOutput { node, parent_message })
   })?;
 
   // One result per node, in node order.
@@ -50,18 +57,19 @@ pub fn gather_clock_regression_results(
     .map(|node| {
       let node = node.read_arc();
       let is_leaf = node.is_leaf();
-      let payload = node.payload();
-      let payload = payload.read();
-      let div = payload.div;
+      let name = node.payload().read_arc().name.clone();
+      let node_state = state.node(node.key());
+      let div = node_state.div;
+      let time = node_state.time;
       let predicted_date = clock_model.date(div);
-      let clock_deviation = payload.time.map(|time| clock_model.clock_deviation(time, div));
+      let clock_deviation = time.map(|time| clock_model.clock_deviation(time, div));
       Ok(ClockRegressionResult {
-        name: payload.name.clone(),
+        name,
         div,
-        date: payload.time,
+        date: time,
         predicted_date,
         clock_deviation,
-        is_outlier: payload.is_outlier,
+        is_outlier: node_state.is_outlier,
         is_leaf,
       })
     })
