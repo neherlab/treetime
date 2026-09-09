@@ -9,9 +9,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
-use treetime_graph::pass::{
-  GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput,
-};
+use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_primitives::LogLh;
 
 pub fn marginal_process_backward_indexed<N, E>(
@@ -32,8 +30,7 @@ where
   partition.marginal_data_mut().nodes.append(&mut missing_nodes);
   let (nodes, edges) = partition.indexed_storage_mut();
   let pass = GraphPass::new(graph, nodes, edges, |_| unreachable!("Missing nodes were initialized"))?;
-  let outputs =
-    pass.try_map_backward(|context| marginal_process_node_backward_indexed(partition, graph, context))?;
+  let outputs = pass.try_map_backward(|context| marginal_process_node_backward_indexed(partition, graph, context))?;
   partition.marginal_data_mut().nodes = outputs.nodes;
   partition.marginal_data_mut().edges = outputs.edges;
   Ok(())
@@ -59,7 +56,11 @@ where
     // The value engine hands the completed children in its own topology order, which may differ from
     // `children_of`. Index them by key so the per-child log-space product folds in the same canonical
     // `children_of` order as before, keeping the floating-point result byte-for-byte identical.
-    let child_nodes: BTreeMap<_, _> = context.children.iter().map(|child| (child.node_key, child.node)).collect();
+    let child_nodes: BTreeMap<_, _> = context
+      .children
+      .iter()
+      .map(|child| (child.node_key, child.node))
+      .collect();
     let child_edge_messages: BTreeMap<_, _> = context
       .children
       .iter()
