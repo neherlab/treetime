@@ -9,7 +9,9 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
-use treetime_graph::pass::{GraphPass, GraphPassDependencies, GraphPassSlot};
+use treetime_graph::pass::{
+  GraphPass, GraphPassBackwardContext, GraphPassDependencies, GraphPassNodeOutput, GraphPassSlot,
+};
 use treetime_primitives::LogLh;
 
 pub fn marginal_process_backward_indexed<N, E>(
@@ -29,46 +31,59 @@ where
   }
   partition.marginal_data_mut().nodes.append(&mut missing_nodes);
   let (nodes, edges) = partition.indexed_storage_mut();
-  let mut pass = GraphPass::new(graph, nodes, edges, |_| unreachable!("Missing nodes were initialized"))?;
-  let result = pass.try_for_each_backward(|dependencies, slot| {
-    marginal_process_node_backward_indexed(partition, graph, dependencies, slot)
-  });
-  let (nodes, edges) = pass.into_maps()?;
-  partition.marginal_data_mut().nodes = nodes;
-  partition.marginal_data_mut().edges = edges;
-  result
+  let pass = GraphPass::new(graph, nodes, edges, |_| unreachable!("Missing nodes were initialized"))?;
+  let outputs =
+    pass.try_map_backward(|context| marginal_process_node_backward_indexed(partition, graph, context))?;
+  partition.marginal_data_mut().nodes = outputs.nodes;
+  partition.marginal_data_mut().edges = outputs.edges;
+  Ok(())
 }
 
 fn marginal_process_node_backward_indexed<N, E>(
   partition: &impl IndexedMarginalPartition<N, E>,
   graph: &Graph<N, E, ()>,
-  dependencies: &GraphPassDependencies<DenseNodePartition, DenseEdgePartition>,
-  slot: &mut GraphPassSlot<DenseNodePartition, DenseEdgePartition>,
-) -> Result<(), Report>
+  context: GraphPassBackwardContext<'_, DenseNodePartition, DenseEdgePartition, DenseNodePartition, DenseEdgePartition>,
+) -> Result<GraphPassNodeOutput<DenseNodePartition, DenseEdgePartition>, Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  let graph_node = graph.get_node(slot.key).expect("Indexed node must exist in graph");
+  let mut node = context.input;
+  let graph_node = graph.get_node(context.key).expect("Indexed node must exist in graph");
   let graph_node = graph_node.read_arc();
   let msg_to_parent = if graph_node.is_leaf() {
-    partition.indexed_leaf_profile(&slot.node)?
+    partition.indexed_leaf_profile(&node)?
   } else {
     let child_pairs = graph.children_of(&graph_node);
+
+    // The value engine hands the completed children in its own topology order, which may differ from
+    // `children_of`. Index them by key so the per-child log-space product folds in the same canonical
+    // `children_of` order as before, keeping the floating-point result byte-for-byte identical.
+    let child_nodes: BTreeMap<_, _> = context.children.iter().map(|child| (child.node_key, child.node)).collect();
+    let child_edge_messages: BTreeMap<_, _> = context
+      .children
+      .iter()
+      .filter_map(|child| child.edge.map(|edge| (child.edge_key, edge)))
+      .collect();
+
     let children = child_pairs
       .iter()
       .map(|(child, _)| {
         let child_key = child.read_arc().key();
-        dependencies.node(child_key)
+        *child_nodes
+          .get(&child_key)
+          .expect("Backward child node output must be published before its parent")
       })
       .collect_vec();
-    slot.node.seq = partition.indexed_backward_internal(&children)?;
+    node.seq = partition.indexed_backward_internal(&children)?;
 
     let child_edges = child_pairs
       .iter()
       .map(|(_, edge)| {
         let edge_key = edge.read_arc().key();
-        dependencies.edge(edge_key)
+        *child_edge_messages
+          .get(&edge_key)
+          .expect("Backward child edge message must be published before its parent")
       })
       .collect_vec();
     let first_edge = child_edges.first().expect("Internal node must have children");
@@ -78,28 +93,29 @@ where
     }
     let (dis, delta_ll) = normalize_from_log(&log_dis);
     let log_lh = child_edges.iter().map(|edge| edge.msg_from_child.log_lh).sum::<LogLh>() + LogLh::new(delta_ll);
-    slot.node.profile = DenseSeqDistribution {
+    node.profile = DenseSeqDistribution {
       dis: dis.clone(),
       log_lh,
     };
     DenseSeqDistribution { dis, log_lh }
   };
 
-  if graph_node.is_root() {
+  let parent_message = if graph_node.is_root() {
     let data = partition.marginal_data();
     let mut dis = &msg_to_parent.dis * &data.gtr.pi;
     let delta_ll = normalize_inplace(&mut dis);
-    slot.node.profile = DenseSeqDistribution {
+    node.profile = DenseSeqDistribution {
       dis,
       log_lh: msg_to_parent.log_lh + LogLh::new(delta_ll),
     };
+    None
   } else {
-    let (edge_key, edge) = slot
-      .parent_edge
-      .as_mut()
-      .expect("Non-root node must own its parent edge");
+    // Reuse this node's moved-in parent-edge input and overwrite only the two message fields, exactly
+    // as the in-place engine did. The edge's other fields (indels, transmission, msg_to_child) carry
+    // forward-pass state across timetree iterations and must survive the backward pass unchanged.
+    let (edge_key, mut edge) = context.parent_edge.expect("Non-root node must own its parent edge");
     let branch_length = graph
-      .get_edge(*edge_key)
+      .get_edge(edge_key)
       .expect("Indexed edge must exist in graph")
       .read_arc()
       .payload()
@@ -115,8 +131,10 @@ where
       log_lh: msg_to_parent.log_lh,
     };
     edge.msg_to_parent = msg_to_parent;
-  }
-  Ok(())
+    Some(edge)
+  };
+
+  Ok(GraphPassNodeOutput { node, parent_message })
 }
 
 pub fn marginal_process_forward_indexed<N, E>(
