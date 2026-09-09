@@ -14,6 +14,7 @@ mod tests {
   };
   use crate::timetree::convergence::node_times::NodeTimeChange;
   use crate::timetree::convergence::optimizer::TimetreeOptimizer;
+  use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use maplit::btreemap;
   use ndarray::array;
@@ -60,7 +61,8 @@ mod tests {
     // Oracle: one edge with probability 0.25 contributes ln(0.25).
     let expected = 0.25_f64.ln();
 
-    let actual = compute_positional_log_lh(&graph)
+    let state = TimetreeState::seed_from_payloads(&graph);
+    let actual = compute_positional_log_lh(&graph, &state)
       .expect("positional log-likelihood must be available")
       .value();
 
@@ -72,7 +74,8 @@ mod tests {
   fn test_likelihood_positional_log_lh_absent_without_distributions() -> Result<(), Report> {
     let graph: GraphTimetree = nwk_read_str("(child:0.1)root;")?;
 
-    let actual = compute_positional_log_lh(&graph);
+    let state = TimetreeState::seed_from_payloads(&graph);
+    let actual = compute_positional_log_lh(&graph, &state);
 
     assert_eq!(None, actual);
     Ok(())
@@ -110,9 +113,10 @@ mod tests {
     let partitions = [helpers::partition_with_root_log_lh(root_key, -2.0)?];
     let mut optimizer = TimetreeOptimizer::new(1, false);
     let expected = -2.0 + 0.25_f64.ln();
+    let state = TimetreeState::seed_from_payloads(&graph);
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(1, 0, NodeTimeChange::default(), &graph, &partitions, None)?;
+    optimizer.record(1, 0, NodeTimeChange::default(), &graph, &partitions, &state, None)?;
     let actual = optimizer
       .trace()
       .first()

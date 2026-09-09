@@ -14,6 +14,7 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use crate::timetree::inference::runner::run_timetree;
+  use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
   };
@@ -42,7 +43,15 @@ mod tests {
     let (graph, partitions, clock_model) = build_timetree_setup(dataset, case)?;
     let mut graph = graph;
     let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph)?, &Distribution::constant(tc))?;
-    run_timetree(&mut graph, &partitions, &clock_model, Some(&coalescent), false)?;
+    let mut state = TimetreeState::new(&graph);
+    run_timetree(
+      &mut graph,
+      &partitions,
+      &clock_model,
+      Some(&coalescent),
+      false,
+      &mut state,
+    )?;
 
     let times = extract_node_times(&graph);
     let expected_count = graph.num_nodes();

@@ -22,24 +22,22 @@ use treetime_grid::Side;
 /// If a coalescent model is provided, applies one role-specific contribution
 /// after all child messages have been combined.
 ///
-/// Runs on a [`TimetreeState`] value seeded from the graph payloads, and writes the refined node
-/// posteriors and backward messages back into the payloads at the end: the refinement loop, coalescent
-/// statistics, confidence extraction, and tree writers still read them off the graph.
+/// Runs on the persistent [`TimetreeState`] value the caller routes through the whole pipeline,
+/// refining the node posteriors and backward messages in place. The caller owns re-reading the
+/// transitional payload fields into the state and writing the results back.
 pub fn propagate_distributions_backward<N, E, D>(
   graph: &Graph<N, E, D>,
   coalescent_model: Option<&CoalescentModel>,
+  state: &mut TimetreeState,
 ) -> Result<(), Report>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  let mut state = TimetreeState::seed_from_payloads(graph);
   state.map_backward(graph, |context| {
     propagate_distributions_backward_node(graph, coalescent_model, context)
-  })?;
-  state.write_to_payloads(graph);
-  Ok(())
+  })
 }
 
 /// Computes a node's time distribution and the backward message it sends to its parent.

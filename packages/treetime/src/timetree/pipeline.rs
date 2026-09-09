@@ -30,11 +30,12 @@ use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
 };
 use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer};
-use crate::timetree::inference::runner::{commit_clock_branch_lengths, run_timetree};
+use crate::timetree::inference::runner::{commit_clock_branch_lengths, run_timetree, timetree_branch_lengths};
 use crate::timetree::optimization::clock_filter::{apply_outlier_bad_branches, report_bad_branches};
 use crate::timetree::optimization::reroot::reroot_tree;
 use crate::timetree::params::{TimeMarginalMode, build_covariation_clock_params, compute_effective_time_marginal};
 use crate::timetree::refinement::{Refinement, RefinementOptions, TopologyRefinement};
+use crate::timetree::timetree_state::TimetreeState;
 use crate::timetree::utils::{initialize_clock_totals_from_time_distributions, initialize_node_divergences};
 use eyre::{Report, WrapErr};
 use log::{debug, info};
@@ -45,6 +46,7 @@ use std::collections::BTreeMap;
 use std::io::Write;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_io::dates_csv::DatesMap;
@@ -128,6 +130,11 @@ pub struct TimetreeOutput {
   /// from here rather than from the graph payload.
   #[serde(skip)]
   pub rate_susceptibility_dates: BTreeMap<GraphNodeKey, [f64; 3]>,
+  /// Committed clock-constrained branch lengths keyed by edge, routed through the pipeline as a value
+  /// instead of on the graph payload. The output gather and the final reconstruction read each edge's
+  /// clock length from here.
+  #[serde(skip)]
+  pub clock_branch_lengths: BTreeMap<GraphEdgeKey, f64>,
 }
 
 pub fn run(
@@ -274,8 +281,21 @@ pub fn run(
     .wrap_err("Failed to reroot tree (post-ancestral)")?;
   }
 
+  // The persistent date state and committed clock lengths the whole pipeline shares. The date passes
+  // carry the branch-length distributions and backward messages in the state instead of on the graph
+  // payloads, and each M-step damps against the previous clock lengths held in the map.
+  let mut timetree_state = TimetreeState::new(&input.graph);
+  let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
+
   // Initial time tree
-  run_timetree(&mut input.graph, &partitions, &clock_model, None, params.no_indels)?;
+  run_timetree(
+    &mut input.graph,
+    &partitions,
+    &clock_model,
+    None,
+    params.no_indels,
+    &mut timetree_state,
+  )?;
 
   // set up coalescent parameters and inference mode
   let skyline_params = SkylineParams {
@@ -315,13 +335,14 @@ pub fn run(
       &clock_model,
       Some(&prior),
       params.no_indels,
+      &mut timetree_state,
     )?;
   }
   // at this stage we have a consistent coalescent model and timed tree. Subsequence steps are refinement and post-processing.
 
   // Seed the clock-constrained lengths the loop's first marginal reconstruction propagates along.
   // Undamped: nothing has been committed yet, so there is nothing to blend with.
-  commit_clock_branch_lengths(&input.graph, clock_model.clock_rate(), 1.0);
+  commit_clock_branch_lengths(&input.graph, clock_model.clock_rate(), 1.0, &mut clock_branch_lengths);
 
   progress.check_cancelled()?;
   progress.report("Optimization", 0.3, "");
@@ -380,6 +401,8 @@ pub fn run(
       prior: prior_wanted.then_some(&coalescent_model),
       rng: &mut rng,
       options: &refinement_options,
+      state: &mut timetree_state,
+      clock_branch_lengths: &mut clock_branch_lengths,
     }
     .run()
     .wrap_err_with(|| format!("When running round {i}"))?;
@@ -391,6 +414,7 @@ pub fn run(
         outcome.time_change,
         &input.graph,
         &partitions,
+        &timetree_state,
         prior_wanted.then_some(&coalescent_tc.distribution),
       )
       .wrap_err("Failed to record convergence metrics")
@@ -442,6 +466,7 @@ pub fn run(
       final_prior,
       rate_std,
       params.no_indels,
+      &mut timetree_state,
     )
     .wrap_err("Rate susceptibility analysis failed")?
   } else {
@@ -456,15 +481,20 @@ pub fn run(
       &clock_model,
       final_prior,
       params.no_indels,
+      &mut timetree_state,
     )
     .wrap_err("Final timetree inference failed")?;
 
     // Undamped: this reconstruction reports the final tree, so it runs on the lengths these
     // final times imply rather than on a blend with the loop's last round.
-    commit_clock_branch_lengths(&input.graph, clock_model.clock_rate(), 1.0);
+    commit_clock_branch_lengths(&input.graph, clock_model.clock_rate(), 1.0, &mut clock_branch_lengths);
 
     if !partitions.is_empty() {
-      marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &partitions)?;
+      marginal_update(
+        &input.graph,
+        &timetree_branch_lengths(&input.graph, &clock_branch_lengths),
+        &partitions,
+      )?;
     }
   }
 
@@ -485,6 +515,7 @@ pub fn run(
     model_name: partition_model_name,
     coalescent: coalescent_output,
     rate_susceptibility_dates,
+    clock_branch_lengths,
   })
 }
 

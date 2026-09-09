@@ -11,6 +11,7 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use crate::timetree::inference::runner::run_timetree;
+  use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
   };
@@ -69,7 +70,15 @@ mod tests {
     )?;
 
     initialize_clock_totals_from_time_distributions(&graph)?;
-    run_timetree(&mut graph, &partitions, &clock_model, None, false)?;
+    let mut state = TimetreeState::new(&graph);
+    run_timetree(
+      &mut graph,
+      &partitions,
+      &clock_model,
+      None,
+      false,
+      &mut state,
+    )?;
 
     let actual = extract_node_times(&graph);
     pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);

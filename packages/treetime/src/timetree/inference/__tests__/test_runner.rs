@@ -5,6 +5,7 @@ mod tests {
   use crate::payload::traits::TimetreeEdge;
   use crate::pretty_assert_ulps_eq;
   use crate::timetree::inference::runner::create_branch_distributions_input_mode;
+  use crate::timetree::timetree_state::TimetreeState;
   use approx::assert_abs_diff_eq;
   use bio::io::newick;
   use eyre::Report;
@@ -12,7 +13,7 @@ mod tests {
   use petgraph::visit::EdgeRef;
   use std::collections::BTreeMap;
   use std::io::Cursor;
-  use treetime_graph::edge::{BranchDistribution, HasBranchLength, TimeLength};
+  use treetime_graph::edge::{HasBranchLength, TimeLength};
   use treetime_graph::node::Named;
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
@@ -21,7 +22,8 @@ mod tests {
     let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
     let clock_rate = 0.001; // 0.001 subs/site/year
 
-    create_branch_distributions_input_mode(&graph, clock_rate)?;
+    let mut state = TimetreeState::new(&graph);
+    create_branch_distributions_input_mode(&graph, clock_rate, &mut state)?;
 
     // Verify each edge has time_length = branch_length / clock_rate
     for edge_ref in graph.get_edges() {
@@ -44,7 +46,8 @@ mod tests {
     let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
     let clock_rate = 0.001;
 
-    create_branch_distributions_input_mode(&graph, clock_rate)?;
+    let mut state = TimetreeState::new(&graph);
+    create_branch_distributions_input_mode(&graph, clock_rate, &mut state)?;
 
     // EdgeTimetree.nwk_weight() returns time_length, so Newick output should show time values
     let newick_output = nwk_write_str(&graph, &NwkWriteOptions::default())?;
@@ -101,7 +104,8 @@ mod tests {
       }
     }
 
-    create_branch_distributions_input_mode(&graph, clock_rate)?;
+    let mut state = TimetreeState::new(&graph);
+    create_branch_distributions_input_mode(&graph, clock_rate, &mut state)?;
 
     for edge_ref in graph.get_edges() {
       let edge_read = edge_ref.read_arc();
@@ -140,7 +144,8 @@ mod tests {
     let clock_rate = 0.001;
 
     // All edges have default gamma=1.0
-    create_branch_distributions_input_mode(&graph, clock_rate)?;
+    let mut state = TimetreeState::new(&graph);
+    create_branch_distributions_input_mode(&graph, clock_rate, &mut state)?;
 
     for edge_ref in graph.get_edges() {
       let edge = edge_ref.read_arc().payload().read_arc();
@@ -165,14 +170,18 @@ mod tests {
       payload.set_branch_length(None);
     }
 
-    create_branch_distributions_input_mode(&graph, 0.001)?;
+    let edge_key = edge.read_arc().key();
+    let mut state = TimetreeState::new(&graph);
+    create_branch_distributions_input_mode(&graph, 0.001, &mut state)?;
 
     let payload = edge.read_arc().payload().read_arc();
     assert_eq!(Some(7.5), payload.time_length());
+    // The branch-length distribution lives in the value now, not on the payload.
     assert_eq!(
       Some(7.5),
-      payload
-        .branch_length_distribution()
+      state
+        .edge(edge_key)
+        .branch_length_distribution
         .as_ref()
         .and_then(|distribution| distribution.likely_time())
     );

@@ -1,6 +1,7 @@
 use crate::coalescent::total_lh::compute_coalescent_total_lh;
 use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::graph_log_lh;
+use crate::timetree::timetree_state::TimetreeState;
 use log::{debug, warn};
 use treetime_distribution::Distribution;
 use treetime_primitives::LogLh;
@@ -27,7 +28,7 @@ pub fn compute_sequence_log_lh(graph: &GraphTimetree, partitions: &[PartitionTim
 /// This is a v1-specific metric. v0's `positional_LH` sums node-level marginal
 /// log-likelihoods from the forward pass. Both metrics trend in the same direction
 /// during convergence but produce different numerical values.
-pub fn compute_positional_log_lh(graph: &GraphTimetree) -> Option<LogLh> {
+pub fn compute_positional_log_lh(graph: &GraphTimetree, state: &TimetreeState) -> Option<LogLh> {
   let mut total = 0.0;
   let mut count = 0_usize;
 
@@ -35,9 +36,9 @@ pub fn compute_positional_log_lh(graph: &GraphTimetree) -> Option<LogLh> {
     let edge = edge_ref.read_arc();
     let parent_key = edge.source();
     let child_key = edge.target();
-    let edge_payload = edge.payload().read_arc();
 
-    let Some(dist) = edge_payload.branch_length_distribution.as_ref() else {
+    let edge_state = state.edge(edge.key());
+    let Some(dist) = edge_state.branch_length_distribution.as_ref() else {
       continue;
     };
 

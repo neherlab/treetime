@@ -17,17 +17,16 @@ use treetime_grid::Side;
 
 /// Refines node time distributions and commits point-estimate times forward from root to leaves.
 ///
-/// Runs on a [`TimetreeState`] value seeded from the graph payloads, and writes the refined
-/// posteriors and committed times back into the payloads at the end: the refinement loop, coalescent
-/// statistics, confidence extraction, and tree writers still read them off the graph. The count of
-/// nodes whose given date the rest of the tree contradicted is folded out of the per-node outputs.
-pub fn propagate_distributions_forward<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
+/// Runs on the persistent [`TimetreeState`] value the caller routes through the whole pipeline,
+/// refining the posteriors and committing point-estimate times in place. The caller owns re-reading
+/// the transitional payload fields into the state and writing the results back. The count of nodes
+/// whose given date the rest of the tree contradicted is folded out of the per-node outputs.
+pub fn propagate_distributions_forward<N, E, D>(graph: &Graph<N, E, D>, state: &mut TimetreeState) -> Result<(), Report>
 where
   N: GraphNode + Named + TimetreeNode,
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  let mut state = TimetreeState::seed_from_payloads(graph);
   state.map_forward(graph, |context| propagate_distributions_forward_node(graph, context))?;
 
   // Once per pass, not per node: a broken clock or topology makes a whole subtree disagree at once.
@@ -42,7 +41,6 @@ where
     );
   }
 
-  state.write_to_payloads(graph);
   Ok(())
 }
 

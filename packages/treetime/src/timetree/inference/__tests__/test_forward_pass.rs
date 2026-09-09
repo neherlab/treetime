@@ -5,7 +5,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::forward_pass::{propagate_distributions_forward, set_likely_time};
-  use crate::timetree::timetree_state::DateNodeState;
+  use crate::timetree::timetree_state::{DateNodeState, TimetreeState};
   use eyre::Report;
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
@@ -71,7 +71,7 @@ mod tests {
       .set_time_distribution(Some(Arc::new(Distribution::empty())));
     set_date(&graph, leaf_key, Distribution::point(2013.0, 0.0));
 
-    propagate_distributions_forward(&graph)?;
+    run_forward_pass(&graph)?;
 
     let root_time = graph
       .get_node(root_key)
@@ -102,7 +102,7 @@ mod tests {
     set_date(&graph, leaf_key, Distribution::range((2009.5, 2013.5), 0.0));
     set_branch_length_distribution(&graph, leaf_key, 1.0);
 
-    propagate_distributions_forward(&graph)?;
+    run_forward_pass(&graph)?;
 
     let leaf_time = node_time(&graph, leaf_key).expect("leaf A should be dated");
     pretty_assert_ulps_eq!(leaf_time, 2010.0, max_ulps = 4);
@@ -128,7 +128,7 @@ mod tests {
     set_date(&graph, leaf_key, Distribution::point(2008.0, 0.0));
     set_branch_length_distribution(&graph, leaf_key, 1.0);
 
-    propagate_distributions_forward(&graph)?;
+    run_forward_pass(&graph)?;
 
     let leaf_time = node_time(&graph, leaf_key).expect("leaf A should keep its observed date");
     pretty_assert_ulps_eq!(leaf_time, 2008.0, max_ulps = 4);
@@ -151,7 +151,7 @@ mod tests {
     set_time_distribution(&graph, root_key, Distribution::point(2009.0, 0.0));
     set_date(&graph, leaf_key, Distribution::range((2005.0, 2007.0), 0.0));
 
-    propagate_distributions_forward(&graph)?;
+    run_forward_pass(&graph)?;
 
     let leaf_time = node_time(&graph, leaf_key).expect("leaf A should be dated");
     pretty_assert_ulps_eq!(leaf_time, 2009.0, max_ulps = 4);
@@ -174,7 +174,7 @@ mod tests {
     set_date(&graph, leaf_key, given.clone());
     set_branch_length_distribution(&graph, leaf_key, 1.0);
 
-    propagate_distributions_forward(&graph)?;
+    run_forward_pass(&graph)?;
 
     let leaf_dist = leaf_time_distribution(&graph, leaf_key).expect("leaf A should keep its given date");
     assert_eq!(given, leaf_dist);
@@ -207,7 +207,7 @@ mod tests {
       set_time_distribution(&graph, root_key, parent);
       set_date(&graph, leaf_key, Distribution::range((2010.5, 2010.6), 0.0));
       set_branch_length_distribution(&graph, leaf_key, 1.0);
-      propagate_distributions_forward(&graph)?;
+      run_forward_pass(&graph)?;
       node_time(&graph, leaf_key).ok_or_else(|| eyre::eyre!("leaf A should be dated"))
     };
 
@@ -242,7 +242,7 @@ mod tests {
     set_date(&graph, leaf_key, Distribution::range((2010.500, 2010.503), 0.0));
     set_branch_length_distribution(&graph, leaf_key, 1.0);
 
-    propagate_distributions_forward(&graph)?;
+    run_forward_pass(&graph)?;
 
     let leaf_time = node_time(&graph, leaf_key).expect("leaf A should be dated");
     assert!(
@@ -255,6 +255,16 @@ mod tests {
 
   mod helpers {
     use super::*;
+
+    /// Seed the date state from the payloads, run the forward pass on it, and write the refined
+    /// posteriors and committed times back to the payloads, so the payload-reading assertions see the
+    /// pass output.
+    pub(super) fn run_forward_pass(graph: &TestGraph) -> Result<(), Report> {
+      let mut state = TimetreeState::seed_from_payloads(graph);
+      propagate_distributions_forward(graph, &mut state)?;
+      state.write_to_payloads(graph);
+      Ok(())
+    }
 
     pub(super) fn node_with_distribution(distribution: Option<Distribution<NegLog>>) -> DateNodeState {
       DateNodeState {

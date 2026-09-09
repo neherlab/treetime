@@ -5,6 +5,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
+  use crate::timetree::timetree_state::TimetreeState;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
@@ -41,7 +42,7 @@ mod tests {
     }
 
     // Run backward pass
-    propagate_distributions_backward(&graph, None)?;
+    run_backward_pass(&graph, None)?;
 
     // Check internal node I has time distribution centered at 2013.0 - 2.5 = 2010.5
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal node I not found");
@@ -101,7 +102,7 @@ mod tests {
       payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 0.0))));
     }
 
-    propagate_distributions_backward(&graph, None)?;
+    run_backward_pass(&graph, None)?;
 
     // Internal node I should have time at 2012.0 (both children agree)
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal node I not found");
@@ -163,8 +164,8 @@ mod tests {
 
     let coalescent_model = coalescent_model(0.01)?;
 
-    propagate_distributions_backward(&graph, Some(&coalescent_model))?;
-    propagate_distributions_backward(&graph, Some(&coalescent_model))?;
+    run_backward_pass(&graph, Some(&coalescent_model))?;
+    run_backward_pass(&graph, Some(&coalescent_model))?;
 
     // Verify leaf A still has its original date
     {
@@ -210,7 +211,7 @@ mod tests {
 
     let coalescent_model = coalescent_model(1e-6)?;
 
-    propagate_distributions_backward(&graph, Some(&coalescent_model))?;
+    run_backward_pass(&graph, Some(&coalescent_model))?;
 
     let internal = graph.get_node(internal_key).expect("internal I exists");
     let payload = internal.read_arc().payload().read_arc();
@@ -243,7 +244,7 @@ mod tests {
     }
     set_edge_branch_dist(&graph, leaf_key, 3.0);
 
-    propagate_distributions_backward(&graph, None)?;
+    run_backward_pass(&graph, None)?;
 
     let payload = graph
       .get_node(leaf_key)
@@ -276,7 +277,7 @@ mod tests {
     set_edge_branch_dist(&graph, leaf_a_key, 3.0);
     set_edge_branch_dist(&graph, leaf_b_key, 2.0);
 
-    propagate_distributions_backward(&graph, None)?;
+    run_backward_pass(&graph, None)?;
 
     let payload = graph
       .get_node(internal_key)
@@ -317,15 +318,17 @@ mod tests {
       }
     }
 
-    propagate_distributions_backward(&graph, None)?;
+    // The backward message stays in the value, so run on a state and read it back off that state.
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    propagate_distributions_backward(&graph, None, &mut state)?;
 
     // Check edge from I to A has msg_to_parent set
     for edge in graph.get_edges() {
       let edge_read = edge.read_arc();
       if edge_read.target() == leaf_key {
-        let payload = edge_read.payload().read_arc();
-        let msg = payload
-          .msg_to_parent()
+        let msg = state
+          .edge(edge_read.key())
+          .msg_to_parent
           .as_ref()
           .expect("edge should have msg_to_parent after backward pass");
         let msg_time = msg.likely_time().expect("message should have likely_time");
@@ -362,7 +365,7 @@ mod tests {
     set_edge_branch_dist(&graph, leaf_a_key, 3.0);
     set_edge_branch_dist(&graph, leaf_b_key, 2.0);
 
-    propagate_distributions_backward(&graph, None)?;
+    run_backward_pass(&graph, None)?;
 
     // I should get time only from A: 2015.0 - 3.0 = 2012.0
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal node I not found");
@@ -391,7 +394,7 @@ mod tests {
     let ref_a_key = find_node_key_by_name(&ref_graph, "A").expect("leaf A not found");
     set_leaf_time(&ref_graph, ref_a_key, 2015.0);
     set_edge_branch_dist(&ref_graph, ref_a_key, 3.0);
-    propagate_distributions_backward(&ref_graph, None)?;
+    run_backward_pass(&ref_graph, None)?;
 
     let ref_internal_key = find_node_key_by_name(&ref_graph, "I").expect("internal I not found");
     let ref_time = ref_graph
@@ -424,7 +427,7 @@ mod tests {
       .write_arc()
       .bad_branch = true;
 
-    propagate_distributions_backward(&test_graph, None)?;
+    run_backward_pass(&test_graph, None)?;
 
     let test_internal_key = find_node_key_by_name(&test_graph, "I").expect("internal I not found");
     let test_time = test_graph
@@ -471,7 +474,7 @@ mod tests {
     set_edge_branch_dist(&graph, b, 0.0);
     set_edge_branch_dist(&graph, c, 0.0);
 
-    propagate_distributions_backward(&graph, None)?;
+    run_backward_pass(&graph, None)?;
 
     let internal = find_node_key_by_name(&graph, "I").expect("internal node I not found");
     let node = graph.get_node(internal).expect("internal I exists");
@@ -515,7 +518,7 @@ mod tests {
         set_leaf_function(&graph, key, &x, y.clone())?;
         set_edge_branch_dist(&graph, key, 0.0);
       }
-      propagate_distributions_backward(&graph, None)?;
+      run_backward_pass(&graph, None)?;
       let internal = find_node_key_by_name(&graph, "I").expect("internal node I not found");
       let node = graph.get_node(internal).expect("internal I exists");
       let payload = node.read_arc().payload().read_arc();
@@ -563,7 +566,7 @@ mod tests {
     set_edge_branch_dist(&graph, b, 0.0);
     set_edge_branch_dist(&graph, c, 0.0);
 
-    propagate_distributions_backward(&graph, None)?;
+    run_backward_pass(&graph, None)?;
 
     let internal = find_node_key_by_name(&graph, "I").expect("internal node I not found");
     let node = graph.get_node(internal).expect("internal I exists");
@@ -586,6 +589,19 @@ mod tests {
   mod helpers {
     use super::*;
     use treetime_graph::graph::Graph;
+
+    /// Seed the date state from the payloads, run the backward pass on it, and write the refined node
+    /// posteriors back to the payloads, so the payload-reading assertions see the pass output. The
+    /// backward message stays in the value; a test that inspects it seeds its own state.
+    pub(super) fn run_backward_pass(
+      graph: &Graph<NodeTimetree, EdgeTimetree, ()>,
+      coalescent_model: Option<&CoalescentModel>,
+    ) -> Result<(), Report> {
+      let mut state = TimetreeState::seed_from_payloads(graph);
+      propagate_distributions_backward(graph, coalescent_model, &mut state)?;
+      state.write_to_payloads(graph);
+      Ok(())
+    }
 
     /// Give a node the date it was loaded with, and nothing else: the backward pass is what lifts
     /// it into the node's time distribution.

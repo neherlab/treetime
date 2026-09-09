@@ -19,6 +19,7 @@ mod tests {
   use crate::timetree::refinement::{
     Refinement, RefinementOptions, RefinementOutcome, TopologyOutcome, TopologyRefinement,
   };
+  use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{initialize_clock_totals_from_time_distributions, initialize_node_divergences};
   use eyre::Report;
   use indoc::indoc;
@@ -26,9 +27,10 @@ mod tests {
   use ndarray::{Array1, array};
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
-  use treetime_graph::edge::{BranchDistribution, HasBranchLength};
+  use treetime_graph::edge::{BranchDistribution, GraphEdgeKey, HasBranchLength};
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::fasta::read_many_fasta_str;
@@ -206,7 +208,8 @@ mod tests {
       &BranchPointOptimizationParams::default(),
       None,
     )?;
-    run_timetree(&mut graph, &partitions, &clock_model, None, false)?;
+    let mut state = TimetreeState::new(&graph);
+    run_timetree(&mut graph, &partitions, &clock_model, None, false, &mut state)?;
 
     let times = Array1::linspace(0.0, 30.0, 301);
     let values = times.mapv(|time: f64| (-0.5 * time).exp());
@@ -274,6 +277,9 @@ mod tests {
     let merger_rate =
       coalescent.branch_merger_rate_schedule(&PiecewiseConstantFn::new(array![], array![REFINEMENT_TEST_TC]))?;
 
+    let mut state = TimetreeState::seed_from_payloads(graph);
+    let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
+
     Refinement {
       graph,
       partitions,
@@ -284,6 +290,8 @@ mod tests {
       prior: coalescent_tc.is_some().then_some(&coalescent),
       rng: &mut get_random_number_generator(Some(REFINEMENT_TEST_SEED)),
       options: &refinement_options(),
+      state: &mut state,
+      clock_branch_lengths: &mut clock_branch_lengths,
     }
     .run()
   }

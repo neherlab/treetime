@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
+use crate::ancestral::marginal::marginal_update;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -7,13 +7,18 @@ use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef}
 use crate::partition::traits::{PartitionMarginalPasses, PartitionTimetreeOps};
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
-use crate::timetree::inference::runner::{CLOCK_BRANCH_LENGTH_DAMPING, commit_clock_branch_lengths, run_timetree};
+use crate::timetree::inference::runner::{
+  CLOCK_BRANCH_LENGTH_DAMPING, commit_clock_branch_lengths, run_timetree, timetree_branch_lengths,
+};
 use crate::timetree::optimization::clock_filter::propagate_bad_branches;
 use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
 use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
+use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
 use log::info;
+use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::assign_node_names;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
 pub(crate) struct Refinement<'a> {
@@ -31,6 +36,12 @@ pub(crate) struct Refinement<'a> {
   /// stream: re-seeding per round would correlate the sampled histories.
   pub rng: &'a mut dyn rand::RngCore,
   pub options: &'a RefinementOptions,
+  /// Persistent per-node/per-edge date state routed across the whole pipeline. The date passes
+  /// carry the branch-length distributions and backward messages here instead of on the payloads.
+  pub state: &'a mut TimetreeState,
+  /// Committed clock-constrained branch lengths keyed by edge, routed so the M-step damps against
+  /// the previous round's value without reading it back off the payload.
+  pub clock_branch_lengths: &'a mut BTreeMap<GraphEdgeKey, f64>,
 }
 
 impl Refinement<'_> {
@@ -48,7 +59,12 @@ impl Refinement<'_> {
 
     // Close the loop: the times just inferred become the lengths the next round's marginal
     // reconstruction propagates along. Damped, because each pass re-infers every time at once.
-    commit_clock_branch_lengths(self.graph, self.clock_model.clock_rate(), CLOCK_BRANCH_LENGTH_DAMPING);
+    commit_clock_branch_lengths(
+      self.graph,
+      self.clock_model.clock_rate(),
+      CLOCK_BRANCH_LENGTH_DAMPING,
+      self.clock_branch_lengths,
+    );
 
     let current_states = capture_ancestral_states(self.graph, self.partitions);
     let time_change = measure_node_time_change(&previous_times, &capture_node_times(self.graph));
@@ -117,6 +133,9 @@ impl Refinement<'_> {
     assign_node_names(self.graph)?;
     propagate_bad_branches(self.graph)?;
     prepare_tree_after_topology_change(self.graph).wrap_err("Failed to prepare tree after topology change")?;
+    // Reset the value-resident edge fields for the new topology, the counterpart of the payload reset
+    // `prepare_tree_after_topology_change` performs on the transitional fields.
+    self.state.reset_date_edges_for_topology_change(self.graph);
     for partition in self.partitions {
       partition.write_arc().reconcile_topology(self.graph);
     }
@@ -125,7 +144,12 @@ impl Refinement<'_> {
     // longer exists. The sampled subtree dates every node it creates, so recommit from those
     // times rather than falling back to ML lengths for the reconstruction that follows. Undamped:
     // there is nothing meaningful to blend a moved edge with.
-    commit_clock_branch_lengths(self.graph, self.clock_model.clock_rate(), 1.0);
+    commit_clock_branch_lengths(
+      self.graph,
+      self.clock_model.clock_rate(),
+      1.0,
+      self.clock_branch_lengths,
+    );
 
     Ok(TopologyOutcome::Changed { resolved_nodes })
   }
@@ -133,7 +157,11 @@ impl Refinement<'_> {
   fn rebuild_inference(&mut self, topology_changed: bool) -> Result<(), Report> {
     if !self.partitions.is_empty() {
       info!("Updating ancestral sequences via marginal reconstruction");
-      marginal_update(self.graph, &profile_branch_lengths(self.graph), self.partitions)?;
+      marginal_update(
+        self.graph,
+        &timetree_branch_lengths(self.graph, self.clock_branch_lengths),
+        self.partitions,
+      )?;
     }
 
     if topology_changed {
@@ -144,6 +172,7 @@ impl Refinement<'_> {
         self.clock_model,
         None,
         self.options.no_indels,
+        self.state,
       )
       .wrap_err("Coalescent-free timetree rebuild failed")?;
       if self.prior.is_none() {
@@ -159,6 +188,7 @@ impl Refinement<'_> {
       self.clock_model,
       self.prior,
       self.options.no_indels,
+      self.state,
     )
     .wrap_err("Timetree inference failed")
   }

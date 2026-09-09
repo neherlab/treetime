@@ -23,6 +23,7 @@ use treetime::payload::timetree::{EdgeTimetree, NodeTimetree};
 use treetime::timetree::inference::backward_pass::propagate_distributions_backward;
 use treetime::timetree::inference::forward_pass::propagate_distributions_forward;
 use treetime::timetree::inference::runner::{GRID_POINTS, run_timetree};
+use treetime::timetree::timetree_state::TimetreeState;
 use treetime::timetree::utils::{
   create_poisson_branch_distributions, extract_node_times, initialize_clock_totals_from_time_distributions,
   initialize_node_divergences,
@@ -261,14 +262,18 @@ fn run_poisson_test(config: &DatasetConfig, args: &Args) -> Result<TestResult, R
     "001_after_create_poisson_branch_distributions.json",
   )?;
 
-  propagate_distributions_backward(&graph, None)?;
+  // The Poisson builder writes the branch distributions onto the payloads; seed the value state from
+  // them, run the passes on that state, and write the committed times back before extraction.
+  let mut state = TimetreeState::seed_from_payloads(&graph);
+  propagate_distributions_backward(&graph, None, &mut state)?;
   dump_graph(
     &graph,
     &output_dir_str,
     "002_after_propagate_distributions_backward.json",
   )?;
 
-  propagate_distributions_forward(&graph)?;
+  propagate_distributions_forward(&graph, &mut state)?;
+  state.write_to_payloads(&graph);
   dump_graph(
     &graph,
     &output_dir_str,
@@ -330,7 +335,8 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   initialize_clock_totals_from_time_distributions(&graph)?;
   dump_graph(&graph, &output_dir_str, "004_after_initialize_node_times.json")?;
 
-  run_timetree(&mut graph, &partitions, &clock_model, None, false)?;
+  let mut state = TimetreeState::new(&graph);
+  run_timetree(&mut graph, &partitions, &clock_model, None, false, &mut state)?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
   let actual = extract_node_times(&graph);
@@ -389,7 +395,8 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
   initialize_clock_totals_from_time_distributions(&graph)?;
   dump_graph(&graph, &output_dir_str, "004_after_initialize_node_times.json")?;
 
-  run_timetree(&mut graph, &partitions, &clock_model, None, false)?;
+  let mut state = TimetreeState::new(&graph);
+  run_timetree(&mut graph, &partitions, &clock_model, None, false, &mut state)?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
   let actual = extract_node_times(&graph);

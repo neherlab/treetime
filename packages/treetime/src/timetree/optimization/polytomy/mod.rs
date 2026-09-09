@@ -331,11 +331,11 @@ pub fn prepare_tree_after_topology_change(graph: &GraphTimetree) -> Result<(), R
   }
 
   // Reset fields whose meaning depends on the previous edge topology. Keep the
-  // observed branch length and inferred time length: both seed the next pass.
+  // observed branch length and inferred time length: both seed the next pass. The branch-length
+  // distribution and backward message now live in the threaded date state, reset there by
+  // `TimetreeState::reset_date_edges_for_topology_change`.
   for edge in graph.get_edges() {
     let mut payload = edge.read_arc().payload().write_arc();
-    payload.branch_length_distribution = None;
-    payload.msg_to_parent = None;
     payload.gamma = 1.0;
     payload.clock_to_parent = ClockSet::default();
     payload.clock_to_child = ClockSet::default();

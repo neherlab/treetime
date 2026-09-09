@@ -4,6 +4,7 @@ use crate::timetree::convergence::likelihood::{
 };
 use crate::timetree::convergence::metrics::ConvergenceMetrics;
 use crate::timetree::convergence::node_times::NodeTimeChange;
+use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use log::info;
 use std::io::Write;
@@ -53,10 +54,11 @@ impl TimetreeOptimizer {
     time_change: NodeTimeChange,
     graph: &GraphTimetree,
     partitions: &[PartitionTimetreeRef],
+    state: &TimetreeState,
     coalescent_tc: Option<&Distribution>,
   ) -> Result<(), Report> {
     let log_lh_seq = compute_sequence_log_lh(graph, partitions);
-    let log_lh_pos = compute_positional_log_lh(graph);
+    let log_lh_pos = compute_positional_log_lh(graph, state);
     let log_lh_coal = compute_coalescent_log_lh(graph, coalescent_tc);
     let log_lh_total = [log_lh_seq, log_lh_pos, log_lh_coal]
       .into_iter()

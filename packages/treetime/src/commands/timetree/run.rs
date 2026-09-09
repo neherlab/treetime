@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update, profile_branch_lengths};
+use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update};
 use crate::ancestral::sample::SampleMode;
 use crate::clock::clock_output::write_clock_model;
 use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
@@ -17,6 +17,7 @@ use crate::partition::timetree::partition::GraphTimetree;
 use crate::partition::traits::MutationCommentProvider;
 use crate::seq::div::compute_edge_mutation_counts;
 use crate::timetree::confidence::write_confidence_intervals_file;
+use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use eyre::{Report, WrapErr};
 use log::{debug, info, warn};
@@ -132,7 +133,7 @@ pub fn run_timetree_estimation(
       };
       marginal_update(
         &output.graph,
-        &profile_branch_lengths(&output.graph),
+        &timetree_branch_lengths(&output.graph, &output.clock_branch_lengths),
         &output.partitions,
       )?;
       let mut rng = get_random_number_generator(params.seed);
@@ -181,6 +182,7 @@ pub fn run_timetree_estimation(
     model_name,
     coalescent,
     rate_susceptibility_dates,
+    clock_branch_lengths,
   } = output;
   let mut graph = graph.map_data(TimetreeGraphData::new(
     clock_model,
@@ -200,7 +202,7 @@ pub fn run_timetree_estimation(
     .resolve_topology_order(&graph, Some(input_leaf_order))?;
   topology_order.apply(&mut graph)?;
 
-  let (nodes, edges) = gather_timetree_outputs(&graph, &rate_susceptibility_dates);
+  let (nodes, edges) = gather_timetree_outputs(&graph, &rate_susceptibility_dates, &clock_branch_lengths);
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
     match graph.data().confidence_intervals.as_ref() {
@@ -309,10 +311,13 @@ pub fn run_timetree_estimation(
 /// state there); this step surfaces them as a standalone value the output writers consume.
 ///
 /// `rate_susceptibility_dates` carries the per-node date triples the pipeline returns as a value
-/// rather than on the payload; each node's triple is read from here.
+/// rather than on the payload; each node's triple is read from here. `clock_branch_lengths` likewise
+/// carries the committed clock branch length per edge as a value; each edge's clock length is read
+/// from here rather than off the payload.
 fn gather_timetree_outputs(
   graph: &GraphTimetree<TimetreeGraphData>,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
+  clock_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> (
   BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
@@ -348,7 +353,7 @@ fn gather_timetree_outputs(
       let out = TimetreeEdgeOut {
         branch_length: payload.branch_length(),
         time_length: payload.time_length,
-        clock_branch_length: payload.clock_branch_length,
+        clock_branch_length: clock_branch_lengths.get(&key).copied(),
         gamma: payload.gamma,
       };
       (key, out)

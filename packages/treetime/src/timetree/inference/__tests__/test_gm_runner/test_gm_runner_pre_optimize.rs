@@ -14,6 +14,7 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::partition::traits::PartitionOptimizeOps;
   use crate::timetree::inference::runner::run_timetree;
+  use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{
     extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
   };
@@ -135,7 +136,15 @@ mod tests {
     )?;
 
     initialize_clock_totals_from_time_distributions(&graph)?;
-    run_timetree(&mut graph, &partitions, &clock_model, None, false)?;
+    let mut state = TimetreeState::new(&graph);
+    run_timetree(
+      &mut graph,
+      &partitions,
+      &clock_model,
+      None,
+      false,
+      &mut state,
+    )?;
 
     let actual = extract_node_times(&graph);
     assert!(

@@ -3,6 +3,7 @@ mod tests {
   use crate::timetree::convergence::metrics::NODE_TIME_TOLERANCE_YEARS;
   use crate::timetree::convergence::node_times::NodeTimeChange;
   use crate::timetree::convergence::optimizer::TimetreeOptimizer;
+  use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use pretty_assertions::assert_eq;
 
@@ -11,10 +12,11 @@ mod tests {
   #[test]
   fn test_optimizer_converges_when_n_diff_zero() -> Result<(), Report> {
     let graph = helpers::empty_graph();
+    let state = TimetreeState::new(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], None)?;
+    optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
 
     assert!(optimizer.next_iter().is_none());
     assert_eq!(1, optimizer.iteration_count());
@@ -28,6 +30,7 @@ mod tests {
   #[test]
   fn test_optimizer_continues_while_node_times_move() -> Result<(), Report> {
     let graph = helpers::empty_graph();
+    let state = TimetreeState::new(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
 
     assert!(optimizer.next_iter().is_some());
@@ -37,6 +40,7 @@ mod tests {
       helpers::moved_by(10.0 * NODE_TIME_TOLERANCE_YEARS),
       &graph,
       &[],
+      &state,
       None,
     )?;
 
@@ -47,6 +51,7 @@ mod tests {
       helpers::moved_by(0.1 * NODE_TIME_TOLERANCE_YEARS),
       &graph,
       &[],
+      &state,
       None,
     )?;
 
@@ -61,14 +66,15 @@ mod tests {
   #[test]
   fn test_optimizer_settled_times_do_not_converge_while_polytomies_resolve() -> Result<(), Report> {
     let graph = helpers::empty_graph();
+    let state = TimetreeState::new(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
     let settled = helpers::moved_by(0.1 * NODE_TIME_TOLERANCE_YEARS);
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 2, settled, &graph, &[], None)?;
+    optimizer.record(0, 2, settled, &graph, &[], &state, None)?;
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, settled, &graph, &[], None)?;
+    optimizer.record(0, 0, settled, &graph, &[], &state, None)?;
 
     assert!(optimizer.next_iter().is_none());
     assert_eq!(2, optimizer.iteration_count());
@@ -80,16 +86,17 @@ mod tests {
   #[test]
   fn test_optimizer_continues_when_n_diff_positive() -> Result<(), Report> {
     let graph = helpers::empty_graph();
+    let state = TimetreeState::new(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(10, 0, NodeTimeChange::default(), &graph, &[], None)?;
+    optimizer.record(10, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(3, 0, NodeTimeChange::default(), &graph, &[], None)?;
+    optimizer.record(3, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], None)?;
+    optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
 
     assert!(optimizer.next_iter().is_none());
     assert_eq!(3, optimizer.iteration_count());
@@ -106,11 +113,12 @@ mod tests {
   #[test]
   fn test_optimizer_stops_at_max_iterations() -> Result<(), Report> {
     let graph = helpers::empty_graph();
+    let state = TimetreeState::new(&graph);
     let mut optimizer = TimetreeOptimizer::new(3, false);
 
     for _ in 0..3 {
       assert!(optimizer.next_iter().is_some());
-      optimizer.record(10, 0, NodeTimeChange::default(), &graph, &[], None)?;
+      optimizer.record(10, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
     }
 
     assert!(optimizer.next_iter().is_none());
@@ -123,13 +131,14 @@ mod tests {
   #[test]
   fn test_optimizer_n_resolved_prevents_convergence() -> Result<(), Report> {
     let graph = helpers::empty_graph();
+    let state = TimetreeState::new(&graph);
     let mut optimizer = TimetreeOptimizer::new(5, false);
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 3, NodeTimeChange::default(), &graph, &[], None)?;
+    optimizer.record(0, 3, NodeTimeChange::default(), &graph, &[], &state, None)?;
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], None)?;
+    optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
 
     assert!(optimizer.next_iter().is_none());
     assert_eq!(2, optimizer.iteration_count());
@@ -140,14 +149,15 @@ mod tests {
   #[test]
   fn test_optimizer_tracelog_writes_csv() -> Result<(), Report> {
     let graph = helpers::empty_graph();
+    let state = TimetreeState::new(&graph);
     let buf = Vec::<u8>::new();
     let mut optimizer = TimetreeOptimizer::new(3, false).with_tracelog(buf)?;
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(5, 1, NodeTimeChange::default(), &graph, &[], None)?;
+    optimizer.record(5, 1, NodeTimeChange::default(), &graph, &[], &state, None)?;
 
     assert!(optimizer.next_iter().is_some());
-    optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], None)?;
+    optimizer.record(0, 0, NodeTimeChange::default(), &graph, &[], &state, None)?;
 
     assert_eq!(2, optimizer.trace().len());
     Ok(())

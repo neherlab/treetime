@@ -8,13 +8,15 @@ use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::timetree::inference::forward_pass::propagate_distributions_forward;
+use crate::timetree::timetree_state::TimetreeState;
 use crate::timetree::utils::initialize_node_divergences;
 use eyre::Report;
 use log::{debug, info, warn};
 use parking_lot::RwLock;
 use rayon::prelude::*;
+use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_distribution::Distribution;
+use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
@@ -48,6 +50,7 @@ pub fn run_timetree<N, E, P>(
   clock_model: &ClockModel,
   coalescent: Option<&CoalescentModel>,
   no_indels: bool,
+  state: &mut TimetreeState,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named + TimetreeNode + ClockNode + Default,
@@ -59,23 +62,32 @@ where
   info!("## Calculating divergence distances");
   initialize_node_divergences(graph)?;
 
+  // Re-read the transitional payload fields (times, distributions, bad-branch flags, time lengths)
+  // into the state, rebuilding its maps for the current topology while carrying the value-resident
+  // branch-length distributions and backward messages forward.
+  state.reseed_transitional_from_payloads(graph);
+
   info!("## Using clock model");
   let clock_rate = clock_model.clock_rate();
   info!("**Clock rate:** {clock_rate:.6e}");
 
   if !partitions.is_empty() {
     info!("## Computing branch distributions from partitions");
-    compute_branch_distributions_marginal_mode(graph, partitions, clock_rate, no_indels)?;
+    compute_branch_distributions_marginal_mode(graph, partitions, clock_rate, no_indels, state)?;
   } else {
     info!("## Creating branch distributions from input lengths");
-    create_branch_distributions_input_mode(graph, clock_rate)?;
+    create_branch_distributions_input_mode(graph, clock_rate, state)?;
   }
 
   info!("## Propagating distributions backward");
-  propagate_distributions_backward(graph, coalescent)?;
+  propagate_distributions_backward(graph, coalescent, state)?;
 
   info!("## Propagating distributions forward");
-  propagate_distributions_forward(graph)?;
+  propagate_distributions_forward(graph, state)?;
+
+  // Repopulate the transitional payload fields (time, time distribution) the downstream clock,
+  // coalescent, confidence, and writer stages read off the graph.
+  state.write_to_payloads(graph);
 
   info!("# Timetree inference completed");
   Ok(())
@@ -108,8 +120,12 @@ pub const CLOCK_BRANCH_LENGTH_DAMPING: f64 = 0.5;
 /// their parent but leaves observed leaf dates alone, so a leaf dated before its parent reaches
 /// here; that is a real inconsistency in the input or the fit, and it is reported rather than
 /// silently floored. Edges whose endpoints are not both dated are left untouched.
-pub fn commit_clock_branch_lengths<N, E, D>(graph: &Graph<N, E, D>, clock_rate: f64, damping: f64)
-where
+pub fn commit_clock_branch_lengths<N, E, D>(
+  graph: &Graph<N, E, D>,
+  clock_rate: f64,
+  damping: f64,
+  clock_branch_lengths: &mut BTreeMap<GraphEdgeKey, f64>,
+) where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + TimetreeEdge,
   D: Sync + Send,
@@ -120,27 +136,36 @@ where
       .and_then(|node| node.read_arc().payload().read_arc().time())
   };
 
-  let inverted: usize = graph
+  // The committed value blends against the previous one held in the routed map, so the fold builds
+  // the new values in parallel first (each reading its own previous value from the shared map) and
+  // inserts them serially, without a lock.
+  let previous_lengths: &BTreeMap<GraphEdgeKey, f64> = clock_branch_lengths;
+  let committed: Vec<(GraphEdgeKey, f64, bool)> = graph
     .get_edges()
     .par_iter()
-    .map(|edge_ref| {
+    .filter_map(|edge_ref| {
       let edge_ref = edge_ref.read_arc();
+      let key = edge_ref.key();
       let (Some(parent_time), Some(child_time)) = (node_time(edge_ref.source()), node_time(edge_ref.target())) else {
-        return 0;
+        return None;
       };
 
-      let mut edge = edge_ref.payload().write_arc();
       let duration = child_time - parent_time;
-      let fresh = clock_rate * edge.gamma() * duration.max(0.0);
-      let committed = match edge.clock_branch_length() {
+      let fresh = clock_rate * edge_ref.payload().read_arc().gamma() * duration.max(0.0);
+      let value = match previous_lengths.get(&key) {
         Some(previous) => (1.0 - damping) * previous + damping * fresh,
         None => fresh,
       };
-      edge.set_clock_branch_length(Some(committed));
 
-      usize::from(duration < 0.0)
+      Some((key, value, duration < 0.0))
     })
-    .sum();
+    .collect();
+
+  let mut inverted = 0_usize;
+  for (key, value, is_inverted) in committed {
+    clock_branch_lengths.insert(key, value);
+    inverted += usize::from(is_inverted);
+  }
 
   if inverted > 0 {
     warn!(
@@ -157,6 +182,7 @@ fn compute_branch_distributions_marginal_mode<N, E, P>(
   partitions: &[Arc<RwLock<P>>],
   clock_rate: f64,
   no_indels: bool,
+  state: &mut TimetreeState,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named + TimetreeNode,
@@ -180,45 +206,57 @@ where
   debug!("One mutation = {one_mutation:.6e} substitutions/site");
   debug!("Indel rate = {indel_rate:.6e} indels/(site*time)");
 
-  graph
+  // Compute each edge's branch-length distribution in parallel, writing its time length (transitional)
+  // to the payload, and carry the distribution out to insert into the value serially: the value's
+  // per-edge map cannot be written from parallel workers without a lock.
+  let distributions: Vec<(GraphEdgeKey, Option<f64>, Arc<Distribution<NegLog>>)> = graph
     .get_edges()
     .par_iter()
-    .try_for_each(|edge_ref| -> Result<(), Report> {
-      let edge_key = edge_ref.read_arc().key();
-      let mut edge = edge_ref.write_arc().payload().write_arc();
-      let branch_length = edge.branch_length().unwrap_or(one_mutation);
-      let gamma = edge.gamma();
+    .map(
+      |edge_ref| -> Result<(GraphEdgeKey, Option<f64>, Arc<Distribution<NegLog>>), Report> {
+        let edge_key = edge_ref.read_arc().key();
+        let mut edge = edge_ref.write_arc().payload().write_arc();
+        let branch_length = edge.branch_length().unwrap_or(one_mutation);
+        let gamma = edge.gamma();
 
-      debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
+        debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
 
-      let contributions = collect_contributions(partitions, edge_key)?;
-      let indel_count: usize = if no_indels {
-        0
-      } else {
-        partitions
-          .iter()
-          .map(|partition| partition.read_arc().edge_indel_count(edge_key))
-          .sum()
-      };
-      let distribution = compute_branch_length_distribution(
-        &contributions,
-        indel_count,
-        indel_rate,
-        branch_length,
-        one_mutation,
-        GRID_POINTS,
-        clock_rate,
-        gamma,
-      )?;
+        let contributions = collect_contributions(partitions, edge_key)?;
+        let indel_count: usize = if no_indels {
+          0
+        } else {
+          partitions
+            .iter()
+            .map(|partition| partition.read_arc().edge_indel_count(edge_key))
+            .sum()
+        };
+        let distribution = compute_branch_length_distribution(
+          &contributions,
+          indel_count,
+          indel_rate,
+          branch_length,
+          one_mutation,
+          GRID_POINTS,
+          clock_rate,
+          gamma,
+        )?;
 
-      if let Some(likely_time) = distribution.likely_time() {
-        debug!("Edge {edge_key:?}: distribution peak at time = {likely_time:.6e}");
-      }
+        let time_length = distribution.likely_time();
+        if let Some(likely_time) = time_length {
+          debug!("Edge {edge_key:?}: distribution peak at time = {likely_time:.6e}");
+        }
 
-      edge.set_time_length(distribution.likely_time());
-      edge.set_branch_length_distribution(Some(distribution));
-      Ok(())
-    })?;
+        edge.set_time_length(time_length);
+        Ok((edge_key, time_length, distribution))
+      },
+    )
+    .collect::<Result<Vec<_>, Report>>()?;
+
+  for (key, time_length, distribution) in distributions {
+    let entry = state.edge_mut(key);
+    entry.time_length = time_length;
+    entry.branch_length_distribution = Some(distribution);
+  }
   Ok(())
 }
 
@@ -253,31 +291,79 @@ where
 pub(super) fn create_branch_distributions_input_mode<N, E>(
   graph: &Graph<N, E, ()>,
   clock_rate: f64,
+  state: &mut TimetreeState,
 ) -> Result<(), Report>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + HasBranchLength + TimetreeEdge,
 {
-  graph.get_edges().par_iter().for_each(|edge_ref| {
-    let mut edge = edge_ref.write_arc().payload().write_arc();
-    // TODO: this is wrong. The branch length distribution should be a gamma distribution with branch_length/one_mutation
-    // as the shape parameter. n_mut = branch_length/one_mutation --> P(dt) = (mu*dt)^n_mut * exp(-mu*dt) / n_mut!
-    let time_duration = if let Some(branch_length) = edge.branch_length() {
-      // Convert branch length (substitutions/site) to time duration (years)
-      // gamma > 1 means faster evolution, so same substitutions correspond to shorter time
-      let effective_clock_rate = clock_rate * edge.gamma();
-      Some(branch_length / effective_clock_rate)
-    } else {
-      edge.time_length()
-    };
+  // Build each edge's point branch-length distribution in parallel, writing its time length
+  // (transitional) to the payload, and carry the distribution out to insert into the value serially.
+  // An edge with neither a branch length nor a time length is left untouched: its previous value-side
+  // distribution and time length carry over unchanged, as its previous payload values did before.
+  let distributions: Vec<(GraphEdgeKey, f64, Arc<Distribution<NegLog>>)> = graph
+    .get_edges()
+    .par_iter()
+    .filter_map(|edge_ref| {
+      let key = edge_ref.read_arc().key();
+      let mut edge = edge_ref.write_arc().payload().write_arc();
+      // TODO: this is wrong. The branch length distribution should be a gamma distribution with branch_length/one_mutation
+      // as the shape parameter. n_mut = branch_length/one_mutation --> P(dt) = (mu*dt)^n_mut * exp(-mu*dt) / n_mut!
+      let time_duration = if let Some(branch_length) = edge.branch_length() {
+        // Convert branch length (substitutions/site) to time duration (years)
+        // gamma > 1 means faster evolution, so same substitutions correspond to shorter time
+        let effective_clock_rate = clock_rate * edge.gamma();
+        Some(branch_length / effective_clock_rate)
+      } else {
+        edge.time_length()
+      };
 
-    if let Some(time_duration) = time_duration {
-      // Negative-log ordinate `0` is the `NegLog` multiplicative identity (probability 1).
-      let distribution = Distribution::point(time_duration, 0.0);
-      edge.set_time_length(Some(time_duration));
-      edge.set_branch_length_distribution(Some(Arc::new(distribution)));
-    }
-  });
+      time_duration.map(|time_duration| {
+        // Negative-log ordinate `0` is the `NegLog` multiplicative identity (probability 1).
+        let distribution = Arc::new(Distribution::point(time_duration, 0.0));
+        edge.set_time_length(Some(time_duration));
+        (key, time_duration, distribution)
+      })
+    })
+    .collect();
+
+  for (key, time_duration, distribution) in distributions {
+    let entry = state.edge_mut(key);
+    entry.time_length = Some(time_duration);
+    entry.branch_length_distribution = Some(distribution);
+  }
 
   Ok(())
+}
+
+/// The per-edge branch length each post-commit marginal reconstruction propagates sequence profiles
+/// along, keyed by edge, sourcing the clock-constrained length from the routed commit map.
+///
+/// The timetree counterpart of [`profile_branch_lengths`](crate::ancestral::marginal::profile_branch_lengths):
+/// the value is the committed clock length held in `clock_branch_lengths` when the edge has one, and
+/// the edge's own branch length otherwise. Used only after a commit, where the clock length has been
+/// established; before the first commit the two collectors agree, because no clock length exists yet.
+pub fn timetree_branch_lengths<N, E, D>(
+  graph: &Graph<N, E, D>,
+  clock_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+) -> BTreeMap<GraphEdgeKey, f64>
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
+  graph
+    .get_edges()
+    .iter()
+    .map(|edge| {
+      let edge = edge.read_arc();
+      let key = edge.key();
+      let branch_length = clock_branch_lengths
+        .get(&key)
+        .copied()
+        .or_else(|| edge.payload().read_arc().branch_length())
+        .unwrap_or(0.0);
+      (key, branch_length)
+    })
+    .collect()
 }
