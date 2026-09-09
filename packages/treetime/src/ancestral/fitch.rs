@@ -24,9 +24,7 @@ use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, NodeAncestralOps};
-use treetime_graph::pass::{
-  GraphPass, GraphPassBackwardContext, GraphPassDependencies, GraphPassNodeOutput, GraphPassSlot,
-};
+use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
@@ -266,34 +264,30 @@ where
     let mut partition = partition.write_arc();
     let alphabet = partition.alphabet().clone();
     let (nodes, edges) = partition.storage_mut();
-    let mut pass = GraphPass::new(graph, nodes, edges, |key| {
+    let pass = GraphPass::new(graph, nodes, edges, |key| {
       Err(make_report!(
         "Partition node {key} is missing before the Fitch forward pass"
       ))
     })?;
-    let result =
-      pass.try_for_each_forward(|dependencies, slot| run_fitch_forward_indexed(&alphabet, dependencies, slot));
-    let (nodes, edges) = pass.into_maps()?;
-    *partition.nodes_mut() = nodes;
-    *partition.edges_mut() = edges;
-    result?;
+    let outputs = pass.try_map_forward(|context| run_fitch_forward_indexed(&alphabet, context))?;
+    *partition.nodes_mut() = outputs.nodes;
+    *partition.edges_mut() = outputs.edges;
   }
   Ok(())
 }
 
 fn run_fitch_forward_indexed(
   alphabet: &Alphabet,
-  dependencies: &GraphPassDependencies<SparseNodePartition, SparseEdgePartition>,
-  slot: &mut GraphPassSlot<SparseNodePartition, SparseEdgePartition>,
-) -> Result<(), Report> {
-  let node_data = &mut slot.node;
-  if let Some(parent_key) = slot.parent_key {
-    let (_, edge) = slot
-      .parent_edge
-      .as_mut()
-      .expect("Non-root node must own its parent edge");
-    let parent = &dependencies.node(parent_key).seq;
-    let seq = &mut node_data.seq;
+  context: GraphPassForwardContext<'_, SparseNodePartition, SparseEdgePartition, SparseNodePartition>,
+) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report> {
+  let mut node = context.input;
+
+  // The forward pass produces the durable edge data for the asymmetric Fitch case, so a non-root
+  // node reuses and extends its moved-in parent edge rather than building a fresh one: the edge
+  // arrived through the backward pass carrying fields that must survive here.
+  let parent_message = if let Some((_, mut edge)) = context.parent_edge {
+    let parent = &context.parent.expect("Non-root node must have a parent").seq;
+    let seq = &mut node.seq;
     seq.composition = parent.composition.clone();
 
     for r in &seq.non_char {
@@ -337,26 +331,29 @@ fn run_fitch_forward_indexed(
 
     edge.extend_fitch_subs(subs);
     edge.indels.extend(indels);
+    Some(edge)
   } else {
-    let seq = &mut node_data.seq;
+    let seq = &mut node.seq;
     resolve_root_forward(
       &mut seq.sequence,
       &seq.fitch.variable,
       &mut seq.fitch.chosen_state,
       alphabet,
     );
-  }
+    None
+  };
 
-  let seq = &mut node_data.seq;
+  let seq = &mut node.seq;
   finalize_sequence_forward(
     &mut seq.sequence,
     &seq.gaps,
     &seq.unknown,
     &mut seq.composition,
     alphabet,
-    slot.parent_key.is_none(),
+    context.is_root,
   );
-  Ok(())
+
+  Ok(GraphPassNodeOutput { node, parent_message })
 }
 
 fn fitch_cleanup<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
