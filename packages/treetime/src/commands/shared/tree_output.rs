@@ -5,7 +5,7 @@ use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
 use crate::commands::mugration::augur_node_data::{build_confidence_map, compute_entropy};
 use crate::commands::optimize::result::OptimizeGraphData;
 use crate::commands::prune::result::PruneGraphData;
-use crate::commands::timetree::result::TimetreeGraphData;
+use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut};
 use crate::mugration::result::MugrationGraphData;
 use crate::partition::traits::{BranchTopology, PartitionBranchOps};
 use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
@@ -157,6 +157,8 @@ pub fn write_mugration_tree_outputs(
 
 pub fn write_timetree_tree_outputs(
   graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
+  nodes: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
+  edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
@@ -166,8 +168,8 @@ pub fn write_timetree_tree_outputs(
     outputs,
     providers,
     "timetree",
-    || timetree_to_auspice(graph, &updated),
-    || timetree_to_phyloxml(graph),
+    || timetree_to_auspice(graph, nodes, &updated),
+    || timetree_to_phyloxml(graph, nodes, edges),
     || timetree_to_mat(graph),
   )
 }
@@ -370,6 +372,7 @@ pub(crate) fn mugration_to_auspice(
 
 pub(crate) fn timetree_to_auspice(
   graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
+  nodes: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   updated: &str,
 ) -> Result<AuspiceTree, Report> {
   let root_sequences = timetree_root_sequences(graph)?;
@@ -387,15 +390,16 @@ pub(crate) fn timetree_to_auspice(
     !graph.data().partitions.is_empty(),
   );
   auspice_from_graph(graph, data, |context| {
+    let out = &nodes[&context.node_key];
     let name = node_name(context.node_key, context.node);
-    let div = timetree_divergence(graph, context.node_key, context.node)?;
+    let div = timetree_divergence(graph, context.node_key, out.div)?;
     let confidence = timetree_date_confidence(graph, context.node_key, &name)?;
     Ok(auspice_node(
       name.clone(),
       finite_number(Some(div), 6, "timetree", &name, "div")?,
-      finite_number(context.node.time, 3, "timetree", &name, "date")?,
+      finite_number(out.time, 3, "timetree", &name, "date")?,
       confidence,
-      Some(context.node.bad_branch || context.node.is_outlier),
+      Some(out.bad_branch || out.is_outlier),
       BTreeMap::new(),
       group_mutations(timetree_mutations(graph, context.edge_key)?)?,
       None,
@@ -711,36 +715,40 @@ pub(crate) fn mugration_to_phyloxml(graph: &GraphAncestral<MugrationGraphData>) 
 
 pub(crate) fn timetree_to_phyloxml(
   graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
+  nodes: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
+  edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
 ) -> Result<Phyloxml, Report> {
   phyloxml_from_graph(graph, "TreeTime timetree analysis", |context| {
+    let out = &nodes[&context.node_key];
+    let gamma = context.edge_key.map_or(1.0, |edge_key| edges[&edge_key].gamma);
     let name = node_name(context.node_key, context.node);
-    let divergence = timetree_divergence(graph, context.node_key, context.node)?;
+    let divergence = timetree_divergence(graph, context.node_key, out.div)?;
     ensure_finite(divergence, "timetree", &name, "divergence")?;
-    ensure_optional_finite(context.node.time, "timetree", &name, "date")?;
-    ensure_finite(context.edge.map_or(1.0, |edge| edge.gamma), "timetree", &name, "gamma")?;
+    ensure_optional_finite(out.time, "timetree", &name, "date")?;
+    ensure_finite(gamma, "timetree", &name, "gamma")?;
     let mut properties = vec![
       property(REF_DIV, DT_DOUBLE, APPLIES_NODE, &divergence.to_string()),
       property(
         REF_BAD_BRANCH,
         DT_BOOLEAN,
         APPLIES_NODE,
-        if context.node.bad_branch || context.node.is_outlier {
+        if out.bad_branch || out.is_outlier {
           "true"
         } else {
           "false"
         },
       ),
     ];
-    if timetree_date_is_inferred(graph, context.node_key, context.node) == Some(true) {
+    if timetree_date_is_inferred(graph, context.node_key, context.node, out.time) == Some(true) {
       properties.push(property(REF_DATE_INFERRED, DT_BOOLEAN, APPLIES_NODE, "true"));
     }
-    if let Some(edge) = context.edge {
-      properties.push(property(REF_GAMMA, DT_DOUBLE, APPLIES_BRANCH, &edge.gamma.to_string()));
+    if context.edge_key.is_some() {
+      properties.push(property(REF_GAMMA, DT_DOUBLE, APPLIES_BRANCH, &gamma.to_string()));
     }
     for mutation in timetree_mutations(graph, context.edge_key)? {
       properties.push(mutation_property(&mutation)?);
     }
-    let date = context.node.time.map(|value| {
+    let date = out.time.map(|value| {
       let confidence = graph
         .data()
         .confidence_intervals
@@ -754,11 +762,8 @@ pub(crate) fn timetree_to_phyloxml(
         unit: Some("year".to_owned()),
       }
     });
-    let mut clade = empty_phyloxml_clade(
-      context.node.base.name.clone(),
-      context.edge.and_then(HasBranchLength::branch_length),
-    );
-    clade.confidence = input_branch_confidence(context.node.base.confidence, "timetree", &name)?;
+    let mut clade = empty_phyloxml_clade(out.name.clone(), context.edge.and_then(HasBranchLength::branch_length));
+    clade.confidence = input_branch_confidence(out.confidence, "timetree", &name)?;
     clade.date = date;
     clade.property = properties;
     clade.sequence = phyloxml_sequences(&timetree_node_sequences(graph, context.node_key));
@@ -1433,9 +1438,9 @@ fn mugration_transition_label(
 fn timetree_divergence(
   graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
   node_key: GraphNodeKey,
-  node: &NodeTimetree,
+  div: f64,
 ) -> Result<f64, Report> {
-  graph.data().mutation_counts.as_ref().map_or(Ok(node.div), |counts| {
+  graph.data().mutation_counts.as_ref().map_or(Ok(div), |counts| {
     let mut key = node_key;
     let mut count = 0;
     while let Some((parent, edge)) = graph.node_parent(key)? {
@@ -1470,12 +1475,13 @@ fn timetree_date_is_inferred(
   graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
   node_key: GraphNodeKey,
   node: &NodeTimetree,
+  time: Option<f64>,
 ) -> Option<bool> {
   let dates = graph.data().dates.as_ref()?;
   let name = node.base.name.as_ref();
   Some(
     name.and_then(|name| dates.get(name)).and_then(Option::as_ref).is_none()
-      && node.time.is_some()
+      && time.is_some()
       && graph.get_node(node_key).is_some(),
   )
 }

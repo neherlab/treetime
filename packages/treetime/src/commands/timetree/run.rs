@@ -10,18 +10,21 @@ use crate::commands::timetree::output::augur_node_data::write_augur_node_data_js
 use crate::commands::timetree::output::coalescent::{
   CoalescentOutput, write_coalescent_delimited, write_coalescent_json,
 };
-use crate::commands::timetree::result::{TimetreeGraphData, TimetreeResult};
+use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut, TimetreeResult};
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
+use crate::partition::timetree::partition::GraphTimetree;
 use crate::partition::traits::MutationCommentProvider;
 use crate::seq::div::compute_edge_mutation_counts;
 use crate::timetree::confidence::write_confidence_intervals_file;
 use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
 use eyre::{Report, WrapErr};
 use log::{debug, info, warn};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime_graph::assign_node_names::assign_node_names;
-use treetime_graph::node::{Described, Named};
+use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::node::{Described, GraphNodeKey, Named};
 use treetime_io::fasta::FastaWriter;
 use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
@@ -196,6 +199,8 @@ pub fn run_timetree_estimation(
     .resolve_topology_order(&graph, Some(input_leaf_order))?;
   topology_order.apply(&mut graph)?;
 
+  let (nodes, edges) = gather_timetree_outputs(&graph);
+
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
     match graph.data().confidence_intervals.as_ref() {
       Some(intervals) => {
@@ -261,9 +266,9 @@ pub fn run_timetree_estimation(
       let guard = graph.data().partitions[0].read_arc();
       let provider = MutationCommentProvider::new(&*guard, &graph);
       let providers = CommentProviders::new().with(&provider);
-      write_timetree_tree_outputs(&graph, &resolved.tree_outputs, &providers)?;
+      write_timetree_tree_outputs(&graph, &nodes, &edges, &resolved.tree_outputs, &providers)?;
     } else {
-      write_timetree_tree_outputs(&graph, &resolved.tree_outputs, &CommentProviders::new())?;
+      write_timetree_tree_outputs(&graph, &nodes, &edges, &resolved.tree_outputs, &CommentProviders::new())?;
     }
   }
 
@@ -271,6 +276,7 @@ pub fn run_timetree_estimation(
     let alignment = args.alignment.alignment.first().map(PathBuf::as_path);
     write_augur_node_data_json(
       &graph,
+      &nodes,
       &graph.data().clock_model,
       graph.data().confidence_intervals.as_deref(),
       graph.data().dates.as_ref(),
@@ -291,7 +297,60 @@ pub fn run_timetree_estimation(
   }
 
   progress.report("Done", 1.0, "");
-  Ok(TimetreeResult { graph })
+  Ok(TimetreeResult { graph, nodes, edges })
+}
+
+/// Gather the per-node and per-edge timetree outputs off the final tree into keyed value maps.
+///
+/// Runs after the pipeline and topology ordering, so it reads the final divergence, estimated time,
+/// exclusion flags, and per-edge branch lengths and relaxed-clock rates of the ordered node set. The
+/// pipeline passes still write these fields onto the graph payloads (the inference passes read the
+/// state there); this step surfaces them as a standalone value the output writers consume.
+fn gather_timetree_outputs(
+  graph: &GraphTimetree<TimetreeGraphData>,
+) -> (
+  BTreeMap<GraphNodeKey, TimetreeNodeOut>,
+  BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
+) {
+  let nodes = graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let node = node.read_arc();
+      let key = node.key();
+      let payload = node.payload().read_arc();
+      let out = TimetreeNodeOut {
+        name: payload.base.name.clone(),
+        desc: payload.base.desc.clone(),
+        confidence: payload.base.confidence,
+        time: payload.time,
+        div: payload.div,
+        is_outlier: payload.is_outlier,
+        bad_branch: payload.bad_branch,
+        rate_susceptibility_dates: payload.rate_susceptibility_dates,
+      };
+      (key, out)
+    })
+    .collect();
+
+  let edges = graph
+    .get_edges()
+    .iter()
+    .map(|edge| {
+      let edge = edge.read_arc();
+      let key = edge.key();
+      let payload = edge.payload().read_arc();
+      let out = TimetreeEdgeOut {
+        branch_length: payload.branch_length(),
+        time_length: payload.time_length,
+        clock_branch_length: payload.clock_branch_length,
+        gamma: payload.gamma,
+      };
+      (key, out)
+    })
+    .collect();
+
+  (nodes, edges)
 }
 
 /// Writes one coalescent output file, or reports the absence of a coalescent.

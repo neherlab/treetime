@@ -396,7 +396,7 @@ mod tests {
     use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
     use crate::commands::optimize::result::OptimizeGraphData;
     use crate::commands::prune::result::PruneGraphData;
-    use crate::commands::timetree::result::TimetreeGraphData;
+    use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut};
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::gtr::gtr::{GTR, GTRParams};
     use crate::mugration::result::{MugrationGraphData, MugrationResult};
@@ -411,7 +411,7 @@ mod tests {
     use std::collections::BTreeMap;
     use std::error::Error as StdError;
     use std::io;
-    use treetime_graph::edge::{GraphEdge, HasBranchLength};
+    use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNode;
     use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
@@ -529,7 +529,8 @@ mod tests {
       let clock_graph = clock_graph()?;
       let clock = clock_to_auspice(&clock_graph, &clock_nodes(&clock_graph), "2026-07-19")?;
       let mugration = mugration_to_auspice(&mugration_graph()?, "2026-07-19")?;
-      let timetree = timetree_to_auspice(&timetree_graph()?, "2026-07-19")?;
+      let timetree_graph = timetree_graph()?;
+      let timetree = timetree_to_auspice(&timetree_graph, &timetree_nodes(&timetree_graph), "2026-07-19")?;
 
       [ancestral, optimize, prune, clock, mugration, timetree]
         .iter()
@@ -547,7 +548,14 @@ mod tests {
           clock_to_phyloxml(&clock_graph, &clock_nodes(&clock_graph))?
         },
         mugration_to_phyloxml(&mugration_graph()?)?,
-        timetree_to_phyloxml(&timetree_graph()?)?,
+        {
+          let timetree_graph = timetree_graph()?;
+          timetree_to_phyloxml(
+            &timetree_graph,
+            &timetree_nodes(&timetree_graph),
+            &timetree_edges(&timetree_graph),
+          )?
+        },
       ])
     }
 
@@ -761,6 +769,52 @@ mod tests {
         None,
         None,
       )))
+    }
+
+    pub fn timetree_nodes(graph: &GraphTimetree<TimetreeGraphData>) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
+      graph
+        .get_nodes()
+        .iter()
+        .map(|node| {
+          let node = node.read_arc();
+          let key = node.key();
+          let payload = node.payload().read_arc();
+          (
+            key,
+            TimetreeNodeOut {
+              name: payload.base.name.clone(),
+              desc: payload.base.desc.clone(),
+              confidence: payload.base.confidence,
+              time: payload.time,
+              div: payload.div,
+              is_outlier: payload.is_outlier,
+              bad_branch: payload.bad_branch,
+              rate_susceptibility_dates: payload.rate_susceptibility_dates,
+            },
+          )
+        })
+        .collect()
+    }
+
+    pub fn timetree_edges(graph: &GraphTimetree<TimetreeGraphData>) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
+      graph
+        .get_edges()
+        .iter()
+        .map(|edge| {
+          let edge = edge.read_arc();
+          let key = edge.key();
+          let payload = edge.payload().read_arc();
+          (
+            key,
+            TimetreeEdgeOut {
+              branch_length: payload.branch_length(),
+              time_length: payload.time_length,
+              clock_branch_length: payload.clock_branch_length,
+              gamma: payload.gamma,
+            },
+          )
+        })
+        .collect()
     }
 
     fn set_mat_branch_lengths<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>

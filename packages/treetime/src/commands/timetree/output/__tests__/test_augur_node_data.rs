@@ -157,6 +157,7 @@ mod tests {
   mod helpers {
     use crate::clock::clock_model::{ClockModel, ClockModelStats, RegressionStats};
     use crate::commands::timetree::output::augur_node_data::build_augur_node_data_json;
+    use crate::commands::timetree::result::TimetreeNodeOut;
     use crate::partition::timetree::partition::GraphTimetree;
     use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
     use crate::timetree::confidence::NodeConfidenceInterval;
@@ -164,7 +165,7 @@ mod tests {
     use std::collections::BTreeMap;
     use std::path::Path;
     use treetime_graph::edge::GraphEdgeKey;
-    use treetime_graph::node::Named;
+    use treetime_graph::node::{GraphNodeKey, Named};
     use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
@@ -180,6 +181,7 @@ mod tests {
       pub fn write_json(&self) -> String {
         let data = build_augur_node_data_json(
           &self.graph,
+          &timetree_nodes(&self.graph),
           &self.clock_model,
           Some(&self.intervals),
           Some(&self.dates),
@@ -203,6 +205,7 @@ mod tests {
           .collect();
         let data = build_augur_node_data_json(
           &self.graph,
+          &timetree_nodes(&self.graph),
           &self.clock_model,
           Some(&self.intervals),
           Some(&self.dates),
@@ -268,6 +271,31 @@ mod tests {
         dates,
         intervals,
       }
+    }
+
+    fn timetree_nodes<D: Send + Sync>(graph: &GraphTimetree<D>) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
+      graph
+        .get_nodes()
+        .iter()
+        .map(|node| {
+          let node = node.read_arc();
+          let key = node.key();
+          let payload = node.payload().read_arc();
+          (
+            key,
+            TimetreeNodeOut {
+              name: payload.base.name.clone(),
+              desc: payload.base.desc.clone(),
+              confidence: payload.base.confidence,
+              time: payload.time,
+              div: payload.div,
+              is_outlier: payload.is_outlier,
+              bad_branch: payload.bad_branch,
+              rate_susceptibility_dates: payload.rate_susceptibility_dates,
+            },
+          )
+        })
+        .collect()
     }
 
     fn make_node(name: &str, time: f64) -> NodeTimetree {

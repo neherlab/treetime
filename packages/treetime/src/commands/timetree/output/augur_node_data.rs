@@ -1,4 +1,5 @@
 use crate::clock::clock_model::ClockModel;
+use crate::commands::timetree::result::TimetreeNodeOut;
 use crate::partition::timetree::partition::GraphTimetree;
 use crate::partition::traits::BranchTopology;
 use crate::timetree::confidence::NodeConfidenceInterval;
@@ -51,6 +52,7 @@ use util_augur_node_data_json::{
 /// and `clock_length` remain time-valued (years) regardless.
 pub fn build_augur_node_data_json<D: Send + Sync>(
   graph: &GraphTimetree<D>,
+  outputs: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   clock_model: &ClockModel,
   confidence_intervals: Option<&[NodeConfidenceInterval]>,
   dates: Option<&DatesMap>,
@@ -64,12 +66,13 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
   for node in graph.get_nodes() {
     let node_guard = node.read_arc();
     let node_key = node_guard.key();
+    let out = &outputs[&node_key];
     let is_leaf = node_guard.is_leaf();
     let payload = node_guard.payload().read_arc();
     let node_name = payload
       .name()
       .map_or_else(|| format!("node_{}", node_key.as_usize()), |n| n.as_ref().to_owned());
-    let numdate = payload.time;
+    let numdate = out.time;
 
     // Per-branch fields live on the parent edge. The root has no incoming branch,
     // so its branch length, clock length, and mutation length are all zero. augur's
@@ -85,7 +88,8 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
             .ok_or_else(|| make_internal_report!("Timetree node data: missing edge {edge_key:?}"))?;
           edge.read_arc().payload().read_arc().branch_length()
         };
-        let clock_length = parent_time(graph, parent_key)?
+        let clock_length = outputs[&parent_key]
+          .time
           .zip(numdate)
           .map(|(parent, child)| child - parent);
         (clock_length.unwrap_or(0.0), clock_length, mutation_length)
@@ -111,7 +115,7 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
     let date = numdate.map(year_fraction_to_datestring);
     let num_date_confidence = ci_map.as_ref().and_then(|ci_map| ci_map.get(&node_key).copied());
 
-    let confidence = payload.base.confidence;
+    let confidence = out.confidence;
 
     nodes.insert(
       node_name,
@@ -147,6 +151,7 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
 
 pub fn write_augur_node_data_json<D: Send + Sync>(
   graph: &GraphTimetree<D>,
+  outputs: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   clock_model: &ClockModel,
   confidence_intervals: Option<&[NodeConfidenceInterval]>,
   dates: Option<&DatesMap>,
@@ -157,6 +162,7 @@ pub fn write_augur_node_data_json<D: Send + Sync>(
 ) -> Result<(), Report> {
   let data = build_augur_node_data_json(
     graph,
+    outputs,
     clock_model,
     confidence_intervals,
     dates,
@@ -190,16 +196,6 @@ fn build_clock(clock_model: &ClockModel) -> AugurNodeDataJsonClock {
     rate_std,
     other: BTreeMap::new(),
   }
-}
-
-/// Inferred numeric date (`numdate`) of a node by key, used for the parent endpoint
-/// of `clock_length = child.numdate - parent.numdate`.
-fn parent_time<D: Send + Sync>(graph: &GraphTimetree<D>, parent_key: GraphNodeKey) -> Result<Option<f64>, Report> {
-  let parent = graph
-    .get_node(parent_key)
-    .ok_or_else(|| make_internal_report!("Timetree node data: missing parent node {parent_key:?}"))?;
-  let time = parent.read_arc().payload().read_arc().time;
-  Ok(time)
 }
 
 /// Confidence-interval lookup keyed by `GraphNodeKey` for stable lookup
