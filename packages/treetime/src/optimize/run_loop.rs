@@ -3,7 +3,7 @@ use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;
 use crate::optimize::dispatch::run_optimize_mixed_inner;
 use crate::optimize::indel::{estimate_indel_rate, total_indel_log_lh};
-use crate::optimize::iteration::{apply_damping, restore_branch_lengths, save_branch_lengths};
+use crate::optimize::iteration::{apply_damping, save_branch_lengths};
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
@@ -15,6 +15,7 @@ use eyre::Report;
 use itertools::{Itertools, chain};
 use log::{debug, warn};
 use parking_lot::RwLock;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
@@ -41,6 +42,13 @@ use treetime_utils::make_error;
 /// shift the rate estimate. When `no_indels` is true, the rate is zero and
 /// the Poisson indel term drops out of both the likelihood evaluation and the
 /// per-edge optimizer.
+///
+/// Branch lengths are the loop's source of truth, held in a map keyed by edge id. The initial
+/// map is collected from the tree (the Newick-derived lengths after any initial guess and
+/// reroot); the marginal reconstruction reads it directly rather than reaching back off the
+/// graph edge, and the best map seen so far drives the worsening and numerical-failure rollback.
+/// The graph edge branch length is written once, at loop end, so the output writers still reading
+/// it see the final optimized (or rolled-back best) lengths.
 ///
 /// Per-iteration sequence:
 ///
@@ -77,17 +85,27 @@ pub fn run_optimize_loop(
     estimate_indel_rate(graph, mixed_partitions)
   };
 
+  // The loop's source of truth for branch lengths, keyed by edge id. Seeded from the tree and
+  // refreshed from it after every iteration's graph-native optimizer, damping, and topology
+  // cleanup; the marginal reconstruction reads it directly.
+  let mut branch_lengths = profile_branch_lengths(graph);
+
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
   let mut lh_prev = LogLh::IMPOSSIBLE;
   let mut lh_prev_prev = LogLh::IMPOSSIBLE;
 
   let mut best_lh = LogLh::IMPOSSIBLE;
-  let mut best_branch_lengths: Vec<f64> = Vec::new();
+  // Best branch lengths seen so far, keyed by edge id. `None` until the first finite iteration
+  // and reset whenever a topology change makes the keys stale, so a rollback never restores
+  // lengths keyed to a superseded tree. On a worsening or numerically failed iteration the loop
+  // recomputes the partitions from this map rather than restoring snapshotted partition state.
+  let mut best_branch_lengths: Option<BTreeMap<GraphEdgeKey, f64>> = None;
 
   for i in 0..max_iter {
     let iteration_lh = compute_iteration_likelihood(
       graph,
+      &branch_lengths,
       sparse_partitions,
       dense_partitions,
       mixed_partitions,
@@ -107,10 +125,10 @@ pub fn run_optimize_loop(
     );
 
     if !iteration_lh.total_lh.value().is_finite() {
-      if best_branch_lengths.len() == graph.get_edges().len() {
-        restore_branch_lengths(graph, &best_branch_lengths);
-        marginal_update(graph, &profile_branch_lengths(graph), sparse_partitions)?;
-        marginal_update(graph, &profile_branch_lengths(graph), dense_partitions)?;
+      if let Some(best) = &best_branch_lengths {
+        branch_lengths = best.clone();
+        marginal_update(graph, &branch_lengths, sparse_partitions)?;
+        marginal_update(graph, &branch_lengths, dense_partitions)?;
       }
       stopped_at = Some((i, ConvergenceReason::NumericalFailure));
       break;
@@ -118,7 +136,7 @@ pub fn run_optimize_loop(
 
     if iteration_lh.total_lh > best_lh {
       best_lh = iteration_lh.total_lh;
-      best_branch_lengths = save_branch_lengths(graph);
+      best_branch_lengths = Some(branch_lengths.clone());
     }
 
     if (iteration_lh.total_lh - lh_prev).abs() < dp.abs() {
@@ -132,13 +150,19 @@ pub fn run_optimize_loop(
     }
 
     if i >= 2 && iteration_lh.total_lh < lh_prev && lh_prev >= best_lh {
-      restore_branch_lengths(graph, &best_branch_lengths);
-      marginal_update(graph, &profile_branch_lengths(graph), sparse_partitions)?;
-      marginal_update(graph, &profile_branch_lengths(graph), dense_partitions)?;
+      if let Some(best) = &best_branch_lengths {
+        branch_lengths = best.clone();
+        marginal_update(graph, &branch_lengths, sparse_partitions)?;
+        marginal_update(graph, &branch_lengths, dense_partitions)?;
+      }
       stopped_at = Some((i, ConvergenceReason::Worsened));
       break;
     }
 
+    // The per-edge optimizer, damping, and topology cleanup mutate the graph edges in place.
+    // The graph and `branch_lengths` are equal here (the map was collected from the tree and
+    // refreshed from it at the end of every iteration), so these steps run on the current
+    // lengths without a separate materialization.
     let old_branch_lengths = save_branch_lengths(graph);
     run_optimize_mixed_inner(graph, mixed_partitions, opt_method, indel_rate, no_indels)?;
 
@@ -159,13 +183,39 @@ pub fn run_optimize_loop(
     )?;
     if topology_changed {
       best_lh = LogLh::IMPOSSIBLE;
+      best_branch_lengths = None;
     }
+
+    // Refresh the source-of-truth map from the tree the graph-native steps just updated.
+    branch_lengths = profile_branch_lengths(graph);
 
     lh_prev_prev = lh_prev;
     lh_prev = iteration_lh.total_lh;
   }
 
+  // Single commit point: write the final branch lengths onto the graph edges the output writers
+  // still read. On a normal exit the tree already holds them; after a rollback this writes the
+  // recovered best lengths back onto the tree.
+  commit_branch_lengths_to_graph(graph, &branch_lengths);
+
   Ok(OptimizeLoopResult { lh_history, stopped_at })
+}
+
+/// Write the loop's branch-length map onto the graph edges.
+///
+/// The transitional bridge to the output writers, which still read the branch length off the
+/// edge payload. Called once at the end of [`run_optimize_loop`] so the tree carries the final
+/// optimized (or rolled-back best) lengths. The map is keyed by the current edge set, so every
+/// graph edge has an entry.
+fn commit_branch_lengths_to_graph(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, f64>) {
+  for edge_ref in graph.get_edges() {
+    let key = edge_ref.read_arc().key();
+    edge_ref
+      .write_arc()
+      .payload()
+      .write_arc()
+      .set_branch_length(Some(branch_lengths[&key]));
+  }
 }
 
 /// Why the optimization loop stopped early (before exhausting `max_iter`).
@@ -231,14 +281,15 @@ struct OptimizeIterationLikelihood {
 
 fn compute_iteration_likelihood(
   graph: &GraphAncestral,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   mixed_partitions: &PartitionOptimizeVec,
   indel_rate: f64,
   no_indels: bool,
 ) -> Result<OptimizeIterationLikelihood, Report> {
-  let sparse_lh = marginal_update(graph, &profile_branch_lengths(graph), sparse_partitions)?;
-  let dense_lh = marginal_update(graph, &profile_branch_lengths(graph), dense_partitions)?;
+  let sparse_lh = marginal_update(graph, branch_lengths, sparse_partitions)?;
+  let dense_lh = marginal_update(graph, branch_lengths, dense_partitions)?;
   let indel_lh = if no_indels {
     LogLh::ZERO
   } else {
