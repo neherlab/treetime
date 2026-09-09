@@ -1,10 +1,10 @@
-use crate::clock::clock_graph::GraphClock;
+use crate::clock::clock_graph::{EdgeClock, GraphClock, NodeClock};
 use crate::clock::clock_model::{ClockLine, ClockModel};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use treetime_graph::edge::HasBranchLength;
-use treetime_graph::pass::with_graph_payloads;
+use treetime_graph::pass::{GraphPassNodeOutput, with_graph_payloads_map};
 use treetime_io::csv::CsvStructFileWriter;
 use treetime_utils::array::serde::skip_serializing_if_false;
 
@@ -27,16 +27,19 @@ pub fn gather_clock_regression_results(
   clock_model: &ClockModel,
 ) -> Result<Vec<ClockRegressionResult>, Report> {
   // Assign divergence to each node: div = parent.div + branch_length, parents before children.
-  with_graph_payloads(graph, |pass| {
-    pass.try_for_each_forward(|dependencies, slot| {
-      let div = match (slot.parent_key, slot.parent_edge.as_ref()) {
-        (Some(parent_key), Some((_, edge))) => {
-          dependencies.node(parent_key).div + edge.branch_length().unwrap_or_default()
-        },
-        _ => 0.0,
+  with_graph_payloads_map(graph, |pass| {
+    pass.try_map_forward::<NodeClock, EdgeClock>(|context| {
+      let mut node = context.input;
+      let parent_message = if let Some((_, edge)) = context.parent_edge {
+        let parent = context.parent.expect("Non-root node must have a parent");
+        let div = parent.div + edge.branch_length().unwrap_or_default();
+        node.div = div;
+        Some(edge)
+      } else {
+        node.div = 0.0;
+        None
       };
-      slot.node.div = div;
-      Ok(())
+      Ok(GraphPassNodeOutput { node, parent_message })
     })
   })?;
 
