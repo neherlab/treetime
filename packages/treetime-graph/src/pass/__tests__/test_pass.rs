@@ -6,7 +6,10 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_utils::{assert_error, make_report, o};
 
-  use self::helpers::{edge_lengths, fixture_tree, key_payloads, node_names, pass_values, values_by_name};
+  use self::helpers::{
+    edge_lengths, edge_values_by_child_name, fixture_tree, key_payloads, node_names, pass_values, run_backward_sum,
+    values_by_name,
+  };
 
   #[test]
   fn test_pass_backward_visits_children_before_parent() -> Result<(), Report> {
@@ -35,6 +38,57 @@ mod tests {
     };
 
     assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pass_map_backward_collects_returned_subtree_sums() -> Result<(), Report> {
+    // Tree `((A,B)AB,C)root` with distinct own-values per node:
+    //   A=1, B=2, C=3, AB=10, root=100.
+    // Each node returns NodeOut = own-value + sum of children NodeOut, and sends its NodeOut up as
+    // the message on its own parent edge. Derived by hand from the tree:
+    //   A=1, B=2, C=3 (leaves), AB=10+1+2=13, root=100+13+3=116 (= total of all own-values).
+    let graph = fixture_tree()?;
+    let outputs = run_backward_sum(&graph, 4)?;
+
+    let actual_nodes = values_by_name(&graph, &outputs.nodes);
+    let expected_nodes = btreemap! {
+      o!("A") => 1,
+      o!("B") => 2,
+      o!("C") => 3,
+      o!("AB") => 13,
+      o!("root") => 116,
+    };
+    assert_eq!(expected_nodes, actual_nodes);
+
+    // The root's total (116) and the interior AB subtree sum (13) are the load-bearing checks.
+    assert_eq!(&116, &actual_nodes[&o!("root")]);
+    assert_eq!(&13, &actual_nodes[&o!("AB")]);
+
+    // Each edge carries the child's upward message, equal to that child's NodeOut. The root has no
+    // parent edge, so it contributes no message.
+    let actual_edges = edge_values_by_child_name(&graph, &outputs.edges)?;
+    let expected_edges = btreemap! {
+      o!("A") => 1,
+      o!("B") => 2,
+      o!("C") => 3,
+      o!("AB") => 13,
+    };
+    assert_eq!(expected_edges, actual_edges);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_pass_map_backward_is_thread_count_independent() -> Result<(), Report> {
+    // Publication must be race-free: identical outputs under a 1-thread and a 4-thread rayon pool.
+    let graph = fixture_tree()?;
+
+    let single = run_backward_sum(&graph, 1)?;
+    let multi = run_backward_sum(&graph, 4)?;
+
+    assert_eq!(single.nodes, multi.nodes);
+    assert_eq!(single.edges, multi.edges);
     Ok(())
   }
 
@@ -118,8 +172,12 @@ mod tests {
     use crate::edge::{GraphEdge, GraphEdgeKey};
     use crate::graph::Graph;
     use crate::node::{GraphNode, GraphNodeKey};
+    use crate::pass::{GraphBackwardOutputs, GraphPass, GraphPassNodeBackward};
     use eyre::Report;
+    use maplit::btreemap;
+    use rayon::ThreadPoolBuilder;
     use std::collections::BTreeMap;
+    use treetime_utils::o;
 
     /// `((A,B)AB,C)root` with branch lengths on every edge.
     pub fn fixture_tree() -> Result<Graph<TestNode, TestEdge, ()>, Report> {
@@ -154,6 +212,68 @@ mod tests {
         .map(|edge| (edge.read_arc().key(), 0))
         .collect();
       (nodes, edges)
+    }
+
+    /// Pass payloads with a distinct own-value per node (by name) and zero edge inputs.
+    pub fn own_value_pass_values(
+      graph: &Graph<TestNode, TestEdge, ()>,
+    ) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<GraphEdgeKey, usize>) {
+      let by_name = btreemap! {
+        o!("A") => 1,
+        o!("B") => 2,
+        o!("C") => 3,
+        o!("AB") => 10,
+        o!("root") => 100,
+      };
+      let nodes = graph
+        .get_nodes()
+        .iter()
+        .map(|node| {
+          let node = node.read_arc();
+          (node.key(), by_name[&node.payload().read_arc().0])
+        })
+        .collect();
+      let edges = graph
+        .get_edges()
+        .iter()
+        .map(|edge| (edge.read_arc().key(), 0))
+        .collect();
+      (nodes, edges)
+    }
+
+    /// Run the value-returning backward map on a pool of `threads` workers, computing each node's
+    /// subtree sum and sending it up as the parent-edge message.
+    pub fn run_backward_sum(
+      graph: &Graph<TestNode, TestEdge, ()>,
+      threads: usize,
+    ) -> Result<GraphBackwardOutputs<usize, usize>, Report> {
+      let (mut nodes, mut edges) = own_value_pass_values(graph);
+      let pass = GraphPass::new(graph, &mut nodes, &mut edges, |_| Ok(0))?;
+      let pool = ThreadPoolBuilder::new().num_threads(threads).build()?;
+      pool.install(|| {
+        pass.try_map_backward(|context| {
+          let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
+          let node = context.input + children_sum;
+          let parent_message = (!context.is_root).then_some(node);
+          Ok(GraphPassNodeBackward { node, parent_message })
+        })
+      })
+    }
+
+    /// Map per-edge outputs to the name of the child node the edge points to.
+    pub fn edge_values_by_child_name(
+      graph: &Graph<TestNode, TestEdge, ()>,
+      values: &BTreeMap<GraphEdgeKey, usize>,
+    ) -> Result<BTreeMap<String, usize>, Report> {
+      values
+        .iter()
+        .map(|(edge_key, value)| {
+          let child_key = graph.get_target_node_key(*edge_key)?;
+          let child = graph.get_node(child_key).expect("Indexed child node must exist");
+          let name = child.read_arc().payload().read_arc().0.clone();
+          Ok((name, *value))
+        })
+        .collect()
     }
 
     /// Pass payloads keyed and valued by the underlying key index, for round-trip checks.
