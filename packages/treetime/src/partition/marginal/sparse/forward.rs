@@ -1,3 +1,5 @@
+use crate::alphabet::alphabet::Alphabet;
+use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::marginal::shared::normalize::{forward_log_lh_add_normalization, forward_log_lh_remove_child};
 use crate::partition::marginal::sparse::message::{
@@ -14,8 +16,8 @@ use std::collections::BTreeSet;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
-use treetime_graph::pass::{GraphPass, GraphPassDependencies, GraphPassSlot};
-use treetime_primitives::LogLh;
+use treetime_graph::pass::{GraphPass, GraphPassForwardContext, GraphPassNodeOutput};
+use treetime_primitives::{LogLh, Seq};
 use treetime_utils::interval::range::range_contains;
 
 pub fn process_forward_indexed<N, E>(
@@ -31,40 +33,38 @@ where
   let length = partition.length;
   let root_sequence = partition.root_sequence.clone();
   let (nodes, edges) = (&mut partition.nodes, &mut partition.edges);
-  let mut pass = GraphPass::new(graph, nodes, edges, |key| {
+  let pass = GraphPass::new(graph, nodes, edges, |key| {
     treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass")
   })?;
-  let result = pass.try_for_each_forward(|dependencies, slot| {
-    process_node_forward_indexed(graph, &alphabet, &gtr, length, &root_sequence, dependencies, slot)
-  });
-  let (nodes, edges) = pass.into_maps()?;
-  partition.nodes = nodes;
-  partition.edges = edges;
-  result
+  let outputs = pass
+    .try_map_forward(|context| process_node_forward_indexed(graph, &alphabet, &gtr, length, &root_sequence, context))?;
+  partition.nodes = outputs.nodes;
+  partition.edges = outputs.edges;
+  Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 fn process_node_forward_indexed<N, E>(
   graph: &Graph<N, E, ()>,
-  alphabet: &crate::alphabet::alphabet::Alphabet,
-  gtr: &crate::gtr::gtr::GTR,
+  alphabet: &Alphabet,
+  gtr: &GTR,
   length: usize,
-  root_sequence: &treetime_primitives::Seq,
-  dependencies: &GraphPassDependencies<SparseNodePartition, SparseEdgePartition>,
-  slot: &mut GraphPassSlot<SparseNodePartition, SparseEdgePartition>,
-) -> Result<(), Report>
+  root_sequence: &Seq,
+  context: GraphPassForwardContext<'_, SparseNodePartition, SparseEdgePartition, SparseNodePartition>,
+) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  if let Some(parent_key) = slot.parent_key {
-    let parent = dependencies.node(parent_key);
-    let (edge_key, edge_data) = slot
-      .parent_edge
-      .as_mut()
-      .expect("Non-root node must own its parent edge");
+  let mut node = context.input;
 
-    edge_data.msg_to_child = compute_msg_to_child(&slot.node, parent, edge_data)?;
+  let parent_message = if let Some((edge_key, mut edge_data)) = context.parent_edge {
+    let parent = context.parent.expect("Non-root node must have a parent");
+
+    // Reuse this node's moved-in parent-edge input and overwrite only the message and ML-subs fields,
+    // exactly as the in-place engine did. The edge already carries `msg_from_child` from the backward
+    // pass and `fitch_subs`/`transmission` from the Fitch pre-pass, and a fresh edge would corrupt the
+    // result.
+    edge_data.msg_to_child = compute_msg_to_child(&node, parent, &edge_data)?;
 
     let mut variable_pos = btreemap! {};
     let mut parent_state = btreemap! {};
@@ -76,7 +76,7 @@ where
       child_state.entry(mutation.pos()).or_insert(current_state);
     }
     for (pos, profile) in &edge_data.msg_to_child.variable {
-      if !range_contains(&slot.node.seq.non_char, *pos) {
+      if !range_contains(&node.seq.non_char, *pos) {
         variable_pos.entry(*pos).or_insert(profile.state);
         parent_state.entry(*pos).or_insert(profile.state);
       }
@@ -87,7 +87,7 @@ where
     }
 
     let branch_length = graph
-      .get_edge(*edge_key)
+      .get_edge(edge_key)
       .expect("Indexed edge must exist in graph")
       .read_arc()
       .payload()
@@ -112,31 +112,36 @@ where
     };
     // Persist the down-message only for tips: reconstruct_node_sequence imputes missing tip states
     // from it and has no branch length to recompute the propagation. Internal nodes never need it.
-    if graph.is_leaf(slot.key) {
+    if graph.is_leaf(context.key) {
       edge_data.msg_from_parent = msg_from_parent.clone();
     }
     let profile = combine_messages(
-      &slot.node.seq.composition,
+      &node.seq.composition,
       &[msg_from_parent, edge_data.msg_to_parent.clone()],
       &variable_pos,
       &[parent_state, child_state],
       alphabet,
       None,
     )?;
-    slot.node.profile = profile;
+    node.profile = profile;
 
     // Extend the parsimony chain. Leaves already hold their observed sequence, which is their
     // parsimony sequence; rebuilding it from the parent would discard the observed states a leaf
     // shares with its parent under Fitch compression.
-    if !graph.is_leaf(slot.key) && !parent.seq.sequence.is_empty() {
-      slot.node.seq.sequence = parsimony_seq(&parent.seq.sequence, edge_data, &slot.node, alphabet);
+    if !graph.is_leaf(context.key) && !parent.seq.sequence.is_empty() {
+      node.seq.sequence = parsimony_seq(&parent.seq.sequence, &edge_data, &node, alphabet);
     }
-    edge_data.set_ml_subs(compute_ml_subs_for_nodes(alphabet, parent, &slot.node, edge_data)?);
-  } else if slot.node.seq.sequence.is_empty() {
-    slot.node.seq.sequence = root_sequence.clone();
-  }
+    edge_data.set_ml_subs(compute_ml_subs_for_nodes(alphabet, parent, &node, &edge_data)?);
 
-  Ok(())
+    Some(edge_data)
+  } else {
+    if node.seq.sequence.is_empty() {
+      node.seq.sequence = root_sequence.clone();
+    }
+    None
+  };
+
+  Ok(GraphPassNodeOutput { node, parent_message })
 }
 
 fn compute_msg_to_child(
@@ -208,7 +213,7 @@ fn compute_msg_to_child(
 }
 
 fn compute_ml_subs_for_nodes(
-  alphabet: &crate::alphabet::alphabet::Alphabet,
+  alphabet: &Alphabet,
   parent: &SparseNodePartition,
   child: &SparseNodePartition,
   edge: &SparseEdgePartition,
