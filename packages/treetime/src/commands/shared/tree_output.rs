@@ -1,7 +1,7 @@
 use crate::ancestral::pipeline::AncestralPartition;
 use crate::clock::clock_graph::GraphClock;
 use crate::commands::ancestral::result::AncestralGraphData;
-use crate::commands::clock::run::ClockGraphData;
+use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
 use crate::commands::mugration::augur_node_data::{build_confidence_map, compute_entropy};
 use crate::commands::optimize::result::OptimizeGraphData;
 use crate::commands::prune::result::PruneGraphData;
@@ -122,6 +122,7 @@ pub fn write_prune_tree_outputs(
 
 pub fn write_clock_tree_outputs(
   graph: &GraphClock<ClockGraphData>,
+  nodes: &BTreeMap<GraphNodeKey, ClockNodeOut>,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
@@ -131,8 +132,8 @@ pub fn write_clock_tree_outputs(
     outputs,
     providers,
     "clock",
-    || clock_to_auspice(graph, &updated),
-    || clock_to_phyloxml(graph),
+    || clock_to_auspice(graph, nodes, &updated),
+    || clock_to_phyloxml(graph, nodes),
     || clock_to_mat(graph),
   )
 }
@@ -296,7 +297,11 @@ pub(crate) fn prune_to_auspice(graph: &GraphAncestral<PruneGraphData>, updated: 
   })
 }
 
-pub(crate) fn clock_to_auspice(graph: &GraphClock<ClockGraphData>, updated: &str) -> Result<AuspiceTree, Report> {
+pub(crate) fn clock_to_auspice(
+  graph: &GraphClock<ClockGraphData>,
+  nodes: &BTreeMap<GraphNodeKey, ClockNodeOut>,
+  updated: &str,
+) -> Result<AuspiceTree, Report> {
   let data = auspice_data(
     "TreeTime clock analysis",
     updated,
@@ -311,13 +316,14 @@ pub(crate) fn clock_to_auspice(graph: &GraphClock<ClockGraphData>, updated: &str
     false,
   );
   auspice_from_graph(graph, data, |context| {
+    let out = &nodes[&context.node_key];
     let name = node_name(context.node_key, context.node);
     Ok(auspice_node(
       name.clone(),
-      finite_number(Some(context.node.div), 6, "clock", &name, "div")?,
-      finite_number(context.node.time, 3, "clock", &name, "date")?,
+      finite_number(Some(out.div), 6, "clock", &name, "div")?,
+      finite_number(out.time, 3, "clock", &name, "date")?,
       None,
-      Some(context.node.bad_branch || context.node.is_outlier),
+      Some(out.bad_branch || out.is_outlier),
       BTreeMap::new(),
       BTreeMap::new(),
       None,
@@ -630,18 +636,22 @@ pub(crate) fn prune_to_phyloxml(graph: &GraphAncestral<PruneGraphData>) -> Resul
   })
 }
 
-pub(crate) fn clock_to_phyloxml(graph: &GraphClock<ClockGraphData>) -> Result<Phyloxml, Report> {
+pub(crate) fn clock_to_phyloxml(
+  graph: &GraphClock<ClockGraphData>,
+  nodes: &BTreeMap<GraphNodeKey, ClockNodeOut>,
+) -> Result<Phyloxml, Report> {
   phyloxml_from_graph(graph, "TreeTime clock analysis", |context| {
+    let out = &nodes[&context.node_key];
     let name = node_name(context.node_key, context.node);
-    ensure_optional_finite(context.node.time, "clock", &name, "date")?;
-    ensure_finite(context.node.div, "clock", &name, "divergence")?;
+    ensure_optional_finite(out.time, "clock", &name, "date")?;
+    ensure_finite(out.div, "clock", &name, "divergence")?;
     let property = vec![
-      property(REF_DIV, DT_DOUBLE, APPLIES_NODE, &context.node.div.to_string()),
+      property(REF_DIV, DT_DOUBLE, APPLIES_NODE, &out.div.to_string()),
       property(
         REF_BAD_BRANCH,
         DT_BOOLEAN,
         APPLIES_NODE,
-        if context.node.bad_branch || context.node.is_outlier {
+        if out.bad_branch || out.is_outlier {
           "true"
         } else {
           "false"
@@ -649,7 +659,7 @@ pub(crate) fn clock_to_phyloxml(graph: &GraphClock<ClockGraphData>) -> Result<Ph
       ),
     ];
     Ok(PhyloxmlClade {
-      name: context.node.name.clone(),
+      name: out.name.clone(),
       branch_length_elem: context.edge.and_then(HasBranchLength::branch_length),
       branch_length_attr: None,
       confidence: vec![],
@@ -661,7 +671,7 @@ pub(crate) fn clock_to_phyloxml(graph: &GraphClock<ClockGraphData>) -> Result<Ph
       events: None,
       binary_characters: None,
       distribution: vec![],
-      date: context.node.time.map(phyloxml_date),
+      date: out.time.map(phyloxml_date),
       reference: vec![],
       property,
       clade: vec![],

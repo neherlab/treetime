@@ -12,9 +12,11 @@ use crate::commands::shared::tree_output::write_clock_tree_outputs;
 use crate::make_error;
 use crate::make_report;
 use eyre::{Report, WrapErr};
-use treetime_graph::edge::GraphEdge;
+use serde::Serialize;
+use std::collections::BTreeMap;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::dates_csv::read_dates;
 use treetime_io::nwk::nwk_read_file;
 
@@ -33,10 +35,35 @@ impl ClockGraphData {
   }
 }
 
+/// Per-node clock output as a value.
+///
+/// Holds the durable per-node results the clock output writers consume: the estimated `time`
+/// (numerical date), the cumulative divergence `div`, and the two exclusion flags. `name` is carried
+/// for writers that key by name. The values are gathered from the tree after clock estimation and
+/// rerooting complete, so the map is keyed by the final (post-reroot) node set.
+#[derive(Debug, Clone, Serialize)]
+pub struct ClockNodeOut {
+  pub name: Option<String>,
+  pub div: f64,
+  pub time: Option<f64>,
+  pub is_outlier: bool,
+  pub bad_branch: bool,
+}
+
+/// Per-edge output as a value: the branch length the output writers read.
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct EdgeOut {
+  pub branch_length: Option<f64>,
+}
+
 #[derive(serde::Serialize)]
 pub struct ClockResult {
   #[serde(skip)]
   pub graph: GraphClock<ClockGraphData>,
+  #[serde(skip)]
+  pub nodes: BTreeMap<GraphNodeKey, ClockNodeOut>,
+  #[serde(skip)]
+  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
 }
 
 impl std::ops::Deref for ClockResult {
@@ -45,6 +72,46 @@ impl std::ops::Deref for ClockResult {
   fn deref(&self) -> &Self::Target {
     self.graph.data()
   }
+}
+
+/// Gather the per-node and per-edge clock outputs off the estimated tree into keyed value maps.
+///
+/// Runs after clock estimation, rerooting, and topology ordering, so it reads the final divergence,
+/// time, and exclusion flags of the post-reroot node set. The clock passes still write these fields
+/// onto the graph payloads (the reroot and best-root search read them there); this step surfaces them
+/// as a standalone value the output writers consume.
+fn gather_clock_outputs(
+  graph: &GraphClock<ClockGraphData>,
+) -> (BTreeMap<GraphNodeKey, ClockNodeOut>, BTreeMap<GraphEdgeKey, EdgeOut>) {
+  let nodes = graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let node = node.read_arc();
+      let key = node.key();
+      let payload = node.payload().read_arc();
+      let out = ClockNodeOut {
+        name: payload.name.clone(),
+        div: payload.div,
+        time: payload.time,
+        is_outlier: payload.is_outlier,
+        bad_branch: payload.bad_branch,
+      };
+      (key, out)
+    })
+    .collect();
+
+  let edges = graph
+    .get_edges()
+    .iter()
+    .map(|edge| {
+      let edge = edge.read_arc();
+      let branch_length = edge.payload().read_arc().branch_length;
+      (edge.key(), EdgeOut { branch_length })
+    })
+    .collect();
+
+  (nodes, edges)
 }
 
 fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationParams {
@@ -120,9 +187,12 @@ pub fn run_clock(
   topology_order.apply(&mut graph)?;
   progress.report("Writing output", 0.8, "");
 
+  let (nodes, edges) = gather_clock_outputs(&graph);
+
   if !resolved.tree_outputs.is_empty() {
     write_clock_tree_outputs(
       &graph,
+      &nodes,
       &resolved.tree_outputs,
       &treetime_io::nwk::CommentProviders::new(),
     )?;
@@ -137,7 +207,7 @@ pub fn run_clock(
   }
 
   progress.report("Done", 1.0, "");
-  Ok(ClockResult { graph })
+  Ok(ClockResult { graph, nodes, edges })
 }
 
 fn leaf_order<N, E, D>(graph: &Graph<N, E, D>) -> Result<Vec<String>, Report>

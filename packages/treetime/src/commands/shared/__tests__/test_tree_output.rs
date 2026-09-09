@@ -393,7 +393,7 @@ mod tests {
     use super::*;
     use crate::clock::clock_graph::GraphClock;
     use crate::clock::clock_model::ClockModel;
-    use crate::commands::clock::run::ClockGraphData;
+    use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
     use crate::commands::optimize::result::OptimizeGraphData;
     use crate::commands::prune::result::PruneGraphData;
     use crate::commands::timetree::result::TimetreeGraphData;
@@ -526,7 +526,8 @@ mod tests {
       let ancestral = ancestral_to_auspice(&ancestral_graph(Mutations::NucleotideSubstitution)?, "2026-07-19")?;
       let optimize = optimize_to_auspice(&optimize_graph()?, "2026-07-19")?;
       let prune = prune_to_auspice(&prune_graph()?, "2026-07-19")?;
-      let clock = clock_to_auspice(&clock_graph()?, "2026-07-19")?;
+      let clock_graph = clock_graph()?;
+      let clock = clock_to_auspice(&clock_graph, &clock_nodes(&clock_graph), "2026-07-19")?;
       let mugration = mugration_to_auspice(&mugration_graph()?, "2026-07-19")?;
       let timetree = timetree_to_auspice(&timetree_graph()?, "2026-07-19")?;
 
@@ -541,7 +542,10 @@ mod tests {
         ancestral_to_phyloxml(&ancestral_graph_without_partition()?)?,
         optimize_to_phyloxml(&optimize_graph()?)?,
         prune_to_phyloxml(&prune_graph()?)?,
-        clock_to_phyloxml(&clock_graph()?)?,
+        {
+          let clock_graph = clock_graph()?;
+          clock_to_phyloxml(&clock_graph, &clock_nodes(&clock_graph))?
+        },
         mugration_to_phyloxml(&mugration_graph()?)?,
         timetree_to_phyloxml(&timetree_graph()?)?,
       ])
@@ -683,6 +687,28 @@ mod tests {
         payload.time = Some(2020.0 + index as f64);
       }
       Ok(graph.map_data(ClockGraphData::new(fixed_clock_model()?, vec![])))
+    }
+
+    pub fn clock_nodes(graph: &GraphClock<ClockGraphData>) -> BTreeMap<GraphNodeKey, ClockNodeOut> {
+      graph
+        .get_nodes()
+        .iter()
+        .map(|node| {
+          let node = node.read_arc();
+          let key = node.key();
+          let payload = node.payload().read_arc();
+          (
+            key,
+            ClockNodeOut {
+              name: payload.name.clone(),
+              div: payload.div,
+              time: payload.time,
+              is_outlier: payload.is_outlier,
+              bad_branch: payload.bad_branch,
+            },
+          )
+        })
+        .collect()
     }
 
     fn mugration_graph() -> Result<GraphAncestral<MugrationGraphData>, Report> {
