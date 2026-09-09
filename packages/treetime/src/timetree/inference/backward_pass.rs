@@ -2,6 +2,7 @@ use crate::coalescent::coalescent::CoalescentModel;
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use eyre::Report;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::NegLog;
@@ -9,10 +10,12 @@ use treetime_distribution::convolve_across_edge;
 use treetime_distribution::distribution_multiplication;
 use treetime_distribution::distribution_multiply_by_fn;
 use treetime_distribution::distribution_product;
-use treetime_graph::edge::GraphEdge;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
-use treetime_graph::pass::{GraphPassDependencies, GraphPassSlot, with_graph_payloads};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::pass::{
+  GraphPassBackwardContext, GraphPassChildBackward, GraphPassNodeOutput, with_graph_payloads_map,
+};
 use treetime_grid::Side;
 
 /// Propagates time distributions backward from leaves to root.
@@ -28,10 +31,8 @@ where
   E: GraphEdge + TimetreeEdge + Default,
   D: Send + Sync,
 {
-  with_graph_payloads(graph, |pass| {
-    pass.try_for_each_backward(|dependencies, slot| {
-      propagate_distributions_backward_slot(graph, coalescent_model, dependencies, slot)
-    })
+  with_graph_payloads_map(graph, |pass| {
+    pass.try_map_backward::<N, E>(|context| propagate_distributions_backward_node(graph, coalescent_model, context))
   })
 }
 
@@ -41,12 +42,11 @@ where
 /// coalescent prior and the input date constraint into the node's time distribution, which is stored
 /// peak-normalized. Second, the distribution is convolved across the branch into the backward message
 /// the parent folds in.
-fn propagate_distributions_backward_slot<N, E, D>(
+fn propagate_distributions_backward_node<N, E, D>(
   graph: &Graph<N, E, D>,
   coalescent_model: Option<&CoalescentModel>,
-  dependencies: &GraphPassDependencies<N, E>,
-  slot: &mut GraphPassSlot<N, E>,
-) -> Result<(), Report>
+  context: GraphPassBackwardContext<'_, N, E, N, E>,
+) -> Result<GraphPassNodeOutput<N, E>, Report>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + TimetreeEdge,
@@ -56,49 +56,50 @@ where
   // evaluate coalescent on that grid (different for root, internal, child)
   // multiply messages, date constraint, and coalescent --> node distribution
   // regrid node distribution to sensible grid
-  let messages = gather_child_messages(graph, dependencies, slot);
+  let mut node = context.input;
+  let messages = gather_child_messages(graph, context.key, context.children);
   let distribution = combine_child_messages(&messages)?;
-  let distribution = apply_coalescent_prior(graph, coalescent_model, slot, distribution)?;
-  let distribution = apply_date_constraint(slot, distribution)?;
+  let distribution = apply_coalescent_prior(graph, coalescent_model, context.key, distribution)?;
+  let distribution = apply_date_constraint(&node, distribution)?;
 
   if !matches!(distribution, Distribution::Empty) {
     // Peak-normalize the combined posterior. Every downstream consumer (likely_time, quantile, and
     // the outgoing convolution via to_plain_normalized) is shift-invariant, so the peak offset
     // removed here has no effect on inferred times or likelihoods.
     let distribution = distribution.normalize();
-    slot.node.set_time_distribution(Some(Arc::new(distribution)));
+    node.set_time_distribution(Some(Arc::new(distribution)));
   }
 
-  send_backward_message(coalescent_model, graph.is_leaf(slot.key), slot)
+  let parent_message = send_backward_message(coalescent_model, context.is_leaf, &node, context.parent_edge)?;
+  Ok(GraphPassNodeOutput { node, parent_message })
 }
 
 /// Gathers the backward messages from a node's good children.
 ///
-/// Collecting the messages up front keeps the fold independent of the order the children are visited.
-/// A bad-branch child carries no usable message and is skipped.
+/// The value engine hands the completed children in its own topology order, which may differ from
+/// `children_of`. Index the child outputs by node key so the messages are gathered in the fixed,
+/// canonical `children_of` order as before, keeping the floating-point result byte-for-byte
+/// identical. A bad-branch child carries no usable message and is skipped.
 fn gather_child_messages<N, E, D>(
   graph: &Graph<N, E, D>,
-  dependencies: &GraphPassDependencies<N, E>,
-  slot: &GraphPassSlot<N, E>,
+  key: GraphNodeKey,
+  children: &[GraphPassChildBackward<'_, N, E>],
 ) -> Vec<Arc<Distribution<NegLog>>>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
+  let child_outputs: BTreeMap<_, _> = children.iter().map(|child| (child.node_key, child)).collect();
   let mut messages = Vec::new();
-  let node = graph.get_node(slot.key).expect("Indexed node must exist");
+  let node = graph.get_node(key).expect("Indexed node must exist");
   for (child, _) in graph.children_of(&node.read_arc()) {
     let child_key = child.read_arc().key();
-    let child = dependencies.slot(child_key);
+    let child = child_outputs.get(&child_key).expect("Indexed child must exist");
     if child.node.bad_branch() {
       continue;
     }
-    let edge = &child
-      .parent_edge
-      .as_ref()
-      .expect("Non-root indexed node must own its parent edge")
-      .1;
+    let edge = child.edge.expect("Non-root indexed node must own its parent edge");
     if let Some(parent_message) = edge.msg_to_parent() {
       messages.push(Arc::clone(parent_message));
     }
@@ -136,7 +137,7 @@ fn combine_child_messages(messages: &[Arc<Distribution<NegLog>>]) -> Result<Dist
 fn apply_coalescent_prior<N, E, D>(
   graph: &Graph<N, E, D>,
   coalescent_model: Option<&CoalescentModel>,
-  slot: &GraphPassSlot<N, E>,
+  key: GraphNodeKey,
   distribution: Distribution<NegLog>,
 ) -> Result<Distribution<NegLog>, Report>
 where
@@ -150,8 +151,8 @@ where
   if matches!(distribution, Distribution::Empty) {
     return Ok(distribution);
   }
-  let is_root = graph.is_root(slot.key);
-  let n_children = graph.degree_out(slot.key)?;
+  let is_root = graph.is_root(key);
+  let n_children = graph.degree_out(key)?;
   distribution_multiply_by_fn(&distribution, |time| {
     if is_root {
       model.root_contribution(time, n_children)
@@ -169,15 +170,11 @@ where
 /// time distribution of a node whose date is uncertain in place, and sending that refined distribution
 /// back to the parent on the next round would count the parent's own message toward the node a second
 /// time.
-fn apply_date_constraint<N, E>(
-  slot: &GraphPassSlot<N, E>,
-  distribution: Distribution<NegLog>,
-) -> Result<Distribution<NegLog>, Report>
+fn apply_date_constraint<N>(node: &N, distribution: Distribution<NegLog>) -> Result<Distribution<NegLog>, Report>
 where
   N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
 {
-  let Some(constraint) = slot.node.date_constraint() else {
+  let Some(constraint) = node.date_constraint() else {
     return Ok(distribution);
   };
   if matches!(distribution, Distribution::Empty) {
@@ -192,26 +189,31 @@ where
 /// arbitrarily far in the past); the right tail is hard (child's sampling date bounds the parent's
 /// age). A leaf weights its outgoing message by the coalescent leaf factor, which belongs to the
 /// message only, not the stored distribution.
+///
+/// The root has no parent edge and returns `None`. Every non-root node returns `Some(edge)`, including
+/// the early-return paths that leave the edge unchanged, so the value engine's write-back keeps every
+/// edge payload.
 fn send_backward_message<N, E>(
   coalescent_model: Option<&CoalescentModel>,
   is_leaf: bool,
-  slot: &mut GraphPassSlot<N, E>,
-) -> Result<(), Report>
+  node: &N,
+  parent_edge: Option<(GraphEdgeKey, E)>,
+) -> Result<Option<E>, Report>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + TimetreeEdge,
 {
-  if slot.node.bad_branch() {
-    return Ok(());
-  }
-  let Some(distribution) = slot.node.time_distribution() else {
-    return Ok(());
+  let Some((_, mut edge)) = parent_edge else {
+    return Ok(None);
   };
-  let Some((_, edge)) = slot.parent_edge.as_mut() else {
-    return Ok(());
+  if node.bad_branch() {
+    return Ok(Some(edge));
+  }
+  let Some(distribution) = node.time_distribution() else {
+    return Ok(Some(edge));
   };
   let Some(branch_length_distribution) = edge.branch_length_distribution() else {
-    return Ok(());
+    return Ok(Some(edge));
   };
 
   let leaf_weighted = if is_leaf && let Some(model) = coalescent_model {
@@ -227,5 +229,5 @@ where
   let message = convolve_across_edge(outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)?;
   edge.set_msg_to_parent(Some(Arc::new(message)));
 
-  Ok(())
+  Ok(Some(edge))
 }
