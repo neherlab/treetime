@@ -8,11 +8,14 @@ use log::{debug, info};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
-use treetime_graph::pass::{GraphPassDependencies, GraphPassSlot, with_graph_payloads};
+use treetime_graph::pass::{
+  GraphPassBackwardContext, GraphPassNodeOutput, with_graph_payloads, with_graph_payloads_map,
+};
 use treetime_graph::reroot::RerootResult;
 
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
@@ -98,51 +101,58 @@ where
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
-  with_graph_payloads(graph, |pass| {
-    pass.try_for_each_backward(|dependencies, slot| {
-      clock_regression_backward_slot(graph, options, prev_clock_rate, dependencies, slot)
-    })
+  with_graph_payloads_map(graph, |pass| {
+    pass.try_map_backward(|context| clock_regression_backward_node(graph, options, prev_clock_rate, context))
   })
 }
 
-fn clock_regression_backward_slot<N, E, D>(
+fn clock_regression_backward_node<N, E, D>(
   graph: &Graph<N, E, D>,
   options: &ClockParams,
   prev_clock_rate: Option<f64>,
-  dependencies: &GraphPassDependencies<N, E>,
-  slot: &mut GraphPassSlot<N, E>,
-) -> Result<(), Report>
+  context: GraphPassBackwardContext<'_, N, E, N, E>,
+) -> Result<GraphPassNodeOutput<N, E>, Report>
 where
   N: GraphNode + ClockNode,
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
-  let is_leaf = graph.is_leaf(slot.key);
-  let date = slot.node.likely_time();
+  let mut node = context.input;
+  let is_leaf = context.is_leaf;
+  let date = node.likely_time();
   let q_to_parent = if is_leaf {
-    if slot.node.is_outlier() {
+    if node.is_outlier() {
       ClockSet::outlier_contribution()
     } else {
       ClockSet::leaf_contribution(date)
     }
   } else {
-    graph
-      .children_of(&graph.get_node(slot.key).expect("Indexed node must exist").read_arc())
+    let graph_node = graph.get_node(context.key).expect("Indexed node must exist");
+    let graph_node = graph_node.read_arc();
+
+    // The value engine hands the completed children in its own topology order, which may differ from
+    // `children_of`. Index the child edge messages by edge key so the moment sums fold in the same
+    // canonical `children_of` order as before, keeping the floating-point result byte-for-byte identical.
+    let child_edges: BTreeMap<_, _> = context
+      .children
       .iter()
-      .fold(ClockSet::default(), |mut total, (child, _)| {
-        let child_key = child.read_arc().key();
-        let edge = &dependencies
-          .slot(child_key)
-          .parent_edge
-          .as_ref()
-          .expect("Non-root indexed node must own its parent edge")
-          .1;
+      .filter_map(|child| child.edge.map(|edge| (child.edge_key, edge)))
+      .collect();
+
+    graph
+      .children_of(&graph_node)
+      .iter()
+      .fold(ClockSet::default(), |mut total, (_, edge)| {
+        let edge_key = edge.read_arc().key();
+        let edge = child_edges
+          .get(&edge_key)
+          .expect("Non-root indexed node must own its parent edge");
         total += edge.from_child();
         total
       })
   };
 
-  if let Some((_, edge)) = slot.parent_edge.as_mut() {
+  let parent_message = if let Some((_, mut edge)) = context.parent_edge {
     *edge.to_parent_mut() = q_to_parent;
     let edge_len = edge_divergence(edge.branch_length(), edge.time_length(), edge.gamma(), prev_clock_rate);
     let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
@@ -152,10 +162,13 @@ where
     } else {
       edge.to_parent().propagate_averages(edge_len, branch_variance)
     };
+    Some(edge)
   } else {
-    *slot.node.clock_set_mut() = q_to_parent;
-  }
-  Ok(())
+    *node.clock_set_mut() = q_to_parent;
+    None
+  };
+
+  Ok(GraphPassNodeOutput { node, parent_message })
 }
 
 /// Runs forward clock regression pass.
