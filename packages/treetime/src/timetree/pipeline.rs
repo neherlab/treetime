@@ -41,9 +41,11 @@ use log::{debug, info};
 use ndarray::{Array1, array};
 use parking_lot::RwLock;
 use serde::Serialize;
+use std::collections::BTreeMap;
 use std::io::Write;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
+use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_io::dates_csv::DatesMap;
 use treetime_io::fasta::FastaRecord;
@@ -121,6 +123,11 @@ pub struct TimetreeOutput {
   /// The inferred coalescent time scale, or `None` when the run asked for no coalescent.
   #[serde(skip)]
   pub coalescent: Option<CoalescentOutput>,
+  /// Per-node rate-susceptibility date triples from [`compute_rate_susceptibility`], keyed by node.
+  /// Empty when the run computed no rate susceptibility. The output gather reads each node's triple
+  /// from here rather than from the graph payload.
+  #[serde(skip)]
+  pub rate_susceptibility_dates: BTreeMap<GraphNodeKey, [f64; 3]>,
 }
 
 pub fn run(
@@ -426,7 +433,7 @@ pub fn run(
   let final_model = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
   let final_prior = prior_wanted.then_some(&final_model);
 
-  if let Some(rate_std) = rate_std {
+  let rate_susceptibility_dates = if let Some(rate_std) = rate_std {
     info!("### Rate susceptibility analysis (rate_std={rate_std:.6e})");
     compute_rate_susceptibility(
       &mut input.graph,
@@ -436,8 +443,10 @@ pub fn run(
       rate_std,
       params.no_indels,
     )
-    .wrap_err("Rate susceptibility analysis failed")?;
-  }
+    .wrap_err("Rate susceptibility analysis failed")?
+  } else {
+    BTreeMap::new()
+  };
 
   if time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
@@ -461,7 +470,7 @@ pub fn run(
 
   let confidence_intervals = (matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always)
     || rate_std.is_some())
-  .then(|| extract_confidence_intervals(&input.graph));
+  .then(|| extract_confidence_intervals(&input.graph, &rate_susceptibility_dates));
 
   let coalescent_output = build_coalescent_output(coalescent, &coalescent_tc, params.gen_per_year, &skyline_params)?;
 
@@ -475,6 +484,7 @@ pub fn run(
     gtr: partition_gtr,
     model_name: partition_model_name,
     coalescent: coalescent_output,
+    rate_susceptibility_dates,
   })
 }
 

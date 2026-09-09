@@ -180,6 +180,7 @@ pub fn run_timetree_estimation(
     gtr,
     model_name,
     coalescent,
+    rate_susceptibility_dates,
   } = output;
   let mut graph = graph.map_data(TimetreeGraphData::new(
     clock_model,
@@ -199,7 +200,7 @@ pub fn run_timetree_estimation(
     .resolve_topology_order(&graph, Some(input_leaf_order))?;
   topology_order.apply(&mut graph)?;
 
-  let (nodes, edges) = gather_timetree_outputs(&graph);
+  let (nodes, edges) = gather_timetree_outputs(&graph, &rate_susceptibility_dates);
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
     match graph.data().confidence_intervals.as_ref() {
@@ -306,8 +307,12 @@ pub fn run_timetree_estimation(
 /// exclusion flags, and per-edge branch lengths and relaxed-clock rates of the ordered node set. The
 /// pipeline passes still write these fields onto the graph payloads (the inference passes read the
 /// state there); this step surfaces them as a standalone value the output writers consume.
+///
+/// `rate_susceptibility_dates` carries the per-node date triples the pipeline returns as a value
+/// rather than on the payload; each node's triple is read from here.
 fn gather_timetree_outputs(
   graph: &GraphTimetree<TimetreeGraphData>,
+  rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
 ) -> (
   BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
@@ -327,7 +332,7 @@ fn gather_timetree_outputs(
         div: payload.div,
         is_outlier: payload.is_outlier,
         bad_branch: payload.bad_branch,
-        rate_susceptibility_dates: payload.rate_susceptibility_dates,
+        rate_susceptibility_dates: rate_susceptibility_dates.get(&key).copied(),
       };
       (key, out)
     })

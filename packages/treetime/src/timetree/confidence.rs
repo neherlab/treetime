@@ -50,6 +50,10 @@ const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5; // 0.95
 ///
 /// The third run (central rate) restores the graph to its pre-call state, so the
 /// caller can proceed with further passes (e.g., final marginal reconstruction).
+///
+/// Returns the per-node sorted date triples keyed by node, for nodes dated at all three rates. The
+/// caller threads these into confidence extraction and the output gather; they are not written back
+/// onto the graph.
 pub fn compute_rate_susceptibility(
   graph: &mut GraphTimetree,
   partitions: &[PartitionTimetreeRef],
@@ -57,7 +61,7 @@ pub fn compute_rate_susceptibility(
   coalescent: Option<&CoalescentModel>,
   rate_std: f64,
   no_indels: bool,
-) -> Result<(), Report> {
+) -> Result<BTreeMap<GraphNodeKey, [f64; 3]>, Report> {
   let current_rate = clock_model.clock_rate();
 
   // v0: upper = rate + rate_std, lower = max(0.1 * rate, rate - rate_std)
@@ -101,10 +105,11 @@ pub fn compute_rate_susceptibility(
   // v0 (clock_tree.py:1064): n.numdate_rate_variation.sort(key=lambda x: x[1])
   // The sort ensures [lower_date, central_date, upper_date] regardless of which
   // rate produced which date (deeper nodes may have inverted rate-date relationship).
+  let mut rate_susceptibility_dates = BTreeMap::new();
   for node_ref in graph.get_nodes() {
     let node = node_ref.read_arc();
     let key = node.key();
-    let mut payload = node.payload().write_arc();
+    let payload = node.payload().read_arc();
 
     let central_date = payload.time();
     let upper_date = upper_dates.get(&key).copied();
@@ -113,12 +118,12 @@ pub fn compute_rate_susceptibility(
     if let (Some(c), Some(u), Some(l)) = (central_date, upper_date, lower_date) {
       let mut dates = [l, c, u];
       dates.sort_by_key(|x| OrderedFloat(*x));
-      payload.rate_susceptibility_dates = Some(dates);
+      rate_susceptibility_dates.insert(key, dates);
     }
   }
 
   info!("Rate susceptibility analysis completed");
-  Ok(())
+  Ok(rate_susceptibility_dates)
 }
 
 /// Convert per-node rate-variation date triples to a confidence interval.
@@ -169,7 +174,14 @@ pub(crate) fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)
 ///
 /// When only one source is present, uses that source alone.
 /// When neither is present, returns point interval [date, date].
-pub fn extract_confidence_intervals(graph: &GraphTimetree) -> Vec<NodeConfidenceInterval> {
+///
+/// `rate_susceptibility_dates` carries the per-node sorted date triples from
+/// [`compute_rate_susceptibility`], keyed by node; a node absent from the map contributes no rate
+/// term (empty map when the run computed no rate susceptibility).
+pub fn extract_confidence_intervals(
+  graph: &GraphTimetree,
+  rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
+) -> Vec<NodeConfidenceInterval> {
   graph
     .get_nodes()
     .into_iter()
@@ -195,9 +207,9 @@ pub fn extract_confidence_intervals(graph: &GraphTimetree) -> Vec<NodeConfidence
       let mutation_contribution: Option<(f64, f64)> = None;
 
       // Source 2: clock rate uncertainty from rate susceptibility analysis
-      let rate_contribution = payload
-        .rate_susceptibility_dates
-        .map(|dates| date_uncertainty_due_to_rate(dates, (CI_LOWER_QUANTILE, CI_UPPER_QUANTILE)));
+      let rate_contribution = rate_susceptibility_dates
+        .get(&key)
+        .map(|dates| date_uncertainty_due_to_rate(*dates, (CI_LOWER_QUANTILE, CI_UPPER_QUANTILE)));
 
       let (lower, upper) = if rate_contribution.is_none() && mutation_contribution.is_none() {
         // No CI data available: return point estimate
