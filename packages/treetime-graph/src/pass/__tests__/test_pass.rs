@@ -1,14 +1,15 @@
 #[cfg(test)]
 mod tests {
-  use crate::pass::{GraphMapOutputs, GraphPass, GraphPassNodeOutput, with_graph_payloads};
+  use crate::pass::{GraphMapOutputs, GraphPass, GraphPassNodeOutput, with_graph_payloads, with_graph_payloads_map};
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_utils::{assert_error, make_report, o};
 
   use self::helpers::{
-    edge_lengths, edge_values_by_child_name, fixture_tree, key_payloads, node_names, own_value_pass_values,
-    pass_values, run_backward_sum, run_forward_sum, values_by_name,
+    SumEdge, SumNode, edge_lengths, edge_values_by_child_name, fixture_sum_tree, fixture_tree, key_payloads,
+    node_names, own_value_pass_values, pass_values, run_backward_sum, run_forward_sum, sum_values_by_name,
+    values_by_name,
   };
 
   #[test]
@@ -246,6 +247,46 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_pass_with_graph_payloads_map_writes_back_outputs() -> Result<(), Report> {
+    // Tree `((A,B)AB,C)root` whose node payloads carry an own-value:
+    //   A=1, B=2, C=3, AB=10, root=100.
+    // `with_graph_payloads_map` extracts every graph payload, runs a value-returning backward map that
+    // sets each node's value to its own-value plus the sum of its children's values, and writes the
+    // returned node and edge outputs back into the graph payloads. Subtree sums derived by hand:
+    //   A=1, B=2, C=3 (leaves), AB=10+1+2=13, root=100+13+3=116 (= total of all own-values).
+    let graph = fixture_sum_tree()?;
+
+    with_graph_payloads_map(&graph, |pass| {
+      pass.try_map_backward::<SumNode, SumEdge>(|context| {
+        let children_sum = context.children.iter().map(|child| child.node.value).sum::<usize>();
+        let mut node = context.input;
+        node.value += children_sum;
+        let parent_message = (!context.is_root).then_some(SumEdge { message: node.value });
+        Ok(GraphPassNodeOutput { node, parent_message })
+      })
+    })?;
+
+    // Read the values written back into the graph node payloads.
+    let actual = sum_values_by_name(&graph);
+    let expected = btreemap! {
+      o!("A") => 1,
+      o!("B") => 2,
+      o!("C") => 3,
+      o!("AB") => 13,
+      o!("root") => 116,
+    };
+    assert_eq!(expected, actual);
+
+    // The root holds the grand total (116) and the interior node AB holds its subtree sum (13). These
+    // are the load-bearing checks that extraction, value map, and write-back round-trip through the
+    // graph payloads.
+    assert_eq!(&116, &actual[&o!("root")]);
+    assert_eq!(&13, &actual[&o!("AB")]);
+
+    Ok(())
+  }
+
   mod helpers {
     use crate::edge::{GraphEdge, GraphEdgeKey};
     use crate::graph::Graph;
@@ -270,6 +311,25 @@ mod tests {
       graph.add_edge(root, tip_c, TestEdge::with_length(4.0))?;
       graph.add_edge(ab, tip_a, TestEdge::with_length(1.0))?;
       graph.add_edge(ab, tip_b, TestEdge::with_length(2.0))?;
+      graph.build()?;
+
+      Ok(graph)
+    }
+
+    /// `((A,B)AB,C)root` whose node payloads carry a distinct own-value per node, for a
+    /// value-returning graph-payload map that writes results back into the payloads.
+    pub fn fixture_sum_tree() -> Result<Graph<SumNode, SumEdge, ()>, Report> {
+      let mut graph = Graph::<SumNode, SumEdge, ()>::new();
+      let root = graph.add_node(SumNode::new("root", 100));
+      let ab = graph.add_node(SumNode::new("AB", 10));
+      let tip_a = graph.add_node(SumNode::new("A", 1));
+      let tip_b = graph.add_node(SumNode::new("B", 2));
+      let tip_c = graph.add_node(SumNode::new("C", 3));
+
+      graph.add_edge(root, ab, SumEdge::default())?;
+      graph.add_edge(root, tip_c, SumEdge::default())?;
+      graph.add_edge(ab, tip_a, SumEdge::default())?;
+      graph.add_edge(ab, tip_b, SumEdge::default())?;
       graph.build()?;
 
       Ok(graph)
@@ -410,6 +470,20 @@ mod tests {
         .collect()
     }
 
+    /// Read the value written back into each node payload, keyed by node name.
+    pub fn sum_values_by_name(graph: &Graph<SumNode, SumEdge, ()>) -> BTreeMap<String, usize> {
+      graph
+        .get_nodes()
+        .iter()
+        .map(|node| {
+          let node = node.read_arc();
+          let payload = node.payload();
+          let payload = payload.read_arc();
+          (payload.name.clone(), payload.value)
+        })
+        .collect()
+    }
+
     pub fn node_names(graph: &Graph<TestNode, TestEdge, ()>) -> BTreeMap<GraphNodeKey, String> {
       graph
         .get_nodes()
@@ -457,5 +531,32 @@ mod tests {
     }
 
     impl GraphEdge for TestEdge {}
+
+    /// Node payload carrying a name and a numeric value, so a value-returning map can write computed
+    /// values back into the graph payloads.
+    #[derive(Clone, Debug, Default, Eq, PartialEq)]
+    pub struct SumNode {
+      pub name: String,
+      pub value: usize,
+    }
+
+    impl SumNode {
+      pub fn new(name: &str, value: usize) -> Self {
+        Self {
+          name: name.to_owned(),
+          value,
+        }
+      }
+    }
+
+    impl GraphNode for SumNode {}
+
+    /// Edge payload carrying the numeric message a child sends along its own parent edge.
+    #[derive(Clone, Debug, Default, Eq, PartialEq)]
+    pub struct SumEdge {
+      pub message: usize,
+    }
+
+    impl GraphEdge for SumEdge {}
   }
 }
