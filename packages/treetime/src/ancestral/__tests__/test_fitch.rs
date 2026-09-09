@@ -28,7 +28,6 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AsciiChar;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
-  use treetime_utils::sync::mutex::unwrap_arc_rwlock;
   use treetime_utils::vec_of_owned;
 
   /// Retrieve the name of a graph node by its key. Panics if the node is missing or unnamed.
@@ -221,15 +220,15 @@ mod tests {
 
     let alphabet = Alphabet::default();
 
-    let partitions_parsimony = [Arc::new(RwLock::new(PartitionFitch {
+    let mut partition = PartitionFitch {
       index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
-    }))];
-
-    compress_sequences(&graph, &partitions_parsimony, &aln)?;
+    };
+    compress_sequences(&graph, &mut partition, &aln)?;
+    let partitions_parsimony = [Arc::new(RwLock::new(partition))];
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, false, &partitions_parsimony, |node, seq| {
@@ -293,15 +292,15 @@ mod tests {
 
     let alphabet = Alphabet::default();
 
-    let partitions_parsimony = [Arc::new(RwLock::new(PartitionFitch {
+    let mut partition = PartitionFitch {
       index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
-    }))];
-
-    compress_sequences(&graph, &partitions_parsimony, &aln)?;
+    };
+    compress_sequences(&graph, &mut partition, &aln)?;
+    let partitions_parsimony = [Arc::new(RwLock::new(partition))];
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, true, &partitions_parsimony, |node, seq| {
@@ -336,17 +335,14 @@ mod tests {
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let alphabet = Alphabet::default();
 
-    let partitions = [Arc::new(RwLock::new(PartitionFitch {
+    let mut partition = PartitionFitch {
       index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
-    }))];
-
-    compress_sequences(&graph, &partitions, &aln)?;
-
-    let partition = partitions[0].read_arc();
+    };
+    compress_sequences(&graph, &mut partition, &aln)?;
     let actual = get_internal_sequences(&graph, &partition);
     let expected = btreemap! {
       o!("AB") => o!("GCGTACGT"),
@@ -389,17 +385,14 @@ mod tests {
 
     let alphabet = Alphabet::default();
 
-    let partitions = [Arc::new(RwLock::new(PartitionFitch {
+    let mut partition = PartitionFitch {
       index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
-    }))];
-
-    compress_sequences(&graph, &partitions, &aln)?;
-
-    let partition = partitions[0].read_arc();
+    };
+    compress_sequences(&graph, &mut partition, &aln)?;
 
     // Verify substitutions on edges
     let actual_subs = collect_edge_subs(&graph, &partition);
@@ -466,17 +459,14 @@ mod tests {
 
     let alphabet = Alphabet::default();
 
-    let partitions = [Arc::new(RwLock::new(PartitionFitch {
+    let mut partition = PartitionFitch {
       index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
-    }))];
-
-    compress_sequences(&graph, &partitions, &aln)?;
-
-    let partition = partitions[0].read_arc();
+    };
+    compress_sequences(&graph, &mut partition, &aln)?;
 
     // Verify substitutions on edges
     let actual_subs = collect_edge_subs(&graph, &partition);
@@ -546,17 +536,14 @@ mod tests {
 
     let alphabet = Alphabet::default();
 
-    let partitions = [Arc::new(RwLock::new(PartitionFitch {
+    let mut partition = PartitionFitch {
       index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
-    }))];
-
-    compress_sequences(&graph, &partitions, &aln)?;
-
-    let partition = partitions[0].read_arc();
+    };
+    compress_sequences(&graph, &mut partition, &aln)?;
 
     // Verify substitutions on edges
     //
@@ -635,21 +622,19 @@ mod tests {
 
     let alphabet = Alphabet::default();
 
-    let partitions = [Arc::new(RwLock::new(PartitionFitch {
+    let mut partition = PartitionFitch {
       index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
-    }))];
+    };
 
     // Run backward pass only
-    attach_seqs_to_graph(&graph, &partitions, &aln)?;
-    fitch_backward(&graph, &partitions)?;
+    attach_seqs_to_graph(&graph, &mut partition, &aln)?;
+    fitch_backward(&graph, &mut partition)?;
 
     {
-      let partition = partitions[0].read_arc();
-
       // After backward: variable positions identified, sequence has '~' markers
       let variable_positions = get_root_variable_positions(&graph, &partition);
       assert_eq!(vec![0, 2, 3, 5, 6], variable_positions);
@@ -687,11 +672,9 @@ mod tests {
     }
 
     // Run forward pass
-    fitch_forward(&graph, &partitions)?;
+    fitch_forward(&graph, &mut partition)?;
 
     {
-      let partition = partitions[0].read_arc();
-
       // After forward: variable positions still tracked, sequence resolved
       let variable_positions = get_root_variable_positions(&graph, &partition);
       assert_eq!(vec![0, 2, 3, 5, 6], variable_positions);
@@ -737,17 +720,14 @@ mod tests {
     let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let alphabet = Alphabet::default();
 
-    let partitions = [Arc::new(RwLock::new(PartitionFitch {
+    let mut fitch = PartitionFitch {
       index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
-    }))];
-
-    compress_sequences(&graph, &partitions, &aln)?;
-
-    let fitch = unwrap_arc_rwlock(partitions.into_iter().next().unwrap())?;
+    };
+    compress_sequences(&graph, &mut fitch, &aln)?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -978,17 +958,14 @@ mod tests {
     let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let alphabet = Alphabet::default();
 
-    let partitions = [Arc::new(RwLock::new(PartitionFitch {
+    let mut fitch = PartitionFitch {
       index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
-    }))];
-
-    compress_sequences(&graph, &partitions, &aln)?;
-
-    let fitch = unwrap_arc_rwlock(partitions.into_iter().next().unwrap())?;
+    };
+    compress_sequences(&graph, &mut fitch, &aln)?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -1127,17 +1104,14 @@ mod tests {
     let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let alphabet = Alphabet::default();
 
-    let partitions_fitch = [Arc::new(RwLock::new(PartitionFitch {
+    let mut fitch = PartitionFitch {
       index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
-    }))];
-
-    compress_sequences(&graph, &partitions_fitch, &aln)?;
-
-    let fitch = unwrap_arc_rwlock(partitions_fitch.into_iter().next().unwrap())?;
+    };
+    compress_sequences(&graph, &mut fitch, &aln)?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,

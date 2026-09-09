@@ -9,7 +9,6 @@ use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::storage::sparse::{
   FitchSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, SparseSeqInfo,
 };
-use crate::partition::traits::PartitionCompressed;
 use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::seq::alignment::get_common_length;
 use crate::seq::composition::Composition;
@@ -29,7 +28,6 @@ use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
-use treetime_utils::sync::mutex::unwrap_arc_rwlock;
 
 pub fn create_fitch_partition<N, E>(
   graph: &Graph<N, E, ()>,
@@ -42,26 +40,25 @@ where
   E: GraphEdge,
 {
   let length = get_common_length(aln)?;
-  let partition = Arc::new(RwLock::new(PartitionFitch {
+  let mut partition = PartitionFitch {
     index,
     alphabet,
     length,
     nodes: btreemap! {},
     edges: btreemap! {},
-  }));
-  compress_sequences(graph, std::slice::from_ref(&partition), aln)?;
-  unwrap_arc_rwlock(partition)
+  };
+  compress_sequences(graph, &mut partition, aln)?;
+  Ok(partition)
 }
 
-pub(crate) fn attach_seqs_to_graph<N, E, P>(
+pub(crate) fn attach_seqs_to_graph<N, E>(
   graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
+  partition: &mut PartitionFitch,
   aln: &[FastaRecord],
 ) -> Result<(), Report>
 where
   N: NodeAncestralOps,
   E: GraphEdge,
-  P: PartitionCompressed,
 {
   let aln_by_name = aln.iter().fold(BTreeMap::new(), |mut records, record| {
     records.entry(record.seq_name.as_str()).or_insert(record);
@@ -91,43 +88,34 @@ where
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
-  for partition in partitions {
-    let alphabet = partition.read_arc().alphabet().clone();
-    let nodes = leaf_records
-      .par_iter()
-      .map(|(leaf_key, leaf_fasta)| SparseNodePartition::new(&leaf_fasta.seq, &alphabet).map(|node| (*leaf_key, node)))
-      .collect::<Result<BTreeMap<_, _>, Report>>()?;
-    partition.write_arc().nodes_mut().extend(nodes);
-  }
+  let alphabet = partition.alphabet.clone();
+  let nodes = leaf_records
+    .par_iter()
+    .map(|(leaf_key, leaf_fasta)| SparseNodePartition::new(&leaf_fasta.seq, &alphabet).map(|node| (*leaf_key, node)))
+    .collect::<Result<BTreeMap<_, _>, Report>>()?;
+  partition.nodes.extend(nodes);
 
   for edge in graph.get_edges() {
     let edge_key = edge.read_arc().key();
-    partitions.iter().try_for_each(|partition| -> Result<(), Report> {
-      let mut partition = partition.write_arc();
-      partition.edges_mut().insert(edge_key, SparseEdgePartition::default());
-      Ok(())
-    })?;
+    partition.edges.insert(edge_key, SparseEdgePartition::default());
   }
 
   Ok(())
 }
 
-pub(crate) fn fitch_backward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
+pub(crate) fn fitch_backward<N, E>(graph: &Graph<N, E, ()>, partition: &mut PartitionFitch) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionCompressed,
 {
-  for partition in partitions {
-    let mut partition = partition.write_arc();
-    let alphabet = partition.alphabet().clone();
-    let length = partition.length();
-    let (nodes, edges) = partition.storage_mut();
-    let pass = GraphPass::new(graph, nodes, edges, |_| Ok(SparseNodePartition::empty(&alphabet)))?;
-    let outputs = pass.try_map_backward(|context| run_fitch_backward_indexed(graph, &alphabet, length, context))?;
-    *partition.nodes_mut() = outputs.nodes;
-    *partition.edges_mut() = outputs.edges;
-  }
+  let alphabet = partition.alphabet.clone();
+  let length = partition.length;
+  let pass = GraphPass::new(graph, &mut partition.nodes, &mut partition.edges, |_| {
+    Ok(SparseNodePartition::empty(&alphabet))
+  })?;
+  let outputs = pass.try_map_backward(|context| run_fitch_backward_indexed(graph, &alphabet, length, context))?;
+  partition.nodes = outputs.nodes;
+  partition.edges = outputs.edges;
   Ok(())
 }
 
@@ -252,25 +240,20 @@ where
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-pub(crate) fn fitch_forward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
+pub(crate) fn fitch_forward<N, E>(graph: &Graph<N, E, ()>, partition: &mut PartitionFitch) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionCompressed,
 {
-  for partition in partitions {
-    let mut partition = partition.write_arc();
-    let alphabet = partition.alphabet().clone();
-    let (nodes, edges) = partition.storage_mut();
-    let pass = GraphPass::new(graph, nodes, edges, |key| {
-      Err(make_report!(
-        "Partition node {key} is missing before the Fitch forward pass"
-      ))
-    })?;
-    let outputs = pass.try_map_forward(|context| run_fitch_forward_indexed(&alphabet, context))?;
-    *partition.nodes_mut() = outputs.nodes;
-    *partition.edges_mut() = outputs.edges;
-  }
+  let alphabet = partition.alphabet.clone();
+  let pass = GraphPass::new(graph, &mut partition.nodes, &mut partition.edges, |key| {
+    Err(make_report!(
+      "Partition node {key} is missing before the Fitch forward pass"
+    ))
+  })?;
+  let outputs = pass.try_map_forward(|context| run_fitch_forward_indexed(&alphabet, context))?;
+  partition.nodes = outputs.nodes;
+  partition.edges = outputs.edges;
   Ok(())
 }
 
@@ -354,37 +337,32 @@ fn run_fitch_forward_indexed(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-fn fitch_cleanup<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
+fn fitch_cleanup<N, E>(graph: &Graph<N, E, ()>, partition: &mut PartitionFitch) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionCompressed,
 {
-  for partition in partitions {
-    let mut partition = partition.write_arc();
-    for (key, node) in partition.nodes_mut() {
-      if !graph.is_leaf(*key) {
-        node.seq.fitch.variable = btreemap! {};
-      }
+  for (key, node) in &mut partition.nodes {
+    if !graph.is_leaf(*key) {
+      node.seq.fitch.variable = btreemap! {};
     }
   }
   Ok(())
 }
 
-pub fn compress_sequences<N, E, P>(
+pub fn compress_sequences<N, E>(
   graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
+  partition: &mut PartitionFitch,
   aln: &[FastaRecord],
 ) -> Result<(), Report>
 where
   N: NodeAncestralOps,
   E: GraphEdge,
-  P: PartitionCompressed,
 {
-  attach_seqs_to_graph(graph, partitions, aln)?;
-  fitch_backward(graph, partitions)?;
-  fitch_forward(graph, partitions)?;
-  fitch_cleanup(graph, partitions)
+  attach_seqs_to_graph(graph, partition, aln)?;
+  fitch_backward(graph, partition)?;
+  fitch_forward(graph, partition)?;
+  fitch_cleanup(graph, partition)
 }
 
 /// Reconstruct ancestral sequences using Fitch parsimony.

@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
-use crate::ancestral::fitch::{ancestral_reconstruction_fitch, compress_sequences};
+use crate::ancestral::fitch::{ancestral_reconstruction_fitch, create_fitch_partition};
 use crate::ancestral::marginal::{
   ancestral_reconstruction_marginal, initialize_marginal, marginal_update, profile_branch_lengths,
 };
@@ -18,7 +18,6 @@ use crate::payload::ancestral::{GraphAncestral, NodeAncestral};
 use crate::progress::ProgressSink;
 use crate::seq::alignment::get_common_length;
 use eyre::Report;
-use maplit::btreemap;
 use parking_lot::RwLock;
 use serde::Serialize;
 use std::sync::Arc;
@@ -118,16 +117,9 @@ where
     MethodAncestral::Parsimony => {
       progress.check_cancelled()?;
       progress.report("Fitch parsimony", 0.3, "");
-      let partition = Arc::new(RwLock::new(PartitionFitch {
-        index: 0,
-        alphabet,
-        length: alignment_length,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-      }));
+      let partition = create_fitch_partition(&graph, 0, alphabet, &sequences)?;
+      let partition = Arc::new(RwLock::new(partition));
       let partitions_parsimony = vec![Arc::clone(&partition)];
-
-      compress_sequences(&graph, &partitions_parsimony, &sequences)?;
 
       if params.impute_missing_data {
         log::warn!(

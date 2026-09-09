@@ -9,8 +9,6 @@ mod tests {
   use indoc::indoc;
   use itertools::Itertools;
   use maplit::btreemap;
-  use parking_lot::RwLock;
-  use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
 
@@ -21,16 +19,15 @@ mod tests {
     let alphabet = Alphabet::default();
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let graph: GraphAncestral = nwk_read_str(nwk)?;
-    let partitions = [Arc::new(RwLock::new(PartitionFitch {
+    let mut partition = PartitionFitch {
       index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
-    }))];
-    compress_sequences(&graph, &partitions, &aln)?;
+    };
+    compress_sequences(&graph, &mut partition, &aln)?;
 
-    let partition = partitions[0].read_arc();
     let name = |key| -> String {
       graph
         .get_node(key)
