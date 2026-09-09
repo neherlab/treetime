@@ -152,13 +152,11 @@ where
   let graph_node = graph_node.read_arc();
 
   if context.is_leaf {
-    // A leaf keeps its attached Fitch data unchanged and, being non-root, returns its moved-in
-    // parent edge untouched so the forward pass keeps the edge entries it depends on.
-    let (_, edge) = context.parent_edge.expect("Leaf node must own its parent edge");
-    return Ok(GraphPassNodeOutput {
-      node,
-      parent_message: Some(edge),
-    });
+    // A leaf keeps its attached Fitch data unchanged and returns its moved-in parent edge untouched
+    // so the forward pass keeps the edge entries it depends on. A single-node tree, where the leaf is
+    // also the root, has no parent edge and returns no message.
+    let parent_message = context.parent_edge.map(|(_, edge)| edge);
+    return Ok(GraphPassNodeOutput { node, parent_message });
   }
 
   // The value engine hands the completed children in its own topology order, which may differ from
