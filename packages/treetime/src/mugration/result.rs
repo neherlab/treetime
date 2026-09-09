@@ -6,6 +6,7 @@ use ndarray::Array1;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Write;
+use std::sync::Arc;
 use treetime_graph::node::Named;
 use treetime_primitives::LogLh;
 #[derive(Clone, Debug, Serialize)]
@@ -112,13 +113,26 @@ pub struct MugrationGraphData {
   pub traits: MugrationTraitsOutput,
   pub confidence: MugrationConfidenceOutput,
   pub log_lh: LogLh,
-  pub partition: PartitionMarginalDiscrete,
+  pub partition: Arc<PartitionMarginalDiscrete>,
 }
 
+/// Mugration result as a value.
+///
+/// The discrete inference result (`discrete`), the reconstructed attribute name, and the marginal
+/// log likelihood are reachable directly off the result. `discrete` shares its inference partition
+/// with the copy the output writers still read from the graph, so no per-node profile data is
+/// duplicated. `graph` carries the tree and the metadata the writers read; the writers move onto the
+/// result value in a later step, after which `graph` and the partition-in-graph go away.
 #[derive(Debug, serde::Serialize)]
 pub struct MugrationResult {
   #[serde(skip)]
   pub graph: GraphAncestral<MugrationGraphData>,
+  #[serde(skip)]
+  pub discrete: Arc<PartitionMarginalDiscrete>,
+  #[serde(skip)]
+  pub attribute: String,
+  #[serde(skip)]
+  pub log_lh: LogLh,
 }
 
 impl std::ops::Deref for MugrationResult {
@@ -135,14 +149,18 @@ impl MugrationResult {
     let traits = MugrationTraitsOutput::new(attribute, assignments);
     let confidence = MugrationConfidenceOutput::new(&graph, &partition);
 
+    let partition = Arc::new(partition);
     let data = MugrationGraphData {
       traits,
       confidence,
       log_lh,
-      partition,
+      partition: Arc::clone(&partition),
     };
     Self {
       graph: graph.map_data(data),
+      discrete: partition,
+      attribute: attribute.to_owned(),
+      log_lh,
     }
   }
 
