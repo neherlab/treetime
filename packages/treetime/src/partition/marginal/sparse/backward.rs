@@ -1,14 +1,16 @@
+use crate::alphabet::alphabet::Alphabet;
+use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::marginal::sparse::message::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, VarPos};
 use eyre::Report;
 use maplit::btreemap;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
-use treetime_graph::pass::{GraphPass, GraphPassDependencies, GraphPassSlot};
+use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
 
@@ -24,48 +26,49 @@ where
   let gtr = partition.gtr.clone();
   let length = partition.length;
   let (nodes, edges) = (&mut partition.nodes, &mut partition.edges);
-  let mut pass = GraphPass::new(graph, nodes, edges, |key| {
+  let pass = GraphPass::new(graph, nodes, edges, |key| {
     treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass")
   })?;
-  let result = pass.try_for_each_backward(|dependencies, slot| {
-    process_node_backward_indexed(graph, &alphabet, &gtr, length, dependencies, slot)
-  });
-  let (nodes, edges) = pass.into_maps()?;
-  partition.nodes = nodes;
-  partition.edges = edges;
-  result
+  let outputs =
+    pass.try_map_backward(|context| process_node_backward_indexed(graph, &alphabet, &gtr, length, context))?;
+  partition.nodes = outputs.nodes;
+  partition.edges = outputs.edges;
+  Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 fn process_node_backward_indexed<N, E>(
   graph: &Graph<N, E, ()>,
-  alphabet: &crate::alphabet::alphabet::Alphabet,
-  gtr: &crate::gtr::gtr::GTR,
+  alphabet: &Alphabet,
+  gtr: &GTR,
   length: usize,
-  dependencies: &GraphPassDependencies<SparseNodePartition, SparseEdgePartition>,
-  slot: &mut GraphPassSlot<SparseNodePartition, SparseEdgePartition>,
-) -> Result<(), Report>
+  context: GraphPassBackwardContext<
+    '_,
+    SparseNodePartition,
+    SparseEdgePartition,
+    SparseNodePartition,
+    SparseEdgePartition,
+  >,
+) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  let graph_node = graph.get_node(slot.key).expect("Indexed node must exist in graph");
+  let mut node = context.input;
+  let graph_node = graph.get_node(context.key).expect("Indexed node must exist in graph");
   let graph_node = graph_node.read_arc();
   let msg_to_parent = if graph_node.is_leaf() {
     let fixed = alphabet
       .determined()
       .map(|state| Ok((state, alphabet.get_profile(state)?.clone())))
       .collect::<Result<_, Report>>()?;
-    let variable = slot
-      .node
+    let variable = node
       .seq
       .fitch
       .variable
       .iter()
       .map(|(pos, profile)| {
         let dis = alphabet.construct_profile(profile.chars()).unwrap();
-        let state = slot
-          .node
+        let state = node
           .seq
           .fitch
           .chosen_state
@@ -77,7 +80,7 @@ where
       })
       .collect();
     SparseSeqDistribution {
-      fixed_counts: slot.node.seq.composition.clone(),
+      fixed_counts: node.seq.composition.clone(),
       variable,
       variable_indel: BTreeSet::new(),
       fixed,
@@ -86,6 +89,21 @@ where
   } else {
     let mut variable_pos = btreemap! {};
     let child_pairs = graph.children_of(&graph_node);
+
+    // The value engine hands the completed children in its own topology order, which may differ from
+    // `children_of`. Index them by key so every child is fetched, and folded, in the same canonical
+    // `children_of` order as before, keeping the floating-point result byte-for-byte identical.
+    let child_nodes: BTreeMap<_, _> = context
+      .children
+      .iter()
+      .map(|child| (child.node_key, child.node))
+      .collect();
+    let child_edge_messages: BTreeMap<_, _> = context
+      .children
+      .iter()
+      .filter_map(|child| child.edge.map(|edge| (child.edge_key, edge)))
+      .collect();
+
     let mut child_states = vec![btreemap! {}; child_pairs.len()];
     let mut child_messages = Vec::with_capacity(child_pairs.len());
     let mut child_keys = Vec::with_capacity(child_pairs.len());
@@ -93,7 +111,9 @@ where
     for (ci, (child, edge)) in child_pairs.iter().enumerate() {
       let child_key = child.read_arc().key();
       let edge_key = edge.read_arc().key();
-      let edge_data = dependencies.edge(edge_key);
+      let edge_data = *child_edge_messages
+        .get(&edge_key)
+        .expect("Backward child edge message must be published before its parent");
       for mutation in edge_data.fitch_subs() {
         variable_pos.insert(mutation.pos(), mutation.reff());
         child_states[ci].insert(mutation.pos(), mutation.qry());
@@ -106,7 +126,9 @@ where
     }
 
     for (ci, child_key) in child_keys.iter().enumerate() {
-      let child_data = dependencies.node(*child_key);
+      let child_data = *child_nodes
+        .get(child_key)
+        .expect("Backward child node output must be published before its parent");
       for (pos, parent_state) in &variable_pos {
         if child_states[ci].contains_key(pos) {
           continue;
@@ -125,7 +147,7 @@ where
     }
 
     combine_messages(
-      &slot.node.seq.composition,
+      &node.seq.composition,
       &child_messages,
       &variable_pos,
       &child_states,
@@ -134,15 +156,16 @@ where
     )?
   };
 
-  if graph_node.is_root() {
-    slot.node.profile = msg_to_parent;
+  let parent_message = if graph_node.is_root() {
+    node.profile = msg_to_parent;
+    None
   } else {
-    let (edge_key, edge_data) = slot
-      .parent_edge
-      .as_mut()
-      .expect("Non-root node must own its parent edge");
+    // Reuse this node's moved-in parent-edge input and overwrite only the two message fields, exactly
+    // as the in-place engine did. The edge already holds `fitch_subs` and `transmission` written by the
+    // Fitch pre-pass, plus other fields, and a fresh edge would destroy them and corrupt the result.
+    let (edge_key, mut edge_data) = context.parent_edge.expect("Non-root node must own its parent edge");
     let branch_length = graph
-      .get_edge(*edge_key)
+      .get_edge(edge_key)
       .expect("Indexed edge must exist in graph")
       .read_arc()
       .payload()
@@ -166,6 +189,8 @@ where
       )
     };
     edge_data.msg_to_parent = msg_to_parent;
-  }
-  Ok(())
+    Some(edge_data)
+  };
+
+  Ok(GraphPassNodeOutput { node, parent_message })
 }
