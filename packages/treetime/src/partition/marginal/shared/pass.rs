@@ -10,7 +10,7 @@ use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_graph::pass::{
-  GraphPass, GraphPassBackwardContext, GraphPassDependencies, GraphPassNodeOutput, GraphPassSlot,
+  GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput,
 };
 use treetime_primitives::LogLh;
 
@@ -146,46 +146,36 @@ where
   E: EdgeOptimizeOps,
 {
   let (nodes, edges) = partition.indexed_storage_mut();
-  let mut pass = GraphPass::new(graph, nodes, edges, |key| {
+  let pass = GraphPass::new(graph, nodes, edges, |key| {
     treetime_utils::make_internal_error!("Partition node {key} is missing before the marginal forward pass")
   })?;
-  let result = pass.try_for_each_forward(|dependencies, slot| {
-    marginal_process_node_forward_indexed(partition, graph, dependencies, slot)
-  });
-  let (nodes, edges) = pass.into_maps()?;
-  partition.marginal_data_mut().nodes = nodes;
-  partition.marginal_data_mut().edges = edges;
-  result
+  let outputs = pass.try_map_forward(|context| marginal_process_node_forward_indexed(partition, graph, context))?;
+  partition.marginal_data_mut().nodes = outputs.nodes;
+  partition.marginal_data_mut().edges = outputs.edges;
+  Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 fn marginal_process_node_forward_indexed<N, E>(
   partition: &impl IndexedMarginalPartition<N, E>,
   graph: &Graph<N, E, ()>,
-  dependencies: &GraphPassDependencies<DenseNodePartition, DenseEdgePartition>,
-  slot: &mut GraphPassSlot<DenseNodePartition, DenseEdgePartition>,
-) -> Result<(), Report>
+  context: GraphPassForwardContext<'_, DenseNodePartition, DenseEdgePartition, DenseNodePartition>,
+) -> Result<GraphPassNodeOutput<DenseNodePartition, DenseEdgePartition>, Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  let mut parent_edge = None;
-  let parent = if let Some(parent_key) = slot.parent_key {
-    let parent = dependencies.node(parent_key);
-    parent_edge = slot.parent_edge.as_mut();
-    Some(parent)
-  } else {
-    None
-  };
+  let mut node = context.input;
 
+  // Reuse this node's moved-in parent-edge input and overwrite only `msg_to_child`, exactly as the
+  // in-place engine did. The edge's other fields (indels, msg_from_child, msg_to_parent, transmission)
+  // carry backward-pass state and must survive the forward pass unchanged.
+  let mut parent_edge = context.parent_edge;
   if let Some((edge_key, edge)) = parent_edge.as_mut() {
+    let parent = context.parent.expect("Non-root node must have a parent");
     let safe_child = edge.msg_from_child.dis.mapv(|value| value.max(f64::MIN_POSITIVE));
-    let mut dis = &parent.expect("Non-root node must have a parent").profile.dis / &safe_child;
+    let mut dis = &parent.profile.dis / &safe_child;
     let delta_ll = normalize_inplace(&mut dis);
-    let log_lh = forward_log_lh_remove_child(
-      parent.expect("Non-root node must have a parent").profile.log_lh,
-      edge.msg_from_child.log_lh,
-    );
+    let log_lh = forward_log_lh_remove_child(parent.profile.log_lh, edge.msg_from_child.log_lh);
     let log_lh = forward_log_lh_add_normalization(log_lh, delta_ll);
     edge.msg_to_child = DenseSeqDistribution { dis, log_lh };
     let branch_length = graph
@@ -203,18 +193,20 @@ where
       .evolve(&edge.msg_to_child.dis, branch_length, false);
     let mut dis = &edge.msg_to_parent.dis * &msg_child;
     let delta_ll = normalize_inplace(&mut dis);
-    slot.node.profile = DenseSeqDistribution {
+    node.profile = DenseSeqDistribution {
       dis,
       log_lh: edge.msg_to_parent.log_lh + edge.msg_to_child.log_lh + LogLh::new(delta_ll),
     };
   }
 
   partition.indexed_forward_post(
-    slot.parent_key.is_none(),
-    graph.is_leaf(slot.key),
-    parent,
-    &mut slot.node,
+    context.is_root,
+    graph.is_leaf(context.key),
+    context.parent,
+    &mut node,
     parent_edge.as_mut().map(|(_, edge)| edge),
   )?;
-  Ok(())
+
+  let parent_message = parent_edge.map(|(_, edge)| edge);
+  Ok(GraphPassNodeOutput { node, parent_message })
 }
