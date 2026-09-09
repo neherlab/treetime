@@ -12,7 +12,7 @@ use treetime_distribution::distribution_multiplication;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
-use treetime_graph::pass::{GraphPassDependencies, GraphPassSlot, with_graph_payloads};
+use treetime_graph::pass::{GraphPassNodeOutput, with_graph_payloads_map};
 use treetime_grid::Side;
 
 pub fn propagate_distributions_forward<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
@@ -22,9 +22,22 @@ where
   D: Send + Sync,
 {
   let contradicted = AtomicUsize::new(0);
-  with_graph_payloads(graph, |pass| {
-    pass.try_for_each_forward(|dependencies, slot| {
-      propagate_distributions_forward_slot(graph, dependencies, slot, &contradicted)
+  with_graph_payloads_map(graph, |pass| {
+    pass.try_map_forward::<N, E>(|context| {
+      let mut node = context.input;
+      if refine_distribution_from_parent(
+        context.parent,
+        context.parent_edge.as_ref().map(|(_, edge)| edge),
+        &mut node,
+      )? == Refinement::ContradictedGivenDate
+      {
+        contradicted.fetch_add(1, Ordering::Relaxed);
+      }
+      commit_node_time(context.parent, context.is_leaf, &mut node);
+      // The forward pass only reads the parent edge (its branch length and backward message), so the
+      // edge is passed through unchanged; the root has no parent edge and yields `None`.
+      let parent_message = context.parent_edge.map(|(_, edge)| edge);
+      Ok(GraphPassNodeOutput { node, parent_message })
     })
   })?;
 
@@ -43,25 +56,6 @@ where
   Ok(())
 }
 
-/// Refine the node's time distribution from its parent, then commit its point-estimate time.
-fn propagate_distributions_forward_slot<N, E, D>(
-  graph: &Graph<N, E, D>,
-  dependencies: &GraphPassDependencies<N, E>,
-  slot: &mut GraphPassSlot<N, E>,
-  contradicted: &AtomicUsize,
-) -> Result<(), Report>
-where
-  N: GraphNode + Named + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
-  D: Send + Sync,
-{
-  if refine_distribution_from_parent(dependencies, slot)? == Refinement::ContradictedGivenDate {
-    contradicted.fetch_add(1, Ordering::Relaxed);
-  }
-  commit_node_time(graph, dependencies, slot);
-  Ok(())
-}
-
 /// What [`refine_distribution_from_parent`] did to a node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Refinement {
@@ -77,8 +71,9 @@ enum Refinement {
 /// node's own subtree evidence. When the two have disjoint support the product is empty; the given
 /// date is then kept rather than refined away, and the caller told so it can report the disagreement.
 fn refine_distribution_from_parent<N, E>(
-  dependencies: &GraphPassDependencies<N, E>,
-  slot: &mut GraphPassSlot<N, E>,
+  parent: Option<&N>,
+  edge: Option<&E>,
+  node: &mut N,
 ) -> Result<Refinement, Report>
 where
   N: GraphNode + Named + TimetreeNode,
@@ -88,18 +83,14 @@ where
   // - root -- no parent message
   // - exact date -- observed, not inferred
   // A leaf with an uncertain date is refined like any inferred node.
-  let Some(parent_key) = slot.parent_key else {
+  let Some(parent) = parent else {
     return Ok(Refinement::Done);
   };
-  if has_exact_date(&slot.node) {
+  if has_exact_date(node) {
     return Ok(Refinement::Done);
   }
 
-  let parent = dependencies.node(parent_key);
-  let (_, edge) = slot
-    .parent_edge
-    .as_ref()
-    .expect("Non-root indexed node must own its parent edge");
+  let edge = edge.expect("Non-root indexed node must own its parent edge");
 
   let (Some(parent_time_dist), Some(branch_dist)) = (parent.time_distribution(), edge.branch_length_distribution())
   else {
@@ -108,10 +99,10 @@ where
 
   // No distribution of its own: take the parent message across the branch as is (nothing to divide
   // out, multiply back, or contradict).
-  let Some(subtree_dist) = slot.node.time_distribution() else {
+  let Some(subtree_dist) = node.time_distribution() else {
     let dist_from_parent = convolve_across_edge(parent_time_dist, branch_dist, Side::Right, EPS, GRID_POINTS)?;
-    log_refinement(&slot.node, parent_time_dist, &dist_from_parent);
-    slot.node.set_time_distribution(Some(Arc::new(dist_from_parent)));
+    log_refinement(node, parent_time_dist, &dist_from_parent);
+    node.set_time_distribution(Some(Arc::new(dist_from_parent)));
     return Ok(Refinement::Done);
   };
 
@@ -130,16 +121,16 @@ where
   // Peak-normalize and store. The multiply is pointwise and does not resize the grid, so no further
   // mass sizing is needed.
   let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?.normalize();
-  log_refinement(&slot.node, parent_time_dist, &combined);
+  log_refinement(node, parent_time_dist, &combined);
 
   // Empty product: the parent message and the given date have disjoint support. Refining onto it
   // would leave the node undated -- worse than the input date -- so keep the given date and report
   // it. A node with no given date has nothing to fall back on and stays undated.
-  if combined.likely_time().is_none() && slot.node.date_constraint().is_some() {
-    log_kept_given_date(&slot.node, &dist_from_parent);
+  if combined.likely_time().is_none() && node.date_constraint().is_some() {
+    log_kept_given_date(node, &dist_from_parent);
     return Ok(Refinement::ContradictedGivenDate);
   }
-  slot.node.set_time_distribution(Some(Arc::new(combined)));
+  node.set_time_distribution(Some(Arc::new(combined)));
   Ok(Refinement::Done)
 }
 
@@ -148,29 +139,22 @@ where
 /// Projected to be no earlier than the parent's committed time -- except for an exact date, which is
 /// kept so a clock conflict stays visible to `commit_clock_branch_lengths`. An empty distribution
 /// gets no time, and warns when the node was dateable.
-fn commit_node_time<N, E, D>(
-  graph: &Graph<N, E, D>,
-  dependencies: &GraphPassDependencies<N, E>,
-  slot: &mut GraphPassSlot<N, E>,
-) where
+fn commit_node_time<N>(parent: Option<&N>, is_leaf: bool, node: &mut N)
+where
   N: GraphNode + Named + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
-  D: Send + Sync,
 {
   // Project the inferred point estimate onto the committed parent time (an exact date keeps its
   // own). This adjusts the estimate without recomputing the posterior; the statistical contract is
   // open in kb/issues/M-timetree-marginal-node-times-can-violate-topology.md.
-  let parent_time = (!has_exact_date(&slot.node))
-    .then(|| parent_time(dependencies, slot))
-    .flatten();
+  let parent_time = (!has_exact_date(node)).then(|| parent_time(parent)).flatten();
 
   // An empty distribution yields no time. Under NegLog (ordinate -ln p) even tiny posteriors survive
   // exactly, so empty means genuinely disjoint hard domains -- the subtree disagrees with the rest of
   // the tree. Surface that rather than drop the date silently. An undated leaf under an undated parent
   // has nothing to infer from and was already reported when its date was found missing.
-  let is_dateable = !graph.is_leaf(slot.key) || slot.node.date_constraint().is_some();
-  if set_likely_time(&mut slot.node, parent_time).is_none() && is_dateable {
-    let name = slot.node.name();
+  let is_dateable = !is_leaf || node.date_constraint().is_some();
+  if set_likely_time(node, parent_time).is_none() && is_dateable {
+    let name = node.name();
     let name = name.as_ref().map_or("<unnamed>", |name| name.as_ref());
     warn!(
       "Timetree forward pass: node '{name}' has an empty time distribution; no date was assigned. \
@@ -188,14 +172,9 @@ fn has_exact_date(node: &impl TimetreeNode) -> bool {
   node.date_constraint().as_ref().is_some_and(|dist| dist.is_point())
 }
 
-/// Committed time of the slot's parent, if it has one and it is set.
-fn parent_time<N, E>(dependencies: &GraphPassDependencies<N, E>, slot: &GraphPassSlot<N, E>) -> Option<f64>
-where
-  N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
-{
-  let parent_key = slot.parent_key?;
-  dependencies.node(parent_key).time()
+/// Committed time of the node's parent, if it has one and it is set.
+fn parent_time<N: TimetreeNode>(parent: Option<&N>) -> Option<f64> {
+  parent?.time()
 }
 
 /// Assign the node's committed time from the peak of its time distribution, clamped to be no
