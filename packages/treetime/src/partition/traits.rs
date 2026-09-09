@@ -4,6 +4,8 @@ use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_internal_error;
 use crate::make_internal_report;
+use crate::partition::marginal::shared::data::IndexedMarginalPartition;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::seq::indel::InDel;
@@ -194,14 +196,27 @@ impl NodeCommentProvider for MutationCommentProvider<'_> {
   }
 }
 
+/// The two marginal representations, borrowed for one pass. Dense and discrete partitions share the
+/// indexed dense machinery and travel through the `Indexed` arm; sparse partitions travel through
+/// `Sparse`. The marginal boundary matches on this to run the corresponding tail, keeping the two
+/// representations' code paths separate rather than merged into one conditional-laden function.
+pub enum MarginalPass<'a, N, E>
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+{
+  Indexed(&'a mut dyn IndexedMarginalPartition<N, E>),
+  Sparse(&'a mut PartitionMarginalSparse),
+}
+
 pub trait PartitionMarginalPasses<N, E>: HasLogLh + Send + Sync
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  fn process_backward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>;
-
-  fn process_forward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report>;
+  /// Borrow this partition as one of the two marginal representations, so the boundary can run the
+  /// matching backward/forward tail.
+  fn as_marginal_pass(&mut self) -> MarginalPass<'_, N, E>;
 
   fn get_sequence_length(&self) -> usize;
 }

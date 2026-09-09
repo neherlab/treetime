@@ -2,10 +2,9 @@ use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::partition::marginal::discrete::input::{one_hot_profile, uniform_profile, validate_trait_names};
 use crate::partition::marginal::shared::data::{IndexedMarginalPartition, MarginalData, MarginalPartition};
-use crate::partition::marginal::shared::pass::{marginal_process_backward_indexed, marginal_process_forward_indexed};
 use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::storage::discrete::DiscreteStates;
-use crate::partition::traits::{HasGtr, HasLogLh, PartitionMarginalPasses, TransitionCounting};
+use crate::partition::traits::{HasGtr, HasLogLh, MarginalPass, PartitionMarginalPasses, TransitionCounting};
 use eyre::Report;
 use maplit::btreemap;
 use ndarray::Array1;
@@ -195,12 +194,8 @@ where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  fn process_backward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
-    marginal_process_backward_indexed(self, graph)
-  }
-
-  fn process_forward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
-    marginal_process_forward_indexed(self, graph)
+  fn as_marginal_pass(&mut self) -> MarginalPass<'_, N, E> {
+    MarginalPass::Indexed(self)
   }
 
   fn get_sequence_length(&self) -> usize {

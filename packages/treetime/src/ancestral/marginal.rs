@@ -1,15 +1,43 @@
 use crate::ancestral::sample::SampleMode;
-use crate::partition::traits::graph_log_lh;
-use crate::partition::traits::{PartitionMarginalOps, PartitionMarginalPasses};
+use crate::partition::marginal::shared::pass::{marginal_process_backward_indexed, marginal_process_forward_indexed};
+use crate::partition::marginal::sparse::{backward, forward};
+use crate::partition::traits::{MarginalPass, PartitionMarginalOps, PartitionMarginalPasses, graph_log_lh};
 use eyre::Report;
 use log::trace;
 use parking_lot::RwLock;
+use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{LogLh, Seq, seq};
+
+/// The per-edge branch length each marginal pass propagates sequence profiles along, keyed by edge.
+///
+/// The value is `profile_branch_length().unwrap_or(0.0)`: the clock-constrained length for a
+/// timetree edge (`clock_branch_length` when committed, else the ML or input length) and the ML or
+/// input length for every other edge. Collected once at the boundary and threaded into the passes,
+/// so the branch length is an explicit pass input rather than a value reached back off the graph
+/// edge inside each parallel worker. Callers that maintain their own branch lengths (branch-length
+/// optimization, timetree commit) supply their own map instead of this one.
+pub fn profile_branch_lengths<N, E, D>(graph: &Graph<N, E, D>) -> BTreeMap<GraphEdgeKey, f64>
+where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
+  graph
+    .get_edges()
+    .iter()
+    .map(|edge| {
+      let edge = edge.read_arc();
+      let key = edge.key();
+      let branch_length = edge.payload().read_arc().profile_branch_length().unwrap_or(0.0);
+      (key, branch_length)
+    })
+    .collect()
+}
 
 pub fn initialize_marginal<N, E, P>(
   graph: &Graph<N, E, ()>,
@@ -24,20 +52,71 @@ where
   for partition in partitions {
     partition.write_arc().attach_sequences(graph, aln)?;
   }
-  update_marginal(graph, partitions)
+  marginal_update(graph, &profile_branch_lengths(graph), partitions)
 }
 
-pub fn update_marginal<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<LogLh, Report>
+/// Run the marginal backward and forward passes over the given partitions, propagating profiles
+/// along the supplied per-edge branch lengths, and return the substitution log likelihood.
+///
+/// Branch lengths are an explicit input: the caller decides whether they come from the graph (via
+/// [`profile_branch_lengths`]) or from its own store. Each partition contributes its own
+/// substitution model; the boundary dispatches dense and sparse representations to their separate
+/// tails via [`MarginalPass`].
+pub fn marginal_update<N, E, P>(
+  graph: &Graph<N, E, ()>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  partitions: &[Arc<RwLock<P>>],
+) -> Result<LogLh, Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
   P: PartitionMarginalPasses<N, E> + ?Sized,
 {
-  marginal_backward(graph, partitions)?;
+  marginal_backward(graph, branch_lengths, partitions)?;
   let log_lh = graph_log_lh(graph, partitions)?;
   trace!("Marginal log likelihood (substitution): {}", log_lh.value());
-  marginal_forward(graph, partitions)?;
+  marginal_forward(graph, branch_lengths, partitions)?;
   Ok(log_lh)
+}
+
+pub fn marginal_backward<N, E, P>(
+  graph: &Graph<N, E, ()>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  partitions: &[Arc<RwLock<P>>],
+) -> Result<(), Report>
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+  P: PartitionMarginalPasses<N, E> + ?Sized,
+{
+  for partition in partitions {
+    let mut partition = partition.write_arc();
+    match partition.as_marginal_pass() {
+      MarginalPass::Indexed(partition) => marginal_process_backward_indexed(partition, graph, branch_lengths)?,
+      MarginalPass::Sparse(partition) => backward::process_backward_indexed(partition, graph, branch_lengths)?,
+    }
+  }
+  Ok(())
+}
+
+fn marginal_forward<N, E, P>(
+  graph: &Graph<N, E, ()>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  partitions: &[Arc<RwLock<P>>],
+) -> Result<(), Report>
+where
+  N: GraphNode + Named,
+  E: EdgeOptimizeOps,
+  P: PartitionMarginalPasses<N, E> + ?Sized,
+{
+  for partition in partitions {
+    let mut partition = partition.write_arc();
+    match partition.as_marginal_pass() {
+      MarginalPass::Indexed(partition) => marginal_process_forward_indexed(partition, graph, branch_lengths)?,
+      MarginalPass::Sparse(partition) => forward::process_forward_indexed(partition, graph, branch_lengths)?,
+    }
+  }
+  Ok(())
 }
 
 pub fn ancestral_reconstruction_marginal<N, E, P>(
@@ -78,30 +157,4 @@ where
       None => Ok(()),
     }
   })
-}
-
-pub fn marginal_backward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
-where
-  N: GraphNode + Named,
-  E: EdgeOptimizeOps,
-  P: PartitionMarginalPasses<N, E> + ?Sized,
-{
-  for partition in partitions {
-    let mut partition = partition.write_arc();
-    partition.process_backward_pass(graph)?;
-  }
-  Ok(())
-}
-
-fn marginal_forward<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> Result<(), Report>
-where
-  N: GraphNode + Named,
-  E: EdgeOptimizeOps,
-  P: PartitionMarginalPasses<N, E> + ?Sized,
-{
-  for partition in partitions {
-    let mut partition = partition.write_arc();
-    partition.process_forward_pass(graph)?;
-  }
-  Ok(())
 }

@@ -7,7 +7,7 @@ use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassNodeOutput};
@@ -17,6 +17,7 @@ use treetime_utils::interval::range::range_contains;
 pub fn process_backward_indexed<N, E>(
   partition: &mut PartitionMarginalSparse,
   graph: &Graph<N, E, ()>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,
@@ -29,8 +30,9 @@ where
   let pass = GraphPass::new(graph, nodes, edges, |key| {
     treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass")
   })?;
-  let outputs =
-    pass.try_map_backward(|context| process_node_backward_indexed(graph, &alphabet, &gtr, length, context))?;
+  let outputs = pass.try_map_backward(|context| {
+    process_node_backward_indexed(graph, &alphabet, &gtr, length, branch_lengths, context)
+  })?;
   partition.nodes = outputs.nodes;
   partition.edges = outputs.edges;
   Ok(())
@@ -41,6 +43,7 @@ fn process_node_backward_indexed<N, E>(
   alphabet: &Alphabet,
   gtr: &GTR,
   length: usize,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   context: GraphPassBackwardContext<
     '_,
     SparseNodePartition,
@@ -164,15 +167,7 @@ where
     // as the in-place engine did. The edge already holds `fitch_subs` and `transmission` written by the
     // Fitch pre-pass, plus other fields, and a fresh edge would destroy them and corrupt the result.
     let (edge_key, mut edge_data) = context.parent_edge.expect("Non-root node must own its parent edge");
-    let branch_length = graph
-      .get_edge(edge_key)
-      .expect("Indexed edge must exist in graph")
-      .read_arc()
-      .payload()
-      .read_arc()
-      .profile_branch_length()
-      .unwrap_or(0.0);
-    let branch_length = fix_branch_length(length, branch_length);
+    let branch_length = fix_branch_length(length, branch_lengths[&edge_key]);
     edge_data.msg_from_child = if gtr.has_site_rates() {
       propagate_raw_per_site(
         gtr,

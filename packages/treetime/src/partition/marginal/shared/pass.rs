@@ -1,3 +1,4 @@
+use crate::gtr::gtr::GTR;
 use crate::partition::marginal::shared::data::IndexedMarginalPartition;
 use crate::partition::marginal::shared::normalize::{
   forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_from_log, normalize_inplace,
@@ -6,15 +7,16 @@ use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, D
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
-use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_primitives::LogLh;
 
 pub fn marginal_process_backward_indexed<N, E>(
-  partition: &mut impl IndexedMarginalPartition<N, E>,
+  partition: &mut dyn IndexedMarginalPartition<N, E>,
   graph: &Graph<N, E, ()>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,
@@ -28,17 +30,24 @@ where
     }
   }
   partition.marginal_data_mut().nodes.append(&mut missing_nodes);
+  let gtr = partition.marginal_data().gtr.clone();
+  let min_branch_length = partition.marginal_data().min_branch_length;
   let (nodes, edges) = partition.indexed_storage_mut();
   let pass = GraphPass::new(graph, nodes, edges, |_| unreachable!("Missing nodes were initialized"))?;
-  let outputs = pass.try_map_backward(|context| marginal_process_node_backward_indexed(partition, graph, context))?;
+  let outputs = pass.try_map_backward(|context| {
+    marginal_process_node_backward_indexed(partition, graph, &gtr, min_branch_length, branch_lengths, context)
+  })?;
   partition.marginal_data_mut().nodes = outputs.nodes;
   partition.marginal_data_mut().edges = outputs.edges;
   Ok(())
 }
 
 fn marginal_process_node_backward_indexed<N, E>(
-  partition: &impl IndexedMarginalPartition<N, E>,
+  partition: &dyn IndexedMarginalPartition<N, E>,
   graph: &Graph<N, E, ()>,
+  gtr: &GTR,
+  min_branch_length: f64,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   context: GraphPassBackwardContext<'_, DenseNodePartition, DenseEdgePartition, DenseNodePartition, DenseEdgePartition>,
 ) -> Result<GraphPassNodeOutput<DenseNodePartition, DenseEdgePartition>, Report>
 where
@@ -102,8 +111,7 @@ where
   };
 
   let parent_message = if graph_node.is_root() {
-    let data = partition.marginal_data();
-    let mut dis = &msg_to_parent.dis * &data.gtr.pi;
+    let mut dis = &msg_to_parent.dis * &gtr.pi;
     let delta_ll = normalize_inplace(&mut dis);
     node.profile = DenseSeqDistribution {
       dis,
@@ -115,20 +123,9 @@ where
     // as the in-place engine did. The edge's other fields (indels, transmission, msg_to_child) carry
     // forward-pass state across timetree iterations and must survive the backward pass unchanged.
     let (edge_key, mut edge) = context.parent_edge.expect("Non-root node must own its parent edge");
-    let branch_length = graph
-      .get_edge(edge_key)
-      .expect("Indexed edge must exist in graph")
-      .read_arc()
-      .payload()
-      .read_arc()
-      .profile_branch_length()
-      .unwrap_or(0.0);
-    let branch_length = partition.marginal_data().effective_branch_length(branch_length);
+    let branch_length = branch_lengths[&edge_key].max(min_branch_length);
     edge.msg_from_child = DenseSeqDistribution {
-      dis: partition
-        .marginal_data()
-        .gtr
-        .propagate_profile(&msg_to_parent.dis, branch_length, false),
+      dis: gtr.propagate_profile(&msg_to_parent.dis, branch_length, false),
       log_lh: msg_to_parent.log_lh,
     };
     edge.msg_to_parent = msg_to_parent;
@@ -139,26 +136,34 @@ where
 }
 
 pub fn marginal_process_forward_indexed<N, E>(
-  partition: &mut impl IndexedMarginalPartition<N, E>,
+  partition: &mut dyn IndexedMarginalPartition<N, E>,
   graph: &Graph<N, E, ()>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
+  let gtr = partition.marginal_data().gtr.clone();
+  let min_branch_length = partition.marginal_data().min_branch_length;
   let (nodes, edges) = partition.indexed_storage_mut();
   let pass = GraphPass::new(graph, nodes, edges, |key| {
     treetime_utils::make_internal_error!("Partition node {key} is missing before the marginal forward pass")
   })?;
-  let outputs = pass.try_map_forward(|context| marginal_process_node_forward_indexed(partition, graph, context))?;
+  let outputs = pass.try_map_forward(|context| {
+    marginal_process_node_forward_indexed(partition, graph, &gtr, min_branch_length, branch_lengths, context)
+  })?;
   partition.marginal_data_mut().nodes = outputs.nodes;
   partition.marginal_data_mut().edges = outputs.edges;
   Ok(())
 }
 
 fn marginal_process_node_forward_indexed<N, E>(
-  partition: &impl IndexedMarginalPartition<N, E>,
+  partition: &dyn IndexedMarginalPartition<N, E>,
   graph: &Graph<N, E, ()>,
+  gtr: &GTR,
+  min_branch_length: f64,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   context: GraphPassForwardContext<'_, DenseNodePartition, DenseEdgePartition, DenseNodePartition>,
 ) -> Result<GraphPassNodeOutput<DenseNodePartition, DenseEdgePartition>, Report>
 where
@@ -179,19 +184,8 @@ where
     let log_lh = forward_log_lh_remove_child(parent.profile.log_lh, edge.msg_from_child.log_lh);
     let log_lh = forward_log_lh_add_normalization(log_lh, delta_ll);
     edge.msg_to_child = DenseSeqDistribution { dis, log_lh };
-    let branch_length = graph
-      .get_edge(*edge_key)
-      .expect("Indexed edge must exist in graph")
-      .read_arc()
-      .payload()
-      .read_arc()
-      .profile_branch_length()
-      .unwrap_or(0.0);
-    let branch_length = partition.marginal_data().effective_branch_length(branch_length);
-    let msg_child = partition
-      .marginal_data()
-      .gtr
-      .evolve(&edge.msg_to_child.dis, branch_length, false);
+    let branch_length = branch_lengths[&*edge_key].max(min_branch_length);
+    let msg_child = gtr.evolve(&edge.msg_to_child.dis, branch_length, false);
     let mut dis = &edge.msg_to_parent.dis * &msg_child;
     let delta_ll = normalize_inplace(&mut dis);
     node.profile = DenseSeqDistribution {

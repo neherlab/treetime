@@ -1,14 +1,12 @@
 use crate::ancestral::fitch_indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::partition::marginal::dense::partition::{PartitionMarginalDense, assign_sequence};
 use crate::partition::marginal::shared::data::{IndexedMarginalPartition, MarginalData, MarginalPartition};
-use crate::partition::marginal::shared::pass::{marginal_process_backward_indexed, marginal_process_forward_indexed};
 use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
-use crate::partition::traits::PartitionMarginalPasses;
+use crate::partition::traits::{MarginalPass, PartitionMarginalPasses};
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
-use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, NodeAncestralOps};
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range_union::range_union;
@@ -119,12 +117,8 @@ where
   N: NodeAncestralOps,
   E: EdgeOptimizeOps,
 {
-  fn process_backward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
-    marginal_process_backward_indexed(self, graph)
-  }
-
-  fn process_forward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
-    marginal_process_forward_indexed(self, graph)
+  fn as_marginal_pass(&mut self) -> MarginalPass<'_, N, E> {
+    MarginalPass::Indexed(self)
   }
 
   fn get_sequence_length(&self) -> usize {

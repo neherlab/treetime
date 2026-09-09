@@ -3,11 +3,10 @@ use crate::ancestral::sample::SampleMode;
 use crate::gtr::gtr::GTR;
 use crate::make_error;
 use crate::partition::marginal::sparse::reconstruct::{map_seq, map_seq_sampled, reconstruct_leaf_sequence};
-use crate::partition::marginal::sparse::{backward, forward};
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::partition::traits::{
-  BranchTopology, HasGtr, HasLogLh, PartitionBranchOps, PartitionMarginalOps, PartitionMarginalPasses,
+  BranchTopology, HasGtr, HasLogLh, MarginalPass, PartitionBranchOps, PartitionMarginalOps, PartitionMarginalPasses,
   PartitionOptimizeOps, PartitionTimetreeOps,
 };
 use crate::seq::mutation::Sub;
@@ -157,12 +156,8 @@ where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  fn process_backward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
-    backward::process_backward_indexed(self, graph)
-  }
-
-  fn process_forward_pass(&mut self, graph: &Graph<N, E, ()>) -> Result<(), Report> {
-    forward::process_forward_indexed(self, graph)
+  fn as_marginal_pass(&mut self) -> MarginalPass<'_, N, E> {
+    MarginalPass::Sparse(self)
   }
 
   fn get_sequence_length(&self) -> usize {

@@ -2,7 +2,7 @@ use crate::ancestral::sample::SampleMode;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
-use crate::partition::traits::{HasLogLh, PartitionMarginalOps, PartitionMarginalPasses};
+use crate::partition::traits::{HasLogLh, MarginalPass, PartitionMarginalOps, PartitionMarginalPasses};
 use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use eyre::Report;
 use treetime_graph::graph_traverse::GraphNodeForward;
@@ -27,17 +27,10 @@ impl HasLogLh for PartitionTimetree {
 }
 
 impl PartitionMarginalPasses<NodeTimetree, EdgeTimetree> for PartitionTimetree {
-  fn process_backward_pass(&mut self, graph: &GraphTimetree) -> Result<(), Report> {
+  fn as_marginal_pass(&mut self) -> MarginalPass<'_, NodeTimetree, EdgeTimetree> {
     match self {
-      Self::Dense(partition) => partition.process_backward_pass(graph),
-      Self::Sparse(partition) => partition.process_backward_pass(graph),
-    }
-  }
-
-  fn process_forward_pass(&mut self, graph: &GraphTimetree) -> Result<(), Report> {
-    match self {
-      Self::Dense(partition) => partition.process_forward_pass(graph),
-      Self::Sparse(partition) => partition.process_forward_pass(graph),
+      Self::Dense(partition) => MarginalPass::Indexed(partition),
+      Self::Sparse(partition) => MarginalPass::Sparse(partition),
     }
   }
 
