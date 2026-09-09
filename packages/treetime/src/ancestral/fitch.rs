@@ -22,7 +22,7 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
-use treetime_graph::node::{GraphNode, NodeAncestralOps};
+use treetime_graph::node::{GraphNode, GraphNodeKey, NodeAncestralOps};
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, LogLh, Seq, seq};
@@ -367,22 +367,29 @@ where
 
 /// Reconstruct ancestral sequences using Fitch parsimony.
 ///
-/// Calls visitor function for every ancestral node, providing the node itself and its reconstructed sequence.
+/// Calls the visitor for every reconstructed node, providing the node itself and its reconstructed
+/// sequence, and returns the reconstructed sequences keyed by node id. The returned map is the
+/// reconstruction result as a value the command captures; each sequence also stays written into the
+/// partition (read by the node-data serializer until the tree writers read the map directly).
 /// Optionally reconstructs leaf sequences.
 pub fn ancestral_reconstruction_fitch(
   graph: &GraphAncestral,
   include_leaves: bool,
   partitions: &[Arc<RwLock<PartitionFitch>>],
   mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral>, &Seq) -> Result<(), Report>,
-) -> Result<(), Report> {
-  graph
-    .iter_depth_first_preorder_forward(|node| run_fitch_reconstruction(include_leaves, partitions, &mut visitor, &node))
+) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+  let mut node_sequences = BTreeMap::new();
+  graph.iter_depth_first_preorder_forward(|node| {
+    run_fitch_reconstruction(include_leaves, partitions, &mut visitor, &mut node_sequences, &node)
+  })?;
+  Ok(node_sequences)
 }
 
 fn run_fitch_reconstruction(
   include_leaves: bool,
   partitions: &[Arc<RwLock<PartitionFitch>>],
   mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral>, &Seq) -> Result<(), Report>,
+  node_sequences: &mut BTreeMap<GraphNodeKey, Seq>,
   node: &GraphNodeForward<NodeAncestral, EdgeAncestral>,
 ) -> Result<(), Report> {
   if !include_leaves && node.is_leaf {
@@ -430,6 +437,7 @@ fn run_fitch_reconstruction(
     seq.sequence = sequence;
 
     visitor(node, &seq.sequence)?;
+    node_sequences.insert(node.key, seq.sequence.clone());
   }
   Ok(())
 }

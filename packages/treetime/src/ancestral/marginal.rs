@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{LogLh, Seq, seq};
 
@@ -119,6 +119,14 @@ where
   Ok(())
 }
 
+/// Reconstruct ancestral sequences with marginal inference, emitting each to `visitor` and
+/// returning the reconstructed sequences keyed by node id.
+///
+/// The returned map is the reconstruction result as a value: the command captures it instead of
+/// having to read it back out of partition state. Every node whose sequence is emitted to the
+/// visitor is also recorded in the map, so the two views hold the same sequences. Until the tree
+/// writers read the map directly, the partition still stores each `seq.sequence` (written inside
+/// `reconstruct_node_sequence`) for the node-data serializer.
 pub fn ancestral_reconstruction_marginal<N, E, P>(
   graph: &Graph<N, E, ()>,
   include_leaves: bool,
@@ -127,7 +135,7 @@ pub fn ancestral_reconstruction_marginal<N, E, P>(
   sample_mode: SampleMode,
   rng: &mut dyn rand::RngCore,
   mut visitor: impl FnMut(&N, &Seq) -> Result<(), Report>,
-) -> Result<(), Report>
+) -> Result<BTreeMap<GraphNodeKey, Seq>, Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
@@ -139,12 +147,16 @@ where
   // reconstruction that the node-data serializer reads back. `include_leaves` gates only whether tip
   // sequences are emitted to the visitor (the reconstructed FASTA), not whether they are computed:
   // `reconstruct_node_sequence` returns `None` for a suppressed tip after writing its `seq.sequence`.
+  let mut node_sequences = BTreeMap::new();
   graph.iter_depth_first_preorder_forward(|node| {
     if partitions.is_empty() {
       if !include_leaves && node.is_leaf {
         return Ok(());
       }
-      return visitor(&node.payload, &seq![]);
+      let seq = seq![];
+      visitor(&node.payload, &seq)?;
+      node_sequences.insert(node.key, seq);
+      return Ok(());
     }
 
     let reconstructed = {
@@ -153,8 +165,13 @@ where
     };
 
     match reconstructed {
-      Some(seq) => visitor(&node.payload, &seq),
+      Some(seq) => {
+        visitor(&node.payload, &seq)?;
+        node_sequences.insert(node.key, seq);
+        Ok(())
+      },
       None => Ok(()),
     }
-  })
+  })?;
+  Ok(node_sequences)
 }

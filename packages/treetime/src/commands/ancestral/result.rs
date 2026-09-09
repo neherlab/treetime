@@ -4,6 +4,9 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::payload::ancestral::GraphAncestral;
 use serde::Serialize;
+use std::collections::BTreeMap;
+use treetime_graph::node::GraphNodeKey;
+use treetime_primitives::Seq;
 
 #[derive(Serialize)]
 pub struct AncestralGraphData {
@@ -32,16 +35,28 @@ impl AncestralGraphData {
   }
 }
 
+/// Ancestral reconstruction result as a value.
+///
+/// The durable per-node and per-edge outputs are reachable directly off the result: `seq` holds the
+/// sequence store (dense, sparse, and parsimony kept as separate representations), `node_sequences`
+/// holds the reconstructed sequences captured from the serial reconstruction walk, and the model
+/// metadata sits alongside. `graph` carries the tree the output writers still read from; the writers
+/// move onto the result value in a later step, after which `graph` and the partition-in-graph go
+/// away.
 #[derive(Serialize)]
 pub struct AncestralResult {
   #[serde(skip)]
   pub graph: GraphAncestral<AncestralGraphData>,
-}
-
-impl std::ops::Deref for AncestralResult {
-  type Target = AncestralGraphData;
-
-  fn deref(&self) -> &Self::Target {
-    self.graph.data()
-  }
+  #[serde(skip)]
+  pub seq: Option<AncestralPartition>,
+  #[serde(skip)]
+  pub node_sequences: BTreeMap<GraphNodeKey, Seq>,
+  #[serde(skip)]
+  pub gtr: Option<GTR>,
+  #[serde(skip)]
+  pub model_name: GtrModelName,
+  #[serde(skip)]
+  pub mask: Vec<bool>,
+  #[serde(skip)]
+  pub aa_node_data: Option<AaNodeData>,
 }

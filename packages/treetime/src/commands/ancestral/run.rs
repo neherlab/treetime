@@ -147,8 +147,19 @@ pub fn run_ancestral_reconstruction(
     gtr,
     model_name,
     mask,
+    node_sequences,
   } = output;
-  let mut graph = graph.map_data(AncestralGraphData::new(partition, gtr, model_name, mask, aa_node_data));
+  // The tree and node-data writers still read the partition and model metadata from the graph's
+  // data slot, so build that alongside the value-shaped result. The partition is shared by cloning
+  // its `Arc` (no sequence data is copied); the model metadata is small and cloned once. Both copies
+  // leave the graph once the writers read the result value directly.
+  let mut graph = graph.map_data(AncestralGraphData::new(
+    partition.clone(),
+    gtr.clone(),
+    model_name,
+    mask.clone(),
+    aa_node_data.clone(),
+  ));
   topology_order.apply(&mut graph)?;
   progress.report("Writing output", 0.9, "");
 
@@ -207,7 +218,15 @@ pub fn run_ancestral_reconstruction(
   }
 
   progress.report("Done", 1.0, "");
-  Ok(AncestralResult { graph })
+  Ok(AncestralResult {
+    graph,
+    seq: partition,
+    node_sequences,
+    gtr,
+    model_name,
+    mask,
+    aa_node_data,
+  })
 }
 
 fn write_tree_for_partition(

@@ -20,8 +20,10 @@ use crate::seq::alignment::get_common_length;
 use eyre::Report;
 use parking_lot::RwLock;
 use serde::Serialize;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use strum::VariantNames;
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
 use treetime_utils::make_error;
@@ -49,7 +51,7 @@ pub struct AncestralInput {
   pub sequences: Vec<FastaRecord>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum AncestralPartition {
   Fitch(Arc<RwLock<PartitionFitch>>),
@@ -66,6 +68,9 @@ pub struct AncestralOutput {
   pub model_name: GtrModelName,
   #[serde(skip)]
   pub mask: Vec<bool>,
+  /// Reconstructed sequences keyed by node id, captured from the serial reconstruction walk.
+  #[serde(skip)]
+  pub node_sequences: BTreeMap<GraphNodeKey, Seq>,
 }
 
 pub struct AncestralOutputFull {
@@ -128,9 +133,10 @@ where
         );
       }
 
-      ancestral_reconstruction_fitch(&graph, params.include_leaves, &partitions_parsimony, |node, seq| {
-        on_sequence(&node.payload, seq)
-      })?;
+      let node_sequences =
+        ancestral_reconstruction_fitch(&graph, params.include_leaves, &partitions_parsimony, |node, seq| {
+          on_sequence(&node.payload, seq)
+        })?;
 
       progress.report("Done", 1.0, "");
       Ok(AncestralOutputFull {
@@ -139,6 +145,7 @@ where
           gtr: None,
           model_name: params.model,
           mask,
+          node_sequences,
         },
         partition: Some(AncestralPartition::Fitch(partition)),
       })
@@ -163,7 +170,7 @@ where
 
           progress.check_cancelled()?;
           progress.report("Reconstructing sequences", 0.6, "");
-          ancestral_reconstruction_marginal(
+          let node_sequences = ancestral_reconstruction_marginal(
             &graph,
             params.include_leaves,
             params.impute_missing_data,
@@ -181,6 +188,7 @@ where
               gtr: Some(gtr),
               model_name: created.model_name,
               mask,
+              node_sequences,
             },
             partition: Some(AncestralPartition::Sparse(
               partitions.into_iter().next().expect("partition vec not empty"),
@@ -201,7 +209,7 @@ where
 
           progress.check_cancelled()?;
           progress.report("Reconstructing sequences", 0.6, "");
-          ancestral_reconstruction_marginal(
+          let node_sequences = ancestral_reconstruction_marginal(
             &graph,
             params.include_leaves,
             params.impute_missing_data,
@@ -219,6 +227,7 @@ where
               gtr: Some(gtr),
               model_name: created.model_name,
               mask,
+              node_sequences,
             },
             partition: Some(AncestralPartition::Dense(
               partitions.into_iter().next().expect("partition vec not empty"),
