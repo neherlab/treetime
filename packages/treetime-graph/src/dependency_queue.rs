@@ -2,7 +2,7 @@ use crossbeam_channel::{Receiver, Sender, select, unbounded};
 use eyre::Report;
 use parking_lot::Mutex;
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use treetime_utils::make_internal_report;
 
 pub fn run_dependency_queue(
@@ -18,6 +18,7 @@ pub fn run_dependency_queue(
   let remaining = prerequisites.iter().copied().map(AtomicUsize::new).collect::<Vec<_>>();
   let completed = AtomicUsize::new(0);
   let error = Mutex::new(None);
+  let failed = AtomicBool::new(false);
   let workers = rayon::current_num_threads();
   let (work_sender, work_receiver) = unbounded();
   let (stop_sender, stop_receiver) = unbounded();
@@ -33,6 +34,7 @@ pub fn run_dependency_queue(
     remaining: &remaining,
     completed: &completed,
     error: &error,
+    failed: &failed,
     work_sender: &work_sender,
     work_receiver: &work_receiver,
     stop_sender: &stop_sender,
@@ -92,6 +94,7 @@ struct DependencyWorkers<'a, F> {
   remaining: &'a [AtomicUsize],
   completed: &'a AtomicUsize,
   error: &'a Mutex<Option<Report>>,
+  failed: &'a AtomicBool,
   work_sender: &'a Sender<usize>,
   work_receiver: &'a Receiver<usize>,
   stop_sender: &'a Sender<()>,
@@ -117,13 +120,14 @@ where
       select! {
         recv(self.work_receiver) -> index => {
           let Ok(index) = index else { return };
-          if self.error.lock().is_some() {
+          if self.failed.load(Ordering::Acquire) {
             continue;
           }
           if let Err(report) = (self.visit)(index) {
             let mut error = self.error.lock();
             if error.is_none() {
               *error = Some(report);
+              self.failed.store(true, Ordering::Release);
               self.stop();
             }
             continue;
@@ -152,5 +156,34 @@ where
         .send(())
         .expect("Dependency stop channel must remain connected");
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::run_dependency_queue;
+  use eyre::Report;
+  use std::sync::atomic::{AtomicUsize, Ordering};
+  use treetime_utils::{assert_error, make_report};
+
+  #[test]
+  fn test_dependency_queue_failing_visit_stops_and_returns_error() -> Result<(), Report> {
+    // Node 1 depends on node 0. Node 0 fails, so node 1 must never be scheduled.
+    let prerequisites = [0, 1];
+    let successors = [vec![1], vec![]];
+    let visited = AtomicUsize::new(0);
+
+    let result = run_dependency_queue(&prerequisites, &successors, |index| {
+      visited.fetch_add(1, Ordering::AcqRel);
+      if index == 0 {
+        Err(make_report!("injected visit failure"))
+      } else {
+        Ok(())
+      }
+    });
+
+    assert_error!(result, "injected visit failure");
+    assert_eq!(1, visited.load(Ordering::Acquire));
+    Ok(())
   }
 }
