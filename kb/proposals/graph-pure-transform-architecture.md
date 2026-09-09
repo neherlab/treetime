@@ -1,6 +1,6 @@
 # Pure transform architecture for graph traversals
 
-Replace the mutable-shared-state traversal model, where every node and edge payload lives behind `Arc<RwLock<>>` and inference passes mutate it in place, with a pure transform pipeline: each pass consumes typed input and produces typed output, `fn transform(input: &InputType) -> OutputType`, and the topology is a read-only substrate shared by every pass.
+Replace the mutable-shared-state traversal model, where every node and edge payload lives behind `Arc<RwLock<>>` and inference passes mutate it in place, with a pure transform pipeline: each pass consumes typed input and produces typed output, `fn transform(input: &InputType) -> OutputType`, and the topology is a read-only structure shared by every pass.
 
 The proposal is **not accepted** and **not implemented**. It records the motivation, the current architecture as it stands after the work-first pass unification, the target design, the concurrency consequences per command, the prior art, and the migration path.
 
@@ -69,7 +69,7 @@ Three properties define the target.
 
 **Fixed inputs are borrowed, not stored per pass, and gather happens once.** Topology, the GTR model, branch lengths, and node times are read by several stages. They are threaded as immutable `&` parameters so a signature states its true dependencies, rather than a stage silently reading `partition.gtr`. During computation each stage holds one input collection and builds one output; assembling a node's full record from its ancestral, time, and clock results is a single final pass before serialization, not a scatter across live per-concern tables.
 
-The functional form is the algorithm's native shape. Marginal reconstruction is the <a id="gloss-use-3"></a>sum-product algorithm <sup>[3](#gloss-3)</sup> on a tree <a id="cite-2a"></a>[Höhna et al. 2014](https://doi.org/10.1093/sysbio/syu039) [[2](#ref-2)], and Felsenstein pruning <a id="cite-3a"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[3](#ref-3)] computes each node's <a id="gloss-use-1"></a>conditional likelihood vector <sup>[1](#gloss-1)</sup> as a pure function of its children's:
+The functional form matches how the algorithm is defined. Marginal reconstruction is the <a id="gloss-use-3"></a>sum-product algorithm <sup>[3](#gloss-3)</sup> on a tree <a id="cite-2a"></a>[Höhna et al. 2014](https://doi.org/10.1093/sysbio/syu039) [[2](#ref-2)], and Felsenstein pruning <a id="cite-3a"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[3](#ref-3)] computes each node's <a id="gloss-use-1"></a>conditional likelihood vector <sup>[1](#gloss-1)</sup> as a pure function of its children's:
 
 $$L_u(s) = \prod_{c \,\in\, \mathrm{ch}(u)} \sum_{s'} P(s \to s' \mid t_{uc}) \, L_c(s')$$
 
@@ -160,7 +160,7 @@ The forward contribution-removal diverges most:
 
 Two consequences follow. Extract the generic driver last, after clock regression and one marginal pass are converted in duplicated form; fixing a shared interface before the operator set is known would accumulate the conditionals that mark a premature merge, and the driver may stay a copied skeleton rather than one function. The schedule, by contrast, is already separable: `run_dependency_queue` drives any per-node closure over the topology [packages/treetime-graph/src/dependency_queue.rs#L8](../../packages/treetime-graph/src/dependency_queue.rs#L8), so a later static op-list or span-reducing schedule can replace the dynamic queue without touching operators. A static op-list has a cost: it trades away the work-stealing that keeps workers busy on deep, unbalanced trees, so it is a measured choice.
 
-That separation also bounds what this refactor buys. The dynamic queue already parallelizes work across independent subtrees, but the critical path stays proportional to tree depth, so deep caterpillar trees gain nothing here. Cutting the path below depth would require reassociating the per-edge operators, and expressing the dense passes as batched tensor contraction is a parallel direction; both are deferred, and the schedule seam is what keeps them reachable.
+That separation also bounds the gains from this refactor. The dynamic queue already parallelizes work across independent subtrees, but the critical path stays proportional to tree depth, so deep caterpillar trees gain nothing here. Cutting the path below depth would require reassociating the per-edge operators, and expressing the dense passes as batched tensor contraction is a parallel direction; both are deferred, and the schedule seam is what keeps them reachable.
 
 ## Concurrency and parallelism
 
@@ -172,7 +172,7 @@ The second kind is **independent map or reduce** through `par_iter` over element
 
 In every parallel site, each worker reads immutable shared or prior-phase data and writes its own element. No two workers write the same cell; cross-element reads, such as an edge worker reading its two endpoint node times at [packages/treetime/src/timetree/inference/runner.rs#L124](../../packages/treetime/src/timetree/inference/runner.rs#L124), are of a completed prior phase. No parallel loop writes into a shared accumulator: reductions use lock-free `collect` and `sum`, and `fn` Fitch leaf setup [packages/treetime/src/ancestral/fitch.rs#L96](../../packages/treetime/src/ancestral/fitch.rs#L96) already builds a fresh `BTreeMap` with `par_iter().map(..).collect()` before extending the partition. The `Arc<RwLock<>>` exists only to write results back into the shared graph payload.
 
-Therefore the transform model removes the payload locks while keeping the parallelism. Independent maps become `par_iter().map(|e| compute(e, &immutable)).collect()` into a fresh table, applied in one serial commit; the read and write guards vanish. The wavefront keeps its scheduler, because the channel and atomics encode the real parent-needs-children dependency, but that is a write-once publication barrier, not a per-node `RwLock`, and the immutable inputs a pass reads (topology, GTR, branch lengths) become `&` borrows.
+Therefore the transform model removes the payload locks while keeping the parallelism. Independent maps become `par_iter().map(|e| compute(e, &immutable)).collect()` into a fresh table, applied in one serial commit; the read and write guards disappear. The wavefront keeps its scheduler, because the channel and atomics encode the real parent-needs-children dependency, but that is a write-once publication barrier, not a per-node `RwLock`, and the immutable inputs a pass reads (topology, GTR, branch lengths) become `&` borrows.
 
 Per command:
 
