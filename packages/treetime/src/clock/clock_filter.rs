@@ -8,7 +8,7 @@ use rayon::prelude::*;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
-use treetime_graph::pass::with_graph_payloads;
+use treetime_graph::pass::{GraphPassNodeOutput, with_graph_payloads_map};
 
 #[derive(Debug, Clone, Copy)]
 pub struct ClockFilterResult {
@@ -42,16 +42,19 @@ where
   );
 
   // Assign divergence to each node: div = parent.div + branch_length, parents before children.
-  with_graph_payloads(graph, |pass| {
-    pass.try_for_each_forward(|dependencies, slot| {
-      let div = match (slot.parent_key, slot.parent_edge.as_ref()) {
-        (Some(parent_key), Some((_, edge))) => {
-          dependencies.node(parent_key).div() + edge.branch_length().unwrap_or_default()
-        },
-        _ => 0.0,
+  with_graph_payloads_map(graph, |pass| {
+    pass.try_map_forward::<N, E>(|context| {
+      let mut node = context.input;
+      let parent_message = if let Some((_, edge)) = context.parent_edge {
+        let parent = context.parent.expect("Non-root node must have a parent");
+        let div = parent.div() + edge.branch_length().unwrap_or_default();
+        node.set_div(div);
+        Some(edge)
+      } else {
+        node.set_div(0.0);
+        None
       };
-      slot.node.set_div(div);
-      Ok(())
+      Ok(GraphPassNodeOutput { node, parent_message })
     })
   })?;
 
