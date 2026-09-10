@@ -70,7 +70,13 @@ pub fn run_prune(
   progress.check_cancelled()?;
   progress.report("Pruning", 0.4, "");
   let output = pipeline::run(&params, input)?;
-  let pipeline::PruneOutput { graph, gtr, partitions } = output;
+  let pipeline::PruneOutput {
+    graph,
+    gtr,
+    partitions,
+    names,
+    branch_lengths: branch_lengths_opt,
+  } = output;
   // Share the sparse sequence partition Arc (no sequence data copied) and the fitted GTR into the
   // value-shaped result. The tree writers still read the partition and model from the graph data
   // slot until that read moves onto the result value; both copies leave the graph then.
@@ -81,20 +87,21 @@ pub fn run_prune(
   progress.report("Writing output", 0.8, "");
 
   // Gather the per-node name/confidence and per-edge branch length off the ordered tree into keyed
-  // value maps the output writers consume. The writers still read sequences and model metadata from
-  // the graph data slot; these maps carry the name, input-branch-support, and branch-length reads
-  // that move off the payload.
+  // value maps the output writers consume. The name and branch length come from the post-topology
+  // maps the pipeline returns (topology ordering only permutes keys, so their values still match the
+  // pruned tree); the input branch support is still read from the payload until it moves onto a map.
   let nodes: BTreeMap<GraphNodeKey, PruneNodeOut> = graph
     .get_nodes()
     .iter()
     .map(|node| {
       let node = node.read_arc();
-      let payload = node.payload().read_arc();
+      let key = node.key();
+      let confidence = node.payload().read_arc().confidence;
       (
-        node.key(),
+        key,
         PruneNodeOut {
-          name: payload.name.clone(),
-          confidence: payload.confidence,
+          name: names[&key].clone(),
+          confidence,
         },
       )
     })
@@ -103,9 +110,13 @@ pub fn run_prune(
     .get_edges()
     .iter()
     .map(|edge| {
-      let edge = edge.read_arc();
-      let branch_length = edge.payload().read_arc().branch_length;
-      (edge.key(), EdgeOut { branch_length })
+      let key = edge.read_arc().key();
+      (
+        key,
+        EdgeOut {
+          branch_length: branch_lengths_opt[&key],
+        },
+      )
     })
     .collect();
   let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> =

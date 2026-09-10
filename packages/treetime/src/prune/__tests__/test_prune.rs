@@ -142,7 +142,17 @@ mod tests {
   #[test]
   fn test_prune_nodes_basic() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.0,B:0.1)root;", &[])?;
-    prune_nodes(&mut graph, &partitions, Some(0.0), false, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      Some(0.0),
+      false,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
     let output_nwk = nwk_write_str(
       &graph,
       &node_names(&graph),
@@ -156,7 +166,17 @@ mod tests {
   #[test]
   fn test_prune_nodes_with_threshold() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.01,B:0.02,C:0.1)root;", &[])?;
-    prune_nodes(&mut graph, &partitions, Some(0.05), false, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      Some(0.05),
+      false,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
     let output_nwk = nwk_write_str(
       &graph,
       &node_names(&graph),
@@ -170,7 +190,17 @@ mod tests {
   #[test]
   fn test_prune_nodes_preserves_large_edges() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2)root;", &[])?;
-    prune_nodes(&mut graph, &partitions, Some(0.01), false, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      Some(0.01),
+      false,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
     let output_nwk = nwk_write_str(
       &graph,
       &node_names(&graph),
@@ -185,7 +215,17 @@ mod tests {
   fn test_prune_nodes_empty_graph() -> Result<(), Report> {
     let mut graph: GraphAncestral = Graph::new();
     let partitions = vec![];
-    prune_nodes(&mut graph, &partitions, Some(0.0), false, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      Some(0.0),
+      false,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
     assert!(graph.get_nodes().is_empty());
     Ok(())
   }
@@ -193,7 +233,17 @@ mod tests {
   #[test]
   fn test_prune_nodes_handles_none_weights() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.0,B:0.1)root;", &[])?;
-    prune_nodes(&mut graph, &partitions, Some(0.0), false, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      Some(0.0),
+      false,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
     let output_nwk = nwk_write_str(
       &graph,
       &node_names(&graph),
@@ -207,7 +257,17 @@ mod tests {
   #[test]
   fn test_prune_nodes_preserves_terminal_nodes() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.00001,B:0.1)root;", &[])?;
-    prune_nodes(&mut graph, &partitions, Some(0.001), false, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      Some(0.001),
+      false,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
     let output_nwk = nwk_write_str(
       &graph,
       &node_names(&graph),
@@ -224,7 +284,17 @@ mod tests {
       "(((A:0,B:0.1)internal1:0.00002,(C:0.00003,D:0.1)internal2:0.1)internal3:0.00004,E:0.00005)root;",
       &[],
     )?;
-    prune_nodes(&mut graph, &partitions, Some(0.01), false, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      Some(0.01),
+      false,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
     let output_nwk = nwk_write_str(
       &graph,
       &node_names(&graph),
@@ -246,7 +316,17 @@ mod tests {
       &[("root", "A", None), ("root", "B", Some(2))],
     )?;
 
-    prune_nodes(&mut graph, &partitions, None, true, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      true,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
 
     // Both leaves should be preserved even if edge to A has no mutations
     assert_eq!(graph.get_nodes().len(), 3); // root, A, B
@@ -270,7 +350,17 @@ mod tests {
       ],
     )?;
 
-    prune_nodes(&mut graph, &partitions, None, true, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      true,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
 
     // Internal node should be collapsed, but leaves preserved
     assert_eq!(graph.get_nodes().len(), 3); // root, A, B
@@ -287,7 +377,17 @@ mod tests {
       &[("internal", "A", Some(1))], // root->internal has no entry (unknown mutations)
     )?;
 
-    prune_nodes(&mut graph, &partitions, None, true, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      true,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
 
     // Internal node should be preserved when mutations is None (unknown)
     assert_eq!(graph.get_nodes().len(), 3); // root, internal, A
@@ -301,7 +401,17 @@ mod tests {
     // Single leaf edge with no mutations should be preserved
     let (mut graph, partitions) = create_test_graph_with_named_edge_mutations("(A:0.1)root;", &[("root", "A", None)])?;
 
-    prune_nodes(&mut graph, &partitions, None, true, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      true,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
 
     // Leaf should be preserved even with no mutations
     assert_eq!(graph.get_nodes().len(), 2); // root and A
@@ -325,7 +435,17 @@ mod tests {
       ],
     )?;
 
-    prune_nodes(&mut graph, &partitions, Some(0.01), true, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      Some(0.01),
+      true,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
 
     // Both internal nodes should be collapsed, leaves preserved
     assert_eq!(graph.get_nodes().len(), 3); // root, A, B
@@ -337,7 +457,17 @@ mod tests {
   #[test]
   fn test_prune_nodes_prune_short_threshold_exact() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.05,B:0.05,C:0.051)root;", &[])?;
-    prune_nodes(&mut graph, &partitions, Some(0.05), false, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      Some(0.05),
+      false,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
     let output_nwk = nwk_write_str(
       &graph,
       &node_names(&graph),
@@ -351,7 +481,17 @@ mod tests {
   #[test]
   fn test_prune_nodes_prune_short_threshold_below() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.049,B:0.05,C:0.051)root;", &[])?;
-    prune_nodes(&mut graph, &partitions, Some(0.05), false, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      Some(0.05),
+      false,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
     let output_nwk = nwk_write_str(
       &graph,
       &node_names(&graph),
@@ -381,7 +521,17 @@ mod tests {
       ],
     )?;
 
-    prune_nodes(&mut graph, &partitions, None, true, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      true,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
 
     // internal2 and internal3 should be collapsed (empty internal edges), leaves preserved
     // Result: root -> internal1 -> A, C, D and root -> B
@@ -399,7 +549,17 @@ mod tests {
       &[("root", "internal", Some(0)), ("internal", "A", Some(1))],
     )?;
 
-    prune_nodes(&mut graph, &partitions, None, false, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
 
     // Nothing should be collapsed
     assert_eq!(graph.get_nodes().len(), 3); // root, internal, A
@@ -544,7 +704,17 @@ mod tests {
   #[test]
   fn test_prune_nodes_single_named_leaf() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2,C:0.3)root;", &[])?;
-    prune_nodes(&mut graph, &partitions, None, false, &btreeset! { "B".to_owned() })?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "B".to_owned() },
+      &names,
+      &mut branch_lengths,
+    )?;
     let output_nwk = nwk_write_str(
       &graph,
       &node_names(&graph),
@@ -558,12 +728,16 @@ mod tests {
   #[test]
   fn test_prune_nodes_multiple_named_leaves() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2,C:0.3,D:0.4)root;", &[])?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "A".to_owned(), "C".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
       &graph,
@@ -578,12 +752,16 @@ mod tests {
   #[test]
   fn test_prune_nodes_nonexistent_name_is_noop() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2)root;", &[])?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "nonexistent".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
       &graph,
@@ -598,12 +776,16 @@ mod tests {
   #[test]
   fn test_prune_nodes_named_internal_node() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("((A:0.1,B:0.2)internal:0.3,C:0.4)root;", &[])?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
       &graph,
@@ -620,12 +802,16 @@ mod tests {
   fn test_prune_nodes_mixed_internal_and_leaf_names() -> Result<(), Report> {
     let (mut graph, partitions) =
       create_test_graph_with_partitions("((A:0.1,B:0.2)internal:0.3,C:0.4,D:0.5)root;", &[])?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "internal".to_owned(), "D".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
       &graph,
@@ -641,7 +827,17 @@ mod tests {
   #[test]
   fn test_prune_nodes_empty_names_set_is_noop() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2,C:0.3)root;", &[])?;
-    prune_nodes(&mut graph, &partitions, None, false, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
     let output_nwk = nwk_write_str(
       &graph,
       &node_names(&graph),
@@ -655,12 +851,16 @@ mod tests {
   #[test]
   fn test_prune_nodes_all_leaves_preserves_root() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2)root;", &[])?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "A".to_owned(), "B".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
     // Root should remain
     assert_eq!(graph.get_nodes().len(), 1);
@@ -671,7 +871,17 @@ mod tests {
   fn test_prune_nodes_deep_nested_leaf_removal() -> Result<(), Report> {
     let (mut graph, partitions) =
       create_test_graph_with_partitions("(((A:0.1,B:0.2)i1:0.3,C:0.4)i2:0.5,D:0.6)root;", &[])?;
-    prune_nodes(&mut graph, &partitions, None, false, &btreeset! { "A".to_owned() })?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      None,
+      false,
+      &btreeset! { "A".to_owned() },
+      &names,
+      &mut branch_lengths,
+    )?;
 
     // A removed, i1 becomes unary and collapses
     // Verify structure: root has 2 children (i2, D), i2 has 2 children (B, C)
@@ -733,12 +943,16 @@ mod tests {
     let partitions = vec![Arc::new(RwLock::new(partition))];
 
     // Collapse internal node by name
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
 
     // After collapse: root -> A should have all 4 mutations, root -> B should have 2 mutations
@@ -807,12 +1021,16 @@ mod tests {
 
     let partitions = vec![Arc::new(RwLock::new(partition))];
 
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
 
     // After collapse: net A->T at pos 0 (1 composed sub)
@@ -871,12 +1089,16 @@ mod tests {
 
     let partitions = vec![Arc::new(RwLock::new(partition))];
 
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
 
     // After collapse: mutations cancel, edge to A has 0 subs
@@ -956,12 +1178,16 @@ mod tests {
     let partitions = vec![Arc::new(RwLock::new(partition1)), Arc::new(RwLock::new(partition2))];
 
     // Collapse internal node by name
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
 
     // Check partition 1: edge to A should have 2 mutations
@@ -993,12 +1219,16 @@ mod tests {
     let partitions = vec![];
 
     // Mark internal node for pruning by name
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
 
     // After collapse: root -> A should have 0.3 + 0.2 = 0.5
@@ -1030,12 +1260,16 @@ mod tests {
 
     let partitions = vec![];
 
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
 
     for edge in graph.get_edges() {
@@ -1102,12 +1336,16 @@ mod tests {
 
     let partitions = vec![];
 
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
 
     for edge in graph.get_edges() {
@@ -1174,12 +1412,16 @@ mod tests {
 
     let partitions = vec![];
 
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
 
     for edge in graph.get_edges() {
@@ -1232,12 +1474,16 @@ mod tests {
 
     let partitions = vec![];
 
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
 
     for edge in graph.get_edges() {
@@ -1314,7 +1560,17 @@ mod tests {
     let partitions = vec![Arc::new(RwLock::new(partition))];
 
     // Step 1: Prune short branch I (bl=1e-8 < threshold 1e-6)
-    prune_nodes(&mut graph, &partitions, Some(1e-6), false, &btreeset! {})?;
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    prune_nodes(
+      &mut graph,
+      &partitions,
+      Some(1e-6),
+      false,
+      &btreeset! {},
+      &names,
+      &mut branch_lengths,
+    )?;
     assert!(
       find_node_key_by_name(&graph, "I").is_none(),
       "I should be collapsed by prune"
@@ -1375,12 +1631,16 @@ mod tests {
 
     let partitions = vec![Arc::new(RwLock::new(partition))];
 
+    let names = node_names(&graph);
+    let mut branch_lengths = edge_branch_lengths(&graph);
     prune_nodes(
       &mut graph,
       &partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
+      &names,
+      &mut branch_lengths,
     )?;
 
     let partition = partitions[0].read_arc();

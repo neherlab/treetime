@@ -11,7 +11,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::{edge_branch_lengths, node_names as snapshot_node_names};
 
 pub fn prune_nodes(
   graph: &mut GraphAncestral,
@@ -19,25 +18,27 @@ pub fn prune_nodes(
   prune_short: Option<f64>,
   prune_empty: bool,
   node_names: &BTreeSet<String>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  let names = snapshot_node_names(graph);
-  // A payload-mirror branch-length map passed to the collapse producers, which read and
-  // update it instead of the edge payload. Committed back to the payload at the end so the
-  // command's downstream readers see the pruned lengths (prune stays bit-identical).
-  let mut branch_lengths = edge_branch_lengths(graph);
+  // `names` is the pre-prune node-name map propagated from the command entry: collapse removes nodes
+  // but never renames survivors, so the pre-prune label of every surviving node is its final label.
+  // `branch_lengths` is the payload-mirror map the collapse producers read and update in place; it
+  // is committed back to the edge payload at the end so payload readers not yet on the value map
+  // see the pruned lengths (prune stays bit-identical).
   prune_internal_nodes(
     graph,
     partitions,
     prune_short,
     prune_empty,
     node_names,
-    &names,
-    &mut branch_lengths,
+    names,
+    branch_lengths,
   )?;
   graph.build()?;
-  prune_leaves(graph, partitions, node_names, &names, &mut branch_lengths)?;
+  prune_leaves(graph, partitions, node_names, names, branch_lengths)?;
   graph.build()?;
-  commit_branch_lengths(graph, &branch_lengths);
+  commit_branch_lengths(graph, branch_lengths);
   Ok(())
 }
 
