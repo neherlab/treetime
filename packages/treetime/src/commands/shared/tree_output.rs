@@ -6,7 +6,7 @@ use crate::commands::mugration::augur_node_data::{build_confidence_map, compute_
 use crate::commands::optimize::result::{OptimizeGraphData, OptimizeNodeOut};
 use crate::commands::prune::result::{PruneGraphData, PruneNodeOut};
 use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut};
-use crate::mugration::result::MugrationGraphData;
+use crate::mugration::result::{MugrationGraphData, MugrationNodeOut};
 use crate::partition::traits::{BranchTopology, PartitionBranchOps};
 use crate::payload::ancestral::GraphAncestral;
 use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
@@ -146,6 +146,8 @@ pub fn write_clock_tree_outputs(
 
 pub fn write_mugration_tree_outputs(
   graph: &GraphAncestral<MugrationGraphData>,
+  nodes: &BTreeMap<GraphNodeKey, MugrationNodeOut>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
@@ -155,8 +157,8 @@ pub fn write_mugration_tree_outputs(
     outputs,
     providers,
     "mugration",
-    || mugration_to_auspice(graph, &updated),
-    || mugration_to_phyloxml(graph),
+    || mugration_to_auspice(graph, nodes, branch_lengths, &updated),
+    || mugration_to_phyloxml(graph, nodes, branch_lengths),
     || mugration_to_mat(graph),
   )
 }
@@ -373,6 +375,8 @@ pub(crate) fn clock_to_auspice(
 
 pub(crate) fn mugration_to_auspice(
   graph: &GraphAncestral<MugrationGraphData>,
+  nodes: &BTreeMap<GraphNodeKey, MugrationNodeOut>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   updated: &str,
 ) -> Result<AuspiceTree, Report> {
   let attribute = &graph.data().traits.attribute;
@@ -387,12 +391,12 @@ pub(crate) fn mugration_to_auspice(
     false,
   );
   auspice_from_graph(graph, data, |context| {
-    let name = node_name(context.node_key, context.node);
+    let name = node_name_value(context.node_key, nodes[&context.node_key].name.as_deref());
     let traits = mugration_traits(graph, context.node_key, &name)?;
     Ok(auspice_node(
       name.clone(),
       finite_number(
-        cumulative_branch_length(graph, context.node_key)?,
+        cumulative_branch_length_from(graph, branch_lengths, context.node_key)?,
         6,
         "mugration",
         &name,
@@ -759,10 +763,15 @@ pub(crate) fn clock_to_phyloxml(
   })
 }
 
-pub(crate) fn mugration_to_phyloxml(graph: &GraphAncestral<MugrationGraphData>) -> Result<Phyloxml, Report> {
+pub(crate) fn mugration_to_phyloxml(
+  graph: &GraphAncestral<MugrationGraphData>,
+  nodes: &BTreeMap<GraphNodeKey, MugrationNodeOut>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<Phyloxml, Report> {
   phyloxml_from_graph(graph, "TreeTime mugration analysis", |context| {
-    let name = node_name(context.node_key, context.node);
-    let div = cumulative_branch_length(graph, context.node_key)?;
+    let out = &nodes[&context.node_key];
+    let name = node_name_value(context.node_key, out.name.as_deref());
+    let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
     ensure_optional_finite(div, "mugration", &name, "divergence")?;
     let traits = mugration_traits(graph, context.node_key, &name)?;
     let mut properties = div
@@ -779,10 +788,10 @@ pub(crate) fn mugration_to_phyloxml(graph: &GraphAncestral<MugrationGraphData>) 
       ));
     }
     let mut clade = empty_phyloxml_clade(
-      context.node.name.clone(),
-      context.edge.and_then(HasBranchLength::branch_length),
+      out.name.clone(),
+      context.edge_key.and_then(|edge_key| branch_lengths[&edge_key]),
     );
-    clade.confidence = input_branch_confidence(context.node.confidence, "mugration", &name)?;
+    clade.confidence = input_branch_confidence(out.confidence, "mugration", &name)?;
     clade.property = properties;
     Ok(clade)
   })
@@ -1766,26 +1775,6 @@ fn build_trait_attrs(traits: BTreeMap<String, TraitValue>) -> Value {
       })
       .collect(),
   )
-}
-
-fn cumulative_branch_length<N, E, D>(graph: &Graph<N, E, D>, mut key: GraphNodeKey) -> Result<Option<f64>, Report>
-where
-  N: GraphNode,
-  E: GraphEdge + HasBranchLength,
-  D: Send + Sync,
-{
-  let mut total = 0.0;
-  while let Some((parent, edge_key)) = graph.node_parent(key)? {
-    let edge = graph
-      .get_edge(edge_key)
-      .ok_or_else(|| make_internal_report!("Edge {edge_key} disappeared while summing branch lengths"))?;
-    let Some(length) = edge.read_arc().payload().read_arc().branch_length() else {
-      return Ok(None);
-    };
-    total += length;
-    key = parent;
-  }
-  Ok(Some(total))
 }
 
 /// Sum of parent-edge branch lengths from `key` to the root, resolved from a snapshot value map

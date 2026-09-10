@@ -7,7 +7,8 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::sync::Arc;
-use treetime_graph::node::Named;
+use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::node::{GraphNodeKey, Named};
 use treetime_primitives::LogLh;
 #[derive(Clone, Debug, Serialize)]
 pub struct ConfidenceRow {
@@ -116,6 +117,20 @@ pub struct MugrationGraphData {
   pub partition: Arc<PartitionMarginalDiscrete>,
 }
 
+/// Per-node mugration output as a value: the name and input branch support the output writers read.
+/// Trait assignments and confidence stay sourced from the discrete partition.
+#[derive(Debug, Clone, Serialize)]
+pub struct MugrationNodeOut {
+  pub name: Option<String>,
+  pub confidence: Option<f64>,
+}
+
+/// Per-edge mugration output as a value: the branch length the output writers read.
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct EdgeOut {
+  pub branch_length: Option<f64>,
+}
+
 /// Mugration result as a value.
 ///
 /// The discrete inference result (`discrete`), the reconstructed attribute name, and the marginal
@@ -127,6 +142,10 @@ pub struct MugrationGraphData {
 pub struct MugrationResult {
   #[serde(skip)]
   pub graph: GraphAncestral<MugrationGraphData>,
+  #[serde(skip)]
+  pub nodes: BTreeMap<GraphNodeKey, MugrationNodeOut>,
+  #[serde(skip)]
+  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
   #[serde(skip)]
   pub discrete: Arc<PartitionMarginalDiscrete>,
   #[serde(skip)]
@@ -149,6 +168,35 @@ impl MugrationResult {
     let traits = MugrationTraitsOutput::new(attribute, assignments);
     let confidence = MugrationConfidenceOutput::new(&graph, &partition);
 
+    // Gather the per-node name/confidence and per-edge branch length off the tree into keyed value
+    // maps the output writers consume. Trait assignments and entropy stay sourced from the discrete
+    // partition; only the name, input-branch-support, and branch-length reads move off the payload.
+    // Topology ordering reorders children only, so these maps match what the post-order writers read.
+    let nodes: BTreeMap<GraphNodeKey, MugrationNodeOut> = graph
+      .get_nodes()
+      .iter()
+      .map(|node| {
+        let node = node.read_arc();
+        let payload = node.payload().read_arc();
+        (
+          node.key(),
+          MugrationNodeOut {
+            name: payload.name.clone(),
+            confidence: payload.confidence,
+          },
+        )
+      })
+      .collect();
+    let edges: BTreeMap<GraphEdgeKey, EdgeOut> = graph
+      .get_edges()
+      .iter()
+      .map(|edge| {
+        let edge = edge.read_arc();
+        let branch_length = edge.payload().read_arc().branch_length;
+        (edge.key(), EdgeOut { branch_length })
+      })
+      .collect();
+
     let partition = Arc::new(partition);
     let data = MugrationGraphData {
       traits,
@@ -158,6 +206,8 @@ impl MugrationResult {
     };
     Self {
       graph: graph.map_data(data),
+      nodes,
+      edges,
       discrete: partition,
       attribute: attribute.to_owned(),
       log_lh,

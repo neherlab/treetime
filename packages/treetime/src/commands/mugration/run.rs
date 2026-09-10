@@ -13,6 +13,7 @@ use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use log::info;
 use std::collections::BTreeMap;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
@@ -81,10 +82,19 @@ pub fn run_mugration(
   topology_order.apply(&mut result.graph)?;
   progress.report("Writing output", 0.8, "");
 
+  let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> =
+    result.edges.iter().map(|(key, edge)| (*key, edge.branch_length)).collect();
+
   if !resolved.tree_outputs.is_empty() {
     let provider = DiscreteCommentProvider::new(&result.graph.data().partition, &result.graph.data().traits.attribute);
     let providers = CommentProviders::new().with(&provider);
-    write_mugration_tree_outputs(&result.graph, &resolved.tree_outputs, &providers)?;
+    write_mugration_tree_outputs(
+      &result.graph,
+      &result.nodes,
+      &branch_lengths,
+      &resolved.tree_outputs,
+      &providers,
+    )?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {

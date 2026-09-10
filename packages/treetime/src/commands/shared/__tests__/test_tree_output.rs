@@ -432,7 +432,7 @@ mod tests {
     use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut};
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::gtr::gtr::{GTR, GTRParams};
-    use crate::mugration::result::{MugrationGraphData, MugrationResult};
+    use crate::mugration::result::{MugrationGraphData, MugrationNodeOut, MugrationResult};
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
     use crate::partition::storage::discrete::DiscreteStates;
@@ -608,7 +608,13 @@ mod tests {
       )?;
       let clock_graph = clock_graph()?;
       let clock = clock_to_auspice(&clock_graph, &clock_nodes(&clock_graph), "2026-07-19")?;
-      let mugration = mugration_to_auspice(&mugration_graph()?, "2026-07-19")?;
+      let mugration_graph = mugration_graph()?;
+      let mugration = mugration_to_auspice(
+        &mugration_graph,
+        &mugration_nodes(&mugration_graph),
+        &ancestral_branch_lengths(&mugration_graph),
+        "2026-07-19",
+      )?;
       let timetree_graph = timetree_graph()?;
       let timetree = timetree_to_auspice(&timetree_graph, &timetree_nodes(&timetree_graph), "2026-07-19")?;
 
@@ -646,7 +652,14 @@ mod tests {
           let clock_graph = clock_graph()?;
           clock_to_phyloxml(&clock_graph, &clock_nodes(&clock_graph))?
         },
-        mugration_to_phyloxml(&mugration_graph()?)?,
+        {
+          let mugration_graph = mugration_graph()?;
+          mugration_to_phyloxml(
+            &mugration_graph,
+            &mugration_nodes(&mugration_graph),
+            &ancestral_branch_lengths(&mugration_graph),
+          )?
+        },
         {
           let timetree_graph = timetree_graph()?;
           timetree_to_phyloxml(
@@ -853,6 +866,24 @@ mod tests {
               time: payload.time,
               is_outlier: payload.is_outlier,
               bad_branch: payload.bad_branch,
+            },
+          )
+        })
+        .collect()
+    }
+
+    pub fn mugration_nodes<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphNodeKey, MugrationNodeOut> {
+      graph
+        .get_nodes()
+        .iter()
+        .map(|node| {
+          let node = node.read_arc();
+          let payload = node.payload().read_arc();
+          (
+            node.key(),
+            MugrationNodeOut {
+              name: payload.name.clone(),
+              confidence: payload.confidence,
             },
           )
         })

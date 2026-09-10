@@ -6,7 +6,7 @@ use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
-use treetime_graph::node::{GraphNodeKey, Named};
+use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use util_augur_node_data_json::{
   AugurNodeDataJsonGeneratedBy, AugurNodeDataJsonTraitModel, AugurNodeDataJsonTraits, AugurNodeDataJsonTraitsBranches,
@@ -17,10 +17,12 @@ pub fn build_augur_node_data_json(result: &MugrationResult) -> Result<AugurNodeD
   let attribute = &result.graph.data().traits.attribute;
   let partition = &result.graph.data().partition;
   let graph = &result.graph;
+  let names: BTreeMap<GraphNodeKey, Option<String>> =
+    result.nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
 
   let models = build_models(attribute, partition);
-  let nodes = build_nodes(attribute, graph, partition);
-  let branches = build_branches(attribute, graph, partition);
+  let nodes = build_nodes(attribute, graph, &names, partition);
+  let branches = build_branches(attribute, graph, &names, partition);
 
   Ok(AugurNodeDataJsonTraits {
     generated_by: Some(AugurNodeDataJsonGeneratedBy {
@@ -83,6 +85,7 @@ fn build_models(
 fn build_nodes<D: Send + Sync>(
   attribute: &str,
   graph: &GraphAncestral<D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   partition: &PartitionMarginalDiscrete,
 ) -> BTreeMap<String, AugurNodeDataJsonTraitsNode> {
   let confidence_key = format!("{attribute}_confidence");
@@ -93,10 +96,9 @@ fn build_nodes<D: Send + Sync>(
   for node in graph.get_nodes() {
     let node_guard = node.read_arc();
     let node_key = node_guard.key();
-    let payload = node_guard.payload().read_arc();
-    let node_name = payload
-      .name()
-      .map_or_else(|| format!("node_{}", node_key.0), |n| n.as_ref().to_owned());
+    let node_name = names[&node_key]
+      .as_deref()
+      .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
 
     let mut fields = BTreeMap::new();
 
@@ -140,6 +142,7 @@ pub(crate) fn compute_entropy(profile: &ndarray::Array1<f64>) -> f64 {
 fn build_branches<D: Send + Sync>(
   attribute: &str,
   graph: &GraphAncestral<D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   partition: &PartitionMarginalDiscrete,
 ) -> BTreeMap<String, AugurNodeDataJsonTraitsBranches> {
   let root_key = graph.get_exactly_one_root().ok().map(|r| r.read_arc().key());
@@ -150,10 +153,9 @@ fn build_branches<D: Send + Sync>(
   for node in graph.get_nodes() {
     let node_guard = node.read_arc();
     let node_key = node_guard.key();
-    let payload = node_guard.payload().read_arc();
-    let node_name = payload
-      .name()
-      .map_or_else(|| format!("node_{}", node_key.0), |n| n.as_ref().to_owned());
+    let node_name = names[&node_key]
+      .as_deref()
+      .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
 
     let child_trait = partition.get_reconstructed_trait(node_key);
 
