@@ -9,6 +9,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
@@ -17,7 +18,12 @@ mod tests {
   fn test_all_nodes() -> Result<(), Report> {
     let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let actual = compute_divs(&graph, OnlyLeaves(false))?;
+    let actual = compute_divs(
+      &graph,
+      OnlyLeaves(false),
+      &edge_branch_lengths(&graph),
+      &node_names(&graph),
+    )?;
 
     let expected = btreemap! {
       o!("root") => 0.0,
@@ -39,7 +45,12 @@ mod tests {
   fn test_only_leaves() -> Result<(), Report> {
     let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let actual = compute_divs(&graph, OnlyLeaves(true))?;
+    let actual = compute_divs(
+      &graph,
+      OnlyLeaves(true),
+      &edge_branch_lengths(&graph),
+      &node_names(&graph),
+    )?;
 
     let expected = btreemap! {
       o!("A") => 0.2,
@@ -58,7 +69,12 @@ mod tests {
   fn test_unnamed_internals() -> Result<(), Report> {
     let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.1,B:0.2):0.1,(C:0.2,D:0.12):0.05):0.01;")?;
 
-    let actual = compute_divs(&graph, OnlyLeaves(true))?;
+    let actual = compute_divs(
+      &graph,
+      OnlyLeaves(true),
+      &edge_branch_lengths(&graph),
+      &node_names(&graph),
+    )?;
 
     let expected = btreemap! {
       o!("A") => 0.2,
@@ -77,7 +93,12 @@ mod tests {
   fn test_single_node() -> Result<(), Report> {
     let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("A:0.5;")?;
 
-    let actual = compute_divs(&graph, OnlyLeaves(true))?;
+    let actual = compute_divs(
+      &graph,
+      OnlyLeaves(true),
+      &edge_branch_lengths(&graph),
+      &node_names(&graph),
+    )?;
 
     assert_eq!(1, actual.len());
     assert_abs_diff_eq!(actual["A"], 0.0, epsilon = 1e-9);
@@ -90,7 +111,12 @@ mod tests {
   fn test_linear_chain() -> Result<(), Report> {
     let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.1)B:0.2)C:0.3;")?;
 
-    let actual = compute_divs(&graph, OnlyLeaves(true))?;
+    let actual = compute_divs(
+      &graph,
+      OnlyLeaves(true),
+      &edge_branch_lengths(&graph),
+      &node_names(&graph),
+    )?;
 
     assert_eq!(1, actual.len());
     assert_abs_diff_eq!(actual["A"], 0.3, epsilon = 1e-8);
@@ -111,7 +137,12 @@ mod tests {
     nwk.push(';');
 
     let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str(&nwk)?;
-    let actual = compute_divs(&graph, OnlyLeaves(true))?;
+    let actual = compute_divs(
+      &graph,
+      OnlyLeaves(true),
+      &edge_branch_lengths(&graph),
+      &node_names(&graph),
+    )?;
 
     assert_eq!(1, actual.len());
     let expected = (depth - 1) as f64 * branch_len;
@@ -126,7 +157,12 @@ mod tests {
   fn test_zero_branch_lengths() -> Result<(), Report> {
     let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.0,B:0.1):0.0,(C:0.2,D:0.0):0.1):0.0;")?;
 
-    let actual = compute_divs(&graph, OnlyLeaves(true))?;
+    let actual = compute_divs(
+      &graph,
+      OnlyLeaves(true),
+      &edge_branch_lengths(&graph),
+      &node_names(&graph),
+    )?;
 
     let expected = btreemap! {
       o!("A") => 0.0,

@@ -10,6 +10,7 @@ use treetime_distribution::{Distribution, DistributionFunction, NegLog};
 use treetime_graph::edge::{BranchDistribution, EdgeOptimizeOps, GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 
 /// Grid floor as a fraction of one mutation's worth of time. Keeps the first grid point strictly
 /// above the hard boundary at `t = 0`, so the divergent `-ln p` there is never stored on the grid.
@@ -27,13 +28,14 @@ where
   E: EdgeOptimizeOps,
   D: Send + Sync,
 {
-  let divs = compute_divs(graph, OnlyLeaves(false))?;
+  let branch_lengths = edge_branch_lengths(graph);
+  let names = node_names(graph);
+  let divs = compute_divs(graph, OnlyLeaves(false), &branch_lengths, &names)?;
   for node_ref in graph.get_nodes() {
     let node = node_ref.read_arc();
     let key = node.key();
-    let name = node.payload().read_arc().name().map(|n| n.as_ref().to_owned());
-    if let Some(name) = name {
-      if let Some(&div) = divs.get(&name) {
+    if let Some(name) = &names[&key] {
+      if let Some(&div) = divs.get(name) {
         clock_state.nodes.entry(key).or_default().div = div;
       }
     }

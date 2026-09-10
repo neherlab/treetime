@@ -13,6 +13,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::node::Named;
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_io::nwk::nwk_read_str;
 
   pub fn compute_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
@@ -33,7 +34,12 @@ mod tests {
     };
 
     let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let divs = compute_divs(&graph, OnlyLeaves(true))?;
+    let divs = compute_divs(
+      &graph,
+      OnlyLeaves(true),
+      &edge_branch_lengths(&graph),
+      &node_names(&graph),
+    )?;
     let naive_rate = compute_naive_rate(&dates, &divs);
 
     for n in graph.get_leaves() {

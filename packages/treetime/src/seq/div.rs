@@ -15,6 +15,8 @@ pub struct OnlyLeaves(pub bool);
 pub fn compute_divs<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
   graph: &Graph<N, E, D>,
   only_leaves: OnlyLeaves,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<BTreeMap<String, f64>, Report> {
   // Track divergence by node key (always available) for internal computation
   let mut divs_by_key: BTreeMap<GraphNodeKey, f64> = btreemap! {};
@@ -26,16 +28,15 @@ pub fn compute_divs<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
     } else {
       let (parent_key, edge_key) = get_exactly_one(&node.parent_keys).unwrap();
       let parent_div = divs_by_key.get(parent_key).copied().unwrap_or_default();
-      let edge = graph.get_edge(*edge_key).unwrap();
-      let branch_length = edge.read_arc().payload().read_arc().branch_length().unwrap_or_default();
+      let branch_length = branch_lengths[edge_key].unwrap_or_default();
       parent_div + branch_length
     };
 
     divs_by_key.insert(node.key, div);
 
     if node.is_leaf || !only_leaves.0 {
-      if let Some(name) = node.payload.name() {
-        result.insert(name.as_ref().to_owned(), div);
+      if let Some(name) = &names[&node.key] {
+        result.insert(name.clone(), div);
       }
     }
     Ok(())
