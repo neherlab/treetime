@@ -1,7 +1,6 @@
 use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_state::ClockState;
 use crate::partition::timetree::partition::GraphTimetree;
-use crate::payload::traits::ClockNode;
 use eyre::Report;
 use itertools::Itertools;
 use log::warn;
