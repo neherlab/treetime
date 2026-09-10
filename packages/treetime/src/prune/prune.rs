@@ -8,9 +8,9 @@ use log::debug;
 use parking_lot::RwLock;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::node_names as snapshot_node_names;
+use treetime_graph::value_maps::{edge_branch_lengths, node_names as snapshot_node_names};
 
 pub fn prune_nodes(
   graph: &mut GraphAncestral,
@@ -20,7 +20,16 @@ pub fn prune_nodes(
   node_names: &BTreeSet<String>,
 ) -> Result<(), Report> {
   let names = snapshot_node_names(graph);
-  prune_internal_nodes(graph, partitions, prune_short, prune_empty, node_names, &names)?;
+  let branch_lengths = edge_branch_lengths(graph);
+  prune_internal_nodes(
+    graph,
+    partitions,
+    prune_short,
+    prune_empty,
+    node_names,
+    &names,
+    &branch_lengths,
+  )?;
   graph.build()?;
   prune_leaves(graph, partitions, node_names, &names)?;
   graph.build()?;
@@ -81,6 +90,7 @@ fn prune_internal_nodes(
   prune_empty: bool,
   node_names: &BTreeSet<String>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   #[allow(clippy::needless_collect)]
   let edges_to_collapse: Vec<_> = graph
@@ -94,7 +104,7 @@ fn prune_internal_nodes(
         return Ok(None);
       }
 
-      let weight = edge.payload().read_arc().branch_length();
+      let weight = branch_lengths[&edge.key()];
       let should_prune_short = matches!((prune_short, weight), (Some(threshold), Some(weight)) if weight < threshold);
 
       let should_prune_empty = prune_empty && get_edge_num_muts(partitions, edge.key())? == Some(0);
