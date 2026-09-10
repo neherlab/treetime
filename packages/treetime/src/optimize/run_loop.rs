@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
+use crate::ancestral::marginal::marginal_update;
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;
 use crate::optimize::dispatch::run_optimize_mixed_inner;
@@ -19,6 +19,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
@@ -85,10 +86,12 @@ pub fn run_optimize_loop(
     estimate_indel_rate(graph, mixed_partitions)
   };
 
-  // The loop's source of truth for branch lengths, keyed by edge id. Seeded from the tree and
-  // refreshed from it after every iteration's graph-native optimizer, damping, and topology
-  // cleanup; the marginal reconstruction reads it directly.
-  let mut branch_lengths = profile_branch_lengths(graph);
+  // The loop's source of truth for branch lengths, keyed by edge id, mirroring the edge payload
+  // field type (`Option<f64>`) so a missing weight stays `None` end to end. Seeded from the tree
+  // and refreshed from it after every iteration's graph-native optimizer, damping, and topology
+  // cleanup. The marginal reconstruction reads the derived per-edge length (see
+  // [`marginal_branch_lengths`]).
+  let mut branch_lengths = edge_branch_lengths(graph);
 
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
@@ -100,7 +103,7 @@ pub fn run_optimize_loop(
   // and reset whenever a topology change makes the keys stale, so a rollback never restores
   // lengths keyed to a superseded tree. On a worsening or numerically failed iteration the loop
   // recomputes the partitions from this map rather than restoring snapshotted partition state.
-  let mut best_branch_lengths: Option<BTreeMap<GraphEdgeKey, f64>> = None;
+  let mut best_branch_lengths: Option<BTreeMap<GraphEdgeKey, Option<f64>>> = None;
 
   for i in 0..max_iter {
     let iteration_lh = compute_iteration_likelihood(
@@ -127,8 +130,9 @@ pub fn run_optimize_loop(
     if !iteration_lh.total_lh.value().is_finite() {
       if let Some(best) = &best_branch_lengths {
         branch_lengths = best.clone();
-        marginal_update(graph, &branch_lengths, sparse_partitions)?;
-        marginal_update(graph, &branch_lengths, dense_partitions)?;
+        let marginal_bl = marginal_branch_lengths(&branch_lengths);
+        marginal_update(graph, &marginal_bl, sparse_partitions)?;
+        marginal_update(graph, &marginal_bl, dense_partitions)?;
       }
       stopped_at = Some((i, ConvergenceReason::NumericalFailure));
       break;
@@ -152,8 +156,9 @@ pub fn run_optimize_loop(
     if i >= 2 && iteration_lh.total_lh < lh_prev && lh_prev >= best_lh {
       if let Some(best) = &best_branch_lengths {
         branch_lengths = best.clone();
-        marginal_update(graph, &branch_lengths, sparse_partitions)?;
-        marginal_update(graph, &branch_lengths, dense_partitions)?;
+        let marginal_bl = marginal_branch_lengths(&branch_lengths);
+        marginal_update(graph, &marginal_bl, sparse_partitions)?;
+        marginal_update(graph, &marginal_bl, dense_partitions)?;
       }
       stopped_at = Some((i, ConvergenceReason::Worsened));
       break;
@@ -187,7 +192,7 @@ pub fn run_optimize_loop(
     }
 
     // Refresh the source-of-truth map from the tree the graph-native steps just updated.
-    branch_lengths = profile_branch_lengths(graph);
+    branch_lengths = edge_branch_lengths(graph);
 
     lh_prev_prev = lh_prev;
     lh_prev = iteration_lh.total_lh;
@@ -207,15 +212,28 @@ pub fn run_optimize_loop(
 /// edge payload. Called once at the end of [`run_optimize_loop`] so the tree carries the final
 /// optimized (or rolled-back best) lengths. The map is keyed by the current edge set, so every
 /// graph edge has an entry.
-fn commit_branch_lengths_to_graph(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, f64>) {
+fn commit_branch_lengths_to_graph(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) {
   for edge_ref in graph.get_edges() {
     let key = edge_ref.read_arc().key();
     edge_ref
       .write_arc()
       .payload()
       .write_arc()
-      .set_branch_length(Some(branch_lengths[&key]));
+      .set_branch_length(branch_lengths[&key]);
   }
+}
+
+/// Derive the per-edge length the marginal reconstruction propagates along from the loop's
+/// `Option<f64>` branch-length map.
+///
+/// Mirrors [`profile_branch_lengths`](crate::ancestral::marginal::profile_branch_lengths):
+/// a missing weight resolves to `0.0`. The ancestral edge carries no clock-constrained length,
+/// so `profile_branch_length() == branch_length()` and this derivation is exact.
+fn marginal_branch_lengths(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> BTreeMap<GraphEdgeKey, f64> {
+  branch_lengths
+    .iter()
+    .map(|(&key, &bl)| (key, bl.unwrap_or(0.0)))
+    .collect()
 }
 
 /// Why the optimization loop stopped early (before exhausting `max_iter`).
@@ -281,15 +299,16 @@ struct OptimizeIterationLikelihood {
 
 fn compute_iteration_likelihood(
   graph: &GraphAncestral,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   mixed_partitions: &PartitionOptimizeVec,
   indel_rate: f64,
   no_indels: bool,
 ) -> Result<OptimizeIterationLikelihood, Report> {
-  let sparse_lh = marginal_update(graph, branch_lengths, sparse_partitions)?;
-  let dense_lh = marginal_update(graph, branch_lengths, dense_partitions)?;
+  let marginal_bl = marginal_branch_lengths(branch_lengths);
+  let sparse_lh = marginal_update(graph, &marginal_bl, sparse_partitions)?;
+  let dense_lh = marginal_update(graph, &marginal_bl, dense_partitions)?;
   let indel_lh = if no_indels {
     LogLh::ZERO
   } else {
