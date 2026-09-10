@@ -188,10 +188,11 @@ where
   let one_mutation = calculate_one_mutation(partitions);
   let total_sites: usize = partitions.iter().map(|p| p.read_arc().get_sequence_length()).sum();
 
+  let branch_lengths = edge_branch_lengths(graph);
   let indel_rate = if no_indels {
     0.0
   } else {
-    estimate_indel_rate(graph, partitions)
+    estimate_indel_rate(graph, partitions, &branch_lengths)
   };
 
   info!(
@@ -208,7 +209,6 @@ where
   // from parallel workers without a lock. The immutable reborrow ends at the `collect`, so the serial
   // inserts can take a mutable borrow.
   let edge_states: &TimetreeState = state;
-  let branch_lengths = edge_branch_lengths(graph);
   let distributions: Vec<(GraphEdgeKey, Option<f64>, Arc<Distribution<NegLog>>)> = graph
     .get_edges()
     .par_iter()

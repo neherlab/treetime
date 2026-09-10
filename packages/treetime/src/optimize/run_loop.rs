@@ -80,18 +80,18 @@ pub fn run_optimize_loop(
   no_indels: bool,
   topology_ops: TopologyOps,
 ) -> Result<OptimizeLoopResult, Report> {
-  let indel_rate = if no_indels {
-    0.0
-  } else {
-    estimate_indel_rate(graph, mixed_partitions)
-  };
-
   // The loop's source of truth for branch lengths, keyed by edge id, mirroring the edge payload
   // field type (`Option<f64>`) so a missing weight stays `None` end to end. Seeded from the tree
   // and refreshed from it after every iteration's graph-native optimizer, damping, and topology
   // cleanup. The marginal reconstruction reads the derived per-edge length (see
   // [`marginal_branch_lengths`]).
   let mut branch_lengths = edge_branch_lengths(graph);
+
+  let indel_rate = if no_indels {
+    0.0
+  } else {
+    estimate_indel_rate(graph, mixed_partitions, &branch_lengths)
+  };
 
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
@@ -312,7 +312,7 @@ fn compute_iteration_likelihood(
   let indel_lh = if no_indels {
     LogLh::ZERO
   } else {
-    total_indel_log_lh(graph, mixed_partitions, indel_rate)?
+    total_indel_log_lh(graph, mixed_partitions, branch_lengths, indel_rate)?
   };
   let total_lh = sparse_lh + dense_lh + indel_lh;
 
@@ -461,17 +461,21 @@ pub fn prune_and_merge_in_loop(
 /// lengths in `initial_guess_mixed()` before entering `run_optimize_mixed()`.
 /// The `Never` path skips `initial_guess_mixed()` entirely, so it must reject
 /// this configuration at validation time instead.
-pub fn any_indel_edge_has_zero_branch_length<P>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) -> bool
+pub fn any_indel_edge_has_zero_branch_length<P>(
+  graph: &GraphAncestral,
+  partitions: &[Arc<RwLock<P>>],
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> bool
 where
   P: PartitionOptimizeOps + ?Sized,
 {
   graph.get_edges().iter().any(|edge_ref| {
     let edge = edge_ref.read_arc();
-    let bl = edge.payload().read_arc().branch_length().unwrap_or(0.0);
+    let edge_key = edge.key();
+    let bl = branch_lengths[&edge_key].unwrap_or(0.0);
     if bl != 0.0 {
       return false;
     }
-    let edge_key = edge.key();
     partitions
       .iter()
       .any(|partition| partition.read_arc().edge_indel_count(edge_key) > 0)
@@ -511,7 +515,9 @@ where
           invalid_branch_lengths.join("\n  ")
         );
       }
-      if !no_indels && any_indel_edge_has_zero_branch_length(graph, mixed_partitions) {
+      // `Never` makes no branch-length writes, so the input tree's lengths are the ones checked.
+      let branch_lengths = edge_branch_lengths(graph);
+      if !no_indels && any_indel_edge_has_zero_branch_length(graph, mixed_partitions, &branch_lengths) {
         return make_error!(
           "--branch-length-initial-guess=never requires non-zero branch lengths on edges that carry indels, \
            but some indel-bearing edges have branch length zero. \

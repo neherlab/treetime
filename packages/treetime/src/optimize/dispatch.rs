@@ -15,6 +15,7 @@ use std::sync::Arc;
 use treetime_graph::edge::{Edge, GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
+use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Unified optimization function for mixed partition types.
 ///
@@ -36,7 +37,8 @@ where
     return make_error!("Total sequence length across all partitions is zero; cannot optimize branch lengths");
   }
 
-  let indel_rate = estimate_indel_rate(graph, partitions);
+  let branch_lengths = edge_branch_lengths(graph);
+  let indel_rate = estimate_indel_rate(graph, partitions, &branch_lengths);
   run_optimize_mixed_inner(graph, partitions, method, indel_rate, false)
 }
 
@@ -313,10 +315,11 @@ where
   }
 
   let one_mutation = 1.0 / total_length as f64;
+  let branch_lengths = edge_branch_lengths(graph);
   let indel_rate = if no_indels {
     0.0
   } else {
-    estimate_indel_rate(graph, partitions)
+    estimate_indel_rate(graph, partitions, &branch_lengths)
   };
 
   for edge_ref in graph.get_edges() {

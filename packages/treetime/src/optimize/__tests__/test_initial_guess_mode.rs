@@ -22,6 +22,7 @@ pub mod tests {
   use rstest::rstest;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
@@ -281,7 +282,7 @@ pub mod tests {
   fn test_any_indel_edge_has_zero_bl_false_without_indels() -> Result<(), Report> {
     let (graph, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     assert!(
-      !any_indel_edge_has_zero_branch_length(&graph, &partitions),
+      !any_indel_edge_has_zero_branch_length(&graph, &partitions, &edge_branch_lengths(&graph)),
       "Without any indels, no indel-bearing zero-BL edges should be detected"
     );
     Ok(())
@@ -292,7 +293,7 @@ pub mod tests {
     let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     inject_indel_on_first_edge(&graph, &partitions)?;
     assert!(
-      !any_indel_edge_has_zero_branch_length(&graph, &partitions),
+      !any_indel_edge_has_zero_branch_length(&graph, &partitions, &edge_branch_lengths(&graph)),
       "Positive branch length on indel-bearing edge must not trigger the zero-BL check"
     );
     Ok(())
@@ -303,7 +304,7 @@ pub mod tests {
     let (graph, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     inject_indel_on_first_edge(&graph, &partitions)?;
     assert!(
-      any_indel_edge_has_zero_branch_length(&graph, &partitions),
+      any_indel_edge_has_zero_branch_length(&graph, &partitions, &edge_branch_lengths(&graph)),
       "Zero branch length on an indel-bearing edge must be detected"
     );
     Ok(())

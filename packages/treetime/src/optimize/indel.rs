@@ -8,8 +8,9 @@ use eyre::Report;
 use parking_lot::RwLock;
 use rayon::prelude::*;
 use statrs::function::factorial::ln_factorial;
+use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_primitives::LogLh;
@@ -68,10 +69,14 @@ pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMet
 ///
 /// Generic over the graph's node and edge payload types: any graph whose
 /// edges expose `HasBranchLength` can be used (ancestral, timetree, ...).
-pub fn estimate_indel_rate<N, E, P>(graph: &Graph<N, E, ()>, partitions: &[Arc<RwLock<P>>]) -> f64
+pub fn estimate_indel_rate<N, E, P>(
+  graph: &Graph<N, E, ()>,
+  partitions: &[Arc<RwLock<P>>],
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> f64
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   P: PartitionOptimizeOps + ?Sized,
 {
   let per_edge = graph
@@ -79,7 +84,7 @@ where
     .par_iter()
     .map(|edge_ref| {
       let edge_key = edge_ref.read_arc().key();
-      let branch_length = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+      let branch_length = branch_lengths[&edge_key].unwrap_or(0.0);
       let edge_indels = partitions
         .iter()
         .map(|p| p.read_arc().edge_indel_count(edge_key))
@@ -106,11 +111,12 @@ where
 pub fn total_indel_log_lh<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   indel_rate: f64,
 ) -> Result<LogLh, Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   P: PartitionOptimizeOps + ?Sized,
 {
   graph
@@ -118,12 +124,8 @@ where
     .par_iter()
     .map(|edge_ref| -> Result<LogLh, Report> {
       let edge_key = edge_ref.read_arc().key();
-      let edge = edge_ref.read_arc();
-      let branch_length = edge.payload().read_arc().branch_length().ok_or_else(|| {
-        make_report!(
-          "Cannot evaluate indel likelihood for edge {} with a missing branch length",
-          edge.key()
-        )
+      let branch_length = branch_lengths[&edge_key].ok_or_else(|| {
+        make_report!("Cannot evaluate indel likelihood for edge {edge_key} with a missing branch length")
       })?;
       validate_branch_length_value(branch_length)?;
       let indel_count: usize = partitions.iter().map(|p| p.read_arc().edge_indel_count(edge_key)).sum();

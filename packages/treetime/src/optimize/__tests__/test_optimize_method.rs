@@ -27,6 +27,7 @@ mod tests {
   use rstest::rstest;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
 
@@ -998,7 +999,7 @@ mod tests {
       }
 
       // Capture indel rate at the same point run_optimize_mixed will
-      let indel_rate = estimate_indel_rate(graph, &mixed_partitions);
+      let indel_rate = estimate_indel_rate(graph, &mixed_partitions, &edge_branch_lengths(graph));
 
       Ok((mixed_partitions, indel_rate))
     }

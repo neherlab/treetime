@@ -29,6 +29,7 @@ pub mod tests {
   use rstest::rstest;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
@@ -103,7 +104,7 @@ pub mod tests {
     let aln = simple_alignment()?;
     let (_, _, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
-    let rate = estimate_indel_rate(&graph, &mixed_partitions);
+    let rate = estimate_indel_rate(&graph, &mixed_partitions, &edge_branch_lengths(&graph));
     assert_abs_diff_eq!(rate, 0.0, epsilon = 1e-15);
     Ok(())
   }
@@ -118,7 +119,7 @@ pub mod tests {
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
 
-    let rate = estimate_indel_rate(&graph, &mixed_partitions);
+    let rate = estimate_indel_rate(&graph, &mixed_partitions, &edge_branch_lengths(&graph));
 
     // 2 indels total (1 per partition: dense + sparse), divided by total branch length
     let total_bl: f64 = graph
@@ -145,8 +146,8 @@ pub mod tests {
       .write_arc()
       .set_branch_length(Some(0.1));
 
-    let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
-    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate)
+    let indel_rate = estimate_indel_rate(&graph, &mixed_partitions, &edge_branch_lengths(&graph));
+    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, &edge_branch_lengths(&graph), indel_rate)
       .expect("valid branch lengths")
       .value();
 
@@ -182,8 +183,8 @@ pub mod tests {
       .write_arc()
       .set_branch_length(Some(0.0));
 
-    let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
-    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate)
+    let indel_rate = estimate_indel_rate(&graph, &mixed_partitions, &edge_branch_lengths(&graph));
+    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, &edge_branch_lengths(&graph), indel_rate)
       .expect("valid branch lengths")
       .value();
 
@@ -203,8 +204,8 @@ pub mod tests {
       .write_arc()
       .set_branch_length(Some(0.0));
 
-    let indel_rate = estimate_indel_rate(&graph, &mixed_partitions);
-    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, indel_rate)
+    let indel_rate = estimate_indel_rate(&graph, &mixed_partitions, &edge_branch_lengths(&graph));
+    let total_lh = total_indel_log_lh(&graph, &mixed_partitions, &edge_branch_lengths(&graph), indel_rate)
       .expect("valid branch lengths")
       .value();
 
