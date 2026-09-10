@@ -4,7 +4,7 @@ mod __tests__;
 use crate::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use crate::graph::{Graph, SafeNode};
 use crate::node::{GraphNode, GraphNodeKey, Named};
-use crate::value_maps::edge_branch_lengths;
+use crate::value_maps::{edge_branch_lengths, node_names};
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
@@ -80,11 +80,13 @@ impl TopologyOrderSpec {
           build_order(graph, &keys, reverse)
         },
         TopologyOrderPreset::Label | TopologyOrderPreset::LabelReverse => {
-          let keys = compute_labels(graph, &postorder)?;
+          let names = node_names(graph);
+          let keys = compute_labels(graph, &postorder, &names)?;
           build_order(graph, &keys, reverse)
         },
         TopologyOrderPreset::TargetOrder | TopologyOrderPreset::TargetOrderReverse => {
-          let keys = compute_target_scores(graph, &postorder, &self.target_order, self.target_aggregate)?;
+          let names = node_names(graph);
+          let keys = compute_target_scores(graph, &postorder, &names, &self.target_order, self.target_aggregate)?;
           build_order(graph, &keys, reverse)
         },
       }
@@ -327,9 +329,10 @@ where
 fn compute_labels<N, E, D>(
   graph: &Graph<N, E, D>,
   postorder: &[GraphNodeKey],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<BTreeMap<GraphNodeKey, String>, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {
@@ -339,11 +342,8 @@ where
     let node = node.read_arc();
     let child_keys = graph.child_keys_of(&node);
     let label = if child_keys.is_empty() {
-      node
-        .payload()
-        .read_arc()
-        .name()
-        .map(|name| name.as_ref().to_owned())
+      names[&node_key]
+        .clone()
         .ok_or_else(|| make_report!("When ordering topology by labels: leaf node {} has no name", node_key))?
     } else {
       child_keys.iter().map(|ck| labels[ck].clone()).min().unwrap_or_default()
@@ -356,11 +356,12 @@ where
 fn compute_target_scores<N, E, D>(
   graph: &Graph<N, E, D>,
   postorder: &[GraphNodeKey],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   target_order: &[String],
   aggregate: TopologyOrderTargetAggregate,
 ) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {
@@ -383,21 +384,22 @@ where
     return make_error!("When ordering topology: target order contains duplicate leaf label '{duplicate}'");
   }
 
-  validate_target_order(graph, &position_of)?;
+  validate_target_order(graph, names, &position_of)?;
 
   match aggregate {
-    TopologyOrderTargetAggregate::Mean => compute_target_scores_mean(graph, postorder, &position_of),
-    TopologyOrderTargetAggregate::Median => compute_target_scores_median(graph, postorder, &position_of),
+    TopologyOrderTargetAggregate::Mean => compute_target_scores_mean(graph, postorder, names, &position_of),
+    TopologyOrderTargetAggregate::Median => compute_target_scores_median(graph, postorder, names, &position_of),
   }
 }
 
 fn compute_target_scores_mean<N, E, D>(
   graph: &Graph<N, E, D>,
   postorder: &[GraphNodeKey],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   position_of: &BTreeMap<&str, usize>,
 ) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {
@@ -407,11 +409,8 @@ where
     let node = node.read_arc();
     let child_keys = graph.child_keys_of(&node);
     let score = if child_keys.is_empty() {
-      let name = node
-        .payload()
-        .read_arc()
-        .name()
-        .map(|n| n.as_ref().to_owned())
+      let name = names[&node_key]
+        .clone()
         .ok_or_else(|| make_report!("When ordering topology by target order: leaf node {node_key} has no name"))?;
       let pos = *position_of.get(name.as_str()).ok_or_else(|| {
         make_report!("When ordering topology by target order: leaf '{name}' is absent from target order")
@@ -434,10 +433,11 @@ where
 fn compute_target_scores_median<N, E, D>(
   graph: &Graph<N, E, D>,
   postorder: &[GraphNodeKey],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   position_of: &BTreeMap<&str, usize>,
 ) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {
@@ -448,11 +448,8 @@ where
     let node = node.read_arc();
     let child_keys = graph.child_keys_of(&node);
     let pos = if child_keys.is_empty() {
-      let name = node
-        .payload()
-        .read_arc()
-        .name()
-        .map(|n| n.as_ref().to_owned())
+      let name = names[&node_key]
+        .clone()
         .ok_or_else(|| make_report!("When ordering topology by target order: leaf node {node_key} has no name"))?;
       let p = *position_of.get(name.as_str()).ok_or_else(|| {
         make_report!("When ordering topology by target order: leaf '{name}' is absent from target order")
@@ -488,20 +485,21 @@ fn median_score(sorted_positions: &[usize]) -> TargetScore {
   }
 }
 
-fn validate_target_order<N, E, D>(graph: &Graph<N, E, D>, position_of: &BTreeMap<&str, usize>) -> Result<(), Report>
+fn validate_target_order<N, E, D>(
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  position_of: &BTreeMap<&str, usize>,
+) -> Result<(), Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {
   let mut final_labels = BTreeMap::new();
   for leaf in graph.get_leaves() {
     let leaf = leaf.read_arc();
-    let label = leaf
-      .payload()
-      .read_arc()
-      .name()
-      .map(|name| name.as_ref().to_owned())
+    let label = names[&leaf.key()]
+      .clone()
       .ok_or_else(|| make_report!("When validating target order: leaf node {} has no name", leaf.key()))?;
     if !position_of.contains_key(label.as_str()) {
       return make_error!("When validating target order: leaf '{label}' is absent from target order");
