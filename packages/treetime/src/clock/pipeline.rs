@@ -11,6 +11,10 @@ use crate::progress::ProgressSink;
 use eyre::{Report, WrapErr};
 use log::info;
 use serde::Serialize;
+use std::collections::BTreeMap;
+use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::node::GraphNodeKey;
+use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 use treetime_io::dates_csv::DatesMap;
 
 pub struct ClockPipelineParams {
@@ -35,6 +39,10 @@ pub struct ClockOutput {
   pub state: ClockState,
   pub clock_model: ClockModel,
   pub regression_results: Vec<ClockRegressionResult>,
+  #[serde(skip)]
+  pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  #[serde(skip)]
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
 pub fn run(
@@ -64,7 +72,14 @@ pub fn run(
     info!("Clock filter changed outlier status for {delta} leaf nodes");
   }
 
-  let regression_results = gather_clock_regression_results(&input.graph, &mut state, &clock_model)?;
+  // Post-reroot re-snapshot. Estimation rerooted the tree in place: the best-root search rewrites
+  // edge branch lengths on the payload and can split an edge (adding a node and edge key) or merge
+  // the old trivial root (removing keys). Re-capture both value maps from the post-reroot graph so
+  // the gather and the command's output writers read the final tree, not the pre-reroot payload.
+  let branch_lengths = edge_branch_lengths(&input.graph);
+  let names = node_names(&input.graph);
+  let regression_results =
+    gather_clock_regression_results(&input.graph, &mut state, &clock_model, &names, &branch_lengths)?;
 
   progress.report("Done", 1.0, "");
   Ok(ClockOutput {
@@ -72,6 +87,8 @@ pub fn run(
     state,
     clock_model,
     regression_results,
+    names,
+    branch_lengths,
   })
 }
 

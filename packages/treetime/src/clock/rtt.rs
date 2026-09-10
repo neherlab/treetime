@@ -3,9 +3,11 @@ use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_state::ClockState;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::Path;
+use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::GraphPassNodeOutput;
-use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::csv::CsvStructFileWriter;
 use treetime_utils::array::serde::skip_serializing_if_false;
 
@@ -27,9 +29,11 @@ pub fn gather_clock_regression_results(
   graph: &GraphClock,
   state: &mut ClockState,
   clock_model: &ClockModel,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<Vec<ClockRegressionResult>, Report> {
   // Assign divergence to each node: div = parent.div + branch_length, parents before children.
-  let branch_lengths = edge_branch_lengths(graph);
+  // `names` and `branch_lengths` are the post-reroot value maps threaded from the pipeline.
   state.map_forward(graph, |context| {
     let mut node = context.input;
     let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
@@ -51,7 +55,7 @@ pub fn gather_clock_regression_results(
     .map(|node| {
       let node = node.read_arc();
       let is_leaf = node.is_leaf();
-      let name = node.payload().read_arc().name.clone();
+      let name = names[&node.key()].clone();
       let node_state = state.node(node.key());
       let div = node_state.div;
       let time = node_state.time;

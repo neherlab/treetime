@@ -85,16 +85,17 @@ impl std::ops::Deref for ClockResult {
 fn gather_clock_outputs(
   graph: &GraphClock<ClockGraphData>,
   state: &ClockState,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> (BTreeMap<GraphNodeKey, ClockNodeOut>, BTreeMap<GraphEdgeKey, EdgeOut>) {
   let nodes = graph
     .get_nodes()
     .iter()
     .map(|node| {
-      let node = node.read_arc();
-      let key = node.key();
-      // Name is an input field carried on the payload; the clock inference fields come from the
-      // clock state value the pipeline routed through estimation and rerooting.
-      let name = node.payload().read_arc().name.clone();
+      let key = node.read_arc().key();
+      // Name comes from the post-reroot name map the pipeline returns; the clock inference fields
+      // come from the clock state value the pipeline routed through estimation and rerooting.
+      let name = names[&key].clone();
       let node_state = state.node(key);
       let out = ClockNodeOut {
         name,
@@ -111,9 +112,13 @@ fn gather_clock_outputs(
     .get_edges()
     .iter()
     .map(|edge| {
-      let edge = edge.read_arc();
-      let branch_length = edge.payload().read_arc().branch_length;
-      (edge.key(), EdgeOut { branch_length })
+      let key = edge.read_arc().key();
+      (
+        key,
+        EdgeOut {
+          branch_length: branch_lengths[&key],
+        },
+      )
     })
     .collect();
 
@@ -186,6 +191,8 @@ pub fn run_clock(
     state,
     clock_model,
     regression_results,
+    names,
+    branch_lengths,
   } = output;
   let mut graph = graph.map_data(ClockGraphData::new(clock_model, regression_results));
   let topology_order = clock_args
@@ -194,9 +201,10 @@ pub fn run_clock(
   topology_order.apply(&mut graph)?;
   progress.report("Writing output", 0.8, "");
 
-  let (nodes, edges) = gather_clock_outputs(&graph, &state);
-  let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> =
-    edges.iter().map(|(key, edge)| (*key, edge.branch_length)).collect();
+  // The pipeline's post-reroot name and branch-length maps carry the final tree's values; topology
+  // ordering only permutes children, so the maps still match after `apply`. Both drive the gather
+  // and the tree-output writers below instead of a payload read.
+  let (nodes, edges) = gather_clock_outputs(&graph, &state, &names, &branch_lengths);
 
   if !resolved.tree_outputs.is_empty() {
     write_clock_tree_outputs(
