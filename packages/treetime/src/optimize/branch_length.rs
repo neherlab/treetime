@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, NodeOptimizeOps};
-use treetime_graph::value_maps::node_names;
+use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 
 /// Whether a scalar is in the physical domain of a phylogenetic branch length.
 pub fn is_valid_branch_length_value(branch_length: f64) -> bool {
@@ -24,12 +24,13 @@ where
   D: Send + Sync,
 {
   let names = node_names(graph);
+  let branch_lengths = edge_branch_lengths(graph);
   graph
     .get_edges()
     .iter()
     .filter_map(|edge_ref| {
       let edge = edge_ref.read_arc();
-      let branch_length = edge.payload().read_arc().branch_length();
+      let branch_length = branch_lengths[&edge.key()];
       (!is_valid_branch_length(branch_length)).then_some((edge.source(), edge.target(), branch_length))
     })
     .map(|(source, target, branch_length)| {
