@@ -159,7 +159,7 @@ where
     &mut self,
   ) -> (
     &mut BTreeMap<GraphNodeKey, DenseNodePartition>,
-    &mut BTreeMap<treetime_graph::edge::GraphEdgeKey, DenseEdgePartition>,
+    &mut BTreeMap<GraphEdgeKey, DenseEdgePartition>,
   ) {
     (&mut self.data.nodes, &mut self.data.edges)
   }
