@@ -7,13 +7,18 @@ https://en.wikipedia.org/wiki/Smoke_testing_(software)
 
 Usage:
 
-    ./dev/run-smoke-tests <path_to_treetime_executable> [--only-failures] [--no-stats]
+    ./dev/run-smoke-tests <path_to_treetime_executable> [--only-failures] [--no-stats] [--output-dir=PATH] [--manifest=PATH]
 
 Options:
     --only-failures    Show only failed tests
     --no-stats         Omit performance statistics
+    --output-dir=PATH  Write command outputs below PATH instead of tmp/smoke-tests
+    --manifest=PATH    Write a JSON manifest (per-test id, exit code, output dir) to PATH
 
 NOTE: you must build and re-build the tested executable yourself, this script does not do that
+
+For a before/after output-equality comparison across two binaries, use `./dev/smoke-compare`, which
+drives this script twice (persisting the "before" run) and diffs every non-failing test's outputs.
 
 
 How to add more tests:
@@ -25,6 +30,7 @@ How to add more tests:
 
 """
 
+import json
 import os
 import resource
 import statistics
@@ -443,14 +449,14 @@ def format_timing(t: Timing) -> str:
   return f"wall={format_duration(t.wall)} cpu={format_duration(t.cpu)}"
 
 
-def run_batch_cmd(data_name: str, cmd_name: str, cmd: str) -> dict[str, str | int | float | Timing | None]:
+def run_batch_cmd(data_name: str, cmd_name: str, cmd: str, outdir: Optional[str] = None) -> dict[str, str | int | float | Timing | None]:
   cmd = clean_cmd(cmd)
   output, code, timing = run_cmd(data_name, cmd)
   show_output = code != 0 or not only_failures
   if show_output:
     status = "🚨 Failed" if code != 0 else "🏁 Finished"
     print("\n".join([f"{status}: {orange(cmd_name)} for {blue(data_name)} {grey(f'[{format_timing(timing)}]')}\n", grey(f"+{cmd}")] + output))
-  return {"data_name": data_name, "cmd_name": cmd_name, "cmd": cmd, "code": code, "timing": timing}
+  return {"data_name": data_name, "cmd_name": cmd_name, "cmd": cmd, "code": code, "timing": timing, "output_dir": outdir}
 
 
 def run_additional_cmd(cmd_name: str, cmd: str) -> dict[str, str | int | float | Timing | None]:
@@ -460,18 +466,19 @@ def run_additional_cmd(cmd_name: str, cmd: str) -> dict[str, str | int | float |
   if show_output:
     status = "🚨 Failed" if code != 0 else "🏁 Finished"
     print("\n".join([f"{status}: {orange(cmd_name)} {grey(f'[{format_timing(timing)}]')}\n", grey(f"+{cmd}")] + output))
-  return {"data_name": None, "cmd_name": cmd_name, "cmd": cmd, "code": code, "timing": timing}
+  return {"data_name": None, "cmd_name": cmd_name, "cmd": cmd, "code": code, "timing": timing, "output_dir": None}
 
 
 def run_clock(name: str, out: str, extra_args: str):
+  outdir = f"{RESULTS_DIR}/clock/{out}"
   cmd = f"""
   {TREETIME_BIN} clock
   --tree={DATA_DIR}/{name}/tree.nwk
   --dates={DATA_DIR}/{name}/metadata.tsv
-  --output-all={RESULTS_DIR}/clock/{out}
+  --output-all={outdir}
   {extra_args}
   """
-  return run_batch_cmd(name, "clock", cmd)
+  return run_batch_cmd(name, "clock", cmd, outdir)
 
 
 def run_ancestral(method: str, seq_mode: Optional[str], name: str, out: str, extra_args: str):
@@ -488,13 +495,14 @@ def run_ancestral(method: str, seq_mode: Optional[str], name: str, out: str, ext
   # Parsimony does not infer a GTR model, so exclude gtr from default outputs
   selection = "--output-selection=nwk,nexus,augur-node-data,reconstructed-nuc-fasta" if method == "parsimony" else ""
 
+  outdir = f"{outdir_base}/{out}"
   cmd = f"""
   {TREETIME_BIN} ancestral
   --method-anc={method}
   {dense}
   --tree={DATA_DIR}/{name}/tree.nwk
   --aln={DATA_DIR}/{name}/aln.fasta.xz
-  --output-all={outdir_base}/{out}
+  --output-all={outdir}
   {selection}
   {extra_args}
   """
@@ -503,7 +511,7 @@ def run_ancestral(method: str, seq_mode: Optional[str], name: str, out: str, ext
   if method == "marginal" and seq_mode is not None:
     method_str = f"{method_str}-{seq_mode}"
 
-  return run_batch_cmd(name, method_str, cmd)
+  return run_batch_cmd(name, method_str, cmd, outdir)
 
 
 def run_mugration(name: str, out: str, attribute: str, extra_args: str):
@@ -517,34 +525,36 @@ def run_mugration(name: str, out: str, attribute: str, extra_args: str):
   --output-all={outdir}
   {extra_args}
   """
-  return run_batch_cmd(name, "mugration", cmd)
+  return run_batch_cmd(name, "mugration", cmd, outdir)
 
 
 def run_optimize(dense: str, name: str, out: str, extra_args: str):
   seq_mode = "dense" if dense == "true" else "sparse"
+  outdir = f"{RESULTS_DIR}/optimize/{seq_mode}/{out}"
   cmd = f"""
   {TREETIME_BIN} optimize
   --dense={dense}
   --tree={DATA_DIR}/{name}/tree.nwk
   --aln={DATA_DIR}/{name}/aln.fasta.xz
-  --output-all={RESULTS_DIR}/optimize/{seq_mode}/{out}
+  --output-all={outdir}
   {extra_args}
   """
-  return run_batch_cmd(name, f"optimize-{seq_mode}", cmd)
+  return run_batch_cmd(name, f"optimize-{seq_mode}", cmd, outdir)
 
 
 def run_prune(name: str, out: str, extra_args: str):
+  outdir = f"{RESULTS_DIR}/prune/{out}"
   cmd = f"""
   {TREETIME_BIN} prune
   --tree={DATA_DIR}/{name}/tree.nwk
   --aln={DATA_DIR}/{name}/aln.fasta.xz
-  --output-all={RESULTS_DIR}/prune/{out}
+  --output-all={outdir}
   --prune-short=1e-6
   --prune-empty
   --merge-shared-mutations
   {extra_args}
   """
-  return run_batch_cmd(name, "prune", cmd)
+  return run_batch_cmd(name, "prune", cmd, outdir)
 
 
 def run_timetree(name: str, out: str, extra_args: str):
@@ -558,16 +568,17 @@ def run_timetree(name: str, out: str, extra_args: str):
     outputs.append("confidence-tsv")
   selection = f"--output-selection={','.join(outputs)}"
 
+  outdir = f"{RESULTS_DIR}/timetree/{out}"
   cmd = f"""
   {TREETIME_BIN} timetree
   --tree={DATA_DIR}/{name}/tree.nwk
   --dates={DATA_DIR}/{name}/metadata.tsv
   --aln={DATA_DIR}/{name}/aln.fasta.xz
-  --output-all={RESULTS_DIR}/timetree/{out}
+  --output-all={outdir}
   {selection}
   {extra_args}
   """
-  return run_batch_cmd(name, "timetree", cmd)
+  return run_batch_cmd(name, "timetree", cmd, outdir)
 
 
 def init_worker():
@@ -730,21 +741,58 @@ def print_summary(results: list[dict[str, str | int | float | Timing | None]], w
   sys.exit(0 if n_err == 0 else 1)
 
 
-if __name__ == "__main__":
-  # Parse arguments (order-independent)
-  flags = {a for a in sys.argv[1:] if a.startswith("--")}
-  positional_args = [a for a in sys.argv[1:] if not a.startswith("--")]
+def write_manifest(results: list[dict], results_dir: str, manifest_path: Path) -> None:
+  """Write a machine-readable record of every test: its stable id, exit code, and output directory.
 
-  known_flags = {"--only-failures", "--no-stats"}
-  unknown_flags = flags - known_flags
-  if unknown_flags:
-    sys.exit(f"Unknown flag(s): {', '.join(sorted(unknown_flags))}\nUsage: {sys.argv[0]} <path_to_treetime_executable> [--only-failures] [--no-stats]")
+  The id and output_dir are relative to `results_dir` so a before-run and an after-run produced with
+  different `--output-dir` roots yield matching ids for the same test.
+  """
+  entries = [manifest_entry(res, results_dir) for res in results]
+  manifest_path.parent.mkdir(parents=True, exist_ok=True)
+  manifest_path.write_text(json.dumps(entries, indent=2))
+
+
+def manifest_entry(res: dict, results_dir: str) -> dict:
+  outdir = res.get("output_dir")
+  rel = os.path.relpath(str(outdir), results_dir) if outdir else None
+  return {
+    "id": rel if rel is not None else str(res["cmd_name"]),
+    "cmd_name": res["cmd_name"],
+    "data_name": res["data_name"],
+    "code": res["code"],
+    "output_dir": rel,
+  }
+
+
+if __name__ == "__main__":
+  # Parse arguments (order-independent). Boolean flags and `--key=value` flags are both accepted.
+  usage = (
+    f"Usage: {sys.argv[0]} <path_to_treetime_executable> "
+    "[--only-failures] [--no-stats] [--output-dir=PATH] [--manifest=PATH]"
+  )
+  bool_flags = {"--only-failures", "--no-stats"}
+  valued_flags = {"--output-dir", "--manifest"}
+  seen_bool: set[str] = set()
+  valued: dict[str, str] = {}
+  positional_args: list[str] = []
+  for arg in sys.argv[1:]:
+    if arg in bool_flags:
+      seen_bool.add(arg)
+    elif arg.startswith("--") and "=" in arg:
+      key, _, value = arg.partition("=")
+      if key not in valued_flags:
+        sys.exit(f"Unknown flag: {key}\n{usage}")
+      valued[key] = value
+    elif arg.startswith("--"):
+      sys.exit(f"Unknown or malformed flag: {arg}\n{usage}")
+    else:
+      positional_args.append(arg)
 
   if len(positional_args) != 1:
-    sys.exit(f"Usage: {sys.argv[0]} <path_to_treetime_executable> [--only-failures]")
+    sys.exit(usage)
 
-  only_failures = "--only-failures" in flags
-  no_stats = "--no-stats" in flags
+  only_failures = "--only-failures" in seen_bool
+  no_stats = "--no-stats" in seen_bool
 
 
   def normpath(path: Path) -> str:
@@ -761,7 +809,7 @@ if __name__ == "__main__":
 
   TREETIME_BIN = normpath(Path(positional_args[0]))
   DATA_DIR = relpath(Path(PROJECT_ROOT) / 'data')
-  RESULTS_DIR = relpath(Path(PROJECT_ROOT) / 'tmp/smoke-tests')
+  RESULTS_DIR = relpath(Path(valued["--output-dir"])) if "--output-dir" in valued else relpath(Path(PROJECT_ROOT) / 'tmp/smoke-tests')
   RESULTS_DIR_ADDITIONAL = Path(RESULTS_DIR) / 'additional'
 
   num_cores = cpu_count()
@@ -784,6 +832,8 @@ if __name__ == "__main__":
     try:
       results = [pool.starmap_async(func, args) for func, args in batches]
       results = [code for result in results for code in result.get()]
+      if "--manifest" in valued:
+        write_manifest(results, RESULTS_DIR, Path(valued["--manifest"]))
       wall_time = time.perf_counter() - start_time
       print_summary(results, wall_time, num_cores, skip_perf=no_stats)
     except KeyboardInterrupt:
