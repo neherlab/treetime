@@ -103,18 +103,17 @@ pub fn write_optimize_tree_outputs(
 ) -> Result<(), Report> {
   let updated = generation_date();
   let names = node_names(graph);
-  let weights = edge_branch_lengths(graph);
   write_tree_outputs(
     graph,
     &names,
-    &weights,
-    &weights,
+    branch_lengths,
+    branch_lengths,
     outputs,
     providers,
     "optimize",
     || optimize_to_auspice(graph, nodes, branch_lengths, &updated),
     || optimize_to_phyloxml(graph, nodes, branch_lengths),
-    || optimize_to_mat(graph, &names, &weights),
+    || optimize_to_mat(graph, &names, branch_lengths),
   )
 }
 
