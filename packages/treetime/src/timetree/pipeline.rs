@@ -521,7 +521,7 @@ pub fn run(
 
   let confidence_intervals = (matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always)
     || rate_std.is_some())
-  .then(|| extract_confidence_intervals(&input.graph, &rate_susceptibility_dates));
+  .then(|| extract_confidence_intervals(&input.graph, &timetree_state, &rate_susceptibility_dates));
 
   let coalescent_output = build_coalescent_output(coalescent, &coalescent_tc, params.gen_per_year, &skyline_params)?;
 

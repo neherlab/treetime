@@ -3,7 +3,6 @@ use crate::clock::clock_state::ClockState;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::make_error;
 use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
-use crate::payload::traits::TimetreeNode;
 use crate::timetree::inference::runner::run_timetree;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
@@ -17,7 +16,7 @@ use std::f64::consts::SQRT_2;
 use std::io::Write;
 use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::node::{GraphNodeKey, Named, TimeConstraint};
+use treetime_graph::node::{GraphNodeKey, Named};
 use treetime_io::csv::CsvStructWriter;
 use treetime_utils::io::file::create_file_or_stdout;
 
@@ -98,7 +97,7 @@ pub fn compute_rate_susceptibility(
     clock_state,
   )
   .wrap_err("Rate susceptibility: timetree at upper rate failed")?;
-  let upper_dates = collect_node_times(graph);
+  let upper_dates = collect_node_times(state);
 
   // Run 2: lower rate bound
   scale_gammas(graph, &original_gammas, lower_rate / current_rate);
@@ -113,7 +112,7 @@ pub fn compute_rate_susceptibility(
     clock_state,
   )
   .wrap_err("Rate susceptibility: timetree at lower rate failed")?;
-  let lower_dates = collect_node_times(graph);
+  let lower_dates = collect_node_times(state);
 
   // Run 3: central rate (restores graph to pre-call state)
   scale_gammas(graph, &original_gammas, 1.0);
@@ -135,11 +134,9 @@ pub fn compute_rate_susceptibility(
   // rate produced which date (deeper nodes may have inverted rate-date relationship).
   let mut rate_susceptibility_dates = BTreeMap::new();
   for node_ref in graph.get_nodes() {
-    let node = node_ref.read_arc();
-    let key = node.key();
-    let payload = node.payload().read_arc();
+    let key = node_ref.read_arc().key();
 
-    let central_date = payload.time();
+    let central_date = state.node(key).time;
     let upper_date = upper_dates.get(&key).copied();
     let lower_date = lower_dates.get(&key).copied();
 
@@ -208,6 +205,7 @@ pub(crate) fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)
 /// term (empty map when the run computed no rate susceptibility).
 pub fn extract_confidence_intervals(
   graph: &GraphTimetree,
+  state: &TimetreeState,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
 ) -> Vec<NodeConfidenceInterval> {
   graph
@@ -217,8 +215,9 @@ pub fn extract_confidence_intervals(
       let node = node_ref.read_arc();
       let key = node.key();
       let payload = node.payload().read_arc();
+      let node_state = state.node(key);
       let name = payload.name().map_or_else(String::new, |n| n.as_ref().to_owned());
-      let date = payload.time?;
+      let date = node_state.time?;
 
       // Source 1: mutation stochasticity from marginal posterior HPD region.
       // v0 uses get_max_posterior_region(fraction=0.9): highest posterior density
@@ -243,8 +242,8 @@ pub fn extract_confidence_intervals(
         // No CI data available: return point estimate
         (date, date)
       } else {
-        let limits = payload
-          .time_distribution()
+        let limits = node_state
+          .time_distribution
           .as_ref()
           .and_then(|dist| dist.time_bounds())
           .unwrap_or((f64::NEG_INFINITY, f64::INFINITY));
@@ -398,15 +397,12 @@ fn scale_gammas(graph: &GraphTimetree, original_gammas: &[(GraphEdgeKey, f64)], 
   }
 }
 
-/// Collect per-node time estimates keyed by node key.
-fn collect_node_times(graph: &GraphTimetree) -> BTreeMap<GraphNodeKey, f64> {
-  graph
-    .get_nodes()
-    .into_iter()
-    .filter_map(|node_ref| {
-      let node = node_ref.read_arc();
-      Some((node.key(), node.payload().read_arc().time()?))
-    })
+/// Collect per-node time estimates keyed by node key, read from the threaded date state.
+fn collect_node_times(state: &TimetreeState) -> BTreeMap<GraphNodeKey, f64> {
+  state
+    .nodes
+    .iter()
+    .filter_map(|(key, node)| node.time.map(|time| (*key, time)))
     .collect()
 }
 
