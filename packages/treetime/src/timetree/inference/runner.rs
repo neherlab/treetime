@@ -146,7 +146,7 @@ pub fn commit_clock_branch_lengths<N, E, D>(
       };
 
       let duration = child_time - parent_time;
-      let fresh = clock_rate * edge_ref.payload().read_arc().gamma() * duration.max(0.0);
+      let fresh = clock_rate * state.edge(key).gamma * duration.max(0.0);
       let value = match previous_lengths.get(&key) {
         Some(previous) => (1.0 - damping) * previous + damping * fresh,
         None => fresh,
