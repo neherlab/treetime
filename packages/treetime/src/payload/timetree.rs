@@ -29,10 +29,6 @@ pub struct NodeTimetree {
   pub div: f64,
   pub is_outlier: bool,
   pub clock_set: ClockSet,
-  /// Node dates inferred at three clock rates [lower, central, upper], sorted by date.
-  /// Populated by rate susceptibility analysis (--confidence with --covariation or --clock-std-dev).
-  /// See Sagulenko, Puller & Neher 2018, Section 2.2 (marginal date inference and confidence intervals).
-  pub rate_susceptibility_dates: Option<[f64; 3]>,
 }
 
 impl GraphNode for NodeTimetree {}

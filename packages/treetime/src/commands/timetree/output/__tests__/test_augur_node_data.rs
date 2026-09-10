@@ -293,7 +293,9 @@ mod tests {
               div: payload.div,
               is_outlier: payload.is_outlier,
               bad_branch: payload.bad_branch,
-              rate_susceptibility_dates: payload.rate_susceptibility_dates,
+              // Rate-susceptibility dates are produced only by the confidence pass and threaded as a
+              // value map; this fixture graph runs no such pass, so production surfaces None here too.
+              rate_susceptibility_dates: None,
             },
           )
         })

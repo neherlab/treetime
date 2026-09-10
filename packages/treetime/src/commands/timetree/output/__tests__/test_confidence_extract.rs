@@ -4,8 +4,10 @@ mod tests {
   use crate::payload::timetree::NodeTimetree;
   use crate::timetree::confidence::{extract_confidence_intervals, write_confidence_intervals};
   use approx::assert_relative_eq;
-  use helpers::{make_node, make_node_with_rate_dates};
+  use helpers::make_node;
+  use maplit::btreemap;
   use ndarray::Array1;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::node::Named;
@@ -18,7 +20,7 @@ mod tests {
     graph.add_node(make_node(Some("named"), Some(2021.0), None));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &BTreeMap::new(), &node_names(&graph));
     assert_eq!(intervals.len(), 2);
     // Unnamed node has empty name but valid key
     assert_eq!(intervals[0].name, "");
@@ -32,7 +34,7 @@ mod tests {
     graph.add_node(make_node(Some("has_time"), Some(2021.0), None));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &BTreeMap::new(), &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     assert_eq!(intervals[0].name, "has_time");
   }
@@ -43,7 +45,7 @@ mod tests {
     graph.add_node(make_node(Some("node_a"), Some(2020.5), None));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &BTreeMap::new(), &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     assert_relative_eq!(intervals[0].date, 2020.5);
     assert_relative_eq!(intervals[0].lower, 2020.5);
@@ -61,7 +63,7 @@ mod tests {
     graph.add_node(make_node(Some("node_a"), Some(2020.0), Some(dist)));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &BTreeMap::new(), &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     assert_relative_eq!(intervals[0].date, 2020.0);
     // 90% CI from uniform [2019, 2021]: 0.05 * 2 + 2019 = 2019.1, 0.95 * 2 + 2019 = 2020.9
@@ -78,7 +80,7 @@ mod tests {
     graph.add_node(make_node(Some("middle"), Some(2022.0), None));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &BTreeMap::new(), &node_names(&graph));
     assert_eq!(intervals.len(), 3);
     // Sorted by GraphNodeKey (insertion order), not alphabetical
     assert_eq!(intervals[0].name, "zebra");
@@ -90,15 +92,11 @@ mod tests {
   fn test_extract_confidence_intervals_rate_only() {
     // Rate susceptibility data but no marginal distribution
     let mut graph = GraphTimetree::new();
-    graph.add_node(make_node_with_rate_dates(
-      "node_a",
-      2010.0,
-      None,
-      [2009.0, 2010.0, 2011.0],
-    ));
+    let key = graph.add_node(make_node(Some("node_a"), Some(2010.0), None));
     graph.build().unwrap();
+    let rate_map = btreemap! { key => [2009.0, 2010.0, 2011.0] };
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &rate_map, &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     assert_relative_eq!(intervals[0].date, 2010.0);
     // z-score at 0.05 = -1.644854, at 0.95 = +1.644854
@@ -118,15 +116,11 @@ mod tests {
     // The quadrature combination must be wider than either source alone.
     let mut graph = GraphTimetree::new();
     let dist = Arc::new(Distribution::range((2008.0, 2012.0), 0.0));
-    graph.add_node(make_node_with_rate_dates(
-      "node_a",
-      2010.0,
-      Some(dist),
-      [2009.0, 2010.0, 2011.0],
-    ));
+    let key = graph.add_node(make_node(Some("node_a"), Some(2010.0), Some(dist)));
     graph.build().unwrap();
+    let rate_map = btreemap! { key => [2009.0, 2010.0, 2011.0] };
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &rate_map, &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     // Mutation CI from uniform [2008, 2012]: 90% = [2008.2, 2011.8]
     // Rate CI at 90%: [2008.355, 2011.645]
@@ -151,15 +145,11 @@ mod tests {
     // with small variation [2019.9, 2020.0, 2020.1].
     // Rate CI at 90%: 2020.0 +/- 1.645 * 0.1 = [2019.836, 2020.164]
     // date = 2020.5 > 2020.164, so upper must be clamped to date.
-    graph.add_node(make_node_with_rate_dates(
-      "node_a",
-      2020.5,
-      None,
-      [2019.9, 2020.0, 2020.1],
-    ));
+    let key = graph.add_node(make_node(Some("node_a"), Some(2020.5), None));
     graph.build().unwrap();
+    let rate_map = btreemap! { key => [2019.9, 2020.0, 2020.1] };
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &rate_map, &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     // Postcondition holds: lower <= date <= upper
     assert!(intervals[0].lower <= intervals[0].date);
@@ -177,15 +167,11 @@ mod tests {
     // date = 2019.5 (final pass), rate susceptibility centered on 2020.0
     // Rate CI at 90%: [2019.836, 2020.164]
     // date = 2019.5 < 2019.836, so lower must be clamped to date.
-    graph.add_node(make_node_with_rate_dates(
-      "node_a",
-      2019.5,
-      None,
-      [2019.9, 2020.0, 2020.1],
-    ));
+    let key = graph.add_node(make_node(Some("node_a"), Some(2019.5), None));
     graph.build().unwrap();
+    let rate_map = btreemap! { key => [2019.9, 2020.0, 2020.1] };
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &rate_map, &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     assert!(intervals[0].lower <= intervals[0].date);
     assert!(intervals[0].date <= intervals[0].upper);
@@ -237,7 +223,7 @@ mod tests {
     graph.add_node(node);
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &BTreeMap::new(), &node_names(&graph));
     assert_eq!(intervals.len(), 1);
 
     // v0 HPD bounds: [0, 2.3026] (narrowest 90% interval around peak)
@@ -256,7 +242,7 @@ mod tests {
     let mut graph = GraphTimetree::new();
     graph.add_node(make_node(Some("named"), Some(2020.0), None));
     graph.build().unwrap();
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &BTreeMap::new(), &node_names(&graph));
 
     let mut buf = Vec::new();
     write_confidence_intervals(&intervals, &mut buf).unwrap();
@@ -270,10 +256,9 @@ mod tests {
     use crate::partition::timetree::partition::GraphTimetree;
     use crate::payload::timetree::NodeTimetree;
     use crate::timetree::timetree_state::TimetreeState;
-    use std::collections::BTreeMap;
     use std::sync::Arc;
     use treetime_distribution::{Distribution, NegLog};
-    use treetime_graph::node::{GraphNodeKey, Named};
+    use treetime_graph::node::Named;
 
     /// Date state seeded from the test nodes' payloads, so `extract_confidence_intervals` reads the
     /// same committed times and distributions the payloads carry, now from the value.
@@ -281,40 +266,11 @@ mod tests {
       TimetreeState::seed_from_payloads(graph)
     }
 
-    /// Per-node rate-susceptibility date triples keyed by node, gathered from the payload the test
-    /// nodes carry. `extract_confidence_intervals` now takes this map as a value rather than reading
-    /// it off the payload.
-    pub fn rate_map(graph: &GraphTimetree) -> BTreeMap<GraphNodeKey, [f64; 3]> {
-      graph
-        .get_nodes()
-        .iter()
-        .filter_map(|node| {
-          let node = node.read_arc();
-          node
-            .payload()
-            .read_arc()
-            .rate_susceptibility_dates
-            .map(|d| (node.key(), d))
-        })
-        .collect()
-    }
-
     pub fn make_node(name: Option<&str>, time: Option<f64>, dist: Option<Arc<Distribution<NegLog>>>) -> NodeTimetree {
       let mut node = NodeTimetree::default();
       node.base.set_name(name);
       node.time = time;
       node.time_distribution = dist;
-      node
-    }
-
-    pub fn make_node_with_rate_dates(
-      name: &str,
-      time: f64,
-      dist: Option<Arc<Distribution<NegLog>>>,
-      rate_dates: [f64; 3],
-    ) -> NodeTimetree {
-      let mut node = make_node(Some(name), Some(time), dist);
-      node.rate_susceptibility_dates = Some(rate_dates);
       node
     }
   }
