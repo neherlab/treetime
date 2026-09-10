@@ -266,10 +266,29 @@ mod tests {
       alignment: Option<&Path>,
       input_tree: Option<&Path>,
     ) -> AugurNodeDataJsonRefine {
+      // Mirror `run_optimize`: the node name comes from the pipeline's post-loop name map and the
+      // branch length from the loop result, not the graph payload.
+      let node_outputs: BTreeMap<GraphNodeKey, OptimizeNodeOut> = output
+        .graph
+        .get_nodes()
+        .iter()
+        .map(|node| {
+          let node = node.read_arc();
+          let key = node.key();
+          let confidence = node.payload().read_arc().confidence;
+          (
+            key,
+            OptimizeNodeOut {
+              name: output.names[&key].clone(),
+              confidence,
+            },
+          )
+        })
+        .collect();
       let data = build_augur_node_data_json(
         &output.graph,
-        &node_outputs(&output.graph),
-        &branch_lengths(&output.graph),
+        &node_outputs,
+        &output.branch_lengths,
         alignment,
         input_tree,
         None,

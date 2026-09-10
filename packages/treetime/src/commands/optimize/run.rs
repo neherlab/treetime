@@ -65,6 +65,7 @@ pub fn run_optimize(
     sparse_partitions,
     dense_partitions,
     branch_lengths,
+    names,
   } = output;
   let mut graph = graph.map_data(OptimizeGraphData::new(
     gtr,
@@ -76,20 +77,22 @@ pub fn run_optimize(
   topology_order.apply(&mut graph)?;
   progress.report("Writing output", 0.9, "");
 
-  // Gather the per-node name/confidence off the ordered tree into a keyed value map the output
-  // writers consume. The optimized per-edge branch lengths come from the loop result
-  // (`branch_lengths`), not the edge payload; the writers still read sequences and model metadata
-  // from the graph data slot.
+  // Gather the per-node name/confidence into a keyed value map the output writers consume. The name
+  // comes from the pipeline's post-loop name map (`names`); topology ordering only permutes
+  // children, so the map still matches the ordered tree. The optimized per-edge branch lengths come
+  // from the loop result (`branch_lengths`), not the edge payload; the writers still read sequences
+  // and model metadata from the graph data slot.
   let nodes: BTreeMap<GraphNodeKey, OptimizeNodeOut> = graph
     .get_nodes()
     .iter()
     .map(|node| {
       let node = node.read_arc();
+      let key = node.key();
       let payload = node.payload().read_arc();
       (
-        node.key(),
+        key,
         OptimizeNodeOut {
-          name: payload.name.clone(),
+          name: names[&key].clone(),
           confidence: payload.confidence,
         },
       )

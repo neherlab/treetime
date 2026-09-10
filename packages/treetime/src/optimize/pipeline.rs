@@ -76,6 +76,11 @@ pub struct OptimizeOutput {
   /// the command gather reads these instead of the edge payload.
   #[serde(skip)]
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  /// Final node names, keyed by node id, captured after the optimize loop's topology cleanup
+  /// re-runs `assign_node_names`. The command gather and output writers read these instead of the
+  /// node payload.
+  #[serde(skip)]
+  pub names: BTreeMap<GraphNodeKey, Option<String>>,
 }
 
 pub fn run(
@@ -198,6 +203,12 @@ pub fn run(
     return make_error!("optimize produced no partition to read the GTR from");
   };
 
+  // Post-loop re-snapshot. The loop's topology cleanup can collapse edges, resolve polytomies, and
+  // re-run `assign_node_names` (adding or removing node keys and naming new internal nodes); capture
+  // the node-name map from the post-loop graph so the command gather and output writers read the
+  // final tree's names, not the pre-loop payload.
+  let names = node_names(&input.graph);
+
   Ok(OptimizeOutput {
     graph: input.graph,
     gtr,
@@ -205,6 +216,7 @@ pub fn run(
     sparse_partitions,
     dense_partitions,
     branch_lengths,
+    names,
   })
 }
 
