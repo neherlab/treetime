@@ -2,7 +2,6 @@
 mod tests {
   use crate::payload::timetree::EdgeTimetree;
   use crate::payload::timetree::NodeTimetree;
-  use crate::payload::traits::TimetreeEdge;
   use crate::pretty_assert_ulps_eq;
   use crate::timetree::inference::runner::create_branch_distributions_input_mode;
   use crate::timetree::timetree_state::TimetreeState;
@@ -92,19 +91,21 @@ mod tests {
     let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.006)I:0.003)root;")?;
     let clock_rate = 0.001;
 
-    // Set gamma=2.0 on edge to A
+    let mut state = TimetreeState::new(&graph);
+
+    // Set gamma=2.0 on the value-state entry for the edge to A
     for edge_ref in graph.get_edges() {
       let edge_read = edge_ref.read_arc();
+      let key = edge_read.key();
       let target = edge_read.target();
       let target_name = graph
         .get_node(target)
         .and_then(|n| n.read_arc().payload().read_arc().name().map(|s| s.as_ref().to_owned()));
       if target_name.as_deref() == Some("A") {
-        edge_read.payload().write_arc().set_gamma(2.0);
+        state.edge_mut(key).gamma = 2.0;
       }
     }
 
-    let mut state = TimetreeState::new(&graph);
     create_branch_distributions_input_mode(&graph, clock_rate, &mut state)?;
 
     for edge_ref in graph.get_edges() {

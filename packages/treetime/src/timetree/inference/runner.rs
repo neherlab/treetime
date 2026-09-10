@@ -201,9 +201,12 @@ where
   debug!("One mutation = {one_mutation:.6e} substitutions/site");
   debug!("Indel rate = {indel_rate:.6e} indels/(site*time)");
 
-  // Compute each edge's branch-length distribution in parallel, writing its time length (transitional)
-  // to the payload, and carry the distribution out to insert into the value serially: the value's
-  // per-edge map cannot be written from parallel workers without a lock.
+  // Compute each edge's branch-length distribution in parallel, reading its relaxed-clock rate from
+  // the value state and writing its time length (transitional) to the payload, and carry the
+  // distribution out to insert into the value serially: the value's per-edge map cannot be written
+  // from parallel workers without a lock. The immutable reborrow ends at the `collect`, so the serial
+  // inserts can take a mutable borrow.
+  let edge_states: &TimetreeState = state;
   let distributions: Vec<(GraphEdgeKey, Option<f64>, Arc<Distribution<NegLog>>)> = graph
     .get_edges()
     .par_iter()
@@ -212,7 +215,7 @@ where
         let edge_key = edge_ref.read_arc().key();
         let mut edge = edge_ref.write_arc().payload().write_arc();
         let branch_length = edge.branch_length().unwrap_or(one_mutation);
-        let gamma = edge.gamma();
+        let gamma = edge_states.edge(edge_key).gamma;
 
         debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
 
@@ -292,10 +295,13 @@ where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + HasBranchLength + TimetreeEdge,
 {
-  // Build each edge's point branch-length distribution in parallel, writing its time length
-  // (transitional) to the payload, and carry the distribution out to insert into the value serially.
-  // An edge with neither a branch length nor a time length is left untouched: its previous value-side
-  // distribution and time length carry over unchanged, as its previous payload values did before.
+  // Build each edge's point branch-length distribution in parallel, reading its relaxed-clock rate
+  // from the value state and writing its time length (transitional) to the payload, and carry the
+  // distribution out to insert into the value serially. An edge with neither a branch length nor a
+  // time length is left untouched: its previous value-side distribution and time length carry over
+  // unchanged, as its previous payload values did before. The immutable reborrow ends at the
+  // `collect`, so the serial inserts can take a mutable borrow.
+  let edge_states: &TimetreeState = state;
   let distributions: Vec<(GraphEdgeKey, f64, Arc<Distribution<NegLog>>)> = graph
     .get_edges()
     .par_iter()
@@ -307,7 +313,7 @@ where
       let time_duration = if let Some(branch_length) = edge.branch_length() {
         // Convert branch length (substitutions/site) to time duration (years)
         // gamma > 1 means faster evolution, so same substitutions correspond to shorter time
-        let effective_clock_rate = clock_rate * edge.gamma();
+        let effective_clock_rate = clock_rate * edge_states.edge(key).gamma;
         Some(branch_length / effective_clock_rate)
       } else {
         edge.time_length()
