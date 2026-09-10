@@ -1,7 +1,4 @@
 use crate::clock::clock_state::ClockState;
-use crate::payload::clock_set::ClockSet;
-use crate::payload::traits::ClockNode;
-use crate::payload::traits::TimetreeNode;
 use crate::seq::div::{OnlyLeaves, compute_divs};
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
@@ -41,24 +38,6 @@ where
       }
     }
   }
-  Ok(())
-}
-
-pub fn initialize_clock_totals_from_time_distributions<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
-where
-  N: GraphNode + TimetreeNode + ClockNode,
-  E: GraphEdge,
-  D: Send + Sync,
-{
-  for node_ref in graph.get_nodes() {
-    let mut node = node_ref.write_arc().payload().write_arc();
-    if let Some(dist_arc) = node.time_distribution() {
-      if let Some(time) = dist_arc.likely_time() {
-        *node.clock_set_mut() = ClockSet::leaf_contribution(Some(time));
-      }
-    }
-  }
-
   Ok(())
 }
 

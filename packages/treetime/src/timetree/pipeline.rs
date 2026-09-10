@@ -37,7 +37,7 @@ use crate::timetree::optimization::reroot::reroot_tree;
 use crate::timetree::params::{TimeMarginalMode, build_covariation_clock_params, compute_effective_time_marginal};
 use crate::timetree::refinement::{Refinement, RefinementOptions, TopologyRefinement};
 use crate::timetree::timetree_state::TimetreeState;
-use crate::timetree::utils::{initialize_clock_totals_from_time_distributions, initialize_node_divergences};
+use crate::timetree::utils::initialize_node_divergences;
 use eyre::{Report, WrapErr};
 use log::{debug, info};
 use ndarray::{Array1, array};
@@ -181,7 +181,8 @@ pub fn run(
   // The persistent clock state shared across the whole pipeline. The node divergence and outlier flag
   // live here as values rather than on the graph payloads; `initialize_node_divergences` fills the
   // divergence, the clock filter marks outliers into it, and every later clock call reads both back.
-  // `time` and `clock_set` stay transitional on the payload, re-read at each clock call.
+  // `time` stays transitional on the payload, re-read at each clock call; the clock set is recomputed
+  // by every backward regression, so it is never seeded from the payload.
   let mut clock_state = ClockState::new(&input.graph);
   initialize_node_divergences(&input.graph, &mut clock_state)?;
 
@@ -277,8 +278,6 @@ pub fn run(
   progress.check_cancelled()?;
   progress.report("Initial timetree inference", 0.2, "");
   info!("### TreeTime: initial round");
-  info!("### Initializing node times from date constraints");
-  initialize_clock_totals_from_time_distributions(&input.graph)?;
 
   let default_clock_params = ClockParams::default();
   let reroot_clock_params = covariation_clock_params.as_ref().unwrap_or(&default_clock_params);

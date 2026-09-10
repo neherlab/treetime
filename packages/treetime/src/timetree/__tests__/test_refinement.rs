@@ -22,7 +22,7 @@ mod tests {
     Refinement, RefinementOptions, RefinementOutcome, TopologyOutcome, TopologyRefinement,
   };
   use crate::timetree::timetree_state::TimetreeState;
-  use crate::timetree::utils::{initialize_clock_totals_from_time_distributions, initialize_node_divergences};
+  use crate::timetree::utils::initialize_node_divergences;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
@@ -202,7 +202,6 @@ mod tests {
     load_date_constraints(&dates, &graph)?;
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state)?;
-    initialize_clock_totals_from_time_distributions(&graph)?;
 
     let clock_model = estimate_clock_model_with_reroot(
       &mut graph,

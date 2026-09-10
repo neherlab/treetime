@@ -26,8 +26,7 @@ use treetime::timetree::inference::forward_pass::propagate_distributions_forward
 use treetime::timetree::inference::runner::{GRID_POINTS, run_timetree};
 use treetime::timetree::timetree_state::TimetreeState;
 use treetime::timetree::utils::{
-  create_poisson_branch_distributions, extract_node_times, initialize_clock_totals_from_time_distributions,
-  initialize_node_divergences,
+  create_poisson_branch_distributions, extract_node_times, initialize_node_divergences,
 };
 use treetime_io::dates_csv::read_dates;
 use treetime_io::fasta::read_many_fasta;
@@ -333,9 +332,6 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   )?;
   dump_graph(&graph, &output_dir_str, "003_after_clock_model.json")?;
 
-  initialize_clock_totals_from_time_distributions(&graph)?;
-  dump_graph(&graph, &output_dir_str, "004_after_initialize_node_times.json")?;
-
   let mut state = TimetreeState::new(&graph);
   run_timetree(
     &mut graph,
@@ -401,9 +397,6 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
     None,
   )?;
   dump_graph(&graph, &output_dir_str, "003_after_clock_model.json")?;
-
-  initialize_clock_totals_from_time_distributions(&graph)?;
-  dump_graph(&graph, &output_dir_str, "004_after_initialize_node_times.json")?;
 
   let mut state = TimetreeState::new(&graph);
   run_timetree(

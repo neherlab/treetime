@@ -18,7 +18,7 @@ mod tests {
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{
-    extract_node_times, initialize_clock_totals_from_time_distributions, initialize_node_divergences,
+    extract_node_times, initialize_node_divergences,
   };
   use eyre::Report;
 
@@ -103,8 +103,6 @@ mod tests {
       &BranchPointOptimizationParams::default(),
       None,
     )?;
-
-    initialize_clock_totals_from_time_distributions(&graph)?;
 
     Ok((graph, partitions, clock_model))
   }

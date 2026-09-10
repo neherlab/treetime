@@ -79,7 +79,11 @@ impl ClockState {
   }
 
   /// Seed clock state from the graph payloads, reading the durable clock inputs each pass needs:
-  /// `time` (via [`ClockNode::likely_time`]), `is_outlier`, `div`, and `clock_set`.
+  /// `time` (via [`ClockNode::likely_time`]), `is_outlier`, and `div`.
+  ///
+  /// The clock set starts at its default: the backward pass recomputes the root clock set from
+  /// scratch before the model extraction reads it, and no other node's clock set is ever read, so a
+  /// seeded value would never be used.
   ///
   /// Used at the timetree call sites, where these fields live on `NodeTimetree` between shared
   /// clock calls. Reading `time` here matches reading `likely_time()` live at the pass, because no
@@ -97,7 +101,7 @@ impl ClockState {
         let node = node.read_arc();
         let payload = node.payload().read_arc();
         let state = ClockNodeState {
-          clock_set: payload.clock_set().clone(),
+          clock_set: ClockSet::default(),
           div: ClockNode::div(&*payload),
           time: payload.likely_time(),
           bad_branch: false,
@@ -117,9 +121,10 @@ impl ClockState {
   /// Re-read the payload-resident clock inputs into the state while keeping the value-resident ones.
   ///
   /// Rebuilds the per-node and per-edge maps to match the current graph, so it stays valid across a
-  /// reroot or polytomy resolution that added or dropped nodes and edges. Each node's date (via
-  /// [`ClockNode::likely_time`]) and clock-set seed come from the payload (they stay transitional on
-  /// `NodeTimetree`), and `bad_branch` starts false, exactly as [`seed_from_payloads`] reads them. The
+  /// reroot or polytomy resolution that added or dropped nodes and edges. Each node's date comes from
+  /// the payload (via [`ClockNode::likely_time`], staying transitional on `NodeTimetree`), the clock
+  /// set starts default, and `bad_branch` starts false, exactly as [`seed_from_payloads`] reads them.
+  /// The
   /// divergence and outlier flag are the two fields that live only in the value: they are preserved
   /// from the previous state for nodes that survived, and default for nodes that are new. Every edge
   /// resets to default messages, which the following backward pass recomputes.
@@ -186,7 +191,7 @@ impl ClockState {
           .get(&key)
           .map_or((0.0, false), |state| (state.div, state.is_outlier));
         let state = ClockNodeState {
-          clock_set: payload.clock_set().clone(),
+          clock_set: ClockSet::default(),
           div,
           time: time_of(key, &payload),
           bad_branch: false,
