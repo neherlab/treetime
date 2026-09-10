@@ -3,9 +3,12 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
+  use crate::ancestral::marginal::marginal_update;
   use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping, commit_branch_lengths};
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{ConvergenceReason, collect_optimize_partitions, run_optimize_loop};
+  use crate::optimize::run_loop::{
+    ConvergenceReason, collect_optimize_partitions, marginal_branch_lengths, run_optimize_loop,
+  };
   use crate::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -160,6 +163,48 @@ mod tests {
       },
       other => panic!("Expected Worsened on undamped toy tree, got {other:?}"),
     }
+    Ok(())
+  }
+
+  // Rollback validation (T1.4 gate). On a worsening iteration the loop restores the best-seen
+  // branch-length map and recomputes the partitions from it, so the returned map must reproduce
+  // the best likelihood. With `no_indels = true` the total log-likelihood is exactly the sum of
+  // the sparse and dense marginal passes, so recomputing those two from the returned map must
+  // match the maximum recorded in `lh_history` (the best likelihood the loop retained).
+  // Oracle: the rollback contract in `run_optimize_loop` (restore best map, recompute marginal).
+  #[test]
+  fn test_convergence_conditions_worsened_rollback_reproduces_best_lh() -> Result<(), Report> {
+    let aln = simple_alignment()?;
+    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+
+    let result = run_optimize_loop(
+      &mut graph,
+      &sparse_partitions,
+      &dense_partitions,
+      &mixed_partitions,
+      50,
+      0.0,
+      0.0,
+      BranchOptMethod::BrentSqrt,
+      true,
+      TopologyOps::default(),
+    )?;
+
+    let (_iter, reason) = result.stopped_at.expect("loop should stop");
+    assert_eq!(reason, ConvergenceReason::Worsened);
+
+    let best_lh = result
+      .lh_history
+      .iter()
+      .map(|log_lh| log_lh.value())
+      .fold(f64::NEG_INFINITY, f64::max);
+
+    // Recompute the marginal likelihood from the returned (rolled-back) branch-length map.
+    let marginal_bl = marginal_branch_lengths(&result.branch_lengths);
+    let sparse_lh = marginal_update(&graph, &marginal_bl, &sparse_partitions)?.value();
+    let dense_lh = marginal_update(&graph, &marginal_bl, &dense_partitions)?.value();
+    assert_abs_diff_eq!(sparse_lh + dense_lh, best_lh, epsilon = 1e-9);
     Ok(())
   }
 

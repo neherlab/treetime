@@ -3,7 +3,7 @@ use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;
 use crate::optimize::dispatch::run_optimize_mixed_inner;
 use crate::optimize::indel::{estimate_indel_rate, total_indel_log_lh};
-use crate::optimize::iteration::{apply_damping, commit_branch_lengths};
+use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
@@ -202,12 +202,14 @@ pub fn run_optimize_loop(
     lh_prev = iteration_lh.total_lh;
   }
 
-  // Single commit point: write the final branch lengths onto the graph edges the output writers
-  // still read. On a normal exit the tree already holds them; after a rollback this writes the
-  // recovered best lengths back onto the tree.
-  commit_branch_lengths(graph, &branch_lengths);
-
-  Ok(OptimizeLoopResult { lh_history, stopped_at })
+  // The final branch-length map is the loop's result. On a normal exit it holds the optimized
+  // lengths; after a rollback it holds the recovered best lengths. Callers read it directly (the
+  // gather and the post-loop marginal pass) rather than off the edge payload.
+  Ok(OptimizeLoopResult {
+    branch_lengths,
+    lh_history,
+    stopped_at,
+  })
 }
 
 /// Derive the per-edge length the marginal reconstruction propagates along from the loop's
@@ -216,7 +218,7 @@ pub fn run_optimize_loop(
 /// Mirrors [`profile_branch_lengths`](crate::ancestral::marginal::profile_branch_lengths):
 /// a missing weight resolves to `0.0`. The ancestral edge carries no clock-constrained length,
 /// so `profile_branch_length() == branch_length()` and this derivation is exact.
-fn marginal_branch_lengths(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> BTreeMap<GraphEdgeKey, f64> {
+pub fn marginal_branch_lengths(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> BTreeMap<GraphEdgeKey, f64> {
   branch_lengths
     .iter()
     .map(|(&key, &bl)| (key, bl.unwrap_or(0.0)))
@@ -240,12 +242,14 @@ pub enum ConvergenceReason {
   NumericalFailure,
 }
 
-/// Diagnostics from [`run_optimize_loop`].
-///
-/// Exposed primarily for tests; `run_optimize` discards it.
-#[allow(dead_code)]
+/// Result of [`run_optimize_loop`].
 #[derive(Clone, Debug, Default)]
 pub struct OptimizeLoopResult {
+  /// Final optimized (or rolled-back best) branch lengths, keyed by edge id. This is the loop's
+  /// source of truth; `run_optimize` feeds it to the post-loop marginal pass and the output gather
+  /// instead of reading the edge payload.
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+
   /// Total log-likelihood recorded at the start of each iteration, before that iteration's
   /// branch-length update. Length equals the number of iterations actually executed
   /// (including the final iteration that triggered the convergence break, if any).

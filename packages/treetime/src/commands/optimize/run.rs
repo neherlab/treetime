@@ -15,7 +15,7 @@ use eyre::Report;
 use log::info;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nwk::CommentProviders;
@@ -64,6 +64,7 @@ pub fn run_optimize(
     model_name,
     sparse_partitions,
     dense_partitions,
+    branch_lengths,
   } = output;
   let mut graph = graph.map_data(OptimizeGraphData::new(
     gtr,
@@ -75,10 +76,10 @@ pub fn run_optimize(
   topology_order.apply(&mut graph)?;
   progress.report("Writing output", 0.9, "");
 
-  // Gather the per-node name/confidence and the optimized per-edge branch length off the ordered
-  // tree into keyed value maps the output writers consume. The writers still read sequences and
-  // model metadata from the graph data slot; these maps carry the name, input-branch-support, and
-  // branch-length reads that move off the payload.
+  // Gather the per-node name/confidence off the ordered tree into a keyed value map the output
+  // writers consume. The optimized per-edge branch lengths come from the loop result
+  // (`branch_lengths`), not the edge payload; the writers still read sequences and model metadata
+  // from the graph data slot.
   let nodes: BTreeMap<GraphNodeKey, OptimizeNodeOut> = graph
     .get_nodes()
     .iter()
@@ -94,17 +95,10 @@ pub fn run_optimize(
       )
     })
     .collect();
-  let edges: BTreeMap<GraphEdgeKey, EdgeOut> = graph
-    .get_edges()
+  let edges: BTreeMap<GraphEdgeKey, EdgeOut> = branch_lengths
     .iter()
-    .map(|edge_ref| {
-      let edge = edge_ref.read_arc();
-      let branch_length = edge.payload().read_arc().branch_length();
-      (edge.key(), EdgeOut { branch_length })
-    })
+    .map(|(&key, &branch_length)| (key, EdgeOut { branch_length }))
     .collect();
-  let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> =
-    edges.iter().map(|(key, edge)| (*key, edge.branch_length)).collect();
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     let gtr_output = GtrOutput::new(&graph.data().gtr, graph.data().model_name);

@@ -7,7 +7,8 @@ use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::iteration::{apply_damping, commit_branch_lengths};
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::run_loop::{
-  apply_initial_guess_mode, collect_optimize_partitions, normalize_partition_rates, run_optimize_loop,
+  apply_initial_guess_mode, collect_optimize_partitions, marginal_branch_lengths, normalize_partition_rates,
+  run_optimize_loop,
 };
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -24,8 +25,10 @@ use eyre::Report;
 use log::{info, warn};
 use parking_lot::RwLock;
 use serde::Serialize;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::common_ancestor::common_ancestor;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
 use treetime_graph::value_maps::{edge_branch_lengths, node_names};
@@ -69,6 +72,10 @@ pub struct OptimizeOutput {
   pub sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>>,
   #[serde(skip)]
   pub dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>>,
+  /// Final optimized branch lengths, keyed by edge id. The optimize loop is the source of truth;
+  /// the command gather reads these instead of the edge payload.
+  #[serde(skip)]
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
 pub fn run(
@@ -154,7 +161,7 @@ pub fn run(
 
   progress.check_cancelled()?;
   progress.report("Optimizing branch lengths", 0.3, "");
-  run_optimize_loop(
+  let loop_result = run_optimize_loop(
     &mut input.graph,
     &sparse_partitions,
     &dense_partitions,
@@ -166,10 +173,12 @@ pub fn run(
     params.no_indels,
     params.topology_ops,
   )?;
+  let branch_lengths = loop_result.branch_lengths;
 
   info!("Re-running marginal to populate subs_ml after optimization loop");
-  marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &sparse_partitions)?;
-  marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &dense_partitions)?;
+  let marginal_bl = marginal_branch_lengths(&branch_lengths);
+  marginal_update(&input.graph, &marginal_bl, &sparse_partitions)?;
+  marginal_update(&input.graph, &marginal_bl, &dense_partitions)?;
 
   // Read the GTR back from the owning partition, not from a snapshot taken at
   // creation time. For `--gtr=infer` the partition's `mu` is normalized to 1.0
@@ -190,6 +199,7 @@ pub fn run(
     model_name,
     sparse_partitions,
     dense_partitions,
+    branch_lengths,
   })
 }
 

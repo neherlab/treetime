@@ -3,7 +3,7 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, compute_total_lh, setup_partitions, simple_alignment,
   };
-  use crate::optimize::iteration::apply_damping;
+  use crate::optimize::iteration::{apply_damping, commit_branch_lengths};
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::run_optimize_loop;
   use crate::payload::ancestral::GraphAncestral;
@@ -161,6 +161,9 @@ mod tests {
     // The toy tree (4 leaves, 16 sites, JC69) converges near -72.41. Use the post-loop
     // marginal pass so `final_lh` reflects the state after the last branch-length update,
     // not the pre-update measurement recorded in `lh_history`.
+    // The loop returns its branch-length map without writing the payload; materialize it so the
+    // payload-reading likelihood helper measures the final optimized state.
+    commit_branch_lengths(&graph, &result.branch_lengths);
     let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
     assert!(
       final_lh > -73.0 && final_lh < -72.0,
@@ -194,7 +197,7 @@ mod tests {
     // exercises the full damping trajectory rather than possibly stopping after two
     // near-identical likelihoods.
     let dp = 0.0;
-    run_optimize_loop(
+    let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
       &dense_partitions,
@@ -210,6 +213,7 @@ mod tests {
     // Strict non-regression: damped optimization must not degrade likelihood.
     // Damping blends new and old branch lengths as a convex combination,
     // so overall likelihood should improve or hold steady.
+    commit_branch_lengths(&graph, &result.branch_lengths);
     let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
     assert!(
       final_lh >= initial_lh,

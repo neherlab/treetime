@@ -877,4 +877,72 @@ mod tests {
 
     Ok(())
   }
+
+  // Rollback validation (T1.4 gate). When a topology change fires, the internal best-branch-length
+  // map is discarded (best is reset to `None`, best_lh to IMPOSSIBLE), so no rollback can restore
+  // lengths keyed to the superseded tree. The observable guarantee is that the returned map is
+  // keyed exactly by the post-change edge set, with no stale keys and no missing edges.
+  // Oracle: the topology-change branch in `run_optimize_loop` resets the best and the topology
+  // producers keep the map in step with the current edge set.
+  #[test]
+  fn test_run_optimize_loop_topology_change_map_matches_edge_set() -> Result<(), Report> {
+    let nuc = Alphabet::new(AlphabetName::Nuc)?;
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+        >A
+        ACGTACGTACGT
+        >B
+        ACGTACGTACGT
+        >C
+        ACGTACGTACGG
+        >D
+        TCGTACGTACGT
+      "#},
+      &nuc,
+    )?;
+
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln)?;
+    let sparse_partitions = vec![Arc::new(RwLock::new(
+      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
+    ))];
+    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+
+    let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
+    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
+
+    let initial_node_count = graph.get_nodes().len();
+
+    let result = run_optimize_loop(
+      &mut graph,
+      &sparse_partitions,
+      &dense_partitions,
+      &mixed_partitions,
+      10,
+      1e-2,
+      0.75,
+      BranchOptMethod::BrentSqrt,
+      false,
+      TopologyOps::default(),
+    )?;
+
+    // A and B are identical, so the AB internal edge collapses: topology changed.
+    assert!(
+      graph.get_nodes().len() < initial_node_count,
+      "expected a collapse (topology change) with collapse enabled"
+    );
+
+    // The returned map is keyed exactly by the post-change edge set: no stale keys, no gaps.
+    let map_keys: Vec<_> = result.branch_lengths.keys().copied().collect();
+    let mut edge_keys: Vec<_> = graph.get_edges().iter().map(|edge| edge.read_arc().key()).collect();
+    edge_keys.sort_unstable();
+    assert_eq!(map_keys, edge_keys);
+
+    for bl in result.branch_lengths.values().flatten() {
+      assert!(bl.is_finite() && *bl >= 0.0, "branch length must be finite and non-negative: {bl}");
+    }
+    Ok(())
+  }
 }
