@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Per-edge directional `DivStats` messages plus the aggregate at the current root.
 pub struct DivStatsField {
@@ -31,6 +32,8 @@ where
   E: GraphEdge + HasBranchLength,
   D: Send + Sync,
 {
+  let branch_lengths = edge_branch_lengths(graph);
+
   // Leaves-to-root order (children precede parents).
   let mut backward_order: Vec<GraphNodeKey> = Vec::new();
   graph.iter_breadth_first_backward(|n| {
@@ -57,7 +60,7 @@ where
     }
 
     let parent_edge = parent_edge.ok_or_else(|| make_report!("Non-root node {node_key} has no parent edge"))?;
-    let branch_length = branch_length_of(graph, parent_edge)?;
+    let branch_length = branch_length_of(parent_edge, &branch_lengths)?;
 
     if is_leaf {
       from_child.insert(
@@ -94,7 +97,7 @@ where
       root_stats
     } else {
       let parent_edge = parent_edge.ok_or_else(|| make_report!("Non-root node {node_key} has no parent edge"))?;
-      let branch_length = branch_length_of(graph, parent_edge)?;
+      let branch_length = branch_length_of(parent_edge, &branch_lengths)?;
       let tp = *to_parent
         .get(&parent_edge)
         .ok_or_else(|| make_report!("Missing to_parent for edge {parent_edge}"))?;
@@ -164,18 +167,9 @@ where
   })
 }
 
-fn branch_length_of<N, E, D>(graph: &Graph<N, E, D>, edge_key: GraphEdgeKey) -> Result<f64, Report>
-where
-  N: GraphNode,
-  E: GraphEdge + HasBranchLength,
-  D: Send + Sync,
-{
-  graph
-    .get_edge(edge_key)
-    .ok_or_else(|| make_report!("Edge not found: {edge_key}"))?
-    .read_arc()
-    .payload()
-    .read_arc()
-    .branch_length()
-    .ok_or_else(|| make_report!("Edge {edge_key} has no branch length"))
+fn branch_length_of(
+  edge_key: GraphEdgeKey,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<f64, Report> {
+  branch_lengths[&edge_key].ok_or_else(|| make_report!("Edge {edge_key} has no branch length"))
 }

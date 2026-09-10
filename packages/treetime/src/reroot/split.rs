@@ -6,7 +6,7 @@ use crate::reroot::traits::RootStats;
 use crate::reroot::variance::VarianceModel;
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 
@@ -33,27 +33,21 @@ pub fn find_best_split<N, E, D, S>(
   graph: &Graph<N, E, D>,
   edge: GraphEdgeKey,
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   variance: &VarianceModel,
   params: &BrentParams,
 ) -> Result<FindRootResult<S>, Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   D: Send + Sync,
   S: RootStats,
 {
   let edge_obj = graph
     .get_edge(edge)
     .ok_or_else(|| make_report!("Edge not found: {edge}"))?;
-  let (target_key, branch_length) = {
-    let e = edge_obj.read_arc();
-    let branch_length = e
-      .payload()
-      .read_arc()
-      .branch_length()
-      .ok_or_else(|| make_report!("Edge {edge} has no branch length"))?;
-    (e.target(), branch_length)
-  };
+  let target_key = edge_obj.read_arc().target();
+  let branch_length = branch_lengths[&edge].ok_or_else(|| make_report!("Edge {edge} has no branch length"))?;
 
   let is_leaf = graph
     .get_node(target_key)
