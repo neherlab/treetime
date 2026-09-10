@@ -21,6 +21,7 @@ use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Target resolution of every *stored* timetree time-distribution grid (design D3, proposal Part D).
 ///
@@ -207,6 +208,7 @@ where
   // from parallel workers without a lock. The immutable reborrow ends at the `collect`, so the serial
   // inserts can take a mutable borrow.
   let edge_states: &TimetreeState = state;
+  let branch_lengths = edge_branch_lengths(graph);
   let distributions: Vec<(GraphEdgeKey, Option<f64>, Arc<Distribution<NegLog>>)> = graph
     .get_edges()
     .par_iter()
@@ -214,7 +216,7 @@ where
       |edge_ref| -> Result<(GraphEdgeKey, Option<f64>, Arc<Distribution<NegLog>>), Report> {
         let edge_key = edge_ref.read_arc().key();
         let mut edge = edge_ref.write_arc().payload().write_arc();
-        let branch_length = edge.branch_length().unwrap_or(one_mutation);
+        let branch_length = branch_lengths[&edge_key].unwrap_or(one_mutation);
         let gamma = edge_states.edge(edge_key).gamma;
 
         debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
@@ -302,6 +304,7 @@ where
   // unchanged, as its previous payload values did before. The immutable reborrow ends at the
   // `collect`, so the serial inserts can take a mutable borrow.
   let edge_states: &TimetreeState = state;
+  let branch_lengths = edge_branch_lengths(graph);
   let distributions: Vec<(GraphEdgeKey, f64, Arc<Distribution<NegLog>>)> = graph
     .get_edges()
     .par_iter()
@@ -310,7 +313,7 @@ where
       let mut edge = edge_ref.write_arc().payload().write_arc();
       // TODO: this is wrong. The branch length distribution should be a gamma distribution with branch_length/one_mutation
       // as the shape parameter. n_mut = branch_length/one_mutation --> P(dt) = (mu*dt)^n_mut * exp(-mu*dt) / n_mut!
-      let time_duration = if let Some(branch_length) = edge.branch_length() {
+      let time_duration = if let Some(branch_length) = branch_lengths[&key] {
         // Convert branch length (substitutions/site) to time duration (years)
         // gamma > 1 means faster evolution, so same substitutions correspond to shorter time
         let effective_clock_rate = clock_rate * edge_states.edge(key).gamma;
@@ -353,16 +356,16 @@ where
   E: GraphEdge + HasBranchLength,
   D: Send + Sync,
 {
+  let branch_lengths = edge_branch_lengths(graph);
   graph
     .get_edges()
     .iter()
     .map(|edge| {
-      let edge = edge.read_arc();
-      let key = edge.key();
+      let key = edge.read_arc().key();
       let branch_length = clock_branch_lengths
         .get(&key)
         .copied()
-        .or_else(|| edge.payload().read_arc().branch_length())
+        .or_else(|| branch_lengths[&key])
         .unwrap_or(0.0);
       (key, branch_length)
     })
