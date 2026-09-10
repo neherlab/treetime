@@ -374,11 +374,12 @@ fn gather_timetree_outputs(
       let edge = edge.read_arc();
       let key = edge.key();
       let payload = edge.payload().read_arc();
+      let edge_state = timetree_state.edge(key);
       let out = TimetreeEdgeOut {
         branch_length: payload.branch_length(),
-        time_length: payload.time_length,
+        time_length: edge_state.time_length,
         clock_branch_length: clock_branch_lengths.get(&key).copied(),
-        gamma: payload.gamma,
+        gamma: edge_state.gamma,
       };
       (key, out)
     })
