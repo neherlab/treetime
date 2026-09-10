@@ -285,7 +285,8 @@ where
   };
 
   let split = 0.5;
-  let cost_fn = BranchPointCostFunction::new(graph, state, edge, options, objective)?;
+  let branch_lengths = edge_branch_lengths(graph);
+  let cost_fn = BranchPointCostFunction::new(graph, state, edge, &branch_lengths, options, objective)?;
   let clock_set = cost_fn.evaluate_clock_set(split)?;
   Ok(FindRootResult {
     edge: Some(edge),

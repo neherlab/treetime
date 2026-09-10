@@ -4,6 +4,7 @@ use crate::clock::find_best_root::params::RootObjective;
 use crate::payload::clock_set::ClockSet;
 use argmin::core::{CostFunction, Error};
 use eyre::Report;
+use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
@@ -26,6 +27,7 @@ impl<'a> BranchPointCostFunction<'a> {
     graph: &Graph<N, E, D>,
     state: &ClockState,
     edge: GraphEdgeKey,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     options: &'a ClockParams,
     objective: RootObjective,
   ) -> Result<BranchPointCostFunction<'a>, Report>
@@ -43,12 +45,7 @@ impl<'a> BranchPointCostFunction<'a> {
       .ok_or_else(|| make_report!("Target node not found for edge: {edge}"))?;
     let is_leaf = target_node.read_arc().is_leaf();
     let node_time = state.node(target_key).likely_time();
-    let branch_length = edge_obj
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .ok_or_else(|| make_report!("Edge {edge} has no weight"))?;
+    let branch_length = branch_lengths[&edge].ok_or_else(|| make_report!("Edge {edge} has no weight"))?;
     let branch_variance = options.variance_factor * branch_length + options.variance_offset;
 
     let edge_state = state.edge(edge);

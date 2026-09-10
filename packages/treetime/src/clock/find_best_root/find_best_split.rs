@@ -7,6 +7,7 @@ use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::ClockEdge;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
@@ -30,6 +31,7 @@ pub fn find_best_split<N, E, D>(
   graph: &Graph<N, E, D>,
   state: &ClockState,
   edge: GraphEdgeKey,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   objective: RootObjective,
@@ -40,7 +42,7 @@ where
   D: Send + Sync,
 {
   // Create cost function once
-  let cost_fn = BranchPointCostFunction::new(graph, state, edge, options, objective)?;
+  let cost_fn = BranchPointCostFunction::new(graph, state, edge, branch_lengths, options, objective)?;
 
   match params {
     BranchPointOptimizationParams::Grid(params) => method_grid_search::optimize_grid_search(edge, &cost_fn, params),
