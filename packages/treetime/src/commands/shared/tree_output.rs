@@ -434,7 +434,7 @@ pub(crate) fn timetree_to_auspice(
   );
   auspice_from_graph(graph, data, |context| {
     let out = &nodes[&context.node_key];
-    let name = node_name(context.node_key, context.node);
+    let name = node_name_value(context.node_key, out.name.as_deref());
     let div = timetree_divergence(graph, context.node_key, out.div)?;
     let confidence = timetree_date_confidence(graph, context.node_key, &name)?;
     Ok(auspice_node(
@@ -556,7 +556,7 @@ where
   N: GraphNode,
   E: GraphEdge,
   D: Send + Sync,
-  F: FnMut(&GraphNodeContext<N, E>) -> Result<AuspiceTreeNode, Report>,
+  F: FnMut(&GraphNodeContext) -> Result<AuspiceTreeNode, Report>,
 {
   let root = graph
     .get_exactly_one_root()
@@ -565,18 +565,12 @@ where
   let mut queue = VecDeque::from([(Arc::clone(&root), None)]);
   while let Some((current_node, current_edge)) = queue.pop_front() {
     let node_key = current_node.read_arc().key();
-    let node = current_node.read_arc().payload().read_arc();
     let edge_key = current_edge
       .as_ref()
       .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().key());
-    let edge = current_edge
-      .as_ref()
-      .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().payload().read_arc());
     let converted = convert(&GraphNodeContext {
       node_key,
-      node: &node,
       edge_key,
-      edge: edge.as_deref(),
     })?;
     if converted.node_attrs.div.is_none() && converted.node_attrs.num_date.is_none() {
       return make_error!(
@@ -635,15 +629,9 @@ where
   Ok(())
 }
 
-struct GraphNodeContext<'a, N, E>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+struct GraphNodeContext {
   node_key: GraphNodeKey,
-  node: &'a N,
   edge_key: Option<GraphEdgeKey>,
-  edge: Option<&'a E>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -807,7 +795,7 @@ pub(crate) fn timetree_to_phyloxml(
   phyloxml_from_graph(graph, "TreeTime timetree analysis", |context| {
     let out = &nodes[&context.node_key];
     let gamma = context.edge_key.map_or(1.0, |edge_key| edges[&edge_key].gamma);
-    let name = node_name(context.node_key, context.node);
+    let name = node_name_value(context.node_key, out.name.as_deref());
     let divergence = timetree_divergence(graph, context.node_key, out.div)?;
     ensure_finite(divergence, "timetree", &name, "divergence")?;
     ensure_optional_finite(out.time, "timetree", &name, "date")?;
@@ -825,7 +813,7 @@ pub(crate) fn timetree_to_phyloxml(
         },
       ),
     ];
-    if timetree_date_is_inferred(graph, context.node_key, context.node, out.time) == Some(true) {
+    if timetree_date_is_inferred(graph, context.node_key, out.name.as_deref(), out.time) == Some(true) {
       properties.push(property(REF_DATE_INFERRED, DT_BOOLEAN, APPLIES_NODE, "true"));
     }
     if context.edge_key.is_some() {
@@ -848,7 +836,10 @@ pub(crate) fn timetree_to_phyloxml(
         unit: Some("year".to_owned()),
       }
     });
-    let mut clade = empty_phyloxml_clade(out.name.clone(), context.edge.and_then(HasBranchLength::branch_length));
+    let mut clade = empty_phyloxml_clade(
+      out.name.clone(),
+      context.edge_key.and_then(|edge_key| edges[&edge_key].branch_length),
+    );
     clade.confidence = input_branch_confidence(out.confidence, "timetree", &name)?;
     clade.date = date;
     clade.property = properties;
@@ -888,7 +879,7 @@ where
   N: GraphNode,
   E: GraphEdge,
   D: Send + Sync,
-  F: FnMut(&GraphNodeContext<N, E>) -> Result<PhyloxmlClade, Report>,
+  F: FnMut(&GraphNodeContext) -> Result<PhyloxmlClade, Report>,
 {
   let root = graph
     .get_exactly_one_root()
@@ -897,20 +888,14 @@ where
   let mut queue = VecDeque::from([(Arc::clone(&root), None)]);
   while let Some((current_node, current_edge)) = queue.pop_front() {
     let node_key = current_node.read_arc().key();
-    let node = current_node.read_arc().payload().read_arc();
     let edge_key = current_edge
       .as_ref()
       .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().key());
-    let edge = current_edge
-      .as_ref()
-      .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().payload().read_arc());
     node_map.insert(
       node_key,
       convert(&GraphNodeContext {
         node_key,
-        node: &node,
         edge_key,
-        edge: edge.as_deref(),
       })?,
     );
     for (child, edge) in graph.children_of(&current_node.read_arc()) {
@@ -1558,11 +1543,10 @@ fn timetree_date_confidence(
 fn timetree_date_is_inferred(
   graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
   node_key: GraphNodeKey,
-  node: &NodeTimetree,
+  name: Option<&str>,
   time: Option<f64>,
 ) -> Option<bool> {
   let dates = graph.data().dates.as_ref()?;
-  let name = node.base.name.as_ref();
   Some(
     name.and_then(|name| dates.get(name)).and_then(Option::as_ref).is_none()
       && time.is_some()
@@ -1803,14 +1787,7 @@ where
   Ok(Some(total))
 }
 
-fn node_name<N: Named>(key: GraphNodeKey, node: &N) -> String {
-  node
-    .name()
-    .map_or_else(|| format!("node_{}", key.as_usize()), |name| name.as_ref().to_owned())
-}
-
-/// Node display name with the `node_{key}` fallback, resolved from a snapshot value rather than the
-/// payload. Matches `node_name` exactly; used by writers that read a gathered name map.
+/// Node display name with the `node_{key}` fallback, resolved from a gathered name-map value.
 fn node_name_value(key: GraphNodeKey, name: Option<&str>) -> String {
   name.map_or_else(|| format!("node_{}", key.as_usize()), str::to_owned)
 }

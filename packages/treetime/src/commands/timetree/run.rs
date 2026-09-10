@@ -305,6 +305,7 @@ pub fn run_timetree_estimation(
     write_augur_node_data_json(
       &graph,
       &nodes,
+      &edges,
       &graph.data().clock_model,
       graph.data().confidence_intervals.as_deref(),
       graph.data().dates.as_ref(),

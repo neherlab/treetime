@@ -157,14 +157,14 @@ mod tests {
   mod helpers {
     use crate::clock::clock_model::{ClockModel, ClockModelStats, RegressionStats};
     use crate::commands::timetree::output::augur_node_data::build_augur_node_data_json;
-    use crate::commands::timetree::result::TimetreeNodeOut;
+    use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut};
     use crate::partition::timetree::partition::GraphTimetree;
     use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
     use crate::timetree::confidence::NodeConfidenceInterval;
     use ndarray::array;
     use std::collections::BTreeMap;
     use std::path::Path;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
     use treetime_graph::node::{GraphNodeKey, Named};
     use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
@@ -182,6 +182,7 @@ mod tests {
         let data = build_augur_node_data_json(
           &self.graph,
           &timetree_nodes(&self.graph),
+          &timetree_edges(&self.graph),
           &self.clock_model,
           Some(&self.intervals),
           Some(&self.dates),
@@ -206,6 +207,7 @@ mod tests {
         let data = build_augur_node_data_json(
           &self.graph,
           &timetree_nodes(&self.graph),
+          &timetree_edges(&self.graph),
           &self.clock_model,
           Some(&self.intervals),
           Some(&self.dates),
@@ -292,6 +294,27 @@ mod tests {
               is_outlier: payload.is_outlier,
               bad_branch: payload.bad_branch,
               rate_susceptibility_dates: payload.rate_susceptibility_dates,
+            },
+          )
+        })
+        .collect()
+    }
+
+    fn timetree_edges<D: Send + Sync>(graph: &GraphTimetree<D>) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
+      graph
+        .get_edges()
+        .iter()
+        .map(|edge| {
+          let edge = edge.read_arc();
+          let key = edge.key();
+          let payload = edge.payload().read_arc();
+          (
+            key,
+            TimetreeEdgeOut {
+              branch_length: payload.branch_length(),
+              time_length: payload.time_length,
+              clock_branch_length: payload.clock_branch_length,
+              gamma: payload.gamma,
             },
           )
         })
