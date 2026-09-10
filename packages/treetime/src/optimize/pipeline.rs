@@ -26,8 +26,9 @@ use parking_lot::RwLock;
 use serde::Serialize;
 use std::sync::Arc;
 use treetime_graph::common_ancestor::common_ancestor;
-use treetime_graph::node::{GraphNodeKey, Named};
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
+use treetime_graph::value_maps::node_names;
 use treetime_io::fasta::FastaRecord;
 use treetime_utils::{make_error, make_report};
 
@@ -268,11 +269,14 @@ fn reroot_optimize(
 }
 
 fn resolve_tip_keys(graph: &GraphAncestral, tips: &[String]) -> Result<Vec<GraphNodeKey>, Report> {
+  let names = node_names(graph);
   tips
     .iter()
     .map(|tip| {
-      graph
-        .find_node(|node| node.name().is_some_and(|name| name.as_ref() == tip))
+      names
+        .iter()
+        .find(|(_, name)| name.as_deref() == Some(tip.as_str()))
+        .map(|(key, _)| *key)
         .ok_or_else(|| make_report!("Reroot tip not found: {tip}"))
     })
     .collect()

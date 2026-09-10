@@ -1,8 +1,10 @@
-use crate::{make_internal_report, make_report};
+use crate::make_report;
 use eyre::Report;
+use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, NodeOptimizeOps};
+use treetime_graph::value_maps::node_names;
 
 /// Whether a scalar is in the physical domain of a phylogenetic branch length.
 pub fn is_valid_branch_length_value(branch_length: f64) -> bool {
@@ -21,6 +23,7 @@ where
   E: GraphEdge + HasBranchLength,
   D: Send + Sync,
 {
+  let names = node_names(graph);
   graph
     .get_edges()
     .iter()
@@ -30,8 +33,8 @@ where
       (!is_valid_branch_length(branch_length)).then_some((edge.source(), edge.target(), branch_length))
     })
     .map(|(source, target, branch_length)| {
-      let source = node_label(graph, source)?;
-      let target = node_label(graph, target)?;
+      let source = node_label(&names, source);
+      let target = node_label(&names, target);
       let branch_length = branch_length.map_or_else(|| "missing".to_owned(), |value| value.to_string());
       Ok(format!("{source} -> {target}: {branch_length}"))
     })
@@ -49,20 +52,6 @@ pub fn validate_branch_length_value(branch_length: f64) -> Result<(), Report> {
   }
 }
 
-fn node_label<N, E, D>(graph: &Graph<N, E, D>, key: GraphNodeKey) -> Result<String, Report>
-where
-  N: NodeOptimizeOps,
-  E: GraphEdge,
-  D: Send + Sync,
-{
-  let node = graph
-    .get_node(key)
-    .ok_or_else(|| make_internal_report!("Edge references missing node {key}"))?;
-  let node = node.read_arc();
-  let payload = node.payload().read_arc();
-  Ok(
-    payload
-      .name()
-      .map_or_else(|| format!("node {key}"), |name| name.as_ref().to_owned()),
-  )
+fn node_label(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {
+  names[&key].clone().unwrap_or_else(|| format!("node {key}"))
 }
