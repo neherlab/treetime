@@ -7,6 +7,7 @@ use std::collections::BTreeSet;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::NodeAncestralOps;
+use treetime_graph::value_maps::node_names;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, Seq, seq};
 
@@ -39,18 +40,16 @@ where
 
   let present: BTreeSet<String> = sequences.iter().map(|record| record.seq_name.clone()).collect();
 
+  let names = node_names(graph);
   let mut missing = Vec::new();
   let mut n_leaves = 0_usize;
   for leaf in graph.get_leaves() {
     n_leaves += 1;
-    let payload = leaf.read_arc().payload().read_arc();
-    let name = payload
-      .name()
+    let name = names[&leaf.read_arc().key()]
+      .clone()
       .ok_or_else(|| {
         make_report!("Expected all leaf nodes to have names, so they can be matched to their sequences. Found a leaf node with no name.")
-      })?
-      .as_ref()
-      .to_owned();
+      })?;
     if !present.contains(&name) {
       missing.push(name);
     }

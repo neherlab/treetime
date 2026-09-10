@@ -24,6 +24,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, GraphNodeKey, NodeAncestralOps};
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
+use treetime_graph::value_maps::node_names;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
@@ -64,6 +65,7 @@ where
     records.entry(record.seq_name.as_str()).or_insert(record);
     records
   });
+  let names = node_names(graph);
   let leaf_records = graph
     .get_leaves()
     .into_par_iter()
@@ -71,13 +73,11 @@ where
       let leaf = leaf.read_arc();
       let leaf_key = leaf.key();
       let mut leaf_payload = leaf.payload().write_arc();
-      let leaf_name = leaf_payload
-        .name()
+      let leaf_name = names[&leaf_key]
+        .clone()
         .ok_or_else(|| {
           make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
-        })?
-        .as_ref()
-        .to_owned();
+        })?;
       let leaf_fasta = aln_by_name
         .get(leaf_name.as_str())
         .copied()

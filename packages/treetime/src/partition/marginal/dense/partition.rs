@@ -21,6 +21,7 @@ use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named, NodeAncestralOps};
+use treetime_graph::value_maps::node_names;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
@@ -233,16 +234,14 @@ where
       records.entry(record.seq_name.as_str()).or_insert(record);
       records
     });
+    let names = node_names(graph);
     for leaf in graph.get_leaves() {
       let leaf_key = leaf.read_arc().key();
       let mut leaf = leaf.read_arc().payload().write_arc();
 
-      let leaf_name = {
-        let name = leaf.name().ok_or_else(|| {
-          make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
-        })?;
-        name.as_ref().to_owned()
-      };
+      let leaf_name = names[&leaf_key].clone().ok_or_else(|| {
+        make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
+      })?;
 
       let leaf_fasta = aln_by_name
         .get(leaf_name.as_str())
