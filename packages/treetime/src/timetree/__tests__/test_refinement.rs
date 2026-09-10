@@ -213,7 +213,7 @@ mod tests {
       &BranchPointOptimizationParams::default(),
       None,
     )?;
-    let mut state = TimetreeState::new(&graph);
+    let mut state = TimetreeState::seed_from_payloads(&graph);
     let run_branch_lengths = edge_branch_lengths(&graph);
     let run_names = node_names(&graph);
     run_timetree(

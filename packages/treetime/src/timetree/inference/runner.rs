@@ -72,10 +72,10 @@ where
   info!("## Calculating divergence distances");
   initialize_node_divergences(graph, clock_state)?;
 
-  // Re-read the transitional payload fields (times, distributions, bad-branch flags, time lengths)
-  // into the state, rebuilding its maps for the current topology while carrying the value-resident
-  // branch-length distributions and backward messages forward.
-  state.reseed_transitional_from_payloads(graph);
+  // Rebuild the state's maps for the current topology, carrying every value-resident date field
+  // forward. Times, distributions, bad-branch flags, and time lengths all live on the state now
+  // (their producers write them straight into it), so no payload re-read is needed.
+  state.reseed_from_values(graph);
 
   info!("## Using clock model");
   let clock_rate = clock_model.clock_rate();

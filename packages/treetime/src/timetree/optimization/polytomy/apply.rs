@@ -72,6 +72,7 @@ pub fn apply_plan(
         lineage,
         new_node_key,
         merger.time,
+        state,
       )?;
     }
 
@@ -79,7 +80,7 @@ pub fn apply_plan(
   }
 
   for &lineage in &plan.roots {
-    attach(graph, children, &merger_nodes, &times, lineage, parent_key, parent_time)?;
+    attach(graph, children, &merger_nodes, &times, lineage, parent_key, parent_time, state)?;
   }
 
   Ok(plan.mergers.len())
@@ -156,6 +157,9 @@ fn validate_plan(parent_time: f64, children: &[ChildRef], plan: &SubtreePlan) ->
 }
 
 /// Place one lineage under `new_parent_key`, setting the connecting edge's `time_length`.
+///
+/// The time length is written into the threaded [`TimetreeState`] value (the home the reseed reads)
+/// and mirrored onto the edge payload transitionally.
 fn attach(
   graph: &mut GraphTimetree,
   children: &[ChildRef],
@@ -164,6 +168,7 @@ fn attach(
   lineage: usize,
   new_parent_key: GraphNodeKey,
   new_parent_time: f64,
+  state: &mut TimetreeState,
 ) -> Result<(), Report> {
   let Some(&lineage_time) = times.get(lineage) else {
     return make_internal_error!("Polytomy plan referenced unknown lineage {lineage}");
@@ -177,6 +182,7 @@ fn attach(
       .get_edge(child.edge_key)
       .ok_or_else(|| make_internal_report!("Edge {} vanished while applying polytomy plan", child.edge_key))?;
     edge.write_arc().payload().write_arc().time_length = Some(time_length);
+    state.edges.entry(child.edge_key).or_default().time_length = Some(time_length);
   } else {
     // A node the sweep created: it has no parent edge yet.
     let Some(&node_key) = merger_nodes.get(lineage - children.len()) else {
@@ -191,7 +197,8 @@ fn attach(
     // The sweep only merges lineages that have placed every substitution, so the branch
     // above a merger node carries none.
     payload.set_branch_length(Some(0.0));
-    graph.add_edge(new_parent_key, node_key, payload)?;
+    let new_edge_key = graph.add_edge(new_parent_key, node_key, payload)?;
+    state.edges.entry(new_edge_key).or_default().time_length = Some(time_length);
   }
 
   Ok(())

@@ -163,39 +163,40 @@ impl TimetreeState {
     Self { nodes, edges }
   }
 
-  /// Re-read the payload-resident date fields into the state while keeping the value-resident ones.
+  /// Rebuild the per-node and per-edge maps to match the current graph, carrying every value-resident
+  /// field forward without touching the payload.
   ///
-  /// Rebuilds the per-node and per-edge maps to match the current graph, so it stays valid across a
-  /// reroot or polytomy resolution that added or dropped nodes and edges. Each node's bad-branch flag
-  /// and date constraint come from the payload (they stay transitional on `NodeTimetree`);
-  /// `contradicted` starts false. Each edge's committed time length comes from the payload. The
-  /// committed time, time distribution, branch-length distribution, backward message, and relaxed-clock
-  /// rate multiplier live only in the value, so they are preserved from the previous state for nodes and
-  /// edges that survived, and default for ones a topology change introduced.
-  pub fn reseed_transitional_from_payloads<N, E, D>(&mut self, graph: &Graph<N, E, D>)
+  /// Stays valid across a reroot or polytomy resolution that added or dropped nodes and edges: each
+  /// surviving node and edge keeps its date constraint, bad-branch flag, committed time, time
+  /// distribution, committed time length, branch-length distribution, backward message, and
+  /// relaxed-clock rate multiplier from the previous state, and a node or edge a topology change
+  /// introduced starts default. `contradicted` is a per-pass flag and always resets to false.
+  ///
+  /// The bad-branch flag and committed time length used to be re-read off the payload here; they are
+  /// now written straight into this state by their producers -- the clock filter
+  /// ([`apply_outlier_bad_branches`](crate::timetree::optimization::clock_filter::apply_outlier_bad_branches)),
+  /// the topology rebuild
+  /// ([`propagate_bad_branches`](crate::timetree::optimization::clock_filter::propagate_bad_branches)),
+  /// and the branch-distribution builders and polytomy application for the time length -- so preserving
+  /// them from the state reproduces exactly what the payload re-read produced.
+  pub fn reseed_from_values<N, E, D>(&mut self, graph: &Graph<N, E, D>)
   where
-    N: GraphNode + TimetreeNode,
-    E: GraphEdge + TimetreeEdge,
+    N: GraphNode,
+    E: GraphEdge,
     D: Send + Sync,
   {
     let nodes = graph
       .get_nodes()
       .iter()
       .map(|node| {
-        let node = node.read_arc();
-        let key = node.key();
-        let payload = node.payload().read_arc();
-        let (time, time_distribution) = self
-          .nodes
-          .get(&key)
-          .map_or((None, None), |node| (node.time, node.time_distribution.clone()));
-        let state = DateNodeState {
-          time_distribution,
-          time,
-          bad_branch: payload.bad_branch(),
-          date_constraint: payload.date_constraint().clone(),
+        let key = node.read_arc().key();
+        let state = self.nodes.get(&key).map_or_else(DateNodeState::default, |node| DateNodeState {
+          time_distribution: node.time_distribution.clone(),
+          time: node.time,
+          bad_branch: node.bad_branch,
+          date_constraint: node.date_constraint.clone(),
           contradicted: false,
-        };
+        });
         (key, state)
       })
       .collect();
@@ -203,23 +204,13 @@ impl TimetreeState {
       .get_edges()
       .iter()
       .map(|edge| {
-        let edge = edge.read_arc();
-        let key = edge.key();
-        let payload = edge.payload().read_arc();
-        let (branch_length_distribution, msg_to_parent, gamma) =
-          self.edges.get(&key).map_or((None, None, 1.0), |edge| {
-            (
-              edge.branch_length_distribution.clone(),
-              edge.msg_to_parent.clone(),
-              edge.gamma,
-            )
-          });
-        let state = DateEdgeState {
-          branch_length_distribution,
-          msg_to_parent,
-          time_length: payload.time_length(),
-          gamma,
-        };
+        let key = edge.read_arc().key();
+        let state = self.edges.get(&key).map_or_else(DateEdgeState::default, |edge| DateEdgeState {
+          branch_length_distribution: edge.branch_length_distribution.clone(),
+          msg_to_parent: edge.msg_to_parent.clone(),
+          time_length: edge.time_length,
+          gamma: edge.gamma,
+        });
         (key, state)
       })
       .collect();
@@ -235,7 +226,7 @@ impl TimetreeState {
   /// adds default entries for edges and nodes the topology change introduced), the counterpart of the
   /// payload reset
   /// [`prepare_tree_after_topology_change`](crate::timetree::optimization::polytomy::prepare_tree_after_topology_change)
-  /// does for the transitional fields. The following [`reseed_transitional_from_payloads`] preserves
+  /// does for the transitional fields. The following [`reseed_from_values`](Self::reseed_from_values) preserves
   /// these blanked values, so the branch-distribution builders start each surviving edge from `None`.
   pub fn reset_date_edges_for_topology_change<N, E, D>(&mut self, graph: &Graph<N, E, D>)
   where
@@ -415,9 +406,8 @@ mod tests {
     Ok(())
   }
 
-  /// Re-reading the transitional payload fields keeps the value-resident branch-length distribution
-  /// and backward message for edges already in the state, so they carry across passes without a
-  /// payload round-trip.
+  /// Rebuilding the maps keeps the value-resident branch-length distribution and backward message for
+  /// edges already in the state, so they carry across passes without a payload round-trip.
   #[test]
   fn test_timetree_state_reseed_preserves_distribution_and_message() -> Result<(), Report> {
     let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:1.0,B:1.0)I:1.0)root;")?;
@@ -436,7 +426,7 @@ mod tests {
       entry.msg_to_parent = Some(Arc::clone(&msg));
     }
 
-    state.reseed_transitional_from_payloads(&graph);
+    state.reseed_from_values(&graph);
 
     let entry = state.edge(key);
     assert_eq!(Some(dist), entry.branch_length_distribution);

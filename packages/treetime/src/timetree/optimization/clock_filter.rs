@@ -1,6 +1,7 @@
 use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_state::ClockState;
 use crate::partition::timetree::partition::GraphTimetree;
+use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use itertools::Itertools;
 use log::warn;
@@ -93,29 +94,42 @@ pub fn report_bad_branches(
 /// sets bad_branch=true on those leaves and propagates upward: an internal node
 /// is bad only when all its children are bad.
 ///
-/// The outlier flag is read from the threaded [`ClockState`] value; `bad_branch` stays transitional on
-/// the payload, so the coalescent and date passes keep reading it there.
-pub fn apply_outlier_bad_branches(graph: &GraphTimetree, clock_state: &ClockState) -> Result<(), Report> {
+/// The outlier flag is read from the threaded [`ClockState`] value; the bad-branch flag is written
+/// into the threaded [`TimetreeState`] value (the home the coalescent and date passes read), and
+/// still mirrored onto the payload transitionally.
+pub fn apply_outlier_bad_branches(
+  graph: &GraphTimetree,
+  clock_state: &ClockState,
+  state: &mut TimetreeState,
+) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
     let node = leaf.read_arc();
     if clock_state.node(node.key()).is_outlier {
       node.payload().write_arc().bad_branch = true;
+      state.node_mut(node.key()).bad_branch = true;
     }
   }
 
-  propagate_bad_branches(graph)
+  propagate_bad_branches(graph, state)
 }
 
 /// Recompute internal bad-branch state from the current topology.
-pub fn propagate_bad_branches(graph: &GraphTimetree) -> Result<(), Report> {
+///
+/// Each internal node's flag is the conjunction of its children's flags, read from the threaded
+/// [`TimetreeState`] value and written back into it (and mirrored onto the payload transitionally).
+pub fn propagate_bad_branches(graph: &GraphTimetree, state: &mut TimetreeState) -> Result<(), Report> {
   graph.iter_depth_first_postorder_forward(|mut node| {
     if node.is_leaf {
       return Ok(());
     }
 
-    let all_children_bad = node.children.iter().all(|(child, _)| child.read_arc().bad_branch);
+    let all_children_bad = node
+      .child_keys
+      .iter()
+      .all(|(child_key, _)| state.node(*child_key).bad_branch);
 
     node.payload.bad_branch = all_children_bad;
+    state.node_mut(node.key).bad_branch = all_children_bad;
     Ok(())
   })
 }

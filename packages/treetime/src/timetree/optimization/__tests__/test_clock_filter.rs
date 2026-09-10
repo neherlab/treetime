@@ -5,6 +5,7 @@ mod tests {
   use crate::clock::clock_state::ClockState;
   use crate::partition::timetree::partition::GraphTimetree;
   use crate::timetree::optimization::clock_filter::propagate_bad_branches;
+  use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -173,6 +174,7 @@ mod tests {
   #[test]
   fn test_clock_filter_propagates_bad_branches_after_topology_change() -> Result<(), Report> {
     let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root;")?;
+    let mut state = TimetreeState::new(&graph);
     for node in graph.get_leaves() {
       let node = node.read_arc();
       let is_bad = node
@@ -180,25 +182,24 @@ mod tests {
         .read_arc()
         .name()
         .is_some_and(|name| name.as_ref() != "C");
-      node.payload().write_arc().bad_branch = is_bad;
+      state.node_mut(node.key()).bad_branch = is_bad;
     }
 
-    propagate_bad_branches(&graph)?;
+    propagate_bad_branches(&graph, &mut state)?;
 
     let actual = graph
       .get_nodes()
       .iter()
       .map(|node| {
         let node = node.read_arc();
-        let payload = node.payload().read_arc();
-        (
-          payload
-            .name()
-            .expect("Every fixture node must be named")
-            .as_ref()
-            .to_owned(),
-          payload.bad_branch,
-        )
+        let name = node
+          .payload()
+          .read_arc()
+          .name()
+          .expect("Every fixture node must be named")
+          .as_ref()
+          .to_owned();
+        (name, state.node(node.key()).bad_branch)
       })
       .collect::<BTreeMap<_, _>>();
     let expected = btreemap! {

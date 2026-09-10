@@ -264,6 +264,12 @@ pub fn run(
   }
 
   if params.clock_filter > 0.0 {
+    // Rebuild the date state for the current topology before the filter writes bad-branch flags into
+    // it: the pre-ancestral reroot may have added a split node and dropped a trivial one, so the state
+    // seeded before the reroot no longer covers every node the bad-branch propagation visits. Every
+    // surviving node keeps its value, so the node dates the clock reads are unchanged.
+    timetree_state.reseed_from_values(&input.graph);
+
     // Re-read the node dates from the date state while preserving the value-resident divergence and
     // outlier flag, then run the filter on the state: it recomputes the divergence and marks outliers
     // into the value. Timetree's own downstream (outlier bad-branch propagation, confidence intervals,
@@ -272,7 +278,7 @@ pub fn run(
     clock_state.reseed_transitional_from_times(&input.graph, &given_dates, &BTreeMap::new());
     let result = clock_filter_inplace(&input.graph, &mut clock_state, &clock_model, params.clock_filter)?;
     report_bad_branches(&input.graph, &clock_state, &clock_model, result.iqd, &given_dates);
-    apply_outlier_bad_branches(&input.graph, &clock_state)?;
+    apply_outlier_bad_branches(&input.graph, &clock_state, &mut timetree_state)?;
   }
 
   if let Some(aln) = input.sequences.as_deref() {

@@ -143,7 +143,7 @@ impl Refinement<'_> {
 
     info!("Resolved polytomies, introduced {resolved_nodes} new nodes");
     assign_node_names(self.graph)?;
-    propagate_bad_branches(self.graph)?;
+    propagate_bad_branches(self.graph, self.state)?;
     prepare_tree_after_topology_change(self.graph, self.state)
       .wrap_err("Failed to prepare tree after topology change")?;
     // Reset the value-resident edge fields for the new topology, the counterpart of the payload reset
