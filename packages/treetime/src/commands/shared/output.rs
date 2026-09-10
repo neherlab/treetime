@@ -14,6 +14,7 @@ use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
+use treetime_graph::value_maps::node_names;
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::NwkStyle;
 use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk, nwk_read_file};
@@ -1012,17 +1013,15 @@ where
   E: GraphEdge,
   D: Sync + Send,
 {
+  let names = node_names(graph);
   graph
     .get_leaves()
     .into_iter()
     .map(|leaf| {
-      let leaf = leaf.read_arc();
-      leaf
-        .payload()
-        .read_arc()
-        .name()
-        .map(|name| name.as_ref().to_owned())
-        .ok_or_else(|| make_report!("Leaf node {} has no name", leaf.key()))
+      let key = leaf.read_arc().key();
+      names[&key]
+        .clone()
+        .ok_or_else(|| make_report!("Leaf node {key} has no name"))
     })
     .collect()
 }
