@@ -218,6 +218,27 @@ impl TimetreeState {
     }
   }
 
+  /// Per-node date the clock regression reads, keyed by node, computed from this state.
+  ///
+  /// Matches [`NodeTimetree::likely_time`](crate::payload::timetree::NodeTimetree): the input date
+  /// constraint where there is one, the refined time distribution's peak otherwise. Used to reseed the
+  /// clock state in the refinement loop from the value rather than off the payload.
+  #[must_use]
+  pub fn likely_times(&self) -> BTreeMap<GraphNodeKey, Option<f64>> {
+    self
+      .nodes
+      .iter()
+      .map(|(key, node)| {
+        let time = node
+          .date_constraint
+          .as_ref()
+          .or(node.time_distribution.as_ref())
+          .and_then(|dist| dist.likely_time());
+        (*key, time)
+      })
+      .collect()
+  }
+
   /// Build the coalescent node-time map from this state, so the coalescent collectors read node
   /// times as a value instead of off the graph payload. Each entry carries both the committed point
   /// estimate and the distribution peak, matching the two payload reads the collectors replace.

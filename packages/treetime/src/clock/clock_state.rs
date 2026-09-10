@@ -123,6 +123,37 @@ impl ClockState {
     E: GraphEdge,
     D: Send + Sync,
   {
+    self.reseed_transitional(graph, |_key, payload| payload.likely_time());
+  }
+
+  /// Re-read the clock inputs like [`reseed_transitional_from_payloads`], but source each node's date
+  /// from `times` rather than from the payload's `likely_time()`.
+  ///
+  /// Used in the refinement loop, where the date passes have refined the node times on the threaded
+  /// [`TimetreeState`](crate::timetree::timetree_state::TimetreeState) value between clock calls, so
+  /// the regression must read the refined dates from the value rather than off the payload. The clock
+  /// set, divergence, and outlier flag are handled exactly as in [`reseed_transitional_from_payloads`].
+  ///
+  /// [`reseed_transitional_from_payloads`]: ClockState::reseed_transitional_from_payloads
+  pub fn reseed_transitional_from_times<N, E, D>(
+    &mut self,
+    graph: &Graph<N, E, D>,
+    times: &BTreeMap<GraphNodeKey, Option<f64>>,
+  ) where
+    N: GraphNode + ClockNode,
+    E: GraphEdge,
+    D: Send + Sync,
+  {
+    self.reseed_transitional(graph, |key, _payload| times.get(&key).copied().flatten());
+  }
+
+  fn reseed_transitional<N, E, D, F>(&mut self, graph: &Graph<N, E, D>, time_of: F)
+  where
+    N: GraphNode + ClockNode,
+    E: GraphEdge,
+    D: Send + Sync,
+    F: Fn(GraphNodeKey, &N) -> Option<f64>,
+  {
     let nodes = graph
       .get_nodes()
       .iter()
@@ -137,7 +168,7 @@ impl ClockState {
         let state = ClockNodeState {
           clock_set: payload.clock_set().clone(),
           div,
-          time: payload.likely_time(),
+          time: time_of(key, &payload),
           bad_branch: false,
           is_outlier,
         };

@@ -202,11 +202,14 @@ impl Refinement<'_> {
   }
 
   fn update_clock_model(&mut self) -> Result<(), Report> {
-    // Re-read the payload-resident clock inputs while preserving the value-resident divergence and
-    // outlier flag, then re-estimate on the threaded state with the root kept (no reroot in the
-    // refinement loop). This matches the standalone `estimate_clock_model_with_reroot` convenience,
-    // except the outlier flag comes from the threaded value rather than the payload.
-    self.clock_state.reseed_transitional_from_payloads(self.graph);
+    // Re-read the clock inputs while preserving the value-resident divergence and outlier flag, then
+    // re-estimate on the threaded state with the root kept (no reroot in the refinement loop). This
+    // matches the standalone `estimate_clock_model_with_reroot` convenience, except the outlier flag
+    // and the node dates come from the threaded values rather than the payload: the date passes have
+    // refined the times on the date state since the last clock call.
+    self
+      .clock_state
+      .reseed_transitional_from_times(self.graph, &self.state.likely_times());
     *self.clock_model = estimate_clock_model_with_reroot_policy(
       self.graph,
       self.clock_state,
