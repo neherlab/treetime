@@ -120,13 +120,12 @@ impl TimetreeState {
   /// Re-read the payload-resident date fields into the state while keeping the value-resident ones.
   ///
   /// Rebuilds the per-node and per-edge maps to match the current graph, so it stays valid across a
-  /// reroot or polytomy resolution that added or dropped nodes and edges. Each node's committed time,
-  /// time distribution, bad-branch flag, and date constraint come from the payload (they stay
-  /// transitional on `NodeTimetree`, written back after every pass and read by the coalescent,
-  /// confidence, and writer stages); `contradicted` starts false. Each edge's committed time length
-  /// comes from the payload. The edge's branch-length distribution and backward message are the two
-  /// fields that live only in the value, so they are preserved from the previous state for edges that
-  /// survived, and default to `None` for edges that are new.
+  /// reroot or polytomy resolution that added or dropped nodes and edges. Each node's bad-branch flag
+  /// and date constraint come from the payload (they stay transitional on `NodeTimetree`);
+  /// `contradicted` starts false. Each edge's committed time length comes from the payload. The
+  /// committed time, time distribution, branch-length distribution, and backward message live only in
+  /// the value, so they are preserved from the previous state for nodes and edges that survived, and
+  /// default for ones a topology change introduced.
   pub fn reseed_transitional_from_payloads<N, E, D>(&mut self, graph: &Graph<N, E, D>)
   where
     N: GraphNode + TimetreeNode,
@@ -138,15 +137,20 @@ impl TimetreeState {
       .iter()
       .map(|node| {
         let node = node.read_arc();
+        let key = node.key();
         let payload = node.payload().read_arc();
+        let (time, time_distribution) = self
+          .nodes
+          .get(&key)
+          .map_or((None, None), |node| (node.time, node.time_distribution.clone()));
         let state = DateNodeState {
-          time_distribution: payload.time_distribution().clone(),
-          time: payload.time(),
+          time_distribution,
+          time,
           bad_branch: payload.bad_branch(),
           date_constraint: payload.date_constraint().clone(),
           contradicted: false,
         };
-        (node.key(), state)
+        (key, state)
       })
       .collect();
     let edges = graph
@@ -194,27 +198,6 @@ impl TimetreeState {
     for node_ref in graph.get_nodes() {
       let key = node_ref.read_arc().key();
       self.nodes.entry(key).or_default();
-    }
-  }
-
-  /// Write the date posterior and committed time back into the graph payloads.
-  ///
-  /// The transitional repopulation the timetree pipeline needs while the date passes run on the value
-  /// but the refinement loop, coalescent statistics, confidence extraction, and tree writers still read
-  /// `time` and `time_distribution` off the payloads. The branch-length distribution and backward
-  /// message stay in the value and are not written back.
-  pub fn write_to_payloads<N, E, D>(&self, graph: &Graph<N, E, D>)
-  where
-    N: GraphNode + TimetreeNode,
-    E: GraphEdge + TimetreeEdge,
-    D: Send + Sync,
-  {
-    for node_ref in graph.get_nodes() {
-      let node = node_ref.read_arc();
-      let state = self.node(node.key());
-      let mut payload = node.payload().write_arc();
-      payload.set_time_distribution(state.time_distribution.clone());
-      payload.set_time(state.time);
     }
   }
 

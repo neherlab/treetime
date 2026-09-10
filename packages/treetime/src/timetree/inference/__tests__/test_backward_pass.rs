@@ -13,7 +13,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::edge::BranchDistribution;
-  use treetime_graph::node::{GraphNodeKey, TimeConstraint};
+  use treetime_graph::node::GraphNodeKey;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::nwk_read_str;
 
@@ -42,16 +42,11 @@ mod tests {
     }
 
     // Run backward pass
-    run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, None)?;
 
     // Check internal node I has time distribution centered at 2013.0 - 2.5 = 2010.5
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal node I not found");
-    let internal_node = graph.get_node(internal_key).expect("internal node I exists");
-    let payload = internal_node.read_arc().payload().read_arc();
-
-    let time_dist = payload
-      .time_distribution()
-      .as_ref()
+    let time_dist = node_time_distribution(&state, internal_key)
       .expect("internal node should have time distribution after backward pass");
     let likely_time = time_dist
       .likely_time()
@@ -102,17 +97,11 @@ mod tests {
       payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 0.0))));
     }
 
-    run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, None)?;
 
     // Internal node I should have time at 2012.0 (both children agree)
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal node I not found");
-    let internal_node = graph.get_node(internal_key).expect("internal node I exists");
-    let payload = internal_node.read_arc().payload().read_arc();
-
-    let time_dist = payload
-      .time_distribution()
-      .as_ref()
-      .expect("internal node should have time distribution");
+    let time_dist = node_time_distribution(&state, internal_key).expect("internal node should have time distribution");
     let likely_time = time_dist
       .likely_time()
       .expect("time distribution should have likely_time");
@@ -164,29 +153,22 @@ mod tests {
 
     let coalescent_model = coalescent_model(0.01)?;
 
-    run_backward_pass(&graph, Some(&coalescent_model))?;
-    run_backward_pass(&graph, Some(&coalescent_model))?;
+    // Two passes on one threaded state, as the pipeline runs them: the second pass starts from the
+    // first pass's refined posteriors, the counterpart of the old payload round-trip between passes.
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    propagate_distributions_backward(&graph, Some(&coalescent_model), &mut state)?;
+    propagate_distributions_backward(&graph, Some(&coalescent_model), &mut state)?;
 
     // Verify leaf A still has its original date
     {
-      let node_a = graph.get_node(leaf_a_key).expect("leaf A exists");
-      let payload = node_a.read_arc().payload().read_arc();
-      let time_dist = payload
-        .time_distribution()
-        .as_ref()
-        .expect("leaf A should have time distribution");
+      let time_dist = node_time_distribution(&state, leaf_a_key).expect("leaf A should have time distribution");
       let expected = Distribution::point(date_a, 0.0);
       assert_eq!(&expected, time_dist.as_ref());
     }
 
     // Verify leaf B still has its original date
     {
-      let node_b = graph.get_node(leaf_b_key).expect("leaf B exists");
-      let payload = node_b.read_arc().payload().read_arc();
-      let time_dist = payload
-        .time_distribution()
-        .as_ref()
-        .expect("leaf B should have time distribution");
+      let time_dist = node_time_distribution(&state, leaf_b_key).expect("leaf B should have time distribution");
       let expected = Distribution::point(date_b, 0.0);
       assert_eq!(&expected, time_dist.as_ref());
     }
@@ -211,14 +193,9 @@ mod tests {
 
     let coalescent_model = coalescent_model(1e-6)?;
 
-    run_backward_pass(&graph, Some(&coalescent_model))?;
+    let state = run_backward_pass(&graph, Some(&coalescent_model))?;
 
-    let internal = graph.get_node(internal_key).expect("internal I exists");
-    let payload = internal.read_arc().payload().read_arc();
-    let actual = payload
-      .time_distribution()
-      .as_ref()
-      .and_then(|distribution| distribution.likely_time());
+    let actual = node_time_distribution(&state, internal_key).and_then(|distribution| distribution.likely_time());
     let expected = Some(2012.0);
     assert_eq!(expected, actual);
 
@@ -244,18 +221,9 @@ mod tests {
     }
     set_edge_branch_dist(&graph, leaf_key, 3.0);
 
-    run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, None)?;
 
-    let payload = graph
-      .get_node(leaf_key)
-      .expect("leaf A exists")
-      .read_arc()
-      .payload()
-      .read_arc();
-    let actual = payload
-      .time_distribution()
-      .as_ref()
-      .expect("leaf A should have a time distribution");
+    let actual = node_time_distribution(&state, leaf_key).expect("leaf A should have a time distribution");
     assert_eq!(&constraint, actual.as_ref());
 
     Ok(())
@@ -277,18 +245,9 @@ mod tests {
     set_edge_branch_dist(&graph, leaf_a_key, 3.0);
     set_edge_branch_dist(&graph, leaf_b_key, 2.0);
 
-    run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, None)?;
 
-    let payload = graph
-      .get_node(internal_key)
-      .expect("internal I exists")
-      .read_arc()
-      .payload()
-      .read_arc();
-    let actual = payload
-      .time_distribution()
-      .as_ref()
-      .expect("internal node should have a time distribution");
+    let actual = node_time_distribution(&state, internal_key).expect("internal node should have a time distribution");
     let expected = Distribution::range((2012.0, 2013.0), 0.0);
     assert_eq!(&expected, actual.as_ref());
 
@@ -365,17 +324,11 @@ mod tests {
     set_edge_branch_dist(&graph, leaf_a_key, 3.0);
     set_edge_branch_dist(&graph, leaf_b_key, 2.0);
 
-    run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, None)?;
 
     // I should get time only from A: 2015.0 - 3.0 = 2012.0
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal node I not found");
-    let internal_node = graph.get_node(internal_key).expect("internal node I exists");
-    let payload = internal_node.read_arc().payload().read_arc();
-
-    let time_dist = payload
-      .time_distribution()
-      .as_ref()
-      .expect("internal node should have time distribution");
+    let time_dist = node_time_distribution(&state, internal_key).expect("internal node should have time distribution");
     let likely_time = time_dist
       .likely_time()
       .expect("time distribution should have likely_time");
@@ -394,17 +347,10 @@ mod tests {
     let ref_a_key = find_node_key_by_name(&ref_graph, "A").expect("leaf A not found");
     set_leaf_time(&ref_graph, ref_a_key, 2015.0);
     set_edge_branch_dist(&ref_graph, ref_a_key, 3.0);
-    run_backward_pass(&ref_graph, None)?;
+    let ref_state = run_backward_pass(&ref_graph, None)?;
 
     let ref_internal_key = find_node_key_by_name(&ref_graph, "I").expect("internal I not found");
-    let ref_time = ref_graph
-      .get_node(ref_internal_key)
-      .expect("I exists")
-      .read_arc()
-      .payload()
-      .read_arc()
-      .time_distribution()
-      .as_ref()
+    let ref_time = node_time_distribution(&ref_state, ref_internal_key)
       .expect("should have time dist")
       .likely_time()
       .expect("should have likely_time");
@@ -427,17 +373,10 @@ mod tests {
       .write_arc()
       .bad_branch = true;
 
-    run_backward_pass(&test_graph, None)?;
+    let test_state = run_backward_pass(&test_graph, None)?;
 
     let test_internal_key = find_node_key_by_name(&test_graph, "I").expect("internal I not found");
-    let test_time = test_graph
-      .get_node(test_internal_key)
-      .expect("I exists")
-      .read_arc()
-      .payload()
-      .read_arc()
-      .time_distribution()
-      .as_ref()
+    let test_time = node_time_distribution(&test_state, test_internal_key)
       .expect("should have time dist")
       .likely_time()
       .expect("should have likely_time");
@@ -474,15 +413,10 @@ mod tests {
     set_edge_branch_dist(&graph, b, 0.0);
     set_edge_branch_dist(&graph, c, 0.0);
 
-    run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, None)?;
 
     let internal = find_node_key_by_name(&graph, "I").expect("internal node I not found");
-    let node = graph.get_node(internal).expect("internal I exists");
-    let payload = node.read_arc().payload().read_arc();
-    let dist = payload
-      .time_distribution()
-      .as_ref()
-      .expect("internal node should have a time distribution");
+    let dist = node_time_distribution(&state, internal).expect("internal node should have a time distribution");
 
     // Peak sits at the precision-weighted mean, within one grid spacing after re-windowing.
     let grid = dist.t();
@@ -518,14 +452,9 @@ mod tests {
         set_leaf_function(&graph, key, &x, y.clone())?;
         set_edge_branch_dist(&graph, key, 0.0);
       }
-      run_backward_pass(&graph, None)?;
+      let state = run_backward_pass(&graph, None)?;
       let internal = find_node_key_by_name(&graph, "I").expect("internal node I not found");
-      let node = graph.get_node(internal).expect("internal I exists");
-      let payload = node.read_arc().payload().read_arc();
-      let dist = payload
-        .time_distribution()
-        .as_ref()
-        .expect("internal node should have a time distribution");
+      let dist = node_time_distribution(&state, internal).expect("internal node should have a time distribution");
       Ok((
         dist.y(),
         dist.likely_time().expect("distribution should have a likely_time"),
@@ -566,15 +495,10 @@ mod tests {
     set_edge_branch_dist(&graph, b, 0.0);
     set_edge_branch_dist(&graph, c, 0.0);
 
-    run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, None)?;
 
     let internal = find_node_key_by_name(&graph, "I").expect("internal node I not found");
-    let node = graph.get_node(internal).expect("internal I exists");
-    let payload = node.read_arc().payload().read_arc();
-    let dist = payload
-      .time_distribution()
-      .as_ref()
-      .expect("internal node should have a time distribution");
+    let dist = node_time_distribution(&state, internal).expect("internal node should have a time distribution");
     let likely_time = dist.likely_time().expect("distribution should have a likely_time");
 
     // Mass re-windowing regrids the folded posterior, so 2005 need not be a stored grid point: the
@@ -590,17 +514,23 @@ mod tests {
     use super::*;
     use treetime_graph::graph::Graph;
 
-    /// Seed the date state from the payloads, run the backward pass on it, and write the refined node
-    /// posteriors back to the payloads, so the payload-reading assertions see the pass output. The
-    /// backward message stays in the value; a test that inspects it seeds its own state.
+    /// Seed the date state from the payloads, run the backward pass on it, and return the state so the
+    /// assertions read the refined node posteriors and backward messages from the value.
     pub(super) fn run_backward_pass(
       graph: &Graph<NodeTimetree, EdgeTimetree, ()>,
       coalescent_model: Option<&CoalescentModel>,
-    ) -> Result<(), Report> {
+    ) -> Result<TimetreeState, Report> {
       let mut state = TimetreeState::seed_from_payloads(graph);
       propagate_distributions_backward(graph, coalescent_model, &mut state)?;
-      state.write_to_payloads(graph);
-      Ok(())
+      Ok(state)
+    }
+
+    /// The node's refined time distribution from the value state.
+    pub(super) fn node_time_distribution(
+      state: &TimetreeState,
+      key: GraphNodeKey,
+    ) -> Option<Arc<Distribution<NegLog>>> {
+      state.nodes.get(&key).and_then(|node| node.time_distribution.clone())
     }
 
     /// Give a node the date it was loaded with, and nothing else: the backward pass is what lifts

@@ -3,6 +3,7 @@ use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::ClockNode;
 use crate::payload::traits::TimetreeNode;
 use crate::seq::div::{OnlyLeaves, compute_divs};
+use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
@@ -61,9 +62,9 @@ where
   Ok(())
 }
 
-pub fn extract_node_times<N, E, D>(graph: &Graph<N, E, D>) -> BTreeMap<String, f64>
+pub fn extract_node_times<N, E, D>(graph: &Graph<N, E, D>, state: &TimetreeState) -> BTreeMap<String, f64>
 where
-  N: GraphNode + Named + TimetreeNode,
+  N: GraphNode + Named,
   E: GraphEdge,
   D: Send + Sync,
 {
@@ -72,9 +73,8 @@ where
     .into_iter()
     .filter_map(|node_ref| {
       let node = node_ref.read_arc();
-      let payload = node.payload().read_arc();
-      let name = payload.name()?.as_ref().to_owned();
-      let time = payload.time()?;
+      let name = node.payload().read_arc().name()?.as_ref().to_owned();
+      let time = state.nodes.get(&node.key()).and_then(|node| node.time)?;
       Some((name, time))
     })
     .collect()

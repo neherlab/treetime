@@ -46,10 +46,10 @@ mod tests {
   #[test]
   #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_refinement_rebuilds_complete_coalescent_state_after_topology_change() -> Result<(), Report> {
-    let (mut graph, partitions, mut clock_model) = create_polytomy_state()?;
+    let (mut graph, partitions, mut clock_model, mut state) = create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
 
-    let outcome = refine(&mut graph, &partitions, &mut clock_model, Some(&tc))?;
+    let outcome = refine(&mut graph, &partitions, &mut clock_model, Some(&tc), &mut state)?;
 
     assert_eq!(0, outcome.sequence_changes);
     assert_eq!(TopologyOutcome::Changed { resolved_nodes: 1 }, outcome.topology);
@@ -91,7 +91,7 @@ mod tests {
     // Kingman's node and edge factorizations telescope to the same objective.
     pretty_assert_abs_diff_eq!(node_lh, edge_lh.value(), epsilon = 1e-10);
 
-    let outcome = refine(&mut graph, &partitions, &mut clock_model, Some(&tc))?;
+    let outcome = refine(&mut graph, &partitions, &mut clock_model, Some(&tc), &mut state)?;
     assert_eq!(TopologyOutcome::Unchanged, outcome.topology);
 
     Ok(())
@@ -99,12 +99,11 @@ mod tests {
 
   #[test]
   fn test_refinement_missing_time_preserves_inference_state() -> Result<(), Report> {
-    let (mut graph, partitions, mut clock_model) = create_polytomy_state()?;
-    let root = graph.get_exactly_one_root()?;
-    root.write_arc().payload().write_arc().time = None;
+    let (mut graph, partitions, mut clock_model, mut state) = create_polytomy_state()?;
+    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+    state.node_mut(root_key).time = None;
     let expected_error = format!(
-      "Polytomy resolution failed: Polytomy resolution requires an inferred time for node {}, but it has none",
-      root.read_arc().key()
+      "Polytomy resolution failed: Polytomy resolution requires an inferred time for node {root_key}, but it has none"
     );
     let before = serialize_state(&graph, &partitions, &clock_model)?;
 
@@ -114,6 +113,7 @@ mod tests {
         &partitions,
         &mut clock_model,
         Some(&Distribution::constant(10.0)),
+        &mut state,
       ),
       expected_error
     );
@@ -126,10 +126,9 @@ mod tests {
 
   #[test]
   fn test_refinement_non_finite_time_preserves_inference_state() -> Result<(), Report> {
-    let (mut graph, partitions, mut clock_model) = create_polytomy_state()?;
-    let root = graph.get_exactly_one_root()?;
-    let root_key = root.read_arc().key();
-    root.write_arc().payload().write_arc().time = Some(f64::NAN);
+    let (mut graph, partitions, mut clock_model, mut state) = create_polytomy_state()?;
+    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+    state.node_mut(root_key).time = Some(f64::NAN);
     let before = serialize_state(&graph, &partitions, &clock_model)?;
 
     assert_error!(
@@ -138,6 +137,7 @@ mod tests {
         &partitions,
         &mut clock_model,
         Some(&Distribution::constant(10.0)),
+        &mut state,
       ),
       format!(
         "Polytomy resolution failed: Polytomy resolution requires a finite inferred time for node {root_key}, but it has NaN"
@@ -148,10 +148,8 @@ mod tests {
     assert_eq!(before, after);
     assert_eq!(
       f64::NAN.to_bits(),
-      root
-        .read_arc()
-        .payload()
-        .read_arc()
+      state
+        .node(root_key)
         .time
         .expect("Root time must remain present")
         .to_bits()
@@ -163,21 +161,21 @@ mod tests {
   #[test]
   #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_refinement_unchanged_topology_recomputes_missing_time() -> Result<(), Report> {
-    let (mut graph, partitions, mut clock_model) = create_polytomy_state()?;
+    let (mut graph, partitions, mut clock_model, mut state) = create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
-    refine(&mut graph, &partitions, &mut clock_model, Some(&tc))?;
-    let root = graph.get_exactly_one_root()?;
-    root.write_arc().payload().write_arc().time = None;
+    refine(&mut graph, &partitions, &mut clock_model, Some(&tc), &mut state)?;
+    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+    state.node_mut(root_key).time = None;
 
-    let outcome = refine(&mut graph, &partitions, &mut clock_model, None)?;
+    let outcome = refine(&mut graph, &partitions, &mut clock_model, None, &mut state)?;
 
     assert_eq!(TopologyOutcome::Unchanged, outcome.topology);
-    assert!(root.read_arc().payload().read_arc().time.is_some_and(f64::is_finite));
+    assert!(state.node(root_key).time.is_some_and(f64::is_finite));
 
     Ok(())
   }
 
-  fn create_polytomy_state() -> Result<(GraphTimetree, PartitionTimetreeAllVec, ClockModel), Report> {
+  fn create_polytomy_state() -> Result<(GraphTimetree, PartitionTimetreeAllVec, ClockModel, TimetreeState), Report> {
     let mut graph: GraphTimetree = nwk_read_str("(A:0.01,B:0.01,C:0.01)root;")?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(
@@ -234,7 +232,7 @@ mod tests {
       payload.set_branch_length_distribution(Some(Arc::clone(&branch_distribution)));
     }
 
-    Ok((graph, partitions, clock_model))
+    Ok((graph, partitions, clock_model, state))
   }
 
   fn serialize_state(
@@ -285,16 +283,16 @@ mod tests {
     partitions: &PartitionTimetreeAllVec,
     clock_model: &mut ClockModel,
     coalescent_tc: Option<&Distribution>,
+    state: &mut TimetreeState,
   ) -> Result<RefinementOutcome, Report> {
     let pinned_tc = Distribution::constant(REFINEMENT_TEST_TC);
     let coalescent = CoalescentModel::new(
-      &compute_lineage_counts(graph, &coalescent_node_times_from_payloads(graph))?,
+      &compute_lineage_counts(graph, &state.coalescent_node_times())?,
       coalescent_tc.unwrap_or(&pinned_tc),
     )?;
     let merger_rate =
       coalescent.branch_merger_rate_schedule(&PiecewiseConstantFn::new(array![], array![REFINEMENT_TEST_TC]))?;
 
-    let mut state = TimetreeState::seed_from_payloads(graph);
     let mut clock_state = ClockState::new(graph);
     let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
 
@@ -308,7 +306,7 @@ mod tests {
       prior: coalescent_tc.is_some().then_some(&coalescent),
       rng: &mut get_random_number_generator(Some(REFINEMENT_TEST_SEED)),
       options: &refinement_options(),
-      state: &mut state,
+      state,
       clock_state: &mut clock_state,
       clock_branch_lengths: &mut clock_branch_lengths,
     }

@@ -274,14 +274,13 @@ fn run_poisson_test(config: &DatasetConfig, args: &Args) -> Result<TestResult, R
   )?;
 
   propagate_distributions_forward(&graph, &mut state)?;
-  state.write_to_payloads(&graph);
   dump_graph(
     &graph,
     &output_dir_str,
     "003_after_propagate_distributions_forward.json",
   )?;
 
-  let actual = extract_node_times(&graph);
+  let actual = extract_node_times(&graph, &state);
 
   println!("Completed\n");
 
@@ -349,7 +348,7 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   )?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
-  let actual = extract_node_times(&graph);
+  let actual = extract_node_times(&graph, &state);
 
   println!("Completed\n");
 
@@ -418,7 +417,7 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
   )?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
-  let actual = extract_node_times(&graph);
+  let actual = extract_node_times(&graph, &state);
 
   println!("Completed\n");
 

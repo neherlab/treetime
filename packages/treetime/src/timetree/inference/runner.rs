@@ -87,10 +87,6 @@ where
   info!("## Propagating distributions forward");
   propagate_distributions_forward(graph, state)?;
 
-  // Repopulate the transitional payload fields (time, time distribution) the downstream clock,
-  // coalescent, confidence, and writer stages read off the graph.
-  state.write_to_payloads(graph);
-
   info!("# Timetree inference completed");
   Ok(())
 }

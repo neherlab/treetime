@@ -42,13 +42,12 @@ mod tests {
       GRID_POINTS,
     )?;
     // The Poisson builder writes the branch distributions onto the payloads; seed the value state
-    // from them, run the passes on that state, and write the committed times back for extraction.
+    // from them and run the passes on that state, which holds the committed times for extraction.
     let mut state = TimetreeState::seed_from_payloads(&graph);
     propagate_distributions_backward(&graph, None, &mut state)?;
     propagate_distributions_forward(&graph, &mut state)?;
-    state.write_to_payloads(&graph);
 
-    let actual = extract_node_times(&graph);
+    let actual = extract_node_times(&graph, &state);
     pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);
 
     Ok(())
