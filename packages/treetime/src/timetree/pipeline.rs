@@ -4,7 +4,7 @@ use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::ClockState;
-use crate::clock::date_constraints::load_date_constraints;
+use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
@@ -175,17 +175,20 @@ pub fn run(
     input.sequences.as_deref(),
   )?;
 
-  if let Some(dates) = &input.dates {
-    load_date_constraints(dates, &input.graph).wrap_err("Failed to load date constraints")?;
-  }
+  let date_constraints = if let Some(dates) = &input.dates {
+    load_date_constraints(dates, &input.graph).wrap_err("Failed to load date constraints")?
+  } else {
+    DateConstraints::default()
+  };
 
   // The persistent date state the whole pipeline shares, created right after the date constraints are
-  // loaded so it is the single home of the date inputs. Every clock call reads the node dates back from
-  // it through `likely_times()`: before any date pass runs the time distribution equals the date
-  // constraint, so those dates match the input constraints. The date passes later refine the
+  // loaded so it is the single home of the date inputs. Seeded directly from the value maps
+  // `load_date_constraints` returns rather than off the graph payload. Every clock call reads the node
+  // dates back from it through `likely_times()`: before any date pass runs the time distribution equals
+  // the date constraint, so those dates match the input constraints. The date passes later refine the
   // distributions and carry the branch-length distributions and backward messages here in place of the
   // graph payloads.
-  let mut timetree_state = TimetreeState::seed_from_payloads(&input.graph);
+  let mut timetree_state = TimetreeState::seed_from_values(&input.graph, &date_constraints);
 
   // The persistent clock state shared across the whole pipeline. The node divergence and outlier flag
   // live here as values rather than on the graph payloads; `initialize_node_divergences` fills the

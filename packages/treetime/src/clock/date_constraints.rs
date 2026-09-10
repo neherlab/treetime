@@ -3,13 +3,31 @@ use crate::payload::traits::DateConstraintNode;
 use eyre::Report;
 use itertools::Itertools;
 use log::{info, warn};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::value_maps::node_names;
 use treetime_io::dates_csv::{DateConstraint, DateValue, DatesMap};
+
+/// The per-node date inputs [`load_date_constraints`] derives from the dates metadata, keyed by node.
+///
+/// Returned as values so the timetree pipeline can seed [`TimetreeState`] from them directly
+/// (see [`TimetreeState::seed_from_values`]) rather than reading them back off the graph payload.
+/// `date_constraints` is the fixed input date per node, `time_distributions` its initial posterior
+/// (equal to the constraint before any date pass refines it), and `bad_branches` the exclusion flag.
+/// Every node of the tree has an entry in each map.
+///
+/// [`TimetreeState`]: crate::timetree::timetree_state::TimetreeState
+/// [`TimetreeState::seed_from_values`]: crate::timetree::timetree_state::TimetreeState::seed_from_values
+#[derive(Debug, Clone, Default)]
+pub struct DateConstraints {
+  pub date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
+  pub time_distributions: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
+  pub bad_branches: BTreeMap<GraphNodeKey, bool>,
+}
 
 pub fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution<NegLog> {
   // A certain date carries probability 1, whose negative-log ordinate is `-ln(1) = 0`, the
@@ -21,7 +39,7 @@ pub fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribut
   }
 }
 
-pub fn load_date_constraints<N, E, D>(dates: &DatesMap, graph: &Graph<N, E, D>) -> Result<(), Report>
+pub fn load_date_constraints<N, E, D>(dates: &DatesMap, graph: &Graph<N, E, D>) -> Result<DateConstraints, Report>
 where
   N: DateConstraintNode,
   E: GraphEdge,
@@ -32,11 +50,19 @@ where
   let mut internal_constraint_count = 0;
   let mut used_names = BTreeSet::new();
 
+  // The value maps returned to the caller; every node gets an entry. The payload is written in
+  // parallel (transitional) so the payload-reading seed and tests stay valid until the payload
+  // round-trip is removed.
+  let mut date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>> = BTreeMap::new();
+  let mut time_distributions: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>> = BTreeMap::new();
+  let mut bad_branches: BTreeMap<GraphNodeKey, bool> = BTreeMap::new();
+
   let names = node_names(graph);
   graph.iter_depth_first_postorder_forward(|node| {
     let mut payload = node.payload;
+    let key = node.key;
 
-    let name = names[&node.key].clone();
+    let name = names[&key].clone();
     let has_constraint = name
       .as_ref()
       .and_then(|n| dates.get(n.as_str()))
@@ -52,8 +78,11 @@ where
       // The constraint is the input, kept as given for the whole run; the time distribution is the
       // current estimate, which starts out as the input and is refined by every inference pass.
       payload.set_date_constraint(Some(Arc::clone(&dist)));
-      payload.set_time_distribution(Some(dist));
+      payload.set_time_distribution(Some(Arc::clone(&dist)));
       payload.set_bad_branch(false);
+      date_constraints.insert(key, Some(Arc::clone(&dist)));
+      time_distributions.insert(key, Some(dist));
+      bad_branches.insert(key, false);
       used_names.insert(name);
 
       if node.is_leaf {
@@ -63,13 +92,17 @@ where
       }
     } else if node.is_leaf {
       payload.set_bad_branch(true);
+      date_constraints.insert(key, None);
+      time_distributions.insert(key, None);
+      bad_branches.insert(key, true);
       bad_leaf_count += 1;
     } else {
-      let all_children_bad = node
-        .children
-        .iter()
-        .all(|(child_payload, _)| child_payload.read_arc().bad_branch());
+      // Postorder guarantees every child is already recorded in the map.
+      let all_children_bad = node.child_keys.iter().all(|(child_key, _)| bad_branches[child_key]);
       payload.set_bad_branch(all_children_bad);
+      date_constraints.insert(key, None);
+      time_distributions.insert(key, None);
+      bad_branches.insert(key, all_children_bad);
     }
     Ok(())
   })?;
@@ -93,7 +126,11 @@ where
     total_leaf_count,
   );
 
-  Ok(())
+  Ok(DateConstraints {
+    date_constraints,
+    time_distributions,
+    bad_branches,
+  })
 }
 
 fn warn_unused_date_constraints(dates: &DatesMap, used_names: &BTreeSet<String>) {

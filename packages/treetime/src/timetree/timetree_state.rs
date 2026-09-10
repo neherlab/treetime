@@ -1,3 +1,4 @@
+use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
@@ -119,6 +120,45 @@ impl TimetreeState {
         };
         (edge.key(), state)
       })
+      .collect();
+    Self { nodes, edges }
+  }
+
+  /// Seed date state from the value maps [`load_date_constraints`] returns, instead of off the graph
+  /// payload.
+  ///
+  /// Reproduces exactly what [`seed_from_payloads`](Self::seed_from_payloads) reads at the pipeline
+  /// seed point: each node's date constraint, initial time distribution (equal to the constraint), and
+  /// bad-branch flag come from `constraints`; the committed time starts `None`, `contradicted` starts
+  /// false, and every edge starts default (no branch-length distribution or backward message, `None`
+  /// time length, strict-clock `gamma`), matching the payload state right after the constraints load.
+  ///
+  /// [`load_date_constraints`]: crate::clock::date_constraints::load_date_constraints
+  pub fn seed_from_values<N, E, D>(graph: &Graph<N, E, D>, constraints: &DateConstraints) -> Self
+  where
+    N: GraphNode,
+    E: GraphEdge,
+    D: Send + Sync,
+  {
+    let nodes = graph
+      .get_nodes()
+      .iter()
+      .map(|node| {
+        let key = node.read_arc().key();
+        let state = DateNodeState {
+          time_distribution: constraints.time_distributions.get(&key).cloned().flatten(),
+          time: None,
+          bad_branch: constraints.bad_branches.get(&key).copied().unwrap_or(false),
+          date_constraint: constraints.date_constraints.get(&key).cloned().flatten(),
+          contradicted: false,
+        };
+        (key, state)
+      })
+      .collect();
+    let edges = graph
+      .get_edges()
+      .iter()
+      .map(|edge| (edge.read_arc().key(), DateEdgeState::default()))
       .collect();
     Self { nodes, edges }
   }
