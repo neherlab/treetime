@@ -313,10 +313,15 @@ pub fn run(
   // clock lengths held in the map.
   let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
 
-  // Initial time tree
+  // Initial time tree. Snapshot the current per-edge lengths and per-node names for this pass; the
+  // branch-distribution construction and forward pass read them instead of the payload.
+  let run_branch_lengths = edge_branch_lengths(&input.graph);
+  let run_names = node_names(&input.graph);
   run_timetree(
     &mut input.graph,
     &partitions,
+    &run_branch_lengths,
+    &run_names,
     &clock_model,
     None,
     params.no_indels,
@@ -362,9 +367,13 @@ pub fn run(
 
   if prior_wanted {
     let prior = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
+    let run_branch_lengths = edge_branch_lengths(&input.graph);
+    let run_names = node_names(&input.graph);
     run_timetree(
       &mut input.graph,
       &partitions,
+      &run_branch_lengths,
+      &run_names,
       &clock_model,
       Some(&prior),
       params.no_indels,
@@ -522,9 +531,13 @@ pub fn run(
 
   if time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
+    let run_branch_lengths = edge_branch_lengths(&input.graph);
+    let run_names = node_names(&input.graph);
     run_timetree(
       &mut input.graph,
       &partitions,
+      &run_branch_lengths,
+      &run_names,
       &clock_model,
       final_prior,
       params.no_indels,

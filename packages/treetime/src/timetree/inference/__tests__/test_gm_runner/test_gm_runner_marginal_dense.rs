@@ -13,6 +13,7 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use crate::timetree::inference::runner::run_timetree;
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
   use eyre::Report;
@@ -71,9 +72,13 @@ mod tests {
     )?;
 
     let mut state = TimetreeState::new(&graph);
+    let run_branch_lengths = edge_branch_lengths(&graph);
+    let run_names = node_names(&graph);
     run_timetree(
       &mut graph,
       &partitions,
+      &run_branch_lengths,
+      &run_names,
       &clock_model,
       None,
       false,

@@ -14,7 +14,6 @@ use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::pass::{GraphPassForwardContext, GraphPassNodeOutput};
-use treetime_graph::value_maps::node_names;
 use treetime_grid::Side;
 
 /// Refines node time distributions and commits point-estimate times forward from root to leaves.
@@ -23,14 +22,17 @@ use treetime_grid::Side;
 /// refining the posteriors and committing point-estimate times in place. The caller owns re-reading
 /// the transitional payload fields into the state and writing the results back. The count of nodes
 /// whose given date the rest of the tree contradicted is folded out of the per-node outputs.
-pub fn propagate_distributions_forward<N, E, D>(graph: &Graph<N, E, D>, state: &mut TimetreeState) -> Result<(), Report>
+pub fn propagate_distributions_forward<N, E, D>(
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  state: &mut TimetreeState,
+) -> Result<(), Report>
 where
   N: GraphNode + Named + TimetreeNode,
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {
-  let names = node_names(graph);
-  state.map_forward(graph, |context| propagate_distributions_forward_node(&names, context))?;
+  state.map_forward(graph, |context| propagate_distributions_forward_node(names, context))?;
 
   // Once per pass, not per node: a broken clock or topology makes a whole subtree disagree at once.
   let contradicted = state.nodes.values().filter(|node| node.contradicted).count();

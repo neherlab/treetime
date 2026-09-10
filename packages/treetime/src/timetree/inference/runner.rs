@@ -20,7 +20,7 @@ use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Target resolution of every *stored* timetree time-distribution grid (design D3, proposal Part D).
@@ -46,9 +46,17 @@ pub const EPS: f64 = 5e-4;
 /// `coalescent` is the prior imposed on those times, or `None` for a run that carries no
 /// coalescent prior. It is supplied rather than derived here because its lineage counts must be
 /// held fixed across passes; see [`CoalescentModel`].
+///
+/// `branch_lengths` and `names` are the per-edge branch-length and per-node name maps the caller
+/// snapshots from the current tree just before this pass. The branch-distribution construction reads
+/// each edge's length from `branch_lengths`, and the forward pass reads each node's label from
+/// `names`, rather than off the graph payload. The caller re-snapshots them after any length or
+/// topology change so each pass sees the current tree.
 pub fn run_timetree<N, E, P>(
   graph: &mut Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   clock_model: &ClockModel,
   coalescent: Option<&CoalescentModel>,
   no_indels: bool,
@@ -76,17 +84,17 @@ where
 
   if !partitions.is_empty() {
     info!("## Computing branch distributions from partitions");
-    compute_branch_distributions_marginal_mode(graph, partitions, clock_rate, no_indels, state)?;
+    compute_branch_distributions_marginal_mode(graph, partitions, branch_lengths, clock_rate, no_indels, state)?;
   } else {
     info!("## Creating branch distributions from input lengths");
-    create_branch_distributions_input_mode(graph, clock_rate, state)?;
+    create_branch_distributions_input_mode(graph, branch_lengths, clock_rate, state)?;
   }
 
   info!("## Propagating distributions backward");
   propagate_distributions_backward(graph, coalescent, state)?;
 
   info!("## Propagating distributions forward");
-  propagate_distributions_forward(graph, state)?;
+  propagate_distributions_forward(graph, names, state)?;
 
   info!("# Timetree inference completed");
   Ok(())
@@ -176,6 +184,7 @@ pub fn commit_clock_branch_lengths<N, E, D>(
 fn compute_branch_distributions_marginal_mode<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   clock_rate: f64,
   no_indels: bool,
   state: &mut TimetreeState,
@@ -188,11 +197,10 @@ where
   let one_mutation = calculate_one_mutation(partitions);
   let total_sites: usize = partitions.iter().map(|p| p.read_arc().get_sequence_length()).sum();
 
-  let branch_lengths = edge_branch_lengths(graph);
   let indel_rate = if no_indels {
     0.0
   } else {
-    estimate_indel_rate(graph, partitions, &branch_lengths)
+    estimate_indel_rate(graph, partitions, branch_lengths)
   };
 
   info!(
@@ -290,6 +298,7 @@ where
 
 pub(super) fn create_branch_distributions_input_mode<N, E>(
   graph: &Graph<N, E, ()>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   clock_rate: f64,
   state: &mut TimetreeState,
 ) -> Result<(), Report>
@@ -304,7 +313,6 @@ where
   // unchanged, as its previous payload values did before. The immutable reborrow ends at the
   // `collect`, so the serial inserts can take a mutable borrow.
   let edge_states: &TimetreeState = state;
-  let branch_lengths = edge_branch_lengths(graph);
   let distributions: Vec<(GraphEdgeKey, f64, Arc<Distribution<NegLog>>)> = graph
     .get_edges()
     .par_iter()

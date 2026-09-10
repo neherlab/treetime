@@ -34,6 +34,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::edge::{BranchDistribution, GraphEdgeKey, HasBranchLength};
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::fasta::read_many_fasta_str;
@@ -213,9 +214,13 @@ mod tests {
       None,
     )?;
     let mut state = TimetreeState::new(&graph);
+    let run_branch_lengths = edge_branch_lengths(&graph);
+    let run_names = node_names(&graph);
     run_timetree(
       &mut graph,
       &partitions,
+      &run_branch_lengths,
+      &run_names,
       &clock_model,
       None,
       false,

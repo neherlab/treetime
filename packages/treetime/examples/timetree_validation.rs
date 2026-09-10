@@ -26,7 +26,7 @@ use treetime::timetree::inference::forward_pass::propagate_distributions_forward
 use treetime::timetree::inference::runner::{GRID_POINTS, run_timetree};
 use treetime::timetree::timetree_state::TimetreeState;
 use treetime::timetree::utils::{create_poisson_branch_distributions, extract_node_times, initialize_node_divergences};
-use treetime_graph::value_maps::node_names;
+use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 use treetime_io::dates_csv::read_dates;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nwk::nwk_read_str;
@@ -271,7 +271,7 @@ fn run_poisson_test(config: &DatasetConfig, args: &Args) -> Result<TestResult, R
     "002_after_propagate_distributions_backward.json",
   )?;
 
-  propagate_distributions_forward(&graph, &mut state)?;
+  propagate_distributions_forward(&graph, &node_names(&graph), &mut state)?;
   dump_graph(
     &graph,
     &output_dir_str,
@@ -332,9 +332,13 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   dump_graph(&graph, &output_dir_str, "003_after_clock_model.json")?;
 
   let mut state = TimetreeState::new(&graph);
+  let run_branch_lengths = edge_branch_lengths(&graph);
+  let run_names = node_names(&graph);
   run_timetree(
     &mut graph,
     &partitions,
+    &run_branch_lengths,
+    &run_names,
     &clock_model,
     None,
     false,
@@ -398,9 +402,13 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
   dump_graph(&graph, &output_dir_str, "003_after_clock_model.json")?;
 
   let mut state = TimetreeState::new(&graph);
+  let run_branch_lengths = edge_branch_lengths(&graph);
+  let run_names = node_names(&graph);
   run_timetree(
     &mut graph,
     &partitions,
+    &run_branch_lengths,
+    &run_names,
     &clock_model,
     None,
     false,

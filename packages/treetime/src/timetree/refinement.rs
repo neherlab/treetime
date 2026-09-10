@@ -21,6 +21,7 @@ use log::info;
 use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
 pub(crate) struct Refinement<'a> {
@@ -175,11 +176,20 @@ impl Refinement<'_> {
       )?;
     }
 
+    // Snapshot the current per-edge lengths and per-node names for the passes below; neither
+    // run_timetree call renames or re-lengths, so one snapshot serves both. Topology resolution and
+    // its `assign_node_names` ran before `rebuild_inference`, so the snapshot reflects the current
+    // tree.
+    let run_branch_lengths = edge_branch_lengths(self.graph);
+    let run_names = node_names(self.graph);
+
     if topology_changed {
       info!("Tree structure changed - rebuilding node-time state before coalescent inference");
       run_timetree(
         self.graph,
         self.partitions,
+        &run_branch_lengths,
+        &run_names,
         self.clock_model,
         None,
         self.options.no_indels,
@@ -197,6 +207,8 @@ impl Refinement<'_> {
     run_timetree(
       self.graph,
       self.partitions,
+      &run_branch_lengths,
+      &run_names,
       self.clock_model,
       self.prior,
       self.options.no_indels,

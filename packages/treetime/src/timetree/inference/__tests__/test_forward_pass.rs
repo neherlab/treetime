@@ -14,6 +14,7 @@ mod tests {
   use treetime_graph::edge::BranchDistribution;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::{GraphNodeKey, TimeConstraint};
+  use treetime_graph::value_maps::node_names;
   use treetime_io::nwk::nwk_read_str;
 
   type TestGraph = Graph<NodeTimetree, EdgeTimetree, ()>;
@@ -253,7 +254,7 @@ mod tests {
     /// assertions read the refined posteriors and committed times from the value.
     pub(super) fn run_forward_pass(graph: &TestGraph) -> Result<TimetreeState, Report> {
       let mut state = TimetreeState::seed_from_payloads(graph);
-      propagate_distributions_forward(graph, &mut state)?;
+      propagate_distributions_forward(graph, &node_names(graph), &mut state)?;
       Ok(state)
     }
 
