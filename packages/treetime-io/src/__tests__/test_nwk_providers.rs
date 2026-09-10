@@ -11,6 +11,7 @@ mod tests {
   use treetime_graph::edge::{GraphEdge, HasBranchLength};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 
   fn beast_options() -> NwkWriteOptions {
     NwkWriteOptions {
@@ -24,8 +25,19 @@ mod tests {
     let graph = helpers::make_graph()?;
     let providers = CommentProviders::new();
 
-    let expected = nwk_write_str(&graph, &beast_options())?;
-    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
+    let expected = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &beast_options(),
+    )?;
+    let actual = nwk_write_str_with(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &beast_options(),
+      &providers,
+    )?;
 
     assert_eq!(expected, actual);
 
@@ -43,7 +55,13 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&provider);
 
-    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
+    let actual = nwk_write_str_with(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &beast_options(),
+      &providers,
+    )?;
     let expected = "((A[&country=usa]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
@@ -67,7 +85,13 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&country_provider).with(&region_provider);
 
-    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
+    let actual = nwk_write_str_with(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &beast_options(),
+      &providers,
+    )?;
     let expected = "((A[&country=usa,region=na]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
@@ -91,7 +115,13 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&first_provider).with(&second_provider);
 
-    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
+    let actual = nwk_write_str_with(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &beast_options(),
+      &providers,
+    )?;
     let expected = "((A[&country=canada]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
@@ -100,26 +130,30 @@ mod tests {
   }
 
   #[test]
-  fn test_nwk_provider_overrides_payload_comments() -> Result<(), Report> {
+  fn test_nwk_provider_multikey_partial_override() -> Result<(), Report> {
     let graph = helpers::make_graph()?;
-    helpers::set_payload_comments(
-      &graph,
-      "A",
-      btreemap! {
-        "country".to_owned() => "payload".to_owned(),
-        "note".to_owned() => "payload".to_owned(),
-      },
-    );
     let node_a = helpers::find_node_key_by_name(&graph, "A");
-    let provider = helpers::MockCommentProvider::new(btreemap! {
+    let base_provider = helpers::MockCommentProvider::new(btreemap! {
+      node_a => btreemap! {
+        "country".to_owned() => "base".to_owned(),
+        "note".to_owned() => "base".to_owned(),
+      },
+    });
+    let override_provider = helpers::MockCommentProvider::new(btreemap! {
       node_a => btreemap! {
         "country".to_owned() => "usa".to_owned(),
       },
     });
-    let providers = CommentProviders::new().with(&provider);
+    let providers = CommentProviders::new().with(&base_provider).with(&override_provider);
 
-    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
-    let expected = "((A[&country=usa,note=payload]:0.1,B:0.2)inner:0.3,C:0.4)root;";
+    let actual = nwk_write_str_with(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &beast_options(),
+      &providers,
+    )?;
+    let expected = "((A[&country=usa,note=base]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
 
@@ -137,7 +171,13 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&provider);
 
-    let actual = nwk_write_str_with(&graph, &NwkWriteOptions::default(), &providers)?;
+    let actual = nwk_write_str_with(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+      &providers,
+    )?;
     let expected = "((A:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
@@ -161,7 +201,13 @@ mod tests {
       style: NwkStyle::Nhx,
       ..NwkWriteOptions::default()
     };
-    let actual = nwk_write_str_with(&graph, &options, &providers)?;
+    let actual = nwk_write_str_with(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &options,
+      &providers,
+    )?;
     let expected = "((A[&&NHX:D=Y:S=human]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
@@ -180,7 +226,13 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&provider);
 
-    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
+    let actual = nwk_write_str_with(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &beast_options(),
+      &providers,
+    )?;
     let expected = "((A[&date=2020.5]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
@@ -199,7 +251,13 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&provider);
 
-    let actual = nwk_write_str_with(&graph, &beast_options(), &providers)?;
+    let actual = nwk_write_str_with(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &beast_options(),
+      &providers,
+    )?;
     assert!(actual.contains(r#""New York, USA""#));
 
     Ok(())
@@ -209,7 +267,12 @@ mod tests {
   fn test_nwk_name_quoting_special_chars() -> Result<(), Report> {
     let graph: Graph<helpers::TestNode, helpers::TestEdge, ()> = nwk_read_str("('node (1)':0.1,B:0.2)root;")?;
 
-    let actual = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let actual = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!("('node (1)':0.1,B:0.2)root;", actual);
 
     Ok(())
@@ -221,15 +284,11 @@ mod tests {
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub(super) struct TestNode {
       name: Option<String>,
-      comments: BTreeMap<String, String>,
     }
 
     impl TestNode {
       fn new(name: Option<String>) -> Self {
-        Self {
-          name,
-          comments: BTreeMap::new(),
-        }
+        Self { name }
       }
     }
 
@@ -258,10 +317,6 @@ mod tests {
     impl NodeToNwk for TestNode {
       fn nwk_name(&self) -> Option<impl AsRef<str>> {
         self.name.as_deref()
-      }
-
-      fn nwk_comments(&self) -> BTreeMap<String, String> {
-        self.comments.clone()
       }
     }
 
@@ -322,20 +377,6 @@ mod tests {
           (payload.name().map(|node_name| node_name.as_ref().to_owned()) == Some(name.to_owned())).then_some(node.key())
         })
         .unwrap_or_else(|| panic!("Missing test node '{name}'"))
-    }
-
-    pub(super) fn set_payload_comments(
-      graph: &Graph<TestNode, TestEdge, ()>,
-      name: &str,
-      comments: BTreeMap<String, String>,
-    ) {
-      let node_key = find_node_key_by_name(graph, name);
-      let node = graph
-        .get_node(node_key)
-        .unwrap_or_else(|| panic!("Missing test node '{name}'"));
-      let node = node.read_arc();
-      let mut payload = node.payload().write_arc();
-      payload.comments = comments;
     }
   }
 }

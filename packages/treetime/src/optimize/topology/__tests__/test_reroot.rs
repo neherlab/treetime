@@ -7,6 +7,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::reroot::{apply_reroot_topology, remove_node_if_trivial, split_edge};
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
   #[test]
@@ -164,7 +165,12 @@ mod tests {
 
     // Tree output matches expected
     let expected = "(B:0.2,A:0.8)root;";
-    let actual = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let actual = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(expected, actual);
 
     Ok(())
@@ -209,6 +215,8 @@ mod tests {
     // Check total branch length conservation (unrooted tree property)
     let newick = nwk_write_str(
       &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
       &NwkWriteOptions {
         weight_significant_digits: Some(17),
         ..NwkWriteOptions::default()

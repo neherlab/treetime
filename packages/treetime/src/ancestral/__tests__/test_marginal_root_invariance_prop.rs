@@ -64,6 +64,7 @@ mod tests {
     use itertools::Itertools;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::reroot::{apply_reroot_topology, remove_node_if_trivial};
+    use treetime_graph::value_maps::{edge_branch_lengths, node_names};
     use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
     /// Reroot a tree at a non-root internal node and return the new Newick string.
@@ -99,7 +100,7 @@ mod tests {
         weight_significant_digits: Some(17),
         ..NwkWriteOptions::default()
       };
-      nwk_write_str(&graph, &options)
+      nwk_write_str(&graph, &node_names(&graph), &edge_branch_lengths(&graph), &options)
     }
 
     #[cfg(test)]

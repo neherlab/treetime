@@ -17,8 +17,11 @@ pub fn build_augur_node_data_json(result: &MugrationResult) -> Result<AugurNodeD
   let attribute = &result.graph.data().traits.attribute;
   let partition = &result.graph.data().partition;
   let graph = &result.graph;
-  let names: BTreeMap<GraphNodeKey, Option<String>> =
-    result.nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
+  let names: BTreeMap<GraphNodeKey, Option<String>> = result
+    .nodes
+    .iter()
+    .map(|(key, node)| (*key, node.name.clone()))
+    .collect();
 
   let models = build_models(attribute, partition);
   let nodes = build_nodes(attribute, graph, &names, partition);

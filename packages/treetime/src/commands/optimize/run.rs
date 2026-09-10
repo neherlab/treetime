@@ -123,7 +123,13 @@ pub fn run_optimize(
       let providers = CommentProviders::new().with(&provider);
       write_optimize_tree_outputs(&graph, &nodes, &branch_lengths, &resolved.tree_outputs, &providers)?;
     } else {
-      write_optimize_tree_outputs(&graph, &nodes, &branch_lengths, &resolved.tree_outputs, &CommentProviders::new())?;
+      write_optimize_tree_outputs(
+        &graph,
+        &nodes,
+        &branch_lengths,
+        &resolved.tree_outputs,
+        &CommentProviders::new(),
+      )?;
     }
   }
 

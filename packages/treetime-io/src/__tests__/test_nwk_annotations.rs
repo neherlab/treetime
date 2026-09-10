@@ -1,14 +1,17 @@
 #[cfg(test)]
 mod tests {
   use crate::nwk::{
-    EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkStyle, NwkWriteOptions, nwk_read_str, nwk_write_str,
+    CommentProviders, EdgeFromNwk, EdgeToNwk, NodeCommentProvider, NodeFromNwk, NodeToNwk, NwkStyle, NwkWriteOptions,
+    nwk_read_str, nwk_write_str_with,
   };
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::edge::{GraphEdge, HasBranchLength};
-  use treetime_graph::node::{GraphNode, Named};
+  use treetime_graph::graph::Graph;
+  use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 
   #[derive(Clone, Debug, PartialEq, Eq)]
   struct AnnotNode {
@@ -78,10 +81,7 @@ mod tests {
     }
   }
 
-  fn find_node_comments(
-    graph: &treetime_graph::graph::Graph<AnnotNode, AnnotEdge, ()>,
-    name: &str,
-  ) -> BTreeMap<String, String> {
+  fn find_node_comments(graph: &Graph<AnnotNode, AnnotEdge, ()>, name: &str) -> BTreeMap<String, String> {
     graph
       .get_nodes()
       .iter()
@@ -177,9 +177,42 @@ mod tests {
       style: NwkStyle::Beast,
       ..NwkWriteOptions::default()
     };
-    let output = nwk_write_str(&graph, &options)?;
+    let comments = PayloadCommentProvider::from_graph(&graph);
+    let providers = CommentProviders::new().with(&comments);
+    let output = nwk_write_str_with(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &options,
+      &providers,
+    )?;
     assert_eq!(input, output);
     Ok(())
+  }
+
+  /// Surfaces each node's payload comments as a comment provider so the writer, which now sources
+  /// comments only from providers, reproduces the annotations parsed off the input tree.
+  struct PayloadCommentProvider(BTreeMap<GraphNodeKey, BTreeMap<String, String>>);
+
+  impl PayloadCommentProvider {
+    fn from_graph(graph: &Graph<AnnotNode, AnnotEdge, ()>) -> Self {
+      Self(
+        graph
+          .get_nodes()
+          .iter()
+          .map(|node| {
+            let node = node.read_arc();
+            (node.key(), node.payload().read_arc().comments.clone())
+          })
+          .collect(),
+      )
+    }
+  }
+
+  impl NodeCommentProvider for PayloadCommentProvider {
+    fn node_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report> {
+      Ok(self.0.get(&key).cloned().unwrap_or_default())
+    }
   }
 
   #[test]

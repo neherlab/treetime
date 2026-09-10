@@ -6,6 +6,7 @@ mod tests {
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_io::nex::NexWriteOptions;
   use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
   use treetime_utils::o;
@@ -25,7 +26,13 @@ mod tests {
       style: NwkStyle::Beast,
       ..NexWriteOptions::default()
     };
-    let actual = treetime_io::nex::nex_write_str_with(&result.graph, &options, &providers)?;
+    let actual = treetime_io::nex::nex_write_str_with(
+      &result.graph,
+      &node_names(&result.graph),
+      &edge_branch_lengths(&result.graph),
+      &options,
+      &providers,
+    )?;
     let expected = indoc! {r#"
       #NEXUS
       Begin Taxa;

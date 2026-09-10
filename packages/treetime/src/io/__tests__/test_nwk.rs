@@ -9,6 +9,7 @@ mod tests {
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::Named;
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_file, nwk_read_str, nwk_write_str};
 
   #[test]
@@ -32,7 +33,12 @@ mod tests {
     assert_eq!(root_name.as_deref(), Some("root"));
 
     // Verify roundtrip
-    let output = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(input, output);
     Ok(())
   }
@@ -73,7 +79,12 @@ mod tests {
       .map(|n| n.as_ref().to_owned());
     assert_eq!(root_name.as_deref(), Some("A"));
 
-    let output = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(input, output);
     Ok(())
   }
@@ -93,7 +104,12 @@ mod tests {
     let root_outbound = root.read_arc().outbound().len();
     assert_eq!(root_outbound, 3, "Root should have 3 children (polytomy)");
 
-    let output = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(input, output);
     Ok(())
   }
@@ -108,7 +124,12 @@ mod tests {
     assert_eq!(graph.get_edges().len(), 6, "Should have 6 edges");
     assert_eq!(graph.get_leaves().len(), 5, "Should have 5 leaves");
 
-    let output = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(input, output);
     Ok(())
   }
@@ -129,7 +150,12 @@ mod tests {
       .count();
     assert_eq!(zero_branches, 3, "Should have 3 zero-length branches");
 
-    let output = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(input, output);
     Ok(())
   }
@@ -269,7 +295,12 @@ mod tests {
     assert_eq!(graph.get_nodes().len(), 3);
     assert_eq!(graph.get_edges().len(), 2);
 
-    let output = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(input, output);
 
     Ok(())

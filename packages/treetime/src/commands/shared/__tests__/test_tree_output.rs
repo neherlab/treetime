@@ -27,6 +27,7 @@ mod tests {
   use std::sync::Arc;
   use tempfile::TempDir;
   use treetime_graph::node::{GraphNodeKey, Named};
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_io::graph::TreeWriteKind;
   use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
   use treetime_primitives::{AsciiChar, LogLh, Seq};
@@ -65,7 +66,7 @@ mod tests {
         .map(|sequence| sequence.sequence.as_str())
     );
 
-    let mat = ancestral_to_mat(&graph)?;
+    let mat = ancestral_to_mat(&graph, &node_names(&graph), &edge_branch_lengths(&graph))?;
     let mutation = mat
       .node_mutations
       .iter()
@@ -135,11 +136,13 @@ mod tests {
   #[test]
   fn test_tree_output_mat_rejects_unsupported_events() -> Result<(), Report> {
     let graph = helpers::ancestral_graph(helpers::Mutations::Indel)?;
-    let error = ancestral_to_mat(&graph).expect_err("MAT must reject indels");
+    let error =
+      ancestral_to_mat(&graph, &node_names(&graph), &edge_branch_lengths(&graph)).expect_err("MAT must reject indels");
     assert!(error.to_string().contains("insertion or deletion"));
 
     let graph = helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
-    let error = ancestral_to_mat(&graph).expect_err("MAT must reject amino-acid mutations");
+    let error = ancestral_to_mat(&graph, &node_names(&graph), &edge_branch_lengths(&graph))
+      .expect_err("MAT must reject amino-acid mutations");
     assert!(error.to_string().contains("amino-acid mutation"));
 
     Ok(())
@@ -271,7 +274,7 @@ mod tests {
   #[test]
   fn test_tree_output_mutation_free_mat_needs_no_reference() -> Result<(), Report> {
     let graph = helpers::ancestral_graph_without_partition()?;
-    let mat = ancestral_to_mat(&graph)?;
+    let mat = ancestral_to_mat(&graph, &node_names(&graph), &edge_branch_lengths(&graph))?;
     assert!(mat.node_mutations.iter().all(|mutations| mutations.mutation.is_empty()));
     Ok(())
   }
@@ -690,13 +693,25 @@ mod tests {
       set_timetree_mat_branch_lengths(&timetree)?;
 
       Ok(vec![
-        ancestral_to_mat(&ancestral)?,
-        optimize_to_mat(&optimize)?,
-        prune_to_mat(&prune)?,
-        clock_to_mat(&clock)?,
-        mugration_to_mat(&mugration)?,
-        timetree_to_mat(&timetree)?,
+        ancestral_to_mat(&ancestral, &node_names(&ancestral), &edge_branch_lengths(&ancestral))?,
+        optimize_to_mat(&optimize, &node_names(&optimize), &edge_branch_lengths(&optimize))?,
+        prune_to_mat(&prune, &node_names(&prune), &edge_branch_lengths(&prune))?,
+        clock_to_mat(&clock, &node_names(&clock), &edge_branch_lengths(&clock))?,
+        mugration_to_mat(&mugration, &node_names(&mugration), &edge_branch_lengths(&mugration))?,
+        timetree_to_mat(&timetree, &node_names(&timetree), &timetree_nwk_weights(&timetree))?,
       ])
+    }
+
+    pub fn timetree_nwk_weights(graph: &GraphTimetree<TimetreeGraphData>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+      graph
+        .get_edges()
+        .iter()
+        .map(|edge| {
+          let edge = edge.read_arc();
+          let key = edge.key();
+          (key, edge.payload().read_arc().time_length)
+        })
+        .collect()
     }
 
     pub fn auspice_validator() -> Result<Validator, Report> {

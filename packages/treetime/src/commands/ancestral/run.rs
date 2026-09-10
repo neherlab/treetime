@@ -297,7 +297,13 @@ fn write_tree_for_partition(
       write_ancestral_tree_outputs(graph, nodes, branch_lengths, &resolved.tree_outputs, &providers)?;
     },
     Some(AncestralPartition::Fitch(_)) | None => {
-      write_ancestral_tree_outputs(graph, nodes, branch_lengths, &resolved.tree_outputs, &CommentProviders::new())?;
+      write_ancestral_tree_outputs(
+        graph,
+        nodes,
+        branch_lengths,
+        &resolved.tree_outputs,
+        &CommentProviders::new(),
+      )?;
     },
   }
   Ok(())

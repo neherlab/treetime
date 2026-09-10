@@ -4,40 +4,54 @@ use itertools::{Itertools, iproduct};
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
-use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::{Graph, SafeNode};
-use treetime_graph::node::GraphNode;
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::make_internal_report;
 
-pub fn graphviz_write_file<N, E, D>(filepath: impl AsRef<Path>, graph: &Graph<N, E, D>) -> Result<(), Report>
+pub fn graphviz_write_file<N, E, D>(
+  filepath: impl AsRef<Path>,
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<(), Report>
 where
-  N: GraphNode + NodeToGraphviz,
-  E: GraphEdge + EdgeToGraphviz,
+  N: GraphNode,
+  E: GraphEdge,
   D: Send + Sync,
 {
   let mut f = create_file_or_stdout(filepath)?;
-  graphviz_write(&mut f, graph)?;
+  graphviz_write(&mut f, graph, names, weights)?;
   writeln!(f)?;
   Ok(())
 }
 
-pub fn graphviz_write_str<N, E, D>(graph: &Graph<N, E, D>) -> Result<String, Report>
+pub fn graphviz_write_str<N, E, D>(
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<String, Report>
 where
-  N: GraphNode + NodeToGraphviz,
-  E: GraphEdge + EdgeToGraphviz,
+  N: GraphNode,
+  E: GraphEdge,
   D: Send + Sync,
 {
   let mut buf = Vec::new();
-  graphviz_write(&mut buf, graph)?;
+  graphviz_write(&mut buf, graph, names, weights)?;
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn graphviz_write<W, N, E, D>(mut writer: W, graph: &Graph<N, E, D>) -> Result<(), Report>
+pub fn graphviz_write<W, N, E, D>(
+  mut writer: W,
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<(), Report>
 where
   W: Write,
-  N: GraphNode + NodeToGraphviz,
-  E: GraphEdge + EdgeToGraphviz,
+  N: GraphNode,
+  E: GraphEdge,
   D: Send + Sync,
 {
   write!(
@@ -49,24 +63,26 @@ digraph Phylogeny {{
   node  [shape=box];
 "#
   )?;
-  print_nodes(graph, &mut writer)?;
+  print_nodes(graph, names, &mut writer)?;
   writeln!(writer)?;
-  print_edges(graph, &mut writer)?;
+  print_edges(graph, weights, &mut writer)?;
   writeln!(writer, "}}")?;
   Ok(())
 }
 
-fn print_node<W, N>(mut writer: W, node: &SafeNode<N>) -> Result<(), Report>
+fn print_node<W, N>(
+  mut writer: W,
+  node: &SafeNode<N>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> Result<(), Report>
 where
   W: Write,
-  N: GraphNode + NodeToGraphviz,
+  N: GraphNode,
 {
   let key = node.read_arc().key();
-  let node = node.read_arc().payload().read_arc();
-  let label = node.to_graphviz_label();
+  let label = names[&key].clone();
 
   if let Some(label) = label {
-    let label = label.as_ref();
     writeln!(writer, "    {key} [label=\"({key}) {label}\"]")?;
   } else {
     writeln!(writer, "    {key} [label=\"({key})\"]")?;
@@ -74,30 +90,34 @@ where
   Ok(())
 }
 
-fn print_nodes<W, N, E, D>(graph: &Graph<N, E, D>, mut writer: W) -> Result<(), Report>
+fn print_nodes<W, N, E, D>(
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  mut writer: W,
+) -> Result<(), Report>
 where
   W: Write,
-  N: GraphNode + NodeToGraphviz,
-  E: GraphEdge + EdgeToGraphviz,
+  N: GraphNode,
+  E: GraphEdge,
   D: Send + Sync,
 {
   writeln!(writer, "\n  subgraph roots {{")?;
   let roots = graph.get_roots();
   for node in &roots {
-    print_node(&mut writer, node)?;
+    print_node(&mut writer, node, names)?;
   }
   print_fake_edges(&mut writer, &roots)?;
 
   writeln!(writer, "  }}\n\n  subgraph internals {{")?;
   let internal = graph.get_internal_nodes();
   for node in internal {
-    print_node(&mut writer, &node)?;
+    print_node(&mut writer, &node, names)?;
   }
 
   writeln!(writer, "  }}\n\n  subgraph leaves {{")?;
   let leaves = graph.get_leaves();
   for node in &leaves {
-    print_node(&mut writer, node)?;
+    print_node(&mut writer, node, names)?;
   }
   print_fake_edges(&mut writer, &leaves)?;
 
@@ -105,11 +125,15 @@ where
   Ok(())
 }
 
-fn print_edges<W, N, E, D>(graph: &Graph<N, E, D>, mut writer: W) -> Result<(), Report>
+fn print_edges<W, N, E, D>(
+  graph: &Graph<N, E, D>,
+  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  mut writer: W,
+) -> Result<(), Report>
 where
   W: Write,
-  N: GraphNode + NodeToGraphviz,
-  E: GraphEdge + EdgeToGraphviz,
+  N: GraphNode,
+  E: GraphEdge,
   D: Send + Sync,
 {
   for node in graph.get_nodes() {
@@ -119,14 +143,12 @@ where
         .ok_or_else(|| make_internal_report!("Outbound edge {edge_key} not found in graph"))?;
       let source = edge.read_arc().source();
       let target = edge.read_arc().target();
-      let payload = edge.read_arc().payload().read_arc();
 
-      let label = payload.to_graphviz_label();
-      let weight = payload.to_graphviz_weight();
+      let weight = weights[edge_key];
+      let label = weight.map(|weight| format_weight(weight, &NwkWriteOptions::default()));
 
       let mut attrs = Vec::new();
       if let Some(label) = label {
-        let label = label.as_ref();
         attrs.push(format!("xlabel=\"{label}\""));
       }
       if let Some(weight) = weight {
@@ -147,7 +169,7 @@ where
 fn print_fake_edges<W, N>(mut writer: W, nodes: &[SafeNode<N>]) -> Result<(), Report>
 where
   W: Write,
-  N: GraphNode + NodeToGraphviz,
+  N: GraphNode,
 {
   // Fake edges needed to align a set of nodes beautifully
   let node_keys = nodes.iter().map(|node| node.read().key()).collect_vec();

@@ -115,7 +115,14 @@ pub fn write_augur_node_data_json<D: Send + Sync>(
   mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
   path: &Path,
 ) -> Result<(), Report> {
-  let data = build_augur_node_data_json(graph, node_outputs, branch_lengths, alignment, input_tree, mutation_counts)?;
+  let data = build_augur_node_data_json(
+    graph,
+    node_outputs,
+    branch_lengths,
+    alignment,
+    input_tree,
+    mutation_counts,
+  )?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
 }

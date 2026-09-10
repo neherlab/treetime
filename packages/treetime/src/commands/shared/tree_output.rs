@@ -21,9 +21,10 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
-use treetime_graph::edge::{Edge, GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named, Node};
+use treetime_graph::node::{GraphNode, GraphNodeKey, Node};
+use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 use treetime_io::auspice::auspice_write_file;
 use treetime_io::auspice_types::{
   AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotationCds, AuspiceGenomeAnnotationNuc,
@@ -31,9 +32,9 @@ use treetime_io::auspice_types::{
   AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode, AuspiceTreeNodeAttr, AuspiceTreeNodeAttrs, Segments, StartEnd,
 };
 use treetime_io::graph::TreeWriteKind;
-use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz, graphviz_write_file};
+use treetime_io::graphviz::graphviz_write_file;
 use treetime_io::nex::{NexWriteOptions, nex_write_file_with};
-use treetime_io::nwk::{CommentProviders, EdgeToNwk, NodeToNwk, NwkWriteOptions, nwk_write_file_with, nwk_write_str};
+use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_write_file_with, nwk_write_str};
 use treetime_io::phyloxml::{
   Phyloxml, PhyloxmlClade, PhyloxmlConfidence, PhyloxmlDate, PhyloxmlJsonOptions, PhyloxmlMolSeq, PhyloxmlPhylogeny,
   PhyloxmlProperty, PhyloxmlSequence, phyloxml_json_write_file, phyloxml_write_file,
@@ -77,14 +78,19 @@ pub fn write_ancestral_tree_outputs(
   providers: &CommentProviders,
 ) -> Result<(), Report> {
   let updated = generation_date();
+  let names = node_names(graph);
+  let weights = edge_branch_lengths(graph);
   write_tree_outputs(
     graph,
+    &names,
+    &weights,
+    &weights,
     outputs,
     providers,
     "ancestral",
     || ancestral_to_auspice(graph, nodes, branch_lengths, &updated),
     || ancestral_to_phyloxml(graph, nodes, branch_lengths),
-    || ancestral_to_mat(graph),
+    || ancestral_to_mat(graph, &names, &weights),
   )
 }
 
@@ -96,14 +102,19 @@ pub fn write_optimize_tree_outputs(
   providers: &CommentProviders,
 ) -> Result<(), Report> {
   let updated = generation_date();
+  let names = node_names(graph);
+  let weights = edge_branch_lengths(graph);
   write_tree_outputs(
     graph,
+    &names,
+    &weights,
+    &weights,
     outputs,
     providers,
     "optimize",
     || optimize_to_auspice(graph, nodes, branch_lengths, &updated),
     || optimize_to_phyloxml(graph, nodes, branch_lengths),
-    || optimize_to_mat(graph),
+    || optimize_to_mat(graph, &names, &weights),
   )
 }
 
@@ -115,14 +126,19 @@ pub fn write_prune_tree_outputs(
   providers: &CommentProviders,
 ) -> Result<(), Report> {
   let updated = generation_date();
+  let names = node_names(graph);
+  let weights = edge_branch_lengths(graph);
   write_tree_outputs(
     graph,
+    &names,
+    &weights,
+    &weights,
     outputs,
     providers,
     "prune",
     || prune_to_auspice(graph, nodes, branch_lengths, &updated),
     || prune_to_phyloxml(graph, nodes, branch_lengths),
-    || prune_to_mat(graph),
+    || prune_to_mat(graph, &names, &weights),
   )
 }
 
@@ -134,14 +150,19 @@ pub fn write_clock_tree_outputs(
   providers: &CommentProviders,
 ) -> Result<(), Report> {
   let updated = generation_date();
+  let names = node_names(graph);
+  let weights = edge_branch_lengths(graph);
   write_tree_outputs(
     graph,
+    &names,
+    &weights,
+    &weights,
     outputs,
     providers,
     "clock",
     || clock_to_auspice(graph, nodes, &updated),
     || clock_to_phyloxml(graph, nodes, branch_lengths),
-    || clock_to_mat(graph),
+    || clock_to_mat(graph, &names, &weights),
   )
 }
 
@@ -153,14 +174,19 @@ pub fn write_mugration_tree_outputs(
   providers: &CommentProviders,
 ) -> Result<(), Report> {
   let updated = generation_date();
+  let names = node_names(graph);
+  let weights = edge_branch_lengths(graph);
   write_tree_outputs(
     graph,
+    &names,
+    &weights,
+    &weights,
     outputs,
     providers,
     "mugration",
     || mugration_to_auspice(graph, nodes, branch_lengths, &updated),
     || mugration_to_phyloxml(graph, nodes, branch_lengths),
-    || mugration_to_mat(graph),
+    || mugration_to_mat(graph, &names, &weights),
   )
 }
 
@@ -172,19 +198,34 @@ pub fn write_timetree_tree_outputs(
   providers: &CommentProviders,
 ) -> Result<(), Report> {
   let updated = generation_date();
+  let names: BTreeMap<GraphNodeKey, Option<String>> =
+    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
+  // R2: the Newick/Nexus weight and the embedded MAT Newick weight are the branch time length, while
+  // the Graphviz weight stays the substitution branch length. These diverge for timetree, so the two
+  // writer paths take distinct edge-weight maps.
+  let nwk_weights: BTreeMap<GraphEdgeKey, Option<f64>> =
+    edges.iter().map(|(key, edge)| (*key, edge.time_length)).collect();
+  let graphviz_weights: BTreeMap<GraphEdgeKey, Option<f64>> =
+    edges.iter().map(|(key, edge)| (*key, edge.branch_length)).collect();
   write_tree_outputs(
     graph,
+    &names,
+    &nwk_weights,
+    &graphviz_weights,
     outputs,
     providers,
     "timetree",
     || timetree_to_auspice(graph, nodes, &updated),
     || timetree_to_phyloxml(graph, nodes, edges),
-    || timetree_to_mat(graph),
+    || timetree_to_mat(graph, &names, &nwk_weights),
   )
 }
 
 fn write_tree_outputs<N, E, D, A, P, M>(
   graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  graphviz_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
   command: &str,
@@ -193,8 +234,8 @@ fn write_tree_outputs<N, E, D, A, P, M>(
   to_mat: M,
 ) -> Result<(), Report>
 where
-  N: GraphNode + Named + NodeToNwk + NodeToGraphviz + Serialize,
-  E: GraphEdge + HasBranchLength + EdgeToNwk + EdgeToGraphviz + Serialize,
+  N: GraphNode + Serialize,
+  E: GraphEdge + Serialize,
   D: Send + Sync + Serialize,
   A: Fn() -> Result<AuspiceTree, Report>,
   P: Fn() -> Result<Phyloxml, Report>,
@@ -209,6 +250,8 @@ where
         nwk_write_file_with(
           path,
           graph,
+          names,
+          nwk_weights,
           &NwkWriteOptions {
             style: spec.style,
             ..NwkWriteOptions::default()
@@ -223,6 +266,8 @@ where
         nex_write_file_with(
           path,
           graph,
+          names,
+          nwk_weights,
           &NexWriteOptions {
             style: spec.style,
             ..NexWriteOptions::default()
@@ -243,7 +288,7 @@ where
         // Graph JSON is an unstable debug dump of the concrete internal structs. It has no portable schema or input contract.
         json_write_file(path, graph, JsonPretty(true))?;
       },
-      TreeWriteKind::Dot => graphviz_write_file(path, graph)?,
+      TreeWriteKind::Dot => graphviz_write_file(path, graph, names, graphviz_weights)?,
     }
   }
   Ok(())
@@ -568,10 +613,7 @@ where
     let edge_key = current_edge
       .as_ref()
       .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().key());
-    let converted = convert(&GraphNodeContext {
-      node_key,
-      edge_key,
-    })?;
+    let converted = convert(&GraphNodeContext { node_key, edge_key })?;
     if converted.node_attrs.div.is_none() && converted.node_attrs.num_date.is_none() {
       return make_error!(
         "Auspice v2 node '{}' requires divergence or numerical date data",
@@ -891,13 +933,7 @@ where
     let edge_key = current_edge
       .as_ref()
       .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().key());
-    node_map.insert(
-      node_key,
-      convert(&GraphNodeContext {
-        node_key,
-        edge_key,
-      })?,
-    );
+    node_map.insert(node_key, convert(&GraphNodeContext { node_key, edge_key })?);
     for (child, edge) in graph.children_of(&current_node.read_arc()) {
       queue.push_back((child, Some(edge)));
     }
@@ -966,61 +1002,101 @@ where
   Ok(())
 }
 
-pub(crate) fn ancestral_to_mat(graph: &GraphAncestral<AncestralGraphData>) -> Result<UsherTree, Report> {
+pub(crate) fn ancestral_to_mat(
+  graph: &GraphAncestral<AncestralGraphData>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<UsherTree, Report> {
   let reference = ancestral_root_sequences(graph)?.remove(NUC_TRACK);
-  mat_from_graph(graph, reference.as_deref(), |node_key, edge_key| {
+  mat_from_graph(graph, names, nwk_weights, reference.as_deref(), |node_key, edge_key| {
     ancestral_node_mutations(graph, node_key, Some(edge_key))
   })
 }
 
-pub(crate) fn optimize_to_mat(graph: &GraphAncestral<OptimizeGraphData>) -> Result<UsherTree, Report> {
+pub(crate) fn optimize_to_mat(
+  graph: &GraphAncestral<OptimizeGraphData>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<UsherTree, Report> {
   let reference = optimize_root_sequences(graph)?.remove(NUC_TRACK);
-  mat_from_graph(graph, reference.as_deref(), |_node_key, edge_key| {
-    optimize_mutations(graph, Some(edge_key))
-  })
+  mat_from_graph(
+    graph,
+    names,
+    nwk_weights,
+    reference.as_deref(),
+    |_node_key, edge_key| optimize_mutations(graph, Some(edge_key)),
+  )
 }
 
-pub(crate) fn prune_to_mat(graph: &GraphAncestral<PruneGraphData>) -> Result<UsherTree, Report> {
+pub(crate) fn prune_to_mat(
+  graph: &GraphAncestral<PruneGraphData>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<UsherTree, Report> {
   let reference = prune_root_sequences(graph)?.remove(NUC_TRACK);
-  mat_from_graph(graph, reference.as_deref(), |_node_key, edge_key| {
-    prune_mutations(graph, Some(edge_key))
-  })
+  mat_from_graph(
+    graph,
+    names,
+    nwk_weights,
+    reference.as_deref(),
+    |_node_key, edge_key| prune_mutations(graph, Some(edge_key)),
+  )
 }
 
-pub(crate) fn clock_to_mat(graph: &GraphClock<ClockGraphData>) -> Result<UsherTree, Report> {
-  mutation_free_mat(graph)
+pub(crate) fn clock_to_mat(
+  graph: &GraphClock<ClockGraphData>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<UsherTree, Report> {
+  mutation_free_mat(graph, names, nwk_weights)
 }
 
-pub(crate) fn mugration_to_mat(graph: &GraphAncestral<MugrationGraphData>) -> Result<UsherTree, Report> {
-  mutation_free_mat(graph)
+pub(crate) fn mugration_to_mat(
+  graph: &GraphAncestral<MugrationGraphData>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<UsherTree, Report> {
+  mutation_free_mat(graph, names, nwk_weights)
 }
 
 pub(crate) fn timetree_to_mat(
   graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<UsherTree, Report> {
   let reference = timetree_root_sequences(graph)?.remove(NUC_TRACK);
-  mat_from_graph(graph, reference.as_deref(), |_node_key, edge_key| {
-    timetree_mutations(graph, Some(edge_key))
-  })
+  mat_from_graph(
+    graph,
+    names,
+    nwk_weights,
+    reference.as_deref(),
+    |_node_key, edge_key| timetree_mutations(graph, Some(edge_key)),
+  )
 }
 
-fn mutation_free_mat<N, E, D>(graph: &Graph<N, E, D>) -> Result<UsherTree, Report>
+fn mutation_free_mat<N, E, D>(
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<UsherTree, Report>
 where
-  N: GraphNode + Named + NodeToNwk,
-  E: GraphEdge + EdgeToNwk,
+  N: GraphNode,
+  E: GraphEdge,
   D: Send + Sync,
 {
-  mat_from_graph(graph, None, |_node_key, _edge_key| Ok(vec![]))
+  mat_from_graph(graph, names, nwk_weights, None, |_node_key, _edge_key| Ok(vec![]))
 }
 
 fn mat_from_graph<N, E, D, F>(
   graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   reference: Option<&str>,
   mut edge_mutations: F,
 ) -> Result<UsherTree, Report>
 where
-  N: GraphNode + Named + NodeToNwk,
-  E: GraphEdge + EdgeToNwk,
+  N: GraphNode,
+  E: GraphEdge,
   D: Send + Sync,
   F: FnMut(GraphNodeKey, GraphEdgeKey) -> Result<Vec<Mutation>, Report>,
 {
@@ -1031,11 +1107,7 @@ where
   let mut condensed_nodes = vec![];
   let mut metadata = vec![];
   graph.iter_depth_first_preorder_forward(|node| {
-    let name = node
-      .payload
-      .name()
-      .map(|name| name.as_ref().to_owned())
-      .unwrap_or_default();
+    let name = names[&node.key].clone().unwrap_or_default();
     let mutations = node
       .parent_keys
       .first()
@@ -1057,7 +1129,7 @@ where
     Ok(())
   })?;
   Ok(UsherTree {
-    newick: nwk_write_str(graph, &NwkWriteOptions::default())?,
+    newick: nwk_write_str(graph, names, nwk_weights, &NwkWriteOptions::default())?,
     node_mutations,
     condensed_nodes,
     metadata,

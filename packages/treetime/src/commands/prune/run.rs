@@ -127,7 +127,13 @@ pub fn run_prune(
   }
 
   if !resolved.tree_outputs.is_empty() {
-    write_prune_tree_outputs(&graph, &nodes, &branch_lengths, &resolved.tree_outputs, &CommentProviders::new())?;
+    write_prune_tree_outputs(
+      &graph,
+      &nodes,
+      &branch_lengths,
+      &resolved.tree_outputs,
+      &CommentProviders::new(),
+    )?;
   }
 
   progress.report("Done", 1.0, "");

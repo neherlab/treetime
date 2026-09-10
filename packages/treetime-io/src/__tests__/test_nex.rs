@@ -9,6 +9,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::{GraphEdge, HasBranchLength};
   use treetime_graph::node::{GraphNode, Named};
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 
   #[derive(Clone, Debug, Default)]
   struct TestNode {
@@ -119,7 +120,7 @@ mod tests {
   #[trace]
   fn test_nex_exact_output(#[case] nwk: &str, #[case] expected: &str) -> Result<(), Report> {
     let graph = nwk_read_str::<TestNode, TestEdge, ()>(nwk)?;
-    let actual = nex_write_str(&graph, &NexWriteOptions::default())?;
+    let actual = nex_write_str(&graph, &node_names(&graph), &edge_branch_lengths(&graph), &NexWriteOptions::default())?;
     assert_eq!(expected, actual);
     Ok(())
   }

@@ -22,6 +22,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
@@ -142,7 +143,12 @@ mod tests {
   fn test_prune_nodes_basic() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.0,B:0.1)root;", &[])?;
     prune_nodes(&mut graph, &partitions, Some(0.0), false, &btreeset! {})?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(A:0,B:0.1)root;");
     Ok(())
   }
@@ -151,7 +157,12 @@ mod tests {
   fn test_prune_nodes_with_threshold() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.01,B:0.02,C:0.1)root;", &[])?;
     prune_nodes(&mut graph, &partitions, Some(0.05), false, &btreeset! {})?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(A:0.01,B:0.02,C:0.1)root;");
     Ok(())
   }
@@ -160,7 +171,12 @@ mod tests {
   fn test_prune_nodes_preserves_large_edges() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2)root;", &[])?;
     prune_nodes(&mut graph, &partitions, Some(0.01), false, &btreeset! {})?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(A:0.1,B:0.2)root;");
     Ok(())
   }
@@ -178,7 +194,12 @@ mod tests {
   fn test_prune_nodes_handles_none_weights() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.0,B:0.1)root;", &[])?;
     prune_nodes(&mut graph, &partitions, Some(0.0), false, &btreeset! {})?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(A:0,B:0.1)root;");
     Ok(())
   }
@@ -187,7 +208,12 @@ mod tests {
   fn test_prune_nodes_preserves_terminal_nodes() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.00001,B:0.1)root;", &[])?;
     prune_nodes(&mut graph, &partitions, Some(0.001), false, &btreeset! {})?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(A:1.0e-5,B:0.1)root;");
     Ok(())
   }
@@ -199,7 +225,12 @@ mod tests {
       &[],
     )?;
     prune_nodes(&mut graph, &partitions, Some(0.01), false, &btreeset! {})?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(
       output_nwk,
       "(E:5.0e-5,(C:3.0e-5,D:0.1)internal2:0.1,A:6.00e-5,B:0.1)root;"
@@ -307,7 +338,12 @@ mod tests {
   fn test_prune_nodes_prune_short_threshold_exact() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.05,B:0.05,C:0.051)root;", &[])?;
     prune_nodes(&mut graph, &partitions, Some(0.05), false, &btreeset! {})?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(A:0.05,B:0.05,C:0.051)root;");
     Ok(())
   }
@@ -316,7 +352,12 @@ mod tests {
   fn test_prune_nodes_prune_short_threshold_below() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.049,B:0.05,C:0.051)root;", &[])?;
     prune_nodes(&mut graph, &partitions, Some(0.05), false, &btreeset! {})?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     // All edges remain because A, B, C are leaves and leaves are never collapsed
     assert_eq!(output_nwk, "(A:0.049,B:0.05,C:0.051)root;");
     Ok(())
@@ -500,7 +541,12 @@ mod tests {
   fn test_prune_nodes_single_named_leaf() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2,C:0.3)root;", &[])?;
     prune_nodes(&mut graph, &partitions, None, false, &btreeset! { "B".to_owned() })?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(A:0.1,C:0.3)root;");
     Ok(())
   }
@@ -515,7 +561,12 @@ mod tests {
       false,
       &btreeset! { "A".to_owned(), "C".to_owned() },
     )?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(B:0.2,D:0.4)root;");
     Ok(())
   }
@@ -530,7 +581,12 @@ mod tests {
       false,
       &btreeset! { "nonexistent".to_owned() },
     )?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(A:0.1,B:0.2)root;");
     Ok(())
   }
@@ -545,7 +601,12 @@ mod tests {
       false,
       &btreeset! { "internal".to_owned() },
     )?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     // Internal node collapsed, its children moved to root
     assert_eq!(output_nwk, "(C:0.4,A:0.4,B:0.5)root;");
     Ok(())
@@ -562,7 +623,12 @@ mod tests {
       false,
       &btreeset! { "internal".to_owned(), "D".to_owned() },
     )?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     // Internal collapsed, D removed
     assert_eq!(output_nwk, "(C:0.4,A:0.4,B:0.5)root;");
     Ok(())
@@ -572,7 +638,12 @@ mod tests {
   fn test_prune_nodes_empty_names_set_is_noop() -> Result<(), Report> {
     let (mut graph, partitions) = create_test_graph_with_partitions("(A:0.1,B:0.2,C:0.3)root;", &[])?;
     prune_nodes(&mut graph, &partitions, None, false, &btreeset! {})?;
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(A:0.1,B:0.2,C:0.3)root;");
     Ok(())
   }

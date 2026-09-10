@@ -11,6 +11,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_graph::node::Named;
   use treetime_graph::reroot::remove_node_if_trivial;
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use treetime_utils::assert_error;
 
@@ -35,7 +36,12 @@ mod tests {
     assert!(graph.get_node(mid_key).is_none(), "Expected node to be removed");
 
     let expected = "(B:0.2,A:0.8)root;";
-    let actual = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let actual = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(expected, actual);
 
     Ok(())
@@ -107,8 +113,18 @@ mod tests {
       &reroot_params,
     )?;
 
-    let expected = nwk_write_str(&graph_ascending, &NwkWriteOptions::default())?;
-    let actual = nwk_write_str(&graph_descending, &NwkWriteOptions::default())?;
+    let expected = nwk_write_str(
+      &graph_ascending,
+      &node_names(&graph_ascending),
+      &edge_branch_lengths(&graph_ascending),
+      &NwkWriteOptions::default(),
+    )?;
+    let actual = nwk_write_str(
+      &graph_descending,
+      &node_names(&graph_descending),
+      &edge_branch_lengths(&graph_descending),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(expected, actual);
 
     Ok(())

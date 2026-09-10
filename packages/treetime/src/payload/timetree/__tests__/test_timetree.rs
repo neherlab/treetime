@@ -13,7 +13,9 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
   use treetime_io::nwk::{CommentProviders, NodeCommentProvider, NwkStyle, nwk_read_str};
   use treetime_primitives::AsciiChar;
@@ -116,7 +118,15 @@ mod tests {
       style: NwkStyle::Beast,
       ..NexWriteOptions::default()
     };
-    let nexus = nex_write_str_with(&graph, &options, &providers)?;
+    let time_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = graph
+      .get_edges()
+      .iter()
+      .map(|edge| {
+        let edge = edge.read_arc();
+        (edge.key(), edge.payload().read_arc().time_length)
+      })
+      .collect();
+    let nexus = nex_write_str_with(&graph, &node_names(&graph), &time_lengths, &options, &providers)?;
     let expected = concat!(
       indoc! {r#"
         #NEXUS

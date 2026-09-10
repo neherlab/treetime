@@ -6,7 +6,7 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
-use treetime_graph::edge::GraphEdge;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::{Graph, SafeEdge, SafeNode};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node::{GraphNode, Named};
@@ -123,15 +123,17 @@ pub struct NwkWriteOptions {
 pub fn nwk_write_file<N, E, D>(
   filepath: impl AsRef<Path>,
   graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
 ) -> Result<(), Report>
 where
-  N: GraphNode + NodeToNwk,
-  E: GraphEdge + EdgeToNwk,
+  N: GraphNode,
+  E: GraphEdge,
   D: Sync + Send,
 {
   let mut f = create_file_or_stdout(filepath)?;
-  nwk_write(&mut f, graph, options)?;
+  nwk_write(&mut f, graph, names, weights, options)?;
   writeln!(f)?;
   Ok(())
 }
@@ -139,72 +141,88 @@ where
 pub fn nwk_write_file_with<N, E, D>(
   filepath: impl AsRef<Path>,
   graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
   providers: &CommentProviders,
 ) -> Result<(), Report>
 where
-  N: GraphNode + NodeToNwk,
-  E: GraphEdge + EdgeToNwk,
+  N: GraphNode,
+  E: GraphEdge,
   D: Sync + Send,
 {
   let mut f = create_file_or_stdout(filepath)?;
-  nwk_write_with(&mut f, graph, options, providers)?;
+  nwk_write_with(&mut f, graph, names, weights, options, providers)?;
   writeln!(f)?;
   Ok(())
 }
 
-pub fn nwk_write_str<N, E, D>(graph: &Graph<N, E, D>, options: &NwkWriteOptions) -> Result<String, Report>
+pub fn nwk_write_str<N, E, D>(
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  options: &NwkWriteOptions,
+) -> Result<String, Report>
 where
-  N: GraphNode + NodeToNwk,
-  E: GraphEdge + EdgeToNwk,
+  N: GraphNode,
+  E: GraphEdge,
   D: Sync + Send,
 {
   let providers = CommentProviders::new();
-  nwk_write_str_with(graph, options, &providers)
+  nwk_write_str_with(graph, names, weights, options, &providers)
 }
 
 /// Return the Newick representation of a graph, augmented by external node comment providers.
 pub fn nwk_write_str_with<N, E, D>(
   graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
   providers: &CommentProviders,
 ) -> Result<String, Report>
 where
-  N: GraphNode + NodeToNwk,
-  E: GraphEdge + EdgeToNwk,
+  N: GraphNode,
+  E: GraphEdge,
   D: Sync + Send,
 {
   let mut buf = Vec::new();
-  nwk_write_with(&mut buf, graph, options, providers)?;
+  nwk_write_with(&mut buf, graph, names, weights, options, providers)?;
   Ok(String::from_utf8(buf)?)
 }
 
 pub fn nwk_write<N, E, D>(
   writer: &mut impl Write,
   graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
 ) -> Result<(), Report>
 where
-  N: GraphNode + NodeToNwk,
-  E: GraphEdge + EdgeToNwk,
+  N: GraphNode,
+  E: GraphEdge,
   D: Sync + Send,
 {
   let providers = CommentProviders::new();
-  nwk_write_with(writer, graph, options, &providers)
+  nwk_write_with(writer, graph, names, weights, options, &providers)
 }
 
-/// Write a graph in Newick format, merging payload comments with external provider comments.
+/// Write a graph in Newick format, taking node names and edge weights from explicit value maps and
+/// node comments from external comment providers.
 ///
-/// Provider comments override payload comments with the same key.
+/// `names` supplies each node's display label and `weights` each edge's branch weight, both keyed by
+/// the graph's own keys and kept as `Option` so a missing label writes no name and a missing weight
+/// writes no `:weight`. Comments come solely from the providers.
 pub fn nwk_write_with<N, E, D>(
   writer: &mut impl Write,
   graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
   providers: &CommentProviders,
 ) -> Result<(), Report>
 where
-  N: GraphNode + NodeToNwk,
-  E: GraphEdge + EdgeToNwk,
+  N: GraphNode,
+  E: GraphEdge,
   D: Sync + Send,
 {
   let roots = graph.get_roots();
@@ -237,17 +255,13 @@ where
         write!(writer, ")")?;
       }
 
-      let (node_key, name, mut comments) = {
-        let node = node.read_arc();
-        let node_key = node.key();
-        let node_payload = node.payload().read_arc();
-        let comments = node_payload.nwk_comments();
-        let name = node_payload.nwk_name().map(|n| n.as_ref().to_owned());
-        (node_key, name, comments)
-      };
-      comments.extend(providers.merged_comments(node_key)?);
+      let node_key = node.read_arc().key();
+      let name = names[&node_key].clone();
+      let comments = providers.merged_comments(node_key)?;
 
-      let weight = edge.and_then(|edge| edge.read_arc().payload().read_arc().nwk_weight());
+      let weight = edge
+        .map(|edge| edge.read_arc().key())
+        .and_then(|edge_key| weights[&edge_key]);
 
       if let Some(name) = &name {
         write_label(writer, name)?;

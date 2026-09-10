@@ -82,8 +82,11 @@ pub fn run_mugration(
   topology_order.apply(&mut result.graph)?;
   progress.report("Writing output", 0.8, "");
 
-  let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> =
-    result.edges.iter().map(|(key, edge)| (*key, edge.branch_length)).collect();
+  let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = result
+    .edges
+    .iter()
+    .map(|(key, edge)| (*key, edge.branch_length))
+    .collect();
 
   if !resolved.tree_outputs.is_empty() {
     let provider = DiscreteCommentProvider::new(&result.graph.data().partition, &result.graph.data().traits.attribute);

@@ -9,6 +9,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::Named;
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
   use crate::test_utils::{TestEdge, TestNode, find_edge_key, find_node_key_by_name};
@@ -223,7 +224,12 @@ mod tests {
     let root_to_internal = find_edge_key(&graph, "root", "internal").unwrap();
     graph.collapse_edge(root_to_internal)?;
 
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(A:0.2)root;");
 
     Ok(())
@@ -236,7 +242,12 @@ mod tests {
     let root_to_internal = find_edge_key(&graph, "root", "internal").unwrap();
     graph.collapse_edge(root_to_internal)?;
 
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(B:0.3,A:0.2)root;");
 
     Ok(())
@@ -249,7 +260,12 @@ mod tests {
     let root_to_left = find_edge_key(&graph, "root", "left").unwrap();
     graph.collapse_edge(root_to_left)?;
 
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "((C:0.5,D:0.6)right:0.2,A:0.3,B:0.4)root;");
 
     Ok(())
@@ -280,7 +296,12 @@ mod tests {
     let root_to_a = find_edge_key(&graph, "root", "A").unwrap();
     graph.collapse_edge(root_to_a)?;
 
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(B:0.2)root;");
 
     Ok(())
@@ -325,7 +346,12 @@ mod tests {
     let root_to_left = find_edge_key(&graph, "root", "left").unwrap();
     graph.collapse_edge(root_to_left)?;
 
-    let output_nwk = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &node_names(&graph),
+      &edge_branch_lengths(&graph),
+      &NwkWriteOptions::default(),
+    )?;
     assert_eq!(output_nwk, "(right:0.2,A:0.3,B:0.4)root;");
 
     Ok(())

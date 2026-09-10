@@ -12,8 +12,9 @@ mod tests {
   use petgraph::visit::EdgeRef;
   use std::collections::BTreeMap;
   use std::io::Cursor;
-  use treetime_graph::edge::{HasBranchLength, TimeLength};
+  use treetime_graph::edge::{GraphEdgeKey, HasBranchLength, TimeLength};
   use treetime_graph::node::Named;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
 
   #[test]
@@ -49,7 +50,15 @@ mod tests {
     create_branch_distributions_input_mode(&graph, clock_rate, &mut state)?;
 
     // EdgeTimetree.nwk_weight() returns time_length, so Newick output should show time values
-    let newick_output = nwk_write_str(&graph, &NwkWriteOptions::default())?;
+    let time_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = graph
+      .get_edges()
+      .iter()
+      .map(|edge| {
+        let edge = edge.read_arc();
+        (edge.key(), edge.payload().read_arc().time_length())
+      })
+      .collect();
+    let newick_output = nwk_write_str(&graph, &node_names(&graph), &time_lengths, &NwkWriteOptions::default())?;
 
     // Parse output with bio::io::newick (independent from our parser) to verify correctness
     let parsed = newick::read(Cursor::new(&newick_output)).expect("bio::newick should parse our output");
