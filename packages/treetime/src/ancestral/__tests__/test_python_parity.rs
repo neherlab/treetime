@@ -22,6 +22,7 @@ mod tests {
   use std::path::PathBuf;
   use std::slice::from_ref;
   use std::sync::{Arc, LazyLock};
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::{read_many_fasta, read_many_fasta_str};
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
 
@@ -83,6 +84,7 @@ mod tests {
     initialize_marginal(&graph, &partitions, &aln)?.value();
 
     let mut root_seq = String::new();
+    let names = node_names(&graph);
     ancestral_reconstruction_marginal(
       &graph,
       false,
@@ -90,8 +92,8 @@ mod tests {
       &partitions,
       SampleMode::Argmax,
       &mut rand::thread_rng(),
-      |node, seq| {
-        if node.name.as_deref() == Some("NODE_0000000") {
+      |key, seq| {
+        if names[&key].as_deref() == Some("NODE_0000000") {
           root_seq = seq.to_string();
         }
         Ok(())

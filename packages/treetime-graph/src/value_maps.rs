@@ -1,6 +1,6 @@
 use crate::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use crate::graph::Graph;
-use crate::node::{GraphNode, GraphNodeKey, Named};
+use crate::node::{Described, GraphNode, GraphNodeKey, Named};
 use std::collections::BTreeMap;
 
 /// Snapshot each edge's raw branch length into an edge-keyed value map.
@@ -46,6 +46,29 @@ where
       let node = node.read_arc();
       let name = node.payload().read_arc().name().map(|name| name.as_ref().to_owned());
       (node.key(), name)
+    })
+    .collect()
+}
+
+/// Snapshot each node's description into a node-keyed value map.
+///
+/// The value is `Described::desc()` verbatim, kept as `Option<String>`: a node with no description
+/// stays `None`. Sibling of [`node_names`] for the FASTA reconstruction writers, which pair a name
+/// with a description; a snapshot taken at a consumer's entry mirrors exactly what that consumer
+/// would read off the payload at that point.
+pub fn node_descs<N, E, D>(graph: &Graph<N, E, D>) -> BTreeMap<GraphNodeKey, Option<String>>
+where
+  N: GraphNode + Described,
+  E: GraphEdge,
+  D: Send + Sync,
+{
+  graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let node = node.read_arc();
+      let desc = node.payload().read_arc().desc().clone();
+      (node.key(), desc)
     })
     .collect()
 }

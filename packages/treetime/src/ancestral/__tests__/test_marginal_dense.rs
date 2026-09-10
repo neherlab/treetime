@@ -20,6 +20,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::{Arc, LazyLock};
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
@@ -174,6 +175,7 @@ mod tests {
     let (_, partitions) = run_dense_marginal(&graph, &ALN_7_TAXON, gtr)?;
 
     let mut actual = BTreeMap::new();
+    let names = node_names(&graph);
     ancestral_reconstruction_marginal(
       &graph,
       false,
@@ -181,8 +183,8 @@ mod tests {
       &partitions,
       SampleMode::Argmax,
       &mut rand::thread_rng(),
-      |node, seq| {
-        actual.insert(node.name.clone(), seq.to_string());
+      |key, seq| {
+        actual.insert(names[&key].clone(), seq.to_string());
         Ok(())
       },
     )?;

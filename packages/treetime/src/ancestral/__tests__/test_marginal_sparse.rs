@@ -24,6 +24,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::{Arc, LazyLock};
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AlphabetLike, Seq};
@@ -192,6 +193,7 @@ mod tests {
 
     // generate ancestral reconstruction and test against expectation
     let mut actual = BTreeMap::new();
+    let names = node_names(&graph);
     ancestral_reconstruction_marginal(
       &graph,
       false,
@@ -199,8 +201,8 @@ mod tests {
       &partitions_marginal_sparse,
       SampleMode::Argmax,
       &mut rand::thread_rng(),
-      |node, seq| {
-        actual.insert(node.name.clone(), seq.to_string());
+      |key, seq| {
+        actual.insert(names[&key].clone(), seq.to_string());
         Ok(())
       },
     )?;
@@ -524,6 +526,7 @@ mod tests {
     // Reconstruct node sequences, then turn parent-child sequence differences
     // into the expected branch changes.
     let mut seqs_by_name = BTreeMap::new();
+    let names = node_names(&graph);
     ancestral_reconstruction_marginal(
       &graph,
       true,
@@ -531,9 +534,9 @@ mod tests {
       &partitions,
       SampleMode::Argmax,
       &mut rand::thread_rng(),
-      |node, seq| {
+      |key, seq| {
         seqs_by_name.insert(
-          node.name.clone().expect("all test nodes should have names"),
+          names[&key].clone().expect("all test nodes should have names"),
           seq.clone(),
         );
         Ok(())

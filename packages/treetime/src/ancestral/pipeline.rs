@@ -14,7 +14,7 @@ use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::traits::HasGtr;
-use crate::payload::ancestral::{GraphAncestral, NodeAncestral};
+use crate::payload::ancestral::GraphAncestral;
 use crate::progress::ProgressSink;
 use crate::seq::alignment::get_common_length;
 use eyre::Report;
@@ -85,7 +85,7 @@ pub fn run<F>(
   progress: &dyn ProgressSink,
 ) -> Result<AncestralOutputFull, Report>
 where
-  F: FnMut(&NodeAncestral, &Seq) -> Result<(), Report>,
+  F: FnMut(GraphNodeKey, &Seq) -> Result<(), Report>,
 {
   if params.site_specific_gtr {
     return make_error!(
@@ -135,7 +135,7 @@ where
 
       let node_sequences =
         ancestral_reconstruction_fitch(&graph, params.include_leaves, &partitions_parsimony, |node, seq| {
-          on_sequence(&node.payload, seq)
+          on_sequence(node.key, seq)
         })?;
 
       progress.report("Done", 1.0, "");
@@ -177,7 +177,7 @@ where
             &partitions,
             params.sample_from_profile,
             &mut rng,
-            |node, seq| on_sequence(node, seq),
+            |key, seq| on_sequence(key, seq),
           )?;
 
           let gtr = partitions[0].read_arc().gtr().clone();
@@ -216,7 +216,7 @@ where
             &partitions,
             params.sample_from_profile,
             &mut rng,
-            |node, seq| on_sequence(node, seq),
+            |key, seq| on_sequence(key, seq),
           )?;
 
           let gtr = partitions[0].read_arc().gtr().clone();

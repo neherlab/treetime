@@ -134,7 +134,7 @@ pub fn ancestral_reconstruction_marginal<N, E, P>(
   partitions: &[Arc<RwLock<P>>],
   sample_mode: SampleMode,
   rng: &mut dyn rand::RngCore,
-  mut visitor: impl FnMut(&N, &Seq) -> Result<(), Report>,
+  mut visitor: impl FnMut(GraphNodeKey, &Seq) -> Result<(), Report>,
 ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report>
 where
   N: GraphNode + Named,
@@ -154,7 +154,7 @@ where
         return Ok(());
       }
       let seq = seq![];
-      visitor(&node.payload, &seq)?;
+      visitor(node.key, &seq)?;
       node_sequences.insert(node.key, seq);
       return Ok(());
     }
@@ -166,7 +166,7 @@ where
 
     match reconstructed {
       Some(seq) => {
-        visitor(&node.payload, &seq)?;
+        visitor(node.key, &seq)?;
         node_sequences.insert(node.key, seq);
         Ok(())
       },

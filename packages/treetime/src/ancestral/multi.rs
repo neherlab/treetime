@@ -10,6 +10,7 @@ use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::Arc;
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
@@ -90,7 +91,7 @@ pub fn reconstruct_marginal_partition(
     single,
     params.sample_from_profile,
     rng,
-    |_node: &NodeAncestral, _seq: &Seq| Ok(()),
+    |_key: GraphNodeKey, _seq: &Seq| Ok(()),
   )?;
 
   Ok(ReconstructedPartition {

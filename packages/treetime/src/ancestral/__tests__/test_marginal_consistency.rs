@@ -26,6 +26,7 @@ mod tests {
   use std::slice::from_ref;
   use std::sync::{Arc, LazyLock};
   use treetime_graph::node::Named;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
 
@@ -342,6 +343,7 @@ mod tests {
       > + crate::partition::traits::HasLogLh,
   {
     let mut actual = BTreeMap::new();
+    let names = node_names(graph);
     ancestral_reconstruction_marginal(
       graph,
       false,
@@ -349,8 +351,8 @@ mod tests {
       partitions,
       SampleMode::Argmax,
       &mut rand::thread_rng(),
-      |node, seq| {
-        actual.insert(node.name.clone().expect("all test nodes are named"), seq.to_string());
+      |key, seq| {
+        actual.insert(names[&key].clone().expect("all test nodes are named"), seq.to_string());
         Ok(())
       },
     )?;

@@ -22,6 +22,7 @@ use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
 use log::{info, warn};
 use treetime_graph::node::Named;
+use treetime_graph::value_maps::{node_descs, node_names};
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
@@ -95,6 +96,13 @@ pub fn run_ancestral_reconstruction(
     ignore_missing_alns: ancestral_args.ignore_missing_alns,
   };
 
+  // Snapshot names and descriptions before the graph moves into the pipeline, so the reconstructed
+  // FASTA writer looks up each node's label by key instead of reading it off the payload inside the
+  // reconstruction visitor. Ancestral never renames after parse, so these snapshots mirror exactly
+  // what the visitor would have read.
+  let names = node_names(&graph);
+  let descs = node_descs(&graph);
+
   let input = AncestralInput {
     graph,
     alphabet,
@@ -104,10 +112,10 @@ pub fn run_ancestral_reconstruction(
   let result = pipeline::run(
     &params,
     input,
-    |node, seq| {
+    |key, seq| {
       if let Some(ref mut writer) = output_fasta {
-        let name = node.name.as_deref().unwrap_or("");
-        let desc = &node.desc;
+        let name = names[&key].as_deref().unwrap_or("");
+        let desc = &descs[&key];
         writer.write(name, desc, seq)
       } else {
         Ok(())

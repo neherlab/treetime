@@ -11,7 +11,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::path::PathBuf;
-  use treetime_graph::node::Named;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::nwk_read_file;
 
@@ -97,6 +97,7 @@ mod tests {
         ignore_missing_alns: false,
       };
 
+      let names = node_names(&graph);
       let input = AncestralInput {
         graph,
         alphabet,
@@ -107,8 +108,8 @@ mod tests {
       crate::ancestral::pipeline::run(
         &params,
         input,
-        |node, seq| {
-          let name = node.name().map_or_else(String::new, |n| n.as_ref().to_owned());
+        |key, seq| {
+          let name = names[&key].clone().unwrap_or_default();
           captured.insert(name, seq.to_string());
           Ok(())
         },

@@ -28,7 +28,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
-use treetime_graph::node::{Described, GraphNodeKey, Named};
+use treetime_graph::node::GraphNodeKey;
+use treetime_graph::value_maps::{node_descs, node_names};
 use treetime_io::fasta::FastaWriter;
 use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
@@ -139,6 +140,11 @@ pub fn run_timetree_estimation(
         &timetree_branch_lengths(&output.graph, &output.clock_branch_lengths),
         &output.partitions,
       )?;
+      // Snapshot names and descriptions after the internal-node naming pass, so the reconstructed
+      // FASTA writer looks up each node's label by key instead of reading it off the payload inside
+      // the reconstruction visitor. The snapshots mirror exactly what the visitor would have read.
+      let names = node_names(&output.graph);
+      let descs = node_descs(&output.graph);
       let mut rng = get_random_number_generator(params.seed);
       ancestral_reconstruction_marginal(
         &output.graph,
@@ -147,10 +153,10 @@ pub fn run_timetree_estimation(
         &output.partitions,
         SampleMode::Argmax,
         &mut rng,
-        |node, seq| match writer.as_mut() {
+        |key, seq| match writer.as_mut() {
           Some(writer) => {
-            let name = node.name().map(|n| n.as_ref().to_owned()).unwrap_or_default();
-            writer.write(&name, node.desc(), seq)
+            let name = names[&key].clone().unwrap_or_default();
+            writer.write(&name, &descs[&key], seq)
           },
           None => Ok(()),
         },

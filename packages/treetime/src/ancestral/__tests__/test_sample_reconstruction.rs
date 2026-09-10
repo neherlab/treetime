@@ -69,6 +69,7 @@ mod tests {
     use rand::rngs::StdRng;
     use std::collections::BTreeMap;
     use std::sync::Arc;
+    use treetime_graph::value_maps::node_names;
     use treetime_io::fasta::read_many_fasta_str;
     use treetime_io::nwk::nwk_read_str;
 
@@ -106,8 +107,9 @@ mod tests {
 
       let mut rng = StdRng::seed_from_u64(seed);
       let mut out = BTreeMap::new();
-      ancestral_reconstruction_marginal(&graph, false, false, &partitions, mode, &mut rng, |node, seq| {
-        out.insert(node.name.clone().unwrap_or_default(), seq.to_string());
+      let names = node_names(&graph);
+      ancestral_reconstruction_marginal(&graph, false, false, &partitions, mode, &mut rng, |key, seq| {
+        out.insert(names[&key].clone().unwrap_or_default(), seq.to_string());
         Ok(())
       })?;
       Ok(out)
