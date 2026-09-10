@@ -140,6 +140,11 @@ pub struct TimetreeOutput {
   /// here rather than off the payload.
   #[serde(skip)]
   pub clock_state: ClockState,
+  /// Persistent per-node/per-edge date state carrying the committed node times and time distributions
+  /// as values instead of on the graph payload. The output gather reads each node's committed time
+  /// from here rather than off the payload.
+  #[serde(skip)]
+  pub timetree_state: TimetreeState,
 }
 
 pub fn run(
@@ -295,7 +300,7 @@ pub fn run(
   // The persistent date state and committed clock lengths the whole pipeline shares. The date passes
   // carry the branch-length distributions and backward messages in the state instead of on the graph
   // payloads, and each M-step damps against the previous clock lengths held in the map.
-  let mut timetree_state = TimetreeState::new(&input.graph);
+  let mut timetree_state = TimetreeState::seed_from_payloads(&input.graph);
   let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
 
   // Initial time tree
@@ -533,6 +538,7 @@ pub fn run(
     rate_susceptibility_dates,
     clock_branch_lengths,
     clock_state,
+    timetree_state,
   })
 }
 

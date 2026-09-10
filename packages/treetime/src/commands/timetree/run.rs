@@ -20,6 +20,7 @@ use crate::seq::div::compute_edge_mutation_counts;
 use crate::timetree::confidence::write_confidence_intervals_file;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
+use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
 use log::{debug, info, warn};
 use std::collections::BTreeMap;
@@ -185,6 +186,7 @@ pub fn run_timetree_estimation(
     rate_susceptibility_dates,
     clock_branch_lengths,
     clock_state,
+    timetree_state,
   } = output;
   let mut graph = graph.map_data(TimetreeGraphData::new(
     clock_model,
@@ -204,7 +206,13 @@ pub fn run_timetree_estimation(
     .resolve_topology_order(&graph, Some(input_leaf_order))?;
   topology_order.apply(&mut graph)?;
 
-  let (nodes, edges) = gather_timetree_outputs(&graph, &clock_state, &rate_susceptibility_dates, &clock_branch_lengths);
+  let (nodes, edges) = gather_timetree_outputs(
+    &graph,
+    &clock_state,
+    &timetree_state,
+    &rate_susceptibility_dates,
+    &clock_branch_lengths,
+  );
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
     match graph.data().confidence_intervals.as_ref() {
@@ -309,17 +317,19 @@ pub fn run_timetree_estimation(
 ///
 /// Runs after the pipeline and topology ordering, so it reads the final divergence, estimated time,
 /// exclusion flags, and per-edge branch lengths and relaxed-clock rates of the ordered node set. The
-/// pipeline passes still write these fields onto the graph payloads (the inference passes read the
-/// state there); this step surfaces them as a standalone value the output writers consume.
+/// value states carry the durable results as values; this step surfaces them as a standalone value
+/// the output writers consume.
 ///
 /// `rate_susceptibility_dates` carries the per-node date triples the pipeline returns as a value
 /// rather than on the payload; each node's triple is read from here. `clock_branch_lengths` likewise
 /// carries the committed clock branch length per edge as a value; each edge's clock length is read
 /// from here rather than off the payload. `clock_state` carries each node's divergence and outlier
-/// flag as values; both are read from here rather than off the payload.
+/// flag as values; both are read from here rather than off the payload. `timetree_state` carries each
+/// node's committed time as a value; the time is read from here rather than off the payload.
 fn gather_timetree_outputs(
   graph: &GraphTimetree<TimetreeGraphData>,
   clock_state: &ClockState,
+  timetree_state: &TimetreeState,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
   clock_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> (
@@ -338,7 +348,7 @@ fn gather_timetree_outputs(
         name: payload.base.name.clone(),
         desc: payload.base.desc.clone(),
         confidence: payload.base.confidence,
-        time: payload.time,
+        time: timetree_state.node(key).time,
         div: clock.div,
         is_outlier: clock.is_outlier,
         bad_branch: payload.bad_branch,
