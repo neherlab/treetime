@@ -22,6 +22,7 @@ mod tests {
   use crate::partition::traits::TransitionCounting;
   use crate::seq::alignment::get_common_length;
   use pretty_assertions::assert_eq;
+  use treetime_graph::value_maps::edge_branch_lengths;
 
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -137,7 +138,7 @@ mod tests {
     )?;
 
     let (graph, fitch) = setup_sparse("(leaf_a:0.1,leaf_c:0.1)root:0.0;", &aln)?;
-    let counts = get_mutation_counts_fitch(&graph, &fitch)?;
+    let counts = get_mutation_counts_fitch(&graph, &fitch, &edge_branch_lengths(&graph))?;
 
     // Sparse gives exact integer counts: one A->C substitution
     assert_eq!(1.0, counts.nij[[IDX_C, IDX_A]]);
@@ -177,8 +178,8 @@ mod tests {
     let (graph1, fitch1) = setup_sparse(&tree1, &aln)?;
     let (graph2, fitch2) = setup_sparse(&tree2, &aln)?;
 
-    let counts1 = get_mutation_counts_fitch(&graph1, &fitch1)?;
-    let counts2 = get_mutation_counts_fitch(&graph2, &fitch2)?;
+    let counts1 = get_mutation_counts_fitch(&graph1, &fitch1, &edge_branch_lengths(&graph1))?;
+    let counts2 = get_mutation_counts_fitch(&graph2, &fitch2, &edge_branch_lengths(&graph2))?;
 
     let ratio = bl2 / bl1;
     pretty_assert_ulps_eq!(counts2.Ti, &counts1.Ti * ratio, epsilon = 1e-7);
@@ -258,7 +259,7 @@ mod tests {
     let (graph_s, fitch_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = partition_d.read_arc().count_transitions(&graph_d)?;
-    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &edge_branch_lengths(&graph_s))?;
 
     // nij: dense fractional counts should approximate sparse integer counts.
     // Measured max nij_diff: 6.68e-2
@@ -359,7 +360,7 @@ mod tests {
     )?;
 
     let (graph, fitch) = setup_sparse("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;", &aln)?;
-    let counts = get_mutation_counts_fitch(&graph, &fitch)?;
+    let counts = get_mutation_counts_fitch(&graph, &fitch, &edge_branch_lengths(&graph))?;
 
     // Sparse root_state comes from Fitch composition counts.
     // All 8 positions should be A at root (3/4 leaves have A at pos 0).
@@ -398,7 +399,7 @@ mod tests {
 
     let tree_nwk = "((ref1:0.1,ref2:0.1)R12:0.05,(ref3:0.1,mut1:0.1)R3M:0.05)root:0.0;";
     let (graph, fitch) = setup_sparse(tree_nwk, &aln)?;
-    let counts = get_mutation_counts_fitch(&graph, &fitch)?;
+    let counts = get_mutation_counts_fitch(&graph, &fitch, &edge_branch_lengths(&graph))?;
 
     // Position 0: A->G on the mut1 branch. nij[G, A] += 1
     assert!(
@@ -500,7 +501,7 @@ mod tests {
 
     let tree_nwk = "((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;";
     let (graph, fitch) = setup_sparse(tree_nwk, &aln)?;
-    let counts = get_mutation_counts_fitch(&graph, &fitch)?;
+    let counts = get_mutation_counts_fitch(&graph, &fitch, &edge_branch_lengths(&graph))?;
 
     // All Ti values should be equal (uniform composition, no mutations)
     assert_eq!(counts.Ti[IDX_A], counts.Ti[IDX_C]);
@@ -539,7 +540,7 @@ mod tests {
     let (graph_s, fitch_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = partition_d.read_arc().count_transitions(&graph_d)?;
-    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &edge_branch_lengths(&graph_s))?;
 
     // Both should have their largest off-diagonal nij entry in the same cell
     let dense_max_cell = dense
@@ -616,7 +617,7 @@ mod tests {
     let (graph_s, fitch_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = partition_d.read_arc().count_transitions(&graph_d)?;
-    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &edge_branch_lengths(&graph_s))?;
 
     pretty_assert_array_diag_abs!(dense.nij, epsilon = 1e-15);
     pretty_assert_array_diag_abs!(sparse.nij, epsilon = 1e-15);
@@ -647,7 +648,7 @@ mod tests {
     let (graph_s, fitch_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = partition_d.read_arc().count_transitions(&graph_d)?;
-    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &edge_branch_lengths(&graph_s))?;
 
     pretty_assert_array_nonneg!(dense.nij);
     pretty_assert_array_nonneg!(sparse.nij);
@@ -678,7 +679,7 @@ mod tests {
     let (graph_s, fitch_s) = setup_sparse(tree_nwk, &aln)?;
 
     let dense = partition_d.read_arc().count_transitions(&graph_d)?;
-    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s)?;
+    let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &edge_branch_lengths(&graph_s))?;
 
     pretty_assert_array_nonneg!(dense.Ti);
     pretty_assert_array_nonneg!(sparse.Ti);

@@ -13,6 +13,7 @@ mod tests {
   use lazy_static::lazy_static;
   use ndarray::array;
   use pretty_assertions::assert_eq;
+  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
 
@@ -41,7 +42,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
 
-    let counts_actual = get_mutation_counts_fitch(&graph, &fitch)?;
+    let counts_actual = get_mutation_counts_fitch(&graph, &fitch, &edge_branch_lengths(&graph))?;
     assert_eq!(
       counts_actual.nij,
       array![[0., 0., 0., 0.], [2., 0., 0., 1.], [3., 2., 0., 0.], [0., 1., 1., 0.]]
@@ -77,7 +78,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
 
-    let counts = get_mutation_counts_fitch(&graph, &fitch)?;
+    let counts = get_mutation_counts_fitch(&graph, &fitch, &edge_branch_lengths(&graph))?;
     let actual = infer_gtr_impl(
       &counts,
       &InferGtrOptions {

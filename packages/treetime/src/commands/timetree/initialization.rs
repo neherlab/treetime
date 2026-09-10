@@ -17,6 +17,7 @@ use log::info;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use treetime_graph::node::Named;
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::dates_csv::{DatesMap, read_dates};
 use treetime_io::fasta::{FastaRecord, read_many_fasta};
 use treetime_io::nwk::nwk_read_file;
@@ -109,12 +110,14 @@ pub fn initialize_partitions(
       .ok_or_else(|| make_report!("sequence_length required when no alignment provided"))?
   };
 
+  let branch_lengths = edge_branch_lengths(graph);
+
   if !dense {
     let aln_data = aln.ok_or_else(|| make_report!("Alignment required for sparse marginal reconstruction"))?;
 
     let fitch = create_fitch_partition(graph, 0, alphabet, aln_data)?;
     let gtr = match model_name {
-      GtrModelName::Infer => infer_gtr_fitch(&fitch, graph)?,
+      GtrModelName::Infer => infer_gtr_fitch(&fitch, graph, &branch_lengths)?,
       _ => get_gtr_by_name(model_name)?,
     };
     log_gtr(&gtr, model_name);
@@ -125,7 +128,7 @@ pub fn initialize_partitions(
   } else if model_name == GtrModelName::Infer {
     let aln_data = aln.ok_or_else(|| make_report!("Alignment required for dense GTR inference"))?;
     let fitch = create_fitch_partition(graph, 0, alphabet, aln_data)?;
-    let gtr = infer_gtr_fitch(&fitch, graph)?;
+    let gtr = infer_gtr_fitch(&fitch, graph, &branch_lengths)?;
     log_gtr(&gtr, model_name);
     let partition = fitch.into_marginal_dense(gtr);
 

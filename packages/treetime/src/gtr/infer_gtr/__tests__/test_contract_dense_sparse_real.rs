@@ -41,6 +41,7 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::traits::TransitionCounting;
   use crate::seq::alignment::get_common_length;
+  use treetime_graph::value_maps::edge_branch_lengths;
 
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -146,7 +147,7 @@ mod tests {
     let sparse = {
       let graph: GraphAncestral = nwk_read_file(&tree_path)?;
       let fitch = create_fitch_partition(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &aln)?;
-      infer_gtr_fitch(&fitch, &graph)?
+      infer_gtr_fitch(&fitch, &graph, &edge_branch_lengths(&graph))?
     };
 
     Ok(DenseSparseGtr { dense, sparse })

@@ -10,6 +10,7 @@ use eyre::Report;
 use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::NodeAncestralOps;
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::fasta::FastaRecord;
 
 pub enum MarginalPartition {
@@ -39,11 +40,12 @@ where
   E: GraphEdge + HasBranchLength,
 {
   let dense = dense.unwrap_or_else(infer_dense);
+  let branch_lengths = edge_branch_lengths(graph);
 
   if !dense {
     let fitch = create_fitch_partition(graph, index, alphabet, sequences)?;
     let gtr = match model_name {
-      GtrModelName::Infer => infer_gtr_fitch(&fitch, graph)?,
+      GtrModelName::Infer => infer_gtr_fitch(&fitch, graph, &branch_lengths)?,
       _ => get_gtr_by_name(model_name)?,
     };
     log_gtr(&gtr, model_name);
@@ -54,7 +56,7 @@ where
     })
   } else if model_name == GtrModelName::Infer {
     let fitch = create_fitch_partition(graph, index, alphabet, sequences)?;
-    let gtr = infer_gtr_fitch(&fitch, graph)?;
+    let gtr = infer_gtr_fitch(&fitch, graph, &branch_lengths)?;
     log_gtr(&gtr, model_name);
     let partition = fitch.into_marginal_dense(gtr);
     Ok(PartitionCreated {
