@@ -314,7 +314,9 @@ mod tests {
               branch_length: payload.branch_length(),
               time_length: payload.time_length,
               clock_branch_length: payload.clock_branch_length,
-              gamma: payload.gamma,
+              // Strict-clock test graph: the relaxed-clock multiplier is its default 1.0, matching
+              // what production reads from the threaded edge state.
+              gamma: 1.0,
             },
           )
         })

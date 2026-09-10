@@ -189,11 +189,6 @@ pub struct EdgeTimetree {
   pub clock_branch_length: Option<f64>,
   pub branch_length_distribution: Option<Arc<Distribution<NegLog>>>,
   pub msg_to_parent: Option<Arc<Distribution<NegLog>>>,
-  /// Branch-specific rate multiplier for relaxed molecular clock.
-  /// Default 1.0 means branch evolves at the average clock rate.
-  /// Values > 1.0 indicate faster evolution, < 1.0 slower.
-  #[default = 1.0]
-  pub gamma: f64,
   #[serde(skip)]
   pub clock_to_parent: ClockSet,
   #[serde(skip)]
@@ -220,11 +215,7 @@ impl HasBranchLength for EdgeTimetree {
   }
 }
 
-impl ClockEdge for EdgeTimetree {
-  fn gamma(&self) -> f64 {
-    self.gamma
-  }
-}
+impl ClockEdge for EdgeTimetree {}
 
 impl ClockMessages<ClockSet> for EdgeTimetree {
   fn to_parent(&self) -> &ClockSet {
@@ -298,9 +289,10 @@ impl EdgeToNwk for EdgeTimetree {
 impl EdgeToGraphviz for EdgeTimetree {}
 
 impl TimetreeEdge for EdgeTimetree {
-  fn set_gamma(&mut self, gamma: f64) {
-    self.gamma = gamma;
-  }
+  // The relaxed-clock rate multiplier lives on the threaded date/clock state, not the payload, so
+  // this setter has nothing to store. It stays to satisfy the `TimetreeEdge` bound until the trait
+  // is dropped.
+  fn set_gamma(&mut self, _gamma: f64) {}
 
   fn clock_branch_length(&self) -> Option<f64> {
     self.clock_branch_length
