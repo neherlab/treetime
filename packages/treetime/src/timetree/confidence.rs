@@ -16,7 +16,8 @@ use std::f64::consts::SQRT_2;
 use std::io::Write;
 use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::node::{GraphNodeKey, Named};
+use treetime_graph::node::GraphNodeKey;
+use treetime_graph::value_maps::node_names;
 use treetime_io::csv::CsvStructWriter;
 use treetime_utils::io::file::create_file_or_stdout;
 
@@ -208,15 +209,15 @@ pub fn extract_confidence_intervals(
   state: &TimetreeState,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
 ) -> Vec<NodeConfidenceInterval> {
+  let names = node_names(graph);
   graph
     .get_nodes()
     .into_iter()
     .filter_map(|node_ref| {
       let node = node_ref.read_arc();
       let key = node.key();
-      let payload = node.payload().read_arc();
       let node_state = state.node(key);
-      let name = payload.name().map_or_else(String::new, |n| n.as_ref().to_owned());
+      let name = names[&key].clone().unwrap_or_default();
       let date = node_state.time?;
 
       // Source 1: mutation stochasticity from marginal posterior HPD region.

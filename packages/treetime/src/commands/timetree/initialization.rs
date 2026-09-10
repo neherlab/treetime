@@ -16,8 +16,7 @@ use eyre::{Report, WrapErr};
 use log::info;
 use parking_lot::RwLock;
 use std::sync::Arc;
-use treetime_graph::node::Named;
-use treetime_graph::value_maps::edge_branch_lengths;
+use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 use treetime_io::dates_csv::{DatesMap, read_dates};
 use treetime_io::fasta::{FastaRecord, read_many_fasta};
 use treetime_io::nwk::nwk_read_file;
@@ -38,17 +37,15 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
   } else {
     todo!("Tree inference from alignment not yet implemented")
   };
+  let names = node_names(&graph);
   let input_leaf_order = graph
     .get_leaves()
     .into_iter()
     .map(|leaf| {
-      let leaf = leaf.read_arc();
-      leaf
-        .payload()
-        .read_arc()
-        .name()
-        .map(|name| name.as_ref().to_owned())
-        .ok_or_else(|| make_report!("Leaf node {} has no name", leaf.key()))
+      let key = leaf.read_arc().key();
+      names[&key]
+        .clone()
+        .ok_or_else(|| make_report!("Leaf node {key} has no name"))
     })
     .collect::<Result<Vec<_>, _>>()?;
 

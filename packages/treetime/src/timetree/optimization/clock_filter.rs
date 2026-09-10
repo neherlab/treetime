@@ -6,7 +6,8 @@ use itertools::Itertools;
 use log::warn;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
-use treetime_graph::node::{GraphNodeKey, Named};
+use treetime_graph::node::GraphNodeKey;
+use treetime_graph::value_maps::node_names;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
 #[derive(Debug, Clone)]
@@ -29,6 +30,7 @@ pub fn collect_outliers(
   iqd: f64,
   given_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
 ) -> Vec<OutlierRecord> {
+  let names = node_names(graph);
   graph
     .get_leaves()
     .iter()
@@ -38,9 +40,7 @@ pub fn collect_outliers(
       if !state.is_outlier {
         return None;
       }
-      let payload_arc = node.payload();
-      let payload = payload_arc.read();
-      let name = payload.name().map(|n| n.as_ref().to_owned())?;
+      let name = names[&node.key()].clone()?;
       let given_date = given_dates.get(&node.key()).copied().flatten()?;
       let div = state.div;
       let apparent_date = clock_model.date(div);
