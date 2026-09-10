@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::node::{GraphNodeKey, Named};
+use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 #[derive(Clone, Debug, Serialize)]
 pub struct ConfidenceRow {
@@ -29,19 +29,19 @@ pub struct MugrationConfidenceOutput {
 }
 
 impl MugrationConfidenceOutput {
-  pub fn new(graph: &GraphAncestral, partition: &PartitionMarginalDiscrete) -> Self {
+  pub fn new(
+    graph: &GraphAncestral,
+    partition: &PartitionMarginalDiscrete,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+  ) -> Self {
     let states: Vec<String> = partition.states.iter().map(|s| s.to_owned()).collect();
 
     let rows: Vec<ConfidenceRow> = graph
       .get_nodes()
       .iter()
       .filter_map(|node| {
-        let node_guard = node.read_arc();
-        let node_key = node_guard.key();
-        let payload = node_guard.payload().read_arc();
-        let node_name = payload
-          .name()
-          .map_or_else(|| format!("node_{}", node_key.0), |n| n.as_ref().to_owned());
+        let node_key = node.read_arc().key();
+        let node_name = node_name_or_fallback(names, node_key);
 
         partition.get_confidence(node_key).map(|profile| ConfidenceRow {
           node: node_name,
@@ -164,10 +164,6 @@ impl std::ops::Deref for MugrationResult {
 
 impl MugrationResult {
   pub fn new(graph: GraphAncestral, partition: PartitionMarginalDiscrete, attribute: &str, log_lh: LogLh) -> Self {
-    let assignments = extract_trait_assignments(&graph, &partition);
-    let traits = MugrationTraitsOutput::new(attribute, assignments);
-    let confidence = MugrationConfidenceOutput::new(&graph, &partition);
-
     // Gather the per-node name/confidence and per-edge branch length off the tree into keyed value
     // maps the output writers consume. Trait assignments and entropy stay sourced from the discrete
     // partition; only the name, input-branch-support, and branch-length reads move off the payload.
@@ -187,6 +183,14 @@ impl MugrationResult {
         )
       })
       .collect();
+    // The trait and confidence tables key their rows by node name with a `node_{key}` fallback; feed
+    // them the gathered name map so they read the value rather than the payload.
+    let names: BTreeMap<GraphNodeKey, Option<String>> =
+      nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
+    let assignments = extract_trait_assignments(&graph, &partition, &names);
+    let traits = MugrationTraitsOutput::new(attribute, assignments);
+    let confidence = MugrationConfidenceOutput::new(&graph, &partition, &names);
+
     let edges: BTreeMap<GraphEdgeKey, EdgeOut> = graph
       .get_edges()
       .iter()
@@ -222,21 +226,25 @@ impl MugrationResult {
 fn extract_trait_assignments(
   graph: &GraphAncestral,
   partition: &PartitionMarginalDiscrete,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> IndexMap<String, String> {
   graph
     .get_nodes()
     .iter()
     .filter_map(|node| {
-      let node_guard = node.read_arc();
-      let node_key = node_guard.key();
-      let payload = node_guard.payload().read_arc();
-      let node_name = payload
-        .name()
-        .map_or_else(|| format!("node_{}", node_key.0), |n| n.as_ref().to_owned());
+      let node_key = node.read_arc().key();
+      let node_name = node_name_or_fallback(names, node_key);
 
       partition
         .get_reconstructed_trait(node_key)
         .map(|trait_value| (node_name, trait_value))
     })
     .collect()
+}
+
+/// Resolve a node's label from the threaded name map, falling back to `node_{key}` when unnamed.
+fn node_name_or_fallback(names: &BTreeMap<GraphNodeKey, Option<String>>, node_key: GraphNodeKey) -> String {
+  names[&node_key]
+    .clone()
+    .unwrap_or_else(|| format!("node_{}", node_key.0))
 }
