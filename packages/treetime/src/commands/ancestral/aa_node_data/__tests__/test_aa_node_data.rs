@@ -6,6 +6,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::value_maps::node_names;
   use treetime_utils::o;
 
   #[test]
@@ -137,7 +138,7 @@ mod tests {
     );
     let reference = Seq::try_from_str("AA").unwrap();
 
-    let actual = collect_aa_cds_node_data(&graph, &partition, "S", Some(&reference)).unwrap();
+    let actual = collect_aa_cds_node_data(&graph, &partition, "S", &node_names(&graph), Some(&reference)).unwrap();
 
     let expected = AaCdsNodeData {
       reference: o!("AA"),

@@ -14,7 +14,7 @@ use serde::Serialize;
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
-use treetime_graph::node::{GraphNodeKey, Named};
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::gff::{GffCdsFeature, read_gff3_cds_features_filtered};
 use treetime_primitives::{AsciiChar, Seq};
@@ -231,6 +231,7 @@ pub fn collect_aa_cds_node_data(
   graph: &GraphAncestral,
   partition: &dyn AugurNodeDataJsonAncestralPartition,
   cds: &str,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   reference_override: Option<&Seq>,
 ) -> Result<AaCdsNodeData, Report> {
   let root_key = graph.root_key()?;
@@ -250,10 +251,9 @@ pub fn collect_aa_cds_node_data(
   for node in graph.get_nodes() {
     let node_guard = node.read_arc();
     let node_key = node_guard.key();
-    let payload = node_guard.payload().read_arc();
-    let node_name = payload
-      .name()
-      .map_or_else(|| format!("node_{}", node_key.0), |n| n.as_ref().to_owned());
+    let node_name = names[&node_key]
+      .as_deref()
+      .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
 
     let mutations = if node_key == root_key {
       diff_sequences(&reference, &inferred_root, partition.ambiguous_char())?

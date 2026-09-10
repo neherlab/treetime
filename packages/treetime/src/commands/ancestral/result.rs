@@ -5,6 +5,7 @@ use crate::gtr::gtr::GTR;
 use crate::payload::ancestral::GraphAncestral;
 use serde::Serialize;
 use std::collections::BTreeMap;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 
@@ -35,6 +36,19 @@ impl AncestralGraphData {
   }
 }
 
+/// Per-node ancestral output as a value: the name and input branch support the output writers read.
+#[derive(Debug, Clone, Serialize)]
+pub struct AncestralNodeOut {
+  pub name: Option<String>,
+  pub confidence: Option<f64>,
+}
+
+/// Per-edge ancestral output as a value: the branch length the output writers read.
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct EdgeOut {
+  pub branch_length: Option<f64>,
+}
+
 /// Ancestral reconstruction result as a value.
 ///
 /// The durable per-node and per-edge outputs are reachable directly off the result: `seq` holds the
@@ -47,6 +61,10 @@ impl AncestralGraphData {
 pub struct AncestralResult {
   #[serde(skip)]
   pub graph: GraphAncestral<AncestralGraphData>,
+  #[serde(skip)]
+  pub nodes: BTreeMap<GraphNodeKey, AncestralNodeOut>,
+  #[serde(skip)]
+  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
   #[serde(skip)]
   pub seq: Option<AncestralPartition>,
   #[serde(skip)]

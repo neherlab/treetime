@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::pipeline::AncestralPartition;
   use crate::commands::ancestral::aa_node_data::AaNodeData;
-  use crate::commands::ancestral::result::AncestralGraphData;
+  use crate::commands::ancestral::result::{AncestralGraphData, AncestralNodeOut};
   use crate::commands::shared::tree_output::{
     ancestral_to_auspice, ancestral_to_mat, ancestral_to_phyloxml, clock_to_auspice, clock_to_mat, clock_to_phyloxml,
     format_number, group_mutations, mat_mutation, mugration_to_auspice, mugration_to_mat, mugration_to_phyloxml,
@@ -36,14 +36,16 @@ mod tests {
   fn test_tree_output_ancestral_models_preserve_semantics() -> Result<(), Report> {
     let graph = helpers::ancestral_graph(helpers::Mutations::NucleotideSubstitution)?;
 
-    let auspice = ancestral_to_auspice(&graph, "2026-07-19")?;
+    let nodes = helpers::ancestral_nodes(&graph);
+    let branch_lengths = helpers::ancestral_branch_lengths(&graph);
+    let auspice = ancestral_to_auspice(&graph, &nodes, &branch_lengths, "2026-07-19")?;
     let child = helpers::auspice_child(&auspice, "A");
     assert_eq!(Some("2026-07-19"), auspice.data.meta.updated.as_deref());
     assert_eq!(vec!["tree".to_owned()], auspice.data.meta.panels);
     assert_eq!(Some(0.5), child.node_attrs.div);
     assert_eq!(vec!["A1T".to_owned()], child.branch_attrs.mutations["nuc"]);
 
-    let phyloxml = ancestral_to_phyloxml(&graph)?;
+    let phyloxml = ancestral_to_phyloxml(&graph, &nodes, &branch_lengths)?;
     let child = helpers::phyloxml_child(&phyloxml, "A");
     assert_eq!(Some(0.5), child.branch_length_elem);
     assert_eq!(Some(0.9), child.confidence.first().map(|confidence| confidence.value));
@@ -82,7 +84,11 @@ mod tests {
   fn test_tree_output_phyloxml_encodes_aa_track_and_grouped_indel() -> Result<(), Report> {
     let graph = helpers::ancestral_graph(helpers::Mutations::IndelAndAminoAcid)?;
 
-    let phyloxml = ancestral_to_phyloxml(&graph)?;
+    let phyloxml = ancestral_to_phyloxml(
+      &graph,
+      &helpers::ancestral_nodes(&graph),
+      &helpers::ancestral_branch_lengths(&graph),
+    )?;
     let child = helpers::phyloxml_child(&phyloxml, "A");
     let properties = child
       .property
@@ -96,12 +102,22 @@ mod tests {
     // substitution-only augur node-data muts. A branch whose only nucleotide change is a
     // deletion therefore has no `nuc` entry (phyloxml above still encodes it as `nuc:del:2-3:CG`).
     let graph = helpers::ancestral_graph(helpers::Mutations::Indel)?;
-    let auspice = ancestral_to_auspice(&graph, "2026-07-19")?;
+    let auspice = ancestral_to_auspice(
+      &graph,
+      &helpers::ancestral_nodes(&graph),
+      &helpers::ancestral_branch_lengths(&graph),
+      "2026-07-19",
+    )?;
     let child = helpers::auspice_child(&auspice, "A");
     assert!(!child.branch_attrs.mutations.contains_key("nuc"));
 
     let graph = helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
-    let auspice = ancestral_to_auspice(&graph, "2026-07-19")?;
+    let auspice = ancestral_to_auspice(
+      &graph,
+      &helpers::ancestral_nodes(&graph),
+      &helpers::ancestral_branch_lengths(&graph),
+      "2026-07-19",
+    )?;
     let child = helpers::auspice_child(&auspice, "A");
     assert_eq!(vec!["A2T".to_owned()], child.branch_attrs.mutations["S"]);
     let annotations = auspice
@@ -214,8 +230,14 @@ mod tests {
       TreeWriteKind::MatJson => mat_path.clone(),
     };
 
-    let error =
-      write_ancestral_tree_outputs(&graph, &outputs, &CommentProviders::new()).expect_err("MAT conversion must fail");
+    let error = write_ancestral_tree_outputs(
+      &graph,
+      &helpers::ancestral_nodes(&graph),
+      &helpers::ancestral_branch_lengths(&graph),
+      &outputs,
+      &CommentProviders::new(),
+    )
+    .expect_err("MAT conversion must fail");
     assert!(error.to_string().contains("insertion or deletion"));
     assert!(nwk_path.is_file());
     assert!(!mat_path.exists());
@@ -230,7 +252,13 @@ mod tests {
     let path = dir.path().join("graph.json");
     let outputs = btreemap! { TreeWriteKind::GraphJson => path.clone() };
 
-    write_ancestral_tree_outputs(&graph, &outputs, &CommentProviders::new())?;
+    write_ancestral_tree_outputs(
+      &graph,
+      &helpers::ancestral_nodes(&graph),
+      &helpers::ancestral_branch_lengths(&graph),
+      &outputs,
+      &CommentProviders::new(),
+    )?;
     let actual: Value = json_read_file(&path)?;
     assert_eq!(Value::String("jc69".to_owned()), actual["data"]["model_name"]);
     assert_eq!(Value::Array(vec![Value::Bool(false); 3]), actual["data"]["mask"]);
@@ -288,8 +316,13 @@ mod tests {
   #[test]
   fn test_tree_output_auspice_rejects_invalid_amino_acid_track_name() -> Result<(), Report> {
     let graph = helpers::ancestral_graph(helpers::Mutations::IndelAndAminoAcid)?;
-    let error = ancestral_to_auspice(&graph, "2026-07-19")
-      .expect_err("Auspice must reject an amino-acid track outside its schema grammar");
+    let error = ancestral_to_auspice(
+      &graph,
+      &helpers::ancestral_nodes(&graph),
+      &helpers::ancestral_branch_lengths(&graph),
+      "2026-07-19",
+    )
+    .expect_err("Auspice must reject an amino-acid track outside its schema grammar");
     assert!(error.to_string().contains("cannot represent amino-acid mutation track"));
     Ok(())
   }
@@ -517,13 +550,48 @@ mod tests {
       Ok(graph.map_data(data))
     }
 
+    pub fn ancestral_nodes<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphNodeKey, AncestralNodeOut> {
+      graph
+        .get_nodes()
+        .iter()
+        .map(|node| {
+          let node = node.read_arc();
+          let payload = node.payload().read_arc();
+          (
+            node.key(),
+            AncestralNodeOut {
+              name: payload.name.clone(),
+              confidence: payload.confidence,
+            },
+          )
+        })
+        .collect()
+    }
+
+    pub fn ancestral_branch_lengths<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+      graph
+        .get_edges()
+        .iter()
+        .map(|edge| {
+          let edge = edge.read_arc();
+          (edge.key(), edge.payload().read_arc().branch_length)
+        })
+        .collect()
+    }
+
     pub fn ancestral_graph_without_partition() -> Result<GraphAncestral<AncestralGraphData>, Report> {
       let graph: GraphAncestral = nwk_read_str(MODEL_TREE)?;
       Ok(graph.map_data(AncestralGraphData::new(None, None, GtrModelName::JC69, vec![], None)))
     }
 
     pub fn all_auspice_documents() -> Result<Vec<Value>, Report> {
-      let ancestral = ancestral_to_auspice(&ancestral_graph(Mutations::NucleotideSubstitution)?, "2026-07-19")?;
+      let ancestral_graph = ancestral_graph(Mutations::NucleotideSubstitution)?;
+      let ancestral = ancestral_to_auspice(
+        &ancestral_graph,
+        &ancestral_nodes(&ancestral_graph),
+        &ancestral_branch_lengths(&ancestral_graph),
+        "2026-07-19",
+      )?;
       let optimize = optimize_to_auspice(&optimize_graph()?, "2026-07-19")?;
       let prune = prune_to_auspice(&prune_graph()?, "2026-07-19")?;
       let clock_graph = clock_graph()?;
@@ -539,8 +607,13 @@ mod tests {
     }
 
     pub fn all_phyloxml_documents() -> Result<Vec<Phyloxml>, Report> {
+      let ancestral_graph = ancestral_graph_without_partition()?;
       Ok(vec![
-        ancestral_to_phyloxml(&ancestral_graph_without_partition()?)?,
+        ancestral_to_phyloxml(
+          &ancestral_graph,
+          &ancestral_nodes(&ancestral_graph),
+          &ancestral_branch_lengths(&ancestral_graph),
+        )?,
         optimize_to_phyloxml(&optimize_graph()?)?,
         prune_to_phyloxml(&prune_graph()?)?,
         {

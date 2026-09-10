@@ -9,7 +9,7 @@ use itertools::Itertools;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::path::Path;
-use treetime_graph::node::Named;
+use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use util_augur_node_data_json::{
   AugurNodeDataJsonAncestral, AugurNodeDataJsonAncestralMeta, AugurNodeDataJsonAncestralNode,
@@ -27,15 +27,17 @@ pub fn write_augur_node_data_json<D: Send + Sync>(
   graph: &GraphAncestral<D>,
   partition: &dyn AugurNodeDataJsonAncestralPartition,
   mask: &[bool],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   path: &Path,
 ) -> Result<(), Report> {
-  write_augur_node_data_json_with_aa(graph, partition, mask, None, path)
+  write_augur_node_data_json_with_aa(graph, partition, mask, names, None, path)
 }
 
 pub fn build_augur_node_data_json<D: Send + Sync>(
   graph: &GraphAncestral<D>,
   partition: &dyn AugurNodeDataJsonAncestralPartition,
   mask: &[bool],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   aa_node_data: Option<&AaNodeData>,
 ) -> Result<AugurNodeDataJsonAncestral, Report> {
   let alignment_length = partition.sequence_length();
@@ -62,10 +64,9 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
   for node in graph.get_nodes() {
     let node_guard = node.read_arc();
     let node_key = node_guard.key();
-    let payload = node_guard.payload().read_arc();
-    let node_name = payload
-      .name()
-      .map_or_else(|| format!("node_{}", node_key.0), |n| n.as_ref().to_owned());
+    let node_name = names[&node_key]
+      .as_deref()
+      .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
 
     // Root has no parent edge, so it carries no mutations (augur emits []).
     let muts = match graph.node_parent(node_key)? {
@@ -131,10 +132,11 @@ pub fn write_augur_node_data_json_with_aa<D: Send + Sync>(
   graph: &GraphAncestral<D>,
   partition: &dyn AugurNodeDataJsonAncestralPartition,
   mask: &[bool],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   aa_node_data: Option<&AaNodeData>,
   path: &Path,
 ) -> Result<(), Report> {
-  let data = build_augur_node_data_json(graph, partition, mask, aa_node_data)?;
+  let data = build_augur_node_data_json(graph, partition, mask, names, aa_node_data)?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
 }

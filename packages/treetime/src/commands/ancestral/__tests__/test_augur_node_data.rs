@@ -200,6 +200,7 @@ mod tests {
     use std::collections::BTreeMap;
     use tempfile::tempdir;
     use treetime_graph::node::{GraphNodeKey, Named};
+    use treetime_graph::value_maps::node_names;
     use treetime_io::nwk::nwk_read_str;
     use treetime_primitives::{AsciiChar, Seq};
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
@@ -280,7 +281,7 @@ mod tests {
     }
 
     pub fn write_json(graph: &GraphAncestral, partition: &PartitionFitch, mask: &[bool]) -> String {
-      let data = build_augur_node_data_json(graph, partition, mask, None).unwrap();
+      let data = build_augur_node_data_json(graph, partition, mask, &node_names(graph), None).unwrap();
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
@@ -386,7 +387,14 @@ mod tests {
         }),
       );
 
-      build_augur_node_data_json(&graph, &partition, &[false, false, false, false], Some(&aa_node_data)).unwrap()
+      build_augur_node_data_json(
+        &graph,
+        &partition,
+        &[false, false, false, false],
+        &node_names(&graph),
+        Some(&aa_node_data),
+      )
+      .unwrap()
     }
 
     pub fn expected_json_with_aa() -> AugurNodeDataJsonAncestral {

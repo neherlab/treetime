@@ -8,7 +8,7 @@ use crate::commands::ancestral::aa_node_data::{
 };
 use crate::commands::ancestral::args::TreetimeAncestralArgs;
 use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with_aa;
-use crate::commands::ancestral::result::{AncestralGraphData, AncestralResult};
+use crate::commands::ancestral::result::{AncestralGraphData, AncestralNodeOut, AncestralResult, EdgeOut};
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_ancestral_tree_outputs;
@@ -21,7 +21,9 @@ use crate::progress::ProgressSink;
 use crate::seq::gap_fill::apply_gap_fill;
 use eyre::Report;
 use log::{info, warn};
-use treetime_graph::node::Named;
+use std::collections::BTreeMap;
+use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::value_maps::{node_descs, node_names};
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::nwk::CommentProviders;
@@ -171,6 +173,39 @@ pub fn run_ancestral_reconstruction(
   topology_order.apply(&mut graph)?;
   progress.report("Writing output", 0.9, "");
 
+  // Gather the per-node name/confidence and per-edge branch length off the ordered tree into keyed
+  // value maps the output writers consume. The writers still read sequences and model metadata from
+  // the graph data slot; these maps carry the name, input-branch-support, and branch-length reads
+  // that this step moves off the payload.
+  let nodes: BTreeMap<GraphNodeKey, AncestralNodeOut> = graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let node = node.read_arc();
+      let payload = node.payload().read_arc();
+      (
+        node.key(),
+        AncestralNodeOut {
+          name: payload.name.clone(),
+          confidence: payload.confidence,
+        },
+      )
+    })
+    .collect();
+  let edges: BTreeMap<GraphEdgeKey, EdgeOut> = graph
+    .get_edges()
+    .iter()
+    .map(|edge| {
+      let edge = edge.read_arc();
+      let branch_length = edge.payload().read_arc().branch_length;
+      (edge.key(), EdgeOut { branch_length })
+    })
+    .collect();
+  let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> =
+    edges.iter().map(|(key, edge)| (*key, edge.branch_length)).collect();
+  let node_names: BTreeMap<GraphNodeKey, Option<String>> =
+    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
+
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     match &graph.data().partition {
       Some(AncestralPartition::Fitch(partition)) => {
@@ -179,6 +214,7 @@ pub fn run_ancestral_reconstruction(
           &graph,
           &*guard,
           &graph.data().mask,
+          &node_names,
           graph.data().aa_node_data.as_ref(),
           path,
         )?;
@@ -189,6 +225,7 @@ pub fn run_ancestral_reconstruction(
           &graph,
           &*guard,
           &graph.data().mask,
+          &node_names,
           graph.data().aa_node_data.as_ref(),
           path,
         )?;
@@ -199,6 +236,7 @@ pub fn run_ancestral_reconstruction(
           &graph,
           &*guard,
           &graph.data().mask,
+          &node_names,
           graph.data().aa_node_data.as_ref(),
           path,
         )?;
@@ -222,12 +260,14 @@ pub fn run_ancestral_reconstruction(
   }
 
   if !resolved.tree_outputs.is_empty() {
-    write_tree_for_partition(&graph, &resolved)?;
+    write_tree_for_partition(&graph, &nodes, &branch_lengths, &resolved)?;
   }
 
   progress.report("Done", 1.0, "");
   Ok(AncestralResult {
     graph,
+    nodes,
+    edges,
     seq: partition,
     node_sequences,
     gtr,
@@ -239,6 +279,8 @@ pub fn run_ancestral_reconstruction(
 
 fn write_tree_for_partition(
   graph: &GraphAncestral<AncestralGraphData>,
+  nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   resolved: &crate::commands::shared::output::ResolvedOutputs,
 ) -> Result<(), Report> {
   match &graph.data().partition {
@@ -246,16 +288,16 @@ fn write_tree_for_partition(
       let guard = partition.read_arc();
       let provider = MutationCommentProvider::new(&*guard, graph);
       let providers = CommentProviders::new().with(&provider);
-      write_ancestral_tree_outputs(graph, &resolved.tree_outputs, &providers)?;
+      write_ancestral_tree_outputs(graph, nodes, branch_lengths, &resolved.tree_outputs, &providers)?;
     },
     Some(AncestralPartition::Dense(partition)) => {
       let guard = partition.read_arc();
       let provider = MutationCommentProvider::new(&*guard, graph);
       let providers = CommentProviders::new().with(&provider);
-      write_ancestral_tree_outputs(graph, &resolved.tree_outputs, &providers)?;
+      write_ancestral_tree_outputs(graph, nodes, branch_lengths, &resolved.tree_outputs, &providers)?;
     },
     Some(AncestralPartition::Fitch(_)) | None => {
-      write_ancestral_tree_outputs(graph, &resolved.tree_outputs, &CommentProviders::new())?;
+      write_ancestral_tree_outputs(graph, nodes, branch_lengths, &resolved.tree_outputs, &CommentProviders::new())?;
     },
   }
   Ok(())
@@ -311,6 +353,7 @@ fn run_aa_reconstructions(
   // independent of how many partitions are resident.
   let mut rng = get_random_number_generator(params.seed);
   let mut aa_node_data = AaNodeData::default();
+  let names = node_names(graph);
   for (index, cds) in cdses.iter().enumerate() {
     let path = translation_path(translations, cds);
     let mut sequences = read_many_fasta(&[&path], &read_alphabet)?;
@@ -363,12 +406,13 @@ fn run_aa_reconstructions(
       graph,
       &*guard,
       &reconstructed.name,
+      &names,
       reconstructed.reference_override.as_ref(),
     )?;
     aa_node_data.add_cds(&reconstructed.name, cds_data, reconstructed.annotation.clone());
 
     if let Some(aa_seq_template) = aa_fasta_template {
-      write_aa_partition_sequences(graph, &*guard, &reconstructed.name, aa_seq_template)?;
+      write_aa_partition_sequences(graph, &*guard, &names, &reconstructed.name, aa_seq_template)?;
     }
   }
 
@@ -378,6 +422,7 @@ fn run_aa_reconstructions(
 fn write_aa_partition_sequences(
   graph: &GraphAncestral,
   partition: &dyn AugurNodeDataJsonAncestralPartition,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   name: &str,
   template: &str,
 ) -> Result<(), Report> {
@@ -386,12 +431,11 @@ fn write_aa_partition_sequences(
   let mut writer = FastaWriter::new(file);
 
   for node in graph.get_nodes() {
-    let node_guard = node.read_arc();
-    let payload = node_guard.payload().read_arc();
-    let node_name = payload
-      .name()
-      .map_or_else(|| format!("node_{}", node_guard.key().0), |n| n.as_ref().to_owned());
-    let seq = partition.node_sequence(node_guard.key());
+    let node_key = node.read_arc().key();
+    let node_name = names[&node_key]
+      .as_deref()
+      .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
+    let seq = partition.node_sequence(node_key);
     writer.write(&node_name, &None, &seq)?;
   }
 
