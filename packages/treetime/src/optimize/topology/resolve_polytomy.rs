@@ -11,7 +11,7 @@ use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use log::debug;
 use parking_lot::RwLock;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
@@ -36,6 +36,7 @@ pub fn resolve_polytomies(
   sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense: &[Arc<RwLock<PartitionMarginalDense>>],
   topology_ops: TopologyOps,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
   // Sparse-only, and skipped entirely when both moves this routine performs are disabled.
   if sparse.is_empty() || !(topology_ops.merge_siblings || topology_ops.flip_parent_child) {
@@ -47,7 +48,7 @@ pub fn resolve_polytomies(
     let polytomy_keys = find_polytomy_nodes(graph);
     let mut round_changed = 0;
     for node_key in polytomy_keys {
-      if resolve_one(graph, sparse, dense, node_key, topology_ops)? {
+      if resolve_one(graph, sparse, dense, node_key, topology_ops, branch_lengths)? {
         round_changed += 1;
       }
     }
@@ -86,6 +87,7 @@ fn resolve_one(
   dense: &[Arc<RwLock<PartitionMarginalDense>>],
   node_key: GraphNodeKey,
   topology_ops: TopologyOps,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<bool, Report> {
   let preexisting: BTreeSet<GraphNodeKey> = graph.get_nodes().iter().map(|node| node.read_arc().key()).collect();
 
@@ -93,9 +95,10 @@ fn resolve_one(
   loop {
     // Each move is gated independently; retirement stays unconditional because it only ever
     // collapses helper edges the enabled moves just created, so it is a no-op when neither ran.
-    let merged = topology_ops.merge_siblings && merge_single_polytomy(graph, sparse, node_key)? > 0;
-    let hoisted = topology_ops.flip_parent_child && try_hoist_reverting_child(graph, sparse, dense, node_key)?;
-    let retired = retire_created_helpers(graph, sparse, dense, &preexisting)?;
+    let merged = topology_ops.merge_siblings && merge_single_polytomy(graph, sparse, node_key, branch_lengths)? > 0;
+    let hoisted =
+      topology_ops.flip_parent_child && try_hoist_reverting_child(graph, sparse, dense, node_key, branch_lengths)?;
+    let retired = retire_created_helpers(graph, sparse, dense, &preexisting, branch_lengths)?;
 
     if !(merged || hoisted || retired) {
       break;
@@ -120,6 +123,7 @@ fn try_hoist_reverting_child(
   sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense: &[Arc<RwLock<PartitionMarginalDense>>],
   node_key: GraphNodeKey,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<bool, Report> {
   let Some(parent_edge_key) = single_inbound_edge(graph, node_key) else {
     return Ok(false);
@@ -141,7 +145,7 @@ fn try_hoist_reverting_child(
   if let Some((root_key, sibling_edge_key)) = root_and_sibling {
     slide_bifurcating_root_for_child(sparse, root_key, parent_edge_key, sibling_edge_key, child_edge_key)?;
   }
-  hoist_reverting_child(graph, sparse, dense, parent_edge_key, child_edge_key)?;
+  hoist_reverting_child(graph, sparse, dense, parent_edge_key, child_edge_key, branch_lengths)?;
   Ok(true)
 }
 
@@ -222,6 +226,7 @@ fn retire_created_helpers(
   sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense: &[Arc<RwLock<PartitionMarginalDense>>],
   preexisting: &BTreeSet<GraphNodeKey>,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<bool, Report> {
   let mut retired = false;
   loop {
@@ -248,7 +253,7 @@ fn retire_created_helpers(
 
     match candidate {
       Some(edge_key) => {
-        collapse_edge(graph, sparse, dense, edge_key)?;
+        collapse_edge(graph, sparse, dense, edge_key, branch_lengths)?;
         retired = true;
       },
       None => break,

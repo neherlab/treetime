@@ -115,7 +115,8 @@ mod tests {
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], TopologyOps::default())?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], TopologyOps::default(), &mut branch_lengths)?;
     assert!(!changed);
     assert_eq!(graph.get_nodes().len(), 4);
     Ok(())
@@ -173,7 +174,8 @@ mod tests {
       edge.write_arc().payload().write_arc().set_branch_length(Some(0.0));
     }
 
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key], TopologyOps::default())?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key], TopologyOps::default(), &mut branch_lengths)?;
     assert!(changed);
 
     // I should be gone
@@ -247,8 +249,8 @@ mod tests {
       let mut branch_lengths = edge_branch_lengths(&graph);
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
+      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths)?;
       commit_branch_lengths(&graph, &branch_lengths);
-      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default())?;
 
       lh_prev = total_lh;
     }
@@ -321,8 +323,8 @@ mod tests {
       let mut branch_lengths = edge_branch_lengths(&graph);
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
+      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths)?;
       commit_branch_lengths(&graph, &branch_lengths);
-      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default())?;
 
       lh_prev = total_lh;
     }
@@ -372,7 +374,8 @@ mod tests {
     let initial_node_count = graph.get_nodes().len();
 
     // A and B share mutation A->T at pos 0 (root MAP = A due to 3-vs-2 majority)
-    let merged = merge_shared_mutation_branches(&mut graph, &sparse_partitions)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    let merged = merge_shared_mutation_branches(&mut graph, &sparse_partitions, &mut branch_lengths)?;
     assert!(merged > 0, "A and B should share mutation A->T, triggering merge");
     graph.build()?;
 
@@ -430,7 +433,8 @@ mod tests {
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
     // Empty zero-optimal list: the old loop was a no-op here. The hoist must still fire.
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], TopologyOps::default())?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], TopologyOps::default(), &mut branch_lengths)?;
     assert!(changed, "reversion polytomy must be resolved even without a collapse");
 
     let p = sparse[0].read_arc();
@@ -468,12 +472,14 @@ mod tests {
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
+    let mut branch_lengths = edge_branch_lengths(&graph);
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &sparse,
       &dense,
       &[ri1_key, i1i2_key],
       TopologyOps::default(),
+      &mut branch_lengths,
     )?;
     assert!(changed);
 
@@ -542,8 +548,8 @@ mod tests {
       let mut branch_lengths = edge_branch_lengths(&graph);
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
+      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths)?;
       commit_branch_lengths(&graph, &branch_lengths);
-      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default())?;
 
       lh_prev = dense_lh;
     }
@@ -611,7 +617,8 @@ mod tests {
       edge.write_arc().payload().write_arc().set_branch_length(Some(0.0));
     }
 
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key], TopologyOps::default())?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key], TopologyOps::default(), &mut branch_lengths)?;
     assert!(changed);
 
     let mut names: Vec<String> = graph
@@ -676,7 +683,8 @@ mod tests {
       merge_siblings: false,
       ..TopologyOps::default()
     };
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key], ops)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key], ops, &mut branch_lengths)?;
     assert!(changed, "collapse still fires even with merge disabled");
 
     // I collapsed away.
@@ -730,7 +738,8 @@ mod tests {
       flip_parent_child: false,
       ..TopologyOps::default()
     };
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], ops)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], ops, &mut branch_lengths)?;
     assert!(changed, "merge still groups the reverting siblings");
 
     let p = sparse[0].read_arc();
@@ -789,7 +798,8 @@ mod tests {
       merge_siblings: false,
       flip_parent_child: false,
     };
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], ops)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], ops, &mut branch_lengths)?;
     assert!(!changed, "no topology step runs when all are disabled");
     assert_eq!(graph.get_nodes().len(), node_count_before);
 

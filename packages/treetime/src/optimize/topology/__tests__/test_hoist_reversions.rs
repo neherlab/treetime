@@ -13,8 +13,9 @@ mod tests {
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
-  use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::nwk::nwk_read_str;
 
   use helpers::{Hoisted, c, edge_indels, edge_subs, make_partition, no_dense, sub};
@@ -46,7 +47,8 @@ mod tests {
     );
     let sparse = vec![partition];
 
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, "V", "A");
     let p = sparse[0].read_arc();
@@ -78,7 +80,8 @@ mod tests {
     );
     let sparse = vec![partition];
 
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, "V", "A");
     let p = sparse[0].read_arc();
@@ -107,7 +110,8 @@ mod tests {
     let sparse = vec![partition];
 
     let before = helpers::total_subs(&graph, &sparse[0].read_arc());
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
     let after = helpers::total_subs(&graph, &sparse[0].read_arc());
 
     assert_eq!(before, 2);
@@ -144,10 +148,11 @@ mod tests {
     );
     let sparse = vec![partition];
 
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, "V", "A");
-    let bl = |ek: GraphEdgeKey| helpers::branch_length(&graph, ek);
+    let bl = |ek: GraphEdgeKey| branch_lengths[&ek].unwrap_or(0.0);
     let root_to_v = bl(ru) + bl(h.un) + bl(h.nv);
     let root_to_a = bl(ru) + bl(h.un) + bl(h.nc);
 
@@ -184,7 +189,8 @@ mod tests {
     );
     let sparse = vec![p0, p1];
 
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, "V", "A");
     let g0 = sparse[0].read_arc();
@@ -225,7 +231,8 @@ mod tests {
     }
     let sparse = vec![partition];
 
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, "V", "A");
     let p = sparse[0].read_arc();
@@ -261,7 +268,8 @@ mod tests {
     }
     let sparse = vec![partition];
 
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, "V", "A");
     let p = sparse[0].read_arc();
@@ -301,7 +309,8 @@ mod tests {
     }
     let sparse = vec![partition];
 
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, "V", "A");
     let p = sparse[0].read_arc();
@@ -375,7 +384,8 @@ mod tests {
     let before = helpers::total_subs(&graph, &sparse[0].read_arc());
     slide_bifurcating_root_for_child(&sparse, root_key, root_v, root_s, v_c1)?;
     let after_slide = helpers::total_subs(&graph, &sparse[0].read_arc());
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), root_v, v_c1)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    hoist_reverting_child(&mut graph, &sparse, &no_dense(), root_v, v_c1, &mut branch_lengths)?;
     let after_hoist = helpers::total_subs(&graph, &sparse[0].read_arc());
 
     assert_eq!(before, 2);
@@ -450,12 +460,6 @@ mod tests {
         .sum()
     }
 
-    pub fn branch_length(graph: &GraphAncestral, edge_key: GraphEdgeKey) -> f64 {
-      graph
-        .get_edge(edge_key)
-        .and_then(|e| e.read_arc().payload().read_arc().branch_length())
-        .unwrap()
-    }
 
     pub fn make_partition(
       graph: &GraphAncestral,

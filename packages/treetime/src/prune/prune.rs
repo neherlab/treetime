@@ -1,3 +1,4 @@
+use crate::optimize::iteration::commit_branch_lengths;
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -20,7 +21,10 @@ pub fn prune_nodes(
   node_names: &BTreeSet<String>,
 ) -> Result<(), Report> {
   let names = snapshot_node_names(graph);
-  let branch_lengths = edge_branch_lengths(graph);
+  // A payload-mirror branch-length map passed to the collapse producers, which read and
+  // update it instead of the edge payload. Committed back to the payload at the end so the
+  // command's downstream readers see the pruned lengths (prune stays bit-identical).
+  let mut branch_lengths = edge_branch_lengths(graph);
   prune_internal_nodes(
     graph,
     partitions,
@@ -28,11 +32,12 @@ pub fn prune_nodes(
     prune_empty,
     node_names,
     &names,
-    &branch_lengths,
+    &mut branch_lengths,
   )?;
   graph.build()?;
-  prune_leaves(graph, partitions, node_names, &names)?;
+  prune_leaves(graph, partitions, node_names, &names, &mut branch_lengths)?;
   graph.build()?;
+  commit_branch_lengths(graph, &branch_lengths);
   Ok(())
 }
 
@@ -59,6 +64,7 @@ pub fn collapse_sparse_edges_from_leaf_recursive(
   graph: &mut GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   edge_key: GraphEdgeKey,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   let mut current_edge_key = edge_key;
   let no_dense: &[Arc<RwLock<PartitionMarginalDense>>] = &[];
@@ -66,7 +72,7 @@ pub fn collapse_sparse_edges_from_leaf_recursive(
   loop {
     let parent_node_key = graph.get_source_node_key(current_edge_key)?;
 
-    collapse_edge(graph, partitions, no_dense, current_edge_key)?;
+    collapse_edge(graph, partitions, no_dense, current_edge_key, branch_lengths)?;
 
     let next_edge_key = if should_collapse_parent(graph, parent_node_key) {
       graph.parent_inbound_edge(parent_node_key)?
@@ -90,7 +96,7 @@ fn prune_internal_nodes(
   prune_empty: bool,
   node_names: &BTreeSet<String>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   #[allow(clippy::needless_collect)]
   let edges_to_collapse: Vec<_> = graph
@@ -124,7 +130,7 @@ fn prune_internal_nodes(
   let no_dense: &[Arc<RwLock<PartitionMarginalDense>>] = &[];
   edges_to_collapse.into_iter().try_for_each(|edge_key| {
     debug!("Collapsing internal edge: {edge_key}");
-    collapse_edge(graph, partitions, no_dense, edge_key)
+    collapse_edge(graph, partitions, no_dense, edge_key, branch_lengths)
   })
 }
 
@@ -133,6 +139,7 @@ fn prune_leaves(
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   node_names: &BTreeSet<String>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   #[allow(clippy::needless_collect)]
   let edges_to_collapse = graph
@@ -156,7 +163,7 @@ fn prune_leaves(
 
   edges_to_collapse.into_iter().try_for_each(|edge_key| {
     debug!("Collapsing leaf edge: {edge_key}");
-    collapse_sparse_edges_from_leaf_recursive(graph, partitions, edge_key)
+    collapse_sparse_edges_from_leaf_recursive(graph, partitions, edge_key, branch_lengths)
   })
 }
 

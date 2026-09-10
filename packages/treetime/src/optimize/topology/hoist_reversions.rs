@@ -10,7 +10,7 @@ use parking_lot::RwLock;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::AsciiChar;
 
@@ -212,6 +212,7 @@ pub(crate) fn hoist_reverting_child(
   dense: &[Arc<RwLock<PartitionMarginalDense>>],
   parent_edge_key: GraphEdgeKey,
   child_edge_key: GraphEdgeKey,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<GraphNodeKey, Report> {
   let u_key = graph.get_source_node_key(parent_edge_key)?;
 
@@ -255,8 +256,8 @@ pub(crate) fn hoist_reverting_child(
 
   // Distance-preserving branch-length split, proportional to substitution count. The move
   // only fires when R is non-empty, so `total_parent_subs >= 1` and the ratio is well defined.
-  let bl_uv = edge_branch_length(graph, parent_edge_key);
-  let bl_vc = edge_branch_length(graph, child_edge_key);
+  let bl_uv = branch_lengths[&parent_edge_key].unwrap_or(0.0);
+  let bl_vc = branch_lengths[&child_edge_key].unwrap_or(0.0);
   let bl_un = if total_parent_subs > 0 {
     bl_uv * (total_hoisted_subs as f64) / (total_parent_subs as f64)
   } else {
@@ -266,18 +267,15 @@ pub(crate) fn hoist_reverting_child(
   let bl_nc = bl_nv + bl_vc;
 
   // Graph surgery: add N, connect u -> N, then relocate the two existing edges under N.
+  // Branch lengths live in the map: the fresh u -> N edge gets a new entry, and the two
+  // relocated edges (which keep their keys) get their split lengths.
   let n_key = graph.add_node(NodeAncestral::default());
-  let un_edge_key = graph.add_edge(
-    u_key,
-    n_key,
-    EdgeAncestral {
-      branch_length: Some(bl_un),
-    },
-  )?;
+  let un_edge_key = graph.add_edge(u_key, n_key, EdgeAncestral::default())?;
+  branch_lengths.insert(un_edge_key, Some(bl_un));
   graph.reparent_edge(parent_edge_key, n_key)?; // e_p becomes N -> v
   graph.reparent_edge(child_edge_key, n_key)?; // e_c becomes N -> c
-  set_edge_branch_length(graph, parent_edge_key, bl_nv);
-  set_edge_branch_length(graph, child_edge_key, bl_nc);
+  branch_lengths.insert(parent_edge_key, Some(bl_nv));
+  branch_lengths.insert(child_edge_key, Some(bl_nc));
 
   // Sparse partition bookkeeping. The relocated edges keep their keys, so only their content
   // is rewritten; the u -> N edge and node N are inserted fresh.
@@ -481,19 +479,3 @@ struct EdgeSplit {
   indels: IndelSplit,
 }
 
-fn edge_branch_length(graph: &GraphAncestral, edge_key: GraphEdgeKey) -> f64 {
-  graph
-    .get_edge(edge_key)
-    .and_then(|edge| edge.read_arc().payload().read_arc().branch_length())
-    .unwrap_or(0.0)
-}
-
-fn set_edge_branch_length(graph: &GraphAncestral, edge_key: GraphEdgeKey, branch_length: f64) {
-  if let Some(edge) = graph.get_edge(edge_key) {
-    edge
-      .write_arc()
-      .payload()
-      .write_arc()
-      .set_branch_length(Some(branch_length));
-  }
-}

@@ -422,7 +422,8 @@ mod tests {
       find_edge_key(&graph, "internal2", "A").ok_or_else(|| make_report!("Edge internal2->A not found"))?;
 
     // Recursively prune leaf A and its childless ancestors
-    collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge, &mut branch_lengths)?;
 
     // The result should be: root -> B, root -> C (internal1 and internal2 should be removed)
     assert_eq!(graph.get_nodes().len(), 3); // root, B, C
@@ -454,7 +455,8 @@ mod tests {
       find_edge_key(&graph, "internal1", "A").ok_or_else(|| make_report!("Edge internal1->A not found"))?;
 
     // Recursively prune leaf A; internal1 becomes unary and should be collapsed upward
-    collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge, &mut branch_lengths)?;
 
     // The result should be: root -> B (internal1 collapsed)
     assert_eq!(graph.get_nodes().len(), 2); // root, B
@@ -479,7 +481,8 @@ mod tests {
 
     // Collapse the path starting at leaf A; should stop at root
     let a_inbound_edge = find_edge_key(&graph, "root", "A").unwrap();
-    collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge, &mut branch_lengths)?;
 
     // Only root should remain
     assert_eq!(graph.get_nodes().len(), 1);
@@ -516,7 +519,8 @@ mod tests {
 
     // Use a non-existent edge key to ensure we surface an error
     let bogus = GraphEdgeKey(usize::MAX);
-    let res = collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, bogus);
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    let res = collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, bogus, &mut branch_lengths);
     assert!(res.is_err());
 
     Ok(())
@@ -1317,7 +1321,8 @@ mod tests {
     );
 
     // Step 2: Merge shared mutations on the now-exposed polytomy
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
     graph.build()?;
 
     // Group merge: A, B, C all share A0T and form one group.

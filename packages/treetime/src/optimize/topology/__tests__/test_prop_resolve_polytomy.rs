@@ -9,7 +9,7 @@ mod tests {
   use proptest::prelude::*;
   use std::collections::BTreeSet;
   use std::sync::Arc;
-  use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::value_maps::edge_branch_lengths;
 
   proptest! {
     /// The routine never increases the total mutation count, and when it changes anything
@@ -26,7 +26,8 @@ mod tests {
       let (mut graph, partition, before) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
       let sparse = vec![partition];
 
-      let changed = resolve_polytomies(&mut graph, &sparse, &helpers::no_dense(), TopologyOps::default()).unwrap();
+      let mut branch_lengths = edge_branch_lengths(&graph);
+      let changed = resolve_polytomies(&mut graph, &sparse, &helpers::no_dense(), TopologyOps::default(), &mut branch_lengths).unwrap();
       let after = helpers::total_subs(&graph, &sparse[0].read_arc());
 
       prop_assert!(after <= before, "mutation count increased: before={before} after={after}");
@@ -49,14 +50,13 @@ mod tests {
       let leaves_before = helpers::leaf_names(&graph);
       let sparse = vec![partition];
 
-      resolve_polytomies(&mut graph, &sparse, &helpers::no_dense(), TopologyOps::default()).unwrap();
+      let mut branch_lengths = edge_branch_lengths(&graph);
+      resolve_polytomies(&mut graph, &sparse, &helpers::no_dense(), TopologyOps::default(), &mut branch_lengths).unwrap();
 
       prop_assert_eq!(helpers::leaf_names(&graph), leaves_before);
 
-      for edge in graph.get_edges() {
-        if let Some(bl) = edge.read_arc().payload().read_arc().branch_length() {
-          prop_assert!(bl >= 0.0, "negative branch length {bl}");
-        }
+      for bl in branch_lengths.values().flatten() {
+        prop_assert!(*bl >= 0.0, "negative branch length {bl}");
       }
 
       let mut roots = 0;
@@ -88,7 +88,8 @@ mod tests {
         helpers::build_bifurcating_case(g, a, &own_counts);
       let sparse = vec![partition];
 
-      let changed = resolve_polytomies(&mut graph, &sparse, &helpers::no_dense(), TopologyOps::default()).unwrap();
+      let mut branch_lengths = edge_branch_lengths(&graph);
+      let changed = resolve_polytomies(&mut graph, &sparse, &helpers::no_dense(), TopologyOps::default(), &mut branch_lengths).unwrap();
       let after = helpers::total_subs(&graph, &sparse[0].read_arc());
 
       prop_assert_eq!(after, expected_after, "did not reach the bipartition cost");

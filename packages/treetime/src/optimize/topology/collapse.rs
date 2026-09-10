@@ -3,8 +3,9 @@ use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use parking_lot::RwLock;
+use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::GraphEdgeKey;
 
 /// Collapse a single edge, updating graph topology and partition state.
 ///
@@ -36,19 +37,20 @@ pub fn collapse_edge(
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   edge_key: GraphEdgeKey,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   let target_node_key = graph.get_target_node_key(edge_key)?;
 
-  let (_, removed_edge, new_edges) = graph.collapse_edge(edge_key)?;
-  let removed_edge = removed_edge.payload().read_arc();
+  let removed_bl = branch_lengths[&edge_key];
+  let (_, _removed_edge, new_edges) = graph.collapse_edge(edge_key)?;
 
   for new_edge in &new_edges {
     let new_edge_key = new_edge.read_arc().key();
-    let mut new_edge_payload = new_edge.write_arc().payload().write_arc();
 
-    // Sum branch lengths: net edge length = collapsed-edge length + child-edge length
-    if let (Some(bl1), Some(bl2)) = (removed_edge.branch_length(), new_edge_payload.branch_length()) {
-      new_edge_payload.set_branch_length(Some(bl1 + bl2));
+    // Sum branch lengths: net edge length = collapsed-edge length + child-edge length.
+    // Both must be present for a sum; a missing weight (`None`) on either side is preserved.
+    if let (Some(bl1), Some(bl2)) = (removed_bl, branch_lengths[&new_edge_key]) {
+      branch_lengths.insert(new_edge_key, Some(bl1 + bl2));
     }
 
     // Compose substitutions and merge indels on each sparse partition.
@@ -77,6 +79,9 @@ pub fn collapse_edge(
     partition.data.nodes.remove(&target_node_key);
     partition.data.edges.remove(&edge_key);
   }
+
+  // The collapsed edge no longer exists; drop its stale entry from the branch-length map.
+  branch_lengths.remove(&edge_key);
 
   Ok(())
 }

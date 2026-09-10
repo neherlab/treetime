@@ -31,13 +31,14 @@ use treetime_utils::iterator::difference::iterator_difference;
 pub fn merge_shared_mutation_branches(
   graph: &mut GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
   let mut total_merged = 0;
 
   let polytomy_keys = find_polytomy_nodes(graph);
 
   for node_key in polytomy_keys {
-    let merged = merge_single_polytomy(graph, partitions, node_key)?;
+    let merged = merge_single_polytomy(graph, partitions, node_key, branch_lengths)?;
     total_merged += merged;
   }
 
@@ -65,6 +66,7 @@ pub(crate) fn merge_single_polytomy(
   graph: &mut GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   node_key: GraphNodeKey,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
   let mut nodes_created = 0;
 
@@ -91,7 +93,7 @@ pub(crate) fn merge_single_polytomy(
         group.edges.len(),
         group.total_shared,
       );
-      merge_sibling_group(graph, partitions, node_key, &group)?;
+      merge_sibling_group(graph, partitions, node_key, &group, branch_lengths)?;
       nodes_created += 1;
     }
   }
@@ -273,6 +275,7 @@ fn merge_sibling_group(
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   parent_key: GraphNodeKey,
   group: &MergeGroup,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   let child_keys: Vec<GraphNodeKey> = group
     .edges
@@ -332,31 +335,21 @@ fn merge_sibling_group(
 
   for &ek in &group.edges {
     graph.remove_edge(ek)?;
+    branch_lengths.remove(&ek);
   }
 
   let new_node_key = graph.add_node(NodeAncestral::default());
 
-  let new_parent_edge_key = graph.add_edge(
-    parent_key,
-    new_node_key,
-    EdgeAncestral {
-      branch_length: Some(new_edge_bl),
-    },
-  )?;
+  // New edges carry their length in the branch-length map, not the payload.
+  let new_parent_edge_key = graph.add_edge(parent_key, new_node_key, EdgeAncestral::default())?;
+  branch_lengths.insert(new_parent_edge_key, Some(new_edge_bl));
 
-  let new_child_edge_keys: Vec<GraphEdgeKey> = child_keys
-    .iter()
-    .zip(child_bls.iter())
-    .map(|(&ck, &bl)| {
-      graph.add_edge(
-        new_node_key,
-        ck,
-        EdgeAncestral {
-          branch_length: Some(bl),
-        },
-      )
-    })
-    .collect::<Result<Vec<_>, _>>()?;
+  let mut new_child_edge_keys: Vec<GraphEdgeKey> = Vec::with_capacity(child_keys.len());
+  for (&ck, &bl) in child_keys.iter().zip(child_bls.iter()) {
+    let new_ek = graph.add_edge(new_node_key, ck, EdgeAncestral::default())?;
+    branch_lengths.insert(new_ek, Some(bl));
+    new_child_edge_keys.push(new_ek);
+  }
 
   for (pi, partition_arc) in partitions.iter().enumerate() {
     let mut partition = partition_arc.write_arc();

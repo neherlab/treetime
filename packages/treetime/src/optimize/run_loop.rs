@@ -82,9 +82,9 @@ pub fn run_optimize_loop(
 ) -> Result<OptimizeLoopResult, Report> {
   // The loop's source of truth for branch lengths, keyed by edge id, mirroring the edge payload
   // field type (`Option<f64>`) so a missing weight stays `None` end to end. Seeded from the tree
-  // and refreshed from it after every iteration's graph-native optimizer, damping, and topology
-  // cleanup. The marginal reconstruction reads the derived per-edge length (see
-  // [`marginal_branch_lengths`]).
+  // once, then updated in place by the per-edge optimizer, damping, and topology cleanup
+  // (topology producers insert new-edge keys and drop removed ones). The marginal reconstruction
+  // reads the derived per-edge length (see [`marginal_branch_lengths`]).
   let mut branch_lengths = edge_branch_lengths(graph);
 
   let indel_rate = if no_indels {
@@ -164,10 +164,9 @@ pub fn run_optimize_loop(
       break;
     }
 
-    // The per-edge optimizer, damping, and topology cleanup mutate the graph edges in place.
-    // The graph and `branch_lengths` are equal here (the map was collected from the tree and
-    // refreshed from it at the end of every iteration), so these steps run on the current
-    // lengths without a separate materialization.
+    // The per-edge optimizer, damping, and topology cleanup all read and update the
+    // branch-length map in place; the map is the loop's source of truth and no longer round-trips
+    // through the edge payload.
     let old_branch_lengths = branch_lengths.clone();
     run_optimize_mixed_inner(
       graph,
@@ -185,9 +184,6 @@ pub fn run_optimize_loop(
     };
 
     apply_damping(&mut branch_lengths, &old_branch_lengths, damping, i);
-    // Transitional: the optimizer and damping run on the branch-length map. Materialize it onto the
-    // payload so the still-graph-native topology cleanup reads the damped lengths.
-    commit_branch_lengths(graph, &branch_lengths);
 
     let topology_changed = prune_and_merge_in_loop(
       graph,
@@ -195,14 +191,12 @@ pub fn run_optimize_loop(
       dense_partitions,
       &zero_optimal_edges,
       topology_ops,
+      &mut branch_lengths,
     )?;
     if topology_changed {
       best_lh = LogLh::IMPOSSIBLE;
       best_branch_lengths = None;
     }
-
-    // Refresh the source-of-truth map from the tree the graph-native steps just updated.
-    branch_lengths = edge_branch_lengths(graph);
 
     lh_prev_prev = lh_prev;
     lh_prev = iteration_lh.total_lh;
@@ -397,6 +391,7 @@ pub fn prune_and_merge_in_loop(
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   zero_optimal_edges: &[GraphEdgeKey],
   topology_ops: TopologyOps,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<bool, Report> {
   let mut topology_changed = false;
 
@@ -405,8 +400,8 @@ pub fn prune_and_merge_in_loop(
     // as zero-optimal. Damping is a convergence aid for continuous values; it should
     // not prevent collapsing degenerate edges.
     for &edge_key in zero_optimal_edges {
-      if let Some(edge) = graph.get_edge(edge_key) {
-        edge.write_arc().payload().write_arc().set_branch_length(Some(0.0));
+      if branch_lengths.contains_key(&edge_key) {
+        branch_lengths.insert(edge_key, Some(0.0));
       }
     }
 
@@ -417,7 +412,7 @@ pub fn prune_and_merge_in_loop(
       if graph.get_edge(edge_key).is_none() {
         continue;
       }
-      collapse_edge(graph, sparse_partitions, dense_partitions, edge_key)?;
+      collapse_edge(graph, sparse_partitions, dense_partitions, edge_key, branch_lengths)?;
       collapsed += 1;
     }
 
@@ -427,7 +422,7 @@ pub fn prune_and_merge_in_loop(
     }
   }
 
-  if resolve_polytomies(graph, sparse_partitions, dense_partitions, topology_ops)? > 0 {
+  if resolve_polytomies(graph, sparse_partitions, dense_partitions, topology_ops, branch_lengths)? > 0 {
     topology_changed = true;
   }
 

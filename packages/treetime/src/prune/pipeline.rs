@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
 use crate::gtr::gtr::GTR;
+use crate::optimize::iteration::commit_branch_lengths;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -12,6 +13,7 @@ use serde::Serialize;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::fasta::FastaRecord;
 
 pub struct PruneParams {
@@ -76,7 +78,11 @@ pub fn run(params: &PruneParams, mut input: PruneInput) -> Result<PruneOutput, R
   )?;
 
   if params.merge_shared_mutations {
-    merge_shared_mutation_branches(&mut input.graph, &partitions)?;
+    // The merge producer updates a branch-length map instead of the payload; commit it back so
+    // the command's downstream readers see the merged lengths.
+    let mut branch_lengths = edge_branch_lengths(&input.graph);
+    merge_shared_mutation_branches(&mut input.graph, &partitions, &mut branch_lengths)?;
+    commit_branch_lengths(&input.graph, &branch_lengths);
     input.graph.build()?;
     assign_node_names(&input.graph)?;
   }
