@@ -27,9 +27,9 @@ use log::{debug, info, warn};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime_graph::assign_node_names::assign_node_names;
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::{node_descs, node_names};
+use treetime_graph::value_maps::{edge_branch_lengths, node_descs, node_names};
 use treetime_io::fasta::FastaWriter;
 use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
@@ -108,6 +108,16 @@ pub fn run_timetree_estimation(
   // v0 rather than leaking an empty label or a key-derived placeholder.
   assign_node_names(&output.graph)?;
 
+  // Post-mutation re-snapshot. The pipeline rerooted the tree and resolved polytomies inside the
+  // refinement loop, and the `assign_node_names` above labels the fresh root; capture the node-name
+  // and per-edge branch-length maps from the final graph here. Every downstream reader -- the
+  // reconstructed FASTA writer, the gather, and the tree/augur output writers -- reads each node's
+  // name and each edge's branch length from these maps instead of the payload. The later
+  // `marginal_update` and reconstruction touch neither names nor branch lengths, and topology
+  // ordering only permutes keys, so the maps still describe the final tree at every later point.
+  let names = node_names(&output.graph);
+  let branch_lengths_opt = edge_branch_lengths(&output.graph);
+
   // Reconstructed ancestral-sequence FASTA: the v1 equivalent of v0's `ancestral_sequences.fasta`.
   // The timetree pipeline computes marginal posteriors for branch-length optimization but never
   // materializes the flag-aware per-node sequences, so this reuses the same reconstruction the
@@ -140,10 +150,9 @@ pub fn run_timetree_estimation(
         &timetree_branch_lengths(&output.graph, &output.clock_branch_lengths),
         &output.partitions,
       )?;
-      // Snapshot names and descriptions after the internal-node naming pass, so the reconstructed
-      // FASTA writer looks up each node's label by key instead of reading it off the payload inside
-      // the reconstruction visitor. The snapshots mirror exactly what the visitor would have read.
-      let names = node_names(&output.graph);
+      // Descriptions snapshot for the reconstructed FASTA writer, alongside the `names` map captured
+      // after the internal-node naming pass, so the writer looks up each node's label and
+      // description by key instead of reading them off the payload inside the reconstruction visitor.
       let descs = node_descs(&output.graph);
       let mut rng = get_random_number_generator(params.seed);
       ancestral_reconstruction_marginal(
@@ -219,6 +228,8 @@ pub fn run_timetree_estimation(
     &timetree_state,
     &rate_susceptibility_dates,
     &clock_branch_lengths,
+    &names,
+    &branch_lengths_opt,
   );
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
@@ -341,13 +352,18 @@ pub fn run_timetree_estimation(
 /// carries the committed clock branch length per edge as a value; each edge's clock length is read
 /// from here rather than off the payload. `clock_state` carries each node's divergence and outlier
 /// flag as values; both are read from here rather than off the payload. `timetree_state` carries each
-/// node's committed time as a value; the time is read from here rather than off the payload.
+/// node's committed time as a value; the time is read from here rather than off the payload. `names`
+/// and `branch_lengths` are the post-mutation node-name and per-edge branch-length maps captured
+/// after the final naming pass; each node's name and each edge's branch length is read from them
+/// rather than off the payload.
 fn gather_timetree_outputs(
   graph: &GraphTimetree<TimetreeGraphData>,
   clock_state: &ClockState,
   timetree_state: &TimetreeState,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
   clock_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> (
   BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
@@ -361,7 +377,7 @@ fn gather_timetree_outputs(
       let payload = node.payload().read_arc();
       let clock = clock_state.node(key);
       let out = TimetreeNodeOut {
-        name: payload.base.name.clone(),
+        name: names[&key].clone(),
         desc: payload.base.desc.clone(),
         confidence: payload.base.confidence,
         time: timetree_state.node(key).time,
@@ -378,12 +394,10 @@ fn gather_timetree_outputs(
     .get_edges()
     .iter()
     .map(|edge| {
-      let edge = edge.read_arc();
-      let key = edge.key();
-      let payload = edge.payload().read_arc();
+      let key = edge.read_arc().key();
       let edge_state = timetree_state.edge(key);
       let out = TimetreeEdgeOut {
-        branch_length: payload.branch_length(),
+        branch_length: branch_lengths[&key],
         time_length: edge_state.time_length,
         clock_branch_length: clock_branch_lengths.get(&key).copied(),
         gamma: edge_state.gamma,
