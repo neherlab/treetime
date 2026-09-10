@@ -70,6 +70,7 @@ impl Refinement<'_> {
       self.clock_model.clock_rate(),
       CLOCK_BRANCH_LENGTH_DAMPING,
       self.clock_branch_lengths,
+      self.state,
     );
 
     let current_states = capture_ancestral_states(self.graph, self.partitions);
@@ -157,6 +158,7 @@ impl Refinement<'_> {
       self.clock_model.clock_rate(),
       1.0,
       self.clock_branch_lengths,
+      self.state,
     );
 
     Ok(TopologyOutcome::Changed { resolved_nodes })

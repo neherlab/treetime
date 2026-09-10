@@ -367,7 +367,13 @@ pub fn run(
 
   // Seed the clock-constrained lengths the loop's first marginal reconstruction propagates along.
   // Undamped: nothing has been committed yet, so there is nothing to blend with.
-  commit_clock_branch_lengths(&input.graph, clock_model.clock_rate(), 1.0, &mut clock_branch_lengths);
+  commit_clock_branch_lengths(
+    &input.graph,
+    clock_model.clock_rate(),
+    1.0,
+    &mut clock_branch_lengths,
+    &timetree_state,
+  );
 
   progress.check_cancelled()?;
   progress.report("Optimization", 0.3, "");
@@ -520,7 +526,13 @@ pub fn run(
 
     // Undamped: this reconstruction reports the final tree, so it runs on the lengths these
     // final times imply rather than on a blend with the loop's last round.
-    commit_clock_branch_lengths(&input.graph, clock_model.clock_rate(), 1.0, &mut clock_branch_lengths);
+    commit_clock_branch_lengths(
+      &input.graph,
+      clock_model.clock_rate(),
+      1.0,
+      &mut clock_branch_lengths,
+      &timetree_state,
+    );
 
     if !partitions.is_empty() {
       marginal_update(

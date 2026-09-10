@@ -127,16 +127,13 @@ pub fn commit_clock_branch_lengths<N, E, D>(
   clock_rate: f64,
   damping: f64,
   clock_branch_lengths: &mut BTreeMap<GraphEdgeKey, f64>,
+  state: &TimetreeState,
 ) where
   N: GraphNode + TimetreeNode,
   E: GraphEdge + TimetreeEdge,
   D: Sync + Send,
 {
-  let node_time = |key| {
-    graph
-      .get_node(key)
-      .and_then(|node| node.read_arc().payload().read_arc().time())
-  };
+  let node_time = |key| state.nodes.get(&key).and_then(|node| node.time);
 
   // The committed value blends against the previous one held in the routed map, so the fold builds
   // the new values in parallel first (each reading its own previous value from the shared map) and
