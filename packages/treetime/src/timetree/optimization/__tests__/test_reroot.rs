@@ -18,6 +18,7 @@ mod tests {
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::reroot::reroot_tree;
+  use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
@@ -103,9 +104,11 @@ mod tests {
     let initial_node_count = graph.get_nodes().len();
 
     // Should complete without error - edge split and trivial root removal are now always enabled
+    let timetree_state = TimetreeState::seed_from_payloads(&graph);
     let clock_model = reroot_tree(
       &mut graph,
       &mut clock_state,
+      &timetree_state,
       &partitions,
       &clock_params,
       None,
@@ -504,9 +507,11 @@ mod tests {
     marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     // First reroot call (simulating keep_root=false flow)
+    let timetree_state_1 = TimetreeState::seed_from_payloads(&graph);
     let clock_model_1 = reroot_tree(
       &mut graph,
       &mut clock_state,
+      &timetree_state_1,
       &partitions,
       &clock_params,
       None,
@@ -526,9 +531,11 @@ mod tests {
     let r_squared_1 = clock_model_1.r_val().map(|r| r * r);
 
     // Second reroot call (simulating refinement iteration)
+    let timetree_state_2 = TimetreeState::seed_from_payloads(&graph);
     let clock_model_2 = reroot_tree(
       &mut graph,
       &mut clock_state,
+      &timetree_state_2,
       &partitions,
       &clock_params,
       Some(clock_model_1.clock_rate()),

@@ -178,11 +178,19 @@ pub fn run(
     load_date_constraints(dates, &input.graph).wrap_err("Failed to load date constraints")?;
   }
 
+  // The persistent date state the whole pipeline shares, created right after the date constraints are
+  // loaded so it is the single home of the date inputs. Every clock call reads the node dates back from
+  // it through `likely_times()`: before any date pass runs the time distribution equals the date
+  // constraint, so those dates match the input constraints. The date passes later refine the
+  // distributions and carry the branch-length distributions and backward messages here in place of the
+  // graph payloads.
+  let mut timetree_state = TimetreeState::seed_from_payloads(&input.graph);
+
   // The persistent clock state shared across the whole pipeline. The node divergence and outlier flag
   // live here as values rather than on the graph payloads; `initialize_node_divergences` fills the
   // divergence, the clock filter marks outliers into it, and every later clock call reads both back.
-  // `time` stays transitional on the payload, re-read at each clock call; the clock set is recomputed
-  // by every backward regression, so it is never seeded from the payload.
+  // The node dates come from the date state, and the clock set is recomputed by every backward
+  // regression, so neither is seeded from the payload.
   let mut clock_state = ClockState::new(&input.graph);
   initialize_node_divergences(&input.graph, &mut clock_state)?;
 
@@ -195,10 +203,10 @@ pub fn run(
     force_positive_rate: !params.allow_negative_rate,
     ..RerootParams::default()
   };
-  // Re-read the payload-resident clock inputs into the state while keeping the value-resident
+  // Re-read the node dates from the date state into the clock state while keeping the value-resident
   // divergence and outlier flag. The estimate's clock outputs are not read by timetree's own
   // downstream, so no repopulation is needed after this call.
-  clock_state.reseed_transitional_from_payloads(&input.graph);
+  clock_state.reseed_transitional_from_times(&input.graph, &timetree_state.likely_times(), &BTreeMap::new());
   let mut clock_model = estimate_clock_model_with_reroot_policy(
     &mut input.graph,
     &mut clock_state,
@@ -240,6 +248,7 @@ pub fn run(
     clock_model = reroot_tree(
       &mut input.graph,
       &mut clock_state,
+      &timetree_state,
       &partitions,
       &ClockParams::default(),
       params.clock_rate,
@@ -251,11 +260,11 @@ pub fn run(
   }
 
   if params.clock_filter > 0.0 {
-    // Re-read the payload-resident clock inputs while preserving the value-resident divergence and
+    // Re-read the node dates from the date state while preserving the value-resident divergence and
     // outlier flag, then run the filter on the state: it recomputes the divergence and marks outliers
     // into the value. Timetree's own downstream (outlier bad-branch propagation, confidence intervals,
     // tree writers) reads the divergence and outlier flag from the threaded state.
-    clock_state.reseed_transitional_from_payloads(&input.graph);
+    clock_state.reseed_transitional_from_times(&input.graph, &timetree_state.likely_times(), &BTreeMap::new());
     let result = clock_filter_inplace(&input.graph, &mut clock_state, &clock_model, params.clock_filter)?;
     report_bad_branches(&input.graph, &clock_state, &clock_model, result.iqd);
     apply_outlier_bad_branches(&input.graph, &clock_state)?;
@@ -287,6 +296,7 @@ pub fn run(
     clock_model = reroot_tree(
       &mut input.graph,
       &mut clock_state,
+      &timetree_state,
       &partitions,
       reroot_clock_params,
       params.clock_rate,
@@ -297,10 +307,8 @@ pub fn run(
     .wrap_err("Failed to reroot tree (post-ancestral)")?;
   }
 
-  // The persistent date state and committed clock lengths the whole pipeline shares. The date passes
-  // carry the branch-length distributions and backward messages in the state instead of on the graph
-  // payloads, and each M-step damps against the previous clock lengths held in the map.
-  let mut timetree_state = TimetreeState::seed_from_payloads(&input.graph);
+  // The committed clock lengths the whole pipeline shares: each M-step damps against the previous
+  // clock lengths held in the map.
   let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
 
   // Initial time tree

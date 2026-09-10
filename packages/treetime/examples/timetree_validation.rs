@@ -25,9 +25,7 @@ use treetime::timetree::inference::backward_pass::propagate_distributions_backwa
 use treetime::timetree::inference::forward_pass::propagate_distributions_forward;
 use treetime::timetree::inference::runner::{GRID_POINTS, run_timetree};
 use treetime::timetree::timetree_state::TimetreeState;
-use treetime::timetree::utils::{
-  create_poisson_branch_distributions, extract_node_times, initialize_node_divergences,
-};
+use treetime::timetree::utils::{create_poisson_branch_distributions, extract_node_times, initialize_node_divergences};
 use treetime_io::dates_csv::read_dates;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nwk::nwk_read_str;

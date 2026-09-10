@@ -16,9 +16,7 @@ mod tests {
   use crate::partition::traits::PartitionOptimizeOps;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
-  use crate::timetree::utils::{
-    extract_node_times, initialize_node_divergences,
-  };
+  use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
 
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use eyre::Report;

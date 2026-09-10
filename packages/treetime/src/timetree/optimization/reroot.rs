@@ -6,8 +6,10 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, Reroot
 use crate::clock::reroot::RerootParams;
 use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::PartitionRerootOps;
+use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
 use log::info;
+use std::collections::BTreeMap;
 use treetime_graph::reroot::RerootChanges;
 
 /// Reroot tree for optimal temporal signal and update partition state.
@@ -17,6 +19,7 @@ use treetime_graph::reroot::RerootChanges;
 pub fn reroot_tree(
   graph: &mut GraphTimetree,
   clock_state: &mut ClockState,
+  timetree_state: &TimetreeState,
   partitions: &[PartitionTimetreeRef],
   clock_params: &ClockParams,
   clock_rate: Option<f64>,
@@ -35,11 +38,11 @@ pub fn reroot_tree(
     reroot_params.split_edge, reroot_params.remove_trivial_root
   );
 
-  // Perform clock-based rerooting on the threaded clock state. Re-read the payload-resident clock
-  // inputs (date, clock-set seed) while preserving the value-resident divergence and outlier flag, so
-  // the regression excludes the leaves the clock filter marked. The reroot mutates the state's node
-  // and edge maps in place to match the new topology.
-  clock_state.reseed_transitional_from_payloads(graph);
+  // Perform clock-based rerooting on the threaded clock state. Re-read the node dates from the date
+  // state while preserving the value-resident divergence and outlier flag, so the regression excludes
+  // the leaves the clock filter marked. The reroot mutates the state's node and edge maps in place to
+  // match the new topology.
+  clock_state.reseed_transitional_from_times(graph, &timetree_state.likely_times(), &BTreeMap::new());
   let clock_reroot_result = estimate_clock_model_with_reroot_policy(
     graph,
     clock_state,
