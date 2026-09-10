@@ -177,18 +177,56 @@ mod tests {
 
   mod helpers {
     use crate::commands::optimize::augur_node_data::build_augur_node_data_json;
+    use crate::commands::optimize::result::OptimizeNodeOut;
     use crate::payload::ancestral::GraphAncestral;
     use std::collections::BTreeMap;
     use std::path::{Path, PathBuf};
     use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read_str;
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
+    pub fn node_outputs<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
+      graph
+        .get_nodes()
+        .iter()
+        .map(|node| {
+          let node = node.read_arc();
+          let payload = node.payload().read_arc();
+          (
+            node.key(),
+            OptimizeNodeOut {
+              name: payload.name.clone(),
+              confidence: payload.confidence,
+            },
+          )
+        })
+        .collect()
+    }
+
+    pub fn branch_lengths<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+      graph
+        .get_edges()
+        .iter()
+        .map(|edge| {
+          let edge = edge.read_arc();
+          (edge.key(), edge.payload().read_arc().branch_length)
+        })
+        .collect()
+    }
+
     pub fn write_json(nwk: &str) -> String {
       let graph: GraphAncestral = nwk_read_str(nwk).unwrap();
-      let data =
-        build_augur_node_data_json(&graph, Some(Path::new("aln.fasta")), Some(Path::new("tree.nwk")), None).unwrap();
+      let data = build_augur_node_data_json(
+        &graph,
+        &node_outputs(&graph),
+        &branch_lengths(&graph),
+        Some(Path::new("aln.fasta")),
+        Some(Path::new("tree.nwk")),
+        None,
+      )
+      .unwrap();
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
@@ -205,6 +243,8 @@ mod tests {
         .collect();
       let data = build_augur_node_data_json(
         &graph,
+        &node_outputs(&graph),
+        &branch_lengths(&graph),
         Some(Path::new("aln.fasta")),
         Some(Path::new("tree.nwk")),
         Some(&counts),
@@ -226,7 +266,15 @@ mod tests {
       alignment: Option<&Path>,
       input_tree: Option<&Path>,
     ) -> AugurNodeDataJsonRefine {
-      let data = build_augur_node_data_json(&output.graph, alignment, input_tree, None).unwrap();
+      let data = build_augur_node_data_json(
+        &output.graph,
+        &node_outputs(&output.graph),
+        &branch_lengths(&output.graph),
+        alignment,
+        input_tree,
+        None,
+      )
+      .unwrap();
       json_read_str(json_write_str(&data, JsonPretty(true)).unwrap()).unwrap()
     }
   }

@@ -427,7 +427,7 @@ mod tests {
     use crate::clock::clock_graph::GraphClock;
     use crate::clock::clock_model::ClockModel;
     use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
-    use crate::commands::optimize::result::OptimizeGraphData;
+    use crate::commands::optimize::result::{OptimizeGraphData, OptimizeNodeOut};
     use crate::commands::prune::result::PruneGraphData;
     use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut};
     use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -592,7 +592,13 @@ mod tests {
         &ancestral_branch_lengths(&ancestral_graph),
         "2026-07-19",
       )?;
-      let optimize = optimize_to_auspice(&optimize_graph()?, "2026-07-19")?;
+      let optimize_graph = optimize_graph()?;
+      let optimize = optimize_to_auspice(
+        &optimize_graph,
+        &optimize_nodes(&optimize_graph),
+        &ancestral_branch_lengths(&optimize_graph),
+        "2026-07-19",
+      )?;
       let prune = prune_to_auspice(&prune_graph()?, "2026-07-19")?;
       let clock_graph = clock_graph()?;
       let clock = clock_to_auspice(&clock_graph, &clock_nodes(&clock_graph), "2026-07-19")?;
@@ -614,7 +620,14 @@ mod tests {
           &ancestral_nodes(&ancestral_graph),
           &ancestral_branch_lengths(&ancestral_graph),
         )?,
-        optimize_to_phyloxml(&optimize_graph()?)?,
+        {
+          let optimize_graph = optimize_graph()?;
+          optimize_to_phyloxml(
+            &optimize_graph,
+            &optimize_nodes(&optimize_graph),
+            &ancestral_branch_lengths(&optimize_graph),
+          )?
+        },
         prune_to_phyloxml(&prune_graph()?)?,
         {
           let clock_graph = clock_graph()?;
@@ -668,7 +681,12 @@ mod tests {
     pub fn optimize_auspice_without_required_node_data() -> Result<AuspiceTree, Report> {
       let graph = optimize_graph()?;
       set_branch_length(&graph, "A", None)?;
-      optimize_to_auspice(&graph, "2026-07-19")
+      optimize_to_auspice(
+        &graph,
+        &optimize_nodes(&graph),
+        &ancestral_branch_lengths(&graph),
+        "2026-07-19",
+      )
     }
 
     pub fn auspice_child<'a>(tree: &'a AuspiceTree, name: &str) -> &'a AuspiceTreeNode {
@@ -742,6 +760,24 @@ mod tests {
 
     fn fixed_clock_model() -> Result<ClockModel, Report> {
       ClockModel::with_fixed_rate(&ClockSet::leaf_contribution(Some(2020.0)), 1.0)
+    }
+
+    pub fn optimize_nodes<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
+      graph
+        .get_nodes()
+        .iter()
+        .map(|node| {
+          let node = node.read_arc();
+          let payload = node.payload().read_arc();
+          (
+            node.key(),
+            OptimizeNodeOut {
+              name: payload.name.clone(),
+              confidence: payload.confidence,
+            },
+          )
+        })
+        .collect()
     }
 
     fn optimize_graph() -> Result<GraphAncestral<OptimizeGraphData>, Report> {

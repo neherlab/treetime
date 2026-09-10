@@ -8,6 +8,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::node::GraphNodeKey;
 
 #[derive(Serialize)]
 pub struct OptimizeGraphData {
@@ -33,6 +34,13 @@ impl OptimizeGraphData {
   }
 }
 
+/// Per-node optimize output as a value: the name and input branch support the output writers read.
+#[derive(Debug, Clone, Serialize)]
+pub struct OptimizeNodeOut {
+  pub name: Option<String>,
+  pub confidence: Option<f64>,
+}
+
 /// Per-edge optimize output as a value: the optimized branch length the output writers read.
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct EdgeOut {
@@ -49,6 +57,8 @@ pub struct EdgeOut {
 pub struct OptimizeResult {
   #[serde(skip)]
   pub graph: GraphAncestral<OptimizeGraphData>,
+  #[serde(skip)]
+  pub nodes: BTreeMap<GraphNodeKey, OptimizeNodeOut>,
   #[serde(skip)]
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
   #[serde(skip)]

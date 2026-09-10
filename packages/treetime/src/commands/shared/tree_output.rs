@@ -3,7 +3,7 @@ use crate::clock::clock_graph::GraphClock;
 use crate::commands::ancestral::result::{AncestralGraphData, AncestralNodeOut};
 use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
 use crate::commands::mugration::augur_node_data::{build_confidence_map, compute_entropy};
-use crate::commands::optimize::result::OptimizeGraphData;
+use crate::commands::optimize::result::{OptimizeGraphData, OptimizeNodeOut};
 use crate::commands::prune::result::PruneGraphData;
 use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut};
 use crate::mugration::result::MugrationGraphData;
@@ -90,6 +90,8 @@ pub fn write_ancestral_tree_outputs(
 
 pub fn write_optimize_tree_outputs(
   graph: &GraphAncestral<OptimizeGraphData>,
+  nodes: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
@@ -99,8 +101,8 @@ pub fn write_optimize_tree_outputs(
     outputs,
     providers,
     "optimize",
-    || optimize_to_auspice(graph, &updated),
-    || optimize_to_phyloxml(graph),
+    || optimize_to_auspice(graph, nodes, branch_lengths, &updated),
+    || optimize_to_phyloxml(graph, nodes, branch_lengths),
     || optimize_to_mat(graph),
   )
 }
@@ -271,6 +273,8 @@ pub(crate) fn ancestral_to_auspice(
 
 pub(crate) fn optimize_to_auspice(
   graph: &GraphAncestral<OptimizeGraphData>,
+  nodes: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   updated: &str,
 ) -> Result<AuspiceTree, Report> {
   let root_sequences = optimize_root_sequences(graph)?;
@@ -285,12 +289,13 @@ pub(crate) fn optimize_to_auspice(
     optimize_has_mutations(graph),
   );
   auspice_from_graph(graph, data, |context| {
-    let name = node_name(context.node_key, context.node);
-    let div = cumulative_branch_length(graph, context.node_key)?;
+    let out = &nodes[&context.node_key];
+    let name = node_name_value(context.node_key, out.name.as_deref());
+    let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
     ancestral_auspice_node(
       &name,
       div,
-      context.node.confidence,
+      out.confidence,
       optimize_mutations(graph, context.edge_key)?,
       None,
       None,
@@ -658,16 +663,22 @@ pub(crate) fn ancestral_to_phyloxml(
   })
 }
 
-pub(crate) fn optimize_to_phyloxml(graph: &GraphAncestral<OptimizeGraphData>) -> Result<Phyloxml, Report> {
+pub(crate) fn optimize_to_phyloxml(
+  graph: &GraphAncestral<OptimizeGraphData>,
+  nodes: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<Phyloxml, Report> {
   phyloxml_from_graph(graph, "TreeTime optimize analysis", |context| {
-    let name = node_name(context.node_key, context.node);
-    let div = cumulative_branch_length(graph, context.node_key)?;
+    let out = &nodes[&context.node_key];
+    let name = node_name_value(context.node_key, out.name.as_deref());
+    let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
+    let branch_length = context.edge_key.and_then(|edge_key| branch_lengths[&edge_key]);
     ancestral_phyloxml_clade(
       &name,
-      context.node.name.clone(),
+      out.name.clone(),
       div,
-      context.edge.and_then(HasBranchLength::branch_length),
-      context.node.confidence,
+      branch_length,
+      out.confidence,
       optimize_mutations(graph, context.edge_key)?,
       &optimize_node_sequences(graph, context.node_key),
     )

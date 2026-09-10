@@ -1,12 +1,12 @@
+use crate::commands::optimize::result::OptimizeNodeOut;
 use crate::partition::traits::BranchTopology;
 use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
-use treetime_graph::node::Named;
+use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
-use treetime_utils::make_internal_report;
 use util_augur_node_data_json::{
   AugurNodeDataJsonGeneratedBy, AugurNodeDataJsonRefine, AugurNodeDataJsonRefineMeta, AugurNodeDataJsonRefineNode,
 };
@@ -41,6 +41,8 @@ use util_augur_node_data_json::{
 /// mutation count instead of the ML branch length (subs/site).
 pub fn build_augur_node_data_json<D: Send + Sync>(
   graph: &GraphAncestral<D>,
+  node_outputs: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   alignment: Option<&Path>,
   input_tree: Option<&Path>,
   mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
@@ -49,10 +51,11 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
   for node in graph.get_nodes() {
     let node_guard = node.read_arc();
     let node_key = node_guard.key();
-    let payload = node_guard.payload().read_arc();
-    let node_name = payload
-      .name()
-      .map_or_else(|| format!("node_{}", node_key.0), |n| n.as_ref().to_owned());
+    let out = &node_outputs[&node_key];
+    let node_name = out
+      .name
+      .as_deref()
+      .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
 
     // branch_length comes from the parent edge. The root has no incoming branch,
     // so it carries 0.0 (matching the timetree writer and `export v2`, which sets
@@ -62,16 +65,13 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
         if let Some(counts) = mutation_counts {
           counts.get(&edge_key).copied().unwrap_or_default() as f64
         } else {
-          let edge = graph
-            .get_edge(edge_key)
-            .ok_or_else(|| make_internal_report!("Optimize node data: missing edge {edge_key:?}"))?;
-          edge.read_arc().payload().read_arc().branch_length().unwrap_or(0.0)
+          branch_lengths[&edge_key].unwrap_or(0.0)
         }
       },
       None => 0.0,
     };
 
-    let confidence = payload.confidence;
+    let confidence = out.confidence;
 
     nodes.insert(
       node_name,
@@ -108,12 +108,14 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
 
 pub fn write_augur_node_data_json<D: Send + Sync>(
   graph: &GraphAncestral<D>,
+  node_outputs: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   alignment: Option<&Path>,
   input_tree: Option<&Path>,
   mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
   path: &Path,
 ) -> Result<(), Report> {
-  let data = build_augur_node_data_json(graph, alignment, input_tree, mutation_counts)?;
+  let data = build_augur_node_data_json(graph, node_outputs, branch_lengths, alignment, input_tree, mutation_counts)?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
 }
