@@ -4,6 +4,7 @@ mod __tests__;
 use crate::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use crate::graph::{Graph, SafeNode};
 use crate::node::{GraphNode, GraphNodeKey, Named};
+use crate::value_maps::edge_branch_lengths;
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
@@ -74,7 +75,8 @@ impl TopologyOrderSpec {
           build_order(graph, &keys, reverse)
         },
         TopologyOrderPreset::Divergence | TopologyOrderPreset::DivergenceReverse => {
-          let keys = compute_divergences(graph, &postorder);
+          let branch_lengths = edge_branch_lengths(graph);
+          let keys = compute_divergences(graph, &postorder, &branch_lengths);
           build_order(graph, &keys, reverse)
         },
         TopologyOrderPreset::Label | TopologyOrderPreset::LabelReverse => {
@@ -296,10 +298,11 @@ where
 fn compute_divergences<N, E, D>(
   graph: &Graph<N, E, D>,
   postorder: &[GraphNodeKey],
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> BTreeMap<GraphNodeKey, OrderedFloat<f64>>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   D: Sync + Send,
 {
   let mut divergences: BTreeMap<GraphNodeKey, OrderedFloat<f64>> = BTreeMap::new();
@@ -311,7 +314,7 @@ where
       .iter()
       .map(|(child, edge)| {
         let child_key = child.read_arc().key();
-        let edge_len = edge.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+        let edge_len = branch_lengths[&edge.read_arc().key()].unwrap_or(0.0);
         divergences[&child_key].0 + edge_len
       })
       .reduce(f64::max)
