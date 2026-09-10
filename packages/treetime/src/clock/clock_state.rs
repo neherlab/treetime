@@ -118,34 +118,19 @@ impl ClockState {
     Self { nodes, edges }
   }
 
-  /// Re-read the payload-resident clock inputs into the state while keeping the value-resident ones.
+  /// Rebuild the per-node and per-edge clock maps to match the current graph, sourcing each node's
+  /// date from `times`.
   ///
-  /// Rebuilds the per-node and per-edge maps to match the current graph, so it stays valid across a
-  /// reroot or polytomy resolution that added or dropped nodes and edges. Each node's date comes from
-  /// the payload (via [`ClockNode::likely_time`], staying transitional on `NodeTimetree`), the clock
-  /// set starts default, and `bad_branch` starts false, exactly as [`seed_from_payloads`] reads them.
-  /// The
-  /// divergence and outlier flag are the two fields that live only in the value: they are preserved
-  /// from the previous state for nodes that survived, and default for nodes that are new. Every edge
-  /// resets to default messages, which the following backward pass recomputes.
-  ///
-  /// [`seed_from_payloads`]: ClockState::seed_from_payloads
-  pub fn reseed_transitional_from_payloads<N, E, D>(&mut self, graph: &Graph<N, E, D>)
-  where
-    N: GraphNode + ClockNode,
-    E: GraphEdge,
-    D: Send + Sync,
-  {
-    self.reseed_transitional(graph, |_key, payload| payload.likely_time());
-  }
-
-  /// Re-read the clock inputs like [`reseed_transitional_from_payloads`], but source each node's date
-  /// from `times` rather than from the payload's `likely_time()`.
+  /// Rebuilds the maps to match the current graph, so it stays valid across a reroot or polytomy
+  /// resolution that added or dropped nodes and edges. Each node's date comes from `times`, the clock
+  /// set starts default, and `bad_branch` starts false. The divergence and outlier flag are the two
+  /// fields that live only in the value: they are preserved from the previous state for nodes that
+  /// survived, and default for nodes that are new. Every edge resets to default messages, which the
+  /// following backward pass recomputes.
   ///
   /// Used in the refinement loop, where the date passes have refined the node times on the threaded
   /// [`TimetreeState`](crate::timetree::timetree_state::TimetreeState) value between clock calls, so
-  /// the regression must read the refined dates from the value rather than off the payload. The clock
-  /// set, divergence, and outlier flag are handled exactly as in [`reseed_transitional_from_payloads`].
+  /// the regression must read the refined dates from the value.
   ///
   /// `edge_inputs` carries each edge's solver-updated time length and relaxed-clock rate multiplier
   /// (also from the date state); the re-estimation reads them to convert time back to divergence.

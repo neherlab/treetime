@@ -6,18 +6,18 @@ Generic serialization helpers (JSON, YAML) live in `treetime-utils::io`.
 
 ## Formats
 
-| Module                | Format                                                          | Read | Write |
-| --------------------- | --------------------------------------------------------------- | ---- | ----- |
-| `nwk`                 | Newick tree format                                              | yes  | yes   |
-| `nex`                 | Nexus tree format                                               | -    | yes   |
-| `fasta`               | FASTA sequences                                                 | yes  | yes   |
-| `auspice`             | Auspice v2 JSON (Nextstrain visualization)                      | yes  | yes   |
-| `phyloxml`            | PhyloXML tree format                                            | yes  | yes   |
-| `usher_mat`           | UShER MAT protobuf                                              | yes  | yes   |
-| `csv`                 | CSV/TSV/SSV with bounded content-based delimiter detection      | yes  | yes   |
-| `dates_csv`           | Date metadata from CSV/TSV/SSV (year fractions, date ranges)    | yes  | -     |
-| `discrete_states_csv` | Discrete trait metadata from CSV/TSV/SSV                        | yes  | -     |
-| `graphviz`            | Graphviz DOT format                                             | -    | yes   |
+| Module                | Format                                                       | Read | Write |
+| --------------------- | ------------------------------------------------------------ | ---- | ----- |
+| `nwk`                 | Newick tree format                                           | yes  | yes   |
+| `nex`                 | Nexus tree format                                            | -    | yes   |
+| `fasta`               | FASTA sequences                                              | yes  | yes   |
+| `auspice`             | Auspice v2 JSON (Nextstrain visualization)                   | yes  | yes   |
+| `phyloxml`            | PhyloXML tree format                                         | yes  | yes   |
+| `usher_mat`           | UShER MAT protobuf                                           | yes  | yes   |
+| `csv`                 | CSV/TSV/SSV with bounded content-based delimiter detection   | yes  | yes   |
+| `dates_csv`           | Date metadata from CSV/TSV/SSV (year fractions, date ranges) | yes  | -     |
+| `discrete_states_csv` | Discrete trait metadata from CSV/TSV/SSV                     | yes  | -     |
+| `graphviz`            | Graphviz DOT format                                          | -    | yes   |
 
 ## Utilities
 
@@ -41,7 +41,6 @@ Tree readers/writers use trait bounds on graph node and edge types:
 - `NodeToNwk` / `EdgeToNwk` - serialize nodes and edges to Newick
 - `NodeToGraphviz` / `EdgeToGraphviz` - serialize to Graphviz DOT
 - `AuspiceRead` / `AuspiceWrite` - convert to/from Auspice v2 JSON
-- `UsherRead` - convert from UShER MAT protobuf
 - `PhyloxmlToGraph` / `PhyloxmlDataToGraphData` - convert to/from PhyloXML
 
 ## API patterns

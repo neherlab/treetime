@@ -1,22 +1,13 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::fitch::create_fitch_partition;
-use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::clock::date_constraints::load_date_constraints;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
-use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
 use crate::make_error;
 use crate::make_report;
 use crate::optimize::params::BranchLengthMode;
-use crate::partition::algo::infer_dense::infer_dense;
-use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
-use crate::seq::alignment::get_common_length;
+use crate::partition::timetree::partition::GraphTimetree;
 use crate::seq::gap_fill::apply_gap_fill;
 use eyre::{Report, WrapErr};
-use log::info;
-use parking_lot::RwLock;
-use std::sync::Arc;
-use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+use treetime_graph::value_maps::node_names;
 use treetime_io::dates_csv::{DatesMap, read_dates};
 use treetime_io::fasta::{FastaRecord, read_many_fasta};
 use treetime_io::nwk::nwk_read_file;
@@ -89,56 +80,4 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
     aln,
     dates,
   })
-}
-
-pub fn initialize_partitions(
-  args: &TreetimeTimetreeArgs,
-  graph: &GraphTimetree,
-  alphabet: Alphabet,
-  aln: Option<&[FastaRecord]>,
-) -> Result<PartitionTimetreeAllVec, Report> {
-  let dense = args.dense.unwrap_or_else(infer_dense);
-  let model_name = args.model_args.model;
-  let length = if let Some(aln_data) = aln {
-    get_common_length(aln_data)?
-  } else {
-    args
-      .sequence_length
-      .ok_or_else(|| make_report!("sequence_length required when no alignment provided"))?
-  };
-
-  let branch_lengths = edge_branch_lengths(graph);
-  let names = node_names(graph);
-
-  if !dense {
-    let aln_data = aln.ok_or_else(|| make_report!("Alignment required for sparse marginal reconstruction"))?;
-
-    let fitch = create_fitch_partition(graph, 0, alphabet, aln_data, &names)?;
-    let gtr = match model_name {
-      GtrModelName::Infer => infer_gtr_fitch(&fitch, graph, &branch_lengths)?,
-      _ => get_gtr_by_name(model_name)?,
-    };
-    log_gtr(&gtr, model_name);
-    let partition = fitch.into_marginal_sparse(gtr, graph)?;
-
-    let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(partition)));
-    Ok(vec![sparse_partition])
-  } else if model_name == GtrModelName::Infer {
-    let aln_data = aln.ok_or_else(|| make_report!("Alignment required for dense GTR inference"))?;
-    let fitch = create_fitch_partition(graph, 0, alphabet, aln_data, &names)?;
-    let gtr = infer_gtr_fitch(&fitch, graph, &branch_lengths)?;
-    log_gtr(&gtr, model_name);
-    let partition = fitch.into_marginal_dense(gtr);
-
-    let dense_partition = Arc::new(RwLock::new(PartitionTimetree::Dense(partition)));
-    Ok(vec![dense_partition])
-  } else {
-    info!("GTR model: {model_name}");
-    let gtr = get_gtr_by_name(model_name).wrap_err_with(|| format!("When creating GTR model '{model_name}'"))?;
-    log_gtr(&gtr, model_name);
-    let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
-
-    let dense_partition = Arc::new(RwLock::new(PartitionTimetree::Dense(partition)));
-    Ok(vec![dense_partition])
-  }
 }
