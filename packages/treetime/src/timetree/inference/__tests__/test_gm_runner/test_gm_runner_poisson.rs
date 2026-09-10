@@ -6,7 +6,7 @@ mod tests {
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::forward_pass::propagate_distributions_forward;
   use crate::timetree::inference::runner::GRID_POINTS;
-  use treetime_graph::value_maps::node_names;
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{create_poisson_branch_distributions, extract_node_times};
   use eyre::Report;
@@ -38,6 +38,7 @@ mod tests {
 
     create_poisson_branch_distributions(
       &graph,
+      &edge_branch_lengths(&graph),
       case.clock_rate(),
       case.sequence_length(),
       GRID_POINTS,
@@ -48,7 +49,7 @@ mod tests {
     propagate_distributions_backward(&graph, None, &mut state)?;
     propagate_distributions_forward(&graph, &node_names(&graph), &mut state)?;
 
-    let actual = extract_node_times(&graph, &state);
+    let actual = extract_node_times(&graph, &node_names(&graph), &state);
     pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);
 
     Ok(())

@@ -61,7 +61,7 @@ mod tests {
       &mut clock_state,
     )?;
 
-    let times = extract_node_times(&graph, &state);
+    let times = extract_node_times(&graph, &node_names(&graph), &state);
     let expected_count = graph.num_nodes();
     assert_eq!(
       expected_count,

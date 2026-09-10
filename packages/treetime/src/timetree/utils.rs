@@ -7,9 +7,9 @@ use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, DistributionFunction, NegLog};
-use treetime_graph::edge::{BranchDistribution, EdgeOptimizeOps, GraphEdge, HasBranchLength};
+use treetime_graph::edge::{BranchDistribution, EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 
 /// Grid floor as a fraction of one mutation's worth of time. Keeps the first grid point strictly
@@ -43,7 +43,11 @@ where
   Ok(())
 }
 
-pub fn extract_node_times<N, E, D>(graph: &Graph<N, E, D>, state: &TimetreeState) -> BTreeMap<String, f64>
+pub fn extract_node_times<N, E, D>(
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  state: &TimetreeState,
+) -> BTreeMap<String, f64>
 where
   N: GraphNode + Named,
   E: GraphEdge,
@@ -53,9 +57,9 @@ where
     .get_nodes()
     .into_iter()
     .filter_map(|node_ref| {
-      let node = node_ref.read_arc();
-      let name = node.payload().read_arc().name()?.as_ref().to_owned();
-      let time = state.nodes.get(&node.key()).and_then(|node| node.time)?;
+      let key = node_ref.read_arc().key();
+      let name = names[&key].clone()?;
+      let time = state.nodes.get(&key).and_then(|node| node.time)?;
       Some((name, time))
     })
     .collect()
@@ -70,6 +74,7 @@ where
 /// - `b` = branch length (substitutions/site)
 pub fn create_poisson_branch_distributions<N, E, D>(
   graph: &Graph<N, E, D>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   mu: f64,
   seq_len: usize,
   n_points: usize,
@@ -82,9 +87,10 @@ where
   let seq_len_f64 = seq_len as f64;
 
   for edge_ref in graph.get_edges() {
+    let edge_key = edge_ref.read_arc().key();
     let mut edge = edge_ref.write_arc().payload().write_arc();
 
-    if let Some(branch_length) = edge.branch_length() {
+    if let Some(branch_length) = branch_lengths[&edge_key] {
       let expected_time = branch_length / mu;
       let max_time = 3.0 * expected_time.max(1.0);
 

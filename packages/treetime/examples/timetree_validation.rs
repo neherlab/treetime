@@ -254,7 +254,7 @@ fn run_poisson_test(config: &DatasetConfig, args: &Args) -> Result<TestResult, R
   )?;
   load_date_constraints(&dates, &graph)?;
 
-  create_poisson_branch_distributions(&graph, config.clock_rate, config.sequence_length, args.branch_grid_size)?;
+  create_poisson_branch_distributions(&graph, &edge_branch_lengths(&graph), config.clock_rate, config.sequence_length, args.branch_grid_size)?;
   dump_graph(
     &graph,
     &output_dir_str,
@@ -278,7 +278,7 @@ fn run_poisson_test(config: &DatasetConfig, args: &Args) -> Result<TestResult, R
     "003_after_propagate_distributions_forward.json",
   )?;
 
-  let actual = extract_node_times(&graph, &state);
+  let actual = extract_node_times(&graph, &node_names(&graph), &state);
 
   println!("Completed\n");
 
@@ -347,7 +347,7 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   )?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
-  let actual = extract_node_times(&graph, &state);
+  let actual = extract_node_times(&graph, &node_names(&graph), &state);
 
   println!("Completed\n");
 
@@ -417,7 +417,7 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
   )?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
-  let actual = extract_node_times(&graph, &state);
+  let actual = extract_node_times(&graph, &node_names(&graph), &state);
 
   println!("Completed\n");
 

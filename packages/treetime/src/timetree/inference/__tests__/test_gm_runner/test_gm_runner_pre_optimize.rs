@@ -152,7 +152,7 @@ mod tests {
       &mut clock_state,
     )?;
 
-    let actual = extract_node_times(&graph, &state);
+    let actual = extract_node_times(&graph, &node_names(&graph), &state);
     assert!(
       !actual.is_empty(),
       "Expected node times to be populated after timetree inference with pre-optimization"

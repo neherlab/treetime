@@ -90,7 +90,7 @@ mod tests {
       &mut clock_state,
     )?;
 
-    let actual = extract_node_times(&graph, &state);
+    let actual = extract_node_times(&graph, &node_names(&graph), &state);
     pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);
 
     Ok(())
