@@ -133,7 +133,9 @@ mod tests {
         get_common_length(&aln)?,
       )));
       initialize_marginal(&graph, from_ref(&partition), &aln)?.value();
-      let counts = partition.read_arc().count_transitions(&graph)?;
+      let counts = partition
+        .read_arc()
+        .count_transitions(&graph, &edge_branch_lengths(&graph))?;
       let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
       let n_states = partition.read_arc().alphabet.n_canonical();
       GTR::new(GTRParams {

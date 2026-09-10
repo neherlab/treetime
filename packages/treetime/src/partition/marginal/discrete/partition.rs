@@ -10,7 +10,7 @@ use maplit::btreemap;
 use ndarray::Array1;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_primitives::LogLh;
@@ -133,8 +133,12 @@ where
   N: GraphNode,
   E: EdgeOptimizeOps,
 {
-  fn count_transitions(&self, graph: &Graph<N, E, ()>) -> Result<MutationCounts, Report> {
-    self.data.count_transitions(graph)
+  fn count_transitions(
+    &self,
+    graph: &Graph<N, E, ()>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> Result<MutationCounts, Report> {
+    self.data.count_transitions(graph, branch_lengths)
   }
 }
 

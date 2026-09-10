@@ -5,7 +5,8 @@ use crate::partition::storage::sparse::{SparseSeqDistribution, VarPos};
 use crate::partition::traits::TransitionCounting;
 use eyre::Report;
 use ndarray::{Array1, Array2};
-use treetime_graph::edge::EdgeOptimizeOps;
+use std::collections::BTreeMap;
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_utils::array::ndarray::argmax_first;
@@ -13,7 +14,11 @@ use treetime_utils::array::ndarray::argmax_first;
 // Split by codepath stage: these helpers sit beside the trait impl that consumes them.
 #[allow(clippy::multiple_inherent_impl)]
 impl PartitionMarginalSparse {
-  fn count_transitions_impl<N, E>(&self, graph: &Graph<N, E, ()>) -> Result<MutationCounts, Report>
+  fn count_transitions_impl<N, E>(
+    &self,
+    graph: &Graph<N, E, ()>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> Result<MutationCounts, Report>
   where
     N: GraphNode,
     E: EdgeOptimizeOps,
@@ -25,8 +30,8 @@ impl PartitionMarginalSparse {
 
     for edge in graph.get_edges() {
       let edge_arc = edge.read_arc();
-      let branch_length = edge_arc.payload().read_arc().branch_length().unwrap_or(0.0).max(min_bl);
       let edge_key = edge_arc.key();
+      let branch_length = branch_lengths[&edge_key].unwrap_or(0.0).max(min_bl);
       let edge_data = &self.edges[&edge_key];
 
       let exp_qt = self.gtr.expQt(branch_length) + SUPERTINY_NUMBER;
@@ -167,7 +172,11 @@ where
   N: GraphNode,
   E: EdgeOptimizeOps,
 {
-  fn count_transitions(&self, graph: &Graph<N, E, ()>) -> Result<MutationCounts, Report> {
-    self.count_transitions_impl(graph)
+  fn count_transitions(
+    &self,
+    graph: &Graph<N, E, ()>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> Result<MutationCounts, Report> {
+    self.count_transitions_impl(graph, branch_lengths)
   }
 }

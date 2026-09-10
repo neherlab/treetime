@@ -11,6 +11,7 @@ mod tests {
   use lazy_static::lazy_static;
   use parking_lot::RwLock;
   use std::sync::Arc;
+  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::{pretty_assert_array_nonneg, pretty_assert_array_positive};
@@ -63,7 +64,9 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition.read_arc().count_transitions(&graph)?;
+    let counts = partition
+      .read_arc()
+      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
 
     pretty_assert_array_nonneg!(counts.nij);
     pretty_assert_array_nonneg!(counts.Ti);
@@ -87,7 +90,9 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition.read_arc().count_transitions(&graph)?;
+    let counts = partition
+      .read_arc()
+      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
 
     pretty_assert_array_positive!(counts.Ti);
 
@@ -110,7 +115,9 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition.read_arc().count_transitions(&graph)?;
+    let counts = partition
+      .read_arc()
+      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
 
     for i in 0..counts.nij.nrows() {
       #[allow(clippy::float_cmp, reason = "diagonal is zero by construction, no arithmetic")]
@@ -138,7 +145,9 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition.read_arc().count_transitions(&graph)?;
+    let counts = partition
+      .read_arc()
+      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
 
     assert!(counts.root_state.sum() > 0.0, "root_state should be populated");
 

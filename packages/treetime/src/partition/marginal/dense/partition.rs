@@ -120,8 +120,12 @@ where
   N: GraphNode,
   E: EdgeOptimizeOps,
 {
-  fn count_transitions(&self, graph: &Graph<N, E, ()>) -> Result<MutationCounts, Report> {
-    self.data.count_transitions(graph)
+  fn count_transitions(
+    &self,
+    graph: &Graph<N, E, ()>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> Result<MutationCounts, Report> {
+    self.data.count_transitions(graph, branch_lengths)
   }
 }
 

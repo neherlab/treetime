@@ -254,7 +254,11 @@ where
   N: GraphNode,
   E: EdgeOptimizeOps,
 {
-  fn count_transitions(&self, graph: &Graph<N, E, ()>) -> Result<MutationCounts, Report>;
+  fn count_transitions(
+    &self,
+    graph: &Graph<N, E, ()>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> Result<MutationCounts, Report>;
 }
 
 /// Operations that `optimize` needs from a sequence partition.

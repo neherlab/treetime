@@ -14,6 +14,7 @@ use std::sync::Arc;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_primitives::LogLh;
 
 pub fn refine_gtr_iterative<N, E, P>(
@@ -37,7 +38,8 @@ where
     ..InferGtrOptions::default()
   };
 
-  let counts = partition.read_arc().count_transitions(graph)?;
+  let branch_lengths = edge_branch_lengths(graph);
+  let counts = partition.read_arc().count_transitions(graph, &branch_lengths)?;
   let result = infer_gtr_impl(&counts, &options)?;
   *partition.write_arc().gtr_mut() = build_gtr_from_inference(n_states, &result)?;
   debug!(
@@ -54,7 +56,7 @@ where
   }
 
   for i in 0..iterations {
-    let counts = partition.read_arc().count_transitions(graph)?;
+    let counts = partition.read_arc().count_transitions(graph, &branch_lengths)?;
     let result = infer_gtr_impl(&counts, &options)?;
     *partition.write_arc().gtr_mut() = build_gtr_from_inference(n_states, &result)?;
 

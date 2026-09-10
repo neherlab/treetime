@@ -8,7 +8,7 @@ use eyre::Report;
 use ndarray::prelude::*;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_utils::array::ndarray::argmax_first;
@@ -34,10 +34,14 @@ impl MarginalData {
   /// Count posterior-weighted transitions from dense profile matrices.
   ///
   /// Shared by dense and discrete partitions (both store full profile matrices).
-  pub fn count_transitions<N, E>(&self, graph: &Graph<N, E, ()>) -> Result<MutationCounts, Report>
+  pub fn count_transitions<N, E>(
+    &self,
+    graph: &Graph<N, E, ()>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> Result<MutationCounts, Report>
   where
     N: GraphNode,
-    E: GraphEdge + HasBranchLength,
+    E: GraphEdge,
   {
     let n_states = self.gtr.pi.len();
     let mut nij = Array2::zeros((n_states, n_states));
@@ -45,8 +49,8 @@ impl MarginalData {
 
     for edge in graph.get_edges() {
       let edge_arc = edge.read_arc();
-      let branch_length = self.effective_branch_length(edge_arc.payload().read_arc().branch_length().unwrap_or(0.0));
       let edge_key = edge_arc.key();
+      let branch_length = self.effective_branch_length(branch_lengths[&edge_key].unwrap_or(0.0));
 
       let edge_data = &self.edges[&edge_key];
 

@@ -15,6 +15,7 @@ mod tests {
   use indoc::indoc;
   use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
+  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_utils::{
     pretty_assert_abs_diff_eq, pretty_assert_array_nonneg, pretty_assert_array_offdiag_upper_bounded,
     pretty_assert_array_positive,
@@ -78,7 +79,9 @@ mod tests {
 
     let (graph, partition) = setup_dense_partition("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
 
-    let counts = partition.read_arc().count_transitions(&graph)?;
+    let counts = partition
+      .read_arc()
+      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
 
     // With fractional counts, identical sequences still have small probability
     // mass on off-diagonal states from the joint distribution
@@ -108,7 +111,9 @@ mod tests {
 
     let (graph, partition) = setup_dense_partition("(A:0.1,B:0.1)root:0.0;", &aln)?;
 
-    let counts = partition.read_arc().count_transitions(&graph)?;
+    let counts = partition
+      .read_arc()
+      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
 
     // The root should be reconstructed with some state at position 0.
     // With marginal reconstruction on a symmetric tree, the root gets
@@ -172,7 +177,9 @@ mod tests {
 
     let (graph, partition) = setup_dense_partition("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;", &aln)?;
 
-    let counts = partition.read_arc().count_transitions(&graph)?;
+    let counts = partition
+      .read_arc()
+      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
 
     // Ti proportional to clamped BL (~2.5e-4), bounded well below 1e-2
     let ti_max = counts.Ti.iter().copied().fold(f64::NEG_INFINITY, f64::max);
@@ -253,7 +260,9 @@ mod tests {
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let (graph, partition) = setup_dense_partition(tree_nwk, &aln)?;
 
-    let counts = partition.read_arc().count_transitions(&graph)?;
+    let counts = partition
+      .read_arc()
+      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
     let result = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     pretty_assert_abs_diff_eq!(result.W, result.W.t().to_owned(), epsilon = 1e-9);

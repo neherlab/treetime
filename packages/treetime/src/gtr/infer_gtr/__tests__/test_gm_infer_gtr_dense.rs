@@ -17,6 +17,7 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use lazy_static::lazy_static;
+  use treetime_graph::value_maps::edge_branch_lengths;
 
   use parking_lot::RwLock;
   use rstest::rstest;
@@ -44,7 +45,9 @@ mod tests {
     let aln = read_many_fasta_str(&fasta_str, &*NUC_ALPHABET)?;
     let (graph, partition) = setup_dense_partition(&case.tree, &aln)?;
 
-    let counts = partition.read_arc().count_transitions(&graph)?;
+    let counts = partition
+      .read_arc()
+      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     // Short synthetic sequences: limited floating-point accumulation, tight tolerance
@@ -68,7 +71,9 @@ mod tests {
     let expected = &OUTPUTS.real[case_name];
 
     let (graph, partition) = setup_dense_partition_from_files(&case.tree_path, &case.alignment_path)?;
-    let counts = partition.read_arc().count_transitions(&graph)?;
+    let counts = partition
+      .read_arc()
+      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     // BLAS drift between NumPy and ndarray scales with sequence length. mpox_clade_ii_20
