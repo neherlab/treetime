@@ -370,7 +370,6 @@ mod tests {
 
     for edge in graph.get_edges() {
       let mut payload = edge.read_arc().payload().write_arc();
-      payload.gamma = 2.0;
       payload.clock_to_parent = ClockSet::leaf_contribution(Some(2020.0));
       payload.clock_to_child = ClockSet::leaf_contribution(Some(2021.0));
       payload.clock_from_child = ClockSet::leaf_contribution(Some(2022.0));
@@ -445,10 +444,9 @@ mod tests {
 
     for edge in graph.get_edges() {
       let payload = edge.read_arc().payload().read_arc();
-      // The branch-length distribution and backward message live in the date-state value now, reset
-      // by `TimetreeState::reset_date_edges_for_topology_change`; `prepare_tree_after_topology_change`
-      // resets only the payload-resident derived state.
-      pretty_assert_abs_diff_eq!(payload.gamma, 1.0, epsilon = 1e-10);
+      // The branch-length distribution, backward message, and relaxed-clock rate multiplier live in the
+      // date-state value now, reset by `TimetreeState::reset_date_edges_for_topology_change`;
+      // `prepare_tree_after_topology_change` preserves the payload-resident inputs.
       pretty_assert_abs_diff_eq!(
         payload.branch_length().expect("branch length must be preserved"),
         0.25,

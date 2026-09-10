@@ -82,10 +82,10 @@ pub fn compute_rate_susceptibility(
   //   effective_clock_rate = clock_rate * orig_gamma * new_rate / current_rate
   //                        = orig_gamma * new_rate
   // which is the desired effective rate at each branch.
-  let original_gammas = save_gammas(graph);
+  let original_gammas = save_gammas(state);
 
   // Run 1: upper rate bound
-  scale_gammas(graph, &original_gammas, upper_rate / current_rate);
+  scale_gammas(state, &original_gammas, upper_rate / current_rate);
   info!("Rate susceptibility: running with upper rate {upper_rate:.6e}");
   run_timetree(
     graph,
@@ -100,7 +100,7 @@ pub fn compute_rate_susceptibility(
   let upper_dates = collect_node_times(state);
 
   // Run 2: lower rate bound
-  scale_gammas(graph, &original_gammas, lower_rate / current_rate);
+  scale_gammas(state, &original_gammas, lower_rate / current_rate);
   info!("Rate susceptibility: running with lower rate {lower_rate:.6e}");
   run_timetree(
     graph,
@@ -114,8 +114,8 @@ pub fn compute_rate_susceptibility(
   .wrap_err("Rate susceptibility: timetree at lower rate failed")?;
   let lower_dates = collect_node_times(state);
 
-  // Run 3: central rate (restores graph to pre-call state)
-  scale_gammas(graph, &original_gammas, 1.0);
+  // Run 3: central rate (restores the pre-call gammas)
+  scale_gammas(state, &original_gammas, 1.0);
   info!("Rate susceptibility: running with central rate {current_rate:.6e}");
   run_timetree(
     graph,
@@ -376,23 +376,16 @@ pub(crate) fn quantile_to_zscore(p: f64) -> f64 {
   SQRT_2 * erf_inv(2.0 * p - 1.0)
 }
 
-/// Save per-edge gamma values for later restoration.
-fn save_gammas(graph: &GraphTimetree) -> Vec<(GraphEdgeKey, f64)> {
-  graph
-    .get_edges()
-    .into_iter()
-    .map(|edge_ref| {
-      let edge = edge_ref.read_arc();
-      (edge.key(), edge.payload().read_arc().gamma)
-    })
-    .collect_vec()
+/// Save per-edge gamma values from the date state for later restoration.
+fn save_gammas(state: &TimetreeState) -> Vec<(GraphEdgeKey, f64)> {
+  state.edges.iter().map(|(key, edge)| (*key, edge.gamma)).collect_vec()
 }
 
-/// Scale all edge gammas: `new_gamma = original_gamma * scale_factor`.
-fn scale_gammas(graph: &GraphTimetree, original_gammas: &[(GraphEdgeKey, f64)], scale_factor: f64) {
+/// Scale all edge gammas on the date state: `new_gamma = original_gamma * scale_factor`.
+fn scale_gammas(state: &mut TimetreeState, original_gammas: &[(GraphEdgeKey, f64)], scale_factor: f64) {
   for &(key, orig_gamma) in original_gammas {
-    if let Some(edge_ref) = graph.get_edge(key) {
-      edge_ref.write_arc().payload().write_arc().gamma = orig_gamma * scale_factor;
+    if let Some(edge) = state.edges.get_mut(&key) {
+      edge.gamma = orig_gamma * scale_factor;
     }
   }
 }

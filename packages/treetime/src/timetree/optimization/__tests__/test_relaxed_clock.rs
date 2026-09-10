@@ -44,12 +44,13 @@ mod tests {
       edge.write_arc().payload().write_arc().time_length = Some(branch.clock_length / input.clock_rate);
     }
 
+    let mut state = TimetreeState::seed_from_payloads(&graph);
     apply_relaxed_clock(
       &graph,
       &[input.slack, input.coupling],
       input.one_mutation,
       input.clock_rate,
-      &mut TimetreeState::seed_from_payloads(&graph),
+      &mut state,
     )?;
 
     let actual = input
@@ -63,7 +64,7 @@ mod tests {
           .into_iter()
           .next()
           .ok_or_else(|| eyre::eyre!("Parent edge for {name} not found"))?;
-        let gamma = edge.read_arc().payload().read_arc().gamma;
+        let gamma = state.edge(edge.read_arc().key()).gamma;
         Ok((name.to_owned(), gamma))
       })
       .collect::<Result<BTreeMap<_, _>, Report>>()?;
@@ -78,11 +79,11 @@ mod tests {
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
 
-    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
-      let gamma = edge.payload().read_arc().gamma;
+      let gamma = state.edge(edge.read_arc().key()).gamma;
 
       assert!(gamma >= 0.1, "gamma={gamma} should be >= 0.1 (minimum bound)");
       assert!(gamma < 10.0, "gamma={gamma} should be reasonable (< 10.0)");
@@ -97,11 +98,11 @@ mod tests {
     let one_mutation = 0.001;
     let params = [1.0, 1.0];
 
-    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
-      let gamma = edge.payload().read_arc().gamma;
+      let gamma = state.edge(edge.read_arc().key()).gamma;
       assert!(gamma >= 0.1, "gamma={gamma} must be >= 0.1 (algorithm minimum bound)");
     }
 
@@ -120,12 +121,13 @@ mod tests {
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut state)?;
 
     let gammas: Vec<f64> = graph
       .get_edges()
       .iter()
-      .map(|e| e.read_arc().payload().read_arc().gamma)
+      .map(|e| state.edge(e.read_arc().key()).gamma)
       .collect();
 
     let mean_gamma: f64 = gammas.iter().sum::<f64>() / gammas.len() as f64;
@@ -141,10 +143,11 @@ mod tests {
     let graph = build_simple_tree()?;
     let one_mutation = 0.01;
 
-    apply_relaxed_clock(&graph, &[], one_mutation, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    apply_relaxed_clock(&graph, &[], one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
-      let gamma = edge.read_arc().payload().read_arc().gamma;
+      let gamma = state.edge(edge.read_arc().key()).gamma;
       assert!(gamma >= 0.1, "gamma should be >= minimum bound");
     }
 
@@ -157,18 +160,20 @@ mod tests {
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
 
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+
     // Before: gamma should be default 1.0
     for edge in graph.get_edges() {
-      let gamma = edge.read_arc().payload().read_arc().gamma;
+      let gamma = state.edge(edge.read_arc().key()).gamma;
       pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 4);
     }
 
-    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut state)?;
 
     // After: gamma values should be computed (may differ from 1.0)
     let mut any_changed = false;
     for edge in graph.get_edges() {
-      let gamma = edge.read_arc().payload().read_arc().gamma;
+      let gamma = state.edge(edge.read_arc().key()).gamma;
       if (gamma - 1.0).abs() > 1e-6 {
         any_changed = true;
       }
@@ -186,22 +191,23 @@ mod tests {
 
     // Compare low slack vs high slack - high slack should have gammas closer to 1.0
     let params_low = [1.0, 1.0];
-    apply_relaxed_clock(&graph, &params_low, one_mutation, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    apply_relaxed_clock(&graph, &params_low, one_mutation, 1.0, &mut state)?;
 
     let gammas_low: Vec<f64> = graph
       .get_edges()
       .iter()
-      .map(|e| e.read_arc().payload().read_arc().gamma)
+      .map(|e| state.edge(e.read_arc().key()).gamma)
       .collect();
     let deviation_low: f64 = gammas_low.iter().map(|g| (g - 1.0).abs()).sum();
 
     let params_high = [100.0, 1.0];
-    apply_relaxed_clock(&graph, &params_high, one_mutation, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    apply_relaxed_clock(&graph, &params_high, one_mutation, 1.0, &mut state)?;
 
     let gammas_high: Vec<f64> = graph
       .get_edges()
       .iter()
-      .map(|e| e.read_arc().payload().read_arc().gamma)
+      .map(|e| state.edge(e.read_arc().key()).gamma)
       .collect();
     let deviation_high: f64 = gammas_high.iter().map(|g| (g - 1.0).abs()).sum();
 
@@ -221,23 +227,24 @@ mod tests {
 
     // Run with low coupling
     let params_low = [1.0, 0.1];
-    apply_relaxed_clock(&graph, &params_low, one_mutation, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    apply_relaxed_clock(&graph, &params_low, one_mutation, 1.0, &mut state)?;
 
     let gammas_low: Vec<f64> = graph
       .get_edges()
       .iter()
-      .map(|e| e.read_arc().payload().read_arc().gamma)
+      .map(|e| state.edge(e.read_arc().key()).gamma)
       .collect();
     let variance_low = compute_variance(&gammas_low);
 
     // Run with high coupling
     let params_high = [1.0, 10.0];
-    apply_relaxed_clock(&graph, &params_high, one_mutation, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    apply_relaxed_clock(&graph, &params_high, one_mutation, 1.0, &mut state)?;
 
     let gammas_high: Vec<f64> = graph
       .get_edges()
       .iter()
-      .map(|e| e.read_arc().payload().read_arc().gamma)
+      .map(|e| state.edge(e.read_arc().key()).gamma)
       .collect();
     let variance_high = compute_variance(&gammas_high);
 
@@ -271,23 +278,24 @@ mod tests {
 
     // Simulate single partition with length 1000: one_mutation = 1/1000 = 0.001
     let one_mutation_single = 0.001;
-    apply_relaxed_clock(&graph, &params, one_mutation_single, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    apply_relaxed_clock(&graph, &params, one_mutation_single, 1.0, &mut state)?;
 
     let gammas_single: Vec<f64> = graph
       .get_edges()
       .iter()
-      .map(|e| e.read_arc().payload().read_arc().gamma)
+      .map(|e| state.edge(e.read_arc().key()).gamma)
       .collect();
 
     // Simulate two partitions with lengths 1000 + 9000: one_mutation = 1/10000 = 0.0001
     // Using a 10x difference to ensure visible effect
     let one_mutation_multi = 0.0001;
-    apply_relaxed_clock(&graph, &params, one_mutation_multi, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    apply_relaxed_clock(&graph, &params, one_mutation_multi, 1.0, &mut state)?;
 
     let gammas_multi: Vec<f64> = graph
       .get_edges()
       .iter()
-      .map(|e| e.read_arc().payload().read_arc().gamma)
+      .map(|e| state.edge(e.read_arc().key()).gamma)
       .collect();
 
     // Gamma values should differ between single and multi-partition scenarios
@@ -316,10 +324,11 @@ mod tests {
     // Simulate what would happen if one_mutation were computed from very short sequences
     // (defense-in-depth - the guard in refinement.rs should prevent this)
     let tiny_one_mutation = 1e-15;
-    apply_relaxed_clock(&graph, &params, tiny_one_mutation, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    apply_relaxed_clock(&graph, &params, tiny_one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
-      let gamma = edge.read_arc().payload().read_arc().gamma;
+      let gamma = state.edge(edge.read_arc().key()).gamma;
       assert!(gamma.is_finite(), "gamma must be finite, got {gamma}");
       assert!(gamma >= 0.1, "gamma must respect minimum bound, got {gamma}");
     }
@@ -343,13 +352,11 @@ mod tests {
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut state)?;
 
     // Get root gamma via the edge (gamma is stored on child's parent edge)
-    let root_edge_gamma = graph
-      .get_edges()
-      .first()
-      .map(|e| e.read_arc().payload().read_arc().gamma);
+    let root_edge_gamma = graph.get_edges().first().map(|e| state.edge(e.read_arc().key()).gamma);
 
     // Root's gamma is computed from k1/k2 which includes branch penalty.
     // With one_mutation = 0.01, root uses opt_len = act_len = 0.01.
@@ -382,10 +389,11 @@ mod tests {
   ) -> Result<(), Report> {
     let graph: GraphTimetree = nwk_read_str("root:0.0;")?;
     let params = [slack, 1.0];
-    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
-      let gamma = edge.read_arc().payload().read_arc().gamma;
+      let gamma = state.edge(edge.read_arc().key()).gamma;
       pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 4);
     }
 
@@ -406,12 +414,13 @@ mod tests {
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut TimetreeState::seed_from_payloads(&graph))?;
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    apply_relaxed_clock(&graph, &params, one_mutation, 1.0, &mut state)?;
 
     let gamma = graph
       .get_edges()
       .first()
-      .map_or(1.0, |e| e.read_arc().payload().read_arc().gamma);
+      .map_or(1.0, |e| state.edge(e.read_arc().key()).gamma);
 
     pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 100);
 

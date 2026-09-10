@@ -81,7 +81,8 @@ impl TimetreeState {
   /// Seed date state from the graph payloads, reading the durable date fields the passes need.
   ///
   /// Used at the timetree date-pass call sites, where these fields live on `NodeTimetree`/`EdgeTimetree`
-  /// between passes. `contradicted` has no payload counterpart and starts false.
+  /// between passes. `contradicted` has no payload counterpart and starts false; `gamma` starts at the
+  /// strict-clock `1.0`, the value the relaxed clock later overwrites.
   pub fn seed_from_payloads<N, E, D>(graph: &Graph<N, E, D>) -> Self
   where
     N: GraphNode + TimetreeNode,
@@ -114,7 +115,7 @@ impl TimetreeState {
           branch_length_distribution: payload.branch_length_distribution().clone(),
           msg_to_parent: payload.msg_to_parent().clone(),
           time_length: payload.time_length(),
-          gamma: payload.gamma(),
+          gamma: 1.0,
         };
         (edge.key(), state)
       })
@@ -128,9 +129,9 @@ impl TimetreeState {
   /// reroot or polytomy resolution that added or dropped nodes and edges. Each node's bad-branch flag
   /// and date constraint come from the payload (they stay transitional on `NodeTimetree`);
   /// `contradicted` starts false. Each edge's committed time length comes from the payload. The
-  /// committed time, time distribution, branch-length distribution, and backward message live only in
-  /// the value, so they are preserved from the previous state for nodes and edges that survived, and
-  /// default for ones a topology change introduced.
+  /// committed time, time distribution, branch-length distribution, backward message, and relaxed-clock
+  /// rate multiplier live only in the value, so they are preserved from the previous state for nodes and
+  /// edges that survived, and default for ones a topology change introduced.
   pub fn reseed_transitional_from_payloads<N, E, D>(&mut self, graph: &Graph<N, E, D>)
   where
     N: GraphNode + TimetreeNode,
@@ -165,14 +166,19 @@ impl TimetreeState {
         let edge = edge.read_arc();
         let key = edge.key();
         let payload = edge.payload().read_arc();
-        let (branch_length_distribution, msg_to_parent) = self.edges.get(&key).map_or((None, None), |edge| {
-          (edge.branch_length_distribution.clone(), edge.msg_to_parent.clone())
-        });
+        let (branch_length_distribution, msg_to_parent, gamma) =
+          self.edges.get(&key).map_or((None, None, 1.0), |edge| {
+            (
+              edge.branch_length_distribution.clone(),
+              edge.msg_to_parent.clone(),
+              edge.gamma,
+            )
+          });
         let state = DateEdgeState {
           branch_length_distribution,
           msg_to_parent,
           time_length: payload.time_length(),
-          gamma: payload.gamma(),
+          gamma,
         };
         (key, state)
       })
