@@ -1,5 +1,6 @@
 use crate::optimize::branch_length::{is_valid_branch_length_value, validate_branch_length_value};
 use crate::optimize::indel::estimate_indel_rate;
+use crate::optimize::iteration::commit_branch_lengths;
 use crate::optimize::likelihood::evaluate_with_indels;
 use crate::optimize::method_brent::{brent_inner, brent_log_inner, brent_sqrt_inner};
 use crate::optimize::method_newton::{newton_inner, newton_log_inner, newton_sqrt_inner};
@@ -11,8 +12,9 @@ use crate::{make_error, make_internal_report, make_report};
 use eyre::{Report, WrapErr};
 use parking_lot::RwLock;
 use rayon::prelude::*;
+use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::{Edge, GraphEdge, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_graph::value_maps::edge_branch_lengths;
@@ -37,9 +39,11 @@ where
     return make_error!("Total sequence length across all partitions is zero; cannot optimize branch lengths");
   }
 
-  let branch_lengths = edge_branch_lengths(graph);
+  let mut branch_lengths = edge_branch_lengths(graph);
   let indel_rate = estimate_indel_rate(graph, partitions, &branch_lengths);
-  run_optimize_mixed_inner(graph, partitions, method, indel_rate, false)
+  run_optimize_mixed_inner(graph, partitions, method, indel_rate, false, &mut branch_lengths)?;
+  commit_branch_lengths(graph, &branch_lengths);
+  Ok(())
 }
 
 #[cfg(test)]
@@ -54,7 +58,10 @@ where
   E: GraphEdge + HasBranchLength,
   P: PartitionOptimizeOps + ?Sized,
 {
-  run_optimize_mixed_inner(graph, partitions, method, indel_rate, false)
+  let mut branch_lengths = edge_branch_lengths(graph);
+  run_optimize_mixed_inner(graph, partitions, method, indel_rate, false, &mut branch_lengths)?;
+  commit_branch_lengths(graph, &branch_lengths);
+  Ok(())
 }
 
 pub fn run_optimize_mixed_inner<N, E, P>(
@@ -63,6 +70,7 @@ pub fn run_optimize_mixed_inner<N, E, P>(
   method: BranchOptMethod,
   indel_rate: f64,
   no_indels: bool,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report>
 where
   N: GraphNode,
@@ -81,26 +89,26 @@ where
   // lengths is identifiable (Pulley Principle). Capture the pre-optimization ratio of the
   // two root edges; after the per-edge loop, redistribute the optimized total in this ratio.
   // See kb/issues/M-optimize-root-bifurcating-independent-vs-joint.md
-  graph.get_edges().iter().try_for_each(|edge_ref| {
-    let edge = edge_ref.read_arc();
-    let branch_length = edge
-      .payload()
-      .read_arc()
-      .branch_length()
-      .ok_or_else(|| make_report!("Cannot optimize edge {} with a missing branch length", edge.key()))?;
-    validate_branch_length_value(branch_length).wrap_err_with(|| format!("Cannot optimize edge {}", edge.key()))
-  })?;
+  for edge_ref in graph.get_edges() {
+    let edge_key = edge_ref.read_arc().key();
+    let branch_length = branch_lengths[&edge_key]
+      .ok_or_else(|| make_report!("Cannot optimize edge {edge_key} with a missing branch length"))?;
+    validate_branch_length_value(branch_length).wrap_err_with(|| format!("Cannot optimize edge {edge_key}"))?;
+  }
 
-  let root_state = BifurcatingRootState::capture(graph)?;
+  let root_state = BifurcatingRootState::capture(graph, branch_lengths)?;
 
-  graph
+  // Each per-edge optimum depends only on that edge's input length and its partition
+  // contributions, so the parallel map is order free; collect the results and write them into the
+  // shared branch-length map serially afterward (a `BTreeMap` cannot be mutated from parallel
+  // workers).
+  let branch_lengths_in = &*branch_lengths;
+  let optimized: Vec<(GraphEdgeKey, f64)> = graph
     .get_edges()
     .par_iter()
-    .try_for_each(|edge_ref| -> Result<(), Report> {
+    .map(|edge_ref| -> Result<(GraphEdgeKey, f64), Report> {
       let edge_key = edge_ref.read_arc().key();
-      let mut edge = edge_ref.write_arc().payload().write_arc();
-      let mut branch_length = edge
-        .branch_length()
+      let mut branch_length = branch_lengths_in[&edge_key]
         .ok_or_else(|| make_internal_report!("Validated edge {edge_key} lost its branch length"))?;
 
       let contributions: Vec<OptimizationContribution> = partitions
@@ -139,8 +147,7 @@ where
       // so zero branch length is never optimal. Only check the substitution-based criterion
       // when there are no indels.
       if indel_count == 0 && is_zero_branch_optimal(&contributions) {
-        edge.set_branch_length(Some(0.0));
-        return Ok(());
+        return Ok((edge_key, 0.0));
       }
 
       // Lower bound for Newton/Brent steps on indel-bearing edges. The Poisson derivative
@@ -229,34 +236,43 @@ where
         one_mutation,
       )?;
 
-      edge.set_branch_length(Some(new_branch_length));
-      Ok(())
-    })?;
+      Ok((edge_key, new_branch_length))
+    })
+    .collect::<Result<Vec<_>, Report>>()?;
+
+  for (edge_key, new_branch_length) in optimized {
+    branch_lengths.insert(edge_key, Some(new_branch_length));
+  }
 
   if let Some(state) = root_state {
-    state.restore();
+    state.restore(branch_lengths);
   }
 
   Ok(())
 }
 
-struct BifurcatingRootState<E: GraphEdge> {
-  edge0: Arc<RwLock<Edge<E>>>,
-  edge1: Arc<RwLock<Edge<E>>>,
+struct BifurcatingRootState {
+  edge0: GraphEdgeKey,
+  edge1: GraphEdgeKey,
   ratio: f64,
 }
 
-impl<E: GraphEdge + HasBranchLength> BifurcatingRootState<E> {
-  fn capture<N: GraphNode>(graph: &Graph<N, E, ()>) -> Result<Option<Self>, Report> {
+impl BifurcatingRootState {
+  fn capture<N, E>(
+    graph: &Graph<N, E, ()>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> Result<Option<Self>, Report>
+  where
+    N: GraphNode,
+    E: GraphEdge,
+  {
     let root = graph.get_exactly_one_root()?;
     let children = graph.children_of(&root.read_arc());
     if children.len() == 2 {
-      let (_, edge0) = &children[0];
-      let (_, edge1) = &children[1];
-      let edge0 = Arc::clone(edge0);
-      let edge1 = Arc::clone(edge1);
-      let bl0 = edge0.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
-      let bl1 = edge1.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+      let edge0 = children[0].1.read_arc().key();
+      let edge1 = children[1].1.read_arc().key();
+      let bl0 = branch_lengths[&edge0].unwrap_or(0.0);
+      let bl1 = branch_lengths[&edge1].unwrap_or(0.0);
       let total = bl0 + bl1;
       let ratio = if total > 0.0 { bl0 / total } else { 0.5 };
       Ok(Some(Self { edge0, edge1, ratio }))
@@ -265,13 +281,11 @@ impl<E: GraphEdge + HasBranchLength> BifurcatingRootState<E> {
     }
   }
 
-  fn restore(self) {
+  fn restore(self, branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>) {
     let Self { edge0, edge1, ratio } = self;
-    let mut e0 = edge0.write_arc().payload().write_arc();
-    let mut e1 = edge1.write_arc().payload().write_arc();
-    let total = e0.branch_length().unwrap_or(0.0) + e1.branch_length().unwrap_or(0.0);
-    e0.set_branch_length(Some(total * ratio));
-    e1.set_branch_length(Some(total * (1.0 - ratio)));
+    let total = branch_lengths[&edge0].unwrap_or(0.0) + branch_lengths[&edge1].unwrap_or(0.0);
+    branch_lengths.insert(edge0, Some(total * ratio));
+    branch_lengths.insert(edge1, Some(total * (1.0 - ratio)));
   }
 }
 

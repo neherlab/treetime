@@ -3,7 +3,7 @@ use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;
 use crate::optimize::dispatch::run_optimize_mixed_inner;
 use crate::optimize::indel::{estimate_indel_rate, total_indel_log_lh};
-use crate::optimize::iteration::{apply_damping, save_branch_lengths};
+use crate::optimize::iteration::{apply_damping, commit_branch_lengths, save_branch_lengths};
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
@@ -169,7 +169,17 @@ pub fn run_optimize_loop(
     // refreshed from it at the end of every iteration), so these steps run on the current
     // lengths without a separate materialization.
     let old_branch_lengths = save_branch_lengths(graph);
-    run_optimize_mixed_inner(graph, mixed_partitions, opt_method, indel_rate, no_indels)?;
+    run_optimize_mixed_inner(
+      graph,
+      mixed_partitions,
+      opt_method,
+      indel_rate,
+      no_indels,
+      &mut branch_lengths,
+    )?;
+    // Transitional: the optimizer writes the branch-length map. Materialize it onto the payload so
+    // the still-graph-native find-zero, damping, and topology steps read the optimized lengths.
+    commit_branch_lengths(graph, &branch_lengths);
 
     let zero_optimal_edges = if topology_ops.collapse_short_branches {
       find_zero_optimal_internal_edges(graph, sparse_partitions)
@@ -201,26 +211,9 @@ pub fn run_optimize_loop(
   // Single commit point: write the final branch lengths onto the graph edges the output writers
   // still read. On a normal exit the tree already holds them; after a rollback this writes the
   // recovered best lengths back onto the tree.
-  commit_branch_lengths_to_graph(graph, &branch_lengths);
+  commit_branch_lengths(graph, &branch_lengths);
 
   Ok(OptimizeLoopResult { lh_history, stopped_at })
-}
-
-/// Write the loop's branch-length map onto the graph edges.
-///
-/// The transitional bridge to the output writers, which still read the branch length off the
-/// edge payload. Called once at the end of [`run_optimize_loop`] so the tree carries the final
-/// optimized (or rolled-back best) lengths. The map is keyed by the current edge set, so every
-/// graph edge has an entry.
-fn commit_branch_lengths_to_graph(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) {
-  for edge_ref in graph.get_edges() {
-    let key = edge_ref.read_arc().key();
-    edge_ref
-      .write_arc()
-      .payload()
-      .write_arc()
-      .set_branch_length(branch_lengths[&key]);
-  }
 }
 
 /// Derive the per-edge length the marginal reconstruction propagates along from the loop's

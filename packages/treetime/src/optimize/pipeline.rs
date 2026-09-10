@@ -4,7 +4,7 @@ use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
-use crate::optimize::iteration::{apply_damping, save_branch_lengths};
+use crate::optimize::iteration::{apply_damping, commit_branch_lengths, save_branch_lengths};
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::run_loop::{
   apply_initial_guess_mode, collect_optimize_partitions, normalize_partition_rates, run_optimize_loop,
@@ -28,7 +28,7 @@ use std::sync::Arc;
 use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
-use treetime_graph::value_maps::node_names;
+use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 use treetime_io::fasta::FastaRecord;
 use treetime_utils::{make_error, make_report};
 
@@ -205,7 +205,9 @@ fn pre_reroot_optimize(
   let old_branch_lengths = save_branch_lengths(graph);
 
   if no_indels {
-    run_optimize_mixed_inner(graph, mixed_partitions, opt_method, 0.0, true)?;
+    let mut branch_lengths = edge_branch_lengths(graph);
+    run_optimize_mixed_inner(graph, mixed_partitions, opt_method, 0.0, true, &mut branch_lengths)?;
+    commit_branch_lengths(graph, &branch_lengths);
   } else {
     run_optimize_mixed(graph, mixed_partitions, opt_method)?;
   }

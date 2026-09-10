@@ -21,6 +21,7 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
 
@@ -115,21 +116,19 @@ mod tests {
 
     marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
-    let bl_before: Vec<f64> = graph
-      .get_edges()
-      .iter()
-      .map(|e| e.read_arc().payload().read_arc().branch_length().unwrap_or(0.0))
-      .collect();
+    let mut branch_lengths = edge_branch_lengths(&graph);
+    let bl_before = branch_lengths.clone();
 
-    run_optimize_mixed_inner(&graph, &mixed_partitions, BranchOptMethod::BrentSqrt, 0.0, true)?;
+    run_optimize_mixed_inner(
+      &graph,
+      &mixed_partitions,
+      BranchOptMethod::BrentSqrt,
+      0.0,
+      true,
+      &mut branch_lengths,
+    )?;
 
-    let bl_after: Vec<f64> = graph
-      .get_edges()
-      .iter()
-      .map(|e| e.read_arc().payload().read_arc().branch_length().unwrap_or(0.0))
-      .collect();
-
-    assert_ne!(bl_before, bl_after, "Optimizer should modify branch lengths");
+    assert_ne!(bl_before, branch_lengths, "Optimizer should modify branch lengths");
     Ok(())
   }
 

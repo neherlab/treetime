@@ -1,8 +1,33 @@
 use itertools::izip;
 use num_traits::pow::pow;
-use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use std::collections::BTreeMap;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
+
+/// Write a branch-length value map onto the graph edge payloads.
+///
+/// Transitional bridge for callers that still read the branch length off the payload after a
+/// map-based optimization step (reroot search, marginal reconstruction, output writers outside the
+/// optimize loop). Every graph edge must have a map entry, since the map is keyed by the current
+/// edge set.
+pub(crate) fn commit_branch_lengths<N, E, D>(
+  graph: &Graph<N, E, D>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) where
+  N: GraphNode,
+  E: GraphEdge + HasBranchLength,
+  D: Send + Sync,
+{
+  for edge_ref in graph.get_edges() {
+    let key = edge_ref.read_arc().key();
+    edge_ref
+      .write_arc()
+      .payload()
+      .write_arc()
+      .set_branch_length(branch_lengths[&key]);
+  }
+}
 
 /// Save current branch lengths for all edges in graph traversal order.
 pub fn save_branch_lengths<N, E, D>(graph: &Graph<N, E, D>) -> Vec<f64>

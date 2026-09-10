@@ -13,8 +13,10 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use parking_lot::RwLock;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
-  use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
 
@@ -37,24 +39,15 @@ mod tests {
     Ok((graph, mixed))
   }
 
-  fn root_edge_branch_lengths(graph: &GraphAncestral) -> (f64, f64) {
+  fn root_edge_branch_lengths(
+    graph: &GraphAncestral,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> (f64, f64) {
     let root = graph.get_exactly_one_root().unwrap();
     let children = graph.children_of(&root.read_arc());
     assert_eq!(children.len(), 2);
-    let bl0 = children[0]
-      .1
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap_or(0.0);
-    let bl1 = children[1]
-      .1
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap_or(0.0);
+    let bl0 = branch_lengths[&children[0].1.read_arc().key()].unwrap_or(0.0);
+    let bl1 = branch_lengths[&children[1].1.read_arc().key()].unwrap_or(0.0);
     (bl0, bl1)
   }
 
@@ -77,14 +70,22 @@ mod tests {
   #[test]
   fn test_root_preservation_ratio_preserved_after_optimization() -> Result<(), Report> {
     let (graph, partitions) = setup_dense(BIFURCATING_TREE, ALIGNMENT)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
 
-    let (bl0_before, bl1_before) = root_edge_branch_lengths(&graph);
+    let (bl0_before, bl1_before) = root_edge_branch_lengths(&graph, &branch_lengths);
     let total_before = bl0_before + bl1_before;
     let ratio_before = bl0_before / total_before;
 
-    run_optimize_mixed_inner(&graph, &partitions, BranchOptMethod::BrentSqrt, 0.0, true)?;
+    run_optimize_mixed_inner(
+      &graph,
+      &partitions,
+      BranchOptMethod::BrentSqrt,
+      0.0,
+      true,
+      &mut branch_lengths,
+    )?;
 
-    let (bl0_after, bl1_after) = root_edge_branch_lengths(&graph);
+    let (bl0_after, bl1_after) = root_edge_branch_lengths(&graph, &branch_lengths);
     let total_after = bl0_after + bl1_after;
     let ratio_after = bl0_after / total_after;
 
@@ -97,10 +98,18 @@ mod tests {
   fn test_root_preservation_both_edges_zero_uses_equal_split() -> Result<(), Report> {
     let tree = "((A:0.1,B:0.2)AB:0.0,(C:0.15,D:0.12)CD:0.0)root:0.0;";
     let (graph, partitions) = setup_dense(tree, ALIGNMENT)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
 
-    run_optimize_mixed_inner(&graph, &partitions, BranchOptMethod::BrentSqrt, 0.0, true)?;
+    run_optimize_mixed_inner(
+      &graph,
+      &partitions,
+      BranchOptMethod::BrentSqrt,
+      0.0,
+      true,
+      &mut branch_lengths,
+    )?;
 
-    let (bl0, bl1) = root_edge_branch_lengths(&graph);
+    let (bl0, bl1) = root_edge_branch_lengths(&graph, &branch_lengths);
     let total = bl0 + bl1;
     assert!(
       total > 0.0,
@@ -129,6 +138,7 @@ mod tests {
       GGGGACGTACGTACGA
     "#};
     let (graph, partitions) = setup_dense(tree, fasta)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
 
     {
       let root = graph.get_exactly_one_root()?;
@@ -138,7 +148,14 @@ mod tests {
 
     // Trifurcating root: redistribution is skipped (only applies to len==2).
     // The function should complete without error.
-    run_optimize_mixed_inner(&graph, &partitions, BranchOptMethod::BrentSqrt, 0.0, true)?;
+    run_optimize_mixed_inner(
+      &graph,
+      &partitions,
+      BranchOptMethod::BrentSqrt,
+      0.0,
+      true,
+      &mut branch_lengths,
+    )?;
     Ok(())
   }
 
@@ -146,16 +163,24 @@ mod tests {
   fn test_root_preservation_asymmetric_ratio() -> Result<(), Report> {
     let tree = "((A:0.05,B:0.05)AB:0.9,(C:0.05,D:0.05)CD:0.01)root:0.0;";
     let (graph, partitions) = setup_dense(tree, ALIGNMENT)?;
+    let mut branch_lengths = edge_branch_lengths(&graph);
 
-    let (bl0_before, bl1_before) = root_edge_branch_lengths(&graph);
+    let (bl0_before, bl1_before) = root_edge_branch_lengths(&graph, &branch_lengths);
     let total_before = bl0_before + bl1_before;
     let ratio_before = bl0_before / total_before;
 
     assert!(ratio_before > 0.9, "pre-condition: asymmetric ratio");
 
-    run_optimize_mixed_inner(&graph, &partitions, BranchOptMethod::BrentSqrt, 0.0, true)?;
+    run_optimize_mixed_inner(
+      &graph,
+      &partitions,
+      BranchOptMethod::BrentSqrt,
+      0.0,
+      true,
+      &mut branch_lengths,
+    )?;
 
-    let (bl0_after, bl1_after) = root_edge_branch_lengths(&graph);
+    let (bl0_after, bl1_after) = root_edge_branch_lengths(&graph, &branch_lengths);
     let total_after = bl0_after + bl1_after;
     let ratio_after = bl0_after / total_after;
 
