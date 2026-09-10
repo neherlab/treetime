@@ -17,6 +17,7 @@ use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::reroot::{self as topology_reroot, remove_node_if_trivial, split_edge};
+use treetime_graph::value_maps::edge_branch_lengths;
 
 use topology_reroot::{EdgeSplitInfo, RerootResult};
 
@@ -311,14 +312,10 @@ where
   D: Send + Sync,
 {
   let inverted_edge_keys = topology_reroot::apply_reroot_topology(graph, old_root_key, new_root_key)?;
+  let branch_lengths = edge_branch_lengths(graph);
 
   for edge_key in &inverted_edge_keys {
-    let edge_len = {
-      let edge = graph.get_edge(*edge_key).expect("Inverted edge not found");
-      let edge = edge.read_arc();
-      let branch_length = edge.payload().read_arc().branch_length();
-      branch_length.unwrap()
-    };
+    let edge_len = branch_lengths[edge_key].unwrap();
     let branch_variance = options.variance_factor * edge_len + options.variance_offset;
     let edge_state = state
       .edges

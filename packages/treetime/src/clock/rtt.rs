@@ -4,8 +4,8 @@ use crate::clock::clock_state::ClockState;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use treetime_graph::edge::HasBranchLength;
 use treetime_graph::pass::GraphPassNodeOutput;
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::csv::CsvStructFileWriter;
 use treetime_utils::array::serde::skip_serializing_if_false;
 
@@ -29,18 +29,12 @@ pub fn gather_clock_regression_results(
   clock_model: &ClockModel,
 ) -> Result<Vec<ClockRegressionResult>, Report> {
   // Assign divergence to each node: div = parent.div + branch_length, parents before children.
+  let branch_lengths = edge_branch_lengths(graph);
   state.map_forward(graph, |context| {
     let mut node = context.input;
     let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
       let parent = context.parent.expect("Non-root node must have a parent");
-      let branch_length = graph
-        .get_edge(edge_key)
-        .expect("Edge must exist")
-        .read_arc()
-        .payload()
-        .read_arc()
-        .branch_length()
-        .unwrap_or_default();
+      let branch_length = branch_lengths[&edge_key].unwrap_or_default();
       node.div = parent.div + branch_length;
       Some(edge)
     } else {

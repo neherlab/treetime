@@ -16,6 +16,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_graph::reroot::RerootResult;
+use treetime_graph::value_maps::edge_branch_lengths;
 
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
@@ -101,8 +102,9 @@ where
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
+  let branch_lengths = edge_branch_lengths(graph);
   state.map_backward(graph, |context| {
-    clock_regression_backward_node(graph, options, prev_clock_rate, context)
+    clock_regression_backward_node(graph, options, prev_clock_rate, &branch_lengths, context)
   })
 }
 
@@ -110,6 +112,7 @@ fn clock_regression_backward_node<N, E, D>(
   graph: &Graph<N, E, D>,
   options: &ClockParams,
   prev_clock_rate: Option<f64>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   context: GraphPassBackwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState, ClockEdgeState>,
 ) -> Result<GraphPassNodeOutput<ClockNodeState, ClockEdgeState>, Report>
 where
@@ -154,7 +157,7 @@ where
 
   let parent_message = if let Some((edge_key, mut edge)) = context.parent_edge {
     edge.clock_to_parent = q_to_parent;
-    let edge_len = edge_divergence_from_graph(graph, edge_key, edge.time_length, edge.gamma, prev_clock_rate);
+    let edge_len = edge_divergence(branch_lengths[&edge_key], edge.time_length, edge.gamma, prev_clock_rate);
     let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
     edge.clock_from_child = if is_leaf {
       branch_variance += options.variance_offset_leaf;
@@ -169,27 +172,6 @@ where
   };
 
   Ok(GraphPassNodeOutput { node, parent_message })
-}
-
-/// Divergence of an edge, reading its input branch length off the graph payload and combining it with
-/// the solver-updated `time_length` and relaxed-clock `gamma` carried on the clock edge state via
-/// [`edge_divergence`].
-fn edge_divergence_from_graph<N, E, D>(
-  graph: &Graph<N, E, D>,
-  edge_key: GraphEdgeKey,
-  time_length: Option<f64>,
-  gamma: f64,
-  prev_clock_rate: Option<f64>,
-) -> f64
-where
-  N: GraphNode,
-  E: GraphEdge + ClockEdge,
-  D: Send + Sync,
-{
-  let edge = graph.get_edge(edge_key).expect("Edge must exist");
-  let edge = edge.read_arc();
-  let payload = edge.payload().read_arc();
-  edge_divergence(payload.branch_length(), time_length, gamma, prev_clock_rate)
 }
 
 /// Runs forward clock regression pass.
@@ -207,6 +189,7 @@ where
   E: GraphEdge + ClockEdge,
   D: Sync + Send,
 {
+  let branch_lengths = edge_branch_lengths(graph);
   state.map_forward(graph, |context| {
     let mut node = context.input;
     let parent_message = if let Some((edge_key, mut edge)) = context.parent_edge {
@@ -215,7 +198,7 @@ where
       q_to_child -= &edge.clock_from_child;
       edge.clock_to_child = q_to_child;
 
-      let edge_len = edge_divergence_from_graph(graph, edge_key, edge.time_length, edge.gamma, prev_clock_rate);
+      let edge_len = edge_divergence(branch_lengths[&edge_key], edge.time_length, edge.gamma, prev_clock_rate);
       let branch_variance = options.variance_factor * edge_len + options.variance_offset;
       let mut q_dest = edge.clock_to_parent.clone();
       q_dest += edge.clock_to_child.propagate_averages(edge_len, branch_variance);

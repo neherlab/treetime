@@ -5,10 +5,12 @@ use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use rayon::prelude::*;
+use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_graph::pass::GraphPassNodeOutput;
+use treetime_graph::value_maps::edge_branch_lengths;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ClockFilterResult {
@@ -43,11 +45,12 @@ where
   );
 
   // Assign divergence to each node: div = parent.div + branch_length, parents before children.
+  let branch_lengths = edge_branch_lengths(graph);
   state.map_forward(graph, |context| {
     let mut node = context.input;
     let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
       let parent = context.parent.expect("Non-root node must have a parent");
-      node.div = parent.div + edge_branch_length(graph, edge_key);
+      node.div = parent.div + edge_branch_length(edge_key, &branch_lengths);
       Some(edge)
     } else {
       node.div = 0.0;
@@ -120,19 +123,7 @@ where
   Ok(ClockFilterResult { new_outliers, iqd })
 }
 
-/// Branch length of an edge (an input), read off the graph payload, defaulting to `0.0` when unset.
-fn edge_branch_length<N, E, D>(graph: &Graph<N, E, D>, edge_key: GraphEdgeKey) -> f64
-where
-  N: GraphNode,
-  E: GraphEdge + HasBranchLength,
-  D: Send + Sync,
-{
-  graph
-    .get_edge(edge_key)
-    .expect("Edge must exist")
-    .read_arc()
-    .payload()
-    .read_arc()
-    .branch_length()
-    .unwrap_or_default()
+/// Branch length of an edge (an input), read from the value map, defaulting to `0.0` when unset.
+fn edge_branch_length(edge_key: GraphEdgeKey, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {
+  branch_lengths[&edge_key].unwrap_or_default()
 }
