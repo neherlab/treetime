@@ -21,7 +21,6 @@ use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
-use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Target resolution of every *stored* timetree time-distribution grid (design D3, proposal Part D).
 ///
@@ -357,6 +356,7 @@ where
 /// established; before the first commit the two collectors agree, because no clock length exists yet.
 pub fn timetree_branch_lengths<N, E, D>(
   graph: &Graph<N, E, D>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   clock_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> BTreeMap<GraphEdgeKey, f64>
 where
@@ -364,7 +364,6 @@ where
   E: GraphEdge + HasBranchLength,
   D: Send + Sync,
 {
-  let branch_lengths = edge_branch_lengths(graph);
   graph
     .get_edges()
     .iter()

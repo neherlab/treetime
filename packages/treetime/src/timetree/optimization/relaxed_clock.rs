@@ -2,8 +2,8 @@ use crate::partition::timetree::partition::GraphTimetree;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use std::collections::BTreeMap;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Relaxed clock penalty coefficients computed during postorder pass.
 #[derive(Clone, Default)]
@@ -29,6 +29,7 @@ struct RelaxedClockCoeffs {
 /// 2. Preorder pass: compute optimal gamma (rate multiplier) for each branch
 pub fn apply_relaxed_clock(
   graph: &GraphTimetree,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   params: &[f64],
   one_mutation: f64,
   clock_rate: f64,
@@ -43,7 +44,8 @@ pub fn apply_relaxed_clock(
   // Store coefficients per node during postorder
   let mut coeffs: BTreeMap<GraphNodeKey, RelaxedClockCoeffs> = BTreeMap::new();
 
-  let branch_lengths = edge_branch_lengths(graph);
+  // `branch_lengths` is the per-edge length snapshot the caller took from the current tree; each
+  // node's parent-edge length is read from it rather than off the payload.
 
   // Postorder pass: compute k1, k2 coefficients from leaves to root
   graph.iter_depth_first_postorder_forward(|node| {

@@ -559,7 +559,7 @@ pub fn run(
     if !partitions.is_empty() {
       marginal_update(
         &input.graph,
-        &timetree_branch_lengths(&input.graph, &clock_branch_lengths),
+        &timetree_branch_lengths(&input.graph, &run_branch_lengths, &clock_branch_lengths),
         &partitions,
       )?;
     }

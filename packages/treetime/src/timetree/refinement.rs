@@ -108,8 +108,10 @@ impl Refinement<'_> {
       self.options.relax.first().copied().unwrap_or(1.0),
       self.options.relax.get(1).copied().unwrap_or(1.0)
     );
+    let branch_lengths = edge_branch_lengths(self.graph);
     apply_relaxed_clock(
       self.graph,
+      &branch_lengths,
       &self.options.relax,
       1.0 / total_length as f64,
       self.clock_model.clock_rate(),
@@ -167,21 +169,21 @@ impl Refinement<'_> {
   }
 
   fn rebuild_inference(&mut self, topology_changed: bool) -> Result<(), Report> {
+    // Snapshot the current per-edge lengths and per-node names once for every pass below; the
+    // marginal reconstruction and neither run_timetree call renames or re-lengths, so one snapshot
+    // serves all. Topology resolution and its `assign_node_names` ran before `rebuild_inference`, so
+    // the snapshot reflects the current tree.
+    let run_branch_lengths = edge_branch_lengths(self.graph);
+    let run_names = node_names(self.graph);
+
     if !self.partitions.is_empty() {
       info!("Updating ancestral sequences via marginal reconstruction");
       marginal_update(
         self.graph,
-        &timetree_branch_lengths(self.graph, self.clock_branch_lengths),
+        &timetree_branch_lengths(self.graph, &run_branch_lengths, self.clock_branch_lengths),
         self.partitions,
       )?;
     }
-
-    // Snapshot the current per-edge lengths and per-node names for the passes below; neither
-    // run_timetree call renames or re-lengths, so one snapshot serves both. Topology resolution and
-    // its `assign_node_names` ran before `rebuild_inference`, so the snapshot reflects the current
-    // tree.
-    let run_branch_lengths = edge_branch_lengths(self.graph);
-    let run_names = node_names(self.graph);
 
     if topology_changed {
       info!("Tree structure changed - rebuilding node-time state before coalescent inference");

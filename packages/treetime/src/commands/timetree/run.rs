@@ -147,7 +147,7 @@ pub fn run_timetree_estimation(
       };
       marginal_update(
         &output.graph,
-        &timetree_branch_lengths(&output.graph, &output.clock_branch_lengths),
+        &timetree_branch_lengths(&output.graph, &branch_lengths_opt, &output.clock_branch_lengths),
         &output.partitions,
       )?;
       // Descriptions snapshot for the reconstructed FASTA writer, alongside the `names` map captured
