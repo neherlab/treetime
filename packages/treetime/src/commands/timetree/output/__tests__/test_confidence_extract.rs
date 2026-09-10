@@ -9,6 +9,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::node::Named;
+  use treetime_graph::value_maps::node_names;
 
   #[test]
   fn test_extract_confidence_intervals_includes_unnamed_nodes() {
@@ -17,7 +18,7 @@ mod tests {
     graph.add_node(make_node(Some("named"), Some(2021.0), None));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
     assert_eq!(intervals.len(), 2);
     // Unnamed node has empty name but valid key
     assert_eq!(intervals[0].name, "");
@@ -31,7 +32,7 @@ mod tests {
     graph.add_node(make_node(Some("has_time"), Some(2021.0), None));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     assert_eq!(intervals[0].name, "has_time");
   }
@@ -42,7 +43,7 @@ mod tests {
     graph.add_node(make_node(Some("node_a"), Some(2020.5), None));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     assert_relative_eq!(intervals[0].date, 2020.5);
     assert_relative_eq!(intervals[0].lower, 2020.5);
@@ -60,7 +61,7 @@ mod tests {
     graph.add_node(make_node(Some("node_a"), Some(2020.0), Some(dist)));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     assert_relative_eq!(intervals[0].date, 2020.0);
     // 90% CI from uniform [2019, 2021]: 0.05 * 2 + 2019 = 2019.1, 0.95 * 2 + 2019 = 2020.9
@@ -77,7 +78,7 @@ mod tests {
     graph.add_node(make_node(Some("middle"), Some(2022.0), None));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
     assert_eq!(intervals.len(), 3);
     // Sorted by GraphNodeKey (insertion order), not alphabetical
     assert_eq!(intervals[0].name, "zebra");
@@ -97,7 +98,7 @@ mod tests {
     ));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     assert_relative_eq!(intervals[0].date, 2010.0);
     // z-score at 0.05 = -1.644854, at 0.95 = +1.644854
@@ -125,7 +126,7 @@ mod tests {
     ));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     // Mutation CI from uniform [2008, 2012]: 90% = [2008.2, 2011.8]
     // Rate CI at 90%: [2008.355, 2011.645]
@@ -158,7 +159,7 @@ mod tests {
     ));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     // Postcondition holds: lower <= date <= upper
     assert!(intervals[0].lower <= intervals[0].date);
@@ -184,7 +185,7 @@ mod tests {
     ));
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
     assert_eq!(intervals.len(), 1);
     assert!(intervals[0].lower <= intervals[0].date);
     assert!(intervals[0].date <= intervals[0].upper);
@@ -236,7 +237,7 @@ mod tests {
     graph.add_node(node);
     graph.build().unwrap();
 
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
     assert_eq!(intervals.len(), 1);
 
     // v0 HPD bounds: [0, 2.3026] (narrowest 90% interval around peak)
@@ -255,7 +256,7 @@ mod tests {
     let mut graph = GraphTimetree::new();
     graph.add_node(make_node(Some("named"), Some(2020.0), None));
     graph.build().unwrap();
-    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph));
+    let intervals = extract_confidence_intervals(&graph, &helpers::state(&graph), &helpers::rate_map(&graph), &node_names(&graph));
 
     let mut buf = Vec::new();
     write_confidence_intervals(&intervals, &mut buf).unwrap();

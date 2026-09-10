@@ -17,7 +17,6 @@ use std::io::Write;
 use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::node_names;
 use treetime_io::csv::CsvStructWriter;
 use treetime_utils::io::file::create_file_or_stdout;
 
@@ -203,13 +202,15 @@ pub(crate) fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)
 ///
 /// `rate_susceptibility_dates` carries the per-node sorted date triples from
 /// [`compute_rate_susceptibility`], keyed by node; a node absent from the map contributes no rate
-/// term (empty map when the run computed no rate susceptibility).
+/// term (empty map when the run computed no rate susceptibility). `names` is the node-name map the
+/// caller captures from the post-inference graph; each interval's label is read from it rather than
+/// off the payload.
 pub fn extract_confidence_intervals(
   graph: &GraphTimetree,
   state: &TimetreeState,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Vec<NodeConfidenceInterval> {
-  let names = node_names(graph);
   graph
     .get_nodes()
     .into_iter()

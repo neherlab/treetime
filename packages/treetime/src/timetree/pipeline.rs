@@ -49,7 +49,7 @@ use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::edge_branch_lengths;
+use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_io::dates_csv::DatesMap;
 use treetime_io::fasta::FastaRecord;
@@ -552,9 +552,13 @@ pub fn run(
     }
   }
 
+  // Post-inference node-name snapshot for the confidence-interval labels. Captured here, after the
+  // last pass that could rename or re-parent a node, so each interval reads its label from the map
+  // instead of the payload.
+  let confidence_names = node_names(&input.graph);
   let confidence_intervals = (matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always)
     || rate_std.is_some())
-  .then(|| extract_confidence_intervals(&input.graph, &timetree_state, &rate_susceptibility_dates));
+  .then(|| extract_confidence_intervals(&input.graph, &timetree_state, &rate_susceptibility_dates, &confidence_names));
 
   let coalescent_output = build_coalescent_output(coalescent, &coalescent_tc, params.gen_per_year, &skyline_params)?;
 
