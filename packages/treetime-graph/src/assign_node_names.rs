@@ -1,13 +1,22 @@
 use crate::edge::GraphEdge;
 use crate::graph::Graph;
 use crate::graph_traverse::GraphNodeForward;
-use crate::node::{GraphNode, Named};
+use crate::node::{GraphNode, GraphNodeKey, Named};
+use crate::value_maps::node_names;
 use eyre::Report;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
+/// Assign synthetic `NODE_{counter:07}` names to unnamed internal nodes in DFS-preorder, and return
+/// the resulting node-keyed name map.
+///
+/// The returned map is `node_names(graph)` taken after the write, so it holds exactly the
+/// `Option<String>` each consumer would read off the payload at this program point: the parsed name
+/// for named nodes and the freshly assigned synthetic name for internals. Threading this map lets
+/// name consumers read the value instead of the payload; the payload write stays transitional so
+/// not-yet-migrated readers and the parse path keep the same names.
 pub fn assign_node_names<N: GraphNode + Named, E: GraphEdge, D: Sync + Send>(
   graph: &Graph<N, E, D>,
-) -> Result<(), Report> {
+) -> Result<BTreeMap<GraphNodeKey, Option<String>>, Report> {
   let mut names = graph
     .get_node_payloads()
     .map(|node| {
@@ -41,5 +50,7 @@ pub fn assign_node_names<N: GraphNode + Named, E: GraphEdge, D: Sync + Send>(
       }
       Ok(())
     },
-  )
+  )?;
+
+  Ok(node_names(graph))
 }
