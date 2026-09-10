@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
+  use crate::commands::timetree::output::date_comment::DateCommentProvider;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
@@ -11,6 +12,8 @@ mod tests {
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
   use treetime_io::nwk::{CommentProviders, NodeCommentProvider, NwkStyle, nwk_read_str};
   use treetime_primitives::AsciiChar;
@@ -100,12 +103,15 @@ mod tests {
       )],
     )?;
 
-    for leaf in graph.get_leaves() {
-      leaf.read_arc().payload().write_arc().time = Some(2003.84);
-    }
+    let date_times: BTreeMap<GraphNodeKey, f64> = graph
+      .get_leaves()
+      .iter()
+      .map(|leaf| (leaf.read_arc().key(), 2003.84))
+      .collect();
 
     let provider = MutationCommentProvider::new(&partition, &graph);
-    let providers = CommentProviders::new().with(&provider);
+    let date_provider = DateCommentProvider::new(&date_times);
+    let providers = CommentProviders::new().with(&provider).with(&date_provider);
     let options = NexWriteOptions {
       style: NwkStyle::Beast,
       ..NexWriteOptions::default()

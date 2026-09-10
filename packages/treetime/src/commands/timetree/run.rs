@@ -11,6 +11,7 @@ use crate::commands::timetree::output::augur_node_data::write_augur_node_data_js
 use crate::commands::timetree::output::coalescent::{
   CoalescentOutput, write_coalescent_delimited, write_coalescent_json,
 };
+use crate::commands::timetree::output::date_comment::DateCommentProvider;
 use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut, TimetreeResult};
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
@@ -275,13 +276,21 @@ pub fn run_timetree_estimation(
   }
 
   if !resolved.tree_outputs.is_empty() {
+    // The `date` Newick/Nexus comment, supplied from the gathered node times as a value instead of
+    // read off the payload.
+    let date_times: BTreeMap<GraphNodeKey, f64> = nodes
+      .iter()
+      .filter_map(|(key, out)| out.time.map(|time| (*key, time)))
+      .collect();
+    let date_provider = DateCommentProvider::new(&date_times);
     if !graph.data().partitions.is_empty() {
       let guard = graph.data().partitions[0].read_arc();
       let provider = MutationCommentProvider::new(&*guard, &graph);
-      let providers = CommentProviders::new().with(&provider);
+      let providers = CommentProviders::new().with(&provider).with(&date_provider);
       write_timetree_tree_outputs(&graph, &nodes, &edges, &resolved.tree_outputs, &providers)?;
     } else {
-      write_timetree_tree_outputs(&graph, &nodes, &edges, &resolved.tree_outputs, &CommentProviders::new())?;
+      let providers = CommentProviders::new().with(&date_provider);
+      write_timetree_tree_outputs(&graph, &nodes, &edges, &resolved.tree_outputs, &providers)?;
     }
   }
 
