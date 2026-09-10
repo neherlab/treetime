@@ -1,7 +1,9 @@
 use crate::ancestral::marginal::marginal_update;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
+use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::{PartitionMarginalPasses, PartitionTimetreeOps};
@@ -39,6 +41,10 @@ pub(crate) struct Refinement<'a> {
   /// Persistent per-node/per-edge date state routed across the whole pipeline. The date passes
   /// carry the branch-length distributions and backward messages here instead of on the payloads.
   pub state: &'a mut TimetreeState,
+  /// Persistent per-node/per-edge clock state routed across the whole pipeline. The node divergence
+  /// and outlier flag live here instead of on the payloads; the clock re-estimation reads them back
+  /// from it, and each `run_timetree` refreshes the divergence into it.
+  pub clock_state: &'a mut ClockState,
   /// Committed clock-constrained branch lengths keyed by edge, routed so the M-step damps against
   /// the previous round's value without reading it back off the payload.
   pub clock_branch_lengths: &'a mut BTreeMap<GraphEdgeKey, f64>,
@@ -173,6 +179,7 @@ impl Refinement<'_> {
         None,
         self.options.no_indels,
         self.state,
+        self.clock_state,
       )
       .wrap_err("Coalescent-free timetree rebuild failed")?;
       if self.prior.is_none() {
@@ -189,20 +196,29 @@ impl Refinement<'_> {
       self.prior,
       self.options.no_indels,
       self.state,
+      self.clock_state,
     )
     .wrap_err("Timetree inference failed")
   }
 
   fn update_clock_model(&mut self) -> Result<(), Report> {
-    *self.clock_model = estimate_clock_model_with_reroot(
+    // Re-read the payload-resident clock inputs while preserving the value-resident divergence and
+    // outlier flag, then re-estimate on the threaded state with the root kept (no reroot in the
+    // refinement loop). This matches the standalone `estimate_clock_model_with_reroot` convenience,
+    // except the outlier flag comes from the threaded value rather than the payload.
+    self.clock_state.reseed_transitional_from_payloads(self.graph);
+    *self.clock_model = estimate_clock_model_with_reroot_policy(
       self.graph,
+      self.clock_state,
       self.clock_params,
       self.options.clock_rate,
       true,
       self.branch_params,
+      &RerootParams::default(),
       Some(self.clock_model.clock_rate()),
     )
-    .wrap_err("Failed to update clock model")?;
+    .wrap_err("Failed to update clock model")?
+    .into_clock_model()?;
     Ok(())
   }
 }

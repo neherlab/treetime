@@ -7,6 +7,7 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::initialize_marginal;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
+  use crate::clock::clock_state::ClockState;
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -111,7 +112,8 @@ mod tests {
 
     let partitions: PartitionTimetreeAllVec = vec![sparse_partition];
     initialize_marginal(&graph, &partitions, &aln)?.value();
-    initialize_node_divergences(&graph)?;
+    let mut clock_state = ClockState::new(&graph);
+    initialize_node_divergences(&graph, &mut clock_state)?;
 
     // Pre-optimization step (matching v0 flow)
     #[allow(trivial_casts)]
@@ -144,6 +146,7 @@ mod tests {
       None,
       false,
       &mut state,
+      &mut clock_state,
     )?;
 
     let actual = extract_node_times(&graph);

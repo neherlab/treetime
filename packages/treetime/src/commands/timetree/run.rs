@@ -1,6 +1,7 @@
 use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update};
 use crate::ancestral::sample::SampleMode;
 use crate::clock::clock_output::write_clock_model;
+use crate::clock::clock_state::ClockState;
 use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_timetree_tree_outputs;
@@ -183,6 +184,7 @@ pub fn run_timetree_estimation(
     coalescent,
     rate_susceptibility_dates,
     clock_branch_lengths,
+    clock_state,
   } = output;
   let mut graph = graph.map_data(TimetreeGraphData::new(
     clock_model,
@@ -202,7 +204,7 @@ pub fn run_timetree_estimation(
     .resolve_topology_order(&graph, Some(input_leaf_order))?;
   topology_order.apply(&mut graph)?;
 
-  let (nodes, edges) = gather_timetree_outputs(&graph, &rate_susceptibility_dates, &clock_branch_lengths);
+  let (nodes, edges) = gather_timetree_outputs(&graph, &clock_state, &rate_susceptibility_dates, &clock_branch_lengths);
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
     match graph.data().confidence_intervals.as_ref() {
@@ -313,9 +315,11 @@ pub fn run_timetree_estimation(
 /// `rate_susceptibility_dates` carries the per-node date triples the pipeline returns as a value
 /// rather than on the payload; each node's triple is read from here. `clock_branch_lengths` likewise
 /// carries the committed clock branch length per edge as a value; each edge's clock length is read
-/// from here rather than off the payload.
+/// from here rather than off the payload. `clock_state` carries each node's divergence and outlier
+/// flag as values; both are read from here rather than off the payload.
 fn gather_timetree_outputs(
   graph: &GraphTimetree<TimetreeGraphData>,
+  clock_state: &ClockState,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
   clock_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> (
@@ -329,13 +333,14 @@ fn gather_timetree_outputs(
       let node = node.read_arc();
       let key = node.key();
       let payload = node.payload().read_arc();
+      let clock = clock_state.node(key);
       let out = TimetreeNodeOut {
         name: payload.base.name.clone(),
         desc: payload.base.desc.clone(),
         confidence: payload.base.confidence,
         time: payload.time,
-        div: payload.div,
-        is_outlier: payload.is_outlier,
+        div: clock.div,
+        is_outlier: clock.is_outlier,
         bad_branch: payload.bad_branch,
         rate_susceptibility_dates: rate_susceptibility_dates.get(&key).copied(),
       };

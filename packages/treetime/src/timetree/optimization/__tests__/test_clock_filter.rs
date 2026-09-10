@@ -11,7 +11,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
-  use treetime_graph::node::{Named, Outlier, TimeConstraint};
+  use treetime_graph::node::{Named, TimeConstraint};
   use treetime_io::nwk::nwk_read_str;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
@@ -28,11 +28,11 @@ mod tests {
     }
   }
 
-  fn count_outliers(graph: &GraphTimetree) -> usize {
+  fn count_outliers(graph: &GraphTimetree, state: &ClockState) -> usize {
     graph
       .get_leaves()
       .iter()
-      .filter(|leaf| leaf.read_arc().payload().read_arc().is_outlier())
+      .filter(|leaf| state.node(leaf.read_arc().key()).is_outlier)
       .count()
   }
 
@@ -59,10 +59,9 @@ mod tests {
 
     let mut state = ClockState::seed_from_payloads(&graph);
     let ClockFilterResult { new_outliers, iqd } = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0)?;
-    state.write_div_is_outlier_to_payloads(&graph);
 
     // With well-fitting data, no outliers should be detected
-    assert_eq!(count_outliers(&graph), 0, "No outliers expected for clean data");
+    assert_eq!(count_outliers(&graph, &state), 0, "No outliers expected for clean data");
     assert!(iqd >= 0.0, "IQD should be non-negative");
     // new_outliers counts status changes, could be 0 if none were outliers before
     assert_eq!(new_outliers, 0, "No status changes expected");
@@ -91,13 +90,12 @@ mod tests {
 
     let mut state = ClockState::seed_from_payloads(&graph);
     let ClockFilterResult { new_outliers, iqd } = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0)?;
-    state.write_div_is_outlier_to_payloads(&graph);
 
     // A should be detected as outlier (date 1900 with div ~0.2 doesn't fit clock)
     // Expected div at 1900 = 0.01 * 1900 - 20.0 = -1.0, but actual div ~0.2
     // Deviation = expected - actual = -1.0 - 0.2 = -1.2 (huge compared to IQD of others)
     assert!(
-      count_outliers(&graph) >= 1,
+      count_outliers(&graph, &state) >= 1,
       "At least one outlier expected for data with extreme deviation"
     );
     assert!(iqd > 0.0, "IQD should be positive with varying dates");
@@ -106,8 +104,7 @@ mod tests {
     // Verify A is marked as outlier
     let a_is_outlier = graph.get_leaves().iter().any(|leaf| {
       let node = leaf.read_arc();
-      let payload = node.payload().read_arc();
-      payload.name().is_some_and(|n| n.as_ref() == "A") && payload.is_outlier()
+      state.node(node.key()).is_outlier && node.payload().read_arc().name().is_some_and(|n| n.as_ref() == "A")
     });
     assert!(a_is_outlier, "Node A should be marked as outlier");
 
@@ -132,7 +129,6 @@ mod tests {
 
     let mut state = ClockState::seed_from_payloads(&graph);
     let ClockFilterResult { iqd, .. } = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0)?;
-    state.write_div_is_outlier_to_payloads(&graph);
 
     // IQD should be computed (may be zero or positive depending on data fit)
     assert!(iqd.is_finite(), "IQD should be a finite number");
@@ -158,19 +154,13 @@ mod tests {
     // With low threshold, A might be outlier
     let mut state_low = ClockState::seed_from_payloads(&graph);
     clock_filter_inplace(&graph, &mut state_low, &clock_model, 1.0)?;
-    state_low.write_div_is_outlier_to_payloads(&graph);
-    let outliers_low_threshold = count_outliers(&graph);
+    let outliers_low_threshold = count_outliers(&graph, &state_low);
 
-    // Reset outlier status
-    for leaf in graph.get_leaves() {
-      leaf.write_arc().payload().write_arc().set_is_outlier(false);
-    }
-
-    // With high threshold, A should not be outlier
+    // With high threshold, A should not be outlier. Each filter runs on its own freshly seeded state,
+    // so the low-threshold outlier flags do not carry over.
     let mut state_high = ClockState::seed_from_payloads(&graph);
     clock_filter_inplace(&graph, &mut state_high, &clock_model, 100.0)?;
-    state_high.write_div_is_outlier_to_payloads(&graph);
-    let outliers_high_threshold = count_outliers(&graph);
+    let outliers_high_threshold = count_outliers(&graph, &state_high);
 
     assert!(
       outliers_high_threshold <= outliers_low_threshold,

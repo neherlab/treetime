@@ -4,6 +4,7 @@ mod tests {
   use crate::ancestral::marginal::initialize_marginal;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
+  use crate::clock::clock_state::ClockState;
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::coalescent::coalescent::CoalescentModel;
@@ -197,7 +198,8 @@ mod tests {
       "C".to_owned() => Some(DateConstraint::exact(2020.0)),
     };
     load_date_constraints(&dates, &graph)?;
-    initialize_node_divergences(&graph)?;
+    let mut clock_state = ClockState::new(&graph);
+    initialize_node_divergences(&graph, &mut clock_state)?;
     initialize_clock_totals_from_time_distributions(&graph)?;
 
     let clock_model = estimate_clock_model_with_reroot(
@@ -209,7 +211,15 @@ mod tests {
       None,
     )?;
     let mut state = TimetreeState::new(&graph);
-    run_timetree(&mut graph, &partitions, &clock_model, None, false, &mut state)?;
+    run_timetree(
+      &mut graph,
+      &partitions,
+      &clock_model,
+      None,
+      false,
+      &mut state,
+      &mut clock_state,
+    )?;
 
     let times = Array1::linspace(0.0, 30.0, 301);
     let values = times.mapv(|time: f64| (-0.5 * time).exp());
@@ -278,6 +288,7 @@ mod tests {
       coalescent.branch_merger_rate_schedule(&PiecewiseConstantFn::new(array![], array![REFINEMENT_TEST_TC]))?;
 
     let mut state = TimetreeState::seed_from_payloads(graph);
+    let mut clock_state = ClockState::new(graph);
     let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
 
     Refinement {
@@ -291,6 +302,7 @@ mod tests {
       rng: &mut get_random_number_generator(Some(REFINEMENT_TEST_SEED)),
       options: &refinement_options(),
       state: &mut state,
+      clock_state: &mut clock_state,
       clock_branch_lengths: &mut clock_branch_lengths,
     }
     .run()

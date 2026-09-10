@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Outlier};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_graph::pass::{
   GraphMapOutputs, GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput,
 };
@@ -106,26 +106,51 @@ impl ClockState {
     Self { nodes, edges }
   }
 
-  /// Write the divergence and outlier flag of every node back into the graph payloads.
+  /// Re-read the payload-resident clock inputs into the state while keeping the value-resident ones.
   ///
-  /// The transitional repopulation the timetree pipeline needs after [`clock_filter`], whose own
-  /// downstream (outlier bad-branch propagation, confidence intervals, tree writers) reads `div`
-  /// and `is_outlier` off `NodeTimetree`.
+  /// Rebuilds the per-node and per-edge maps to match the current graph, so it stays valid across a
+  /// reroot or polytomy resolution that added or dropped nodes and edges. Each node's date (via
+  /// [`ClockNode::likely_time`]) and clock-set seed come from the payload (they stay transitional on
+  /// `NodeTimetree`), and `bad_branch` starts false, exactly as [`seed_from_payloads`] reads them. The
+  /// divergence and outlier flag are the two fields that live only in the value: they are preserved
+  /// from the previous state for nodes that survived, and default for nodes that are new. Every edge
+  /// resets to default messages, which the following backward pass recomputes.
   ///
-  /// [`clock_filter`]: crate::clock::clock_filter::clock_filter_inplace
-  pub fn write_div_is_outlier_to_payloads<N, E, D>(&self, graph: &Graph<N, E, D>)
+  /// [`seed_from_payloads`]: ClockState::seed_from_payloads
+  pub fn reseed_transitional_from_payloads<N, E, D>(&mut self, graph: &Graph<N, E, D>)
   where
-    N: GraphNode + ClockNode + Outlier,
+    N: GraphNode + ClockNode,
     E: GraphEdge,
     D: Send + Sync,
   {
-    for node_ref in graph.get_nodes() {
-      let node = node_ref.read_arc();
-      let state = self.node(node.key());
-      let mut payload = node.payload().write_arc();
-      ClockNode::set_div(&mut *payload, state.div);
-      payload.set_is_outlier(state.is_outlier);
-    }
+    let nodes = graph
+      .get_nodes()
+      .iter()
+      .map(|node| {
+        let node = node.read_arc();
+        let key = node.key();
+        let payload = node.payload().read_arc();
+        let (div, is_outlier) = self
+          .nodes
+          .get(&key)
+          .map_or((0.0, false), |state| (state.div, state.is_outlier));
+        let state = ClockNodeState {
+          clock_set: payload.clock_set().clone(),
+          div,
+          time: payload.likely_time(),
+          bad_branch: false,
+          is_outlier,
+        };
+        (key, state)
+      })
+      .collect();
+    let edges = graph
+      .get_edges()
+      .iter()
+      .map(|edge| (edge.read_arc().key(), ClockEdgeState::default()))
+      .collect();
+    self.nodes = nodes;
+    self.edges = edges;
   }
 
   #[must_use]

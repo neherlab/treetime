@@ -1,3 +1,4 @@
+use crate::clock::clock_state::ClockState;
 use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::ClockNode;
 use crate::payload::traits::TimetreeNode;
@@ -16,19 +17,26 @@ use treetime_graph::node::{GraphNode, Named};
 /// above the hard boundary at `t = 0`, so the divergent `-ln p` there is never stored on the grid.
 const MIN_TIME_MUTATION_FRACTION: f64 = 0.01;
 
-pub fn initialize_node_divergences<N, E, D>(graph: &Graph<N, E, D>) -> Result<(), Report>
+/// Compute each node's cumulative root divergence and store it in the clock state value.
+///
+/// The divergence is a durable clock input carried between passes. It lives only in the threaded
+/// [`ClockState`], not on the node payload; a node absent from the state (introduced by a topology
+/// change since the last rebuild) is inserted with default fields before its divergence is written,
+/// so a fresh polytomy or reroot node gets its divergence here rather than a stale zero.
+pub fn initialize_node_divergences<N, E, D>(graph: &Graph<N, E, D>, clock_state: &mut ClockState) -> Result<(), Report>
 where
-  N: GraphNode + Named + ClockNode,
+  N: GraphNode + Named,
   E: EdgeOptimizeOps,
   D: Send + Sync,
 {
   let divs = compute_divs(graph, OnlyLeaves(false))?;
   for node_ref in graph.get_nodes() {
-    let mut node = node_ref.write_arc().payload().write_arc();
-    let name = node.name().map(|n| n.as_ref().to_owned());
+    let node = node_ref.read_arc();
+    let key = node.key();
+    let name = node.payload().read_arc().name().map(|n| n.as_ref().to_owned());
     if let Some(name) = name {
       if let Some(&div) = divs.get(&name) {
-        node.set_div(div);
+        clock_state.nodes.entry(key).or_default().div = div;
       }
     }
   }

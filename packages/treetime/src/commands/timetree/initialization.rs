@@ -12,7 +12,6 @@ use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
 use crate::seq::alignment::get_common_length;
 use crate::seq::gap_fill::apply_gap_fill;
-use crate::timetree::utils::initialize_node_divergences;
 use eyre::{Report, WrapErr};
 use log::info;
 use parking_lot::RwLock;
@@ -84,9 +83,6 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
   } else {
     None
   };
-
-  // Calculate divergence distances from root to all nodes
-  initialize_node_divergences(&graph)?;
 
   Ok(InputData {
     graph,

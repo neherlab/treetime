@@ -135,6 +135,11 @@ pub struct TimetreeOutput {
   /// clock length from here.
   #[serde(skip)]
   pub clock_branch_lengths: BTreeMap<GraphEdgeKey, f64>,
+  /// Persistent per-node clock state carrying the node divergence and outlier flag as values instead
+  /// of on the graph payload. The output gather reads each node's divergence and outlier flag from
+  /// here rather than off the payload.
+  #[serde(skip)]
+  pub clock_state: ClockState,
 }
 
 pub fn run(
@@ -167,7 +172,12 @@ pub fn run(
     load_date_constraints(dates, &input.graph).wrap_err("Failed to load date constraints")?;
   }
 
-  initialize_node_divergences(&input.graph)?;
+  // The persistent clock state shared across the whole pipeline. The node divergence and outlier flag
+  // live here as values rather than on the graph payloads; `initialize_node_divergences` fills the
+  // divergence, the clock filter marks outliers into it, and every later clock call reads both back.
+  // `time` and `clock_set` stay transitional on the payload, re-read at each clock call.
+  let mut clock_state = ClockState::new(&input.graph);
+  initialize_node_divergences(&input.graph, &mut clock_state)?;
 
   let branch_params = BranchPointOptimizationParams::default();
 
@@ -178,11 +188,10 @@ pub fn run(
     force_positive_rate: !params.allow_negative_rate,
     ..RerootParams::default()
   };
-  // The shared clock machinery works on the `ClockState` value. Timetree keeps its durable clock
-  // inputs (`time`, `is_outlier`, `div`) on the graph payloads between calls, so seed a fresh state
-  // from them here. The estimate's clock outputs are not read by timetree's own downstream, so no
-  // repopulation is needed after this call.
-  let mut clock_state = ClockState::seed_from_payloads(&input.graph);
+  // Re-read the payload-resident clock inputs into the state while keeping the value-resident
+  // divergence and outlier flag. The estimate's clock outputs are not read by timetree's own
+  // downstream, so no repopulation is needed after this call.
+  clock_state.reseed_transitional_from_payloads(&input.graph);
   let mut clock_model = estimate_clock_model_with_reroot_policy(
     &mut input.graph,
     &mut clock_state,
@@ -223,6 +232,7 @@ pub fn run(
     info!("First reroot (pre-ancestral)");
     clock_model = reroot_tree(
       &mut input.graph,
+      &mut clock_state,
       &partitions,
       &ClockParams::default(),
       params.clock_rate,
@@ -234,14 +244,14 @@ pub fn run(
   }
 
   if params.clock_filter > 0.0 {
-    // Seed the clock state from the payloads, run the filter on the value, then write the divergence
-    // and outlier flag back: timetree's own downstream (outlier bad-branch propagation, confidence
-    // intervals, tree writers) reads these off `NodeTimetree`.
-    let mut clock_state = ClockState::seed_from_payloads(&input.graph);
+    // Re-read the payload-resident clock inputs while preserving the value-resident divergence and
+    // outlier flag, then run the filter on the state: it recomputes the divergence and marks outliers
+    // into the value. Timetree's own downstream (outlier bad-branch propagation, confidence intervals,
+    // tree writers) reads the divergence and outlier flag from the threaded state.
+    clock_state.reseed_transitional_from_payloads(&input.graph);
     let result = clock_filter_inplace(&input.graph, &mut clock_state, &clock_model, params.clock_filter)?;
-    clock_state.write_div_is_outlier_to_payloads(&input.graph);
-    report_bad_branches(&input.graph, &clock_model, result.iqd);
-    apply_outlier_bad_branches(&input.graph)?;
+    report_bad_branches(&input.graph, &clock_state, &clock_model, result.iqd);
+    apply_outlier_bad_branches(&input.graph, &clock_state)?;
   }
 
   if let Some(aln) = input.sequences.as_deref() {
@@ -271,6 +281,7 @@ pub fn run(
     info!("Reroot (post-ancestral)");
     clock_model = reroot_tree(
       &mut input.graph,
+      &mut clock_state,
       &partitions,
       reroot_clock_params,
       params.clock_rate,
@@ -295,6 +306,7 @@ pub fn run(
     None,
     params.no_indels,
     &mut timetree_state,
+    &mut clock_state,
   )?;
 
   // set up coalescent parameters and inference mode
@@ -336,6 +348,7 @@ pub fn run(
       Some(&prior),
       params.no_indels,
       &mut timetree_state,
+      &mut clock_state,
     )?;
   }
   // at this stage we have a consistent coalescent model and timed tree. Subsequence steps are refinement and post-processing.
@@ -402,6 +415,7 @@ pub fn run(
       rng: &mut rng,
       options: &refinement_options,
       state: &mut timetree_state,
+      clock_state: &mut clock_state,
       clock_branch_lengths: &mut clock_branch_lengths,
     }
     .run()
@@ -467,6 +481,7 @@ pub fn run(
       rate_std,
       params.no_indels,
       &mut timetree_state,
+      &mut clock_state,
     )
     .wrap_err("Rate susceptibility analysis failed")?
   } else {
@@ -482,6 +497,7 @@ pub fn run(
       final_prior,
       params.no_indels,
       &mut timetree_state,
+      &mut clock_state,
     )
     .wrap_err("Final timetree inference failed")?;
 
@@ -516,6 +532,7 @@ pub fn run(
     coalescent: coalescent_output,
     rate_susceptibility_dates,
     clock_branch_lengths,
+    clock_state,
   })
 }
 

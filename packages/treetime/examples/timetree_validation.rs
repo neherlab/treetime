@@ -13,6 +13,7 @@ use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::fitch::create_fitch_partition;
 use treetime::ancestral::marginal::initialize_marginal;
 use treetime::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
+use treetime::clock::clock_state::ClockState;
 use treetime::clock::date_constraints::load_date_constraints;
 use treetime::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
@@ -320,7 +321,8 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   initialize_marginal(&graph, &partitions, &aln)?;
   dump_graph(&graph, &output_dir_str, "002_after_run_marginal.json")?;
 
-  initialize_node_divergences(&graph)?;
+  let mut clock_state = ClockState::new(&graph);
+  initialize_node_divergences(&graph, &mut clock_state)?;
 
   let clock_model = estimate_clock_model_with_reroot(
     &mut graph,
@@ -336,7 +338,15 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   dump_graph(&graph, &output_dir_str, "004_after_initialize_node_times.json")?;
 
   let mut state = TimetreeState::new(&graph);
-  run_timetree(&mut graph, &partitions, &clock_model, None, false, &mut state)?;
+  run_timetree(
+    &mut graph,
+    &partitions,
+    &clock_model,
+    None,
+    false,
+    &mut state,
+    &mut clock_state,
+  )?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
   let actual = extract_node_times(&graph);
@@ -380,7 +390,8 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
   initialize_marginal(&graph, &partitions, &aln)?;
   dump_graph(&graph, &output_dir_str, "001_after_run_marginal.json")?;
 
-  initialize_node_divergences(&graph)?;
+  let mut clock_state = ClockState::new(&graph);
+  initialize_node_divergences(&graph, &mut clock_state)?;
 
   let clock_model = estimate_clock_model_with_reroot(
     &mut graph,
@@ -396,7 +407,15 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
   dump_graph(&graph, &output_dir_str, "004_after_initialize_node_times.json")?;
 
   let mut state = TimetreeState::new(&graph);
-  run_timetree(&mut graph, &partitions, &clock_model, None, false, &mut state)?;
+  run_timetree(
+    &mut graph,
+    &partitions,
+    &clock_model,
+    None,
+    false,
+    &mut state,
+    &mut clock_state,
+  )?;
   dump_graph(&graph, &output_dir_str, "005_after_run_timetree.json")?;
 
   let actual = extract_node_times(&graph);

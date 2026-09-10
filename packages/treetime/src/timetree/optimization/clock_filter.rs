@@ -1,11 +1,12 @@
 use crate::clock::clock_model::{ClockLine, ClockModel};
+use crate::clock::clock_state::ClockState;
 use crate::partition::timetree::partition::GraphTimetree;
 use crate::payload::traits::ClockNode;
 use eyre::Report;
 use itertools::Itertools;
 use log::warn;
 use ordered_float::OrderedFloat;
-use treetime_graph::node::{Named, Outlier};
+use treetime_graph::node::Named;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
 #[derive(Debug, Clone)]
@@ -16,21 +17,30 @@ pub struct OutlierRecord {
   pub residual: f64,
 }
 
-/// Collect outlier records from the graph for nodes marked as outliers.
-pub fn collect_outliers(graph: &GraphTimetree, clock_model: &ClockModel, iqd: f64) -> Vec<OutlierRecord> {
+/// Collect outlier records from the clock state for leaves marked as outliers.
+///
+/// The outlier flag and divergence come from the threaded [`ClockState`] value; the leaf name and
+/// given date stay transitional on the payload.
+pub fn collect_outliers(
+  graph: &GraphTimetree,
+  clock_state: &ClockState,
+  clock_model: &ClockModel,
+  iqd: f64,
+) -> Vec<OutlierRecord> {
   graph
     .get_leaves()
     .iter()
     .filter_map(|leaf| {
       let node = leaf.read_arc();
-      let payload_arc = node.payload();
-      let payload = payload_arc.read();
-      if !payload.is_outlier() {
+      let state = clock_state.node(node.key());
+      if !state.is_outlier {
         return None;
       }
+      let payload_arc = node.payload();
+      let payload = payload_arc.read();
       let name = payload.name().map(|n| n.as_ref().to_owned())?;
       let given_date = payload.likely_time()?;
-      let div = payload.div();
+      let div = state.div;
       let apparent_date = clock_model.date(div);
       let clock_deviation = clock_model.clock_deviation(given_date, div);
       let residual = if iqd > 0.0 { clock_deviation / iqd } else { 0.0 };
@@ -47,8 +57,8 @@ pub fn collect_outliers(graph: &GraphTimetree, clock_model: &ClockModel, iqd: f6
 }
 
 /// Report outlier branches that violate molecular clock.
-pub fn report_bad_branches(graph: &GraphTimetree, clock_model: &ClockModel, iqd: f64) {
-  let outliers = collect_outliers(graph, clock_model, iqd);
+pub fn report_bad_branches(graph: &GraphTimetree, clock_state: &ClockState, clock_model: &ClockModel, iqd: f64) {
+  let outliers = collect_outliers(graph, clock_state, clock_model, iqd);
   if outliers.is_empty() {
     return;
   }
@@ -71,15 +81,17 @@ pub fn report_bad_branches(graph: &GraphTimetree, clock_model: &ClockModel, iqd:
 
 /// Convert outlier flags to bad_branch flags for backward pass exclusion.
 ///
-/// After clock_filter_inplace marks leaves as outliers (is_outlier=true), this
+/// After clock_filter_inplace marks leaves as outliers (is_outlier=true in the clock state), this
 /// sets bad_branch=true on those leaves and propagates upward: an internal node
 /// is bad only when all its children are bad.
-pub fn apply_outlier_bad_branches(graph: &GraphTimetree) -> Result<(), Report> {
+///
+/// The outlier flag is read from the threaded [`ClockState`] value; `bad_branch` stays transitional on
+/// the payload, so the coalescent and date passes keep reading it there.
+pub fn apply_outlier_bad_branches(graph: &GraphTimetree, clock_state: &ClockState) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
     let node = leaf.read_arc();
-    let mut payload = node.payload().write_arc();
-    if payload.is_outlier() {
-      payload.bad_branch = true;
+    if clock_state.node(node.key()).is_outlier {
+      node.payload().write_arc().bad_branch = true;
     }
   }
 

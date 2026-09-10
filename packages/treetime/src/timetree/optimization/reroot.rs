@@ -16,6 +16,7 @@ use treetime_graph::reroot::RerootChanges;
 /// with bundled topology changes (edge split, edge merge, inverted edges).
 pub fn reroot_tree(
   graph: &mut GraphTimetree,
+  clock_state: &mut ClockState,
   partitions: &[PartitionTimetreeRef],
   clock_params: &ClockParams,
   clock_rate: Option<f64>,
@@ -34,13 +35,14 @@ pub fn reroot_tree(
     reroot_params.split_edge, reroot_params.remove_trivial_root
   );
 
-  // Perform clock-based rerooting. Seed the clock state from the payloads and discard it after: the
-  // topology change is carried by the graph and applied to the partitions below, and timetree does
-  // not read the clock estimate's per-node clock fields.
-  let mut clock_state = ClockState::seed_from_payloads(graph);
+  // Perform clock-based rerooting on the threaded clock state. Re-read the payload-resident clock
+  // inputs (date, clock-set seed) while preserving the value-resident divergence and outlier flag, so
+  // the regression excludes the leaves the clock filter marked. The reroot mutates the state's node
+  // and edge maps in place to match the new topology.
+  clock_state.reseed_transitional_from_payloads(graph);
   let clock_reroot_result = estimate_clock_model_with_reroot_policy(
     graph,
-    &mut clock_state,
+    clock_state,
     clock_params,
     clock_rate,
     false,

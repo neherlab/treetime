@@ -1,4 +1,5 @@
 use crate::clock::clock_model::ClockModel;
+use crate::clock::clock_state::ClockState;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::optimize::indel::estimate_indel_rate;
 use crate::partition::optimize::contribution::OptimizationContribution;
@@ -51,6 +52,7 @@ pub fn run_timetree<N, E, P>(
   coalescent: Option<&CoalescentModel>,
   no_indels: bool,
   state: &mut TimetreeState,
+  clock_state: &mut ClockState,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named + TimetreeNode + ClockNode + Default,
@@ -60,7 +62,7 @@ where
   info!("# Running timetree inference");
 
   info!("## Calculating divergence distances");
-  initialize_node_divergences(graph)?;
+  initialize_node_divergences(graph, clock_state)?;
 
   // Re-read the transitional payload fields (times, distributions, bad-branch flags, time lengths)
   // into the state, rebuilding its maps for the current topology while carrying the value-resident

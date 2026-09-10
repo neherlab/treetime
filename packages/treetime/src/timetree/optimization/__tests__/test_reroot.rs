@@ -105,6 +105,7 @@ mod tests {
     // Should complete without error - edge split and trivial root removal are now always enabled
     let clock_model = reroot_tree(
       &mut graph,
+      &mut clock_state,
       &partitions,
       &clock_params,
       None,
@@ -505,6 +506,7 @@ mod tests {
     // First reroot call (simulating keep_root=false flow)
     let clock_model_1 = reroot_tree(
       &mut graph,
+      &mut clock_state,
       &partitions,
       &clock_params,
       None,
@@ -526,6 +528,7 @@ mod tests {
     // Second reroot call (simulating refinement iteration)
     let clock_model_2 = reroot_tree(
       &mut graph,
+      &mut clock_state,
       &partitions,
       &clock_params,
       Some(clock_model_1.clock_rate()),
