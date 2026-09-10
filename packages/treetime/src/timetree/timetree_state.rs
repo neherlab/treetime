@@ -1,6 +1,7 @@
 use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
+use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
@@ -34,12 +35,15 @@ pub struct DateNodeState {
 ///
 /// `branch_length_distribution` is the branch's time-duration law the passes convolve across;
 /// `msg_to_parent` the backward message the child sends up, divided back out as the cavity on the
-/// forward pass; `time_length` the branch's committed duration (the Newick weight).
-#[derive(Debug, Clone, Default)]
+/// forward pass; `time_length` the branch's committed duration (the Newick weight); `gamma` the
+/// per-branch relaxed-clock rate multiplier, `1.0` for a strict clock.
+#[derive(Debug, Clone, SmartDefault)]
 pub struct DateEdgeState {
   pub branch_length_distribution: Option<Arc<Distribution<NegLog>>>,
   pub msg_to_parent: Option<Arc<Distribution<NegLog>>>,
   pub time_length: Option<f64>,
+  #[default = 1.0]
+  pub gamma: f64,
 }
 
 /// The date-inference state for a whole tree, routed through the timetree date passes in place of the
@@ -110,6 +114,7 @@ impl TimetreeState {
           branch_length_distribution: payload.branch_length_distribution().clone(),
           msg_to_parent: payload.msg_to_parent().clone(),
           time_length: payload.time_length(),
+          gamma: payload.gamma(),
         };
         (edge.key(), state)
       })
@@ -167,6 +172,7 @@ impl TimetreeState {
           branch_length_distribution,
           msg_to_parent,
           time_length: payload.time_length(),
+          gamma: payload.gamma(),
         };
         (key, state)
       })
@@ -177,9 +183,11 @@ impl TimetreeState {
 
   /// Clear the value-resident edge fields after a topology change, so the next pass rebuilds them.
   ///
-  /// Re-parenting invalidates the branch-length distributions and backward messages: they describe a
-  /// parent-child pair that no longer exists. This blanks both on every current edge (and adds default
-  /// entries for edges and nodes the topology change introduced), the counterpart of the payload reset
+  /// Re-parenting invalidates the branch-length distributions, backward messages, and relaxed-clock
+  /// rate multiplier: they describe a parent-child pair that no longer exists. This blanks the
+  /// distribution and message and resets `gamma` to the strict-clock `1.0` on every current edge (and
+  /// adds default entries for edges and nodes the topology change introduced), the counterpart of the
+  /// payload reset
   /// [`prepare_tree_after_topology_change`](crate::timetree::optimization::polytomy::prepare_tree_after_topology_change)
   /// does for the transitional fields. The following [`reseed_transitional_from_payloads`] preserves
   /// these blanked values, so the branch-distribution builders start each surviving edge from `None`.
@@ -194,6 +202,7 @@ impl TimetreeState {
       let entry = self.edges.entry(key).or_default();
       entry.branch_length_distribution = None;
       entry.msg_to_parent = None;
+      entry.gamma = 1.0;
     }
     for node_ref in graph.get_nodes() {
       let key = node_ref.read_arc().key();
