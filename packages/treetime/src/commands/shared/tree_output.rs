@@ -129,6 +129,7 @@ pub fn write_prune_tree_outputs(
 pub fn write_clock_tree_outputs(
   graph: &GraphClock<ClockGraphData>,
   nodes: &BTreeMap<GraphNodeKey, ClockNodeOut>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
@@ -139,7 +140,7 @@ pub fn write_clock_tree_outputs(
     providers,
     "clock",
     || clock_to_auspice(graph, nodes, &updated),
-    || clock_to_phyloxml(graph, nodes),
+    || clock_to_phyloxml(graph, nodes, branch_lengths),
     || clock_to_mat(graph),
   )
 }
@@ -359,7 +360,7 @@ pub(crate) fn clock_to_auspice(
   );
   auspice_from_graph(graph, data, |context| {
     let out = &nodes[&context.node_key];
-    let name = node_name(context.node_key, context.node);
+    let name = node_name_value(context.node_key, out.name.as_deref());
     Ok(auspice_node(
       name.clone(),
       finite_number(Some(out.div), 6, "clock", &name, "div")?,
@@ -722,10 +723,11 @@ pub(crate) fn prune_to_phyloxml(
 pub(crate) fn clock_to_phyloxml(
   graph: &GraphClock<ClockGraphData>,
   nodes: &BTreeMap<GraphNodeKey, ClockNodeOut>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<Phyloxml, Report> {
   phyloxml_from_graph(graph, "TreeTime clock analysis", |context| {
     let out = &nodes[&context.node_key];
-    let name = node_name(context.node_key, context.node);
+    let name = node_name_value(context.node_key, out.name.as_deref());
     ensure_optional_finite(out.time, "clock", &name, "date")?;
     ensure_finite(out.div, "clock", &name, "divergence")?;
     let property = vec![
@@ -743,7 +745,7 @@ pub(crate) fn clock_to_phyloxml(
     ];
     Ok(PhyloxmlClade {
       name: out.name.clone(),
-      branch_length_elem: context.edge.and_then(HasBranchLength::branch_length),
+      branch_length_elem: context.edge_key.and_then(|edge_key| branch_lengths[&edge_key]),
       branch_length_attr: None,
       confidence: vec![],
       width: None,

@@ -195,11 +195,14 @@ pub fn run_clock(
   progress.report("Writing output", 0.8, "");
 
   let (nodes, edges) = gather_clock_outputs(&graph, &state);
+  let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> =
+    edges.iter().map(|(key, edge)| (*key, edge.branch_length)).collect();
 
   if !resolved.tree_outputs.is_empty() {
     write_clock_tree_outputs(
       &graph,
       &nodes,
+      &branch_lengths,
       &resolved.tree_outputs,
       &treetime_io::nwk::CommentProviders::new(),
     )?;

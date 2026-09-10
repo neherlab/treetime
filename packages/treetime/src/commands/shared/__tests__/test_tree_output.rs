@@ -650,7 +650,11 @@ mod tests {
         },
         {
           let clock_graph = clock_graph()?;
-          clock_to_phyloxml(&clock_graph, &clock_nodes(&clock_graph))?
+          clock_to_phyloxml(
+            &clock_graph,
+            &clock_nodes(&clock_graph),
+            &clock_branch_lengths(&clock_graph),
+          )?
         },
         {
           let mugration_graph = mugration_graph()?;
@@ -848,6 +852,17 @@ mod tests {
         payload.time = Some(2020.0 + index as f64);
       }
       Ok(graph.map_data(ClockGraphData::new(fixed_clock_model()?, vec![])))
+    }
+
+    pub fn clock_branch_lengths(graph: &GraphClock<ClockGraphData>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+      graph
+        .get_edges()
+        .iter()
+        .map(|edge| {
+          let edge = edge.read_arc();
+          (edge.key(), edge.payload().read_arc().branch_length)
+        })
+        .collect()
     }
 
     pub fn clock_nodes(graph: &GraphClock<ClockGraphData>) -> BTreeMap<GraphNodeKey, ClockNodeOut> {
