@@ -24,7 +24,7 @@ use std::sync::Arc;
 use treetime_graph::edge::{Edge, GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Node};
-use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::auspice::auspice_write_file;
 use treetime_io::auspice_types::{
   AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotationCds, AuspiceGenomeAnnotationNuc,
@@ -78,7 +78,8 @@ pub fn write_ancestral_tree_outputs(
   providers: &CommentProviders,
 ) -> Result<(), Report> {
   let updated = generation_date();
-  let names = node_names(graph);
+  let names: BTreeMap<GraphNodeKey, Option<String>> =
+    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
   let weights = edge_branch_lengths(graph);
   write_tree_outputs(
     graph,
@@ -102,7 +103,8 @@ pub fn write_optimize_tree_outputs(
   providers: &CommentProviders,
 ) -> Result<(), Report> {
   let updated = generation_date();
-  let names = node_names(graph);
+  let names: BTreeMap<GraphNodeKey, Option<String>> =
+    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
   write_tree_outputs(
     graph,
     &names,
@@ -125,7 +127,8 @@ pub fn write_prune_tree_outputs(
   providers: &CommentProviders,
 ) -> Result<(), Report> {
   let updated = generation_date();
-  let names = node_names(graph);
+  let names: BTreeMap<GraphNodeKey, Option<String>> =
+    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
   let weights = edge_branch_lengths(graph);
   write_tree_outputs(
     graph,
@@ -149,7 +152,8 @@ pub fn write_clock_tree_outputs(
   providers: &CommentProviders,
 ) -> Result<(), Report> {
   let updated = generation_date();
-  let names = node_names(graph);
+  let names: BTreeMap<GraphNodeKey, Option<String>> =
+    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
   let weights = edge_branch_lengths(graph);
   write_tree_outputs(
     graph,
@@ -173,7 +177,8 @@ pub fn write_mugration_tree_outputs(
   providers: &CommentProviders,
 ) -> Result<(), Report> {
   let updated = generation_date();
-  let names = node_names(graph);
+  let names: BTreeMap<GraphNodeKey, Option<String>> =
+    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
   let weights = edge_branch_lengths(graph);
   write_tree_outputs(
     graph,
