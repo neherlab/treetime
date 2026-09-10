@@ -2,6 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::initialize_marginal;
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
   use crate::clock::clock_state::ClockState;
@@ -192,7 +193,7 @@ mod tests {
     let partitions = vec![Arc::new(RwLock::new(PartitionTimetree::Dense(
       PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?),
     )))];
-    initialize_marginal(&graph, &partitions, &aln)?;
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?;
 
     let dates: DatesMap = btreemap! {
       "A".to_owned() => Some(DateConstraint::exact(2010.0)),

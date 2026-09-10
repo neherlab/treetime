@@ -10,6 +10,7 @@ mod tests {
   use rstest::rstest;
   use std::path::PathBuf;
   use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::nwk_read_file;
 
@@ -40,13 +41,13 @@ mod tests {
 
     let gtr_a = {
       let graph: GraphAncestral = nwk_read_file(&tree_path)?;
-      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln)?;
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &node_names(&graph))?;
       infer_gtr_fitch(&fitch, &graph, &edge_branch_lengths(&graph))?
     };
 
     let gtr_b = {
       let graph: GraphAncestral = nwk_read_file(&tree_path)?;
-      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln)?;
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &node_names(&graph))?;
       infer_gtr_fitch(&fitch, &graph, &edge_branch_lengths(&graph))?
     };
 

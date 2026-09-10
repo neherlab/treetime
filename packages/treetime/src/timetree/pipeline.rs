@@ -238,7 +238,7 @@ pub fn run(
   if let Some(aln) = input.sequences.as_deref() {
     if params.branch_length_mode == BranchLengthMode::Marginal && !partitions.is_empty() {
       info!("### ML branch-length optimization (pre-reroot)");
-      initialize_marginal(&input.graph, &partitions, aln)?;
+      initialize_marginal(&input.graph, &profile_branch_lengths(&input.graph), &partitions, aln)?;
       optimize_branch_lengths_pre_step(&input.graph, &partitions, params.no_indels)
         .wrap_err("ML branch-length optimization (pre-reroot) failed")?;
     }

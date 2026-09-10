@@ -112,7 +112,7 @@ mod tests {
         get_common_length(&aln)?,
       )))];
 
-      initialize_marginal(&graph, &partitions, &aln)?.value();
+      initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
       marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
       Ok((graph, partitions))

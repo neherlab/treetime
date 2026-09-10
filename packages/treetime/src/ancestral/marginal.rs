@@ -41,6 +41,7 @@ where
 
 pub fn initialize_marginal<N, E, P>(
   graph: &Graph<N, E, ()>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   partitions: &[Arc<RwLock<P>>],
   aln: &[FastaRecord],
 ) -> Result<LogLh, Report>
@@ -52,7 +53,7 @@ where
   for partition in partitions {
     partition.write_arc().attach_sequences(graph, aln)?;
   }
-  marginal_update(graph, &profile_branch_lengths(graph), partitions)
+  marginal_update(graph, branch_lengths, partitions)
 }
 
 /// Run the marginal backward and forward passes over the given partitions, propagating profiles

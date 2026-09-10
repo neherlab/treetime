@@ -8,6 +8,7 @@ use crate::seq::alignment::get_common_length;
 use eyre::Report;
 use parking_lot::RwLock;
 use std::sync::{Arc, LazyLock};
+use treetime_graph::value_maps::node_names;
 use treetime_io::fasta::read_many_fasta_str;
 use treetime_io::nwk::nwk_read_str;
 
@@ -21,7 +22,7 @@ pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> 
   let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
   let partitions = [Arc::new(RwLock::new(partition))];
 
-  initialize_marginal(&graph, &partitions, &aln).map(|log_lh| log_lh.value())
+  initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln).map(|log_lh| log_lh.value())
 }
 
 pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
@@ -29,7 +30,7 @@ pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) ->
   let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-  let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
+  let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
   let partition = fitch.into_marginal_sparse(gtr, &graph)?;
   let partitions = [Arc::new(RwLock::new(partition))];
 

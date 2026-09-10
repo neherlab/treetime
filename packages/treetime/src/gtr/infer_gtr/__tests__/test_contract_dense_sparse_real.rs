@@ -35,6 +35,7 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::infer_gtr_fitch;
   use crate::ancestral::marginal::initialize_marginal;
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
@@ -42,6 +43,7 @@ mod tests {
   use crate::partition::traits::TransitionCounting;
   use crate::seq::alignment::get_common_length;
   use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::value_maps::node_names;
 
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -132,7 +134,7 @@ mod tests {
         DENSE_NUC_ALPHABET.clone(),
         get_common_length(&aln)?,
       )));
-      initialize_marginal(&graph, from_ref(&partition), &aln)?.value();
+      initialize_marginal(&graph, &profile_branch_lengths(&graph), from_ref(&partition), &aln)?.value();
       let counts = partition
         .read_arc()
         .count_transitions(&graph, &edge_branch_lengths(&graph))?;
@@ -148,7 +150,7 @@ mod tests {
 
     let sparse = {
       let graph: GraphAncestral = nwk_read_file(&tree_path)?;
-      let fitch = create_fitch_partition(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &aln)?;
+      let fitch = create_fitch_partition(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &aln, &node_names(&graph))?;
       infer_gtr_fitch(&fitch, &graph, &edge_branch_lengths(&graph))?
     };
 

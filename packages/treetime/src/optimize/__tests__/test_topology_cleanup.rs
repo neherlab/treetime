@@ -26,6 +26,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AsciiChar;
@@ -116,7 +117,14 @@ mod tests {
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], TopologyOps::default(), &mut branch_lengths)?;
+    let changed = prune_and_merge_in_loop(
+      &mut graph,
+      &sparse,
+      &dense,
+      &[],
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
     assert!(!changed);
     assert_eq!(graph.get_nodes().len(), 4);
     Ok(())
@@ -175,7 +183,14 @@ mod tests {
     }
 
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key], TopologyOps::default(), &mut branch_lengths)?;
+    let changed = prune_and_merge_in_loop(
+      &mut graph,
+      &sparse,
+      &dense,
+      &[ri_key],
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
     assert!(changed);
 
     // I should be gone
@@ -223,7 +238,7 @@ mod tests {
     // A and B are identical: the internal edge AB should be optimized to zero
     let mut graph: GraphAncestral = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &node_names(&graph))?;
     let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
     marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
@@ -300,7 +315,7 @@ mod tests {
 
     let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;")?;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &node_names(&graph))?;
     let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
     marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
@@ -365,7 +380,7 @@ mod tests {
 
     let mut graph: GraphAncestral = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &node_names(&graph))?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
@@ -434,7 +449,14 @@ mod tests {
 
     // Empty zero-optimal list: the old loop was a no-op here. The hoist must still fire.
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[], TopologyOps::default(), &mut branch_lengths)?;
+    let changed = prune_and_merge_in_loop(
+      &mut graph,
+      &sparse,
+      &dense,
+      &[],
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
     assert!(changed, "reversion polytomy must be resolved even without a collapse");
 
     let p = sparse[0].read_arc();
@@ -526,7 +548,7 @@ mod tests {
 
     let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, nuc, get_common_length(&aln)?)))];
 
-    initialize_marginal(&graph, &dense_partitions, &aln)?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &dense_partitions, &aln)?.value();
     marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
 
     let sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
@@ -618,7 +640,14 @@ mod tests {
     }
 
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let changed = prune_and_merge_in_loop(&mut graph, &sparse, &dense, &[ri_key], TopologyOps::default(), &mut branch_lengths)?;
+    let changed = prune_and_merge_in_loop(
+      &mut graph,
+      &sparse,
+      &dense,
+      &[ri_key],
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
     assert!(changed);
 
     let mut names: Vec<String> = graph
@@ -840,7 +869,7 @@ mod tests {
 
     let mut graph: GraphAncestral = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &node_names(&graph))?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
@@ -903,7 +932,7 @@ mod tests {
 
     let mut graph: GraphAncestral = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &node_names(&graph))?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
@@ -941,7 +970,10 @@ mod tests {
     assert_eq!(map_keys, edge_keys);
 
     for bl in result.branch_lengths.values().flatten() {
-      assert!(bl.is_finite() && *bl >= 0.0, "branch length must be finite and non-negative: {bl}");
+      assert!(
+        bl.is_finite() && *bl >= 0.0,
+        "branch length must be finite and non-negative: {bl}"
+      );
     }
     Ok(())
   }

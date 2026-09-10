@@ -9,6 +9,7 @@ mod tests {
   use indoc::indoc;
   use itertools::Itertools;
   use maplit::btreemap;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
 
@@ -26,7 +27,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln)?;
+    compress_sequences(&graph, &mut partition, &aln, &node_names(&graph))?;
 
     let name = |key| -> String {
       graph

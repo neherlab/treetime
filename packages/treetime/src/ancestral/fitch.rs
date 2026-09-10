@@ -24,7 +24,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, GraphNodeKey, NodeAncestralOps};
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
-use treetime_graph::value_maps::node_names;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
@@ -35,6 +34,7 @@ pub fn create_fitch_partition<N, E>(
   index: usize,
   alphabet: Alphabet,
   aln: &[FastaRecord],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<PartitionFitch, Report>
 where
   N: NodeAncestralOps,
@@ -48,7 +48,7 @@ where
     nodes: btreemap! {},
     edges: btreemap! {},
   };
-  compress_sequences(graph, &mut partition, aln)?;
+  compress_sequences(graph, &mut partition, aln, names)?;
   Ok(partition)
 }
 
@@ -56,6 +56,7 @@ pub(crate) fn attach_seqs_to_graph<N, E>(
   graph: &Graph<N, E, ()>,
   partition: &mut PartitionFitch,
   aln: &[FastaRecord],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report>
 where
   N: NodeAncestralOps,
@@ -65,7 +66,6 @@ where
     records.entry(record.seq_name.as_str()).or_insert(record);
     records
   });
-  let names = node_names(graph);
   let leaf_records = graph
     .get_leaves()
     .into_par_iter()
@@ -354,12 +354,13 @@ pub fn compress_sequences<N, E>(
   graph: &Graph<N, E, ()>,
   partition: &mut PartitionFitch,
   aln: &[FastaRecord],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report>
 where
   N: NodeAncestralOps,
   E: GraphEdge,
 {
-  attach_seqs_to_graph(graph, partition, aln)?;
+  attach_seqs_to_graph(graph, partition, aln, names)?;
   fitch_backward(graph, partition)?;
   fitch_forward(graph, partition)?;
   fitch_cleanup(graph, partition)

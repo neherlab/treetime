@@ -104,8 +104,7 @@ mod tests {
     for iteration in 0..10 {
       let graph: GraphAncestral = nwk_read_str("(A:1.0)root:0.0;")?;
       let old_bls = edge_branch_lengths(&graph);
-      let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> =
-        old_bls.keys().map(|&key| (key, Some(optimized_bl))).collect();
+      let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(optimized_bl))).collect();
 
       apply_damping(&mut bls, &old_bls, damping, iteration);
 

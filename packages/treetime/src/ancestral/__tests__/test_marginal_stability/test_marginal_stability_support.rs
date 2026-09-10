@@ -12,6 +12,7 @@ pub mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
+  use treetime_graph::value_maps::node_names;
   use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
   use parking_lot::RwLock;
@@ -73,7 +74,7 @@ pub mod tests {
       get_common_length(&aln)?,
     )))];
 
-    let log_lh = initialize_marginal(&graph, &partitions, &aln)?.value();
+    let log_lh = initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
     Ok((log_lh, partitions))
   }
 
@@ -87,7 +88,7 @@ pub mod tests {
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
     let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?))];
     let log_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     Ok((log_lh, partitions))

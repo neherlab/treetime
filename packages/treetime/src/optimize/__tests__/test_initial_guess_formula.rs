@@ -14,6 +14,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::{OptionExt, Report};
   use indoc::indoc;
+  use treetime_graph::value_maps::node_names;
 
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
@@ -167,7 +168,7 @@ mod tests {
     aln: &[FastaRecord],
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalSparse>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let fitch = create_fitch_partition(graph, 0, alphabet, aln)?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, aln, &node_names(graph))?;
     let partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
@@ -188,7 +189,7 @@ mod tests {
       get_common_length(aln)?,
     )))];
 
-    initialize_marginal(graph, &partitions, aln)?.value();
+    initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln)?.value();
 
     Ok(partitions)
   }

@@ -460,7 +460,6 @@ mod tests {
         .sum()
     }
 
-
     pub fn make_partition(
       graph: &GraphAncestral,
       index: usize,

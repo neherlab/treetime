@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
-use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update, profile_branch_lengths};
+use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update};
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
@@ -9,7 +9,9 @@ use crate::partition::traits::PartitionMarginalOps;
 use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use eyre::Report;
 use parking_lot::RwLock;
+use std::collections::BTreeMap;
 use std::sync::Arc;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
@@ -60,6 +62,8 @@ pub fn reconstruct_marginal_partition(
   index: usize,
   plan: PartitionPlan,
   params: &MarginalPartitionParams,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   rng: &mut dyn rand::RngCore,
 ) -> Result<ReconstructedPartition, Report> {
   let PartitionPlan {
@@ -71,7 +75,7 @@ pub fn reconstruct_marginal_partition(
     reference_override,
   } = plan;
 
-  let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns)?;
+  let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns, names)?;
   let created = create_marginal_partition(graph, index, alphabet.clone(), &sequences, gtr_model, params.dense)?;
   let partition: Arc<RwLock<dyn MarginalAugurPartition>> = match created.partition {
     MarginalPartition::Sparse(partition) => Arc::new(RwLock::new(partition)),
@@ -83,7 +87,7 @@ pub fn reconstruct_marginal_partition(
   partition.write_arc().attach_sequences(graph, &sequences)?;
 
   let single = std::slice::from_ref(&partition);
-  marginal_update(graph, &profile_branch_lengths(graph), single)?;
+  marginal_update(graph, branch_lengths, single)?;
   ancestral_reconstruction_marginal(
     graph,
     params.include_leaves,

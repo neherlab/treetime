@@ -28,6 +28,7 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_graph::node::{Named, TimeConstraint};
   use treetime_graph::reroot::RerootChanges;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AsciiChar, LogLh, Seq, seq};
@@ -87,7 +88,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
     let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
       fitch.into_marginal_sparse(gtr, &graph)?,
     )));
@@ -488,7 +489,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
     let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
       fitch.into_marginal_sparse(gtr, &graph)?,
     )));

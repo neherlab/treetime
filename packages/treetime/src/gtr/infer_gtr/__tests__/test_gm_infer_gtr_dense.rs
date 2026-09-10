@@ -8,6 +8,7 @@ mod tests {
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::initialize_marginal;
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -149,7 +150,7 @@ mod tests {
       get_common_length(aln)?,
     )));
 
-    initialize_marginal(&graph, from_ref(&partition), aln)?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), from_ref(&partition), aln)?.value();
     Ok((graph, partition))
   }
 
@@ -175,7 +176,7 @@ mod tests {
       get_common_length(&aln)?,
     )));
 
-    initialize_marginal(&graph, from_ref(&partition), &aln)?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), from_ref(&partition), &aln)?.value();
     Ok((graph, partition))
   }
 

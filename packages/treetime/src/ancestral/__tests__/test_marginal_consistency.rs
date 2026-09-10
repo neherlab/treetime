@@ -103,7 +103,7 @@ mod tests {
     )));
     let partitions = [Arc::clone(&partition)];
 
-    let log_lh = initialize_marginal(graph, &partitions, aln)?.value();
+    let log_lh = initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln)?.value();
     Ok((log_lh, partition))
   }
 
@@ -126,7 +126,7 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, Arc<RwLock<PartitionMarginalSparse>>), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let fitch = create_fitch_partition(graph, 0, alphabet, aln)?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, aln, &node_names(graph))?;
     let partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, graph)?));
     let partitions = [Arc::clone(&partition)];
 
@@ -455,7 +455,7 @@ mod tests {
     )));
     let partitions = [Arc::clone(&partition)];
 
-    initialize_marginal(&graph, &partitions, &aln)?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
 
     // Verify all marginal posterior rows sum to 1.0
     let partition = partition.read_arc();

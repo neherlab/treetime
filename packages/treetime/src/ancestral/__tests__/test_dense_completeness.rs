@@ -12,6 +12,7 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
   use eyre::Report;
+  use treetime_graph::value_maps::node_names;
 
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
@@ -43,7 +44,13 @@ NNGTACGTAC
       length,
     )));
 
-    initialize_marginal(&graph, std::slice::from_ref(&partition), &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      std::slice::from_ref(&partition),
+      &aln,
+    )?
+    .value();
     Ok((graph, partition))
   }
 
@@ -64,7 +71,7 @@ NNGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
     let partition = Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ));
@@ -175,7 +182,13 @@ ACGTACGTAC
       length,
     )));
 
-    initialize_marginal(&graph, std::slice::from_ref(&partition), &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      std::slice::from_ref(&partition),
+      &aln,
+    )?
+    .value();
     Ok((graph, partition))
   }
 
@@ -237,7 +250,7 @@ ACGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
     let partition = Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ));

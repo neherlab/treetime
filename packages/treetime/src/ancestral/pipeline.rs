@@ -1,9 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
 use crate::ancestral::fitch::{ancestral_reconstruction_fitch, create_fitch_partition};
-use crate::ancestral::marginal::{
-  ancestral_reconstruction_marginal, initialize_marginal, marginal_update, profile_branch_lengths,
-};
+use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, marginal_update};
 use crate::ancestral::mask::create_mask;
 use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::sample::SampleMode;
@@ -23,6 +21,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use strum::VariantNames;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
@@ -81,6 +80,8 @@ pub struct AncestralOutputFull {
 pub fn run<F>(
   params: &AncestralParams,
   input: AncestralInput,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   mut on_sequence: F,
   progress: &dyn ProgressSink,
 ) -> Result<AncestralOutputFull, Report>
@@ -112,7 +113,7 @@ where
   // Tips absent from the alignment become fully-ambiguous sequences here, once, for every
   // partition backend (fitch, sparse, dense) and alphabet (nucleotide, amino acid). After this the
   // attachment step always finds a sequence for each leaf.
-  let sequences = complete_alignment_for_leaves(&graph, sequences, &alphabet, params.ignore_missing_alns)?;
+  let sequences = complete_alignment_for_leaves(&graph, sequences, &alphabet, params.ignore_missing_alns, names)?;
 
   let alignment_length = get_common_length(&sequences)?;
   let mask = create_mask(&sequences, alignment_length, &alphabet);
@@ -122,7 +123,7 @@ where
     MethodAncestral::Parsimony => {
       progress.check_cancelled()?;
       progress.report("Fitch parsimony", 0.3, "");
-      let partition = create_fitch_partition(&graph, 0, alphabet, &sequences)?;
+      let partition = create_fitch_partition(&graph, 0, alphabet, &sequences, names)?;
       let partition = Arc::new(RwLock::new(partition));
       let partitions_parsimony = vec![Arc::clone(&partition)];
 
@@ -162,7 +163,7 @@ where
 
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?;
+          marginal_update(&graph, branch_lengths, &partitions)?;
 
           if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
             refine_gtr_iterative(&graph, &partitions[0], params.gtr_iterations, None, 1.0, None, false)?;
@@ -200,8 +201,8 @@ where
 
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          initialize_marginal(&graph, &partitions, &sequences)?;
-          marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?;
+          initialize_marginal(&graph, branch_lengths, &partitions, &sequences)?;
+          marginal_update(&graph, branch_lengths, &partitions)?;
 
           if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
             refine_gtr_iterative(&graph, &partitions[0], params.gtr_iterations, None, 1.0, None, false)?;

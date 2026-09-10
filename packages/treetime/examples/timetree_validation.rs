@@ -11,7 +11,7 @@ use std::path::Path;
 use std::sync::Arc;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::fitch::create_fitch_partition;
-use treetime::ancestral::marginal::initialize_marginal;
+use treetime::ancestral::marginal::{initialize_marginal, profile_branch_lengths};
 use treetime::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
 use treetime::clock::clock_state::ClockState;
 use treetime::clock::date_constraints::load_date_constraints;
@@ -26,6 +26,7 @@ use treetime::timetree::inference::forward_pass::propagate_distributions_forward
 use treetime::timetree::inference::runner::{GRID_POINTS, run_timetree};
 use treetime::timetree::timetree_state::TimetreeState;
 use treetime::timetree::utils::{create_poisson_branch_distributions, extract_node_times, initialize_node_divergences};
+use treetime_graph::value_maps::node_names;
 use treetime_io::dates_csv::read_dates;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nwk::nwk_read_str;
@@ -306,7 +307,7 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
   let alphabet = Alphabet::default();
   let aln = read_many_fasta(&[config.aln_path.as_str()], &alphabet)?;
 
-  let fitch = create_fitch_partition(&graph, 0, alphabet, &aln)?;
+  let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
   let sparse_partition = Arc::new(RwLock::new(
     fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
   ));
@@ -314,7 +315,7 @@ fn run_marginal_sparse_test(config: &DatasetConfig, args: &Args) -> Result<TestR
 
   let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![sparse_partition];
 
-  initialize_marginal(&graph, &partitions, &aln)?;
+  initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?;
   dump_graph(&graph, &output_dir_str, "002_after_run_marginal.json")?;
 
   let mut clock_state = ClockState::new(&graph);
@@ -380,7 +381,7 @@ fn run_marginal_dense_test(config: &DatasetConfig, args: &Args) -> Result<TestRe
 
   let partitions: Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>> = vec![dense_partition];
 
-  initialize_marginal(&graph, &partitions, &aln)?;
+  initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?;
   dump_graph(&graph, &output_dir_str, "001_after_run_marginal.json")?;
 
   let mut clock_state = ClockState::new(&graph);

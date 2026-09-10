@@ -1,9 +1,11 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+use crate::ancestral::marginal::profile_branch_lengths;
 use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partition};
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::payload::ancestral::GraphAncestral;
 use pretty_assertions::assert_eq;
+use treetime_graph::value_maps::node_names;
 use treetime_io::nwk::nwk_read_str;
 use treetime_utils::sync::random::get_random_number_generator;
 
@@ -30,10 +32,14 @@ fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
   };
 
   let mut rng = get_random_number_generator(params.seed);
+  let name_map = node_names(&graph);
+  let branch_lengths = profile_branch_lengths(&graph);
   let reconstructed = plans
     .into_iter()
     .enumerate()
-    .map(|(index, plan)| reconstruct_marginal_partition(&graph, index, plan, &params, &mut rng))
+    .map(|(index, plan)| {
+      reconstruct_marginal_partition(&graph, index, plan, &params, &name_map, &branch_lengths, &mut rng)
+    })
     .collect::<Result<Vec<_>, _>>()
     .unwrap();
 

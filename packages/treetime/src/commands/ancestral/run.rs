@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::attach::sanitize_to_alphabet;
+use crate::ancestral::marginal::profile_branch_lengths;
 use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partition};
 use crate::ancestral::pipeline::{self, AncestralInput, AncestralParams, AncestralPartition};
 use crate::commands::ancestral::aa_node_data::{
@@ -24,7 +25,7 @@ use log::{info, warn};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::{node_descs, node_names};
+use treetime_graph::value_maps::{edge_branch_lengths, node_descs, node_names};
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
@@ -98,12 +99,17 @@ pub fn run_ancestral_reconstruction(
     ignore_missing_alns: ancestral_args.ignore_missing_alns,
   };
 
-  // Snapshot names and descriptions before the graph moves into the pipeline, so the reconstructed
-  // FASTA writer looks up each node's label by key instead of reading it off the payload inside the
-  // reconstruction visitor. Ancestral never renames after parse, so these snapshots mirror exactly
-  // what the visitor would have read.
+  // Snapshot names, descriptions, and per-edge branch lengths before the graph moves into the
+  // pipeline. Every reconstruction consumer reads its node label and edge branch length from these
+  // keyed value maps threaded down from here instead of off the graph payload. Ancestral never
+  // renames or re-lengths after parse, so these snapshots mirror exactly what a consumer would have
+  // read off the payload at any later point. Two branch-length map shapes are kept distinct: the
+  // `f64` `profile_branch_lengths` map feeds the marginal passes, while the `Option<f64>`
+  // `edge_branch_lengths` map preserves a missing weight as `None` for the output writers and gather.
   let names = node_names(&graph);
   let descs = node_descs(&graph);
+  let profile_branch_lengths_input = profile_branch_lengths(&graph);
+  let branch_lengths_opt = edge_branch_lengths(&graph);
 
   let input = AncestralInput {
     graph,
@@ -114,6 +120,8 @@ pub fn run_ancestral_reconstruction(
   let result = pipeline::run(
     &params,
     input,
+    &names,
+    &profile_branch_lengths_input,
     |key, seq| {
       if let Some(ref mut writer) = output_fasta {
         let name = names[&key].as_deref().unwrap_or("");
@@ -137,6 +145,8 @@ pub fn run_ancestral_reconstruction(
       translations,
       aa_fasta_template.as_deref(),
       &result.output.graph,
+      &names,
+      &profile_branch_lengths_input,
       progress,
     )?)
   } else {
@@ -182,12 +192,13 @@ pub fn run_ancestral_reconstruction(
     .iter()
     .map(|node| {
       let node = node.read_arc();
-      let payload = node.payload().read_arc();
+      let key = node.key();
+      let confidence = node.payload().read_arc().confidence;
       (
-        node.key(),
+        key,
         AncestralNodeOut {
-          name: payload.name.clone(),
-          confidence: payload.confidence,
+          name: names[&key].clone(),
+          confidence,
         },
       )
     })
@@ -196,9 +207,13 @@ pub fn run_ancestral_reconstruction(
     .get_edges()
     .iter()
     .map(|edge| {
-      let edge = edge.read_arc();
-      let branch_length = edge.payload().read_arc().branch_length;
-      (edge.key(), EdgeOut { branch_length })
+      let key = edge.read_arc().key();
+      (
+        key,
+        EdgeOut {
+          branch_length: branch_lengths_opt[&key],
+        },
+      )
     })
     .collect();
   let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> =
@@ -314,6 +329,8 @@ fn run_aa_reconstructions(
   translations: &str,
   aa_fasta_template: Option<&str>,
   graph: &GraphAncestral,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   progress: &dyn ProgressSink,
 ) -> Result<AaNodeData, Report> {
   let read_alphabet = Alphabet::new(AlphabetName::Aa)?;
@@ -359,7 +376,6 @@ fn run_aa_reconstructions(
   // independent of how many partitions are resident.
   let mut rng = get_random_number_generator(params.seed);
   let mut aa_node_data = AaNodeData::default();
-  let names = node_names(graph);
   for (index, cds) in cdses.iter().enumerate() {
     let path = translation_path(translations, cds);
     let mut sequences = read_many_fasta(&[&path], &read_alphabet)?;
@@ -391,7 +407,7 @@ fn run_aa_reconstructions(
       reference_override: aa_root_sequences.get(cds).cloned(),
     };
 
-    let reconstructed = reconstruct_marginal_partition(graph, index, plan, &params, &mut rng)?;
+    let reconstructed = reconstruct_marginal_partition(graph, index, plan, &params, names, branch_lengths, &mut rng)?;
     let guard = reconstructed.partition.read_arc();
 
     if let Some(annotation) = &reconstructed.annotation
@@ -412,13 +428,13 @@ fn run_aa_reconstructions(
       graph,
       &*guard,
       &reconstructed.name,
-      &names,
+      names,
       reconstructed.reference_override.as_ref(),
     )?;
     aa_node_data.add_cds(&reconstructed.name, cds_data, reconstructed.annotation.clone());
 
     if let Some(aa_seq_template) = aa_fasta_template {
-      write_aa_partition_sequences(graph, &*guard, &names, &reconstructed.name, aa_seq_template)?;
+      write_aa_partition_sequences(graph, &*guard, names, &reconstructed.name, aa_seq_template)?;
     }
   }
 

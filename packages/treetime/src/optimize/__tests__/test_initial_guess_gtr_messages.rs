@@ -50,7 +50,7 @@ mod tests {
       alphabet,
       get_common_length(aln)?,
     )))];
-    initialize_marginal(graph, &partitions, aln)?.value();
+    initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln)?.value();
     Ok(partitions)
   }
 

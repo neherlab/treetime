@@ -13,7 +13,7 @@ use serde::Serialize;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
-use treetime_graph::value_maps::edge_branch_lengths;
+use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 use treetime_io::fasta::FastaRecord;
 
 pub struct PruneParams {
@@ -59,8 +59,13 @@ pub fn run(params: &PruneParams, mut input: PruneInput) -> Result<PruneOutput, R
       MarginalPartition::Dense(_) => {
         let gtr = get_gtr_by_name(GtrModelName::JC69)?;
         log_gtr(&gtr, GtrModelName::JC69);
-        let fitch =
-          crate::ancestral::fitch::create_fitch_partition(&input.graph, 0, input.alphabet.clone(), sequences)?;
+        let fitch = crate::ancestral::fitch::create_fitch_partition(
+          &input.graph,
+          0,
+          input.alphabet.clone(),
+          sequences,
+          &node_names(&input.graph),
+        )?;
         let partition = fitch.into_marginal_sparse(gtr, &input.graph)?;
         vec![Arc::new(RwLock::new(partition))]
       },

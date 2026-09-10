@@ -108,11 +108,12 @@ pub fn initialize_partitions(
   };
 
   let branch_lengths = edge_branch_lengths(graph);
+  let names = node_names(graph);
 
   if !dense {
     let aln_data = aln.ok_or_else(|| make_report!("Alignment required for sparse marginal reconstruction"))?;
 
-    let fitch = create_fitch_partition(graph, 0, alphabet, aln_data)?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, aln_data, &names)?;
     let gtr = match model_name {
       GtrModelName::Infer => infer_gtr_fitch(&fitch, graph, &branch_lengths)?,
       _ => get_gtr_by_name(model_name)?,
@@ -124,7 +125,7 @@ pub fn initialize_partitions(
     Ok(vec![sparse_partition])
   } else if model_name == GtrModelName::Infer {
     let aln_data = aln.ok_or_else(|| make_report!("Alignment required for dense GTR inference"))?;
-    let fitch = create_fitch_partition(graph, 0, alphabet, aln_data)?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, aln_data, &names)?;
     let gtr = infer_gtr_fitch(&fitch, graph, &branch_lengths)?;
     log_gtr(&gtr, model_name);
     let partition = fitch.into_marginal_dense(gtr);

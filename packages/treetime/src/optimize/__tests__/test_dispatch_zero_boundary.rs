@@ -20,6 +20,7 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
+  use treetime_graph::value_maps::node_names;
 
   use ndarray::array;
   use parking_lot::RwLock;
@@ -76,11 +77,11 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    let fitch = create_fitch_partition(graph, 1, Alphabet::new(AlphabetName::Nuc)?, &aln)?;
+    let fitch = create_fitch_partition(graph, 1, Alphabet::new(AlphabetName::Nuc)?, &aln, &node_names(graph))?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(get_gtr_by_name(model)?, graph)?,
     ))];
-    initialize_marginal(graph, &dense_partitions, &aln)?.value();
+    initialize_marginal(graph, &profile_branch_lengths(graph), &dense_partitions, &aln)?.value();
     marginal_update(graph, &profile_branch_lengths(graph), &sparse_partitions)?.value();
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);

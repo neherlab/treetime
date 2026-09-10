@@ -2,6 +2,7 @@
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::initialize_marginal;
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::gtr::gtr::GTR;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::payload::ancestral::GraphAncestral;
@@ -108,7 +109,7 @@ pub mod tests {
       get_common_length(&aln)?,
     )))];
 
-    let log_lh = initialize_marginal(&graph, &partitions, &aln)?.value();
+    let log_lh = initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
     Ok(log_lh)
   }
 }

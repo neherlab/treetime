@@ -39,7 +39,13 @@ mod tests {
     let sparse = vec![partition];
 
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let changed = resolve_polytomies(&mut graph, &sparse, &no_dense(), TopologyOps::default(), &mut branch_lengths)?;
+    let changed = resolve_polytomies(
+      &mut graph,
+      &sparse,
+      &no_dense(),
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
     assert!(changed > 0);
 
     let p = sparse[0].read_arc();
@@ -80,7 +86,13 @@ mod tests {
 
     let before = total_subs(&graph, &sparse[0].read_arc());
     let mut branch_lengths = edge_branch_lengths(&graph);
-    resolve_polytomies(&mut graph, &sparse, &no_dense(), TopologyOps::default(), &mut branch_lengths)?;
+    resolve_polytomies(
+      &mut graph,
+      &sparse,
+      &no_dense(),
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
     let after = total_subs(&graph, &sparse[0].read_arc());
 
     assert_eq!(before, 5);
@@ -118,7 +130,13 @@ mod tests {
 
     let before = total_subs(&graph, &sparse[0].read_arc());
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let changed = resolve_polytomies(&mut graph, &sparse, &no_dense(), TopologyOps::default(), &mut branch_lengths)?;
+    let changed = resolve_polytomies(
+      &mut graph,
+      &sparse,
+      &no_dense(),
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
     let after = total_subs(&graph, &sparse[0].read_arc());
 
     assert_eq!(before, 3);
@@ -154,7 +172,13 @@ mod tests {
     let sparse = vec![partition];
 
     let mut branch_lengths = edge_branch_lengths(&graph);
-    resolve_polytomies(&mut graph, &sparse, &no_dense(), TopologyOps::default(), &mut branch_lengths)?;
+    resolve_polytomies(
+      &mut graph,
+      &sparse,
+      &no_dense(),
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
 
     assert!(
       find_node_key_by_name(&graph, "W").is_some(),
@@ -191,7 +215,13 @@ mod tests {
     let nodes_before = graph.get_nodes().len();
 
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let changed = resolve_polytomies(&mut graph, &sparse, &no_dense(), TopologyOps::default(), &mut branch_lengths)?;
+    let changed = resolve_polytomies(
+      &mut graph,
+      &sparse,
+      &no_dense(),
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
 
     assert_eq!(changed, 0);
     assert_eq!(graph.get_nodes().len(), nodes_before);
@@ -218,7 +248,13 @@ mod tests {
     let nodes_before = graph.get_nodes().len();
 
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let changed = resolve_polytomies(&mut graph, &sparse, &no_dense(), TopologyOps::default(), &mut branch_lengths)?;
+    let changed = resolve_polytomies(
+      &mut graph,
+      &sparse,
+      &no_dense(),
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
 
     assert_eq!(changed, 0);
     assert_eq!(graph.get_nodes().len(), nodes_before);

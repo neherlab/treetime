@@ -16,6 +16,7 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
   use crate::ancestral::marginal::initialize_marginal;
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -23,6 +24,7 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use pretty_assertions::assert_eq;
   use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::value_maps::node_names;
 
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -65,14 +67,14 @@ mod tests {
       alphabet,
       get_common_length(aln)?,
     )));
-    initialize_marginal(&graph, from_ref(&partition), aln)?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), from_ref(&partition), aln)?.value();
     Ok((graph, partition))
   }
 
   fn setup_sparse(tree_nwk: &str, aln: &[FastaRecord]) -> Result<(GraphAncestral, PartitionFitch), Report> {
     let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, aln)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, aln, &node_names(&graph))?;
     Ok((graph, fitch))
   }
 

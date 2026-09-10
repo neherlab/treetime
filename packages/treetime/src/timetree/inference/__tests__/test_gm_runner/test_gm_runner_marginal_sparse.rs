@@ -6,6 +6,7 @@ mod tests {
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::initialize_marginal;
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
   use crate::clock::clock_state::ClockState;
   use crate::clock::date_constraints::load_date_constraints;
@@ -14,6 +15,7 @@ mod tests {
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
+  use treetime_graph::value_maps::node_names;
 
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use eyre::Report;
@@ -54,13 +56,13 @@ mod tests {
     load_date_constraints(&dates, &graph)?;
 
     let aln = load_alignment_for_dataset(dataset)?;
-    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln)?;
+    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln, &node_names(&graph))?;
     let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     )));
 
     let partitions: PartitionTimetreeAllVec = vec![sparse_partition];
-    initialize_marginal(&graph, &partitions, &aln)?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state)?;
 

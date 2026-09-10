@@ -129,7 +129,12 @@ pub fn run(
 
   marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &sparse_partitions)?;
   if !dense_partitions.is_empty() {
-    initialize_marginal(&input.graph, &dense_partitions, &input.sequences)?;
+    initialize_marginal(
+      &input.graph,
+      &profile_branch_lengths(&input.graph),
+      &dense_partitions,
+      &input.sequences,
+    )?;
     marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &dense_partitions)?;
   }
 

@@ -180,6 +180,7 @@ mod tests {
     use crate::optimize::run_loop::{collect_optimize_partitions, run_optimize_loop};
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::seq::alignment::get_common_length;
+    use treetime_graph::value_maps::node_names;
 
     use crate::payload::ancestral::GraphAncestral;
     use eyre::Report;
@@ -242,7 +243,7 @@ mod tests {
       let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet_sparse)?;
       let mut graph: GraphAncestral = nwk_read_file(&tree_path)?;
 
-      let fitch = create_fitch_partition(&graph, 0, alphabet_sparse, &aln)?;
+      let fitch = create_fitch_partition(&graph, 0, alphabet_sparse, &aln, &node_names(&graph))?;
       let sparse_partitions = vec![Arc::new(RwLock::new(
         fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
       ))];
@@ -255,7 +256,7 @@ mod tests {
         length,
       )))];
 
-      initialize_marginal(&graph, &dense_partitions, &aln)?.value();
+      initialize_marginal(&graph, &profile_branch_lengths(&graph), &dense_partitions, &aln)?.value();
       marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
       marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
 

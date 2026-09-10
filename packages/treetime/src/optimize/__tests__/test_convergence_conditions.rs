@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
+  use crate::ancestral::marginal::marginal_update;
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
-  use crate::ancestral::marginal::marginal_update;
   use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping, commit_branch_lengths};
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{
@@ -83,7 +83,10 @@ mod tests {
 
     // Verify they changed
     let modified = edge_branch_lengths(&graph);
-    assert_ne!(original, modified, "Branch lengths should have changed after modification");
+    assert_ne!(
+      original, modified,
+      "Branch lengths should have changed after modification"
+    );
 
     // Restore the snapshot onto the payload and verify match.
     commit_branch_lengths(&graph, &original);

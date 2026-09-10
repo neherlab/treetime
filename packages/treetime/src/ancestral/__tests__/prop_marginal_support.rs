@@ -9,6 +9,7 @@ pub mod tests {
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
+  use treetime_graph::value_maps::node_names;
 
   use parking_lot::RwLock;
   use std::sync::Arc;
@@ -50,7 +51,7 @@ pub mod tests {
       length,
     )))];
 
-    let log_lh = initialize_marginal(&graph, &partitions, &input.alignment)?.value();
+    let log_lh = initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &input.alignment)?.value();
     Ok((log_lh, partitions))
   }
 
@@ -79,7 +80,7 @@ pub mod tests {
     let alphabet = Alphabet::default();
     let length = get_common_length(&input.alignment)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &input.alignment)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &input.alignment, &node_names(&graph))?;
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(input.gtr.clone(), &graph)?,
     ))];

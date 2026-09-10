@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::params::MethodAncestral;
   use crate::ancestral::pipeline::{AncestralInput, AncestralParams};
   use crate::ancestral::sample::SampleMode;
@@ -50,13 +51,15 @@ mod tests {
       ignore_missing_alns: false,
     };
 
+    let names = node_names(&graph);
+    let branch_lengths = profile_branch_lengths(&graph);
     let input = AncestralInput {
       graph,
       alphabet,
       sequences,
     };
 
-    let result = crate::ancestral::pipeline::run(&params, input, |_, _| Ok(()), &NoopProgress);
+    let result = crate::ancestral::pipeline::run(&params, input, &names, &branch_lengths, |_, _| Ok(()), &NoopProgress);
     assert!(result.is_err(), "parsimony with posterior sampling must be rejected");
     let err = result.err().unwrap().to_string();
     assert!(
@@ -98,6 +101,7 @@ mod tests {
       };
 
       let names = node_names(&graph);
+      let branch_lengths = profile_branch_lengths(&graph);
       let input = AncestralInput {
         graph,
         alphabet,
@@ -108,6 +112,8 @@ mod tests {
       crate::ancestral::pipeline::run(
         &params,
         input,
+        &names,
+        &branch_lengths,
         |key, seq| {
           let name = names[&key].clone().unwrap_or_default();
           captured.insert(name, seq.to_string());

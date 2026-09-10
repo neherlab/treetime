@@ -3,11 +3,10 @@ use crate::seq::alignment::get_common_length;
 use crate::{make_error, make_report};
 use eyre::Report;
 use log::warn;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::NodeAncestralOps;
-use treetime_graph::value_maps::node_names;
+use treetime_graph::node::{GraphNodeKey, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, Seq, seq};
 
@@ -31,6 +30,7 @@ pub fn complete_alignment_for_leaves<N, E>(
   mut sequences: Vec<FastaRecord>,
   alphabet: &Alphabet,
   ignore_missing_alns: bool,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<Vec<FastaRecord>, Report>
 where
   N: NodeAncestralOps,
@@ -40,7 +40,6 @@ where
 
   let present: BTreeSet<String> = sequences.iter().map(|record| record.seq_name.clone()).collect();
 
-  let names = node_names(graph);
   let mut missing = Vec::new();
   let mut n_leaves = 0_usize;
   for leaf in graph.get_leaves() {

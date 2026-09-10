@@ -3,6 +3,7 @@ use crate::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphab
 use crate::payload::ancestral::GraphAncestral;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
+use treetime_graph::value_maps::node_names;
 use treetime_io::fasta::FastaRecord;
 use treetime_io::nwk::nwk_read_str;
 use treetime_primitives::Seq;
@@ -13,7 +14,7 @@ fn test_attach_synthesizes_all_unknown_for_missing_tip() {
   let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
   let sequences = helpers::records(&[("A", "ACGT"), ("B", "ACGT"), ("C", "ACGT")]);
 
-  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false).unwrap();
+  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &node_names(&graph)).unwrap();
   let by_name = helpers::by_name(completed);
 
   assert_eq!(4, by_name.len());
@@ -27,7 +28,7 @@ fn test_attach_aborts_above_one_third_missing() {
   let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
   let sequences = helpers::records(&[("A", "ACGT")]);
 
-  let err = complete_alignment_for_leaves(&graph, sequences, &alphabet, false).unwrap_err();
+  let err = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &node_names(&graph)).unwrap_err();
 
   assert!(err.to_string().contains("one third"));
   assert!(err.to_string().contains("--ignore-missing-alns"));
@@ -39,7 +40,7 @@ fn test_attach_ignore_missing_alns_bypasses_threshold() {
   let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
   let sequences = helpers::records(&[("A", "ACGT")]);
 
-  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, true).unwrap();
+  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, true, &node_names(&graph)).unwrap();
   let by_name = helpers::by_name(completed);
 
   assert_eq!(2, by_name.len());
@@ -53,7 +54,7 @@ fn test_attach_exactly_one_third_missing_does_not_abort() {
   let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
   let sequences = helpers::records(&[("A", "ACGT"), ("B", "ACGT")]);
 
-  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false).unwrap();
+  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &node_names(&graph)).unwrap();
   let by_name = helpers::by_name(completed);
 
   assert_eq!(3, by_name.len());
@@ -66,7 +67,7 @@ fn test_attach_keeps_extra_records_not_matching_any_leaf() {
   let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
   let sequences = helpers::records(&[("A", "ACGT"), ("B", "ACGT"), ("reference", "ACGT")]);
 
-  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false).unwrap();
+  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &node_names(&graph)).unwrap();
   let by_name = helpers::by_name(completed);
 
   assert_eq!(3, by_name.len());

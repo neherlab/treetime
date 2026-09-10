@@ -154,7 +154,7 @@ mod tests {
   }
 
   fn reconstruct_sparse(graph: &GraphAncestral, aln: &[FastaRecord]) -> Result<BTreeMap<String, String>, Report> {
-    let fitch = create_fitch_partition(graph, 0, Alphabet::default(), aln)?;
+    let fitch = create_fitch_partition(graph, 0, Alphabet::default(), aln, &node_names(graph))?;
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
@@ -170,7 +170,7 @@ mod tests {
       Alphabet::default(),
       length,
     )))];
-    initialize_marginal(graph, &partitions, aln)?;
+    initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln)?;
     reconstruct_named(graph, &partitions)
   }
 }

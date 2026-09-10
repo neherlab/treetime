@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::params::MethodAncestral;
   use crate::ancestral::pipeline::{AncestralInput, AncestralParams};
   use crate::ancestral::sample::SampleMode;
@@ -9,6 +10,7 @@ mod tests {
   use eyre::Report;
   use lazy_static::lazy_static;
   use std::path::PathBuf;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::nwk_read_file;
 
@@ -39,13 +41,16 @@ mod tests {
       ignore_missing_alns: false,
     };
 
+    let names = node_names(&graph);
+    let branch_lengths = profile_branch_lengths(&graph);
     let input = AncestralInput {
       graph,
       alphabet,
       sequences,
     };
 
-    let result = crate::ancestral::pipeline::run(&params, input, |_, _| Ok(()), &NoopProgress)?;
+    let result =
+      crate::ancestral::pipeline::run(&params, input, &names, &branch_lengths, |_, _| Ok(()), &NoopProgress)?;
 
     let gtr = result.output.gtr.expect("GTR should be fitted with --model=infer");
     assert!(
@@ -76,13 +81,16 @@ mod tests {
       ignore_missing_alns: false,
     };
 
+    let names = node_names(&graph);
+    let branch_lengths = profile_branch_lengths(&graph);
     let input = AncestralInput {
       graph,
       alphabet,
       sequences,
     };
 
-    let result = crate::ancestral::pipeline::run(&params, input, |_, _| Ok(()), &NoopProgress)?;
+    let result =
+      crate::ancestral::pipeline::run(&params, input, &names, &branch_lengths, |_, _| Ok(()), &NoopProgress)?;
 
     let gtr = result.output.gtr.expect("GTR should be fitted with --model=infer");
     assert!(

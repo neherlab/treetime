@@ -478,4 +478,3 @@ struct EdgeSplit {
   composed: Vec<Sub>,
   indels: IndelSplit,
 }
-

@@ -92,7 +92,7 @@ mod tests {
       get_common_length(aln)?,
     )))];
 
-    let log_lh = initialize_marginal(graph, &partitions, aln)?.value();
+    let log_lh = initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln)?.value();
     Ok((log_lh, partitions))
   }
 

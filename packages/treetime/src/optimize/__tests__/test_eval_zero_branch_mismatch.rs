@@ -9,6 +9,7 @@ mod tests {
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
+  use treetime_graph::value_maps::node_names;
 
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -56,11 +57,11 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    let fitch = create_fitch_partition(&graph, 1, alphabet_sparse, &aln)?;
+    let fitch = create_fitch_partition(&graph, 1, alphabet_sparse, &aln, &node_names(&graph))?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    initialize_marginal(&graph, &dense_partitions, &aln)?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &dense_partitions, &aln)?.value();
     marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
