@@ -360,7 +360,7 @@ fn gather_timetree_outputs(
         time: timetree_state.node(key).time,
         div: clock.div,
         is_outlier: clock.is_outlier,
-        bad_branch: payload.bad_branch,
+        bad_branch: timetree_state.node(key).bad_branch,
         rate_susceptibility_dates: rate_susceptibility_dates.get(&key).copied(),
       };
       (key, out)

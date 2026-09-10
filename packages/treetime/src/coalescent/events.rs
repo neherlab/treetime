@@ -74,7 +74,7 @@ where
     }
     delta_sum += delta;
 
-    if node.payload.bad_branch() {
+    if node_times.get(&node.key).is_some_and(|entry| entry.bad_branch) {
       terminal_lineage_count += delta;
       n_excluded += 1;
       return Ok(());

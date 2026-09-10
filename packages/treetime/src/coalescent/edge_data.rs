@@ -71,7 +71,7 @@ where
     if node.parent_keys.is_empty() {
       return Ok(());
     }
-    if node.payload.bad_branch() {
+    if node_times.get(&node.key).is_some_and(|entry| entry.bad_branch) {
       warn!(
         "Coalescent edge data: skipping node (key={:?}) with a bad branch",
         node.key

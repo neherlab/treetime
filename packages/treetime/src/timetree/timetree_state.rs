@@ -249,6 +249,7 @@ impl TimetreeState {
         let entry = CoalescentNodeTime {
           time: node.time,
           time_dist_likely: node.time_distribution.as_ref().and_then(|dist| dist.likely_time()),
+          bad_branch: node.bad_branch,
         };
         (*key, entry)
       })

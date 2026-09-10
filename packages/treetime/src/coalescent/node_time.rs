@@ -18,6 +18,9 @@ pub struct CoalescentNodeTime {
   pub time: Option<f64>,
   /// Likely time of the node's time distribution, when one exists.
   pub time_dist_likely: Option<f64>,
+  /// Whether the node is excluded as a bad branch. The collectors skip a node with this set, reading
+  /// it from here instead of off the graph payload.
+  pub bad_branch: bool,
 }
 
 /// Per-node inferred times keyed by node, threaded into the coalescent collectors instead of read
@@ -43,6 +46,7 @@ where
       let entry = CoalescentNodeTime {
         time: payload.time(),
         time_dist_likely: payload.time_distribution().as_ref().and_then(|dist| dist.likely_time()),
+        bad_branch: payload.bad_branch(),
       };
       (node.key(), entry)
     })
