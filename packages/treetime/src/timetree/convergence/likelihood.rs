@@ -1,3 +1,4 @@
+use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::total_lh::compute_coalescent_total_lh;
 use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::graph_log_lh;
@@ -73,9 +74,13 @@ pub fn compute_positional_log_lh(graph: &GraphTimetree, state: &TimetreeState) -
 ///
 /// Sums per-edge costs under the Kingman coalescent for the given Tc distribution.
 /// Returns `None` when no coalescent model is active (coalescent_tc is None).
-pub fn compute_coalescent_log_lh(graph: &GraphTimetree, coalescent_tc: Option<&Distribution>) -> Option<LogLh> {
+pub fn compute_coalescent_log_lh(
+  graph: &GraphTimetree,
+  coalescent_tc: Option<&Distribution>,
+  node_times: &CoalescentNodeTimes,
+) -> Option<LogLh> {
   let tc = coalescent_tc?;
-  match compute_coalescent_total_lh(graph, tc) {
+  match compute_coalescent_total_lh(graph, tc, node_times) {
     Ok(lh) => Some(lh),
     Err(e) => {
       warn!("Coalescent log-likelihood unavailable: {e}");

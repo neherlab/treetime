@@ -15,6 +15,7 @@ use std::sync::LazyLock;
 use treetime::clock::date_constraints::load_date_constraints;
 use treetime::coalescent::coalescent::CoalescentModel;
 use treetime::coalescent::lineage_counts::compute_lineage_counts;
+use treetime::coalescent::node_time::coalescent_node_times_from_payloads;
 use treetime::o;
 use treetime::partition::timetree::partition::GraphTimetree;
 use treetime_distribution::Distribution;
@@ -296,7 +297,7 @@ fn run_coalescent_test(_snapshot_filename: &str, snapshot: Snapshot) -> Result<T
   let tc_value = snapshot.inputs.tc;
   let tc = Distribution::constant(tc_value);
 
-  let lineage_counts = compute_lineage_counts(&graph)?;
+  let lineage_counts = compute_lineage_counts(&graph, &coalescent_node_times_from_payloads(&graph))?;
   let model = CoalescentModel::new(&lineage_counts, &tc)?;
 
   let t_grid = Grid::from_range_n_points(

@@ -2,6 +2,7 @@
 mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::coalescent::events::collect_tree_events;
+  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
   use crate::coalescent::time_coordinate::CalendarTime;
   use crate::partition::timetree::partition::GraphTimetree;
   use crate::payload::timetree::NodeTimetree;
@@ -37,7 +38,8 @@ mod tests {
     };
 
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
-    let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph)?;
+    let (present_time, events, terminal_lineage_count) =
+      collect_tree_events(&graph, &coalescent_node_times_from_payloads(&graph))?;
 
     pretty_assert_ulps_eq!(present_time.value(), 2015.0, max_ulps = 4);
     assert_eq!(terminal_lineage_count, 0);
@@ -61,7 +63,8 @@ mod tests {
     };
 
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
-    let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph)?;
+    let (present_time, events, terminal_lineage_count) =
+      collect_tree_events(&graph, &coalescent_node_times_from_payloads(&graph))?;
 
     pretty_assert_ulps_eq!(present_time.value(), 2012.0, max_ulps = 4);
     assert_eq!(terminal_lineage_count, 0);
@@ -91,7 +94,8 @@ mod tests {
     };
 
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
-    let (_present_time, events, _terminal_lineage_count) = collect_tree_events(&graph)?;
+    let (_present_time, events, _terminal_lineage_count) =
+      collect_tree_events(&graph, &coalescent_node_times_from_payloads(&graph))?;
 
     for i in 1..events.len() {
       assert!(events[i - 1].0 <= events[i].0);
@@ -116,7 +120,7 @@ mod tests {
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
 
     assert_error!(
-      collect_tree_events(&graph),
+      collect_tree_events(&graph, &coalescent_node_times_from_payloads(&graph)),
       "Coalescent lineage count requires an inferred time for every node, but node (key=GraphNodeKey(2)) has none. The coalescent model was likely built before node times were recomputed for the current tree topology."
     );
 
@@ -140,7 +144,7 @@ mod tests {
     });
 
     assert_error!(
-      collect_tree_events(&graph),
+      collect_tree_events(&graph, &coalescent_node_times_from_payloads(&graph)),
       "Coalescent event state is incomplete: collected 4 events for 5 nodes, with 1 root(s), 3/3 leaves, 1/2 internal nodes, and event delta sum 1 (expected 1)"
     );
 
@@ -158,7 +162,8 @@ mod tests {
     };
 
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
-    let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph)?;
+    let (present_time, events, terminal_lineage_count) =
+      collect_tree_events(&graph, &coalescent_node_times_from_payloads(&graph))?;
 
     pretty_assert_ulps_eq!(present_time.value(), 2010.0, max_ulps = 4);
     assert_eq!(terminal_lineage_count, 0);
@@ -189,7 +194,8 @@ mod tests {
       .write_arc()
       .bad_branch = true;
 
-    let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph)?;
+    let (present_time, events, terminal_lineage_count) =
+      collect_tree_events(&graph, &coalescent_node_times_from_payloads(&graph))?;
 
     // Oracle: v0 filters `bad_branch` nodes before constructing `tree_events`.
     // packages/legacy/treetime/treetime/merger_models.py#L102-L105
@@ -211,7 +217,8 @@ mod tests {
     };
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
 
-    let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph)?;
+    let (present_time, events, terminal_lineage_count) =
+      collect_tree_events(&graph, &coalescent_node_times_from_payloads(&graph))?;
 
     pretty_assert_ulps_eq!(present_time.value(), 2015.0, max_ulps = 4);
     assert_eq!(terminal_lineage_count, 1);
@@ -234,7 +241,8 @@ mod tests {
     };
     let graph = create_graph_with_dates(TREE_NWK, &dates)?;
 
-    let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph)?;
+    let (present_time, events, terminal_lineage_count) =
+      collect_tree_events(&graph, &coalescent_node_times_from_payloads(&graph))?;
 
     pretty_assert_ulps_eq!(present_time.value(), 2015.0, max_ulps = 4);
     assert_eq!(terminal_lineage_count, 1);

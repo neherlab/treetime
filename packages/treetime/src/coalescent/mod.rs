@@ -4,6 +4,7 @@ mod events;
 mod integration;
 pub mod lineage_counts;
 mod lineage_dynamics;
+pub mod node_time;
 pub mod optimize_tc;
 pub mod population_size;
 pub mod skyline;

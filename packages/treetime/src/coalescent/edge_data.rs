@@ -1,4 +1,5 @@
 use crate::coalescent::coalescent::CoalescentModel;
+use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::coalescent::time_coordinate::CalendarTime;
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
@@ -43,18 +44,22 @@ impl CoalescentEdgeData {
 
 /// Inferred time of a node for coalescent edge collection.
 ///
-/// Prefers the committed `time()`. A full forward pass projects non-leaf internal
+/// Prefers the committed `time`. A full forward pass projects non-leaf internal
 /// point estimates to their committed parent time, while leaves retain observed dates.
 /// Falls back to the raw marginal mode for graphs without a full inference pass;
 /// `collect_coalescent_edges()` validates ordering for either representation.
-fn node_time(payload: &impl TimetreeNode) -> Option<f64> {
-  payload
-    .time()
-    .or_else(|| payload.time_distribution().as_ref().and_then(|dist| dist.likely_time()))
+fn node_time(entry: &CoalescentNodeTime) -> Option<f64> {
+  entry.time.or(entry.time_dist_likely)
 }
 
 /// Collects inferred child and parent dates for all non-root edges.
-pub fn collect_coalescent_edges<N, E, D>(graph: &Graph<N, E, D>) -> Result<Vec<CoalescentEdgeData>, Report>
+///
+/// Node times come from `node_times`, keyed by node, instead of the graph payload; `bad_branch`
+/// stays on the payload.
+pub fn collect_coalescent_edges<N, E, D>(
+  graph: &Graph<N, E, D>,
+  node_times: &CoalescentNodeTimes,
+) -> Result<Vec<CoalescentEdgeData>, Report>
 where
   N: GraphNode + TimetreeNode,
   E: GraphEdge,
@@ -74,7 +79,7 @@ where
       return Ok(());
     }
 
-    let Some(child_time) = node_time(&*node.payload) else {
+    let Some(child_time) = node_times.get(&node.key).and_then(node_time) else {
       warn!(
         "Coalescent edge data: skipping node (key={:?}) without an inferred date",
         node.key
@@ -82,11 +87,7 @@ where
       return Ok(());
     };
     let parent_node_key = node.parent_keys[0].0;
-    let Some(parent_time) = graph.get_node(parent_node_key).and_then(|parent| {
-      let node_guard = parent.read_arc();
-      let payload_guard = node_guard.payload().read_arc();
-      node_time(&*payload_guard)
-    }) else {
+    let Some(parent_time) = node_times.get(&parent_node_key).and_then(node_time) else {
       warn!(
         "Coalescent edge data: skipping node (key={:?}) whose parent has no inferred date",
         node.key

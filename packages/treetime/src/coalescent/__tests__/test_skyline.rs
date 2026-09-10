@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::load_date_constraints;
+  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::partition::timetree::partition::GraphTimetree;
@@ -40,7 +41,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params)?;
+    let result = optimize_skyline(&graph, &params, &coalescent_node_times_from_payloads(&graph))?;
 
     assert_eq!(result.segment_boundaries.len(), 6);
     assert_eq!(result.tc_values.len(), 5);
@@ -71,7 +72,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    assert_error!(optimize_skyline(&graph, &params), expected);
+    assert_error!(optimize_skyline(&graph, &params, &coalescent_node_times_from_payloads(&graph)), expected);
     Ok(())
   }
 
@@ -83,7 +84,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params)?;
+    let result = optimize_skyline(&graph, &params, &coalescent_node_times_from_payloads(&graph))?;
 
     for &tc in &result.tc_values {
       assert!(
@@ -103,7 +104,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params)?;
+    let result = optimize_skyline(&graph, &params, &coalescent_node_times_from_payloads(&graph))?;
 
     let t_min = result.segment_boundaries[0];
     let t_max = result.segment_boundaries[result.segment_boundaries.len() - 1];
@@ -143,7 +144,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params)?;
+    let result = optimize_skyline(&graph, &params, &coalescent_node_times_from_payloads(&graph))?;
 
     assert_eq!(result.tc_values.len(), 10);
     assert!(result.log_likelihood.value().is_finite());
@@ -161,8 +162,13 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params)?;
-    let expected = compute_coalescent_total_lh(&graph, &result.tc_distribution)?.value();
+    let result = optimize_skyline(&graph, &params, &coalescent_node_times_from_payloads(&graph))?;
+    let expected = compute_coalescent_total_lh(
+      &graph,
+      &result.tc_distribution,
+      &coalescent_node_times_from_payloads(&graph),
+    )?
+    .value();
 
     pretty_assert_ulps_eq!(expected, result.log_likelihood.value(), max_ulps = 10);
     Ok(())
@@ -184,8 +190,13 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params)?;
-    let expected = compute_coalescent_total_lh(&graph, &result.tc_distribution)?.value();
+    let result = optimize_skyline(&graph, &params, &coalescent_node_times_from_payloads(&graph))?;
+    let expected = compute_coalescent_total_lh(
+      &graph,
+      &result.tc_distribution,
+      &coalescent_node_times_from_payloads(&graph),
+    )?
+    .value();
 
     // Oracle: the canonical per-edge Kingman cost assigns m - 1 merger-rate
     // factors to an m-child polytomy (Kingman 1982, doi:10.1016/0304-4149(82)90011-4).
@@ -205,9 +216,10 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params)?;
+    let result = optimize_skyline(&graph, &params, &coalescent_node_times_from_payloads(&graph))?;
 
-    let constant_tc = crate::coalescent::optimize_tc::optimize_tc(&graph)?;
+    let constant_tc =
+      crate::coalescent::optimize_tc::optimize_tc(&graph, &coalescent_node_times_from_payloads(&graph))?;
     // The constant Tc is a feasible skyline (all segments equal), so the skyline
     // optimum can only match or beat its likelihood; the slack is solver noise.
     assert!(
@@ -237,8 +249,8 @@ mod tests {
 
     let g1 = helpers::create_graph_with_dates(SMALL_TREE_NWK, &scaled_small_tree_dates(1.0))?;
     let gs = helpers::create_graph_with_dates(SMALL_TREE_NWK, &scaled_small_tree_dates(s))?;
-    let r1 = optimize_skyline(&g1, &params)?;
-    let rs = optimize_skyline(&gs, &params)?;
+    let r1 = optimize_skyline(&g1, &params, &coalescent_node_times_from_payloads(&g1))?;
+    let rs = optimize_skyline(&gs, &params, &coalescent_node_times_from_payloads(&gs))?;
 
     for i in 0..params.n_points {
       let expected = s * r1.tc_values[i];

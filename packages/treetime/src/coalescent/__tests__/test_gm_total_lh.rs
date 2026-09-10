@@ -14,6 +14,7 @@
 mod tests {
   use super::super::helpers::setup_graph;
   use crate::clock::date_constraints::load_date_constraints;
+  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::partition::timetree::partition::GraphTimetree;
   use approx::assert_abs_diff_eq;
@@ -51,7 +52,7 @@ mod tests {
   #[trace]
   fn test_gm_total_lh_binary(#[case] tc: f64, #[case] expected: f64) -> Result<(), Report> {
     let graph = setup_graph()?;
-    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc))?.value();
+    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc), &coalescent_node_times_from_payloads(&graph))?.value();
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-8);
     Ok(())
   }
@@ -68,7 +69,7 @@ mod tests {
   #[trace]
   fn test_gm_total_lh_polytomy(#[case] tc: f64, #[case] expected: f64) -> Result<(), Report> {
     let graph = setup_polytomy_graph()?;
-    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc))?.value();
+    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc), &coalescent_node_times_from_payloads(&graph))?.value();
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-8);
     Ok(())
   }

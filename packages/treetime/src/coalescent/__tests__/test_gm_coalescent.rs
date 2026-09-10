@@ -3,6 +3,7 @@ mod tests {
   use crate::clock::date_constraints::load_date_constraints;
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
+  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
   use crate::o;
   use crate::partition::timetree::partition::GraphTimetree;
   use eyre::{Report, WrapErr};
@@ -43,7 +44,7 @@ mod tests {
       .wrap_err_with(|| format!("When reading snapshot {snapshot_file}"))?;
     let graph = load_graph(&snapshot)?;
     let model = CoalescentModel::new(
-      &compute_lineage_counts(&graph)?,
+      &compute_lineage_counts(&graph, &coalescent_node_times_from_payloads(&graph))?,
       &Distribution::constant(snapshot.inputs.tc),
     )?;
     let tbp_grid = Grid::from_range_n_points(

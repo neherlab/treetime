@@ -11,6 +11,7 @@ mod tests {
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
+  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
@@ -43,7 +44,7 @@ mod tests {
 
     let (graph, partitions, clock_model) = build_timetree_setup(dataset, case)?;
     let mut graph = graph;
-    let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph)?, &Distribution::constant(tc))?;
+    let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph, &coalescent_node_times_from_payloads(&graph))?, &Distribution::constant(tc))?;
     let mut state = TimetreeState::new(&graph);
     let mut clock_state = ClockState::new(&graph);
     run_timetree(

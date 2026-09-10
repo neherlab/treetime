@@ -1,6 +1,7 @@
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood, collect_coalescent_edges};
 use crate::coalescent::lineage_counts::compute_lineage_counts;
+use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::make_error;
 use crate::payload::traits::TimetreeNode;
 use eyre::{Report, WrapErr};
@@ -96,7 +97,11 @@ pub struct SkylineResult {
 /// `Iᵢ` and `Mᵢ` are attributed to segments using the same interval-midpoint and
 /// node-time conventions as [`CoalescentModel`], so the analytic optimum coincides
 /// with the maximizer of the model-evaluated likelihood.
-pub fn optimize_skyline<N, E, D>(graph: &Graph<N, E, D>, params: &SkylineParams) -> Result<SkylineResult, Report>
+pub fn optimize_skyline<N, E, D>(
+  graph: &Graph<N, E, D>,
+  params: &SkylineParams,
+  node_times: &CoalescentNodeTimes,
+) -> Result<SkylineResult, Report>
 where
   N: GraphNode + TimetreeNode + Named,
   E: GraphEdge,
@@ -120,8 +125,8 @@ where
     params.n_points, params.stiffness
   );
 
-  let lineage_counts = compute_lineage_counts(graph)?;
-  let edges = collect_coalescent_edges(graph)?;
+  let lineage_counts = compute_lineage_counts(graph, node_times)?;
+  let edges = collect_coalescent_edges(graph, node_times)?;
 
   let breakpoints = lineage_counts.breakpoints();
   if breakpoints.len() < 2 {

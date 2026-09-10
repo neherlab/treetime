@@ -1,3 +1,4 @@
+use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
@@ -33,7 +34,10 @@ pub struct OptimizeTcResult {
 /// See [`optimize_skyline`] for the shared machinery (per-edge `I`/`M` accumulation,
 /// self-consistent likelihood reporting) and the degenerate-tree error returned when
 /// the tree has no time span or no mergers.
-pub fn optimize_tc<N, E, D>(graph: &Graph<N, E, D>) -> Result<OptimizeTcResult, Report>
+pub fn optimize_tc<N, E, D>(
+  graph: &Graph<N, E, D>,
+  node_times: &CoalescentNodeTimes,
+) -> Result<OptimizeTcResult, Report>
 where
   N: GraphNode + TimetreeNode + Named,
   E: GraphEdge,
@@ -45,6 +49,7 @@ where
       n_points: 1,
       ..SkylineParams::default()
     },
+    node_times,
   )?;
   Ok(OptimizeTcResult {
     tc: result.tc_values[0],

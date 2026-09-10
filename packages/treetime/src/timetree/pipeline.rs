@@ -9,6 +9,7 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, Reroot
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::lineage_counts::compute_lineage_counts;
+use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::population_size::effective_population_size;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::commands::timetree::output::coalescent::{
@@ -327,17 +328,23 @@ pub fn run(
   }
   let coalescent = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
 
+  // The node times the coalescent reads, sourced from the value state instead of the graph payload.
+  // Built once here because nothing changes the times between the frozen lineage counts and the
+  // initial Tc estimate.
+  let coalescent_node_times = timetree_state.coalescent_node_times();
+
   // k(t) frozen for the whole run, read from the first timetree: the earliest point where node
   // times give lineage counts, and before the optimization loop starts editing the topology.
   // Held fixed because it is the prior's input; the statistic role keeps reading the live tree.
   // See `CoalescentModel`.
-  let lineage_counts = compute_lineage_counts(&input.graph).wrap_err("Failed to compute coalescent lineage counts")?;
+  let lineage_counts = compute_lineage_counts(&input.graph, &coalescent_node_times)
+    .wrap_err("Failed to compute coalescent lineage counts")?;
 
   // Estimate the coalescent Tc (constant or skyline) from the rerooted tree, then re-infer node
   // times under that prior. Estimated after the reroot because the lineage counts it reads are a
   // property of the rooted tree the optimization loop starts from. There is no need to start
   // from a constant Tc and switch to the skyline later: both are cheap analytic solves.
-  let mut coalescent_tc = coalescent_timescale(coalescent, &input.graph, &skyline_params)?;
+  let mut coalescent_tc = coalescent_timescale(coalescent, &input.graph, &skyline_params, &coalescent_node_times)?;
 
   // Whether that timescale is also a prior on node times. It is estimated either way, because
   // polytomy resolution samples mergers at the per-branch coalescent rate and needs one even for
@@ -403,7 +410,12 @@ pub fn run(
     // the run's ability to adapt. The lineage counts behind the model stay those of the tree the
     // loop started from.
     if coalescent.is_optimized() {
-      coalescent_tc = coalescent_timescale(coalescent, &input.graph, &skyline_params)?;
+      coalescent_tc = coalescent_timescale(
+        coalescent,
+        &input.graph,
+        &skyline_params,
+        &timetree_state.coalescent_node_times(),
+      )?;
     }
     let coalescent_model = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
     // Preserve every k(t) and Tc(t) discontinuity for event-sampler boundaries.
@@ -599,12 +611,13 @@ fn estimate_coalescent_tc(
   mode: CoalescentMode,
   graph: &GraphTimetree,
   skyline_params: &SkylineParams,
+  node_times: &CoalescentNodeTimes,
 ) -> Result<Option<CoalescentTimescale>, Report> {
   // Both optimizing modes are the same solve: a constant Tc is just a one-segment
   // skyline. They differ only in the number of segments.
   let n_points = match mode {
     CoalescentMode::Disabled => return Ok(None),
-    CoalescentMode::Fixed(tc) => return fixed_timescale(tc, graph).map(Some),
+    CoalescentMode::Fixed(tc) => return fixed_timescale(tc, graph, node_times).map(Some),
     CoalescentMode::Constant => 1,
     CoalescentMode::Skyline => skyline_params.n_points,
   };
@@ -614,6 +627,7 @@ fn estimate_coalescent_tc(
       n_points,
       ..skyline_params.clone()
     },
+    node_times,
   )?;
   Ok(Some(CoalescentTimescale {
     distribution: result.tc_distribution,
@@ -636,8 +650,13 @@ fn estimate_coalescent_tc(
 /// modes report -- so a fixed Tc reports the whole tree as its single segment. No solve runs (a fixed
 /// Tc is the escape hatch for trees the optimizer rejects as degenerate), so the report carries no
 /// confidence band and no likelihood.
-fn fixed_timescale(tc: f64, graph: &GraphTimetree) -> Result<CoalescentTimescale, Report> {
-  let lineage_counts = compute_lineage_counts(graph).wrap_err("Failed to compute coalescent lineage counts")?;
+fn fixed_timescale(
+  tc: f64,
+  graph: &GraphTimetree,
+  node_times: &CoalescentNodeTimes,
+) -> Result<CoalescentTimescale, Report> {
+  let lineage_counts =
+    compute_lineage_counts(graph, node_times).wrap_err("Failed to compute coalescent lineage counts")?;
   let breakpoints = lineage_counts.breakpoints();
   if breakpoints.is_empty() {
     return make_error!("Cannot report a fixed coalescent Tc: the tree has no node times to span");
@@ -664,12 +683,13 @@ fn coalescent_timescale(
   mode: CoalescentMode,
   graph: &GraphTimetree,
   skyline_params: &SkylineParams,
+  node_times: &CoalescentNodeTimes,
 ) -> Result<CoalescentTimescale, Report> {
   let mode = match mode {
     CoalescentMode::Disabled => CoalescentMode::Constant,
     mode => mode,
   };
-  estimate_coalescent_tc(mode, graph, skyline_params)
+  estimate_coalescent_tc(mode, graph, skyline_params, node_times)
     .wrap_err("Failed to estimate the coalescent timescale")?
     .ok_or_else(|| make_report!("A coalescent Tc is required, but {mode:?} yielded none"))
 }
@@ -837,6 +857,7 @@ mod tests {
     estimate_coalescent_tc,
   };
   use crate::clock::date_constraints::load_date_constraints;
+  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::partition::timetree::partition::GraphTimetree;
   use eyre::Report;
@@ -903,8 +924,13 @@ mod tests {
       n_std: N_STD,
       ..SkylineParams::default()
     };
-    let timescale = estimate_coalescent_tc(CoalescentMode::Fixed(2.5), &graph, &params)?
-      .expect("a fixed Tc yields a coalescent timescale");
+    let timescale = estimate_coalescent_tc(
+      CoalescentMode::Fixed(2.5),
+      &graph,
+      &params,
+      &coalescent_node_times_from_payloads(&graph),
+    )?
+    .expect("a fixed Tc yields a coalescent timescale");
 
     let actual = build_coalescent_output(CoalescentMode::Fixed(2.5), &timescale, GEN_PER_YEAR, &params)?
       .expect("a fixed Tc writes a coalescent output");
@@ -1042,9 +1068,14 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let solve = optimize_skyline(&graph, &params)?;
-    let timescale = estimate_coalescent_tc(CoalescentMode::Skyline, &graph, &params)?
-      .expect("skyline mode yields a coalescent timescale");
+    let solve = optimize_skyline(&graph, &params, &coalescent_node_times_from_payloads(&graph))?;
+    let timescale = estimate_coalescent_tc(
+      CoalescentMode::Skyline,
+      &graph,
+      &params,
+      &coalescent_node_times_from_payloads(&graph),
+    )?
+    .expect("skyline mode yields a coalescent timescale");
     let report = timescale
       .report
       .expect("an inferred skyline carries a per-segment report");

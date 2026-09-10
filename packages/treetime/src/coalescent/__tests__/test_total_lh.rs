@@ -2,6 +2,7 @@
 mod tests {
   use super::super::helpers::setup_graph;
   use crate::coalescent::edge_data::collect_coalescent_edges;
+  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
   use crate::coalescent::optimize_tc::optimize_tc;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::pretty_assert_ulps_eq;
@@ -16,7 +17,7 @@ mod tests {
     let graph = setup_graph()?;
     let tc = Distribution::constant(1.0);
 
-    let lh = compute_coalescent_total_lh(&graph, &tc)?.value();
+    let lh = compute_coalescent_total_lh(&graph, &tc, &coalescent_node_times_from_payloads(&graph))?.value();
 
     assert!(lh.is_finite(), "Total coalescent LH should be finite, got {lh}");
     Ok(())
@@ -29,7 +30,7 @@ mod tests {
     let graph = setup_graph()?;
     let tc = Distribution::constant(1.0);
 
-    let lh = compute_coalescent_total_lh(&graph, &tc)?.value();
+    let lh = compute_coalescent_total_lh(&graph, &tc, &coalescent_node_times_from_payloads(&graph))?.value();
 
     assert!(lh < 0.0, "Coalescent log-likelihood should be negative, got {lh}");
     Ok(())
@@ -46,7 +47,7 @@ mod tests {
     let graph = setup_graph()?;
     let tc = Distribution::constant(tc_value);
 
-    let lh = compute_coalescent_total_lh(&graph, &tc)?.value();
+    let lh = compute_coalescent_total_lh(&graph, &tc, &coalescent_node_times_from_payloads(&graph))?.value();
 
     assert!(lh.is_finite(), "LH should be finite for Tc={tc_value}");
     Ok(())
@@ -57,8 +58,18 @@ mod tests {
     // The coalescent LH depends on Tc. Different Tc values produce different LH.
     let graph = setup_graph()?;
 
-    let lh_small = compute_coalescent_total_lh(&graph, &Distribution::constant(0.1))?.value();
-    let lh_large = compute_coalescent_total_lh(&graph, &Distribution::constant(100.0))?.value();
+    let lh_small = compute_coalescent_total_lh(
+      &graph,
+      &Distribution::constant(0.1),
+      &coalescent_node_times_from_payloads(&graph),
+    )?
+    .value();
+    let lh_large = compute_coalescent_total_lh(
+      &graph,
+      &Distribution::constant(100.0),
+      &coalescent_node_times_from_payloads(&graph),
+    )?
+    .value();
 
     assert!(
       (lh_small - lh_large).abs() > 1e-6,
@@ -71,12 +82,27 @@ mod tests {
   fn test_total_lh_monotonic_near_optimum() -> Result<(), Report> {
     // The coalescent LH should peak near the optimal Tc.
     let graph = setup_graph()?;
-    let opt = optimize_tc(&graph)?;
+    let opt = optimize_tc(&graph, &coalescent_node_times_from_payloads(&graph))?;
 
     let tc_opt = opt.tc;
-    let lh_opt = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt))?.value();
-    let lh_low = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt * 0.01))?.value();
-    let lh_high = compute_coalescent_total_lh(&graph, &Distribution::constant(tc_opt * 100.0))?.value();
+    let lh_opt = compute_coalescent_total_lh(
+      &graph,
+      &Distribution::constant(tc_opt),
+      &coalescent_node_times_from_payloads(&graph),
+    )?
+    .value();
+    let lh_low = compute_coalescent_total_lh(
+      &graph,
+      &Distribution::constant(tc_opt * 0.01),
+      &coalescent_node_times_from_payloads(&graph),
+    )?
+    .value();
+    let lh_high = compute_coalescent_total_lh(
+      &graph,
+      &Distribution::constant(tc_opt * 100.0),
+      &coalescent_node_times_from_payloads(&graph),
+    )?
+    .value();
 
     assert!(
       lh_opt >= lh_low,
@@ -95,9 +121,14 @@ mod tests {
     // Both code paths call coalescent_log_likelihood() with identical inputs for
     // constant Tc. Results should agree to machine precision.
     let graph = setup_graph()?;
-    let opt = optimize_tc(&graph)?;
+    let opt = optimize_tc(&graph, &coalescent_node_times_from_payloads(&graph))?;
 
-    let lh = compute_coalescent_total_lh(&graph, &Distribution::constant(opt.tc))?.value();
+    let lh = compute_coalescent_total_lh(
+      &graph,
+      &Distribution::constant(opt.tc),
+      &coalescent_node_times_from_payloads(&graph),
+    )?
+    .value();
 
     pretty_assert_ulps_eq!(opt.likelihood.value(), lh, max_ulps = 10);
 
@@ -116,8 +147,10 @@ mod tests {
       1000.0,
     ));
 
-    let lh_const = compute_coalescent_total_lh(&graph, &tc_const)?.value();
-    let lh_formula = compute_coalescent_total_lh(&graph, &tc_formula)?.value();
+    let lh_const =
+      compute_coalescent_total_lh(&graph, &tc_const, &coalescent_node_times_from_payloads(&graph))?.value();
+    let lh_formula =
+      compute_coalescent_total_lh(&graph, &tc_formula, &coalescent_node_times_from_payloads(&graph))?.value();
 
     pretty_assert_ulps_eq!(lh_const, lh_formula, max_ulps = 10);
 
@@ -131,7 +164,7 @@ mod tests {
     let leaf = graph.get_node(leaf_key).expect("leaf1 exists");
     leaf.read_arc().payload().write_arc().time_distribution = Some(Arc::new(Distribution::point(1990.0, 1.0)));
 
-    let error = collect_coalescent_edges(&graph).unwrap_err();
+    let error = collect_coalescent_edges(&graph, &coalescent_node_times_from_payloads(&graph)).unwrap_err();
 
     assert!(error.to_string().contains("child older than parent"));
     Ok(())

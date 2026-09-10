@@ -2,6 +2,7 @@
 mod tests {
   use super::super::helpers::setup_graph;
   use crate::clock::date_constraints::load_date_constraints;
+  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
   use crate::coalescent::optimize_tc::optimize_tc;
   use crate::partition::timetree::partition::GraphTimetree;
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
@@ -42,7 +43,7 @@ mod tests {
   #[test]
   fn test_optimize_tc_returns_positive_finite_optimum() -> Result<(), Report> {
     let graph = setup_graph()?;
-    let result = optimize_tc(&graph)?;
+    let result = optimize_tc(&graph, &coalescent_node_times_from_payloads(&graph))?;
 
     assert!(result.tc > 0.0, "Optimized Tc should be positive");
     assert!(result.tc.is_finite(), "Optimized Tc should be finite");
@@ -57,8 +58,8 @@ mod tests {
     // The optimum is a closed form (Tc = I/M), so repeated calls are identical.
     let graph = setup_graph()?;
 
-    let a = optimize_tc(&graph)?;
-    let b = optimize_tc(&graph)?;
+    let a = optimize_tc(&graph, &coalescent_node_times_from_payloads(&graph))?;
+    let b = optimize_tc(&graph, &coalescent_node_times_from_payloads(&graph))?;
 
     assert_eq!(a.tc, b.tc);
     assert_eq!(a.likelihood.value(), b.likelihood.value());
@@ -72,7 +73,7 @@ mod tests {
     // on trees of varying depth and inner-node placement (see `tree3`).
     for &(t_x, t_tip) in &[(2005.0, 2010.0), (2003.0, 2015.0), (2010.0, 2020.0)] {
       let graph = tree3(2000.0, t_x, t_tip)?;
-      let result = optimize_tc(&graph)?;
+      let result = optimize_tc(&graph, &coalescent_node_times_from_payloads(&graph))?;
       pretty_assert_ulps_eq!(tree3_analytic_tc(2000.0, t_x, t_tip), result.tc, max_ulps = 8);
     }
 
@@ -81,7 +82,8 @@ mod tests {
 
   #[test]
   fn test_optimize_tc_confidence_matches_analytic_curvature() -> Result<(), Report> {
-    let result = optimize_tc(&tree3(2000.0, 2005.0, 2010.0)?)?;
+    let graph = tree3(2000.0, 2005.0, 2010.0)?;
+    let result = optimize_tc(&graph, &coalescent_node_times_from_payloads(&graph))?;
 
     // Analytical oracle: for one segment, C(z) = I exp(-z) + Mz. At the
     // optimum I exp(-z*) = M, so the Hessian is M and Var(z) = 1/M. This
@@ -100,8 +102,10 @@ mod tests {
     // Tc carries units of time: I scales with the time span, M is a pure count, so
     // Tc = I/M scales linearly. Scaling the tree's timescale by s (about the root)
     // scales Tc by s.
-    let base = optimize_tc(&tree3(2000.0, 2005.0, 2010.0)?)?.tc;
-    let scaled = optimize_tc(&tree3(2000.0, 2010.0, 2020.0)?)?.tc; // s = 2
+    let base_graph = tree3(2000.0, 2005.0, 2010.0)?;
+    let base = optimize_tc(&base_graph, &coalescent_node_times_from_payloads(&base_graph))?.tc;
+    let scaled_graph = tree3(2000.0, 2010.0, 2020.0)?; // s = 2
+    let scaled = optimize_tc(&scaled_graph, &coalescent_node_times_from_payloads(&scaled_graph))?.tc;
 
     pretty_assert_ulps_eq!(2.0 * base, scaled, max_ulps = 8);
 
@@ -115,7 +119,7 @@ mod tests {
     // exists. Optimization must error rather than invent a timescale.
     let graph = tree3(2000.0, 2000.0, 2000.0)?;
     assert!(
-      optimize_tc(&graph).is_err(),
+      optimize_tc(&graph, &coalescent_node_times_from_payloads(&graph)).is_err(),
       "a zero-span tree must not yield a coalescent Tc"
     );
 

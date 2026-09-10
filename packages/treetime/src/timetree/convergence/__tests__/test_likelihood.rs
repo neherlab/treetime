@@ -2,6 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::clock::date_constraints::load_date_constraints;
+  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -86,9 +87,9 @@ mod tests {
     let graph = helpers::coalescent_graph()?;
     let tc = Distribution::constant(1.0);
     // Oracle: compute_coalescent_total_lh() is the coalescent model's whole-tree log-likelihood.
-    let expected = compute_coalescent_total_lh(&graph, &tc)?.value();
+    let expected = compute_coalescent_total_lh(&graph, &tc, &coalescent_node_times_from_payloads(&graph))?.value();
 
-    let actual = compute_coalescent_log_lh(&graph, Some(&tc))
+    let actual = compute_coalescent_log_lh(&graph, Some(&tc), &coalescent_node_times_from_payloads(&graph))
       .expect("coalescent log-likelihood must be available")
       .value();
 
@@ -100,7 +101,7 @@ mod tests {
   fn test_likelihood_coalescent_log_lh_absent_without_model() -> Result<(), Report> {
     let graph = helpers::coalescent_graph()?;
 
-    let actual = compute_coalescent_log_lh(&graph, None);
+    let actual = compute_coalescent_log_lh(&graph, None, &coalescent_node_times_from_payloads(&graph));
 
     assert_eq!(None, actual);
     Ok(())

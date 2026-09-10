@@ -1,3 +1,4 @@
+use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -215,6 +216,24 @@ impl TimetreeState {
       payload.set_time_distribution(state.time_distribution.clone());
       payload.set_time(state.time);
     }
+  }
+
+  /// Build the coalescent node-time map from this state, so the coalescent collectors read node
+  /// times as a value instead of off the graph payload. Each entry carries both the committed point
+  /// estimate and the distribution peak, matching the two payload reads the collectors replace.
+  #[must_use]
+  pub fn coalescent_node_times(&self) -> CoalescentNodeTimes {
+    self
+      .nodes
+      .iter()
+      .map(|(key, node)| {
+        let entry = CoalescentNodeTime {
+          time: node.time,
+          time_dist_likely: node.time_distribution.as_ref().and_then(|dist| dist.likely_time()),
+        };
+        (*key, entry)
+      })
+      .collect()
   }
 
   #[must_use]

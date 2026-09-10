@@ -1,3 +1,4 @@
+use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::time_coordinate::CalendarTime;
 use crate::payload::traits::TimetreeNode;
 use eyre::Report;
@@ -16,6 +17,7 @@ use treetime_utils::make_error;
 /// delta_branches: +1 for leaf nodes, -(k-1) for internal nodes with k children.
 pub fn collect_tree_events<N, E, D>(
   graph: &Graph<N, E, D>,
+  node_times: &CoalescentNodeTimes,
 ) -> Result<(CalendarTime, Vec<(CalendarTime, i32)>, i32), Report>
 where
   N: GraphNode + TimetreeNode,
@@ -81,12 +83,7 @@ where
     // Every retained node must contribute an event. Silently dropping a good node
     // without an inferred time breaks the lineage-count balance and hides incomplete
     // state after topology changes.
-    let Some(t) = node
-      .payload
-      .time_distribution()
-      .as_ref()
-      .and_then(|time_dist| time_dist.likely_time())
-    else {
+    let Some(t) = node_times.get(&node.key).and_then(|entry| entry.time_dist_likely) else {
       return make_error!(
         "Coalescent lineage count requires an inferred time for every node, but node (key={:?}) has none. \
          The coalescent model was likely built before node times were recomputed for the current tree topology.",
