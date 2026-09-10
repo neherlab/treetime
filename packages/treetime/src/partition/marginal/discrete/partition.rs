@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::value_maps::node_names;
 use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::argmax_first;
 
@@ -52,11 +53,10 @@ impl PartitionMarginalDiscrete {
     let n_states = self.n_states();
     validate_trait_names(graph, traits)?;
 
+    let names = node_names(graph);
     for leaf in graph.get_leaves() {
-      let leaf_guard = leaf.read_arc();
-      let leaf_key = leaf_guard.key();
-      let leaf_payload = leaf_guard.payload().read_arc();
-      let leaf_name = leaf_payload.name().map(|n| n.as_ref().to_owned()).unwrap_or_default();
+      let leaf_key = leaf.read_arc().key();
+      let leaf_name = names[&leaf_key].clone().unwrap_or_default();
 
       let profile = if let Some(trait_value) = traits.get(&leaf_name) {
         if let Some(index) = self.states.get_index(trait_value) {

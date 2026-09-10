@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::value_maps::node_names;
 
 pub(crate) fn one_hot_profile(index: usize, n_states: usize) -> Array2<f64> {
   let mut profile = Array2::zeros((1, n_states));
@@ -27,14 +28,11 @@ where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
+  let names = node_names(graph);
   let leaf_names: IndexSet<String> = graph
     .get_leaves()
     .iter()
-    .map(|leaf| {
-      let leaf = leaf.read_arc();
-      let payload = leaf.payload().read_arc();
-      payload.name().map(|name| name.as_ref().to_owned()).unwrap_or_default()
-    })
+    .map(|leaf| names[&leaf.read_arc().key()].clone().unwrap_or_default())
     .collect();
   let trait_names: IndexSet<String> = traits.keys().cloned().collect();
 
