@@ -4,6 +4,7 @@ mod tests {
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
   use crate::timetree::optimization::polytomy::sweep::{Merger, SubtreePlan};
+  use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
@@ -71,6 +72,7 @@ mod tests {
   #[test]
   fn test_apply_plan_reparents_children_keeping_edge_key_and_mutation_length() -> Result<(), Report> {
     let (mut graph, parent_key, children) = polytomy_graph()?;
+    let mut state = TimetreeState::new(&graph);
     let original_edges: Vec<GraphEdgeKey> = children.iter().map(|child| child.edge_key).collect();
 
     // Merge A and B (lineages 0 and 1) at 2010; C stays a direct child of P.
@@ -83,7 +85,7 @@ mod tests {
       roots: vec![2, 3],
     };
 
-    let created = apply_plan(&mut graph, parent_key, 2000.0, &children, &plan)?;
+    let created = apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut state)?;
     assert_eq!(created, 1);
 
     for (index, child) in children.iter().enumerate() {
@@ -110,6 +112,7 @@ mod tests {
   #[test]
   fn test_apply_plan_builds_the_planned_topology() -> Result<(), Report> {
     let (mut graph, parent_key, children) = polytomy_graph()?;
+    let mut state = TimetreeState::new(&graph);
 
     let plan = SubtreePlan {
       mergers: vec![Merger {
@@ -119,7 +122,7 @@ mod tests {
       }],
       roots: vec![2, 3],
     };
-    apply_plan(&mut graph, parent_key, 2000.0, &children, &plan)?;
+    apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut state)?;
 
     let merger_key = parent_of(&graph, children[0].node_key);
     assert_eq!(
@@ -167,6 +170,7 @@ mod tests {
   #[test]
   fn test_apply_plan_sets_time_lengths_from_the_new_parent() -> Result<(), Report> {
     let (mut graph, parent_key, children) = polytomy_graph()?;
+    let mut state = TimetreeState::new(&graph);
 
     let plan = SubtreePlan {
       mergers: vec![Merger {
@@ -176,7 +180,7 @@ mod tests {
       }],
       roots: vec![2, 3],
     };
-    apply_plan(&mut graph, parent_key, 2000.0, &children, &plan)?;
+    apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut state)?;
 
     let time_length_of = |edge_key: GraphEdgeKey| -> f64 {
       graph
@@ -205,6 +209,7 @@ mod tests {
   #[test]
   fn test_apply_plan_gives_merger_edges_zero_mutation_length() -> Result<(), Report> {
     let (mut graph, parent_key, children) = polytomy_graph()?;
+    let mut state = TimetreeState::new(&graph);
 
     let plan = SubtreePlan {
       mergers: vec![Merger {
@@ -214,7 +219,7 @@ mod tests {
       }],
       roots: vec![2, 3],
     };
-    apply_plan(&mut graph, parent_key, 2000.0, &children, &plan)?;
+    apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut state)?;
 
     let merger_key = parent_of(&graph, children[0].node_key);
     let merger_edge = child_edge_of(&graph, merger_key);
@@ -237,6 +242,7 @@ mod tests {
   #[test]
   fn test_apply_plan_nests_mergers_that_reference_earlier_mergers() -> Result<(), Report> {
     let (mut graph, parent_key, children) = polytomy_graph()?;
+    let mut state = TimetreeState::new(&graph);
 
     // ((A,B) at 2012, C) at 2005 -- the second merger consumes the first.
     let plan = SubtreePlan {
@@ -255,7 +261,7 @@ mod tests {
       roots: vec![4],
     };
 
-    let created = apply_plan(&mut graph, parent_key, 2000.0, &children, &plan)?;
+    let created = apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut state)?;
     assert_eq!(created, 2);
 
     let inner = parent_of(&graph, children[0].node_key);
@@ -280,6 +286,7 @@ mod tests {
   #[test]
   fn test_apply_plan_rejects_a_merger_referencing_a_later_merger() -> Result<(), Report> {
     let (mut graph, parent_key, children) = polytomy_graph()?;
+    let mut state = TimetreeState::new(&graph);
 
     // Lineage 4 is the second merger's own node, which does not exist yet.
     let plan = SubtreePlan {
@@ -300,7 +307,7 @@ mod tests {
     let before = json_write_str(&graph, JsonPretty(false))?;
 
     assert_error!(
-      apply_plan(&mut graph, parent_key, 2000.0, &children, &plan),
+      apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut state),
       "Polytomy plan merger 0 referenced lineage 4 before it was created. This is an internal error. Please report it to developers."
     );
     let after = json_write_str(&graph, JsonPretty(false))?;

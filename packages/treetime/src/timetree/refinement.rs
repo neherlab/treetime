@@ -129,6 +129,7 @@ impl Refinement<'_> {
       total_length,
       self.merger_rate,
       self.rng,
+      self.state,
     )
     .wrap_err("Polytomy resolution failed")?;
     if resolved_nodes == 0 {
@@ -138,7 +139,8 @@ impl Refinement<'_> {
     info!("Resolved polytomies, introduced {resolved_nodes} new nodes");
     assign_node_names(self.graph)?;
     propagate_bad_branches(self.graph)?;
-    prepare_tree_after_topology_change(self.graph).wrap_err("Failed to prepare tree after topology change")?;
+    prepare_tree_after_topology_change(self.graph, self.state)
+      .wrap_err("Failed to prepare tree after topology change")?;
     // Reset the value-resident edge fields for the new topology, the counterpart of the payload reset
     // `prepare_tree_after_topology_change` performs on the transitional fields.
     self.state.reset_date_edges_for_topology_change(self.graph);

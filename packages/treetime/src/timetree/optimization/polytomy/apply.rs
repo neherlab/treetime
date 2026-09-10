@@ -6,6 +6,7 @@
 use crate::partition::timetree::partition::GraphTimetree;
 use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use crate::timetree::optimization::polytomy::sweep::SubtreePlan;
+use crate::timetree::timetree_state::{DateNodeState, TimetreeState};
 use eyre::Report;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use treetime_graph::node::GraphNodeKey;
@@ -39,6 +40,7 @@ pub fn apply_plan(
   parent_time: f64,
   children: &[ChildRef],
   plan: &SubtreePlan,
+  state: &mut TimetreeState,
 ) -> Result<usize, Report> {
   // Validate the complete forest before graph mutation so plan application is atomic.
   let times = validate_plan(parent_time, children, plan)?;
@@ -50,6 +52,16 @@ pub fn apply_plan(
       time: Some(merger.time),
       ..NodeTimetree::default()
     });
+    // The new merger node's committed time lives on the value state (its new home) as well as the
+    // payload; `prepare_tree_after_topology_change` reads it back to seed the node's point time
+    // distribution.
+    state.nodes.insert(
+      new_node_key,
+      DateNodeState {
+        time: Some(merger.time),
+        ..DateNodeState::default()
+      },
+    );
 
     for lineage in [merger.left, merger.right] {
       attach(

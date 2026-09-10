@@ -24,9 +24,9 @@ use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::PartitionBranchOps;
 use crate::payload::clock_set::ClockSet;
-use crate::payload::timetree::NodeTimetree;
 use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
 use crate::timetree::optimization::polytomy::sweep::{Lineage, simulate_subtree};
+use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use log::debug;
 use std::sync::Arc;
@@ -41,13 +41,13 @@ use treetime_utils::make_error;
 ///
 /// This runs before relaxed-clock estimation and polytomy resolution so invalid
 /// input leaves the complete previous inference state untouched.
-pub fn validate_tree_before_topology_change(graph: &GraphTimetree) -> Result<(), Report> {
+pub fn validate_tree_before_topology_change(graph: &GraphTimetree, state: &TimetreeState) -> Result<(), Report> {
   for node in graph.get_nodes() {
     let node = node.read_arc();
     if node.is_leaf() {
       continue;
     }
-    let Some(time) = node.payload().read_arc().time else {
+    let Some(time) = state.node(node.key()).time else {
       return make_error!(
         "Topology rebuild requires an inferred time for every internal node, but node {:?} has none",
         node.key()
@@ -84,6 +84,7 @@ pub fn resolve_polytomies(
   total_length: usize,
   merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn rand::RngCore,
+  state: &mut TimetreeState,
 ) -> Result<usize, Report> {
   let polytomy_keys = find_polytomy_nodes(graph);
   if polytomy_keys.is_empty() {
@@ -104,6 +105,7 @@ pub fn resolve_polytomies(
       merger_rate,
       rng,
       &mut topology_validated,
+      state,
     )?;
     total_created += created;
   }
@@ -137,14 +139,11 @@ fn resolve_single_polytomy(
   merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn rand::RngCore,
   topology_validated: &mut bool,
+  state: &mut TimetreeState,
 ) -> Result<usize, Report> {
-  let parent_time = {
-    let node = graph.get_node(node_key).expect("Node must exist");
-    let node = node.read_arc();
-    inferred_time(&node.payload().read_arc(), node.key())?
-  };
+  let parent_time = inferred_time(state, node_key)?;
 
-  let children = collect_children(graph, partitions, node_key, total_length)?;
+  let children = collect_children(graph, partitions, node_key, total_length, state)?;
   if children.len() < 3 {
     return Ok(0);
   }
@@ -167,7 +166,7 @@ fn resolve_single_polytomy(
   }
 
   if !*topology_validated {
-    validate_tree_before_topology_change(graph)?;
+    validate_tree_before_topology_change(graph, state)?;
     *topology_validated = true;
   }
 
@@ -180,7 +179,7 @@ fn resolve_single_polytomy(
     })
     .collect();
 
-  let created = apply_plan(graph, node_key, parent_time, &child_refs, &plan)?;
+  let created = apply_plan(graph, node_key, parent_time, &child_refs, &plan, state)?;
 
   debug!(
     "Polytomy at node {node_key}: {} children -> {} children, created {created} nodes",
@@ -204,6 +203,7 @@ fn collect_children(
   partitions: &[PartitionTimetreeRef],
   node_key: GraphNodeKey,
   total_length: usize,
+  state: &TimetreeState,
 ) -> Result<Vec<ChildInfo>, Report> {
   let edge_keys = {
     let node = graph.get_node(node_key).expect("Node must exist");
@@ -218,8 +218,7 @@ fn collect_children(
       let edge = edge.read_arc();
       let child_key = edge.target();
 
-      let child_node = graph.get_node(child_key).expect("Child must exist");
-      let time = inferred_time(&child_node.read_arc().payload().read_arc(), child_key)?;
+      let time = inferred_time(state, child_key)?;
       let mutation_length = edge.payload().read_arc().branch_length();
 
       Ok(ChildInfo {
@@ -268,8 +267,8 @@ fn edge_mutation_count(
   u32::try_from(count).unwrap_or(u32::MAX)
 }
 
-fn inferred_time(payload: &NodeTimetree, node_key: GraphNodeKey) -> Result<f64, Report> {
-  let Some(time) = payload.time else {
+fn inferred_time(state: &TimetreeState, node_key: GraphNodeKey) -> Result<f64, Report> {
+  let Some(time) = state.node(node_key).time else {
     return make_error!("Polytomy resolution requires an inferred time for node {node_key}, but it has none");
   };
   if !time.is_finite() {
@@ -311,23 +310,26 @@ fn remove_single_child_nodes(graph: &mut GraphTimetree) -> Result<usize, Report>
 /// date constraints and exclusion flags. Edge distributions, messages, and
 /// topology-dependent rate state are reset unconditionally. Branch lengths and
 /// time lengths remain valid inputs for the next inference pass.
-pub fn prepare_tree_after_topology_change(graph: &GraphTimetree) -> Result<(), Report> {
-  validate_tree_before_topology_change(graph)?;
+pub fn prepare_tree_after_topology_change(graph: &GraphTimetree, state: &mut TimetreeState) -> Result<(), Report> {
+  validate_tree_before_topology_change(graph, state)?;
 
   for node in graph.get_nodes() {
     let node = node.read_arc();
     if node.is_leaf() {
       continue;
     }
-    let mut payload = node.payload().write_arc();
-    let Some(time) = payload.time else {
+    let key = node.key();
+    let Some(time) = state.node(key).time else {
       return make_error!(
-        "Topology rebuild requires an inferred time for every internal node, but node {:?} has none",
-        node.key()
+        "Topology rebuild requires an inferred time for every internal node, but node {key:?} has none"
       );
     };
-    // Negative-log ordinate `0` is the `NegLog` multiplicative identity (probability 1).
-    payload.time_distribution = Some(Arc::new(Distribution::point(time, 0.0)));
+    // Negative-log ordinate `0` is the `NegLog` multiplicative identity (probability 1). The point
+    // distribution is written to both the value state (the new home the passes read) and the payload
+    // (still re-read by the transitional reseed until the payload round-trip is removed).
+    let distribution = Arc::new(Distribution::point(time, 0.0));
+    node.payload().write_arc().time_distribution = Some(Arc::clone(&distribution));
+    state.node_mut(key).time_distribution = Some(distribution);
   }
 
   // Reset fields whose meaning depends on the previous edge topology. Keep the

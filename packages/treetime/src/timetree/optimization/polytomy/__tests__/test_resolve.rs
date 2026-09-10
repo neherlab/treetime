@@ -4,6 +4,7 @@ mod tests {
   use crate::payload::clock_set::ClockSet;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
+  use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use ndarray::array;
   use pretty_assertions::assert_eq;
@@ -109,7 +110,18 @@ mod tests {
   /// rate alone.
   fn resolve(graph: &mut GraphTimetree, rng: &mut dyn RngCore) -> Result<usize, Report> {
     let merger_rate = PiecewiseConstantFn::new(array![], array![TEST_MERGER_RATE]);
-    resolve_polytomies(graph, &no_partitions(), TEST_MUTATION_RATE, 0, &merger_rate, rng)
+    // The date state the polytomy code reads node times from; seeded from the payloads the fixtures
+    // set, so it holds the same times the resolution previously read off the payload.
+    let mut state = TimetreeState::seed_from_payloads(graph);
+    resolve_polytomies(
+      graph,
+      &no_partitions(),
+      TEST_MUTATION_RATE,
+      0,
+      &merger_rate,
+      rng,
+      &mut state,
+    )
   }
 
   /// Names of the leaves reachable from `node_key`.
@@ -395,7 +407,8 @@ mod tests {
       payload.bad_branch = true;
     }
 
-    prepare_tree_after_topology_change(&graph)?;
+    let mut state = TimetreeState::seed_from_payloads(&graph);
+    prepare_tree_after_topology_change(&graph, &mut state)?;
 
     for name in ["A", "B", "C"] {
       let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
