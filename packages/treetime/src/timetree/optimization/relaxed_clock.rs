@@ -2,8 +2,8 @@ use crate::partition::timetree::partition::GraphTimetree;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime_graph::edge::HasBranchLength;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Relaxed clock penalty coefficients computed during postorder pass.
 #[derive(Clone, Default)]
@@ -43,6 +43,8 @@ pub fn apply_relaxed_clock(
   // Store coefficients per node during postorder
   let mut coeffs: BTreeMap<GraphNodeKey, RelaxedClockCoeffs> = BTreeMap::new();
 
+  let branch_lengths = edge_branch_lengths(graph);
+
   // Postorder pass: compute k1, k2 coefficients from leaves to root
   graph.iter_depth_first_postorder_forward(|node| {
     let mut node_coeffs = RelaxedClockCoeffs::default();
@@ -52,13 +54,8 @@ pub fn apply_relaxed_clock(
     // For non-root: use actual edge lengths
     let (opt_len, act_len) = if node.is_root {
       (one_mutation, one_mutation)
-    } else if let Some(parent_edge) = node.parent_edges.first() {
-      let opt_len = parent_edge.branch_length().unwrap_or(0.0);
-      let edge_key = node
-        .parent_edge_keys
-        .first()
-        .copied()
-        .expect("Non-root node must have a parent edge");
+    } else if let Some(&edge_key) = node.parent_edge_keys.first() {
+      let opt_len = branch_lengths[&edge_key].unwrap_or(0.0);
       let act_len = state
         .edge(edge_key)
         .time_length
