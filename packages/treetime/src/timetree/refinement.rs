@@ -93,7 +93,7 @@ impl Refinement<'_> {
       .sum()
   }
 
-  fn apply_relaxed_clock(&self, total_length: usize) -> Result<(), Report> {
+  fn apply_relaxed_clock(&mut self, total_length: usize) -> Result<(), Report> {
     if self.options.relax.is_empty() {
       return Ok(());
     }
@@ -112,6 +112,7 @@ impl Refinement<'_> {
       &self.options.relax,
       1.0 / total_length as f64,
       self.clock_model.clock_rate(),
+      self.state,
     )
   }
 

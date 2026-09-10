@@ -165,14 +165,12 @@ mod tests {
   fn test_input_mode_uses_time_length_when_branch_length_is_absent() -> Result<(), Report> {
     let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A)root;")?;
     let edge = graph.get_edges().pop().expect("tree must contain one edge");
-    {
-      let mut payload = edge.read_arc().payload().write_arc();
-      payload.set_time_length(Some(7.5));
-      payload.set_branch_length(None);
-    }
+    edge.read_arc().payload().write_arc().set_branch_length(None);
 
     let edge_key = edge.read_arc().key();
     let mut state = TimetreeState::new(&graph);
+    // With no branch length, the builder falls back to the value-state time length.
+    state.edge_mut(edge_key).time_length = Some(7.5);
     create_branch_distributions_input_mode(&graph, 0.001, &mut state)?;
 
     let payload = edge.read_arc().payload().read_arc();

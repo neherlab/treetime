@@ -316,7 +316,7 @@ where
         let effective_clock_rate = clock_rate * edge_states.edge(key).gamma;
         Some(branch_length / effective_clock_rate)
       } else {
-        edge.time_length()
+        edge_states.edge(key).time_length
       };
 
       time_duration.map(|time_duration| {

@@ -1,7 +1,8 @@
 use crate::partition::timetree::partition::GraphTimetree;
+use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{HasBranchLength, TimeLength};
+use treetime_graph::edge::HasBranchLength;
 use treetime_graph::node::GraphNodeKey;
 
 /// Relaxed clock penalty coefficients computed during postorder pass.
@@ -31,6 +32,7 @@ pub fn apply_relaxed_clock(
   params: &[f64],
   one_mutation: f64,
   clock_rate: f64,
+  state: &mut TimetreeState,
 ) -> Result<(), Report> {
   let slack = params.first().copied().unwrap_or(1.0);
   let coupling = params.get(1).copied().unwrap_or(1.0);
@@ -52,8 +54,14 @@ pub fn apply_relaxed_clock(
       (one_mutation, one_mutation)
     } else if let Some(parent_edge) = node.parent_edges.first() {
       let opt_len = parent_edge.branch_length().unwrap_or(0.0);
-      let act_len = parent_edge
-        .time_length()
+      let edge_key = node
+        .parent_edge_keys
+        .first()
+        .copied()
+        .expect("Non-root node must have a parent edge");
+      let act_len = state
+        .edge(edge_key)
+        .time_length
         .map_or(opt_len, |time_length| time_length * clock_rate);
       (opt_len, act_len)
     } else {
