@@ -3,7 +3,7 @@ use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;
 use crate::optimize::dispatch::run_optimize_mixed_inner;
 use crate::optimize::indel::{estimate_indel_rate, total_indel_log_lh};
-use crate::optimize::iteration::{apply_damping, commit_branch_lengths, save_branch_lengths};
+use crate::optimize::iteration::{apply_damping, commit_branch_lengths};
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
@@ -56,7 +56,7 @@ use treetime_utils::make_error;
 /// 1. Run `marginal_update` on sparse and dense partitions and sum the joint
 ///    substitution + indel log-likelihood using the pre-computed indel rate.
 /// 2. Check three stopping conditions (converged, oscillating, worsened).
-/// 3. Save current branch lengths ([`save_branch_lengths`]).
+/// 3. Save the current branch-length map for damping.
 /// 4. Per-edge branch-length update with the pre-computed indel rate
 ///    ([`run_optimize_mixed_inner`]).
 /// 5. Identify internal edges the optimizer drove to exactly zero, BEFORE damping
@@ -168,7 +168,7 @@ pub fn run_optimize_loop(
     // The graph and `branch_lengths` are equal here (the map was collected from the tree and
     // refreshed from it at the end of every iteration), so these steps run on the current
     // lengths without a separate materialization.
-    let old_branch_lengths = save_branch_lengths(graph);
+    let old_branch_lengths = branch_lengths.clone();
     run_optimize_mixed_inner(
       graph,
       mixed_partitions,
@@ -177,17 +177,17 @@ pub fn run_optimize_loop(
       no_indels,
       &mut branch_lengths,
     )?;
-    // Transitional: the optimizer writes the branch-length map. Materialize it onto the payload so
-    // the still-graph-native find-zero, damping, and topology steps read the optimized lengths.
-    commit_branch_lengths(graph, &branch_lengths);
 
     let zero_optimal_edges = if topology_ops.collapse_short_branches {
-      find_zero_optimal_internal_edges(graph, sparse_partitions)
+      find_zero_optimal_internal_edges(graph, sparse_partitions, &branch_lengths)
     } else {
       vec![]
     };
 
-    apply_damping(graph, &old_branch_lengths, damping, i);
+    apply_damping(&mut branch_lengths, &old_branch_lengths, damping, i);
+    // Transitional: the optimizer and damping run on the branch-length map. Materialize it onto the
+    // payload so the still-graph-native topology cleanup reads the damped lengths.
+    commit_branch_lengths(graph, &branch_lengths);
 
     let topology_changed = prune_and_merge_in_loop(
       graph,
@@ -347,13 +347,14 @@ fn compute_iteration_likelihood(
 pub fn find_zero_optimal_internal_edges(
   graph: &GraphAncestral,
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Vec<GraphEdgeKey> {
   graph
     .get_edges()
     .iter()
     .filter_map(|edge_ref| {
       let edge = edge_ref.read_arc();
-      let bl = edge.payload().read_arc().branch_length().unwrap_or(f64::NAN);
+      let bl = branch_lengths[&edge.key()].unwrap_or(f64::NAN);
       let target_is_leaf = graph.is_leaf(edge.target());
       if bl != 0.0 || target_is_leaf {
         return None;

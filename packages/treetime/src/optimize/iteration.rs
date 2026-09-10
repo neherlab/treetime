@@ -1,4 +1,3 @@
-use itertools::izip;
 use num_traits::pow::pow;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
@@ -29,40 +28,6 @@ pub(crate) fn commit_branch_lengths<N, E, D>(
   }
 }
 
-/// Save current branch lengths for all edges in graph traversal order.
-pub fn save_branch_lengths<N, E, D>(graph: &Graph<N, E, D>) -> Vec<f64>
-where
-  N: GraphNode,
-  E: GraphEdge + HasBranchLength,
-  D: Send + Sync,
-{
-  graph
-    .get_edges()
-    .iter()
-    .map(|edge_ref| edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0))
-    .collect::<Vec<_>>()
-}
-
-/// Restore previously saved branch lengths to all edges in graph traversal order.
-///
-/// Inverse of [`save_branch_lengths`]. The saved vector must have been produced
-/// from the same graph (same edge count and order).
-pub fn restore_branch_lengths<N, E, D>(graph: &Graph<N, E, D>, saved: &[f64])
-where
-  N: GraphNode,
-  E: GraphEdge + HasBranchLength,
-  D: Send + Sync,
-{
-  debug_assert_eq!(
-    graph.get_edges().len(),
-    saved.len(),
-    "restore_branch_lengths: edge count changed between save and restore"
-  );
-  for (edge_ref, &bl) in izip!(graph.get_edges(), saved) {
-    edge_ref.write_arc().payload().write_arc().set_branch_length(Some(bl));
-  }
-}
-
 /// Minimum fraction of the old branch length retained at any iteration.
 ///
 /// Without a floor, exponential damping $d^{i+1}$ decays to effectively zero
@@ -82,26 +47,25 @@ pub const DAMPING_FLOOR: f64 = 0.01;
 /// When `damping == 0.0`, damping_factor = 0 and the optimized value is kept unchanged.
 /// Early iterations take conservative steps; later iterations approach the full update
 /// but never go below the `DAMPING_FLOOR` weight on the old value.
-pub fn apply_damping<N, E, D>(graph: &Graph<N, E, D>, old_branch_lengths: &[f64], damping: f64, iteration: usize)
-where
-  N: GraphNode,
-  E: GraphEdge + HasBranchLength,
-  D: Send + Sync,
-{
+///
+/// Operates on the loop's branch-length map: `branch_lengths` holds the freshly optimized
+/// lengths and is blended in place with the pre-optimization `old_branch_lengths`. Both maps are
+/// keyed by the same edge set, so each optimized length is blended with its own old length. A
+/// missing weight (`None`) resolves to `0.0` for the blend, matching the marginal-input derivation.
+pub fn apply_damping(
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  old_branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  damping: f64,
+  iteration: usize,
+) {
   if damping == 0.0 {
     return;
   }
-  debug_assert_eq!(
-    graph.get_edges().len(),
-    old_branch_lengths.len(),
-    "apply_damping: edge count changed between save and apply"
-  );
   let damping_factor = pow(damping, iteration + 1).max(DAMPING_FLOOR);
   let new_weight = 1.0 - damping_factor;
-  for (edge_ref, &old_bl) in izip!(graph.get_edges(), old_branch_lengths) {
-    let mut edge = edge_ref.write_arc().payload().write_arc();
-    let optimized_bl = edge.branch_length().unwrap_or(0.0);
-    let damped_bl = optimized_bl * new_weight + old_bl * damping_factor;
-    edge.set_branch_length(Some(damped_bl));
+  for (key, bl) in branch_lengths.iter_mut() {
+    let optimized_bl = bl.unwrap_or(0.0);
+    let old_bl = old_branch_lengths[key].unwrap_or(0.0);
+    *bl = Some(optimized_bl * new_weight + old_bl * damping_factor);
   }
 }

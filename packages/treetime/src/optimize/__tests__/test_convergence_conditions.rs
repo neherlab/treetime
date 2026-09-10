@@ -3,16 +3,17 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
-  use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping, restore_branch_lengths, save_branch_lengths};
+  use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping, commit_branch_lengths};
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, collect_optimize_partitions, run_optimize_loop};
   use crate::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use itertools::izip;
   use num_traits::pow::pow;
   use rstest::rstest;
-  use treetime_graph::edge::HasBranchLength;
+  use std::collections::BTreeMap;
+  use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::nwk::nwk_read_str;
 
   // At very high iteration counts, the exponential damping factor decays below the floor.
@@ -29,19 +30,16 @@ mod tests {
   ) -> Result<(), Report> {
     let damping = 0.75;
     let graph: GraphAncestral = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
-    let old_bls = save_branch_lengths(&graph);
+    let old_bls = edge_branch_lengths(&graph);
 
-    // Set all branch lengths to zero ("optimized" value)
-    for edge_ref in graph.get_edges() {
-      edge_ref.write_arc().payload().write_arc().set_branch_length(Some(0.0));
-    }
+    // Set all "optimized" branch lengths to zero.
+    let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(0.0))).collect();
 
-    apply_damping(&graph, &old_bls, damping, iteration);
+    apply_damping(&mut bls, &old_bls, damping, iteration);
 
     // bl = 0.0 * (1 - old_weight) + 1.0 * old_weight = old_weight
-    for edge_ref in graph.get_edges() {
-      let bl = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
-      assert_abs_diff_eq!(bl, expected_old_weight, epsilon = 1e-15);
+    for bl in bls.values() {
+      assert_abs_diff_eq!(bl.unwrap(), expected_old_weight, epsilon = 1e-15);
     }
     Ok(())
   }
@@ -55,28 +53,25 @@ mod tests {
     assert!(expected_old_weight > DAMPING_FLOOR);
 
     let graph: GraphAncestral = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
-    let old_bls = save_branch_lengths(&graph);
+    let old_bls = edge_branch_lengths(&graph);
 
-    for edge_ref in graph.get_edges() {
-      edge_ref.write_arc().payload().write_arc().set_branch_length(Some(0.0));
-    }
+    let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(0.0))).collect();
 
-    apply_damping(&graph, &old_bls, damping, iteration);
+    apply_damping(&mut bls, &old_bls, damping, iteration);
 
-    for edge_ref in graph.get_edges() {
-      let bl = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
-      assert_abs_diff_eq!(bl, expected_old_weight, epsilon = 1e-15);
+    for bl in bls.values() {
+      assert_abs_diff_eq!(bl.unwrap(), expected_old_weight, epsilon = 1e-15);
     }
     Ok(())
   }
 
-  // Round-trip: save, modify, restore, verify identical to original.
+  // Round-trip: snapshot, modify the payload, restore from the snapshot, verify identical.
   #[test]
   fn test_convergence_conditions_restore_branch_lengths_roundtrip() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
-    let original = save_branch_lengths(&graph);
+    let original = edge_branch_lengths(&graph);
 
-    // Modify all branch lengths
+    // Modify all branch lengths on the payload.
     for edge_ref in graph.get_edges() {
       let mut edge = edge_ref.write_arc().payload().write_arc();
       let bl = edge.branch_length().unwrap_or(0.0);
@@ -84,18 +79,13 @@ mod tests {
     }
 
     // Verify they changed
-    let modified = save_branch_lengths(&graph);
-    assert!(
-      izip!(&original, &modified).any(|(a, b)| (a - b).abs() > 1e-10),
-      "Branch lengths should have changed after modification"
-    );
+    let modified = edge_branch_lengths(&graph);
+    assert_ne!(original, modified, "Branch lengths should have changed after modification");
 
-    // Restore and verify match
-    restore_branch_lengths(&graph, &original);
-    let restored = save_branch_lengths(&graph);
-    for (orig, rest) in izip!(&original, &restored) {
-      assert_abs_diff_eq!(*orig, *rest, epsilon = 1e-15);
-    }
+    // Restore the snapshot onto the payload and verify match.
+    commit_branch_lengths(&graph, &original);
+    let restored = edge_branch_lengths(&graph);
+    assert_eq!(original, restored);
     Ok(())
   }
 

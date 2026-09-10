@@ -19,7 +19,7 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::make_error;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
-use crate::optimize::iteration::{apply_damping, commit_branch_lengths, save_branch_lengths};
+use crate::optimize::iteration::{apply_damping, commit_branch_lengths};
 use crate::optimize::params::{BranchLengthMode, BranchOptMethod};
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::timetree::partition::{
@@ -855,9 +855,9 @@ fn optimize_branch_lengths_pre_step(
   partitions: &[PartitionTimetreeRef],
   no_indels: bool,
 ) -> Result<(), Report> {
-  let old_branch_lengths = save_branch_lengths(graph);
+  let old_branch_lengths = edge_branch_lengths(graph);
 
-  if no_indels {
+  let mut branch_lengths = if no_indels {
     let mut branch_lengths = edge_branch_lengths(graph);
     run_optimize_mixed_inner(
       graph,
@@ -868,13 +868,15 @@ fn optimize_branch_lengths_pre_step(
       &mut branch_lengths,
     )
     .wrap_err("ML branch-length optimization pre-step failed")?;
-    commit_branch_lengths(graph, &branch_lengths);
+    branch_lengths
   } else {
     run_optimize_mixed(graph, partitions, BranchOptMethod::BrentSqrt)
       .wrap_err("ML branch-length optimization pre-step failed")?;
-  }
+    edge_branch_lengths(graph)
+  };
 
-  apply_damping(graph, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
+  apply_damping(&mut branch_lengths, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
+  commit_branch_lengths(graph, &branch_lengths);
   marginal_update(graph, &profile_branch_lengths(graph), partitions)?;
 
   Ok(())

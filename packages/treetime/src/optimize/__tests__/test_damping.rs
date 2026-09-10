@@ -3,26 +3,28 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, compute_total_lh, setup_partitions, simple_alignment,
   };
-  use crate::optimize::iteration::{apply_damping, save_branch_lengths};
+  use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::run_optimize_loop;
   use crate::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use itertools::izip;
   use rstest::rstest;
-  use treetime_graph::edge::HasBranchLength;
+  use std::collections::BTreeMap;
+  use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::nwk::nwk_read_str;
 
   #[test]
-  fn test_save_branch_lengths_captures_all_edges() -> Result<(), Report> {
+  fn test_edge_branch_lengths_captures_all_edges() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
-    let saved = save_branch_lengths(&graph);
+    let saved = edge_branch_lengths(&graph);
     let edges = graph.get_edges();
     assert_eq!(saved.len(), edges.len());
-    for (bl, edge_ref) in izip!(&saved, &edges) {
-      let expected = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
-      assert_abs_diff_eq!(*bl, expected, epsilon = 1e-15);
+    for edge_ref in &edges {
+      let edge = edge_ref.read_arc();
+      let expected = edge.payload().read_arc().branch_length();
+      assert_eq!(saved[&edge.key()], expected);
     }
     Ok(())
   }
@@ -30,23 +32,17 @@ mod tests {
   #[test]
   fn test_apply_damping_zero_is_noop() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
-    let original = save_branch_lengths(&graph);
+    let original = edge_branch_lengths(&graph);
 
-    // Manually change branch lengths to simulate optimization
-    for edge_ref in graph.get_edges() {
-      let mut edge = edge_ref.write_arc().payload().write_arc();
-      let bl = edge.branch_length().unwrap_or(0.0);
-      edge.set_branch_length(Some(bl * 2.0));
-    }
+    // Simulate optimization: double every branch length in the map.
+    let mut optimized: BTreeMap<GraphEdgeKey, Option<f64>> =
+      original.iter().map(|(&key, &bl)| (key, bl.map(|b| b * 2.0))).collect();
+    let after_optim = optimized.clone();
 
-    let after_optim = save_branch_lengths(&graph);
-    apply_damping(&graph, &original, 0.0, 0);
-    let after_damping = save_branch_lengths(&graph);
+    apply_damping(&mut optimized, &original, 0.0, 0);
 
     // damping=0.0 should leave the optimized values untouched
-    for (damped, optimized) in izip!(&after_damping, &after_optim) {
-      assert_abs_diff_eq!(*damped, *optimized, epsilon = 1e-15);
-    }
+    assert_eq!(optimized, after_optim);
     Ok(())
   }
 
@@ -61,19 +57,16 @@ mod tests {
   fn test_apply_damping_weights_match_v0(#[case] iteration: usize, #[case] expected_old_weight: f64) -> Result<(), Report> {
     let damping = 0.75;
     let graph: GraphAncestral = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
-    let old_bls = save_branch_lengths(&graph);
+    let old_bls = edge_branch_lengths(&graph);
 
-    // Set all branch lengths to a known "optimized" value
-    for edge_ref in graph.get_edges() {
-      edge_ref.write_arc().payload().write_arc().set_branch_length(Some(0.0));
-    }
+    // Set all "optimized" branch lengths to zero.
+    let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(0.0))).collect();
 
-    apply_damping(&graph, &old_bls, damping, iteration);
+    apply_damping(&mut bls, &old_bls, damping, iteration);
 
     // bl = 0.0 * (1 - old_weight) + 1.0 * old_weight = old_weight
-    for edge_ref in graph.get_edges() {
-      let bl = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
-      assert_abs_diff_eq!(bl, expected_old_weight, epsilon = 1e-15);
+    for bl in bls.values() {
+      assert_abs_diff_eq!(bl.unwrap(), expected_old_weight, epsilon = 1e-15);
     }
     Ok(())
   }
@@ -81,24 +74,23 @@ mod tests {
   #[test]
   fn test_apply_damping_blends_correctly() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?;
-    let old_bls = save_branch_lengths(&graph);
+    let old_bls = edge_branch_lengths(&graph);
 
-    // Set "optimized" branch lengths
-    for edge_ref in graph.get_edges() {
-      let mut edge = edge_ref.write_arc().payload().write_arc();
-      let bl = edge.branch_length().unwrap_or(0.0);
-      edge.set_branch_length(Some(bl * 3.0));
-    }
+    // Set "optimized" branch lengths to 3x the input.
+    let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> =
+      old_bls.iter().map(|(&key, &bl)| (key, bl.map(|b| b * 3.0))).collect();
 
-    apply_damping(&graph, &old_bls, 0.75, 0);
+    apply_damping(&mut bls, &old_bls, 0.75, 0);
 
     // At iteration 0, damping_factor = 0.75, new_weight = 0.25
     // Edge A: 0.3 * 0.25 + 0.1 * 0.75 = 0.075 + 0.075 = 0.15
     // Edge B: 0.6 * 0.25 + 0.2 * 0.75 = 0.15 + 0.15 = 0.30
     // Epsilon accounts for Newick float parsing roundtrip
-    let damped = save_branch_lengths(&graph);
-    assert_abs_diff_eq!(damped[0], 0.15, epsilon = 1e-8);
-    assert_abs_diff_eq!(damped[1], 0.30, epsilon = 1e-8);
+    for (&key, &old) in &old_bls {
+      let damped = bls[&key].unwrap();
+      let expected = if (old.unwrap() - 0.1).abs() < 1e-9 { 0.15 } else { 0.30 };
+      assert_abs_diff_eq!(damped, expected, epsilon = 1e-8);
+    }
     Ok(())
   }
 
@@ -111,27 +103,13 @@ mod tests {
     let mut prev_damped = old_bl;
     for iteration in 0..10 {
       let graph: GraphAncestral = nwk_read_str("(A:1.0)root:0.0;")?;
-      let old_bls = save_branch_lengths(&graph);
-      graph
-        .get_edges()
-        .first()
-        .unwrap()
-        .write_arc()
-        .payload()
-        .write_arc()
-        .set_branch_length(Some(optimized_bl));
+      let old_bls = edge_branch_lengths(&graph);
+      let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> =
+        old_bls.keys().map(|&key| (key, Some(optimized_bl))).collect();
 
-      apply_damping(&graph, &old_bls, damping, iteration);
+      apply_damping(&mut bls, &old_bls, damping, iteration);
 
-      let damped = graph
-        .get_edges()
-        .first()
-        .unwrap()
-        .read_arc()
-        .payload()
-        .read_arc()
-        .branch_length()
-        .unwrap_or(0.0);
+      let damped = bls.values().next().unwrap().unwrap();
 
       // Each subsequent iteration should give more weight to the optimized value
       assert!(

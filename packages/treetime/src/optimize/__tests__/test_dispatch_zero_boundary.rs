@@ -26,6 +26,7 @@ mod tests {
   use rstest::rstest;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
 
@@ -468,13 +469,13 @@ mod tests {
     // Before optimization, every edge starts at 0.1 and none are zero.
     assert_eq!(
       0,
-      find_zero_optimal_internal_edges(&graph, &sparse_partitions).len(),
+      find_zero_optimal_internal_edges(&graph, &sparse_partitions, &edge_branch_lengths(&graph)).len(),
       "precondition: no zero-length internal edges before optimization"
     );
 
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
-    let zero_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions);
+    let zero_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &edge_branch_lengths(&graph));
     assert_eq!(
       2,
       zero_edges.len(),

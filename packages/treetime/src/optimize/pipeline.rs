@@ -4,7 +4,7 @@ use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
-use crate::optimize::iteration::{apply_damping, commit_branch_lengths, save_branch_lengths};
+use crate::optimize::iteration::{apply_damping, commit_branch_lengths};
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::run_loop::{
   apply_initial_guess_mode, collect_optimize_partitions, normalize_partition_rates, run_optimize_loop,
@@ -202,17 +202,19 @@ fn pre_reroot_optimize(
   opt_method: BranchOptMethod,
   no_indels: bool,
 ) -> Result<(), Report> {
-  let old_branch_lengths = save_branch_lengths(graph);
+  let old_branch_lengths = edge_branch_lengths(graph);
 
-  if no_indels {
+  let mut branch_lengths = if no_indels {
     let mut branch_lengths = edge_branch_lengths(graph);
     run_optimize_mixed_inner(graph, mixed_partitions, opt_method, 0.0, true, &mut branch_lengths)?;
-    commit_branch_lengths(graph, &branch_lengths);
+    branch_lengths
   } else {
     run_optimize_mixed(graph, mixed_partitions, opt_method)?;
-  }
+    edge_branch_lengths(graph)
+  };
 
-  apply_damping(graph, &old_branch_lengths, PRE_REROOT_DAMPING, 0);
+  apply_damping(&mut branch_lengths, &old_branch_lengths, PRE_REROOT_DAMPING, 0);
+  commit_branch_lengths(graph, &branch_lengths);
   marginal_update(graph, &profile_branch_lengths(graph), sparse_partitions)?;
   marginal_update(graph, &profile_branch_lengths(graph), dense_partitions)?;
   Ok(())

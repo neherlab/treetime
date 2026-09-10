@@ -5,7 +5,7 @@ mod tests {
   use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
-  use crate::optimize::iteration::{apply_damping, save_branch_lengths};
+  use crate::optimize::iteration::{apply_damping, commit_branch_lengths};
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop, run_optimize_loop};
@@ -25,6 +25,7 @@ mod tests {
   use rstest::rstest;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AsciiChar;
@@ -57,7 +58,7 @@ mod tests {
   fn test_optimize_find_zero_optimal_internal_edges_empty_graph() -> Result<(), Report> {
     let graph = GraphAncestral::new();
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse);
+    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
     assert_eq!(edges.len(), 0);
     Ok(())
   }
@@ -66,7 +67,7 @@ mod tests {
   fn test_optimize_find_zero_optimal_internal_edges_no_zero_edges() -> Result<(), Report> {
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse);
+    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
     assert_eq!(edges.len(), 0);
     Ok(())
   }
@@ -76,7 +77,7 @@ mod tests {
     // A has bl=0.0 but is a leaf: should NOT be collected
     let graph: GraphAncestral = nwk_read_str("(A:0.0,B:0.2)root;")?;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse);
+    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
     assert_eq!(edges.len(), 0);
     Ok(())
   }
@@ -86,7 +87,7 @@ mod tests {
     // I has bl=0.0 and is internal: should be collected
     let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)I:0.0,C:0.3)root;")?;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse);
+    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
     assert_eq!(edges.len(), 1);
     let edge_key = edges[0];
     let edge = graph.get_edge(edge_key).unwrap();
@@ -103,7 +104,7 @@ mod tests {
     // Both internal nodes have bl=0.0
     let graph: GraphAncestral = nwk_read_str("(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;")?;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse);
+    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
     assert_eq!(edges.len(), 2);
     Ok(())
   }
@@ -241,13 +242,12 @@ mod tests {
         break;
       }
 
-      let old_branch_lengths = save_branch_lengths(&graph);
+      let old_branch_lengths = edge_branch_lengths(&graph);
       run_optimize_mixed(&graph, &mixed_partitions, method)?;
-
-      let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions);
-
-      apply_damping(&graph, &old_branch_lengths, 0.75, i);
-
+      let mut branch_lengths = edge_branch_lengths(&graph);
+      let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
+      apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
+      commit_branch_lengths(&graph, &branch_lengths);
       prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default())?;
 
       lh_prev = total_lh;
@@ -316,11 +316,12 @@ mod tests {
         break;
       }
 
-      let old_branch_lengths = save_branch_lengths(&graph);
+      let old_branch_lengths = edge_branch_lengths(&graph);
       run_optimize_mixed(&graph, &mixed_partitions, method)?;
-
-      let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions);
-      apply_damping(&graph, &old_branch_lengths, 0.75, i);
+      let mut branch_lengths = edge_branch_lengths(&graph);
+      let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
+      apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
+      commit_branch_lengths(&graph, &branch_lengths);
       prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default())?;
 
       lh_prev = total_lh;
@@ -536,11 +537,12 @@ mod tests {
         break;
       }
 
-      let old_branch_lengths = save_branch_lengths(&graph);
+      let old_branch_lengths = edge_branch_lengths(&graph);
       run_optimize_mixed(&graph, &mixed_partitions, method)?;
-
-      let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions);
-      apply_damping(&graph, &old_branch_lengths, 0.75, i);
+      let mut branch_lengths = edge_branch_lengths(&graph);
+      let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
+      apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
+      commit_branch_lengths(&graph, &branch_lengths);
       prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default())?;
 
       lh_prev = dense_lh;
