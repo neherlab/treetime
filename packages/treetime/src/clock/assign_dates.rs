@@ -2,7 +2,7 @@ use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_state::ClockState;
 use crate::make_error;
 use eyre::Report;
-use treetime_graph::node::Named;
+use treetime_graph::value_maps::node_names;
 use treetime_io::dates_csv::DatesMap;
 
 const MIN_GOOD_LEAVES: usize = 3;
@@ -19,8 +19,9 @@ pub fn assign_dates(graph: &GraphClock, dates: &DatesMap, state: &mut ClockState
   }
 
   let mut n_bad_leaves = 0;
+  let names = node_names(graph);
   graph.iter_depth_first_postorder_forward(|node| {
-    let name = node.payload.name().map(|s| s.as_ref().to_owned());
+    let name = names[&node.key].clone();
     let time: Option<f64> = name
       .and_then(|name| dates.get(&name))
       .and_then(|d| d.as_ref().map(|c| c.mean()))

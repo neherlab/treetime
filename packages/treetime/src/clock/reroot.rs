@@ -17,7 +17,7 @@ use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::reroot::{self as topology_reroot, remove_node_if_trivial, split_edge};
-use treetime_graph::value_maps::edge_branch_lengths;
+use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 
 use topology_reroot::{EdgeSplitInfo, RerootResult};
 
@@ -246,9 +246,16 @@ where
     return make_error!("--reroot-tips requires at least one tip name");
   }
 
+  let names = node_names(graph);
   let tip_keys = tips
     .iter()
-    .map(|tip| find_node_key_by_name(graph, tip).ok_or_else(|| eyre::eyre!("Reroot tip not found: {tip}")))
+    .map(|tip| {
+      names
+        .iter()
+        .find(|(_, name)| name.as_deref() == Some(tip.as_str()))
+        .map(|(key, _)| *key)
+        .ok_or_else(|| eyre::eyre!("Reroot tip not found: {tip}"))
+    })
     .try_collect::<_, Vec<_>, _>()?;
   let mrca_key = common_ancestor(graph, &tip_keys)?;
   find_named_root_point(graph, state, options, mrca_key, objective)
@@ -286,15 +293,6 @@ where
     chisq: objective.score(&clock_set),
     clock_set,
   })
-}
-
-fn find_node_key_by_name<N, E, D>(graph: &Graph<N, E, D>, name: &str) -> Option<GraphNodeKey>
-where
-  N: GraphNode + Named,
-  E: GraphEdge,
-  D: Send + Sync,
-{
-  graph.find_node(|node| node.name().is_some_and(|node_name| node_name.as_ref() == name))
 }
 
 /// Modify graph topology to make the newly identified root the actual root,
