@@ -42,10 +42,8 @@ pub fn compute_positional_log_lh(graph: &GraphTimetree, state: &TimetreeState) -
       continue;
     };
 
-    let parent_node = graph.get_node(parent_key).expect("parent must exist");
-    let child_node = graph.get_node(child_key).expect("child must exist");
-    let parent_time = parent_node.read_arc().payload().read_arc().time;
-    let child_time = child_node.read_arc().payload().read_arc().time;
+    let parent_time = state.node(parent_key).time;
+    let child_time = state.node(child_key).time;
 
     // Calendar time: parent_time < child_time, so duration = ct - pt is positive,
     // matching the positive domain of branch length distributions.

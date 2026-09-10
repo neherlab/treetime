@@ -1,5 +1,5 @@
 use crate::partition::timetree::partition::GraphTimetree;
-use crate::payload::traits::TimetreeNode;
+use crate::timetree::timetree_state::TimetreeState;
 use std::collections::BTreeMap;
 use treetime_graph::node::GraphNodeKey;
 
@@ -15,14 +15,14 @@ pub struct NodeTimeChange {
   pub rms: Option<f64>,
 }
 
-pub fn capture_node_times(graph: &GraphTimetree) -> NodeTimeSnapshot {
+pub fn capture_node_times(graph: &GraphTimetree, state: &TimetreeState) -> NodeTimeSnapshot {
   graph
     .get_nodes()
     .iter()
     .filter_map(|node| {
-      let node = node.read_arc();
-      let time = node.payload().read_arc().time()?;
-      time.is_finite().then(|| (node.key(), time))
+      let key = node.read_arc().key();
+      let time = state.node(key).time?;
+      time.is_finite().then_some((key, time))
     })
     .collect()
 }

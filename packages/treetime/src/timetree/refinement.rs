@@ -58,7 +58,7 @@ impl Refinement<'_> {
     // Node times are what the round moves, so they are the primary convergence signal. The
     // ancestral-state comparison is a hold-over from early v0, where internal node states were
     // fixed; it survives only as the fallback for a tree with no comparable dated nodes.
-    let previous_times = capture_node_times(self.graph);
+    let previous_times = capture_node_times(self.graph, self.state);
     let previous_states = capture_ancestral_states(self.graph, self.partitions);
     let topology = self.refine_topology(total_length)?;
     self.rebuild_inference(topology.changed())?;
@@ -73,7 +73,7 @@ impl Refinement<'_> {
     );
 
     let current_states = capture_ancestral_states(self.graph, self.partitions);
-    let time_change = measure_node_time_change(&previous_times, &capture_node_times(self.graph));
+    let time_change = measure_node_time_change(&previous_times, &capture_node_times(self.graph, self.state));
 
     self.update_clock_model()?;
 
