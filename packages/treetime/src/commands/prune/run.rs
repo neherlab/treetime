@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::commands::prune::result::{PruneGraphData, PruneResult};
+use crate::commands::prune::result::{EdgeOut, PruneGraphData, PruneNodeOut, PruneResult};
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_prune_tree_outputs;
@@ -11,12 +11,12 @@ use eyre::Report;
 use itertools::Itertools;
 use log::warn;
 use maplit::btreeset;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::Arc;
-use treetime_graph::edge::GraphEdge;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::value_maps::node_names;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nwk::CommentProviders;
@@ -80,6 +80,37 @@ pub fn run_prune(
   topology_order.apply(&mut graph)?;
   progress.report("Writing output", 0.8, "");
 
+  // Gather the per-node name/confidence and per-edge branch length off the ordered tree into keyed
+  // value maps the output writers consume. The writers still read sequences and model metadata from
+  // the graph data slot; these maps carry the name, input-branch-support, and branch-length reads
+  // that move off the payload.
+  let nodes: BTreeMap<GraphNodeKey, PruneNodeOut> = graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let node = node.read_arc();
+      let payload = node.payload().read_arc();
+      (
+        node.key(),
+        PruneNodeOut {
+          name: payload.name.clone(),
+          confidence: payload.confidence,
+        },
+      )
+    })
+    .collect();
+  let edges: BTreeMap<GraphEdgeKey, EdgeOut> = graph
+    .get_edges()
+    .iter()
+    .map(|edge| {
+      let edge = edge.read_arc();
+      let branch_length = edge.payload().read_arc().branch_length;
+      (edge.key(), EdgeOut { branch_length })
+    })
+    .collect();
+  let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> =
+    edges.iter().map(|(key, edge)| (*key, edge.branch_length)).collect();
+
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     match graph.data().gtr.as_ref() {
       Some(gtr) => {
@@ -96,11 +127,17 @@ pub fn run_prune(
   }
 
   if !resolved.tree_outputs.is_empty() {
-    write_prune_tree_outputs(&graph, &resolved.tree_outputs, &CommentProviders::new())?;
+    write_prune_tree_outputs(&graph, &nodes, &branch_lengths, &resolved.tree_outputs, &CommentProviders::new())?;
   }
 
   progress.report("Done", 1.0, "");
-  Ok(PruneResult { graph, seq, gtr })
+  Ok(PruneResult {
+    graph,
+    nodes,
+    edges,
+    seq,
+    gtr,
+  })
 }
 
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {

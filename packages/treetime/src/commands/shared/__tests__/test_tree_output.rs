@@ -428,7 +428,7 @@ mod tests {
     use crate::clock::clock_model::ClockModel;
     use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
     use crate::commands::optimize::result::{OptimizeGraphData, OptimizeNodeOut};
-    use crate::commands::prune::result::PruneGraphData;
+    use crate::commands::prune::result::{PruneGraphData, PruneNodeOut};
     use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut};
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::gtr::gtr::{GTR, GTRParams};
@@ -599,7 +599,13 @@ mod tests {
         &ancestral_branch_lengths(&optimize_graph),
         "2026-07-19",
       )?;
-      let prune = prune_to_auspice(&prune_graph()?, "2026-07-19")?;
+      let prune_graph = prune_graph()?;
+      let prune = prune_to_auspice(
+        &prune_graph,
+        &prune_nodes(&prune_graph),
+        &ancestral_branch_lengths(&prune_graph),
+        "2026-07-19",
+      )?;
       let clock_graph = clock_graph()?;
       let clock = clock_to_auspice(&clock_graph, &clock_nodes(&clock_graph), "2026-07-19")?;
       let mugration = mugration_to_auspice(&mugration_graph()?, "2026-07-19")?;
@@ -628,7 +634,14 @@ mod tests {
             &ancestral_branch_lengths(&optimize_graph),
           )?
         },
-        prune_to_phyloxml(&prune_graph()?)?,
+        {
+          let prune_graph = prune_graph()?;
+          prune_to_phyloxml(
+            &prune_graph,
+            &prune_nodes(&prune_graph),
+            &ancestral_branch_lengths(&prune_graph),
+          )?
+        },
         {
           let clock_graph = clock_graph()?;
           clock_to_phyloxml(&clock_graph, &clock_nodes(&clock_graph))?
@@ -788,6 +801,24 @@ mod tests {
         vec![],
         vec![],
       )))
+    }
+
+    pub fn prune_nodes<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphNodeKey, PruneNodeOut> {
+      graph
+        .get_nodes()
+        .iter()
+        .map(|node| {
+          let node = node.read_arc();
+          let payload = node.payload().read_arc();
+          (
+            node.key(),
+            PruneNodeOut {
+              name: payload.name.clone(),
+              confidence: payload.confidence,
+            },
+          )
+        })
+        .collect()
     }
 
     fn prune_graph() -> Result<GraphAncestral<PruneGraphData>, Report> {
