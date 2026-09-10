@@ -1,5 +1,4 @@
 use crate::make_error;
-use crate::o;
 use crate::payload::traits::DateConstraintNode;
 use eyre::Report;
 use itertools::Itertools;
@@ -9,6 +8,7 @@ use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
+use treetime_graph::value_maps::node_names;
 use treetime_io::dates_csv::{DateConstraint, DateValue, DatesMap};
 
 pub fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution<NegLog> {
@@ -32,10 +32,11 @@ where
   let mut internal_constraint_count = 0;
   let mut used_names = BTreeSet::new();
 
+  let names = node_names(graph);
   graph.iter_depth_first_postorder_forward(|node| {
     let mut payload = node.payload;
 
-    let name = payload.name().map(|n| o!(n.as_ref()));
+    let name = names[&node.key].clone();
     let has_constraint = name
       .as_ref()
       .and_then(|n| dates.get(n.as_str()))
