@@ -6,7 +6,8 @@ use eyre::Report;
 use itertools::Itertools;
 use log::warn;
 use ordered_float::OrderedFloat;
-use treetime_graph::node::Named;
+use std::collections::BTreeMap;
+use treetime_graph::node::{GraphNodeKey, Named};
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
 #[derive(Debug, Clone)]
@@ -19,13 +20,15 @@ pub struct OutlierRecord {
 
 /// Collect outlier records from the clock state for leaves marked as outliers.
 ///
-/// The outlier flag and divergence come from the threaded [`ClockState`] value; the leaf name and
-/// given date stay transitional on the payload.
+/// The outlier flag and divergence come from the threaded [`ClockState`] value, and the given date
+/// from the date-state `given_dates` map (the same node dates the filter regressed on); the leaf name
+/// stays transitional on the payload.
 pub fn collect_outliers(
   graph: &GraphTimetree,
   clock_state: &ClockState,
   clock_model: &ClockModel,
   iqd: f64,
+  given_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
 ) -> Vec<OutlierRecord> {
   graph
     .get_leaves()
@@ -39,7 +42,7 @@ pub fn collect_outliers(
       let payload_arc = node.payload();
       let payload = payload_arc.read();
       let name = payload.name().map(|n| n.as_ref().to_owned())?;
-      let given_date = payload.likely_time()?;
+      let given_date = given_dates.get(&node.key()).copied().flatten()?;
       let div = state.div;
       let apparent_date = clock_model.date(div);
       let clock_deviation = clock_model.clock_deviation(given_date, div);
@@ -57,8 +60,14 @@ pub fn collect_outliers(
 }
 
 /// Report outlier branches that violate molecular clock.
-pub fn report_bad_branches(graph: &GraphTimetree, clock_state: &ClockState, clock_model: &ClockModel, iqd: f64) {
-  let outliers = collect_outliers(graph, clock_state, clock_model, iqd);
+pub fn report_bad_branches(
+  graph: &GraphTimetree,
+  clock_state: &ClockState,
+  clock_model: &ClockModel,
+  iqd: f64,
+  given_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
+) {
+  let outliers = collect_outliers(graph, clock_state, clock_model, iqd, given_dates);
   if outliers.is_empty() {
     return;
   }

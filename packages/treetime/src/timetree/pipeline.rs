@@ -264,9 +264,10 @@ pub fn run(
     // outlier flag, then run the filter on the state: it recomputes the divergence and marks outliers
     // into the value. Timetree's own downstream (outlier bad-branch propagation, confidence intervals,
     // tree writers) reads the divergence and outlier flag from the threaded state.
-    clock_state.reseed_transitional_from_times(&input.graph, &timetree_state.likely_times(), &BTreeMap::new());
+    let given_dates = timetree_state.likely_times();
+    clock_state.reseed_transitional_from_times(&input.graph, &given_dates, &BTreeMap::new());
     let result = clock_filter_inplace(&input.graph, &mut clock_state, &clock_model, params.clock_filter)?;
-    report_bad_branches(&input.graph, &clock_state, &clock_model, result.iqd);
+    report_bad_branches(&input.graph, &clock_state, &clock_model, result.iqd, &given_dates);
     apply_outlier_bad_branches(&input.graph, &clock_state)?;
   }
 
