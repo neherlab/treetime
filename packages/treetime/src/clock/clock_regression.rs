@@ -154,7 +154,7 @@ where
 
   let parent_message = if let Some((edge_key, mut edge)) = context.parent_edge {
     edge.clock_to_parent = q_to_parent;
-    let edge_len = edge_divergence_from_graph(graph, edge_key, prev_clock_rate);
+    let edge_len = edge_divergence_from_graph(graph, edge_key, edge.time_length, edge.gamma, prev_clock_rate);
     let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
     edge.clock_from_child = if is_leaf {
       branch_variance += options.variance_offset_leaf;
@@ -171,12 +171,14 @@ where
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-/// Divergence of an edge, reading its branch length, time length, and relaxed-clock multiplier from
-/// the graph payload (all inputs, not clock-inference state) and combining them via
+/// Divergence of an edge, reading its input branch length off the graph payload and combining it with
+/// the solver-updated `time_length` and relaxed-clock `gamma` carried on the clock edge state via
 /// [`edge_divergence`].
 fn edge_divergence_from_graph<N, E, D>(
   graph: &Graph<N, E, D>,
   edge_key: GraphEdgeKey,
+  time_length: Option<f64>,
+  gamma: f64,
   prev_clock_rate: Option<f64>,
 ) -> f64
 where
@@ -187,12 +189,7 @@ where
   let edge = graph.get_edge(edge_key).expect("Edge must exist");
   let edge = edge.read_arc();
   let payload = edge.payload().read_arc();
-  edge_divergence(
-    payload.branch_length(),
-    payload.time_length(),
-    payload.gamma(),
-    prev_clock_rate,
-  )
+  edge_divergence(payload.branch_length(), time_length, gamma, prev_clock_rate)
 }
 
 /// Runs forward clock regression pass.
@@ -218,7 +215,7 @@ where
       q_to_child -= &edge.clock_from_child;
       edge.clock_to_child = q_to_child;
 
-      let edge_len = edge_divergence_from_graph(graph, edge_key, prev_clock_rate);
+      let edge_len = edge_divergence_from_graph(graph, edge_key, edge.time_length, edge.gamma, prev_clock_rate);
       let branch_variance = options.variance_factor * edge_len + options.variance_offset;
       let mut q_dest = edge.clock_to_parent.clone();
       q_dest += edge.clock_to_child.propagate_averages(edge_len, branch_variance);

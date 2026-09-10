@@ -1,6 +1,7 @@
 use crate::payload::clock_set::ClockSet;
 use crate::payload::traits::ClockNode;
 use eyre::Report;
+use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::edge::GraphEdgeKey;
@@ -28,13 +29,20 @@ pub struct ClockNodeState {
 }
 
 /// Per-edge clock messages, held as a value keyed by [`GraphEdgeKey`] instead of on the graph edge
-/// payload. All three are recomputed by the regression passes and re-oriented on reroot.
-#[derive(Debug, Clone, Default)]
+/// payload. The three clock messages are recomputed by the regression passes and re-oriented on
+/// reroot. `time_length` and `gamma` are the branch's solver-updated duration and relaxed-clock rate
+/// multiplier the re-estimation reads to convert time back to divergence; they are seeded from the
+/// date state in the refinement loop and stay at their defaults elsewhere, where the regression reads
+/// input branch lengths instead.
+#[derive(Debug, Clone, SmartDefault)]
 pub struct ClockEdgeState {
   pub clock_to_parent: ClockSet,
   pub clock_to_child: ClockSet,
   /// The propagated `to_parent` message, kept to avoid recomputing the propagated message.
   pub clock_from_child: ClockSet,
+  pub time_length: Option<f64>,
+  #[default = 1.0]
+  pub gamma: f64,
 }
 
 /// The clock inference state for a whole tree, routed through the clock pipeline in place of the
@@ -134,17 +142,29 @@ impl ClockState {
   /// the regression must read the refined dates from the value rather than off the payload. The clock
   /// set, divergence, and outlier flag are handled exactly as in [`reseed_transitional_from_payloads`].
   ///
+  /// `edge_inputs` carries each edge's solver-updated time length and relaxed-clock rate multiplier
+  /// (also from the date state); the re-estimation reads them to convert time back to divergence.
+  /// Every other seed path leaves these at their defaults, where the regression reads input branch
+  /// lengths instead.
+  ///
   /// [`reseed_transitional_from_payloads`]: ClockState::reseed_transitional_from_payloads
   pub fn reseed_transitional_from_times<N, E, D>(
     &mut self,
     graph: &Graph<N, E, D>,
     times: &BTreeMap<GraphNodeKey, Option<f64>>,
+    edge_inputs: &BTreeMap<GraphEdgeKey, (Option<f64>, f64)>,
   ) where
     N: GraphNode + ClockNode,
     E: GraphEdge,
     D: Send + Sync,
   {
     self.reseed_transitional(graph, |key, _payload| times.get(&key).copied().flatten());
+    for (key, &(time_length, gamma)) in edge_inputs {
+      if let Some(edge) = self.edges.get_mut(key) {
+        edge.time_length = time_length;
+        edge.gamma = gamma;
+      }
+    }
   }
 
   fn reseed_transitional<N, E, D, F>(&mut self, graph: &Graph<N, E, D>, time_of: F)

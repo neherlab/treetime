@@ -212,9 +212,15 @@ impl Refinement<'_> {
     // matches the standalone `estimate_clock_model_with_reroot` convenience, except the outlier flag
     // and the node dates come from the threaded values rather than the payload: the date passes have
     // refined the times on the date state since the last clock call.
+    let edge_inputs: BTreeMap<GraphEdgeKey, (Option<f64>, f64)> = self
+      .state
+      .edges
+      .iter()
+      .map(|(key, edge)| (*key, (edge.time_length, edge.gamma)))
+      .collect();
     self
       .clock_state
-      .reseed_transitional_from_times(self.graph, &self.state.likely_times());
+      .reseed_transitional_from_times(self.graph, &self.state.likely_times(), &edge_inputs);
     *self.clock_model = estimate_clock_model_with_reroot_policy(
       self.graph,
       self.clock_state,
