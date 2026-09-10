@@ -6,10 +6,11 @@ use eyre::Report;
 use itertools::Itertools;
 use log::debug;
 use parking_lot::RwLock;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
-use treetime_graph::node::{GraphNodeKey, Named};
+use treetime_graph::node::GraphNodeKey;
+use treetime_graph::value_maps::node_names as snapshot_node_names;
 
 pub fn prune_nodes(
   graph: &mut GraphAncestral,
@@ -18,9 +19,10 @@ pub fn prune_nodes(
   prune_empty: bool,
   node_names: &BTreeSet<String>,
 ) -> Result<(), Report> {
-  prune_internal_nodes(graph, partitions, prune_short, prune_empty, node_names)?;
+  let names = snapshot_node_names(graph);
+  prune_internal_nodes(graph, partitions, prune_short, prune_empty, node_names, &names)?;
   graph.build()?;
-  prune_leaves(graph, partitions, node_names)?;
+  prune_leaves(graph, partitions, node_names, &names)?;
   graph.build()?;
   Ok(())
 }
@@ -78,6 +80,7 @@ fn prune_internal_nodes(
   prune_short: Option<f64>,
   prune_empty: bool,
   node_names: &BTreeSet<String>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report> {
   #[allow(clippy::needless_collect)]
   let edges_to_collapse: Vec<_> = graph
@@ -96,10 +99,9 @@ fn prune_internal_nodes(
 
       let should_prune_empty = prune_empty && get_edge_num_muts(partitions, edge.key())? == Some(0);
 
-      let target_node = graph
-        .get_node(edge.target())
-        .map(|n| n.read_arc().payload().read_arc().name().map(|n| n.as_ref().to_owned()));
-      let should_prune_by_name = target_node.is_some_and(|name| name.is_some_and(|n| node_names.contains(&n)));
+      let should_prune_by_name = names[&edge.target()]
+        .as_deref()
+        .is_some_and(|name| node_names.contains(name));
 
       let should_prune = should_prune_short || should_prune_empty || should_prune_by_name;
       Ok(should_prune.then(|| edge.key()))
@@ -120,6 +122,7 @@ fn prune_leaves(
   graph: &mut GraphAncestral,
   partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   node_names: &BTreeSet<String>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report> {
   #[allow(clippy::needless_collect)]
   let edges_to_collapse = graph
@@ -133,9 +136,9 @@ fn prune_leaves(
         return None;
       }
 
-      let target_node = graph.get_node(edge.target())?.read_arc().payload().read_arc();
-      let name = target_node.name();
-      let should_prune_by_name = name.is_some_and(|name| node_names.contains(name.as_ref()));
+      let should_prune_by_name = names[&edge.target()]
+        .as_deref()
+        .is_some_and(|name| node_names.contains(name));
 
       should_prune_by_name.then(|| edge.key())
     })
