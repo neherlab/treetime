@@ -14,7 +14,7 @@ mod tests {
   use treetime_utils::io::json::json_read_str;
   use treetime_utils::pretty_assert_map_ulps_eq;
 
-  use helpers::{GmInput, GmOutput, build_deep_tree, build_simple_tree, compute_variance};
+  use helpers::{GmInput, GmOutput, build_deep_tree, build_simple_tree, compute_variance, seed_state_scaled};
 
   #[rustfmt::skip]
   #[rstest]
@@ -34,6 +34,7 @@ mod tests {
       .ok_or_else(|| eyre::eyre!("Golden-master output case {case_name} not found"))?;
     let graph: GraphTimetree = nwk_read_str(&input.newick)?;
 
+    let mut state = TimetreeState::new(&graph);
     for (name, branch) in &input.branches {
       let node_key = find_node_key_by_name(&graph, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
       let node = graph.get_node(node_key).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
@@ -42,10 +43,9 @@ mod tests {
         .into_iter()
         .next()
         .ok_or_else(|| eyre::eyre!("Parent edge for {name} not found"))?;
-      edge.write_arc().payload().write_arc().time_length = Some(branch.clock_length / input.clock_rate);
+      state.edge_mut(edge.read_arc().key()).time_length = Some(branch.clock_length / input.clock_rate);
     }
 
-    let mut state = TimetreeState::seed_from_payloads(&graph);
     apply_relaxed_clock(
       &graph,
       &edge_branch_lengths(&graph),
@@ -81,7 +81,7 @@ mod tests {
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
 
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    let mut state = seed_state_scaled(&graph, 100.0);
     apply_relaxed_clock(&graph, &edge_branch_lengths(&graph), &params, one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
@@ -100,7 +100,7 @@ mod tests {
     let one_mutation = 0.001;
     let params = [1.0, 1.0];
 
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    let mut state = seed_state_scaled(&graph, 100.0);
     apply_relaxed_clock(&graph, &edge_branch_lengths(&graph), &params, one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
@@ -116,14 +116,12 @@ mod tests {
     // Tree with uniform branch lengths
     let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.1,C:0.1)root:0.0;")?;
 
-    for edge in graph.get_edges() {
-      let edge = edge.write_arc();
-      edge.payload().write_arc().time_length = Some(10.0);
-    }
-
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    let mut state = TimetreeState::new(&graph);
+    for edge in graph.get_edges() {
+      state.edge_mut(edge.read_arc().key()).time_length = Some(10.0);
+    }
     apply_relaxed_clock(&graph, &edge_branch_lengths(&graph), &params, one_mutation, 1.0, &mut state)?;
 
     let gammas: Vec<f64> = graph
@@ -145,7 +143,7 @@ mod tests {
     let graph = build_simple_tree()?;
     let one_mutation = 0.01;
 
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    let mut state = seed_state_scaled(&graph, 100.0);
     apply_relaxed_clock(&graph, &edge_branch_lengths(&graph), &[], one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
@@ -162,7 +160,7 @@ mod tests {
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
 
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    let mut state = seed_state_scaled(&graph, 100.0);
 
     // Before: gamma should be default 1.0
     for edge in graph.get_edges() {
@@ -193,7 +191,7 @@ mod tests {
 
     // Compare low slack vs high slack - high slack should have gammas closer to 1.0
     let params_low = [1.0, 1.0];
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    let mut state = seed_state_scaled(&graph, 100.0);
     apply_relaxed_clock(&graph, &edge_branch_lengths(&graph), &params_low, one_mutation, 1.0, &mut state)?;
 
     let gammas_low: Vec<f64> = graph
@@ -229,7 +227,7 @@ mod tests {
 
     // Run with low coupling
     let params_low = [1.0, 0.1];
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    let mut state = seed_state_scaled(&graph, 100.0);
     apply_relaxed_clock(&graph, &edge_branch_lengths(&graph), &params_low, one_mutation, 1.0, &mut state)?;
 
     let gammas_low: Vec<f64> = graph
@@ -267,20 +265,13 @@ mod tests {
     // This creates rate variation that the algorithm must account for
     let graph: GraphTimetree = nwk_read_str("((A:0.01,B:0.02)AB:0.015,(C:0.005,D:0.01)CD:0.008)root:0.0;")?;
 
-    // Set time_length to differ from branch_length (rate variation scenario)
-    // This ensures gamma != 1.0 and is sensitive to one_mutation parameter
-    for edge in graph.get_edges() {
-      let edge = edge.write_arc();
-      let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
-      // time_length = 0.8 * branch_length creates rate variation
-      edge.payload().write_arc().time_length = Some(branch_length * 0.8);
-    }
-
     let params = [1.0, 1.0];
 
     // Simulate single partition with length 1000: one_mutation = 1/1000 = 0.001
     let one_mutation_single = 0.001;
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    // time_length = 0.8 * branch_length creates rate variation, so gamma != 1.0 and is sensitive to
+    // the one_mutation parameter.
+    let mut state = seed_state_scaled(&graph, 0.8);
     apply_relaxed_clock(&graph, &edge_branch_lengths(&graph), &params, one_mutation_single, 1.0, &mut state)?;
 
     let gammas_single: Vec<f64> = graph
@@ -326,7 +317,7 @@ mod tests {
     // Simulate what would happen if one_mutation were computed from very short sequences
     // (defense-in-depth - the guard in refinement.rs should prevent this)
     let tiny_one_mutation = 1e-15;
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    let mut state = seed_state_scaled(&graph, 100.0);
     apply_relaxed_clock(&graph, &edge_branch_lengths(&graph), &params, tiny_one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
@@ -346,15 +337,9 @@ mod tests {
     // Tree with a single child to isolate root penalty behavior
     let graph: GraphTimetree = nwk_read_str("(A:0.1)root:0.0;")?;
 
-    for edge in graph.get_edges() {
-      let edge = edge.write_arc();
-      let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
-      edge.payload().write_arc().time_length = Some(branch_length * 100.0);
-    }
-
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    let mut state = seed_state_scaled(&graph, 100.0);
     apply_relaxed_clock(&graph, &edge_branch_lengths(&graph), &params, one_mutation, 1.0, &mut state)?;
 
     // Get root gamma via the edge (gamma is stored on child's parent edge)
@@ -391,7 +376,7 @@ mod tests {
   ) -> Result<(), Report> {
     let graph: GraphTimetree = nwk_read_str("root:0.0;")?;
     let params = [slack, 1.0];
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    let mut state = TimetreeState::new(&graph);
     apply_relaxed_clock(&graph, &edge_branch_lengths(&graph), &params, one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
@@ -408,15 +393,9 @@ mod tests {
   fn test_relaxed_clock_childless_root_gamma_stored() -> Result<(), Report> {
     let graph: GraphTimetree = nwk_read_str("(A:0.01)root:0.0;")?;
 
-    for edge in graph.get_edges() {
-      let edge = edge.write_arc();
-      let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
-      edge.payload().write_arc().time_length = Some(branch_length);
-    }
-
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    let mut state = seed_state_scaled(&graph, 1.0);
     apply_relaxed_clock(&graph, &edge_branch_lengths(&graph), &params, one_mutation, 1.0, &mut state)?;
 
     let gamma = graph
@@ -455,23 +434,21 @@ mod tests {
     }
 
     pub fn build_simple_tree() -> Result<GraphTimetree, Report> {
-      let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?;
-      for edge in graph.get_edges() {
-        let edge = edge.write_arc();
-        let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
-        edge.payload().write_arc().time_length = Some(branch_length * 100.0);
-      }
-      Ok(graph)
+      Ok(nwk_read_str("(A:0.1,B:0.2)root:0.0;")?)
     }
 
     pub fn build_deep_tree() -> Result<GraphTimetree, Report> {
-      let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;")?;
-      for edge in graph.get_edges() {
-        let edge = edge.write_arc();
-        let branch_length = edge.payload().read_arc().base.branch_length.unwrap_or(0.0);
-        edge.payload().write_arc().time_length = Some(branch_length * 100.0);
+      Ok(nwk_read_str("((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;")?)
+    }
+
+    /// Fresh date state whose edge time lengths come from the value path: each edge's time length is
+    /// `factor * branch_length`, replacing what the tests previously wrote onto the edge payload.
+    pub fn seed_state_scaled(graph: &GraphTimetree, factor: f64) -> TimetreeState {
+      let mut state = TimetreeState::new(graph);
+      for (edge_key, branch_length) in edge_branch_lengths(graph) {
+        state.edge_mut(edge_key).time_length = Some(branch_length.unwrap_or(0.0) * factor);
       }
-      Ok(graph)
+      state
     }
 
     pub fn compute_variance(values: &[f64]) -> f64 {

@@ -3,6 +3,7 @@ mod tests {
   use crate::clock::clock_filter::{ClockFilterResult, clock_filter_inplace};
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_state::ClockState;
+  use crate::clock::date_constraints::DateConstraints;
   use crate::partition::timetree::partition::GraphTimetree;
   use crate::timetree::optimization::clock_filter::propagate_bad_branches;
   use crate::timetree::timetree_state::TimetreeState;
@@ -12,21 +13,36 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
-  use treetime_graph::node::{Named, TimeConstraint};
+  use treetime_graph::node::Named;
   use treetime_io::nwk::nwk_read_str;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  fn setup_dates(graph: &GraphTimetree, dates: &BTreeMap<String, f64>) {
+  /// Per-leaf date inputs as a value map, replacing the payload `time_distribution` the tests used to
+  /// write. Each named leaf with a date carries a point distribution at that date.
+  fn date_constraints(graph: &GraphTimetree, dates: &BTreeMap<String, f64>) -> DateConstraints {
+    let mut time_distributions = BTreeMap::new();
     for n in graph.get_leaves() {
-      let name = n.read_arc().payload().read_arc().name().map(|s| s.as_ref().to_owned());
+      let n = n.read_arc();
+      let name = n.payload().read_arc().name().map(|s| s.as_ref().to_owned());
       if let Some(name) = name {
         if let Some(&date) = dates.get(&name) {
-          let dist = Arc::new(Distribution::point(date, 1.0));
-          n.write_arc().payload().write_arc().set_time_distribution(Some(dist));
+          time_distributions.insert(n.key(), Some(Arc::new(Distribution::point(date, 1.0))));
         }
       }
     }
+    DateConstraints {
+      time_distributions,
+      ..DateConstraints::default()
+    }
+  }
+
+  /// Seed the clock state from date-constraint values, reproducing the payload-reading seed: the date
+  /// state built from `constraints` supplies each node's date through `likely_times`, and the clock
+  /// state starts from those dates with default divergence and outlier flags.
+  fn seed_clock_state(graph: &GraphTimetree, constraints: &DateConstraints) -> ClockState {
+    let date_state = TimetreeState::seed_from_values(graph, constraints);
+    ClockState::seed_from_values(graph, &date_state.likely_times())
   }
 
   fn count_outliers(graph: &GraphTimetree, state: &ClockState) -> usize {
@@ -51,14 +67,14 @@ mod tests {
       "C".to_owned() => 2015.0,
       "D".to_owned() => 2012.0,
     };
-    setup_dates(&graph, &dates);
+    let constraints = date_constraints(&graph, &dates);
 
     // Clock model: rate=0.01, intercept=-20.0
     // At date 2010, expected div = 0.01 * 2010 + (-20.0) = 0.1
     // At date 2020, expected div = 0.01 * 2020 + (-20.0) = 0.2
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let mut state = ClockState::seed_from_payloads(&graph);
+    let mut state = seed_clock_state(&graph, &constraints);
     let ClockFilterResult { new_outliers, iqd } = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0)?;
 
     // With well-fitting data, no outliers should be detected
@@ -83,13 +99,13 @@ mod tests {
       "C".to_owned() => 2015.0,
       "D".to_owned() => 2012.0,
     };
-    setup_dates(&graph, &dates);
+    let constraints = date_constraints(&graph, &dates);
 
     // Clock model based on B, C, D (excluding A)
     // rate=0.01, intercept=-20.0
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let mut state = ClockState::seed_from_payloads(&graph);
+    let mut state = seed_clock_state(&graph, &constraints);
     let ClockFilterResult { new_outliers, iqd } = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0)?;
 
     // A should be detected as outlier (date 1900 with div ~0.2 doesn't fit clock)
@@ -124,11 +140,11 @@ mod tests {
       "C".to_owned() => 2015.0,
       "D".to_owned() => 2012.0,
     };
-    setup_dates(&graph, &dates);
+    let constraints = date_constraints(&graph, &dates);
 
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let mut state = ClockState::seed_from_payloads(&graph);
+    let mut state = seed_clock_state(&graph, &constraints);
     let ClockFilterResult { iqd, .. } = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0)?;
 
     // IQD should be computed (may be zero or positive depending on data fit)
@@ -148,18 +164,18 @@ mod tests {
       "C".to_owned() => 2015.0,
       "D".to_owned() => 2012.0,
     };
-    setup_dates(&graph, &dates);
+    let constraints = date_constraints(&graph, &dates);
 
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
     // With low threshold, A might be outlier
-    let mut state_low = ClockState::seed_from_payloads(&graph);
+    let mut state_low = seed_clock_state(&graph, &constraints);
     clock_filter_inplace(&graph, &mut state_low, &clock_model, 1.0)?;
     let outliers_low_threshold = count_outliers(&graph, &state_low);
 
     // With high threshold, A should not be outlier. Each filter runs on its own freshly seeded state,
     // so the low-threshold outlier flags do not carry over.
-    let mut state_high = ClockState::seed_from_payloads(&graph);
+    let mut state_high = seed_clock_state(&graph, &constraints);
     clock_filter_inplace(&graph, &mut state_high, &clock_model, 100.0)?;
     let outliers_high_threshold = count_outliers(&graph, &state_high);
 

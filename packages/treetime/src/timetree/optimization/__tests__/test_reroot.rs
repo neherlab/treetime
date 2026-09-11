@@ -6,6 +6,7 @@ mod tests {
   use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::clock::clock_state::ClockState;
+  use crate::clock::date_constraints::DateConstraints;
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
@@ -24,9 +25,10 @@ mod tests {
   use maplit::btreemap;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
-  use treetime_graph::node::{Named, TimeConstraint};
+  use treetime_graph::node::Named;
   use treetime_graph::reroot::RerootChanges;
   use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -40,7 +42,10 @@ mod tests {
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  fn setup_dates(graph: &GraphTimetree) {
+  /// Per-leaf date inputs as a value map, replacing the payload `time_distribution` the tests used to
+  /// write. Each dated leaf carries a point distribution at its date; internal nodes get no entry,
+  /// which `seed_from_values` reads as no constraint.
+  fn date_constraints(graph: &GraphTimetree) -> DateConstraints {
     let dates = btreemap! {
       o!("A") => 2013.0,
       o!("B") => 2022.0,
@@ -48,13 +53,18 @@ mod tests {
       o!("D") => 2005.0,
     };
 
+    let mut time_distributions = BTreeMap::new();
     for n in graph.get_leaves() {
-      let name = n.read_arc().payload().read_arc().name().map(|s| s.as_ref().to_owned());
+      let n = n.read_arc();
+      let name = n.payload().read_arc().name().map(|s| s.as_ref().to_owned());
       if let Some(name) = name {
         let date = dates[&name];
-        let dist = Arc::new(Distribution::point(date, 1.0));
-        n.write_arc().payload().write_arc().set_time_distribution(Some(dist));
+        time_distributions.insert(n.key(), Some(Arc::new(Distribution::point(date, 1.0))));
       }
+    }
+    DateConstraints {
+      time_distributions,
+      ..DateConstraints::default()
     }
   }
 
@@ -80,7 +90,7 @@ mod tests {
     // Test that reroot works correctly with sparse partitions when edge split is enabled
     let aln = gap_free_alignment()?;
     let mut graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?;
-    setup_dates(&graph);
+    let constraints = date_constraints(&graph);
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
@@ -94,7 +104,8 @@ mod tests {
     )));
 
     let clock_params = ClockParams::default();
-    let mut clock_state = ClockState::seed_from_payloads(&graph);
+    let timetree_state = TimetreeState::seed_from_values(&graph, &constraints);
+    let mut clock_state = ClockState::seed_from_values(&graph, &timetree_state.likely_times());
     clock_regression_backward(&graph, &mut clock_state, &clock_params, None)?;
     clock_regression_forward(&graph, &mut clock_state, &clock_params, None)?;
 
@@ -105,7 +116,6 @@ mod tests {
     let initial_node_count = graph.get_nodes().len();
 
     // Should complete without error - edge split and trivial root removal are now always enabled
-    let timetree_state = TimetreeState::seed_from_payloads(&graph);
     let clock_model = reroot_tree(
       &mut graph,
       &mut clock_state,
@@ -160,16 +170,6 @@ mod tests {
     // Tree: (A:0.1,B:0.2)root;
     // After reroot to A, edge direction inverts
     let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.2)root;")?;
-
-    // Set dates so clock regression works
-    for n in graph.get_leaves() {
-      let name = n.read_arc().payload().read_arc().name().map(|s| s.as_ref().to_owned());
-      if name.as_deref() == Some("A") {
-        n.write_arc().payload().write_arc().time = Some(2020.0);
-      } else if name.as_deref() == Some("B") {
-        n.write_arc().payload().write_arc().time = Some(2010.0);
-      }
-    }
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
@@ -255,16 +255,6 @@ mod tests {
     //
     // Tree: (A:0.1,B:0.2)root;
     let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.2)root;")?;
-
-    // Set dates
-    for n in graph.get_leaves() {
-      let name = n.read_arc().payload().read_arc().name().map(|s| s.as_ref().to_owned());
-      if name.as_deref() == Some("A") {
-        n.write_arc().payload().write_arc().time = Some(2020.0);
-      } else if name.as_deref() == Some("B") {
-        n.write_arc().payload().write_arc().time = Some(2010.0);
-      }
-    }
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
@@ -481,7 +471,7 @@ mod tests {
     // when keep_root=false (reroot enabled) with sparse partitions
     let aln = gap_free_alignment()?;
     let mut graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?;
-    setup_dates(&graph);
+    let constraints = date_constraints(&graph);
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
@@ -495,7 +485,8 @@ mod tests {
     )));
 
     let clock_params = ClockParams::default();
-    let mut clock_state = ClockState::seed_from_payloads(&graph);
+    let timetree_state_1 = TimetreeState::seed_from_values(&graph, &constraints);
+    let mut clock_state = ClockState::seed_from_values(&graph, &timetree_state_1.likely_times());
     clock_regression_backward(&graph, &mut clock_state, &clock_params, None)?;
     clock_regression_forward(&graph, &mut clock_state, &clock_params, None)?;
 
@@ -508,7 +499,6 @@ mod tests {
     marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     // First reroot call (simulating keep_root=false flow)
-    let timetree_state_1 = TimetreeState::seed_from_payloads(&graph);
     let clock_model_1 = reroot_tree(
       &mut graph,
       &mut clock_state,
@@ -531,8 +521,10 @@ mod tests {
 
     let r_squared_1 = clock_model_1.r_val().map(|r| r * r);
 
-    // Second reroot call (simulating refinement iteration)
-    let timetree_state_2 = TimetreeState::seed_from_payloads(&graph);
+    // Second reroot call (simulating refinement iteration). The reroot leaves the named leaves and
+    // their stable keys in place, so the same date constraints seed the post-reroot date state; the
+    // split node the reroot introduced gets no constraint entry, matching a fresh seed.
+    let timetree_state_2 = TimetreeState::seed_from_values(&graph, &constraints);
     let clock_model_2 = reroot_tree(
       &mut graph,
       &mut clock_state,
