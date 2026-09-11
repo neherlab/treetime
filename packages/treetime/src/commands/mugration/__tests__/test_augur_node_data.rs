@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::mugration::augur_node_data::build_augur_node_data_json;
+  use crate::commands::mugration::run::gather_mugration_output_maps;
   use crate::mugration::mugration::execute_mugration;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -34,7 +35,8 @@ mod tests {
       false,
     )
     .unwrap();
-    let data = build_augur_node_data_json(&result).unwrap();
+    let maps = gather_mugration_output_maps(&result.graph);
+    let data = build_augur_node_data_json(&result, &maps).unwrap();
     json_write_str(&data, JsonPretty(true)).unwrap()
   }
 

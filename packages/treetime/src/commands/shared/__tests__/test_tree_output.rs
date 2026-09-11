@@ -37,7 +37,13 @@ mod tests {
     let (graph, names, branch_lengths) = helpers::ancestral_graph(helpers::Mutations::NucleotideSubstitution)?;
 
     let nodes = helpers::ancestral_nodes(&names, &graph, &helpers::ancestral_confidences(&names, &graph));
-    let auspice = ancestral_to_auspice(&graph, &nodes, &branch_lengths, &helpers::ancestral_maps(&graph), "2026-07-19")?;
+    let auspice = ancestral_to_auspice(
+      &graph,
+      &nodes,
+      &branch_lengths,
+      &helpers::ancestral_maps(&graph),
+      "2026-07-19",
+    )?;
     let child = helpers::auspice_child(&auspice, "A");
     assert_eq!(Some("2026-07-19"), auspice.data.meta.updated.as_deref());
     assert_eq!(vec!["tree".to_owned()], auspice.data.meta.panels);
@@ -137,11 +143,13 @@ mod tests {
   #[test]
   fn test_tree_output_mat_rejects_unsupported_events() -> Result<(), Report> {
     let (graph, names, branch_lengths) = helpers::ancestral_graph(helpers::Mutations::Indel)?;
-    let error = ancestral_to_mat(&graph, &names, &branch_lengths, &helpers::ancestral_maps(&graph)).expect_err("MAT must reject indels");
+    let error = ancestral_to_mat(&graph, &names, &branch_lengths, &helpers::ancestral_maps(&graph))
+      .expect_err("MAT must reject indels");
     assert!(error.to_string().contains("insertion or deletion"));
 
     let (graph, names, branch_lengths) = helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
-    let error = ancestral_to_mat(&graph, &names, &branch_lengths, &helpers::ancestral_maps(&graph)).expect_err("MAT must reject amino-acid mutations");
+    let error = ancestral_to_mat(&graph, &names, &branch_lengths, &helpers::ancestral_maps(&graph))
+      .expect_err("MAT must reject amino-acid mutations");
     assert!(error.to_string().contains("amino-acid mutation"));
 
     Ok(())
@@ -440,11 +448,12 @@ mod tests {
 
   mod helpers {
     use super::*;
-    use crate::commands::ancestral::result::AncestralOutputMaps;
-    use crate::commands::ancestral::run::gather_ancestral_output_maps;
     use crate::clock::clock_graph::GraphClock;
     use crate::clock::clock_model::ClockModel;
+    use crate::commands::ancestral::result::AncestralOutputMaps;
+    use crate::commands::ancestral::run::gather_ancestral_output_maps;
     use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
+    use crate::commands::mugration::run::gather_mugration_output_maps;
     use crate::commands::optimize::result::{OptimizeGraphData, OptimizeNodeOut, OptimizeOutputMaps};
     use crate::commands::optimize::run::gather_optimize_output_maps;
     use crate::commands::prune::result::{PruneGraphData, PruneNodeOut, PruneOutputMaps};
@@ -453,7 +462,7 @@ mod tests {
     use crate::commands::timetree::run::gather_timetree_output_maps;
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::gtr::gtr::{GTR, GTRParams};
-    use crate::mugration::result::{MugrationGraphData, MugrationNodeOut, MugrationResult};
+    use crate::mugration::result::{MugrationGraphData, MugrationNodeOut, MugrationOutputMaps, MugrationResult};
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
     use crate::partition::storage::discrete::DiscreteStates;
@@ -502,6 +511,10 @@ mod tests {
 
     pub fn timetree_maps(graph: &GraphTimetree<TimetreeGraphData>) -> TimetreeOutputMaps {
       gather_timetree_output_maps(graph).unwrap()
+    }
+
+    pub fn mugration_maps(graph: &GraphAncestral<MugrationGraphData>) -> MugrationOutputMaps {
+      gather_mugration_output_maps(graph)
     }
 
     pub fn ancestral_graph(
@@ -688,6 +701,7 @@ mod tests {
         &mugration_graph,
         &mugration_nodes(&mugration_names, &mugration_graph, &btreemap! {}),
         &mugration_bl,
+        &mugration_maps(&mugration_graph),
         "2026-07-19",
       )?;
       let (timetree_graph, timetree_names, _timetree_bl) = timetree_graph()?;
@@ -741,6 +755,7 @@ mod tests {
             &mugration_graph,
             &mugration_nodes(&mugration_names, &mugration_graph, &btreemap! {}),
             &mugration_bl,
+            &mugration_maps(&mugration_graph),
           )?
         },
         {

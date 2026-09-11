@@ -1,4 +1,6 @@
+use crate::gtr::gtr::GTR;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
+use crate::partition::storage::discrete::DiscreteStates;
 use crate::payload::ancestral::GraphAncestral;
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -115,6 +117,26 @@ pub struct MugrationGraphData {
   pub confidence: MugrationConfidenceOutput,
   pub log_lh: LogLh,
   pub partition: Arc<PartitionMarginalDiscrete>,
+}
+
+/// Discrete traits and confidence profiles gathered from the mugration partition for the output writers.
+///
+/// Gathered once, serially, from the discrete partition while it is in scope in the command, so the
+/// auspice, phyloxml, Newick-comment, augur, and GTR writers read plain value maps instead of reading
+/// the partition during serialization. The maps are keyed by node key over every node and carry the raw
+/// per-key profile, so `build_confidence_map`/`compute_entropy` reproduce the current output exactly.
+#[derive(Debug)]
+pub struct MugrationOutputMaps {
+  /// Reconstructed discrete trait per node (argmax state name), or `None` when the node has no profile.
+  pub reconstructed_traits: BTreeMap<GraphNodeKey, Option<String>>,
+  /// Confidence profile per node (raw, unfiltered), or `None` when the node has no profile.
+  pub confidences: BTreeMap<GraphNodeKey, Option<Array1<f64>>>,
+  /// Discrete state names in order.
+  pub states: DiscreteStates,
+  /// The inferred discrete GTR model.
+  pub gtr: GTR,
+  /// Number of real states (excludes the missing-data marker).
+  pub n_states: usize,
 }
 
 /// Per-node mugration output as a value: the name and input branch support the output writers read.
