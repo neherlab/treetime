@@ -16,6 +16,7 @@ treetime-utils = { workspace = true }
 
 # [external]
 crossbeam-channel = { workspace = true }
+crossbeam-utils = { workspace = true }
 derive_more = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }

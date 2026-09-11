@@ -4868,6 +4868,7 @@ name = "treetime-graph"
 version = "1.0.0"
 dependencies = [
  "crossbeam-channel",
+ "crossbeam-utils",
  "ctor 0.5.0",
  "derive_more",
  "eyre",

@@ -5,124 +5,11 @@ use crate::dependency_queue::{run_dependency_queue, validate_dependency_graph};
 use crate::edge::{GraphEdge, GraphEdgeKey};
 use crate::graph::Graph;
 use crate::node::{GraphNode, GraphNodeKey};
+use crossbeam_utils::atomic::AtomicCell;
 use eyre::Report;
-use parking_lot::Mutex;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::OnceLock;
 use treetime_utils::make_internal_report;
-
-pub fn with_graph_payloads<N, E, D, R>(
-  graph: &Graph<N, E, D>,
-  visit: impl FnOnce(&mut GraphPass<N, E>) -> Result<R, Report>,
-) -> Result<R, Report>
-where
-  N: GraphNode + Default,
-  E: GraphEdge + Default,
-  D: Send + Sync,
-{
-  let topology = GraphPassTopology::new(graph)?;
-  let mut nodes = graph
-    .get_nodes()
-    .iter()
-    .map(|node| {
-      let node = node.read_arc();
-      let key = node.key();
-      let data = std::mem::take(&mut *node.payload().write_arc());
-      (key, data)
-    })
-    .collect::<BTreeMap<_, _>>();
-  let mut edges = graph
-    .get_edges()
-    .iter()
-    .map(|edge| {
-      let edge = edge.read_arc();
-      let key = edge.key();
-      let data = std::mem::take(&mut *edge.payload().write_arc());
-      (key, data)
-    })
-    .collect::<BTreeMap<_, _>>();
-
-  let mut pass = GraphPass::from_topology(&topology, &mut nodes, &mut edges, |_| {
-    unreachable!("graph payload extraction includes every node")
-  })?;
-  let result = visit(&mut pass);
-  let (mut nodes, mut edges) = pass.into_maps()?;
-
-  for node in graph.get_nodes() {
-    let node = node.read_arc();
-    let key = node.key();
-    *node.payload().write_arc() = nodes.remove(&key).expect("Indexed pass must restore every graph node");
-  }
-  for edge in graph.get_edges() {
-    let edge = edge.read_arc();
-    let key = edge.key();
-    *edge.payload().write_arc() = edges.remove(&key).expect("Indexed pass must restore every graph edge");
-  }
-
-  result
-}
-
-/// Value-engine analog of [`with_graph_payloads`]: extracts every graph payload, runs a
-/// value-returning traversal, and writes the returned node and edge outputs back into the graph
-/// payloads. Where [`with_graph_payloads`] keeps the pass by `&mut` and restores the moved-in input
-/// slots, `run` consumes the pass (as [`GraphPass::try_map_backward`] and
-/// [`GraphPass::try_map_forward`] require) and returns fresh outputs, so the write-back uses those
-/// outputs. The output node and edge types equal the payload types `N` and `E`.
-pub fn with_graph_payloads_map<N, E, D>(
-  graph: &Graph<N, E, D>,
-  run: impl FnOnce(GraphPass<N, E>) -> Result<GraphMapOutputs<N, E>, Report>,
-) -> Result<(), Report>
-where
-  N: GraphNode + Default,
-  E: GraphEdge + Default,
-  D: Send + Sync,
-{
-  let topology = GraphPassTopology::new(graph)?;
-  let mut nodes = graph
-    .get_nodes()
-    .iter()
-    .map(|node| {
-      let node = node.read_arc();
-      let key = node.key();
-      let data = std::mem::take(&mut *node.payload().write_arc());
-      (key, data)
-    })
-    .collect::<BTreeMap<_, _>>();
-  let mut edges = graph
-    .get_edges()
-    .iter()
-    .map(|edge| {
-      let edge = edge.read_arc();
-      let key = edge.key();
-      let data = std::mem::take(&mut *edge.payload().write_arc());
-      (key, data)
-    })
-    .collect::<BTreeMap<_, _>>();
-
-  let pass = GraphPass::from_topology(&topology, &mut nodes, &mut edges, |_| {
-    unreachable!("graph payload extraction includes every node")
-  })?;
-  let mut outputs = run(pass)?;
-
-  for node in graph.get_nodes() {
-    let node = node.read_arc();
-    let key = node.key();
-    *node.payload().write_arc() = outputs
-      .nodes
-      .remove(&key)
-      .expect("Value pass must return every graph node");
-  }
-  for edge in graph.get_edges() {
-    let edge = edge.read_arc();
-    let key = edge.key();
-    *edge.payload().write_arc() = outputs
-      .edges
-      .remove(&key)
-      .expect("Value pass must return every graph edge");
-  }
-
-  Ok(())
-}
 
 pub struct GraphPass<N, E> {
   slots: Vec<GraphPassSlot<N, E>>,
@@ -272,7 +159,7 @@ impl<N, E> GraphPass<N, E> {
 
     let pending = std::mem::take(&mut self.slots)
       .into_iter()
-      .map(|slot| Mutex::new(Some(slot)))
+      .map(|slot| AtomicCell::new(Some(slot)))
       .collect::<Vec<_>>();
     let completed = std::iter::repeat_with(OnceLock::<GraphPassNodeOutput<NodeOut, EdgeOut>>::new)
       .take(pending.len())
@@ -280,7 +167,6 @@ impl<N, E> GraphPass<N, E> {
 
     run_dependency_queue(&prerequisites, &successors, |index| {
       let slot = pending[index]
-        .lock()
         .take()
         .expect("Dependency queue must schedule each indexed slot once");
 
@@ -352,7 +238,7 @@ impl<N, E> GraphPass<N, E> {
 
     let pending = std::mem::take(&mut self.slots)
       .into_iter()
-      .map(|slot| Mutex::new(Some(slot)))
+      .map(|slot| AtomicCell::new(Some(slot)))
       .collect::<Vec<_>>();
     let completed = std::iter::repeat_with(OnceLock::<GraphPassNodeOutput<NodeOut, EdgeOut>>::new)
       .take(pending.len())
@@ -360,7 +246,6 @@ impl<N, E> GraphPass<N, E> {
 
     run_dependency_queue(&prerequisites, &successors, |index| {
       let slot = pending[index]
-        .lock()
         .take()
         .expect("Dependency queue must schedule each indexed slot once");
 
@@ -521,7 +406,7 @@ impl<N, E> GraphPass<N, E> {
   {
     let pending = std::mem::take(&mut self.slots)
       .into_iter()
-      .map(|slot| Mutex::new(Some(slot)))
+      .map(|slot| AtomicCell::new(Some(slot)))
       .collect::<Vec<_>>();
     let completed = std::iter::repeat_with(OnceLock::new)
       .take(pending.len())
@@ -534,7 +419,6 @@ impl<N, E> GraphPass<N, E> {
 
     let result = run_dependency_queue(prerequisites, successors, |index| {
       let mut slot = pending[index]
-        .lock()
         .take()
         .expect("Dependency queue must schedule each indexed slot once");
       let result = visit(&dependencies, &mut slot);
