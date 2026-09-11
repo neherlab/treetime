@@ -13,18 +13,27 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use std::collections::BTreeMap;
-  use treetime_graph::node::Named;
+  use treetime_graph::node::{GraphNodeKey, Named};
   use treetime_io::nwk::nwk_read_str;
+
+  fn leaf_times(graph: &GraphClock, dates: &BTreeMap<String, f64>) -> BTreeMap<GraphNodeKey, Option<f64>> {
+    graph
+      .get_leaves()
+      .iter()
+      .map(|node| {
+        let node = node.read_arc();
+        let name = node.payload().read_arc().name().unwrap().as_ref().to_owned();
+        (node.key(), dates.get(&name).copied())
+      })
+      .collect()
+  }
 
   fn setup_graph_with_dates(dates: &BTreeMap<String, f64>) -> Result<(GraphClock, ClockParams, ClockState), Report> {
     let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    for n in graph.get_leaves() {
-      let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
-      n.write_arc().payload().write_arc().time = Some(dates[&name]);
-    }
+    let times = leaf_times(&graph, dates);
 
     let options = ClockParams::default();
-    let mut state = ClockState::seed_from_payloads(&graph);
+    let mut state = ClockState::seed_from_values(&graph, &times);
     clock_regression_backward(&graph, &mut state, &options, None)?;
     clock_regression_forward(&graph, &mut state, &options, None)?;
 

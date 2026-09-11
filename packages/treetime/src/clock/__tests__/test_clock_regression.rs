@@ -12,7 +12,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use treetime_graph::node::Named;
+  use treetime_graph::node::{GraphNodeKey, Named};
   use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_io::nwk::nwk_read_str;
 
@@ -42,12 +42,8 @@ mod tests {
     )?;
     let naive_rate = compute_naive_rate(&dates, &divs);
 
-    for n in graph.get_leaves() {
-      let name = n.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
-      n.write_arc().payload().write_arc().time = Some(dates[&name]);
-    }
-
-    let mut state = ClockState::seed_from_payloads(&graph);
+    let times = helpers::leaf_times(&graph, &dates);
+    let mut state = ClockState::seed_from_values(&graph, &times);
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
 
     clock_regression_backward(&graph, &mut state, &ClockParams::default(), None)?;
@@ -88,14 +84,22 @@ mod tests {
   mod helpers {
     use super::*;
 
+    pub(super) fn leaf_times(graph: &GraphClock, dates: &BTreeMap<String, f64>) -> BTreeMap<GraphNodeKey, Option<f64>> {
+      graph
+        .get_leaves()
+        .iter()
+        .map(|node| {
+          let node = node.read_arc();
+          let name = node.payload().read_arc().name().unwrap().as_ref().to_owned();
+          (node.key(), dates.get(&name).copied())
+        })
+        .collect()
+    }
+
     pub(super) fn root_clock_set(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockSet, Report> {
       let graph: GraphClock = nwk_read_str(tree)?;
-      for node in graph.get_leaves() {
-        let name = node.read_arc().payload().read_arc().name().unwrap().as_ref().to_owned();
-        node.write_arc().payload().write_arc().time = dates.get(&name).copied();
-      }
-
-      let mut state = ClockState::seed_from_payloads(&graph);
+      let times = leaf_times(&graph, dates);
+      let mut state = ClockState::seed_from_values(&graph, &times);
       clock_regression_backward(&graph, &mut state, &ClockParams::default(), None)?;
       let root_key = graph.get_exactly_one_root()?.read_arc().key();
       let clock_set = state.node(root_key).clock_set.clone();
