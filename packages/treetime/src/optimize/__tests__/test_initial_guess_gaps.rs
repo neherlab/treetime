@@ -120,7 +120,7 @@ mod tests {
   #[test]
   fn test_sparse_effective_length_no_gaps() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions = setup_sparse(&graph, &aln)?;
 
     for edge_ref in graph.get_edges() {
@@ -136,7 +136,7 @@ mod tests {
   #[test]
   fn test_dense_effective_length_no_gaps() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions = setup_dense(&graph, &aln)?;
 
     for edge_ref in graph.get_edges() {
@@ -152,7 +152,7 @@ mod tests {
   #[test]
   fn test_sparse_effective_length_shared_gaps() -> Result<(), Report> {
     let aln = gappy_alignment_shared()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions = setup_sparse(&graph, &aln)?;
 
     for edge_ref in graph.get_edges() {
@@ -169,7 +169,7 @@ mod tests {
   #[test]
   fn test_dense_effective_length_shared_gaps() -> Result<(), Report> {
     let aln = gappy_alignment_shared()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions = setup_dense(&graph, &aln)?;
 
     for edge_ref in graph.get_edges() {
@@ -186,7 +186,7 @@ mod tests {
   #[test]
   fn test_sparse_effective_length_one_leaf_gapped() -> Result<(), Report> {
     let aln = gappy_alignment_one_leaf()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions = setup_sparse(&graph, &aln)?;
 
     let mut found_reduced = false;
@@ -207,7 +207,7 @@ mod tests {
   #[test]
   fn test_dense_edge_subs_excludes_gap_positions() -> Result<(), Report> {
     let aln = gappy_alignment_one_leaf()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions = setup_dense(&graph, &aln)?;
 
     let p = partitions[0].read_arc();
@@ -230,13 +230,13 @@ mod tests {
   #[test]
   fn test_initial_guess_sparse_gap_adjusted_rate() -> Result<(), Report> {
     let aln_clean = gap_free_alignment()?;
-    let graph_clean: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_clean: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions_clean = setup_sparse(&graph_clean, &aln_clean)?;
     initial_guess_mixed(&graph_clean, &partitions_clean, true, false)?;
     let bl_clean = get_branch_lengths(&graph_clean);
 
     let aln_gappy = gappy_alignment_shared()?;
-    let graph_gappy: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_gappy: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions_gappy = setup_sparse(&graph_gappy, &aln_gappy)?;
     initial_guess_mixed(&graph_gappy, &partitions_gappy, true, false)?;
     let bl_gappy = get_branch_lengths(&graph_gappy);

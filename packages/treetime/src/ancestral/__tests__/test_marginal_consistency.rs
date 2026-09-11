@@ -147,7 +147,7 @@ mod tests {
   #[test]
   fn test_marginal_dense_sparse_log_lh_consistency_gap_free() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
 
     let gtr_dense = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -179,7 +179,7 @@ mod tests {
   #[test]
   fn test_marginal_sparse_varpos_matches_dense_profile_gap_free() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
 
     let gtr_dense = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -244,7 +244,7 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
 
     let gtr_dense = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -305,7 +305,7 @@ mod tests {
   #[test]
   fn test_marginal_dense_sparse_ambiguous_r_reference_state_consistency() -> Result<(), Report> {
     let aln = ambiguous_r_in_g_clade_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
 
     let gtr_dense = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -432,7 +432,7 @@ mod tests {
 
     // 3-taxon tree with long branches (from v0 test, branch lengths rounded)
     let tree_newick = "((A:0.601,B:0.301):0.1,C:0.2):0.001;";
-    let graph: GraphAncestral = nwk_read_str(tree_newick)?;
+    let graph: GraphAncestral = nwk_read_str(tree_newick)?.graph;
 
     // 64bp alignment: all 4^3 = 64 three-taxon state combinations (A x B x C)
     let aln = read_many_fasta_str(
@@ -482,7 +482,7 @@ mod tests {
   #[test]
   fn test_marginal_sparse_uniform_site_rates_matches_scalar() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let seq_len = get_common_length(&aln)?;
 
     // Run without site_rates (scalar mu)
@@ -509,7 +509,7 @@ mod tests {
   #[test]
   fn test_marginal_dense_uniform_site_rates_matches_scalar() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let seq_len = get_common_length(&aln)?;
 
     let gtr_scalar = jc69(JC69Params {

@@ -119,7 +119,7 @@ mod tests {
   )]
   #[trace]
   fn test_nex_exact_output(#[case] nwk: &str, #[case] expected: &str) -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>(nwk)?;
+    let graph = nwk_read_str::<TestNode, TestEdge, ()>(nwk)?.graph;
     let actual = nex_write_str(&graph, &node_names(&graph), &edge_branch_lengths(&graph), &NexWriteOptions::default())?;
     assert_eq!(expected, actual);
     Ok(())

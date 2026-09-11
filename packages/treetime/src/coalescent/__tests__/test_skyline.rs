@@ -265,7 +265,7 @@ mod tests {
       tree_nwk: &str,
       dates: &DatesMap,
     ) -> Result<(GraphTimetree, DateConstraints), Report> {
-      let graph = nwk_read_str(tree_nwk)?;
+      let graph = nwk_read_str(tree_nwk)?.graph;
       let constraints = load_date_constraints(dates, &graph)?;
       Ok((graph, constraints))
     }

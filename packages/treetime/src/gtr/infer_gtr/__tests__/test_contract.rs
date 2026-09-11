@@ -55,7 +55,7 @@ mod tests {
     tree_nwk: &str,
     aln: &[FastaRecord],
   ) -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
-    let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
+    let graph: GraphAncestral = nwk_read_str(tree_nwk)?.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -72,7 +72,7 @@ mod tests {
   }
 
   fn setup_sparse(tree_nwk: &str, aln: &[FastaRecord]) -> Result<(GraphAncestral, PartitionFitch), Report> {
-    let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
+    let graph: GraphAncestral = nwk_read_str(tree_nwk)?.graph;
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, aln, &node_names(&graph))?;
     Ok((graph, fitch))

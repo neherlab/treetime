@@ -53,7 +53,8 @@ mod tests {
     "#})?;
     let graph: GraphAncestral = nwk_read_str(
       "((T1:0.0,((((C1:0.005,C2:0.005)Y3:0.005,C3:0.005)Y2:0.005,C4:0.005)Y1:0.005,C5:0.005)Z:0.5,C6:0.5)X:0.3,C7:0.3)root:0.0;",
-    )?;
+    )?
+    .graph;
 
     let sparse = reconstruct_sparse(&graph, &aln)?;
     let dense = reconstruct_dense(&graph, &aln)?;
@@ -100,7 +101,7 @@ mod tests {
       TCGTACGTAC
     "#})?;
     let graph: GraphAncestral =
-      nwk_read_str("(((D1:0.05,D2:0.05)DD:0.05,D3:0.05)DEL:0.2,(A1:0.05,A2:0.05)POLY:0.2)root:0.0;")?;
+      nwk_read_str("(((D1:0.05,D2:0.05)DD:0.05,D3:0.05)DEL:0.2,(A1:0.05,A2:0.05)POLY:0.2)root:0.0;")?.graph;
 
     let sparse = reconstruct_sparse(&graph, &aln)?;
 

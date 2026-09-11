@@ -20,7 +20,7 @@ mod tests {
       .and_then(Path::parent)
       .expect("workspace root");
     let alphabet = Alphabet::default();
-    let graph: GraphAncestral = nwk_read_file(workspace_root.join("data/flu/h3n2/20/tree.nwk"))?;
+    let graph: GraphAncestral = nwk_read_file(workspace_root.join("data/flu/h3n2/20/tree.nwk"))?.graph;
     let aln = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
     let sequences = read_many_fasta(&[aln.to_str().expect("utf-8 path")], &alphabet)?;
     Ok((graph, alphabet, sequences))

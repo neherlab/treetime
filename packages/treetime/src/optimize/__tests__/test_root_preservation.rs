@@ -26,7 +26,7 @@ mod tests {
   ) -> Result<(GraphAncestral, Vec<Arc<RwLock<dyn PartitionOptimizeOps>>>), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
-    let graph: GraphAncestral = nwk_read_str(newick)?;
+    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
     let gtr = jc69(JC69Params::default())?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
     let partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![Arc::new(RwLock::new(partition))];

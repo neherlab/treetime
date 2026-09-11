@@ -174,7 +174,7 @@ mod tests {
   }
 
   fn create_polytomy_state() -> Result<(GraphTimetree, PartitionTimetreeAllVec, ClockModel, TimetreeState), Report> {
-    let mut graph: GraphTimetree = nwk_read_str("(A:0.01,B:0.01,C:0.01)root;")?;
+    let mut graph: GraphTimetree = nwk_read_str("(A:0.01,B:0.01,C:0.01)root;")?.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(
       indoc! {r#"

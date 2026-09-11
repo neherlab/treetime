@@ -25,7 +25,7 @@ mod tests {
     //      mid  B
     //      /
     //     A
-    let mut graph: GraphClock = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
+    let mut graph: GraphClock = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?.graph;
 
     let mid_key = graph
       .find_node(|node| node.name.as_deref() == Some("mid"))
@@ -358,7 +358,7 @@ mod tests {
     pub fn setup_reroot_test_graph_with_dates(
       dates: &BTreeMap<String, f64>,
     ) -> Result<(GraphClock, ClockParams, ClockState), Report> {
-      let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+      let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
       let times = leaf_times(&graph, dates);
 
       let options = ClockParams::default();

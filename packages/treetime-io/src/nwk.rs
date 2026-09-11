@@ -20,7 +20,24 @@ use util_newick::{
   NewickGraph, NewickValue, newick_from_reader, newick_from_string, write_beast_attrs, write_label, write_nhx_attrs,
 };
 
-pub fn nwk_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<Graph<N, E, D>, Report>
+/// A parsed Newick tree: the graph together with the per-node input-tree branch support.
+///
+/// `confidences` is keyed by the graph's own node keys and holds each node's Newick branch support
+/// (bootstrap or posterior), with `None` where a node carried no confidence annotation. It lets a
+/// consumer read each node's input branch support as a value threaded from the parse rather than off
+/// the node payload.
+#[derive(Debug)]
+pub struct NwkParse<N, E, D = ()>
+where
+  N: GraphNode,
+  E: GraphEdge,
+  D: Sync + Send,
+{
+  pub graph: Graph<N, E, D>,
+  pub confidences: BTreeMap<GraphNodeKey, Option<f64>>,
+}
+
+pub fn nwk_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<NwkParse<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
@@ -30,7 +47,7 @@ where
   nwk_read(open_file_or_stdin(&Some(filepath))?).wrap_err_with(|| format!("When reading file '{}'", filepath.display()))
 }
 
-pub fn nwk_read_str<N, E, D>(nwk_string: impl AsRef<str>) -> Result<Graph<N, E, D>, Report>
+pub fn nwk_read_str<N, E, D>(nwk_string: impl AsRef<str>) -> Result<NwkParse<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
@@ -40,7 +57,7 @@ where
   graph_from_newick(&nwk_graph)
 }
 
-pub fn nwk_read<N, E, D>(reader: impl Read) -> Result<Graph<N, E, D>, Report>
+pub fn nwk_read<N, E, D>(reader: impl Read) -> Result<NwkParse<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
@@ -50,7 +67,7 @@ where
   graph_from_newick(&nwk_graph)
 }
 
-fn graph_from_newick<N, E, D>(nwk_graph: &NewickGraph) -> Result<Graph<N, E, D>, Report>
+fn graph_from_newick<N, E, D>(nwk_graph: &NewickGraph) -> Result<NwkParse<N, E, D>, Report>
 where
   N: GraphNode + NodeFromNwk + Named,
   E: GraphEdge + EdgeFromNwk,
@@ -68,6 +85,7 @@ where
   let mut graph = Graph::<N, E, D>::new();
 
   let mut node_keys: Vec<GraphNodeKey> = Vec::with_capacity(nwk_graph.nodes.len());
+  let mut confidences: BTreeMap<GraphNodeKey, Option<f64>> = BTreeMap::new();
   for (nwk_idx, nwk_node) in nwk_graph.nodes.iter().enumerate() {
     let name: Option<&str> = nwk_node.name.as_deref().filter(|n| !n.is_empty());
 
@@ -78,7 +96,9 @@ where
       .collect();
     let node = N::from_nwk(name, nwk_node.confidence, &comments)
       .wrap_err_with(|| format!("When reading node #{nwk_idx} '{}'", name.unwrap_or_default()))?;
-    node_keys.push(graph.add_node(node));
+    let key = graph.add_node(node);
+    confidences.insert(key, nwk_node.confidence);
+    node_keys.push(key);
   }
 
   for (nwk_idx, nwk_edge) in nwk_graph.edges.iter().enumerate() {
@@ -104,7 +124,7 @@ where
 
   assign_node_names(&graph)?;
 
-  Ok(graph)
+  Ok(NwkParse { graph, confidences })
 }
 
 #[derive(Clone, SmartDefault)]

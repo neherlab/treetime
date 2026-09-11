@@ -24,7 +24,7 @@ mod tests {
     // M_v = {A0T (p), C5G (q)}; C1 and C2 both revert p, C3 keeps it. The routine merges
     // C1+C2, hoists the reverting group, and retires the helper, reaching the parsimony
     // optimum of two mutations (q above, p only on the C3 lineage).
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
     let partition = helpers::make_partition(
       &graph,
       0,
@@ -66,7 +66,7 @@ mod tests {
     // C1 reverts p1, C2 reverts p2 (different positions): the two required splits are
     // incompatible. One hoist takes the total from 5 to 4; the residual reversion is
     // irreducible homoplasy, and the routine stops there.
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
     let partition = helpers::make_partition(
       &graph,
       0,
@@ -113,7 +113,7 @@ mod tests {
     // analytical parsimony minimum, the same value the routine reaches on any rooting of this
     // tree (compare test_resolve_polytomy_merge_hoist_retire_worked_example, where the same
     // reversion sits on a genuine internal edge).
-    let mut graph: GraphAncestral = nwk_read_str("((G1:0.1,G2:0.1,A1:0.1,A2:0.1)V:0.1,S:0.1)root:0.0;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((G1:0.1,G2:0.1,A1:0.1,A2:0.1)V:0.1,S:0.1)root:0.0;")?.graph;
     let partition = helpers::make_partition(
       &graph,
       0,
@@ -157,7 +157,7 @@ mod tests {
   fn test_resolve_polytomy_retirement_preserves_preexisting_internal_node() -> Result<(), Report> {
     // W is a pre-existing internal node reached by a mutation-free edge from V. Helper
     // retirement must dissolve only nodes it created, never W, even though V->W is empty.
-    let mut graph: GraphAncestral = nwk_read_str("((((X1:0.1,X2:0.1)W:0.0,C1:0.1,C2:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((((X1:0.1,X2:0.1)W:0.0,C1:0.1,C2:0.1)V:0.2)U:0.1)root:0.0;")?.graph;
     let partition = helpers::make_partition(
       &graph,
       0,
@@ -200,7 +200,7 @@ mod tests {
   fn test_resolve_polytomy_root_polytomy_skipped() -> Result<(), Report> {
     // A polytomy at the root has no parent edge to revert, so no hoist fires. With no
     // shared substitutions there is nothing to do; the routine leaves the tree untouched.
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?.graph;
     let partition = helpers::make_partition(
       &graph,
       0,
@@ -232,7 +232,7 @@ mod tests {
   #[test]
   fn test_resolve_polytomy_no_change_without_reversions() -> Result<(), Report> {
     // Distinct, non-shared, non-reverting child substitutions: nothing to merge or hoist.
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
     let partition = helpers::make_partition(
       &graph,
       0,

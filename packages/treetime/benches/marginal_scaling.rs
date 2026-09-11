@@ -62,7 +62,9 @@ fn setup_inner() -> (
 ) {
   let alphabet = Alphabet::default();
   let project_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-  let graph = nwk_read_file(project_root.join("data/flu/h3n2/200/tree.nwk")).unwrap();
+  let graph = nwk_read_file(project_root.join("data/flu/h3n2/200/tree.nwk"))
+    .unwrap()
+    .graph;
   let alignment = read_many_fasta(&[project_root.join("data/flu/h3n2/200/aln.fasta.xz")], &alphabet).unwrap();
   let fitch = create_fitch_partition(&graph, 0, alphabet, &alignment, &node_names(&graph)).unwrap();
   let gtr = jc69(JC69Params::default()).unwrap();

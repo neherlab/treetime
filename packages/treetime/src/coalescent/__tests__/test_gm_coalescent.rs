@@ -128,7 +128,7 @@ mod tests {
 
   fn load_graph(snapshot: &Snapshot) -> Result<(GraphTimetree, DateConstraints), Report> {
     let fixtures_dir = Path::new(FIXTURES_DIR);
-    let graph = nwk_read_file(fixtures_dir.join(&snapshot.inputs.tree_path))?;
+    let graph = nwk_read_file(fixtures_dir.join(&snapshot.inputs.tree_path))?.graph;
     let dates = read_dates(
       fixtures_dir.join(&snapshot.inputs.metadata_path),
       &[',', '\t', ';'],

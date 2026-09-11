@@ -28,10 +28,10 @@ mod tests {
   #[test]
   fn test_no_indels_drops_indel_contribution_from_likelihood() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let mut graph_with: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let mut graph_with: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_with, sparse_with, mixed_with) = setup_partitions(&graph_with, &aln)?;
 
-    let mut graph_without: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let mut graph_without: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_without, sparse_without, mixed_without) = setup_partitions(&graph_without, &aln)?;
 
     let first_edge_key = graph_with.get_edges()[0].read_arc().key();
@@ -98,7 +98,7 @@ mod tests {
   #[test]
   fn test_no_indels_optimizer_ignores_indel_counts() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (_, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     let first_edge_key = graph.get_edges()[0].read_arc().key();
@@ -135,10 +135,10 @@ mod tests {
   #[test]
   fn test_no_indels_matches_no_indel_data() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let mut graph_no_flag: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let mut graph_no_flag: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_nf, sparse_nf, mixed_nf) = setup_partitions(&graph_no_flag, &aln)?;
 
-    let mut graph_flag: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let mut graph_flag: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_f, sparse_f, mixed_f) = setup_partitions(&graph_flag, &aln)?;
 
     let result_no_flag = run_optimize_loop(
@@ -203,7 +203,7 @@ mod tests {
   fn test_no_indels_initial_guess_ignores_indel_counts(
     #[case] mode: InitialGuessMode,
   ) -> Result<(), Report> {
-    let graph_with_indel: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_with_indel: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_with_indel, sparse_with_indel, partitions_with_indel) =
       setup_identical_partitions(&graph_with_indel)?;
     let indels = vec![InDel::del((0, 2), Seq::try_from_str("AC")?)?];
@@ -214,7 +214,7 @@ mod tests {
       &indels,
     );
 
-    let graph_without_indel: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_without_indel: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (_, _, partitions_without_indel) = setup_identical_partitions(&graph_without_indel)?;
 
     apply_initial_guess_mode(&graph_with_indel, &partitions_with_indel, mode, true)?;

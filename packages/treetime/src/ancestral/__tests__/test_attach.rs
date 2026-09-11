@@ -95,15 +95,17 @@ mod helpers {
   use super::*;
 
   pub fn two_leaf_tree() -> GraphAncestral {
-    nwk_read_str("(A:0.1,B:0.1)root;").unwrap()
+    nwk_read_str("(A:0.1,B:0.1)root;").unwrap().graph
   }
 
   pub fn three_leaf_tree() -> GraphAncestral {
-    nwk_read_str("(A:0.1,B:0.1,C:0.1)root;").unwrap()
+    nwk_read_str("(A:0.1,B:0.1,C:0.1)root;").unwrap().graph
   }
 
   pub fn four_leaf_tree() -> GraphAncestral {
-    nwk_read_str("((A:0.1,B:0.1):0.1,(C:0.1,D:0.1):0.1)root;").unwrap()
+    nwk_read_str("((A:0.1,B:0.1):0.1,(C:0.1,D:0.1):0.1)root;")
+      .unwrap()
+      .graph
   }
 
   pub fn records(entries: &[(&str, &str)]) -> Vec<FastaRecord> {

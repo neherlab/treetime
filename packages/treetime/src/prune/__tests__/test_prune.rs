@@ -53,7 +53,7 @@ mod tests {
     nwk: &str,
     edge_mutations: &[(usize, Option<usize>)], // (edge_index, num_mutations)
   ) -> Result<(GraphAncestral, Vec<Arc<RwLock<PartitionMarginalSparse>>>), Report> {
-    let graph: GraphAncestral = nwk_read_str(nwk)?;
+    let graph: GraphAncestral = nwk_read_str(nwk)?.graph;
 
     let partitions = if edge_mutations.is_empty() {
       vec![]
@@ -98,7 +98,7 @@ mod tests {
     nwk: &str,
     edge_mutations: &[(&str, &str, Option<usize>)],
   ) -> Result<(GraphAncestral, Vec<Arc<RwLock<PartitionMarginalSparse>>>), Report> {
-    let graph: GraphAncestral = nwk_read_str(nwk)?;
+    let graph: GraphAncestral = nwk_read_str(nwk)?.graph;
 
     let partitions = if edge_mutations.is_empty() {
       vec![]
@@ -573,7 +573,7 @@ mod tests {
     // Tree structure: root -> internal1 -> internal2 -> A (the path to prune)
     //                      -> B (to keep)
     //                      -> C (to keep)
-    let mut graph: GraphAncestral = nwk_read_str("(((A:0.1)internal2:0.1)internal1:0.1,B:0.2,C:0.3)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(((A:0.1)internal2:0.1)internal1:0.1,B:0.2,C:0.3)root;")?.graph;
 
     let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
 
@@ -606,7 +606,7 @@ mod tests {
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_node_with_children() -> Result<(), Report> {
     // Tree structure: root -> internal1 -> A (to prune)
     //                               -> B (to keep)
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal1:0.1)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal1:0.1)root;")?.graph;
 
     let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
 
@@ -636,7 +636,7 @@ mod tests {
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_root() -> Result<(), Report> {
     // Tree: root -> A (only child)
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1)root;")?.graph;
     let partitions = vec![];
 
     // Collapse the path starting at leaf A; should stop at root
@@ -659,11 +659,9 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..NodeAncestral::default()
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..NodeAncestral::default()
     });
 
     graph.add_edge(
@@ -903,7 +901,7 @@ mod tests {
   fn test_collapse_edge_compose_non_overlapping() -> Result<(), Report> {
     // Non-overlapping positions: all subs kept from both edges
     // Tree: root -> internal (subs at pos 0,1) -> A (subs at pos 2,3), B
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?.graph;
 
     let root_internal_edge_key = find_edge_key(&graph, "root", "internal").unwrap();
     let internal_a_edge_key = find_edge_key(&graph, "internal", "A").unwrap();
@@ -989,7 +987,7 @@ mod tests {
   fn test_collapse_edge_compose_chain() -> Result<(), Report> {
     // Chain composition: parent A->G + child G->T = net A->T at same position
     // Tree: root -> internal -> A, B
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?.graph;
 
     let root_internal_edge_key = find_edge_key(&graph, "root", "internal").unwrap();
     let internal_a_edge_key = find_edge_key(&graph, "internal", "A").unwrap();
@@ -1057,7 +1055,7 @@ mod tests {
   fn test_collapse_edge_compose_cancellation() -> Result<(), Report> {
     // Cancellation: parent A->G + child G->A = no net change at same position
     // Tree: root -> internal -> A, B
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?.graph;
 
     let root_internal_edge_key = find_edge_key(&graph, "root", "internal").unwrap();
     let internal_a_edge_key = find_edge_key(&graph, "internal", "A").unwrap();
@@ -1123,7 +1121,7 @@ mod tests {
   fn test_collapse_edge_compose_multiple_partitions() -> Result<(), Report> {
     // Substitutions composed independently per partition
     // Tree: root -> internal -> A, B
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?.graph;
 
     let root_internal_edge_key = find_edge_key(&graph, "root", "internal").unwrap();
     let internal_a_edge_key = find_edge_key(&graph, "internal", "A").unwrap();
@@ -1214,7 +1212,7 @@ mod tests {
   fn test_collapse_edge_branch_length_sum_both_some() -> Result<(), Report> {
     // When both edges have branch lengths, they should be summed
     // Tree: root -> internal:0.3 -> A:0.2, B:0.1
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.2,B:0.1)internal:0.3)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.2,B:0.1)internal:0.3)root;")?.graph;
 
     let partitions = vec![];
 
@@ -1256,7 +1254,7 @@ mod tests {
   fn test_collapse_edge_branch_length_sum_precision() -> Result<(), Report> {
     // Verify precision is preserved when summing small branch lengths
     // Tree: ((A:2e-10,B:3e-10)internal:1e-10)root;
-    let mut graph: GraphAncestral = nwk_read_str("((A:2e-10,B:3e-10)internal:1e-10)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:2e-10,B:3e-10)internal:1e-10)root;")?.graph;
 
     let partitions = vec![];
 
@@ -1300,19 +1298,15 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..NodeAncestral::default()
     });
     let internal = graph.add_node(NodeAncestral {
       name: Some("internal".to_owned()),
-      ..NodeAncestral::default()
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..NodeAncestral::default()
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
-      ..NodeAncestral::default()
     });
 
     // Root -> internal has branch length, internal -> A has None
@@ -1376,19 +1370,15 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..NodeAncestral::default()
     });
     let internal = graph.add_node(NodeAncestral {
       name: Some("internal".to_owned()),
-      ..NodeAncestral::default()
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..NodeAncestral::default()
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
-      ..NodeAncestral::default()
     });
 
     // Root -> internal has None, internal -> A has Some
@@ -1451,19 +1441,15 @@ mod tests {
 
     let root = graph.add_node(NodeAncestral {
       name: Some("root".to_owned()),
-      ..NodeAncestral::default()
     });
     let internal = graph.add_node(NodeAncestral {
       name: Some("internal".to_owned()),
-      ..NodeAncestral::default()
     });
     let a = graph.add_node(NodeAncestral {
       name: Some("A".to_owned()),
-      ..NodeAncestral::default()
     });
     let b = graph.add_node(NodeAncestral {
       name: Some("B".to_owned()),
-      ..NodeAncestral::default()
     });
 
     graph.add_edge(root, internal, EdgeAncestral { branch_length: None })?;
@@ -1513,7 +1499,7 @@ mod tests {
   ///   P → D (subs: A5T)
   #[test]
   fn test_prune_then_merge_exposes_hidden_polytomy() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:1e-8,C:0.1,D:0.1)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:1e-8,C:0.1,D:0.1)root;")?.graph;
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
@@ -1598,7 +1584,7 @@ mod tests {
   #[test]
   fn test_collapse_edge_indel_preservation() -> Result<(), Report> {
     // Indels from both removed (parent) and retained (child) edges must be preserved
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?.graph;
 
     let root_internal_edge_key = find_edge_key(&graph, "root", "internal").unwrap();
     let internal_a_edge_key = find_edge_key(&graph, "internal", "A").unwrap();

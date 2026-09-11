@@ -36,7 +36,7 @@ mod tests {
       >B
       GCGT
     "#})?;
-    let graph: GraphAncestral = nwk_read_str("(A:0.4,B:0.1)root:0.0;")?;
+    let graph: GraphAncestral = nwk_read_str("(A:0.4,B:0.1)root:0.0;")?.graph;
 
     let sparse = reconstruct_sparse(&graph, &aln, false)?;
     let dense = reconstruct_dense(&graph, &aln, false)?;
@@ -61,7 +61,7 @@ mod tests {
       >C
       ATGTC
     "#})?;
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root:0.0;")?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root:0.0;")?.graph;
 
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
@@ -102,7 +102,7 @@ mod tests {
       >C
       ACGT
     "#})?;
-    let graph: GraphAncestral = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
+    let graph: GraphAncestral = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?.graph;
 
     // Without imputation the tip echoes its observed input (`N` and `R` preserved).
     let sparse_plain = reconstruct_sparse(&graph, &aln, false)?;
@@ -133,7 +133,7 @@ mod tests {
       >C
       ACGT
     "#})?;
-    let graph: GraphAncestral = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
+    let graph: GraphAncestral = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?.graph;
 
     let sparse = reconstruct_sparse(&graph, &aln, true)?;
     let dense = reconstruct_dense(&graph, &aln, true)?;

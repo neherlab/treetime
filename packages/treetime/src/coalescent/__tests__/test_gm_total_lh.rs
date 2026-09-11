@@ -35,7 +35,7 @@ mod tests {
       o!("leaf4") => Some(DateConstraint::exact(2012.0)),
     };
     let graph: GraphTimetree =
-      nwk_read_str("((leaf1:0.005,leaf2:0.005,leaf3:0.005)internal:0.01,leaf4:0.02)root:0.0;")?;
+      nwk_read_str("((leaf1:0.005,leaf2:0.005,leaf3:0.005)internal:0.01,leaf4:0.02)root:0.0;")?.graph;
     let constraints = load_date_constraints(&dates, &graph)?;
     Ok((graph, constraints))
   }

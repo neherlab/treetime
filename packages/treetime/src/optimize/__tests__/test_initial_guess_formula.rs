@@ -33,7 +33,7 @@ mod tests {
   #[test]
   fn test_initial_guess_formula_sparse() -> Result<(), Report> {
     let aln = divergent_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions = setup_sparse(&graph, &aln)?;
 
     initial_guess_mixed(&graph, &partitions, true, false)?;
@@ -61,7 +61,7 @@ mod tests {
   #[test]
   fn test_initial_guess_formula_dense() -> Result<(), Report> {
     let aln = divergent_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions = setup_dense(&graph, &aln)?;
 
     initial_guess_mixed(&graph, &partitions, true, false)?;
@@ -88,8 +88,8 @@ mod tests {
   fn test_initial_guess_dense_sparse_ambiguous_r_reference_state_consistency() -> Result<(), Report> {
     let aln = ambiguous_r_in_g_clade_alignment()?;
 
-    let graph_dense: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
-    let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_dense: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
 
     let partitions_dense = setup_dense(&graph_dense, &aln)?;
     let partitions_sparse = setup_sparse(&graph_sparse, &aln)?;
@@ -108,8 +108,8 @@ mod tests {
   fn test_optimize_contribution_dense_sparse_ambiguous_r_value_and_gradient_consistency() -> Result<(), Report> {
     let aln = ambiguous_r_in_g_clade_alignment()?;
 
-    let graph_dense: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
-    let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_dense: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
 
     let partitions_dense = setup_dense(&graph_dense, &aln)?;
     let partitions_sparse = setup_sparse(&graph_sparse, &aln)?;

@@ -33,7 +33,7 @@ mod tests {
   > {
     let alphabet = NUC_ALPHABET.clone();
     let aln = read_many_fasta_str(fasta, &alphabet)?;
-    let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
+    let graph: GraphAncestral = nwk_read_str(tree_nwk)?.graph;
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,

@@ -15,7 +15,7 @@ mod tests {
   // and every edge start at their defaults.
   #[test]
   fn test_clock_state_seed_from_values_sources_times_and_defaults_the_rest() -> Result<(), Report> {
-    let graph: GraphClock = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let graph: GraphClock = nwk_read_str("(A:0.1,B:0.2)root;")?.graph;
     let key_of = helpers::key_by_name(&graph);
     let (a, b, root) = (key_of["A"], key_of["B"], key_of["root"]);
 

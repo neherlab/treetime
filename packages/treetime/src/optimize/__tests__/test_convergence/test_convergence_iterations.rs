@@ -31,7 +31,7 @@ mod tests {
     // assertion to the reference ties this test to cross-method agreement
     // rather than to a hand-chosen LH range that would silently drift.
     let lh_ref = {
-      let graph_ref: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+      let graph_ref: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
       let (dp_ref, sp_ref, mp_ref) = setup_partitions(&graph_ref, &aln)?;
       for _ in 0..max_iter {
         run_optimize_mixed(&graph_ref, &mp_ref, BranchOptMethod::BrentSqrt)?;
@@ -39,7 +39,7 @@ mod tests {
       compute_total_lh(&graph_ref, &dp_ref, &sp_ref)?
     };
 
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     for _ in 0..max_iter {
@@ -71,7 +71,7 @@ mod tests {
   #[trace]
   fn test_optimization_improves_or_maintains_likelihood(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
 
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
@@ -112,7 +112,7 @@ mod tests {
   #[trace]
   fn test_optimization_produces_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
 
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 

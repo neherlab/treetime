@@ -145,7 +145,8 @@ pub fn run_clock(
     nwk_read_file(tree)
   } else {
     return make_error!("Tree inference is not implemented. Provide a tree file with --tree");
-  }?;
+  }?
+  .graph;
   let input_order = leaf_order(&graph)?;
 
   let dates = read_dates(

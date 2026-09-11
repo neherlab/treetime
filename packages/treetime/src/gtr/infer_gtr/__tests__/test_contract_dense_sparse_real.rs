@@ -124,7 +124,7 @@ mod tests {
     let aln = read_many_fasta(&[&alignment_path], &*DENSE_NUC_ALPHABET)?;
 
     let dense = {
-      let graph: GraphAncestral = nwk_read_file(&tree_path)?;
+      let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
       let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
         0,
         jc69(JC69Params {
@@ -149,7 +149,7 @@ mod tests {
     };
 
     let sparse = {
-      let graph: GraphAncestral = nwk_read_file(&tree_path)?;
+      let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
       let fitch = create_fitch_partition(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &aln, &node_names(&graph))?;
       infer_gtr_fitch(&fitch, &graph, &edge_branch_lengths(&graph))?
     };

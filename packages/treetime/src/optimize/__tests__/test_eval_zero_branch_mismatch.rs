@@ -27,7 +27,7 @@ mod tests {
   #[test]
   fn test_eval_zero_branch_mismatch_no_nan() -> Result<(), Report> {
     // Tree with zero-length branches to force the edge case
-    let graph: GraphAncestral = nwk_read_str("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;")?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;")?.graph;
 
     // Alignment with mismatches: leaf A differs from leaf B at multiple positions,
     // so after marginal reconstruction some edges have sites where parent and child

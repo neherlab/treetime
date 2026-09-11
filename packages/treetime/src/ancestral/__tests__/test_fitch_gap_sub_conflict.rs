@@ -19,7 +19,7 @@ mod tests {
   fn compress(nwk: &str, fasta: &str) -> Result<Vec<EdgeReport>, Report> {
     let alphabet = Alphabet::default();
     let aln = read_many_fasta_str(fasta, &alphabet)?;
-    let graph: GraphAncestral = nwk_read_str(nwk)?;
+    let graph: GraphAncestral = nwk_read_str(nwk)?.graph;
     let mut partition = PartitionFitch {
       index: 0,
       alphabet,

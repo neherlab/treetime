@@ -98,7 +98,7 @@ mod tests {
 
   #[test]
   fn test_nwk_annotations_beast_single_attribute() -> Result<(), Report> {
-    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A[&prob=0.95]:0.1,B:0.2);")?;
+    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A[&prob=0.95]:0.1,B:0.2);")?.graph;
     let comments = find_node_comments(&graph, "A");
     let expected = btreemap! { "prob".to_owned() => "0.95".to_owned() };
     assert_eq!(expected, comments);
@@ -107,7 +107,7 @@ mod tests {
 
   #[test]
   fn test_nwk_annotations_beast_multiple_attributes() -> Result<(), Report> {
-    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>(r#"(A[&prob=0.95,country="USA"]:0.1,B:0.2);"#)?;
+    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>(r#"(A[&prob=0.95,country="USA"]:0.1,B:0.2);"#)?.graph;
     let comments = find_node_comments(&graph, "A");
     assert_eq!(comments.get("prob").map(String::as_str), Some("0.95"));
     assert_eq!(comments.get("country").map(String::as_str), Some("USA"));
@@ -116,7 +116,7 @@ mod tests {
 
   #[test]
   fn test_nwk_annotations_nhx_attributes() -> Result<(), Report> {
-    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A[&&NHX:S=human:B=90]:0.1,B:0.2);")?;
+    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A[&&NHX:S=human:B=90]:0.1,B:0.2);")?.graph;
     let comments = find_node_comments(&graph, "A");
     assert_eq!(comments.get("S").map(String::as_str), Some("human"));
     assert_eq!(comments.get("B").map(String::as_str), Some("90"));
@@ -125,7 +125,7 @@ mod tests {
 
   #[test]
   fn test_nwk_annotations_plain_comment_not_wired() -> Result<(), Report> {
-    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A[a note]:0.1,B:0.2);")?;
+    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A[a note]:0.1,B:0.2);")?.graph;
     let comments = find_node_comments(&graph, "A");
     assert!(comments.is_empty());
     Ok(())
@@ -133,7 +133,7 @@ mod tests {
 
   #[test]
   fn test_nwk_annotations_unannotated_tree_unchanged() -> Result<(), Report> {
-    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A:0.1,B:0.2)root;")?;
+    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A:0.1,B:0.2)root;")?.graph;
     let comments_a = find_node_comments(&graph, "A");
     let comments_b = find_node_comments(&graph, "B");
     let comments_root = find_node_comments(&graph, "root");
@@ -145,7 +145,7 @@ mod tests {
 
   #[test]
   fn test_nwk_annotations_mixed_dialects_per_node() -> Result<(), Report> {
-    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A[&k=v]:0.1,B[&&NHX:S=human]:0.2);")?;
+    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A[&k=v]:0.1,B[&&NHX:S=human]:0.2);")?.graph;
     let comments_a = find_node_comments(&graph, "A");
     let comments_b = find_node_comments(&graph, "B");
     assert_eq!(comments_a.get("k").map(String::as_str), Some("v"));
@@ -155,7 +155,7 @@ mod tests {
 
   #[test]
   fn test_nwk_annotations_beast_boolean_value() -> Result<(), Report> {
-    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A[&fixed=TRUE]:0.1,B:0.2);")?;
+    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A[&fixed=TRUE]:0.1,B:0.2);")?.graph;
     let comments = find_node_comments(&graph, "A");
     assert_eq!(comments.get("fixed").map(String::as_str), Some("true"));
     Ok(())
@@ -163,7 +163,7 @@ mod tests {
 
   #[test]
   fn test_nwk_annotations_beast_array_value() -> Result<(), Report> {
-    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A[&hpd={1.0,2.0}]:0.1,B:0.2);")?;
+    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A[&hpd={1.0,2.0}]:0.1,B:0.2);")?.graph;
     let comments = find_node_comments(&graph, "A");
     assert_eq!(comments.get("hpd").map(String::as_str), Some("{1,2}"));
     Ok(())
@@ -172,7 +172,7 @@ mod tests {
   #[test]
   fn test_nwk_annotations_roundtrip_beast() -> Result<(), Report> {
     let input = "(A[&prob=0.95]:0.1,B:0.2)root;";
-    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>(input)?;
+    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>(input)?.graph;
     let options = NwkWriteOptions {
       style: NwkStyle::Beast,
       ..NwkWriteOptions::default()
@@ -217,7 +217,7 @@ mod tests {
 
   #[test]
   fn test_nwk_annotations_root_annotated() -> Result<(), Report> {
-    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A:0.1,B:0.2)root[&date=2020.5];")?;
+    let graph = nwk_read_str::<AnnotNode, AnnotEdge, ()>("(A:0.1,B:0.2)root[&date=2020.5];")?.graph;
     let comments = find_node_comments(&graph, "root");
     assert_eq!(comments.get("date").map(String::as_str), Some("2020.5"));
     Ok(())

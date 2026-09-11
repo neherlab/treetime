@@ -241,7 +241,7 @@ mod tests {
       let tree_path = workspace_root.join(&case.tree);
       let aln_path = workspace_root.join(&case.aln);
       let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet_sparse)?;
-      let mut graph: GraphAncestral = nwk_read_file(&tree_path)?;
+      let mut graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
 
       let fitch = create_fitch_partition(&graph, 0, alphabet_sparse, &aln, &node_names(&graph))?;
       let sparse_partitions = vec![Arc::new(RwLock::new(

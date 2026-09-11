@@ -288,7 +288,9 @@ mod tests {
             TimetreeNodeOut {
               name: payload.base.name.clone(),
               desc: None,
-              confidence: payload.base.confidence,
+              // This fixture builds its graph node by node with no input-tree branch support, so
+              // production's parse-time confidence map would surface None for every node here too.
+              confidence: None,
               time: payload.time,
               div: 0.0,
               is_outlier: false,

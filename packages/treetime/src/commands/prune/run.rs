@@ -34,7 +34,9 @@ pub fn run_prune(
   progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
 
-  let graph: GraphAncestral = nwk_read_file(args.tree())?;
+  let parse = nwk_read_file(args.tree())?;
+  let graph: GraphAncestral = parse.graph;
+  let confidences = parse.confidences;
   let input_order = leaf_order(&graph)?;
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 
@@ -89,14 +91,15 @@ pub fn run_prune(
   // Gather the per-node name/confidence and per-edge branch length off the ordered tree into keyed
   // value maps the output writers consume. The name and branch length come from the post-topology
   // maps the pipeline returns (topology ordering only permutes keys, so their values still match the
-  // pruned tree); the input branch support is still read from the payload until it moves onto a map.
+  // pruned tree); the input branch support comes from the parse-time confidence map keyed by node,
+  // which holds `None` for any node the pipeline created after the parse.
   let nodes: BTreeMap<GraphNodeKey, PruneNodeOut> = graph
     .get_nodes()
     .iter()
     .map(|node| {
       let node = node.read_arc();
       let key = node.key();
-      let confidence = node.payload().read_arc().confidence;
+      let confidence = confidences.get(&key).copied().flatten();
       (
         key,
         PruneNodeOut {

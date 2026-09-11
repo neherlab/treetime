@@ -103,7 +103,7 @@ mod tests {
         "#},
         &alphabet,
       )?;
-      let graph: GraphAncestral = nwk_read_str(newick)?;
+      let graph: GraphAncestral = nwk_read_str(newick)?.graph;
 
       let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
         0,

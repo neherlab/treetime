@@ -16,7 +16,8 @@ mod tests {
   // OnlyLeaves(false) - all nodes
   #[test]
   fn test_all_nodes() -> Result<(), Report> {
-    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: Graph<TestNode, TestEdge, ()> =
+      nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
 
     let actual = compute_divs(
       &graph,
@@ -43,7 +44,7 @@ mod tests {
   // OnlyLeaves(true) - leaves only
   #[test]
   fn test_only_leaves() -> Result<(), Report> {
-    let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
 
     let actual = compute_divs(
       &graph,
@@ -67,7 +68,7 @@ mod tests {
   // Unnamed internal nodes get auto-generated names
   #[test]
   fn test_unnamed_internals() -> Result<(), Report> {
-    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.1,B:0.2):0.1,(C:0.2,D:0.12):0.05):0.01;")?;
+    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.1,B:0.2):0.1,(C:0.2,D:0.12):0.05):0.01;")?.graph;
 
     let actual = compute_divs(
       &graph,
@@ -91,7 +92,7 @@ mod tests {
   // Single node tree
   #[test]
   fn test_single_node() -> Result<(), Report> {
-    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("A:0.5;")?;
+    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("A:0.5;")?.graph;
 
     let actual = compute_divs(
       &graph,
@@ -109,7 +110,7 @@ mod tests {
   // Linear chain (no branching)
   #[test]
   fn test_linear_chain() -> Result<(), Report> {
-    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.1)B:0.2)C:0.3;")?;
+    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.1)B:0.2)C:0.3;")?.graph;
 
     let actual = compute_divs(
       &graph,
@@ -136,7 +137,7 @@ mod tests {
     }
     nwk.push(';');
 
-    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str(&nwk)?;
+    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str(&nwk)?.graph;
     let actual = compute_divs(
       &graph,
       OnlyLeaves(true),
@@ -155,7 +156,7 @@ mod tests {
   // Zero branch lengths
   #[test]
   fn test_zero_branch_lengths() -> Result<(), Report> {
-    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.0,B:0.1):0.0,(C:0.2,D:0.0):0.1):0.0;")?;
+    let graph: Graph<TestNode, TestEdge, ()> = nwk_read_str("((A:0.0,B:0.1):0.0,(C:0.2,D:0.0):0.1):0.0;")?.graph;
 
     let actual = compute_divs(
       &graph,

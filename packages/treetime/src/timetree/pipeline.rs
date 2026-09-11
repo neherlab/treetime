@@ -1112,7 +1112,7 @@ mod tests {
       o!("b")    => Some(DateConstraint::exact(2010.0)),
       o!("c")    => Some(DateConstraint::exact(2010.0)),
     };
-    let graph = nwk_read_str("((a:1,b:1)x:1,c:1)root:0;")?;
+    let graph = nwk_read_str("((a:1,b:1)x:1,c:1)root:0;")?.graph;
     let constraints = load_date_constraints(&dates, &graph)?;
     Ok((graph, constraints))
   }

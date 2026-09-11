@@ -163,7 +163,13 @@ impl std::ops::Deref for MugrationResult {
 }
 
 impl MugrationResult {
-  pub fn new(graph: GraphAncestral, partition: PartitionMarginalDiscrete, attribute: &str, log_lh: LogLh) -> Self {
+  pub fn new(
+    graph: GraphAncestral,
+    confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+    partition: PartitionMarginalDiscrete,
+    attribute: &str,
+    log_lh: LogLh,
+  ) -> Self {
     // Gather the per-node name/confidence and per-edge branch length off the tree into keyed value
     // maps the output writers consume. Trait assignments and entropy stay sourced from the discrete
     // partition; only the name, input-branch-support, and branch-length reads move off the payload.
@@ -173,12 +179,13 @@ impl MugrationResult {
       .iter()
       .map(|node| {
         let node = node.read_arc();
+        let key = node.key();
         let payload = node.payload().read_arc();
         (
-          node.key(),
+          key,
           MugrationNodeOut {
             name: payload.name.clone(),
-            confidence: payload.confidence,
+            confidence: confidences.get(&key).copied().flatten(),
           },
         )
       })

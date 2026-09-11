@@ -146,7 +146,7 @@ mod tests {
     use std::path::PathBuf;
     use treetime_io::csv::default_name_candidates;
     use treetime_io::discrete_states_csv::read_discrete_attrs;
-    use treetime_io::nwk::nwk_read_file;
+    use treetime_io::nwk::{NwkParse, nwk_read_file};
     use treetime_utils::io::json::json_read_file;
 
     #[derive(Debug, Deserialize)]
@@ -200,7 +200,7 @@ mod tests {
 
       // Read tree directly
       let tree_path = project_root.join(&fixture.tree_path);
-      let graph = nwk_read_file(&tree_path)?;
+      let NwkParse { graph, confidences } = nwk_read_file(&tree_path)?;
 
       // Read trait values using in-memory parsing
       let metadata_path = project_root.join(&fixture.metadata_path);
@@ -233,6 +233,7 @@ mod tests {
 
       execute_mugration(
         graph,
+        &confidences,
         &traits,
         &fixture.attribute,
         weights.as_ref(),

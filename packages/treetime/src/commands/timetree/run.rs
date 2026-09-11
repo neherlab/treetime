@@ -44,6 +44,7 @@ pub fn run_timetree_estimation(
 
   let input_data = load_input_data(args)?;
   let input_leaf_order = input_data.input_leaf_order.clone();
+  let confidences = input_data.confidences;
 
   // Resolve outputs up front so the tracelog path (which the pipeline writes during the run) is
   // known before the pipeline starts. Topology ordering is resolved separately, after the pipeline.
@@ -256,6 +257,7 @@ pub fn run_timetree_estimation(
     &names,
     &descs,
     &branch_lengths_opt,
+    &confidences,
   );
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
@@ -382,7 +384,10 @@ pub fn run_timetree_estimation(
 /// and `branch_lengths` are the post-mutation node-name and per-edge branch-length maps captured
 /// after the final naming pass; each node's name and each edge's branch length is read from them
 /// rather than off the payload. `descs` is the node-keyed description map rebuilt from the input
-/// alignment; each node's description is read from here rather than off the payload.
+/// alignment; each node's description is read from here rather than off the payload. `confidences`
+/// carries the parse-time input-tree branch support per node; each node's input branch support is
+/// read from here rather than off the payload, and a node the pipeline created after the parse is
+/// absent and reads as `None`.
 fn gather_timetree_outputs(
   graph: &GraphTimetree<TimetreeGraphData>,
   clock_state: &ClockState,
@@ -392,6 +397,7 @@ fn gather_timetree_outputs(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   descs: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
 ) -> (
   BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
@@ -402,12 +408,11 @@ fn gather_timetree_outputs(
     .map(|node| {
       let node = node.read_arc();
       let key = node.key();
-      let payload = node.payload().read_arc();
       let clock = clock_state.node(key);
       let out = TimetreeNodeOut {
         name: names[&key].clone(),
         desc: descs[&key].clone(),
-        confidence: payload.base.confidence,
+        confidence: confidences.get(&key).copied().flatten(),
         time: timetree_state.node(key).time,
         div: clock.div,
         is_outlier: clock.is_outlier,

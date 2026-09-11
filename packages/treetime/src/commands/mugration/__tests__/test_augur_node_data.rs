@@ -4,14 +4,28 @@ mod tests {
   use crate::mugration::mugration::execute_mugration;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
   use treetime_utils::o;
   use util_augur_node_data_json::AugurNodeDataJsonTraits;
 
   fn run_and_serialize(tree: &str, traits: &std::collections::BTreeMap<String, String>) -> String {
-    let graph = nwk_read_str(tree).unwrap();
-    let result = execute_mugration(graph, traits, "country", None, "?", None, 0.5, 5, None, false, false).unwrap();
+    let NwkParse { graph, confidences } = nwk_read_str(tree).unwrap();
+    let result = execute_mugration(
+      graph,
+      &confidences,
+      traits,
+      "country",
+      None,
+      "?",
+      None,
+      0.5,
+      5,
+      None,
+      false,
+      false,
+    )
+    .unwrap();
     let data = build_augur_node_data_json(&result).unwrap();
     json_write_str(&data, JsonPretty(true)).unwrap()
   }

@@ -24,7 +24,7 @@ mod tests {
   #[trace]
   fn test_dense_optimization_produces_valid_results(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions = setup_dense_only(&graph, &aln)?;
 
     let initial_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
@@ -78,7 +78,7 @@ mod tests {
   #[trace]
   fn test_sparse_optimization_produces_valid_results(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions = setup_sparse_only(&graph, &aln)?;
 
     let initial_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();

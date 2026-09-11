@@ -16,7 +16,7 @@ mod tests {
   /// `((A,B,C)P)root` with each child edge carrying a distinct mutation length. The node times
   /// `apply_plan` acts on are passed to it directly (`parent_time` and each [`ChildRef::time`]).
   fn polytomy_graph() -> Result<(GraphTimetree, GraphNodeKey, Vec<ChildRef>), Report> {
-    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)P:0.05)root;")?;
+    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)P:0.05)root;")?.graph;
 
     let parent_key = find_node_key_by_name(&graph, "P").ok_or_else(|| make_report!("P not found"))?;
 

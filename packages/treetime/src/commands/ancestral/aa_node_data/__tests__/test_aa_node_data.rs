@@ -178,7 +178,7 @@ mod tests {
     }
 
     pub fn named_tree() -> GraphAncestral {
-      nwk_read_str("(A:0.1,B:0.1)root;").unwrap()
+      nwk_read_str("(A:0.1,B:0.1)root;").unwrap().graph
     }
 
     pub struct StubAugurPartition {

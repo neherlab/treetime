@@ -73,7 +73,7 @@ mod tests {
     /// root, then collapses the old root (now degree-2) by merging its two edges
     /// into one with summed branch length. This preserves the unrooted topology.
     pub fn reroot_at_internal_node(newick: &str, node_idx: usize) -> Result<String, Report> {
-      let mut graph: GraphAncestral = nwk_read_str(newick)?;
+      let mut graph: GraphAncestral = nwk_read_str(newick)?.graph;
 
       let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
 
@@ -118,7 +118,7 @@ mod tests {
           assert!(rerooted.contains(taxon), "Missing taxon {taxon} in {rerooted}");
         }
 
-        let graph: GraphAncestral = nwk_read_str(&rerooted)?;
+        let graph: GraphAncestral = nwk_read_str(&rerooted)?.graph;
         let leaves = graph.get_leaves();
         assert_eq!(leaves.len(), 4, "Must have 4 leaves: {rerooted}");
 

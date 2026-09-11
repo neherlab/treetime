@@ -52,7 +52,7 @@ mod tests {
     let case = &OUTPUTS[dataset];
     let expected = case.marginal_dense();
 
-    let mut graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?;
+    let mut graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?.graph;
     let dates = load_dates_for_dataset(dataset)?;
     let constraints = load_date_constraints(&dates, &graph)?;
 

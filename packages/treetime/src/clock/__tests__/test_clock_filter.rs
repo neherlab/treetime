@@ -19,7 +19,7 @@ mod tests {
   /// root-to-tip distances ~2.02 and ~3.02, far above the clock-expected ~0.15.
   fn setup_outlier_graph() -> Result<(GraphClock, BTreeMap<GraphNodeKey, Option<f64>>), Report> {
     let tree = "(((A:0.1,B:0.2):0.01,(C:0.15,D:0.25):0.01):0.01,((E:0.12,F:0.18):0.01,(G:2.0,H:3.0):0.01):0.01)root;";
-    let graph: GraphClock = nwk_read_str(tree)?;
+    let graph: GraphClock = nwk_read_str(tree)?.graph;
 
     // Good clock: rate=0.01/year, base=2000 → date = div/0.01 + 2000
     // Root-to-tip: A=0.12, B=0.22, C=0.17, D=0.27, E=0.14, F=0.20, G=2.02, H=3.02
@@ -139,7 +139,7 @@ mod tests {
     pub fn setup_low_cardinality_graph(
       dated_leaf_count: usize,
     ) -> Result<(GraphClock, BTreeMap<GraphNodeKey, Option<f64>>), Report> {
-      let graph: GraphClock = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+      let graph: GraphClock = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?.graph;
 
       let times = graph
         .get_leaves()

@@ -8,17 +8,30 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_io::nex::NexWriteOptions;
-  use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
+  use treetime_io::nwk::{CommentProviders, NwkParse, NwkStyle, nwk_read_str};
   use treetime_utils::o;
 
   #[test]
   fn test_mugration_annotated_tree_has_trait_comments() -> Result<(), Report> {
-    let graph = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let NwkParse { graph, confidences } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
     };
-    let result = execute_mugration(graph, &traits, "country", None, "?", None, 0.5, 5, None, false, false)?;
+    let result = execute_mugration(
+      graph,
+      &confidences,
+      &traits,
+      "country",
+      None,
+      "?",
+      None,
+      0.5,
+      5,
+      None,
+      false,
+      false,
+    )?;
     let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
     let providers = CommentProviders::new().with(&provider);
 

@@ -12,7 +12,7 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use std::iter::once;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::{o, vec_of_owned};
 
   #[test]
@@ -152,13 +152,26 @@ mod tests {
 
   #[test]
   fn test_execute_mugration_simple_tree() -> Result<(), Report> {
-    let graph = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let NwkParse { graph, confidences } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
     };
 
-    let result = execute_mugration(graph, &traits, "country", None, "?", None, 0.5, 5, None, false, false)?;
+    let result = execute_mugration(
+      graph,
+      &confidences,
+      &traits,
+      "country",
+      None,
+      "?",
+      None,
+      0.5,
+      5,
+      None,
+      false,
+      false,
+    )?;
 
     assert_eq!(o!("country"), result.traits.attribute);
     assert_eq!(2, result.partition.n_states());
@@ -190,7 +203,7 @@ mod tests {
 
   #[test]
   fn test_execute_mugration_with_weights() -> Result<(), Report> {
-    let graph = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let NwkParse { graph, confidences } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
@@ -204,6 +217,7 @@ mod tests {
 
     let result = execute_mugration(
       graph,
+      &confidences,
       &traits,
       "country",
       Some(&weights),
@@ -233,7 +247,7 @@ mod tests {
 
   #[test]
   fn test_execute_mugration_with_weights_includes_unobserved_weight_states() -> Result<(), Report> {
-    let graph = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let NwkParse { graph, confidences } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
@@ -246,6 +260,7 @@ mod tests {
 
     let result = execute_mugration(
       graph,
+      &confidences,
       &traits,
       "country",
       Some(&weights),
@@ -275,7 +290,7 @@ mod tests {
 
   #[test]
   fn test_execute_mugration_with_pseudo_counts() -> Result<(), Report> {
-    let graph = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let NwkParse { graph, confidences } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
@@ -289,6 +304,7 @@ mod tests {
 
     let result = execute_mugration(
       graph,
+      &confidences,
       &traits,
       "country",
       Some(&weights),
@@ -314,7 +330,7 @@ mod tests {
     // Smoothing flattens only the initial pi used for the first reconstruction
     // pass; the final equilibrium stays pinned to the raw weight-derived
     // fixed_pi, so the returned model matches the unsmoothed equilibrium.
-    let graph = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let NwkParse { graph, confidences } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
@@ -328,6 +344,7 @@ mod tests {
 
     let result = execute_mugration(
       graph,
+      &confidences,
       &traits,
       "country",
       Some(&weights),
@@ -361,8 +378,10 @@ mod tests {
       o!("B") => o!("germany"),
     };
 
+    let NwkParse { graph, confidences } = nwk_read_str("(A:0.1,B:0.1)root;")?;
     let v0 = execute_mugration(
-      nwk_read_str("(A:0.1,B:0.1)root;")?,
+      graph,
+      &confidences,
       &traits,
       "country",
       None,
@@ -374,8 +393,10 @@ mod tests {
       false,
       false,
     )?;
+    let NwkParse { graph, confidences } = nwk_read_str("(A:0.1,B:0.1)root;")?;
     let filtered = execute_mugration(
-      nwk_read_str("(A:0.1,B:0.1)root;")?,
+      graph,
+      &confidences,
       &traits,
       "country",
       None,
@@ -405,8 +426,10 @@ mod tests {
       o!("B") => o!("germany"),
     };
 
+    let NwkParse { graph, confidences } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let base_result = execute_mugration(
-      nwk_read_str("(A:0.1,B:0.2)root;")?,
+      graph,
+      &confidences,
       &traits,
       "country",
       None,
@@ -420,8 +443,10 @@ mod tests {
     )?;
     let base_mu = base_result.partition.data.gtr.mu;
 
+    let NwkParse { graph, confidences } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let corrected_result = execute_mugration(
-      nwk_read_str("(A:0.1,B:0.2)root;")?,
+      graph,
+      &confidences,
       &traits,
       "country",
       None,
@@ -441,13 +466,26 @@ mod tests {
 
   #[test]
   fn test_execute_mugration_rejects_single_state() {
-    let graph = nwk_read_str("(A:0.1,B:0.2)root;").unwrap();
+    let NwkParse { graph, confidences } = nwk_read_str("(A:0.1,B:0.2)root;").unwrap();
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("usa"),
     };
 
-    let result = execute_mugration(graph, &traits, "country", None, "?", None, 0.5, 5, None, false, false);
+    let result = execute_mugration(
+      graph,
+      &confidences,
+      &traits,
+      "country",
+      None,
+      "?",
+      None,
+      0.5,
+      5,
+      None,
+      false,
+      false,
+    );
     assert!(result.is_err());
     let err_msg = result.unwrap_err().to_string();
     assert!(err_msg.contains("only 1 discrete attributes"));
@@ -463,8 +501,10 @@ mod tests {
       o!("C") => o!("usa"),
     };
 
+    let NwkParse { graph, confidences } = nwk_read_str(tree)?;
     let result_no_iter = execute_mugration(
-      nwk_read_str(tree)?,
+      graph,
+      &confidences,
       &traits,
       "country",
       None,
@@ -477,8 +517,10 @@ mod tests {
       false,
     )?;
 
+    let NwkParse { graph, confidences } = nwk_read_str(tree)?;
     let result_with_iter = execute_mugration(
-      nwk_read_str(tree)?,
+      graph,
+      &confidences,
       &traits,
       "country",
       None,
@@ -526,8 +568,10 @@ mod tests {
       o!("D") => o!("germany"),
     };
 
+    let NwkParse { graph, confidences } = nwk_read_str(tree)?;
     let result = execute_mugration(
-      nwk_read_str(tree)?,
+      graph,
+      &confidences,
       &traits,
       "country",
       None,
@@ -552,8 +596,10 @@ mod tests {
   #[test]
   fn test_zero_iterations_preserves_initial_model() -> Result<(), Report> {
     let traits = btreemap! { o!("A") => o!("usa"), o!("B") => o!("germany") };
+    let NwkParse { graph, confidences } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let result = execute_mugration(
-      nwk_read_str("(A:0.1,B:0.2)root;")?,
+      graph,
+      &confidences,
       &traits,
       "country",
       None,

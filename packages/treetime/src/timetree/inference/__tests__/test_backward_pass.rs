@@ -21,7 +21,7 @@ mod tests {
   /// A has time 2013.0, I should get 2013.0 - 2.5 = 2010.5
   #[test]
   fn test_backward_pass_computes_internal_node_time() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:2.5)I:1.0)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:2.5)I:1.0)root;")?.graph;
 
     let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
     let mut state = TimetreeState::new(&graph);
@@ -54,7 +54,7 @@ mod tests {
   /// Both agree, so I should be at 2012.0
   #[test]
   fn test_backward_pass_multiplies_child_messages() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?.graph;
 
     let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
     let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
@@ -86,7 +86,7 @@ mod tests {
   /// causing subsequent clock regression to fail with "No variation in sampling dates".
   #[test]
   fn test_backward_pass_preserves_leaf_time_distribution_with_coalescent() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?.graph;
 
     let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
     let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
@@ -131,7 +131,7 @@ mod tests {
   /// factor must therefore preserve a point-supported internal date.
   #[test]
   fn test_backward_pass_preserves_internal_time_with_strong_coalescent() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?.graph;
     let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
     let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal I not found");
@@ -159,7 +159,7 @@ mod tests {
   /// on the next round as if it were an independent observation.
   #[test]
   fn test_backward_pass_restores_leaf_time_distribution_from_the_date_constraint() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0)I:1.0)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0)I:1.0)root;")?.graph;
     let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
 
     let constraint = Distribution::range((2014.0, 2015.0), 0.0);
@@ -185,7 +185,7 @@ mod tests {
   /// node somewhere in [2011, 2013] and its own date narrows that to [2012, 2013].
   #[test]
   fn test_backward_pass_applies_internal_node_date_constraint() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?.graph;
     let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
     let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal I not found");
@@ -209,7 +209,7 @@ mod tests {
   /// Test that backward pass stores msg_to_parent on edges.
   #[test]
   fn test_backward_pass_sets_edge_messages() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:2.5)I:1.0)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:2.5)I:1.0)root;")?.graph;
 
     let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
 
@@ -246,7 +246,7 @@ mod tests {
   /// I should get time from A only: 2015.0 - 3.0 = 2012.0
   #[test]
   fn test_backward_pass_skips_bad_branch_children() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?.graph;
 
     let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
     let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
@@ -282,7 +282,7 @@ mod tests {
   #[test]
   fn test_backward_pass_bad_branch_equivalent_to_removal() -> Result<(), Report> {
     // Reference tree: only A
-    let ref_graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0)I:1.0)root;")?;
+    let ref_graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0)I:1.0)root;")?.graph;
     let ref_a_key = find_node_key_by_name(&ref_graph, "A").expect("leaf A not found");
     let mut ref_state = TimetreeState::new(&ref_graph);
     set_leaf_time(&mut ref_state, ref_a_key, 2015.0);
@@ -296,7 +296,7 @@ mod tests {
       .expect("should have likely_time");
 
     // Test tree: A + B(bad)
-    let test_graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
+    let test_graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?.graph;
     let test_a_key = find_node_key_by_name(&test_graph, "A").expect("leaf A not found");
     let test_b_key = find_node_key_by_name(&test_graph, "B").expect("leaf B not found");
     let mut test_state = TimetreeState::new(&test_graph);
@@ -334,7 +334,7 @@ mod tests {
   #[test]
   #[ignore = "fold now receives mass-windowed messages; Gaussian-product oracle no longer holds"]
   fn test_backward_pass_sums_function_children_to_gaussian_product() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.0,B:0.0,C:0.0)I:1.0)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.0,B:0.0,C:0.0)I:1.0)root;")?.graph;
     let a = find_node_key_by_name(&graph, "A").expect("leaf A not found");
     let b = find_node_key_by_name(&graph, "B").expect("leaf B not found");
     let c = find_node_key_by_name(&graph, "C").expect("leaf C not found");
@@ -382,7 +382,7 @@ mod tests {
     let yc = gaussian_neglog(&x, 2005.0, 2.0);
 
     let fold_in_order = |newick: &str| -> Result<(Array1<f64>, f64), Report> {
-      let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>(newick)?;
+      let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>(newick)?.graph;
       let mut state = TimetreeState::new(&graph);
       for (name, y) in [("A", &ya), ("B", &yb), ("C", &yc)] {
         let key = find_node_key_by_name(&graph, name).expect("leaf not found");
@@ -417,7 +417,7 @@ mod tests {
   #[test]
   #[ignore = "fold now receives mass-windowed messages; precision-weighted-mean oracle no longer holds"]
   fn test_backward_pass_function_children_peak_at_precision_weighted_mean() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.0,B:0.0,C:0.0)I:1.0)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.0,B:0.0,C:0.0)I:1.0)root;")?.graph;
     let a = find_node_key_by_name(&graph, "A").expect("leaf A not found");
     let b = find_node_key_by_name(&graph, "B").expect("leaf B not found");
     let c = find_node_key_by_name(&graph, "C").expect("leaf C not found");

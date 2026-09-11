@@ -136,7 +136,7 @@ mod tests {
     tree_nwk: &str,
     aln: &[FastaRecord],
   ) -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
-    let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
+    let graph: GraphAncestral = nwk_read_str(tree_nwk)?.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -161,7 +161,7 @@ mod tests {
     let tree_path = PROJECT_ROOT.join(tree_path);
     let alignment_path = PROJECT_ROOT.join(alignment_path);
 
-    let graph: GraphAncestral = nwk_read_file(&tree_path)?;
+    let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
     let aln = read_many_fasta(&[&alignment_path], &*NUC_ALPHABET)?;
 
     let gtr = jc69(JC69Params {

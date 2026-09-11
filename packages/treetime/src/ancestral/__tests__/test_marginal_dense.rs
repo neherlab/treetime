@@ -102,7 +102,7 @@ mod tests {
   /// same alignment under different rootings of the same unrooted topology.
   /// Returns only the scalar log-likelihood, discarding the partition data.
   fn run_dense_lh_for_newick(newick: &str, aln: &[FastaRecord], gtr: GTR) -> Result<f64, Report> {
-    let graph: GraphAncestral = nwk_read_str(newick)?;
+    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
     let (log_lh, _) = run_dense_marginal(&graph, aln, gtr)?;
     Ok(log_lh)
   }
@@ -166,7 +166,7 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let graph: GraphAncestral = nwk_read_str(TREE_7_TAXON)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_7_TAXON)?.graph;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
@@ -212,7 +212,7 @@ mod tests {
   /// model combination.
   #[test]
   fn test_marginal_dense_probability_normalization() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_7_TAXON)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_7_TAXON)?.graph;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
@@ -259,7 +259,7 @@ mod tests {
   /// in-place mutation of node/edge profiles.
   #[test]
   fn test_marginal_dense_update_is_idempotent() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_7_TAXON)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_7_TAXON)?.graph;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
@@ -366,7 +366,7 @@ mod tests {
       mu,
     })?;
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?.graph;
     let states = ['A', 'C', 'G', 'T'];
     for &state_a in &states {
       for &state_b in &states {

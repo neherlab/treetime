@@ -343,7 +343,7 @@ mod tests {
   /// every edge, so the next branch-distribution build starts each surviving edge from scratch.
   #[test]
   fn test_timetree_state_reset_date_edges_clears_distribution_and_message() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:1.0,B:1.0)I:1.0)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:1.0,B:1.0)I:1.0)root;")?.graph;
     let mut state = TimetreeState::new(&graph);
     for edge_ref in graph.get_edges() {
       let key = edge_ref.read_arc().key();
@@ -368,7 +368,7 @@ mod tests {
   /// edges already in the state, so they carry across passes without a payload round-trip.
   #[test]
   fn test_timetree_state_reseed_preserves_distribution_and_message() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:1.0,B:1.0)I:1.0)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:1.0,B:1.0)I:1.0)root;")?.graph;
     let mut state = TimetreeState::new(&graph);
     let key = graph
       .get_edges()

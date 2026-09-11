@@ -15,7 +15,7 @@ use treetime_utils::sync::random::get_random_number_generator;
 /// in-memory: the graph is parsed from a string and sequences are built directly.
 #[test]
 fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
-  let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+  let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1)root;").unwrap().graph;
   let aa = Alphabet::new(AlphabetName::Aa).unwrap();
 
   let plans = vec![

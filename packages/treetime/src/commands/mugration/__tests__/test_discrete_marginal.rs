@@ -15,7 +15,7 @@ mod tests {
 
   #[test]
   fn test_discrete_marginal_attach_traits_maps_observed_and_missing_profiles() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2)root;")?.graph;
     let mut partition = helpers::make_partition(["usa", "germany"])?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -39,7 +39,7 @@ mod tests {
 
   #[test]
   fn test_discrete_marginal_attach_traits_rejects_tree_leaf_missing_from_metadata() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2)root;")?.graph;
     let mut partition = helpers::make_partition(["usa", "germany"])?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -53,7 +53,7 @@ mod tests {
 
   #[test]
   fn test_discrete_marginal_attach_traits_accepts_metadata_name_missing_from_tree() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2)root;")?.graph;
     let mut partition = helpers::make_partition(["usa", "germany"])?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -181,7 +181,7 @@ mod tests {
     }
 
     pub(super) fn make_fixture_graph() -> Result<GraphAncestral, Report> {
-      nwk_read_str("((A:0.01,B:0.01)inner:0.01,C:0.25)root;")
+      nwk_read_str("((A:0.01,B:0.01)inner:0.01,C:0.25)root;").map(|parse| parse.graph)
     }
 
     pub(super) fn make_fixture_traits() -> BTreeMap<String, String> {

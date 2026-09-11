@@ -33,7 +33,7 @@ mod tests {
       o!("D") => 2005.0,
     };
 
-    let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
     let divs = compute_divs(
       &graph,
       OnlyLeaves(true),
@@ -97,7 +97,7 @@ mod tests {
     }
 
     pub(super) fn root_clock_set(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockSet, Report> {
-      let graph: GraphClock = nwk_read_str(tree)?;
+      let graph: GraphClock = nwk_read_str(tree)?.graph;
       let times = leaf_times(&graph, dates);
       let mut state = ClockState::seed_from_values(&graph, &times);
       clock_regression_backward(&graph, &mut state, &ClockParams::default(), None)?;

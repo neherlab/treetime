@@ -97,7 +97,7 @@ mod tests {
         &Alphabet::default(),
       )?;
 
-      let graph: GraphAncestral = nwk_read_str(TREE)?;
+      let graph: GraphAncestral = nwk_read_str(TREE)?.graph;
       let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &node_names(&graph))?;
       let partitions = [Arc::new(RwLock::new(
         fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,

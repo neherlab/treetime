@@ -25,7 +25,7 @@ mod tests {
   #[test]
   fn test_smoke_ancestral_gtr_iterations_sparse() -> Result<(), Report> {
     let alphabet = Alphabet::default();
-    let graph = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
+    let graph = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?.graph;
     let sequences = read_many_fasta(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
 
     let params = AncestralParams {
@@ -65,7 +65,7 @@ mod tests {
   #[test]
   fn test_smoke_ancestral_gtr_iterations_dense() -> Result<(), Report> {
     let alphabet = Alphabet::default();
-    let graph = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
+    let graph = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?.graph;
     let sequences = read_many_fasta(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
 
     let params = AncestralParams {

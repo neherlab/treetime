@@ -40,7 +40,7 @@ pub mod tests {
   pub fn run_dense_marginal(
     input: &MarginalTestInput,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalDense>>; 1]), Report> {
-    let graph: GraphAncestral = nwk_read_str(&input.newick)?;
+    let graph: GraphAncestral = nwk_read_str(&input.newick)?.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&input.alignment)?;
 
@@ -76,7 +76,7 @@ pub mod tests {
   pub fn run_sparse_marginal(
     input: &MarginalTestInput,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalSparse>>; 1]), Report> {
-    let graph: GraphAncestral = nwk_read_str(&input.newick)?;
+    let graph: GraphAncestral = nwk_read_str(&input.newick)?.graph;
     let alphabet = Alphabet::default();
     let length = get_common_length(&input.alignment)?;
 

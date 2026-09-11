@@ -35,7 +35,9 @@ mod tests {
   #[test]
   fn test_sample_from_profile_rejected_for_parsimony() {
     let alphabet = Alphabet::default();
-    let graph = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk")).unwrap();
+    let graph = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))
+      .unwrap()
+      .graph;
     let sequences = read_many_fasta(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet).unwrap();
 
     let params = AncestralParams {
@@ -84,7 +86,7 @@ mod tests {
 
     pub fn run_sampled(mode: SampleMode, seed: u64) -> Result<BTreeMap<String, String>, Report> {
       let alphabet = Alphabet::default();
-      let graph = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
+      let graph = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?.graph;
       let sequences = read_many_fasta(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
 
       let params = AncestralParams {

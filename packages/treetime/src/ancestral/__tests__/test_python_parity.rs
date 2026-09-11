@@ -67,7 +67,7 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta(&[aln_path], &alphabet)?;
 
-    let graph: GraphAncestral = nwk_read_file(&tree_path)?;
+    let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -183,7 +183,7 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:249-250
   #[test]
   fn test_internal_node_ab_profile_matches_python() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -229,7 +229,7 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:245
   #[test]
   fn test_root_profile_matches_python() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -271,7 +271,7 @@ mod tests {
   /// does not.
   #[test]
   fn test_internal_node_cd_profile_valid() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -314,7 +314,7 @@ mod tests {
   /// distributions everywhere in the tree, not just at spot-checked nodes.
   #[test]
   fn test_all_internal_nodes_normalized() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -357,7 +357,7 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:252-274
   #[test]
   fn test_multi_partition_independent_computation() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
 
     let gtr1 = make_python_reference_gtr()?;
@@ -420,7 +420,7 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:273-274
   #[test]
   fn test_multi_partition_internal_node_ab() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
 
     let gtr1 = make_python_reference_gtr()?;
@@ -480,7 +480,7 @@ mod tests {
     // Use simple alignment without gaps or ambiguous characters
     let simple_aln = ">A\nACATCGCCTTACGGAC\n>B\nGCATCCCTGTACTGAC\n>C\nCCGGCGATGTATTGAC\n>D\nTCGGCCGTGTATTGAC\n";
 
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?;
+    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
     let aln = read_many_fasta_str(simple_aln, &*NUC_ALPHABET)?;
 
     let gtr = make_python_reference_gtr()?;

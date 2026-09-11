@@ -40,13 +40,13 @@ mod tests {
     let aln = read_many_fasta(&[&alignment_path], &*NUC_ALPHABET)?;
 
     let gtr_a = {
-      let graph: GraphAncestral = nwk_read_file(&tree_path)?;
+      let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
       let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &node_names(&graph))?;
       infer_gtr_fitch(&fitch, &graph, &edge_branch_lengths(&graph))?
     };
 
     let gtr_b = {
-      let graph: GraphAncestral = nwk_read_file(&tree_path)?;
+      let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
       let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &node_names(&graph))?;
       infer_gtr_fitch(&fitch, &graph, &edge_branch_lengths(&graph))?
     };

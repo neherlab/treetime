@@ -7,13 +7,19 @@ use crate::optimize::params::BranchLengthMode;
 use crate::partition::timetree::partition::GraphTimetree;
 use crate::seq::gap_fill::apply_gap_fill;
 use eyre::{Report, WrapErr};
+use std::collections::BTreeMap;
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::value_maps::node_names;
 use treetime_io::dates_csv::{DatesMap, read_dates};
 use treetime_io::fasta::{FastaRecord, read_many_fasta};
-use treetime_io::nwk::nwk_read_file;
+use treetime_io::nwk::{NwkParse, nwk_read_file};
 
 pub struct InputData {
   pub graph: GraphTimetree,
+  /// Per-node input-tree branch support read from the Newick annotations, keyed by node. The
+  /// output gather reads each node's input branch support from here rather than off the payload;
+  /// a node the pipeline creates after the parse is absent and reads as `None`.
+  pub confidences: BTreeMap<GraphNodeKey, Option<f64>>,
   pub input_leaf_order: Vec<String>,
   pub alphabet: Alphabet,
   pub aln: Option<Vec<FastaRecord>>,
@@ -23,8 +29,9 @@ pub struct InputData {
 }
 
 pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report> {
-  let graph: GraphTimetree = if let Some(tree_path) = &args.tree {
-    nwk_read_file(tree_path).wrap_err("Failed to load tree from file")?
+  let (graph, confidences): (GraphTimetree, BTreeMap<GraphNodeKey, Option<f64>>) = if let Some(tree_path) = &args.tree {
+    let NwkParse { graph, confidences } = nwk_read_file(tree_path).wrap_err("Failed to load tree from file")?;
+    (graph, confidences)
   } else {
     todo!("Tree inference from alignment not yet implemented")
   };
@@ -75,6 +82,7 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
 
   Ok(InputData {
     graph,
+    confidences,
     input_leaf_order,
     alphabet,
     aln,

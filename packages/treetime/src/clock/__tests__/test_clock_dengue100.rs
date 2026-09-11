@@ -25,7 +25,7 @@ mod tests {
   /// Load dengue/100 graph with dates assigned into a fresh clock state.
   fn load_dengue100() -> Result<(GraphClock, ClockState), Report> {
     let data_dir = Path::new(DATA_DIR);
-    let graph: GraphClock = nwk_read_file(data_dir.join("tree.nwk"))?;
+    let graph: GraphClock = nwk_read_file(data_dir.join("tree.nwk"))?.graph;
     let dates = read_dates(
       data_dir.join("metadata.tsv"),
       &[',', '\t', ';'],
@@ -206,7 +206,7 @@ mod tests {
     assert_ne!(default_outliers, expected_outliers);
 
     let data_dir = Path::new(DATA_DIR);
-    let graph: GraphClock = nwk_read_file(data_dir.join("tree.nwk"))?;
+    let graph: GraphClock = nwk_read_file(data_dir.join("tree.nwk"))?.graph;
     let dates = read_dates(
       data_dir.join("metadata.tsv"),
       &[',', '\t', ';'],
@@ -241,7 +241,7 @@ mod tests {
   #[test]
   fn test_dengue100_clock_pipeline_keep_root_allows_negative_rate() -> Result<(), Report> {
     let data_dir = Path::new(DATA_DIR);
-    let graph: GraphClock = nwk_read_file(data_dir.join("tree.nwk"))?;
+    let graph: GraphClock = nwk_read_file(data_dir.join("tree.nwk"))?.graph;
     let dates = read_dates(
       data_dir.join("metadata.tsv"),
       &[',', '\t', ';'],

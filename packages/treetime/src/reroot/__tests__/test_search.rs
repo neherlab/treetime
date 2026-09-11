@@ -15,7 +15,7 @@ mod tests {
   // current root (default variance model: leaf var 1, internal var 0).
   #[test]
   fn test_search_root_stats_score_matches_analytical() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.3)root;")?.graph;
     let field = compute_div_stats(&graph, &VarianceModel::default())?;
     assert_ulps_eq!(field.root_stats.count(), 2.0, max_ulps = 4);
     assert_ulps_eq!(field.root_stats.d_sum(), 0.4, max_ulps = 4);
@@ -28,7 +28,7 @@ mod tests {
   // makes both tips equidistant (variance 0). Brent finds the interior optimum.
   #[test]
   fn test_search_finds_equidistant_root_on_unbalanced_tree() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.3)root;")?.graph;
     let field = compute_div_stats(&graph, &VarianceModel::default())?;
     let best = find_best_root(
       &graph,
@@ -47,7 +47,7 @@ mod tests {
   // An already-equidistant root cannot be improved: the baseline (edge = None) wins.
   #[test]
   fn test_search_keeps_balanced_root() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str("(A:0.2,B:0.2)root;")?;
+    let graph: GraphAncestral = nwk_read_str("(A:0.2,B:0.2)root;")?.graph;
     let field = compute_div_stats(&graph, &VarianceModel::default())?;
     let best = find_best_root(
       &graph,
@@ -65,7 +65,7 @@ mod tests {
   // A symmetric star tree is already optimal regardless of arity.
   #[test]
   fn test_search_keeps_balanced_star_root() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str("(A:0.2,B:0.2,C:0.2)root;")?;
+    let graph: GraphAncestral = nwk_read_str("(A:0.2,B:0.2,C:0.2)root;")?.graph;
     let field = compute_div_stats(&graph, &VarianceModel::default())?;
     let best = find_best_root(
       &graph,
@@ -83,7 +83,7 @@ mod tests {
   // Every edge must receive both directional messages from the traversal.
   #[test]
   fn test_search_traversal_covers_all_edges() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)i:0.3,C:0.4)root;")?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)i:0.3,C:0.4)root;")?.graph;
     let field = compute_div_stats(&graph, &VarianceModel::default())?;
     assert_eq!(field.edge_stats.len(), graph.get_edges().len());
     for (to_parent, to_child) in field.edge_stats.values() {
@@ -95,7 +95,7 @@ mod tests {
 
   #[test]
   fn test_search_root_stats_trait_dispatch() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.3)root;")?.graph;
     let field = compute_div_stats(&graph, &VarianceModel::default())?;
     let score = <DivStats as RootStats>::score(&field.root_stats);
     assert_ulps_eq!(score, 0.01, max_ulps = 8);

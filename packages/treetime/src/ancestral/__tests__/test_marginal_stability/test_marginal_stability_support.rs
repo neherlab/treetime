@@ -63,7 +63,7 @@ pub mod tests {
     aln_str: &str,
     gtr: GTR,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalDense>>; 1]), Report> {
-    let graph: GraphAncestral = nwk_read_str(newick)?;
+    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
@@ -84,7 +84,7 @@ pub mod tests {
     aln_str: &str,
     gtr: GTR,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalSparse>>; 1]), Report> {
-    let graph: GraphAncestral = nwk_read_str(newick)?;
+    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 

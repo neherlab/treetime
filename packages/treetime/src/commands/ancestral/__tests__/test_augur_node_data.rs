@@ -222,7 +222,7 @@ mod tests {
     /// Two-leaf tree where leaf A differs from the root at one position.
     /// Root sequence ACGT, A is ACGA, with the substitution T4A on edge root->A.
     pub fn mutation_case() -> (GraphAncestral, PartitionFitch) {
-      let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+      let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1)root;").unwrap().graph;
       let seqs = btreemap! { o!("A") => o!("ACGA"), o!("B") => o!("ACGT"), o!("root") => o!("ACGT") };
       let edge_subs = btreemap! { o!("A") => vec![sub(b'T', 3, b'A')] };
       let partition = build_fitch_partition(&graph, &seqs, &edge_subs, 4);

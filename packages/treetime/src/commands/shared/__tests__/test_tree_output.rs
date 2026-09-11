@@ -37,7 +37,7 @@ mod tests {
   fn test_tree_output_ancestral_models_preserve_semantics() -> Result<(), Report> {
     let graph = helpers::ancestral_graph(helpers::Mutations::NucleotideSubstitution)?;
 
-    let nodes = helpers::ancestral_nodes(&graph);
+    let nodes = helpers::ancestral_nodes(&graph, &helpers::ancestral_confidences(&graph));
     let branch_lengths = helpers::ancestral_branch_lengths(&graph);
     let auspice = ancestral_to_auspice(&graph, &nodes, &branch_lengths, "2026-07-19")?;
     let child = helpers::auspice_child(&auspice, "A");
@@ -87,7 +87,7 @@ mod tests {
 
     let phyloxml = ancestral_to_phyloxml(
       &graph,
-      &helpers::ancestral_nodes(&graph),
+      &helpers::ancestral_nodes(&graph, &btreemap! {}),
       &helpers::ancestral_branch_lengths(&graph),
     )?;
     let child = helpers::phyloxml_child(&phyloxml, "A");
@@ -105,7 +105,7 @@ mod tests {
     let graph = helpers::ancestral_graph(helpers::Mutations::Indel)?;
     let auspice = ancestral_to_auspice(
       &graph,
-      &helpers::ancestral_nodes(&graph),
+      &helpers::ancestral_nodes(&graph, &btreemap! {}),
       &helpers::ancestral_branch_lengths(&graph),
       "2026-07-19",
     )?;
@@ -115,7 +115,7 @@ mod tests {
     let graph = helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
     let auspice = ancestral_to_auspice(
       &graph,
-      &helpers::ancestral_nodes(&graph),
+      &helpers::ancestral_nodes(&graph, &btreemap! {}),
       &helpers::ancestral_branch_lengths(&graph),
       "2026-07-19",
     )?;
@@ -235,7 +235,7 @@ mod tests {
 
     let error = write_ancestral_tree_outputs(
       &graph,
-      &helpers::ancestral_nodes(&graph),
+      &helpers::ancestral_nodes(&graph, &btreemap! {}),
       &helpers::ancestral_branch_lengths(&graph),
       &outputs,
       &CommentProviders::new(),
@@ -257,7 +257,7 @@ mod tests {
 
     write_ancestral_tree_outputs(
       &graph,
-      &helpers::ancestral_nodes(&graph),
+      &helpers::ancestral_nodes(&graph, &btreemap! {}),
       &helpers::ancestral_branch_lengths(&graph),
       &outputs,
       &CommentProviders::new(),
@@ -321,7 +321,7 @@ mod tests {
     let graph = helpers::ancestral_graph(helpers::Mutations::IndelAndAminoAcid)?;
     let error = ancestral_to_auspice(
       &graph,
-      &helpers::ancestral_nodes(&graph),
+      &helpers::ancestral_nodes(&graph, &btreemap! {}),
       &helpers::ancestral_branch_lengths(&graph),
       "2026-07-19",
     )
@@ -356,7 +356,7 @@ mod tests {
       .into_iter()
       .zip(documents)
     {
-      let graph: GraphAncestral = nwk_read_str(&document.newick)?;
+      let graph: GraphAncestral = nwk_read_str(&document.newick)?.graph;
       assert_eq!(
         None,
         helpers::branch_length(&graph, "A")?,
@@ -471,17 +471,10 @@ mod tests {
     }
 
     pub fn ancestral_graph(mutations: Mutations) -> Result<GraphAncestral<AncestralGraphData>, Report> {
-      let graph: GraphAncestral = nwk_read_str("(A:0.5,B:0)root;")?;
+      let graph: GraphAncestral = nwk_read_str("(A:0.5,B:0)root;")?.graph;
       let root_key = node_key(&graph, "root");
       let a_key = node_key(&graph, "A");
       let b_key = node_key(&graph, "B");
-      graph
-        .get_node(a_key)
-        .unwrap()
-        .write_arc()
-        .payload()
-        .write_arc()
-        .confidence = Some(0.9);
       let a_edge = graph.node_parent(a_key)?.unwrap().1;
       let b_edge = graph.node_parent(b_key)?.unwrap().1;
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -553,20 +546,37 @@ mod tests {
       Ok(graph.map_data(data))
     }
 
-    pub fn ancestral_nodes<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphNodeKey, AncestralNodeOut> {
+    pub fn ancestral_nodes<D: Send + Sync>(
+      graph: &GraphAncestral<D>,
+      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+    ) -> BTreeMap<GraphNodeKey, AncestralNodeOut> {
       graph
         .get_nodes()
         .iter()
         .map(|node| {
           let node = node.read_arc();
-          let payload = node.payload().read_arc();
+          let key = node.key();
           (
-            node.key(),
+            key,
             AncestralNodeOut {
-              name: payload.name.clone(),
-              confidence: payload.confidence,
+              name: node.payload().read_arc().name.clone(),
+              confidence: confidences.get(&key).copied().flatten(),
             },
           )
+        })
+        .collect()
+    }
+
+    /// Input-tree branch support for the ancestral fixture: node `A` carries 0.9, every other node
+    /// none. Mirrors a Newick parse that annotated only `A`, so the output writers surface 0.9 on
+    /// `A` and nothing elsewhere.
+    pub fn ancestral_confidences<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphNodeKey, Option<f64>> {
+      graph
+        .get_nodes()
+        .iter()
+        .filter_map(|node| {
+          let node = node.read_arc();
+          (node.payload().read_arc().name.as_deref() == Some("A")).then(|| (node.key(), Some(0.9)))
         })
         .collect()
     }
@@ -583,7 +593,7 @@ mod tests {
     }
 
     pub fn ancestral_graph_without_partition() -> Result<GraphAncestral<AncestralGraphData>, Report> {
-      let graph: GraphAncestral = nwk_read_str(MODEL_TREE)?;
+      let graph: GraphAncestral = nwk_read_str(MODEL_TREE)?.graph;
       Ok(graph.map_data(AncestralGraphData::new(None, None, GtrModelName::JC69, vec![], None)))
     }
 
@@ -591,21 +601,21 @@ mod tests {
       let ancestral_graph = ancestral_graph(Mutations::NucleotideSubstitution)?;
       let ancestral = ancestral_to_auspice(
         &ancestral_graph,
-        &ancestral_nodes(&ancestral_graph),
+        &ancestral_nodes(&ancestral_graph, &btreemap! {}),
         &ancestral_branch_lengths(&ancestral_graph),
         "2026-07-19",
       )?;
       let optimize_graph = optimize_graph()?;
       let optimize = optimize_to_auspice(
         &optimize_graph,
-        &optimize_nodes(&optimize_graph),
+        &optimize_nodes(&optimize_graph, &btreemap! {}),
         &ancestral_branch_lengths(&optimize_graph),
         "2026-07-19",
       )?;
       let prune_graph = prune_graph()?;
       let prune = prune_to_auspice(
         &prune_graph,
-        &prune_nodes(&prune_graph),
+        &prune_nodes(&prune_graph, &btreemap! {}),
         &ancestral_branch_lengths(&prune_graph),
         "2026-07-19",
       )?;
@@ -614,12 +624,16 @@ mod tests {
       let mugration_graph = mugration_graph()?;
       let mugration = mugration_to_auspice(
         &mugration_graph,
-        &mugration_nodes(&mugration_graph),
+        &mugration_nodes(&mugration_graph, &btreemap! {}),
         &ancestral_branch_lengths(&mugration_graph),
         "2026-07-19",
       )?;
       let timetree_graph = timetree_graph()?;
-      let timetree = timetree_to_auspice(&timetree_graph, &timetree_nodes(&timetree_graph), "2026-07-19")?;
+      let timetree = timetree_to_auspice(
+        &timetree_graph,
+        &timetree_nodes(&timetree_graph, &btreemap! {}),
+        "2026-07-19",
+      )?;
 
       [ancestral, optimize, prune, clock, mugration, timetree]
         .iter()
@@ -632,14 +646,14 @@ mod tests {
       Ok(vec![
         ancestral_to_phyloxml(
           &ancestral_graph,
-          &ancestral_nodes(&ancestral_graph),
+          &ancestral_nodes(&ancestral_graph, &btreemap! {}),
           &ancestral_branch_lengths(&ancestral_graph),
         )?,
         {
           let optimize_graph = optimize_graph()?;
           optimize_to_phyloxml(
             &optimize_graph,
-            &optimize_nodes(&optimize_graph),
+            &optimize_nodes(&optimize_graph, &btreemap! {}),
             &ancestral_branch_lengths(&optimize_graph),
           )?
         },
@@ -647,7 +661,7 @@ mod tests {
           let prune_graph = prune_graph()?;
           prune_to_phyloxml(
             &prune_graph,
-            &prune_nodes(&prune_graph),
+            &prune_nodes(&prune_graph, &btreemap! {}),
             &ancestral_branch_lengths(&prune_graph),
           )?
         },
@@ -663,7 +677,7 @@ mod tests {
           let mugration_graph = mugration_graph()?;
           mugration_to_phyloxml(
             &mugration_graph,
-            &mugration_nodes(&mugration_graph),
+            &mugration_nodes(&mugration_graph, &btreemap! {}),
             &ancestral_branch_lengths(&mugration_graph),
           )?
         },
@@ -671,7 +685,7 @@ mod tests {
           let timetree_graph = timetree_graph()?;
           timetree_to_phyloxml(
             &timetree_graph,
-            &timetree_nodes(&timetree_graph),
+            &timetree_nodes(&timetree_graph, &btreemap! {}),
             &timetree_edges(&timetree_graph),
           )?
         },
@@ -728,7 +742,7 @@ mod tests {
       set_branch_length(&graph, "A", None)?;
       optimize_to_auspice(
         &graph,
-        &optimize_nodes(&graph),
+        &optimize_nodes(&graph, &btreemap! {}),
         &ancestral_branch_lengths(&graph),
         "2026-07-19",
       )
@@ -807,18 +821,21 @@ mod tests {
       ClockModel::with_fixed_rate(&ClockSet::leaf_contribution(Some(2020.0)), 1.0)
     }
 
-    pub fn optimize_nodes<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
+    pub fn optimize_nodes<D: Send + Sync>(
+      graph: &GraphAncestral<D>,
+      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+    ) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
       graph
         .get_nodes()
         .iter()
         .map(|node| {
           let node = node.read_arc();
-          let payload = node.payload().read_arc();
+          let key = node.key();
           (
-            node.key(),
+            key,
             OptimizeNodeOut {
-              name: payload.name.clone(),
-              confidence: payload.confidence,
+              name: node.payload().read_arc().name.clone(),
+              confidence: confidences.get(&key).copied().flatten(),
             },
           )
         })
@@ -826,7 +843,7 @@ mod tests {
     }
 
     fn optimize_graph() -> Result<GraphAncestral<OptimizeGraphData>, Report> {
-      let graph: GraphAncestral = nwk_read_str(MODEL_TREE)?;
+      let graph: GraphAncestral = nwk_read_str(MODEL_TREE)?.graph;
       Ok(graph.map_data(OptimizeGraphData::new(
         jc69(JC69Params::default())?,
         GtrModelName::JC69,
@@ -835,18 +852,21 @@ mod tests {
       )))
     }
 
-    pub fn prune_nodes<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphNodeKey, PruneNodeOut> {
+    pub fn prune_nodes<D: Send + Sync>(
+      graph: &GraphAncestral<D>,
+      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+    ) -> BTreeMap<GraphNodeKey, PruneNodeOut> {
       graph
         .get_nodes()
         .iter()
         .map(|node| {
           let node = node.read_arc();
-          let payload = node.payload().read_arc();
+          let key = node.key();
           (
-            node.key(),
+            key,
             PruneNodeOut {
-              name: payload.name.clone(),
-              confidence: payload.confidence,
+              name: node.payload().read_arc().name.clone(),
+              confidence: confidences.get(&key).copied().flatten(),
             },
           )
         })
@@ -854,12 +874,12 @@ mod tests {
     }
 
     fn prune_graph() -> Result<GraphAncestral<PruneGraphData>, Report> {
-      let graph: GraphAncestral = nwk_read_str(MODEL_TREE)?;
+      let graph: GraphAncestral = nwk_read_str(MODEL_TREE)?.graph;
       Ok(graph.map_data(PruneGraphData::new(Some(jc69(JC69Params::default())?), vec![])))
     }
 
     fn clock_graph() -> Result<GraphClock<ClockGraphData>, Report> {
-      let graph: GraphClock = nwk_read_str(MODEL_TREE)?;
+      let graph: GraphClock = nwk_read_str(MODEL_TREE)?.graph;
       Ok(graph.map_data(ClockGraphData::new(fixed_clock_model()?, vec![])))
     }
 
@@ -897,18 +917,21 @@ mod tests {
         .collect()
     }
 
-    pub fn mugration_nodes<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphNodeKey, MugrationNodeOut> {
+    pub fn mugration_nodes<D: Send + Sync>(
+      graph: &GraphAncestral<D>,
+      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+    ) -> BTreeMap<GraphNodeKey, MugrationNodeOut> {
       graph
         .get_nodes()
         .iter()
         .map(|node| {
           let node = node.read_arc();
-          let payload = node.payload().read_arc();
+          let key = node.key();
           (
-            node.key(),
+            key,
             MugrationNodeOut {
-              name: payload.name.clone(),
-              confidence: payload.confidence,
+              name: node.payload().read_arc().name.clone(),
+              confidence: confidences.get(&key).copied().flatten(),
             },
           )
         })
@@ -916,7 +939,7 @@ mod tests {
     }
 
     fn mugration_graph() -> Result<GraphAncestral<MugrationGraphData>, Report> {
-      let graph: GraphAncestral = nwk_read_str(MODEL_TREE)?;
+      let graph: GraphAncestral = nwk_read_str(MODEL_TREE)?.graph;
       let states = DiscreteStates::from_values(["CH", "US"].into_iter(), "?");
       let gtr = GTR::new(GTRParams {
         n_states: 2,
@@ -945,11 +968,11 @@ mod tests {
           )
         })
         .collect();
-      Ok(MugrationResult::new(graph, partition, "country", LogLh::ZERO).graph)
+      Ok(MugrationResult::new(graph, &btreemap! {}, partition, "country", LogLh::ZERO).graph)
     }
 
     fn timetree_graph() -> Result<GraphTimetree<TimetreeGraphData>, Report> {
-      let graph: GraphTimetree = nwk_read_str(MODEL_TREE)?;
+      let graph: GraphTimetree = nwk_read_str(MODEL_TREE)?.graph;
       for (index, node) in graph.get_nodes().into_iter().enumerate() {
         let node = node.write_arc();
         let mut payload = node.payload().write_arc();
@@ -966,7 +989,10 @@ mod tests {
       )))
     }
 
-    pub fn timetree_nodes(graph: &GraphTimetree<TimetreeGraphData>) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
+    pub fn timetree_nodes(
+      graph: &GraphTimetree<TimetreeGraphData>,
+      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+    ) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
       graph
         .get_nodes()
         .iter()
@@ -980,7 +1006,7 @@ mod tests {
             TimetreeNodeOut {
               name: payload.base.name.clone(),
               desc: None,
-              confidence: payload.base.confidence,
+              confidence: confidences.get(&key).copied().flatten(),
               time: payload.time,
               div: index as f64 / 2.0,
               is_outlier: false,

@@ -19,7 +19,7 @@ mod tests {
 
   #[test]
   fn test_create_branch_distributions_input_mode_sets_time_length() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?.graph;
     let clock_rate = 0.001; // 0.001 subs/site/year
 
     let mut state = TimetreeState::new(&graph);
@@ -44,7 +44,7 @@ mod tests {
 
   #[test]
   fn test_input_mode_newick_output_uses_time_lengths() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?.graph;
     let clock_rate = 0.001;
 
     let mut state = TimetreeState::new(&graph);
@@ -98,7 +98,7 @@ mod tests {
   /// time = branch_length / (clock_rate * gamma)
   #[test]
   fn test_input_mode_gamma_scales_time_length() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.006)I:0.003)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.006)I:0.003)root;")?.graph;
     let clock_rate = 0.001;
 
     let mut state = TimetreeState::new(&graph);
@@ -152,7 +152,7 @@ mod tests {
   /// pre-gamma behavior: time = branch_length / clock_rate.
   #[test]
   fn test_input_mode_gamma_default_matches_no_gamma() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?.graph;
     let clock_rate = 0.001;
 
     // All edges have default gamma=1.0
@@ -175,7 +175,7 @@ mod tests {
 
   #[test]
   fn test_input_mode_uses_time_length_when_branch_length_is_absent() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A)root;")?;
+    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A)root;")?.graph;
     let edge = graph.get_edges().pop().expect("tree must contain one edge");
     edge.read_arc().payload().write_arc().set_branch_length(None);
 

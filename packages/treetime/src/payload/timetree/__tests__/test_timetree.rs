@@ -71,7 +71,7 @@ mod tests {
 
   #[test]
   fn test_timetree_mutation_provider_produces_comments() -> Result<(), Report> {
-    let graph: GraphTimetree = nwk_read_str("(A:0.1)root;")?;
+    let graph: GraphTimetree = nwk_read_str("(A:0.1)root;")?.graph;
     let partition = make_test_partition(
       &graph,
       100,
@@ -92,7 +92,7 @@ mod tests {
 
   #[test]
   fn test_timetree_nexus_output_includes_mutations_and_date() -> Result<(), Report> {
-    let graph: GraphTimetree = nwk_read_str("(A:0.1)root;")?;
+    let graph: GraphTimetree = nwk_read_str("(A:0.1)root;")?.graph;
     let partition = make_test_partition(
       &graph,
       100,

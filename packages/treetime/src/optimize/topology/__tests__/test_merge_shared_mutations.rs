@@ -100,7 +100,7 @@ mod tests {
   #[test]
   fn test_merge_no_polytomy() -> Result<(), Report> {
     // Binary tree: no polytomy, nothing to merge
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)internal:0.3)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)internal:0.3)root;")?.graph;
     let partition = make_partition(
       &graph,
       100,
@@ -122,7 +122,7 @@ mod tests {
   #[test]
   fn test_merge_polytomy_no_shared_mutations() -> Result<(), Report> {
     // Polytomy with 3 children, no shared mutations
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?.graph;
     let partition = make_partition(
       &graph,
       100,
@@ -148,7 +148,7 @@ mod tests {
     //   root -> B (subs: A0T, G5C)
     //   root -> C (subs: T10A)
     // After merge: root -> N (subs: A0T, G5C), N -> A (subs: []), N -> B (subs: [])
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?.graph;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
     let partition = make_partition(
       &graph,
@@ -207,7 +207,7 @@ mod tests {
     // A has {A0T, G5C}, B has {A0T, G5C, T10A}, C has {C20G}
     // Shared(A,B) = {A0T, G5C} (2), so merge A and B
     // After: N -> A (subs: []), N -> B (subs: {T10A})
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?.graph;
     let partition = make_partition(
       &graph,
       100,
@@ -261,7 +261,7 @@ mod tests {
     // A has {A0T, G5C, T10A}, B has {A0T, G5C, T10A}, C has {C20G}, D has {T30A}
     // Shared(A,B) = 3, no other pair shares mutations
     // Greedy merges A and B
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3,D:0.4)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3,D:0.4)root;")?.graph;
     let partition = make_partition(
       &graph,
       100,
@@ -311,7 +311,7 @@ mod tests {
     // A and B share 2 mutations out of length 100. Both have 0 unique mutations.
     // Parent edge: jc(2/100).
     // Child edges: jc(0/100) = 0.0 (no remaining mutations).
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?.graph;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
     let partition = make_partition(
       &graph,
@@ -351,7 +351,7 @@ mod tests {
   fn test_merge_child_bl_zero_when_all_shared() -> Result<(), Report> {
     // 10 shared mutations out of length 100. Both children have only shared
     // mutations (0 remaining), so child BLs are jc(0) = 0.0.
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.05,B:0.2,C:0.3)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.05,B:0.2,C:0.3)root;")?.graph;
     let shared: Vec<Sub> = (0..10).map(|i| sub(b'A', i, b'T')).collect();
     let partition = make_partition(
       &graph,
@@ -385,7 +385,7 @@ mod tests {
   #[test]
   fn test_merge_multiple_partitions() -> Result<(), Report> {
     // Two partitions: shared in both
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?.graph;
 
     let p1 = make_partition(
       &graph,
@@ -477,7 +477,7 @@ mod tests {
     // First merge: pick pair with more shared (both have 1, so either pair)
     // After first merge: remaining polytomy of 4 children (N1, <one of C/D/E>, <other>, <other>)
     // If C and D still share mutations, they get merged too
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?.graph;
     let partition = make_partition(
       &graph,
       100,
@@ -507,7 +507,7 @@ mod tests {
   #[test]
   fn test_merge_empty_partitions() -> Result<(), Report> {
     // No partition data at all
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?.graph;
     let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
 
     let mut branch_lengths = edge_branch_lengths(&graph);
@@ -521,7 +521,7 @@ mod tests {
     // Mix of polytomy and binary nodes
     // root -> internal1 -> {A, B, C} (polytomy), root -> D
     // A and B share mutations, C is different
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1,C:0.1)internal1:0.1,D:0.2)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1,C:0.1)internal1:0.1,D:0.2)root;")?.graph;
     let partition = make_partition(
       &graph,
       100,
@@ -553,7 +553,7 @@ mod tests {
   #[test]
   fn test_merge_single_mutation_shared() -> Result<(), Report> {
     // Minimal case: exactly 1 shared mutation
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.05,B:0.05,C:0.05)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.05,B:0.05,C:0.05)root;")?.graph;
     let partition = make_partition(
       &graph,
       1000,
@@ -593,7 +593,7 @@ mod tests {
     // 10 shared mutations out of length 100 places the pooled p-distance at
     // 0.10, where JC69 correction differs from the raw ratio by about 7%.
     // Both children have 0 unique mutations, so child BLs are 0.0.
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?.graph;
     let shared: Vec<Sub> = (0..10).map(|i| sub(b'A', i, b'T')).collect();
     let partition = make_partition(
       &graph,
@@ -644,7 +644,7 @@ mod tests {
     #[case] newick_bl: f64,
   ) -> Result<(), Report> {
     let newick = format!("(A:{newick_bl},B:{newick_bl},C:{newick_bl})root;");
-    let mut graph: GraphAncestral = nwk_read_str(&newick)?;
+    let mut graph: GraphAncestral = nwk_read_str(&newick)?.graph;
 
     let edge_subs = helpers::build_shared_unique_subs(n_shared, n_unique_a, n_unique_b);
     let partition = make_partition(&graph, length, &edge_subs)?;
@@ -667,7 +667,7 @@ mod tests {
   fn test_merge_child_bl_includes_indels_in_remaining() -> Result<(), Report> {
     // A has 2 shared subs + 1 indel on its edge (counted in remaining).
     // B has 2 shared subs only. bl_a = jc(1/100), bl_b = 0.0.
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?.graph;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
     let partition = make_partition(
       &graph,
@@ -702,7 +702,7 @@ mod tests {
   fn test_merge_child_bl_across_partitions() -> Result<(), Report> {
     // Two partitions (lengths 100 and 200). A has 1 unique sub in p1, 2 in p2.
     // Total remaining = 3, total length = 300. bl_a = jc(3/300).
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?.graph;
 
     let p1 = make_partition(
       &graph,
@@ -748,7 +748,7 @@ mod tests {
   #[test]
   fn test_merge_group_three_siblings_same_mutation() -> Result<(), Report> {
     // A, B, C all share {A0T}. All 3 should land under one new internal node.
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?.graph;
     let partition = make_partition(
       &graph,
       100,
@@ -778,7 +778,7 @@ mod tests {
   #[test]
   fn test_merge_shared_indels_only() -> Result<(), Report> {
     // A and B share an identical deletion but no substitutions.
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?.graph;
     let partition = make_partition(
       &graph,
       100,
@@ -809,7 +809,7 @@ mod tests {
   #[test]
   fn test_merge_shared_subs_and_indels_split_correctly() -> Result<(), Report> {
     // A and B share 1 sub + 1 indel. A also has 1 unique sub.
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?.graph;
     let partition = make_partition(
       &graph,
       100,

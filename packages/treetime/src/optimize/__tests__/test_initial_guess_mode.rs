@@ -40,14 +40,14 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_detects_nan_from_newick() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_WITHOUT_LENGTHS)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_WITHOUT_LENGTHS)?.graph;
     assert!(!invalid_branch_length_descriptions(&graph)?.is_empty());
     Ok(())
   }
 
   #[test]
   fn test_initial_guess_mode_detects_explicit_nan() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?.graph;
     graph.get_edges()[0]
       .write_arc()
       .payload()
@@ -59,7 +59,7 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_detects_negative_branch_length() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?.graph;
     set_first_branch_length(&graph, -0.1);
     assert!(!invalid_branch_length_descriptions(&graph)?.is_empty());
     Ok(())
@@ -67,7 +67,7 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_describes_all_invalid_edges_and_warning() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?.graph;
     set_branch_length_by_target_name(&graph, "A", -0.1);
     set_branch_length_by_target_name(&graph, "C", f64::INFINITY);
 
@@ -85,7 +85,7 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_no_missing_when_all_finite() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?.graph;
     assert!(invalid_branch_length_descriptions(&graph)?.is_empty());
     Ok(())
   }
@@ -367,7 +367,7 @@ pub mod tests {
     ) -> Result<(GraphAncestral, Vec<Arc<RwLock<PartitionMarginalDense>>>), Report> {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let aln = test_alignment()?;
-      let graph: GraphAncestral = nwk_read_str(newick)?;
+      let graph: GraphAncestral = nwk_read_str(newick)?.graph;
 
       let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
         0,

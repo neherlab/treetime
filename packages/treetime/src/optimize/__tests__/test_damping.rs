@@ -17,7 +17,7 @@ mod tests {
 
   #[test]
   fn test_edge_branch_lengths_captures_all_edges() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let saved = edge_branch_lengths(&graph);
     let edges = graph.get_edges();
     assert_eq!(saved.len(), edges.len());
@@ -31,7 +31,7 @@ mod tests {
 
   #[test]
   fn test_apply_damping_zero_is_noop() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let original = edge_branch_lengths(&graph);
 
     // Simulate optimization: double every branch length in the map.
@@ -56,7 +56,7 @@ mod tests {
   #[trace]
   fn test_apply_damping_weights_match_v0(#[case] iteration: usize, #[case] expected_old_weight: f64) -> Result<(), Report> {
     let damping = 0.75;
-    let graph: GraphAncestral = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
+    let graph: GraphAncestral = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?.graph;
     let old_bls = edge_branch_lengths(&graph);
 
     // Set all "optimized" branch lengths to zero.
@@ -73,7 +73,7 @@ mod tests {
 
   #[test]
   fn test_apply_damping_blends_correctly() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?;
+    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?.graph;
     let old_bls = edge_branch_lengths(&graph);
 
     // Set "optimized" branch lengths to 3x the input.
@@ -102,7 +102,7 @@ mod tests {
 
     let mut prev_damped = old_bl;
     for iteration in 0..10 {
-      let graph: GraphAncestral = nwk_read_str("(A:1.0)root:0.0;")?;
+      let graph: GraphAncestral = nwk_read_str("(A:1.0)root:0.0;")?.graph;
       let old_bls = edge_branch_lengths(&graph);
       let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(optimized_bl))).collect();
 
@@ -131,7 +131,7 @@ mod tests {
   #[trace]
   fn test_damped_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     let max_iter = 10;
@@ -187,7 +187,7 @@ mod tests {
   #[trace]
   fn test_damped_optimization_does_not_regress(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     let initial_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;

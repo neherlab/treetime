@@ -32,7 +32,7 @@ ACGTACGTNN
 >D
 NNGTACGTAC
 ";
-    let graph: GraphAncestral = nwk_read_str(newick)?;
+    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
@@ -66,7 +66,7 @@ ACGTACGTNN
 >D
 NNGTACGTAC
 ";
-    let graph: GraphAncestral = nwk_read_str(newick)?;
+    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
@@ -170,7 +170,7 @@ AC--ACGTAC
 >D
 ACGTACGTAC
 ";
-    let graph: GraphAncestral = nwk_read_str(newick)?;
+    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
@@ -245,7 +245,7 @@ AC--ACGTAC
 >D
 ACGTACGTAC
 ";
-    let graph: GraphAncestral = nwk_read_str(newick)?;
+    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;

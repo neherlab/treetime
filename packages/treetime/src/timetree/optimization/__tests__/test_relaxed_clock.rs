@@ -32,7 +32,7 @@ mod tests {
       .iter()
       .find(|output| output.name == case_name)
       .ok_or_else(|| eyre::eyre!("Golden-master output case {case_name} not found"))?;
-    let graph: GraphTimetree = nwk_read_str(&input.newick)?;
+    let graph: GraphTimetree = nwk_read_str(&input.newick)?.graph;
 
     let mut state = TimetreeState::new(&graph);
     for (name, branch) in &input.branches {
@@ -128,7 +128,7 @@ mod tests {
   #[test]
   fn test_relaxed_clock_uniform_branches_produce_similar_gamma() -> Result<(), Report> {
     // Tree with uniform branch lengths
-    let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.1,C:0.1)root:0.0;")?;
+    let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.1,C:0.1)root:0.0;")?.graph;
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
@@ -319,7 +319,7 @@ mod tests {
   fn test_relaxed_clock_one_mutation_affects_gamma() -> Result<(), Report> {
     // Use a tree with branch lengths that differ from time_length
     // This creates rate variation that the algorithm must account for
-    let graph: GraphTimetree = nwk_read_str("((A:0.01,B:0.02)AB:0.015,(C:0.005,D:0.01)CD:0.008)root:0.0;")?;
+    let graph: GraphTimetree = nwk_read_str("((A:0.01,B:0.02)AB:0.015,(C:0.005,D:0.01)CD:0.008)root:0.0;")?.graph;
 
     let params = [1.0, 1.0];
 
@@ -412,7 +412,7 @@ mod tests {
   #[test]
   fn test_relaxed_clock_root_has_branch_penalty() -> Result<(), Report> {
     // Tree with a single child to isolate root penalty behavior
-    let graph: GraphTimetree = nwk_read_str("(A:0.1)root:0.0;")?;
+    let graph: GraphTimetree = nwk_read_str("(A:0.1)root:0.0;")?.graph;
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
@@ -458,7 +458,7 @@ mod tests {
     #[values(0.1, 1.0, 10.0, 100.0)] slack: f64,
     #[values(1e-6, 0.001, 0.01, 0.1, 1.0)] one_mutation: f64,
   ) -> Result<(), Report> {
-    let graph: GraphTimetree = nwk_read_str("root:0.0;")?;
+    let graph: GraphTimetree = nwk_read_str("root:0.0;")?.graph;
     let params = [slack, 1.0];
     let mut state = TimetreeState::new(&graph);
     apply_relaxed_clock(
@@ -482,7 +482,7 @@ mod tests {
   /// the system has no rate variation to correct, so gamma = 1.0.
   #[test]
   fn test_relaxed_clock_childless_root_gamma_stored() -> Result<(), Report> {
-    let graph: GraphTimetree = nwk_read_str("(A:0.01)root:0.0;")?;
+    let graph: GraphTimetree = nwk_read_str("(A:0.01)root:0.0;")?.graph;
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
@@ -532,11 +532,11 @@ mod tests {
     }
 
     pub fn build_simple_tree() -> Result<GraphTimetree, Report> {
-      Ok(nwk_read_str("(A:0.1,B:0.2)root:0.0;")?)
+      Ok(nwk_read_str("(A:0.1,B:0.2)root:0.0;")?.graph)
     }
 
     pub fn build_deep_tree() -> Result<GraphTimetree, Report> {
-      Ok(nwk_read_str("((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;")?)
+      Ok(nwk_read_str("((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;")?.graph)
     }
 
     /// Fresh date state whose edge time lengths come from the value path: each edge's time length is

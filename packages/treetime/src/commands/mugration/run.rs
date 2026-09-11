@@ -29,7 +29,9 @@ pub fn run_mugration(
     .tree
     .as_ref()
     .ok_or_else(|| make_report!("Tree file is required"))?;
-  let graph: GraphAncestral = nwk_read_file(tree_path)?;
+  let parse = nwk_read_file(tree_path)?;
+  let graph: GraphAncestral = parse.graph;
+  let confidences = parse.confidences;
 
   let resolved = mugration_args.resolve_outputs()?;
 
@@ -64,6 +66,7 @@ pub fn run_mugration(
   progress.report("Mugration inference", 0.3, "");
   let mut result = execute_mugration(
     graph,
+    &confidences,
     &traits,
     mugration_args.attribute(),
     weights.as_ref(),

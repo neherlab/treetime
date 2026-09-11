@@ -52,7 +52,7 @@ mod tests {
   fn test_gm_runner_pre_optimize_changes_branch_lengths(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
 
-    let graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?;
+    let graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?.graph;
     let aln = load_alignment_for_dataset(dataset)?;
     let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln, &node_names(&graph))?;
     let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
@@ -101,7 +101,7 @@ mod tests {
   fn test_gm_runner_pre_optimize_pipeline_succeeds(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
 
-    let mut graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?;
+    let mut graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?.graph;
     let dates = load_dates_for_dataset(dataset)?;
     let constraints = load_date_constraints(&dates, &graph)?;
 

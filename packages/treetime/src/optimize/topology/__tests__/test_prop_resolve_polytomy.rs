@@ -154,7 +154,7 @@ mod tests {
       let child_names: Vec<String> = (0..n_children).map(|i| format!("C{i}")).collect();
       let inner = child_names.iter().map(|name| format!("{name}:0.1")).join(",");
       let newick = format!("((({inner})V:0.2)U:0.1)root:0.0;");
-      let graph: GraphAncestral = nwk_read_str(&newick).unwrap();
+      let graph: GraphAncestral = nwk_read_str(&newick).unwrap().graph;
 
       // M_v: k substitutions A->C at positions 0..k.
       let parent_subs: Vec<Sub> = (0..k).map(|pos| Sub::new(c(b'A'), pos, c(b'C')).unwrap()).collect();
@@ -204,7 +204,7 @@ mod tests {
         .map(|name| format!("{name}:0.1"))
         .join(",");
       let newick = format!("(({children})V:0.1,S:0.1)root:0.0;");
-      let graph: GraphAncestral = nwk_read_str(&newick).unwrap();
+      let graph: GraphAncestral = nwk_read_str(&newick).unwrap().graph;
 
       let mut edge_mutations: Vec<(String, String, Vec<Sub>)> = vec![(
         "root".to_owned(),

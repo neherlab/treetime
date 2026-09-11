@@ -27,7 +27,7 @@ mod tests {
 
   #[test]
   fn test_optimize_zero_sequence_length_run_optimize_error() {
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap();
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap().graph;
     let partitions = zero_length_partitions(&graph);
     let result = run_optimize_mixed(&graph, &partitions, BranchOptMethod::Newton);
     assert_error!(
@@ -38,7 +38,7 @@ mod tests {
 
   #[test]
   fn test_optimize_zero_sequence_length_initial_guess_error() {
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap();
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap().graph;
     let partitions = zero_length_partitions(&graph);
     let result = initial_guess_mixed(&graph, &partitions, true, false);
     assert_error!(
@@ -49,7 +49,7 @@ mod tests {
 
   #[test]
   fn test_optimize_zero_sequence_length_run_optimize_with_fixed_rate_error() {
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap();
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap().graph;
     let partitions = zero_length_partitions(&graph);
     let result = run_optimize_mixed_with_indel_rate(&graph, &partitions, BranchOptMethod::Newton, 1.0);
     assert_error!(

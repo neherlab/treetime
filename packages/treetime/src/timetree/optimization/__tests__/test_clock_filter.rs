@@ -58,7 +58,7 @@ mod tests {
     // Tree with dates that fit the clock model well (linear relationship)
     // Clock model: div = 0.01 * date - 20.0 (rate=0.01, intercept=-20.0)
     // For a node at date 2010 with div 0.1: expected_div = 0.01 * 2010 - 20.0 = 0.1
-    let graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?.graph;
 
     // Set dates that match the branch lengths well
     let dates = btreemap! {
@@ -89,7 +89,7 @@ mod tests {
   #[test]
   fn test_clock_filter_detects_outlier() -> Result<(), Report> {
     // Tree with one leaf having a date that deviates strongly from the clock model
-    let graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?.graph;
 
     // Set dates where one sample (A) has an extreme deviation
     // A is at div ~0.2 (root:0.01 + AB:0.1 + A:0.1) but claims date 1900 (very old)
@@ -131,7 +131,7 @@ mod tests {
   #[test]
   fn test_clock_filter_iqd_calculation() -> Result<(), Report> {
     // Verify IQD is computed and returned correctly
-    let graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?.graph;
 
     // Dates with some spread to create non-zero IQD
     let dates = btreemap! {
@@ -156,7 +156,7 @@ mod tests {
   #[test]
   fn test_clock_filter_respects_threshold() -> Result<(), Report> {
     // Test that higher threshold allows more deviation
-    let graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?.graph;
 
     let dates = btreemap! {
       "A".to_owned() => 1980.0,  // Moderate deviation
@@ -189,7 +189,7 @@ mod tests {
 
   #[test]
   fn test_clock_filter_propagates_bad_branches_after_topology_change() -> Result<(), Report> {
-    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root;")?;
+    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root;")?.graph;
     let mut state = TimetreeState::new(&graph);
     for node in graph.get_leaves() {
       let node = node.read_arc();

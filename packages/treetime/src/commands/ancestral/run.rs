@@ -28,7 +28,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::nwk::CommentProviders;
-use treetime_io::nwk::nwk_read_file;
+use treetime_io::nwk::{NwkParse, nwk_read_file};
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 use treetime_utils::sync::random::get_random_number_generator;
 
@@ -72,7 +72,7 @@ pub fn run_ancestral_reconstruction(
 
   progress.check_cancelled()?;
   progress.report("Parsing tree", 0.1, "");
-  let graph = nwk_read_file(ancestral_args.tree())?;
+  let NwkParse { graph, confidences } = nwk_read_file(ancestral_args.tree())?;
   let topology_order = ancestral_args.topology_order.resolve_topology_order(&graph, None)?;
 
   let resolved = ancestral_args.resolve_outputs()?;
@@ -195,7 +195,7 @@ pub fn run_ancestral_reconstruction(
     .map(|node| {
       let node = node.read_arc();
       let key = node.key();
-      let confidence = node.payload().read_arc().confidence;
+      let confidence = confidences.get(&key).copied().flatten();
       (
         key,
         AncestralNodeOut {

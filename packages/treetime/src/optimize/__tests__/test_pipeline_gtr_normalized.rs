@@ -31,7 +31,7 @@ mod tests {
     let tree_path = workspace_root.join("data/flu/h3n2/20/tree.nwk");
     let aln_path = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
 
-    let graph: GraphAncestral = nwk_read_file(&tree_path)?;
+    let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
     let sequences = read_many_fasta(&[aln_path.to_str().expect("utf-8 path")], &alphabet)?;
 
     let params = OptimizeParams {

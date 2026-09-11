@@ -25,7 +25,7 @@ mod tests {
     let aln = gap_free_alignment()?;
 
     // Run dense-only optimization
-    let graph_dense: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_dense: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let dense_partitions = setup_dense_only(&graph_dense, &aln)?;
 
     for _ in 0..10 {
@@ -36,7 +36,7 @@ mod tests {
     let log_lh_dense = marginal_update(&graph_dense, &profile_branch_lengths(&graph_dense), &dense_partitions)?.value();
 
     // Run sparse-only optimization
-    let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let sparse_partitions = setup_sparse_only(&graph_sparse, &aln)?;
 
     for _ in 0..10 {
@@ -81,7 +81,7 @@ mod tests {
     let aln = gap_free_alignment()?;
 
     // Run dense-only optimization
-    let graph_dense: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_dense: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let dense_partitions = setup_dense_only(&graph_dense, &aln)?;
 
     for _ in 0..10 {
@@ -92,7 +92,7 @@ mod tests {
     let branch_lengths_dense = get_branch_lengths(&graph_dense);
 
     // Run sparse-only optimization
-    let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_sparse: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let sparse_partitions = setup_sparse_only(&graph_sparse, &aln)?;
 
     for _ in 0..10 {

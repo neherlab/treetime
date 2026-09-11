@@ -18,7 +18,7 @@ pub fn setup_graph() -> Result<(GraphTimetree, DateConstraints), Report> {
     o!("leaf2") => Some(DateConstraint::exact(2010.0)),
     o!("leaf3") => Some(DateConstraint::exact(2012.0)),
   };
-  let graph: GraphTimetree = nwk_read_str(TREE_NWK)?;
+  let graph: GraphTimetree = nwk_read_str(TREE_NWK)?.graph;
   let constraints = load_date_constraints(&dates, &graph)?;
   Ok((graph, constraints))
 }

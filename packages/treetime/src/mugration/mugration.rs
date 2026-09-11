@@ -16,6 +16,7 @@ use parking_lot::RwLock;
 use statrs::statistics::Statistics;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use treetime_graph::node::GraphNodeKey;
 
 #[derive(Debug)]
 pub struct WeightCoverageResult {
@@ -79,6 +80,7 @@ pub fn apply_pseudo_counts(pi: Array1<f64>, pc: Option<f64>) -> Array1<f64> {
 
 pub fn execute_mugration(
   graph: GraphAncestral,
+  confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
   traits: &BTreeMap<String, String>,
   attribute: &str,
   weights: Option<&BTreeMap<String, f64>>,
@@ -182,5 +184,5 @@ pub fn execute_mugration(
     .ok_or_else(|| make_internal_report!("partition Arc has unexpected additional owners"))?
     .into_inner();
 
-  Ok(MugrationResult::new(graph, partition, attribute, log_lh))
+  Ok(MugrationResult::new(graph, confidences, partition, attribute, log_lh))
 }

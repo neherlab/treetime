@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn test_prop_input_arb_marginal_input_parseable_and_taxa_exact(input in arb_marginal_input_small()) {
-      let graph: GraphAncestral = nwk_read_str(&input.newick).unwrap();
+      let graph: GraphAncestral = nwk_read_str(&input.newick).unwrap().graph;
 
       let mut leaf_names = Vec::new();
       for leaf in graph.get_leaves() {

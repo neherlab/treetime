@@ -41,7 +41,7 @@ mod tests {
   /// `resolve_polytomies` reads. The edge branch lengths are zeroed so no branch carries reconstructed
   /// substitutions; the resolution timing comes from the node times alone.
   fn polytomy_tree() -> Result<(GraphTimetree, TimetreeState), Report> {
-    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
+    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?.graph;
     let mut state = TimetreeState::new(&graph);
     for (name, time) in [
       ("A", 2020.0),
@@ -60,7 +60,7 @@ mod tests {
 
   /// A 6-way polytomy, closer to what the sweep is meant for.
   fn wide_polytomy_tree() -> Result<(GraphTimetree, TimetreeState), Report> {
-    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.1,C:0.1,D:0.1,E:0.1,F:0.1)P:0.05)root;")?;
+    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.1,C:0.1,D:0.1,E:0.1,F:0.1)P:0.05)root;")?.graph;
     let mut state = TimetreeState::new(&graph);
     for (name, time) in [
       ("A", 2020.0),
@@ -81,7 +81,7 @@ mod tests {
   }
 
   fn binary_tree() -> Result<(GraphTimetree, TimetreeState), Report> {
-    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2)AB:0.05,(C:0.15,D:0.1)CD:0.08)root;")?;
+    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2)AB:0.05,(C:0.15,D:0.1)CD:0.08)root;")?.graph;
     let mut state = TimetreeState::new(&graph);
     for (name, time) in [
       ("A", 2020.0),
@@ -247,7 +247,7 @@ mod tests {
   #[test]
   fn test_resolve_polytomies_without_a_time_window_is_a_noop() -> Result<(), Report> {
     // The polytomy sits at the same time as its children, so no merger fits above them.
-    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
+    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?.graph;
     let mut state = TimetreeState::new(&graph);
     for (name, time) in [
       ("A", 2010.0),

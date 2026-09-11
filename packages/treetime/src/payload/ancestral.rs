@@ -15,19 +15,16 @@ pub type GraphAncestral<D = ()> = Graph<NodeAncestral, EdgeAncestral, D>;
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct NodeAncestral {
   pub name: Option<String>,
-  /// Input-tree branch support / bootstrap / posterior probability.
-  pub confidence: Option<f64>,
 }
 
 impl NodeFromNwk for NodeAncestral {
   fn from_nwk(
     name: Option<impl AsRef<str>>,
-    confidence: Option<f64>,
+    _confidence: Option<f64>,
     _: &BTreeMap<String, String>,
   ) -> Result<Self, Report> {
     Ok(Self {
       name: name.map(|s| s.as_ref().to_owned()),
-      confidence,
     })
   }
 }

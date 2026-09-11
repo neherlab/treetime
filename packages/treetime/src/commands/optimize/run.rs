@@ -19,7 +19,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nwk::CommentProviders;
-use treetime_io::nwk::nwk_read_file;
+use treetime_io::nwk::{NwkParse, nwk_read_file};
 
 pub fn run_optimize(
   args: &TreetimeOptimizeArgs,
@@ -34,7 +34,7 @@ pub fn run_optimize(
   for record in &mut aln {
     apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());
   }
-  let graph = nwk_read_file(args.tree())?;
+  let NwkParse { graph, confidences } = nwk_read_file(args.tree())?;
 
   let resolved = args.resolve_outputs()?;
 
@@ -88,12 +88,11 @@ pub fn run_optimize(
     .map(|node| {
       let node = node.read_arc();
       let key = node.key();
-      let payload = node.payload().read_arc();
       (
         key,
         OptimizeNodeOut {
           name: names[&key].clone(),
-          confidence: payload.confidence,
+          confidence: confidences.get(&key).copied().flatten(),
         },
       )
     })

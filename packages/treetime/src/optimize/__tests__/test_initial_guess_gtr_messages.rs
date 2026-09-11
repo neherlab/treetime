@@ -76,7 +76,7 @@ mod tests {
 
     // Scenario 1: stale JC69 messages (the bug)
     // Replace GTR but do NOT re-run marginal_update.
-    let graph_stale: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_stale: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions_stale = setup_dense_jc69(&graph_stale, &aln)?;
     marginal_update(&graph_stale, &profile_branch_lengths(&graph_stale), &partitions_stale)?.value();
     partitions_stale[0].write_arc().data.gtr = f81_gtr.clone();
@@ -85,7 +85,7 @@ mod tests {
 
     // Scenario 2: fresh F81 messages (the fix)
     // Replace GTR AND re-run marginal_update.
-    let graph_fresh: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph_fresh: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions_fresh = setup_dense_jc69(&graph_fresh, &aln)?;
     marginal_update(&graph_fresh, &profile_branch_lengths(&graph_fresh), &partitions_fresh)?.value();
     partitions_fresh[0].write_arc().data.gtr = f81_gtr;
@@ -113,7 +113,7 @@ mod tests {
     })?;
 
     // Run full initialization with the fix: JC69, update, replace, update, guess
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions = setup_dense_jc69(&graph, &aln)?;
     marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     partitions[0].write_arc().data.gtr = f81_gtr.clone();
@@ -127,7 +127,7 @@ mod tests {
     // initial guess may differ from bl_first (new transition matrices).
     // But running the SAME sequence twice from identical state must
     // produce the same result.
-    let graph2: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph2: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let partitions2 = setup_dense_jc69(&graph2, &aln)?;
     marginal_update(&graph2, &profile_branch_lengths(&graph2), &partitions2)?.value();
     partitions2[0].write_arc().data.gtr = f81_gtr;

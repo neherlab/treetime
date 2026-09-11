@@ -36,7 +36,7 @@ mod tests {
     let tree_path = workspace_root.join("data/sc2/2844/tree.nwk");
     let aln_path = workspace_root.join("data/sc2/2844/aln.fasta.xz");
     let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet)?;
-    let mut graph = nwk_read_file(&tree_path)?;
+    let mut graph = nwk_read_file(&tree_path)?.graph;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
@@ -86,7 +86,7 @@ mod tests {
     let tree_path = workspace_root.join("data/flu/h3n2/20/tree.nwk");
     let aln_path = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
     let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet)?;
-    let mut graph = nwk_read_file(&tree_path)?;
+    let mut graph = nwk_read_file(&tree_path)?.graph;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
     let sparse_partitions = vec![Arc::new(RwLock::new(

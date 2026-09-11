@@ -308,7 +308,7 @@ mod tests {
 
     #[test]
     fn test_prop_tree_arb_newick_parseable_and_leaf_names_exact(newick in arb_newick(6)) {
-      let graph: GraphAncestral = nwk_read_str(&newick).unwrap();
+      let graph: GraphAncestral = nwk_read_str(&newick).unwrap().graph;
 
       let mut actual_names = Vec::new();
       for leaf in graph.get_leaves() {

@@ -83,7 +83,7 @@ mod tests {
     dataset: &str,
     case: &super::super::test_gm_runner_support::support::DatasetOutputs,
   ) -> Result<(GraphTimetree, PartitionTimetreeAllVec, ClockModel, DateConstraints), Report> {
-    let mut graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?;
+    let mut graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?.graph;
     let dates = load_dates_for_dataset(dataset)?;
     let constraints = load_date_constraints(&dates, &graph)?;
 

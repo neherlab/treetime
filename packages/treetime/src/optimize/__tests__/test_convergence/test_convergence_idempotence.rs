@@ -25,7 +25,7 @@ mod tests {
   #[trace]
   fn test_optimization_converges_with_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
 
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
@@ -78,7 +78,7 @@ mod tests {
     let aln = simple_alignment()?;
 
     // Run optimization on first graph
-    let graph1: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph1: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_partitions1, sparse_partitions1, mixed_partitions1) = setup_partitions(&graph1, &aln)?;
 
     for _ in 0..10 {
@@ -90,7 +90,7 @@ mod tests {
     let lh1 = compute_total_lh(&graph1, &dense_partitions1, &sparse_partitions1)?;
 
     // Run optimization on second independent graph
-    let graph2: GraphAncestral = nwk_read_str(TREE_NEWICK)?;
+    let graph2: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_partitions2, sparse_partitions2, mixed_partitions2) = setup_partitions(&graph2, &aln)?;
 
     for _ in 0..10 {

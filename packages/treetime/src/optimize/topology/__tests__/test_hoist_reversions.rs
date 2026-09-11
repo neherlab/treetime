@@ -28,7 +28,7 @@ mod tests {
     // M_v has three substitutions; the child reverts only one. The two untouched
     // substitutions (T) must land on u->N once and NOT be duplicated onto N->c
     // (which distinguishes the move from re-attaching the child to the parent).
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
     let uv = find_edge_key(&graph, "U", "V").unwrap();
     let va = find_edge_key(&graph, "V", "A").unwrap();
 
@@ -65,7 +65,7 @@ mod tests {
   fn test_hoist_reversions_chain_composed() -> Result<(), Report> {
     // Chain: parent A0T at pos 0, child T0G at pos 0 -> net A0G. The original A0T stays
     // on N->v; the composed A0G moves to N->c.
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
     let uv = find_edge_key(&graph, "U", "V").unwrap();
     let va = find_edge_key(&graph, "V", "A").unwrap();
 
@@ -94,7 +94,7 @@ mod tests {
   #[test]
   fn test_hoist_reversions_reversion_removed_reduces_count() -> Result<(), Report> {
     // Pure reversion: A0T then T0A. Two mutations before, one after (delta = -1).
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
     let uv = find_edge_key(&graph, "U", "V").unwrap();
     let va = find_edge_key(&graph, "V", "A").unwrap();
 
@@ -128,7 +128,7 @@ mod tests {
   fn test_hoist_reversions_branch_length_distance_preserved() -> Result<(), Report> {
     // Distances root->V and root->A are unchanged by the move; the parent edge is split
     // proportionally to substitution count (|T|/|M_v| = 2/3).
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
     let uv = find_edge_key(&graph, "U", "V").unwrap();
     let va = find_edge_key(&graph, "V", "A").unwrap();
     let ru = find_edge_key(&graph, "root", "U").unwrap();
@@ -165,7 +165,7 @@ mod tests {
   fn test_hoist_reversions_multi_partition() -> Result<(), Report> {
     // Two partitions revert independent positions. Each partition's edges are split on
     // its own positions; T is per-partition (present in p0, empty in p1).
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
     let uv = find_edge_key(&graph, "U", "V").unwrap();
     let va = find_edge_key(&graph, "V", "A").unwrap();
 
@@ -209,7 +209,7 @@ mod tests {
   fn test_hoist_reversions_indel_cancellation() -> Result<(), Report> {
     // A deletion on the parent edge and its inverse insertion on the child edge interact,
     // so the parent indel stays on N->v and the composition cancels on N->c.
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
     let uv = find_edge_key(&graph, "U", "V").unwrap();
     let va = find_edge_key(&graph, "V", "A").unwrap();
 
@@ -246,7 +246,7 @@ mod tests {
   fn test_hoist_reversions_indel_overlap_fallback() -> Result<(), Report> {
     // Overlapping deletions cannot be cleanly hoisted: the parent deletion stays on N->v
     // and the merged deletion lands on N->c.
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
     let uv = find_edge_key(&graph, "U", "V").unwrap();
     let va = find_edge_key(&graph, "V", "A").unwrap();
 
@@ -287,7 +287,7 @@ mod tests {
   fn test_hoist_reversions_indel_no_interaction_hoisted() -> Result<(), Report> {
     // A parent indel disjoint from the child's indels is hoisted cleanly to u->N, leaving
     // N->v free of indels and N->c carrying only the child's own indel.
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
     let uv = find_edge_key(&graph, "U", "V").unwrap();
     let va = find_edge_key(&graph, "V", "A").unwrap();
 
@@ -331,7 +331,7 @@ mod tests {
     // child V->C1 carries A3G (the same change). The slide re-roots the site onto the
     // sibling's state: root becomes G, the sibling edge empties, and the parent edge gains the
     // inverse G3A. The root's clamped MAP sequence moves with root_sequence.
-    let graph: GraphAncestral = nwk_read_str(NWK_BIFURCATING)?;
+    let graph: GraphAncestral = nwk_read_str(NWK_BIFURCATING)?.graph;
     let root_key = find_node_key_by_name(&graph, "root").unwrap();
     let root_v = find_edge_key(&graph, "root", "V").unwrap();
     let root_s = find_edge_key(&graph, "root", "S").unwrap();
@@ -364,7 +364,7 @@ mod tests {
     // Two mutations before (sibling A3G plus the child's A3G), one after (delta = -1): a single
     // G3A on the branch to the A-state V, exactly the reroot-invariant parsimony cost of the
     // site. The slide alone is count-neutral, so the reduction comes from the hoist it enables.
-    let mut graph: GraphAncestral = nwk_read_str(NWK_BIFURCATING)?;
+    let mut graph: GraphAncestral = nwk_read_str(NWK_BIFURCATING)?.graph;
     let root_key = find_node_key_by_name(&graph, "root").unwrap();
     let root_v = find_edge_key(&graph, "root", "V").unwrap();
     let root_s = find_edge_key(&graph, "root", "S").unwrap();

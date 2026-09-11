@@ -38,7 +38,7 @@ mod tests {
     tree_nwk: &str,
     aln: &[FastaRecord],
   ) -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
-    let graph: GraphAncestral = nwk_read_str(tree_nwk)?;
+    let graph: GraphAncestral = nwk_read_str(tree_nwk)?.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,

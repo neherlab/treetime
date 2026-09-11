@@ -133,7 +133,7 @@ mod tests {
   /// under different rootings of the same unrooted topology. Returns only the scalar
   /// log-likelihood, discarding the partition data.
   fn run_sparse_lh_for_newick(newick: &str, aln: &[FastaRecord], gtr: GTR) -> Result<f64, Report> {
-    let graph: GraphAncestral = nwk_read_str(newick)?;
+    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
     let (log_lh, _) = run_sparse_marginal(&graph, aln, gtr)?;
     Ok(log_lh)
   }
@@ -180,7 +180,7 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
 
     let alphabet = Alphabet::default();
 
@@ -254,7 +254,7 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
     let gtr = jc69(JC69Params::default())?;
 
     let (log_lh, partitions) = run_sparse_marginal(&graph, &aln, gtr)?;
@@ -299,7 +299,7 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
     let gtr = jc69(JC69Params::default())?;
 
     let alphabet = Alphabet::default();
@@ -393,7 +393,7 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
     let gtr = make_nonuniform_gtr()?;
 
     let (log_lh, partitions) = run_sparse_marginal(&graph, &aln, gtr)?;
@@ -456,7 +456,7 @@ mod tests {
       mu,
     })?;
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?.graph;
     // Generate all possible triplets (4^3 = 64 combinations)
     let states = ['A', 'C', 'G', 'T'];
     for &state_a in &states {
@@ -503,7 +503,7 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
     let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &node_names(&graph))?;
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?,
@@ -580,7 +580,7 @@ mod tests {
         &*NUC_ALPHABET,
       )?;
       ThreadPoolBuilder::new().num_threads(threads).build()?.install(|| {
-        let graph = nwk_read_str(newick)?;
+        let graph = nwk_read_str(newick)?.graph;
         let (_, partitions) = run_sparse_marginal(&graph, &alignment, jc69(JC69Params::default())?)?;
         let partition = partitions[0].read_arc();
         Ok((

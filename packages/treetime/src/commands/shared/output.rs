@@ -884,8 +884,9 @@ impl TopologyOrderArgs {
           .topology_order_target_file
           .as_ref()
           .ok_or_else(|| make_report!("--topology-order-target-file is required for reference-topology"))?;
-        let graph =
-          nwk_read_file::<OrderNode, OrderEdge, ()>(path).wrap_err("When reading target reference topology")?;
+        let graph = nwk_read_file::<OrderNode, OrderEdge, ()>(path)
+          .wrap_err("When reading target reference topology")?
+          .graph;
         leaf_order(&graph)
       },
       TopologyOrderTargetSourceArg::List => {

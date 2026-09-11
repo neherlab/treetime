@@ -15,7 +15,7 @@ use treetime_io::nwk::nwk_read_str;
 pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
 pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
-  let graph: GraphAncestral = nwk_read_str(newick)?;
+  let graph: GraphAncestral = nwk_read_str(newick)?.graph;
   let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
   let length = get_common_length(&aln)?;
@@ -26,7 +26,7 @@ pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> 
 }
 
 pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
-  let graph: GraphAncestral = nwk_read_str(newick)?;
+  let graph: GraphAncestral = nwk_read_str(newick)?.graph;
   let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 

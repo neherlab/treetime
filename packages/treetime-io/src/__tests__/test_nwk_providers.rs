@@ -265,7 +265,7 @@ mod tests {
 
   #[test]
   fn test_nwk_name_quoting_special_chars() -> Result<(), Report> {
-    let graph: Graph<helpers::TestNode, helpers::TestEdge, ()> = nwk_read_str("('node (1)':0.1,B:0.2)root;")?;
+    let graph: Graph<helpers::TestNode, helpers::TestEdge, ()> = nwk_read_str("('node (1)':0.1,B:0.2)root;")?.graph;
 
     let actual = nwk_write_str(
       &graph,
@@ -364,7 +364,7 @@ mod tests {
     }
 
     pub(super) fn make_graph() -> Result<Graph<TestNode, TestEdge, ()>, Report> {
-      nwk_read_str("((A:0.1,B:0.2)inner:0.3,C:0.4)root;")
+      nwk_read_str("((A:0.1,B:0.2)inner:0.3,C:0.4)root;").map(|parse| parse.graph)
     }
 
     pub(super) fn find_node_key_by_name(graph: &Graph<TestNode, TestEdge, ()>, name: &str) -> GraphNodeKey {

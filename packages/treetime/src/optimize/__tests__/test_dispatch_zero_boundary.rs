@@ -118,7 +118,7 @@ mod tests {
   fn test_dispatch_zero_boundary_k80_identical_sequences(
     #[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(IDENTICAL_TREE_NEWICK)?.graph;
     let (_, _, mixed_partitions) = setup_identical_partitions(&graph, GtrModelName::K80)?;
 
     // Sanity check: every edge must start with a positive branch length so
@@ -166,7 +166,7 @@ mod tests {
   fn test_dispatch_zero_boundary_non_unimodal_models_all_reach_zero(
     #[case] model: GtrModelName,
   ) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(IDENTICAL_TREE_NEWICK)?.graph;
     let (dense_partitions, _, mixed_partitions) = setup_identical_partitions(&graph, model)?;
 
     // Precondition: the model must be classified as non-unimodal so that
@@ -203,7 +203,7 @@ mod tests {
   /// models: a change in which path fires must not affect the result.
   #[test]
   fn test_dispatch_zero_boundary_jc69_pre_dispatch_shortcut_reaches_zero() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(IDENTICAL_TREE_NEWICK)?.graph;
     let (dense_partitions, _, mixed_partitions) = setup_identical_partitions(&graph, GtrModelName::JC69)?;
 
     assert!(
@@ -464,7 +464,7 @@ mod tests {
   fn test_dispatch_zero_boundary_topology_cleanup_collects_k80_internal_edges(
     #[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let graph: GraphAncestral = nwk_read_str(IDENTICAL_TREE_NEWICK)?.graph;
     let (_, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph, GtrModelName::K80)?;
 
     // Before optimization, every edge starts at 0.1 and none are zero.

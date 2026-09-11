@@ -76,7 +76,7 @@ TCGGCCGTGTRTTG--
   #[test]
   fn test_marginal_idempotency_example_dense() -> Result<(), Report> {
     let input = example_input()?;
-    let graph: GraphAncestral = nwk_read_str(&input.newick)?;
+    let graph: GraphAncestral = nwk_read_str(&input.newick)?.graph;
     let (_, partitions) = run_dense_marginal(&input)?;
 
     let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
@@ -103,7 +103,7 @@ TCGGCCGTGTRTTG--
   #[test]
   fn test_marginal_idempotency_example_sparse() -> Result<(), Report> {
     let input = example_input()?;
-    let graph: GraphAncestral = nwk_read_str(&input.newick)?;
+    let graph: GraphAncestral = nwk_read_str(&input.newick)?.graph;
     let (_, partitions) = run_sparse_marginal(&input)?;
 
     let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();

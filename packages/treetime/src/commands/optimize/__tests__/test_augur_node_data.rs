@@ -131,11 +131,11 @@ mod tests {
     use crate::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
     use crate::progress::NoopProgress;
     use treetime_io::fasta::read_many_fasta;
-    use treetime_io::nwk::nwk_read_file;
+    use treetime_io::nwk::{NwkParse, nwk_read_file};
 
     let root = helpers::project_root();
     let alphabet = Alphabet::default();
-    let graph = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
+    let NwkParse { graph, confidences } = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
     let sequences = read_many_fasta(&[root.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet).unwrap();
 
     let params = OptimizeParams {
@@ -161,6 +161,7 @@ mod tests {
 
     let data = helpers::build_augur_node_data_json_from_output(
       &output,
+      &confidences,
       Some(std::path::Path::new("aln.fasta")),
       Some(std::path::Path::new("tree.nwk")),
     );
@@ -187,18 +188,21 @@ mod tests {
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
-    pub fn node_outputs<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
+    pub fn node_outputs<D: Send + Sync>(
+      graph: &GraphAncestral<D>,
+      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+    ) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
       graph
         .get_nodes()
         .iter()
         .map(|node| {
           let node = node.read_arc();
-          let payload = node.payload().read_arc();
+          let key = node.key();
           (
-            node.key(),
+            key,
             OptimizeNodeOut {
-              name: payload.name.clone(),
-              confidence: payload.confidence,
+              name: node.payload().read_arc().name.clone(),
+              confidence: confidences.get(&key).copied().flatten(),
             },
           )
         })
@@ -217,10 +221,12 @@ mod tests {
     }
 
     pub fn write_json(nwk: &str) -> String {
-      let graph: GraphAncestral = nwk_read_str(nwk).unwrap();
+      let parse = nwk_read_str(nwk).unwrap();
+      let graph: GraphAncestral = parse.graph;
+      let confidences = parse.confidences;
       let data = build_augur_node_data_json(
         &graph,
-        &node_outputs(&graph),
+        &node_outputs(&graph, &confidences),
         &branch_lengths(&graph),
         Some(Path::new("aln.fasta")),
         Some(Path::new("tree.nwk")),
@@ -235,7 +241,9 @@ mod tests {
     }
 
     pub fn write_and_read_with_mutations(nwk: &str, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
-      let graph: GraphAncestral = nwk_read_str(nwk).unwrap();
+      let parse = nwk_read_str(nwk).unwrap();
+      let graph: GraphAncestral = parse.graph;
+      let confidences = parse.confidences;
       let edges = graph.get_edges();
       let counts: BTreeMap<GraphEdgeKey, usize> = edge_counts
         .iter()
@@ -243,7 +251,7 @@ mod tests {
         .collect();
       let data = build_augur_node_data_json(
         &graph,
-        &node_outputs(&graph),
+        &node_outputs(&graph, &confidences),
         &branch_lengths(&graph),
         Some(Path::new("aln.fasta")),
         Some(Path::new("tree.nwk")),
@@ -263,11 +271,13 @@ mod tests {
 
     pub fn build_augur_node_data_json_from_output(
       output: &crate::optimize::pipeline::OptimizeOutput,
+      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
       alignment: Option<&Path>,
       input_tree: Option<&Path>,
     ) -> AugurNodeDataJsonRefine {
-      // Mirror `run_optimize`: the node name comes from the pipeline's post-loop name map and the
-      // branch length from the loop result, not the graph payload.
+      // Mirror `run_optimize`: the node name comes from the pipeline's post-loop name map, the branch
+      // length from the loop result, and the input branch support from the parse-time confidence map,
+      // none of them off the graph payload.
       let node_outputs: BTreeMap<GraphNodeKey, OptimizeNodeOut> = output
         .graph
         .get_nodes()
@@ -275,12 +285,11 @@ mod tests {
         .map(|node| {
           let node = node.read_arc();
           let key = node.key();
-          let confidence = node.payload().read_arc().confidence;
           (
             key,
             OptimizeNodeOut {
               name: output.names[&key].clone(),
-              confidence,
+              confidence: confidences.get(&key).copied().flatten(),
             },
           )
         })

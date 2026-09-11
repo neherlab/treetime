@@ -73,7 +73,7 @@ mod tests {
 
   #[test]
   fn test_likelihood_positional_log_lh_absent_without_distributions() -> Result<(), Report> {
-    let graph: GraphTimetree = nwk_read_str("(child:0.1)root;")?;
+    let graph: GraphTimetree = nwk_read_str("(child:0.1)root;")?.graph;
 
     let state = TimetreeState::new(&graph);
     let actual = compute_positional_log_lh(&graph, &state);
@@ -155,7 +155,7 @@ mod tests {
     }
 
     pub fn positional_graph() -> Result<GraphTimetree, Report> {
-      let graph: GraphTimetree = nwk_read_str("(child:0.1)root;")?;
+      let graph: GraphTimetree = nwk_read_str("(child:0.1)root;")?.graph;
       Ok(graph)
     }
 
@@ -187,7 +187,7 @@ mod tests {
         o!("leaf2") => Some(DateConstraint::exact(2010.0)),
         o!("leaf3") => Some(DateConstraint::exact(2012.0)),
       };
-      let graph: GraphTimetree = nwk_read_str("((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;")?;
+      let graph: GraphTimetree = nwk_read_str("((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;")?.graph;
       let constraints = load_date_constraints(&dates, &graph)?;
       Ok((graph, constraints))
     }

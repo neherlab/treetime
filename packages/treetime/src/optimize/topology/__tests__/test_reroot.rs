@@ -12,7 +12,7 @@ mod tests {
 
   #[test]
   fn test_reroot_split_edge_divides_branch_length() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.6,B:0.4)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:0.6,B:0.4)root;")?.graph;
 
     let root_key = find_node_key_by_name(&graph, "root").unwrap();
     let a_key = find_node_key_by_name(&graph, "A").unwrap();
@@ -53,7 +53,7 @@ mod tests {
 
   #[test]
   fn test_reroot_split_edge_at_midpoint() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("(A:1.0,B:2.0)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("(A:1.0,B:2.0)root;")?.graph;
 
     let root_key = find_node_key_by_name(&graph, "root").unwrap();
     let b_key = find_node_key_by_name(&graph, "B").unwrap();
@@ -83,7 +83,7 @@ mod tests {
 
   #[test]
   fn test_reroot_apply_reroot_topology_inverts_path() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?.graph;
 
     let root_key = find_node_key_by_name(&graph, "root").unwrap();
     let ab_key = find_node_key_by_name(&graph, "AB").unwrap();
@@ -106,7 +106,7 @@ mod tests {
 
   #[test]
   fn test_reroot_apply_reroot_topology_multi_hop() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?.graph;
 
     let root_key = find_node_key_by_name(&graph, "root").unwrap();
     let a_key = find_node_key_by_name(&graph, "A").unwrap();
@@ -125,7 +125,7 @@ mod tests {
 
   #[test]
   fn test_reroot_apply_reroot_topology_preserves_leaf_count() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?.graph;
 
     let initial_leaves = graph.get_leaves().len();
     let root_key = find_node_key_by_name(&graph, "root").unwrap();
@@ -146,7 +146,7 @@ mod tests {
     //    mid   B
     //    /
     //   A
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?.graph;
 
     let mid_key = find_node_key_by_name(&graph, "mid").unwrap();
 
@@ -178,7 +178,7 @@ mod tests {
 
   #[test]
   fn test_reroot_remove_node_if_trivial_non_trivial_returns_none() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?.graph;
 
     // AB has two children, not trivial
     let ab_key = find_node_key_by_name(&graph, "AB").unwrap();
@@ -195,7 +195,7 @@ mod tests {
 
   #[test]
   fn test_reroot_full_reroot_and_cleanup_preserves_topology() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root:0.001;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root:0.001;")?.graph;
 
     let root_key = find_node_key_by_name(&graph, "root").unwrap();
     let cd_key = find_node_key_by_name(&graph, "CD").unwrap();
@@ -232,7 +232,7 @@ mod tests {
   #[test]
   fn test_reroot_remove_trivial_with_partial_branch_lengths() -> Result<(), Report> {
     // One edge has a branch length, the other does not -> merged gets the existing one
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.5)mid,B:0.2)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.5)mid,B:0.2)root;")?.graph;
 
     let mid_key = find_node_key_by_name(&graph, "mid").unwrap();
     let result = remove_node_if_trivial(&mut graph, mid_key)?;
@@ -249,7 +249,7 @@ mod tests {
 
   #[test]
   fn test_reroot_full_cycle_branch_length_conservation() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
+    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?.graph;
 
     // Compute total branch length before reroot
     let total_bl_before: f64 = graph
