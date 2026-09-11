@@ -186,7 +186,7 @@ mod tests {
     use crate::commands::ancestral::aa_node_data::{AaCdsNodeData, AaNodeData};
     use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
     use crate::commands::ancestral::augur_node_data::build_augur_node_data_json;
-    use crate::commands::ancestral::run::run_ancestral_reconstruction;
+    use crate::commands::ancestral::run::{gather_augur_output_maps, run_ancestral_reconstruction};
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::shared::model::ModelArgs;
     use crate::commands::shared::output::OutputCoreArgs;
@@ -289,7 +289,8 @@ mod tests {
       partition: &PartitionFitch,
       mask: &[bool],
     ) -> String {
-      let data = build_augur_node_data_json(graph, partition, mask, names, None).unwrap();
+      let maps = gather_augur_output_maps(graph, partition).unwrap();
+      let data = build_augur_node_data_json(graph, &maps, mask, names, None).unwrap();
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
@@ -395,14 +396,8 @@ mod tests {
         }),
       );
 
-      build_augur_node_data_json(
-        &graph,
-        &partition,
-        &[false, false, false, false],
-        &names,
-        Some(&aa_node_data),
-      )
-      .unwrap()
+      let maps = gather_augur_output_maps(&graph, &partition).unwrap();
+      build_augur_node_data_json(&graph, &maps, &[false, false, false, false], &names, Some(&aa_node_data)).unwrap()
     }
 
     pub fn expected_json_with_aa() -> AugurNodeDataJsonAncestral {

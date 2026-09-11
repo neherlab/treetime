@@ -37,14 +37,14 @@ mod tests {
     let (graph, names, branch_lengths) = helpers::ancestral_graph(helpers::Mutations::NucleotideSubstitution)?;
 
     let nodes = helpers::ancestral_nodes(&names, &graph, &helpers::ancestral_confidences(&names, &graph));
-    let auspice = ancestral_to_auspice(&graph, &nodes, &branch_lengths, "2026-07-19")?;
+    let auspice = ancestral_to_auspice(&graph, &nodes, &branch_lengths, &helpers::ancestral_maps(&graph), "2026-07-19")?;
     let child = helpers::auspice_child(&auspice, "A");
     assert_eq!(Some("2026-07-19"), auspice.data.meta.updated.as_deref());
     assert_eq!(vec!["tree".to_owned()], auspice.data.meta.panels);
     assert_eq!(Some(0.5), child.node_attrs.div);
     assert_eq!(vec!["A1T".to_owned()], child.branch_attrs.mutations["nuc"]);
 
-    let phyloxml = ancestral_to_phyloxml(&graph, &nodes, &branch_lengths)?;
+    let phyloxml = ancestral_to_phyloxml(&graph, &nodes, &branch_lengths, &helpers::ancestral_maps(&graph))?;
     let child = helpers::phyloxml_child(&phyloxml, "A");
     assert_eq!(Some(0.5), child.branch_length_elem);
     assert_eq!(Some(0.9), child.confidence.first().map(|confidence| confidence.value));
@@ -64,7 +64,7 @@ mod tests {
         .map(|sequence| sequence.sequence.as_str())
     );
 
-    let mat = ancestral_to_mat(&graph, &names, &branch_lengths)?;
+    let mat = ancestral_to_mat(&graph, &names, &branch_lengths, &helpers::ancestral_maps(&graph))?;
     let mutation = mat
       .node_mutations
       .iter()
@@ -87,6 +87,7 @@ mod tests {
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
+      &helpers::ancestral_maps(&graph),
     )?;
     let child = helpers::phyloxml_child(&phyloxml, "A");
     let properties = child
@@ -105,6 +106,7 @@ mod tests {
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
+      &helpers::ancestral_maps(&graph),
       "2026-07-19",
     )?;
     let child = helpers::auspice_child(&auspice, "A");
@@ -115,6 +117,7 @@ mod tests {
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
+      &helpers::ancestral_maps(&graph),
       "2026-07-19",
     )?;
     let child = helpers::auspice_child(&auspice, "A");
@@ -134,11 +137,11 @@ mod tests {
   #[test]
   fn test_tree_output_mat_rejects_unsupported_events() -> Result<(), Report> {
     let (graph, names, branch_lengths) = helpers::ancestral_graph(helpers::Mutations::Indel)?;
-    let error = ancestral_to_mat(&graph, &names, &branch_lengths).expect_err("MAT must reject indels");
+    let error = ancestral_to_mat(&graph, &names, &branch_lengths, &helpers::ancestral_maps(&graph)).expect_err("MAT must reject indels");
     assert!(error.to_string().contains("insertion or deletion"));
 
     let (graph, names, branch_lengths) = helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
-    let error = ancestral_to_mat(&graph, &names, &branch_lengths).expect_err("MAT must reject amino-acid mutations");
+    let error = ancestral_to_mat(&graph, &names, &branch_lengths, &helpers::ancestral_maps(&graph)).expect_err("MAT must reject amino-acid mutations");
     assert!(error.to_string().contains("amino-acid mutation"));
 
     Ok(())
@@ -233,6 +236,7 @@ mod tests {
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
+      &helpers::ancestral_maps(&graph),
       &outputs,
       &CommentProviders::new(),
     )
@@ -255,6 +259,7 @@ mod tests {
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
+      &helpers::ancestral_maps(&graph),
       &outputs,
       &CommentProviders::new(),
     )?;
@@ -275,7 +280,7 @@ mod tests {
   #[test]
   fn test_tree_output_mutation_free_mat_needs_no_reference() -> Result<(), Report> {
     let (graph, names, branch_lengths) = helpers::ancestral_graph_without_partition()?;
-    let mat = ancestral_to_mat(&graph, &names, &branch_lengths)?;
+    let mat = ancestral_to_mat(&graph, &names, &branch_lengths, &helpers::ancestral_maps(&graph))?;
     assert!(mat.node_mutations.iter().all(|mutations| mutations.mutation.is_empty()));
     Ok(())
   }
@@ -324,6 +329,7 @@ mod tests {
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
+      &helpers::ancestral_maps(&graph),
       "2026-07-19",
     )
     .expect_err("Auspice must reject an amino-acid track outside its schema grammar");
@@ -434,6 +440,8 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::commands::ancestral::result::AncestralOutputMaps;
+    use crate::commands::ancestral::run::gather_ancestral_output_maps;
     use crate::clock::clock_graph::GraphClock;
     use crate::clock::clock_model::ClockModel;
     use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
@@ -475,6 +483,10 @@ mod tests {
       Indel,
       AminoAcid,
       IndelAndAminoAcid,
+    }
+
+    pub fn ancestral_maps(graph: &GraphAncestral<AncestralGraphData>) -> AncestralOutputMaps {
+      gather_ancestral_output_maps(graph).unwrap()
     }
 
     pub fn ancestral_graph(
@@ -635,6 +647,7 @@ mod tests {
         &ancestral_graph,
         &ancestral_nodes(&ancestral_names, &ancestral_graph, &btreemap! {}),
         &ancestral_bl,
+        &ancestral_maps(&ancestral_graph),
         "2026-07-19",
       )?;
       let (optimize_graph, optimize_names, optimize_bl) = optimize_graph()?;
@@ -680,6 +693,7 @@ mod tests {
           &ancestral_graph,
           &ancestral_nodes(&ancestral_names, &ancestral_graph, &btreemap! {}),
           &ancestral_bl,
+          &ancestral_maps(&ancestral_graph),
         )?,
         {
           let (optimize_graph, optimize_names, optimize_bl) = optimize_graph()?;
@@ -735,7 +749,7 @@ mod tests {
       let timetree_weights = timetree_mat_nwk_weights(&timetree, &timetree_names)?;
 
       Ok(vec![
-        ancestral_to_mat(&ancestral, &ancestral_names, &ancestral_bl)?,
+        ancestral_to_mat(&ancestral, &ancestral_names, &ancestral_bl, &ancestral_maps(&ancestral))?,
         optimize_to_mat(&optimize, &optimize_names, &optimize_bl)?,
         prune_to_mat(&prune, &prune_names, &prune_bl)?,
         clock_to_mat(&clock, &clock_names, &clock_bl)?,

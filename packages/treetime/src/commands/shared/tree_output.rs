@@ -1,6 +1,5 @@
-use crate::ancestral::pipeline::AncestralPartition;
 use crate::clock::clock_graph::GraphClock;
-use crate::commands::ancestral::result::{AncestralGraphData, AncestralNodeOut};
+use crate::commands::ancestral::result::{AncestralGraphData, AncestralNodeOut, AncestralOutputMaps};
 use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
 use crate::commands::mugration::augur_node_data::{build_confidence_map, compute_entropy};
 use crate::commands::optimize::result::{OptimizeGraphData, OptimizeNodeOut};
@@ -73,6 +72,7 @@ pub fn write_ancestral_tree_outputs(
   graph: &GraphAncestral<AncestralGraphData>,
   nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &AncestralOutputMaps,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
@@ -87,9 +87,9 @@ pub fn write_ancestral_tree_outputs(
     outputs,
     providers,
     "ancestral",
-    || ancestral_to_auspice(graph, nodes, branch_lengths, &updated),
-    || ancestral_to_phyloxml(graph, nodes, branch_lengths),
-    || ancestral_to_mat(graph, &names, branch_lengths),
+    || ancestral_to_auspice(graph, nodes, branch_lengths, maps, &updated),
+    || ancestral_to_phyloxml(graph, nodes, branch_lengths, maps),
+    || ancestral_to_mat(graph, &names, branch_lengths, maps),
   )
 }
 
@@ -297,9 +297,10 @@ pub(crate) fn ancestral_to_auspice(
   graph: &GraphAncestral<AncestralGraphData>,
   nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &AncestralOutputMaps,
   updated: &str,
 ) -> Result<AuspiceTree, Report> {
-  let root_sequences = ancestral_root_sequences(graph)?;
+  let root_sequences = ancestral_root_sequences(graph, maps);
   let genome_annotations = ancestral_genome_annotations(graph, &root_sequences)?;
   let data = auspice_data(
     "TreeTime ancestral analysis",
@@ -309,13 +310,13 @@ pub(crate) fn ancestral_to_auspice(
     None,
     genome_annotations,
     Some(root_sequences),
-    !ancestral_all_mutations(graph)?.is_empty(),
+    !ancestral_all_mutations(graph, maps).is_empty(),
   );
   auspice_from_graph(graph, data, |context| {
     let out = &nodes[&context.node_key];
     let name = node_name_value(context.node_key, out.name.as_deref());
     let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
-    let mutations = ancestral_node_mutations(graph, context.node_key, context.edge_key)?;
+    let mutations = ancestral_node_mutations(graph, maps, context.node_key, context.edge_key);
     ancestral_auspice_node(&name, div, out.confidence, mutations, None, None)
   })
 }
@@ -686,13 +687,14 @@ pub(crate) fn ancestral_to_phyloxml(
   graph: &GraphAncestral<AncestralGraphData>,
   nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &AncestralOutputMaps,
 ) -> Result<Phyloxml, Report> {
   phyloxml_from_graph(graph, "TreeTime ancestral analysis", |context| {
     let out = &nodes[&context.node_key];
     let name = node_name_value(context.node_key, out.name.as_deref());
     let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
     let branch_length = context.edge_key.and_then(|edge_key| branch_lengths[&edge_key]);
-    let mutations = ancestral_node_mutations(graph, context.node_key, context.edge_key)?;
+    let mutations = ancestral_node_mutations(graph, maps, context.node_key, context.edge_key);
     ancestral_phyloxml_clade(
       &name,
       out.name.clone(),
@@ -700,7 +702,7 @@ pub(crate) fn ancestral_to_phyloxml(
       branch_length,
       out.confidence,
       mutations,
-      &ancestral_node_sequences(graph, context.node_key),
+      &ancestral_node_sequences(graph, maps, context.node_key),
     )
   })
 }
@@ -1005,10 +1007,11 @@ pub(crate) fn ancestral_to_mat(
   graph: &GraphAncestral<AncestralGraphData>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &AncestralOutputMaps,
 ) -> Result<UsherTree, Report> {
-  let reference = ancestral_root_sequences(graph)?.remove(NUC_TRACK);
+  let reference = ancestral_root_sequences(graph, maps).remove(NUC_TRACK);
   mat_from_graph(graph, names, nwk_weights, reference.as_deref(), |node_key, edge_key| {
-    ancestral_node_mutations(graph, node_key, Some(edge_key))
+    Ok(ancestral_node_mutations(graph, maps, node_key, Some(edge_key)))
   })
 }
 
@@ -1185,38 +1188,29 @@ fn mat_nucleotide(nucleotide: AsciiChar, node_name: &str, role: &str) -> Result<
   }
 }
 
-fn ancestral_root_sequences(graph: &GraphAncestral<AncestralGraphData>) -> Result<BTreeMap<String, String>, Report> {
+fn ancestral_root_sequences(
+  graph: &GraphAncestral<AncestralGraphData>,
+  maps: &AncestralOutputMaps,
+) -> BTreeMap<String, String> {
   let mut sequences = BTreeMap::new();
-  if let Some(partition) = graph.data().partition.as_ref() {
-    let sequence = match partition {
-      AncestralPartition::Fitch(partition) => partition.read_arc().root_sequence(graph)?,
-      AncestralPartition::Sparse(partition) => partition.read_arc().root_sequence(graph)?,
-      AncestralPartition::Dense(partition) => partition.read_arc().root_sequence(graph)?,
-    };
+  if let Some(sequence) = maps.root_sequence.as_ref() {
     sequences.insert(NUC_TRACK.to_owned(), sequence.to_string());
   }
   if let Some(aa) = graph.data().aa_node_data.as_ref() {
     sequences.extend(aa.root_aa_sequences.clone());
   }
-  Ok(sequences)
+  sequences
 }
 
 fn ancestral_node_sequences(
   graph: &GraphAncestral<AncestralGraphData>,
+  maps: &AncestralOutputMaps,
   node_key: GraphNodeKey,
 ) -> BTreeMap<String, String> {
-  let mut sequences = graph
-    .data()
-    .partition
-    .as_ref()
-    .map(|partition| {
-      let sequence = match partition {
-        AncestralPartition::Fitch(partition) => partition.read_arc().node_sequence(node_key),
-        AncestralPartition::Sparse(partition) => partition.read_arc().node_sequence(node_key),
-        AncestralPartition::Dense(partition) => partition.read_arc().node_sequence(node_key),
-      };
-      btreemap! { NUC_TRACK.to_owned() => sequence.to_string() }
-    })
+  let mut sequences = maps
+    .node_sequences
+    .get(&node_key)
+    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
     .unwrap_or_default();
   if graph.is_root(node_key)
     && let Some(aa) = graph.data().aa_node_data.as_ref()
@@ -1402,40 +1396,14 @@ fn timetree_node_sequences(
   })
 }
 
-fn ancestral_edge_mutations(
-  graph: &GraphAncestral<AncestralGraphData>,
-  edge_key: GraphEdgeKey,
-) -> Result<Vec<Mutation>, Report> {
-  graph.data().partition.as_ref().map_or_else(
-    || Ok(vec![]),
-    |partition| match partition {
-      AncestralPartition::Fitch(partition) => {
-        partition
-          .read_arc()
-          .edge_mutations(graph, edge_key, MutationTrack::Nucleotide)
-      },
-      AncestralPartition::Sparse(partition) => {
-        partition
-          .read_arc()
-          .edge_mutations(graph, edge_key, MutationTrack::Nucleotide)
-      },
-      AncestralPartition::Dense(partition) => {
-        partition
-          .read_arc()
-          .edge_mutations(graph, edge_key, MutationTrack::Nucleotide)
-      },
-    },
-  )
-}
-
 fn ancestral_node_mutations(
   graph: &GraphAncestral<AncestralGraphData>,
+  maps: &AncestralOutputMaps,
   node_key: GraphNodeKey,
   edge_key: Option<GraphEdgeKey>,
-) -> Result<Vec<Mutation>, Report> {
+) -> Vec<Mutation> {
   let mut mutations = edge_key
-    .map(|edge_key| ancestral_edge_mutations(graph, edge_key))
-    .transpose()?
+    .and_then(|edge_key| maps.edge_mutations.get(&edge_key).cloned())
     .unwrap_or_default();
   if let Some(aa) = graph.data().aa_node_data.as_ref()
     && let Some(tracks) = aa.node_aa_mutations.get(&node_key)
@@ -1447,19 +1415,18 @@ fn ancestral_node_mutations(
       })
     }));
   }
-  Ok(mutations)
+  mutations
 }
 
-fn ancestral_all_mutations(graph: &GraphAncestral<AncestralGraphData>) -> Result<Vec<Mutation>, Report> {
+fn ancestral_all_mutations(graph: &GraphAncestral<AncestralGraphData>, maps: &AncestralOutputMaps) -> Vec<Mutation> {
   graph
     .get_nodes()
     .into_iter()
-    .map(|node| {
+    .flat_map(|node| {
       let node = node.read_arc();
-      ancestral_node_mutations(graph, node.key(), node.inbound().first().copied())
+      ancestral_node_mutations(graph, maps, node.key(), node.inbound().first().copied())
     })
-    .collect::<Result<Vec<_>, _>>()
-    .map(|mutations| mutations.into_iter().flatten().collect())
+    .collect()
 }
 
 fn optimize_has_mutations(graph: &GraphAncestral<OptimizeGraphData>) -> bool {

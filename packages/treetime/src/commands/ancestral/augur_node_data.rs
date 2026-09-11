@@ -1,9 +1,8 @@
 use crate::ancestral::mask::mask_to_string;
 use crate::commands::ancestral::aa_node_data::AaNodeData;
-use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
+use crate::commands::ancestral::result::AugurOutputMaps;
 use crate::partition::traits::BranchTopology;
 use crate::payload::ancestral::GraphAncestral;
-use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
@@ -25,24 +24,24 @@ use util_augur_node_data_json::{
 /// `collect_sequences`).
 pub fn write_augur_node_data_json<D: Send + Sync>(
   graph: &GraphAncestral<D>,
-  partition: &dyn AugurNodeDataJsonAncestralPartition,
+  maps: &AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   path: &Path,
 ) -> Result<(), Report> {
-  write_augur_node_data_json_with_aa(graph, partition, mask, names, None, path)
+  write_augur_node_data_json_with_aa(graph, maps, mask, names, None, path)
 }
 
 pub fn build_augur_node_data_json<D: Send + Sync>(
   graph: &GraphAncestral<D>,
-  partition: &dyn AugurNodeDataJsonAncestralPartition,
+  maps: &AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   aa_node_data: Option<&AaNodeData>,
 ) -> Result<AugurNodeDataJsonAncestral, Report> {
-  let alignment_length = partition.sequence_length();
-  let reference_seq = partition.root_sequence(graph)?;
-  let ambiguous = partition.ambiguous_char();
+  let alignment_length = maps.sequence_length;
+  let reference_seq = &maps.root_sequence;
+  let ambiguous = maps.ambiguous_char;
 
   let mut annotations = AugurNodeDataJsonAnnotations {
     nuc: Some(AugurNodeDataJsonAnnotationEntry {
@@ -70,11 +69,10 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
 
     // Root has no parent edge, so it carries no mutations (augur emits []).
     let muts = match graph.node_parent(node_key)? {
-      Some((_parent_key, edge_key)) => partition
-        .edge_subs(graph, edge_key)?
-        .into_iter()
+      Some((_parent_key, edge_key)) => maps.edge_subs[&edge_key]
+        .iter()
         .filter(|sub| !mask[sub.pos()])
-        .sorted_by_key(Sub::pos)
+        .sorted_by_key(|sub| sub.pos())
         .map(|sub| sub.to_string())
         .collect(),
       None => Vec::new(),
@@ -82,7 +80,7 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
 
     // Masked positions (every tip ambiguous) are reported as the ambiguous
     // character in the output sequence, matching augur.
-    let mut sequence = partition.node_sequence(node_key);
+    let mut sequence = maps.node_sequences[&node_key].clone();
     for (pos, &masked) in mask.iter().enumerate() {
       if masked && pos < sequence.len() {
         sequence[pos] = ambiguous;
@@ -130,13 +128,13 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
 
 pub fn write_augur_node_data_json_with_aa<D: Send + Sync>(
   graph: &GraphAncestral<D>,
-  partition: &dyn AugurNodeDataJsonAncestralPartition,
+  maps: &AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   aa_node_data: Option<&AaNodeData>,
   path: &Path,
 ) -> Result<(), Report> {
-  let data = build_augur_node_data_json(graph, partition, mask, names, aa_node_data)?;
+  let data = build_augur_node_data_json(graph, maps, mask, names, aa_node_data)?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
 }
