@@ -1,5 +1,4 @@
 use crate::payload::clock_set::ClockSet;
-use crate::payload::traits::ClockNode;
 use eyre::Report;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
@@ -141,7 +140,7 @@ impl ClockState {
     times: &BTreeMap<GraphNodeKey, Option<f64>>,
     edge_inputs: &BTreeMap<GraphEdgeKey, (Option<f64>, f64)>,
   ) where
-    N: GraphNode + ClockNode,
+    N: GraphNode,
     E: GraphEdge,
     D: Send + Sync,
   {
@@ -156,7 +155,7 @@ impl ClockState {
 
   fn reseed_transitional<N, E, D, F>(&mut self, graph: &Graph<N, E, D>, time_of: F)
   where
-    N: GraphNode + ClockNode,
+    N: GraphNode,
     E: GraphEdge,
     D: Send + Sync,
     F: Fn(GraphNodeKey, &N) -> Option<f64>,

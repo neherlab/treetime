@@ -1,194 +1,52 @@
 #[cfg(test)]
 mod __tests__;
 
-use crate::payload::ancestral::{EdgeAncestral, NodeAncestral};
-use crate::payload::clock_set::ClockSet;
-use crate::payload::traits::{ClockEdge, ClockNode, DateConstraintNode, TimetreeEdge, TimetreeNode};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
-use smart_default::SmartDefault;
 use std::collections::BTreeMap;
-use std::sync::Arc;
-use treetime_distribution::{Distribution, NegLog};
-use treetime_graph::edge::{BranchDistribution, ClockMessages, GraphEdge, TimeLength};
-use treetime_graph::node::{GraphNode, Outlier, TimeConstraint};
+use treetime_graph::edge::GraphEdge;
+use treetime_graph::node::GraphNode;
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct NodeTimetree {
-  pub base: NodeAncestral,
-  pub time: Option<f64>,
-  /// Distribution of the date given as input, `None` for a node no date was given for. Written
-  /// once by [`load_date_constraints`](crate::clock::date_constraints::load_date_constraints) and
-  /// then held fixed: `time_distribution` is refined in place by the inference passes, and every
-  /// backward pass lifts this back into it so the input is never inferred away.
-  pub date_constraint: Option<Arc<Distribution<NegLog>>>,
-  pub time_distribution: Option<Arc<Distribution<NegLog>>>,
-  pub bad_branch: bool,
-}
+pub struct NodeTimetree {}
 
 impl GraphNode for NodeTimetree {}
 
-impl Outlier for NodeTimetree {}
-
-impl ClockNode for NodeTimetree {
-  /// The observed date where there is one, the current estimate otherwise.
-  ///
-  /// The clock regression and the clock filter read this for leaves, and must see the date as
-  /// given: the forward pass refines the time distribution of a leaf whose date is uncertain, and
-  /// regressing on that refined date would feed the tree's own inference back into the clock.
-  fn likely_time(&self) -> Option<f64> {
-    self
-      .date_constraint
-      .as_ref()
-      .or(self.time_distribution.as_ref())
-      .and_then(|dist| dist.likely_time())
-  }
-}
-
-impl TimeConstraint<Arc<Distribution<NegLog>>> for NodeTimetree {
-  fn date_constraint(&self) -> &Option<Arc<Distribution<NegLog>>> {
-    &self.date_constraint
-  }
-
-  fn set_date_constraint(&mut self, dist: Option<Arc<Distribution<NegLog>>>) {
-    self.date_constraint = dist;
-  }
-
-  fn time_distribution(&self) -> &Option<Arc<Distribution<NegLog>>> {
-    &self.time_distribution
-  }
-
-  fn set_time_distribution(&mut self, dist: Option<Arc<Distribution<NegLog>>>) {
-    self.time_distribution = dist;
-  }
-
-  fn bad_branch(&self) -> bool {
-    self.bad_branch
-  }
-
-  fn set_bad_branch(&mut self, bad: bool) {
-    self.bad_branch = bad;
-  }
-}
-
-impl DateConstraintNode for NodeTimetree {}
-
 impl NodeFromNwk for NodeTimetree {
   fn from_nwk(
-    name: Option<impl AsRef<str>>,
-    confidence: Option<f64>,
-    comments: &BTreeMap<String, String>,
+    _name: Option<impl AsRef<str>>,
+    _confidence: Option<f64>,
+    _: &BTreeMap<String, String>,
   ) -> Result<Self, Report> {
-    Ok(Self {
-      base: NodeAncestral::from_nwk(name, confidence, comments)?,
-      ..NodeTimetree::default()
-    })
+    Ok(Self {})
   }
 }
 
 impl NodeToNwk for NodeTimetree {
   fn nwk_comments(&self) -> BTreeMap<String, String> {
-    self.base.nwk_comments()
+    BTreeMap::new()
   }
 }
 
 impl NodeToGraphviz for NodeTimetree {}
 
-impl TimetreeNode for NodeTimetree {
-  fn time(&self) -> Option<f64> {
-    self.time
-  }
-
-  fn set_time(&mut self, time: Option<f64>) {
-    self.time = time;
-  }
-}
-
-#[derive(Clone, SmartDefault, Debug, Serialize, Deserialize)]
-pub struct EdgeTimetree {
-  pub base: EdgeAncestral,
-  pub time_length: Option<f64>,
-  /// Clock-constrained branch length in substitutions per site, `clock_rate * gamma * dt` over
-  /// the inferred node times. Distinct from the raw input-tree branch length (threaded as a value
-  /// map, the length the branch-length grid is centred on and the root-to-tip regression reads);
-  /// this one is what sequence profiles propagate along. v0 keeps the same two-length split as
-  /// `branch_length` and `mutation_length`.
-  pub clock_branch_length: Option<f64>,
-  #[serde(skip)]
-  pub clock_to_parent: ClockSet,
-  #[serde(skip)]
-  pub clock_to_child: ClockSet,
-  #[serde(skip)]
-  pub clock_from_child: ClockSet,
-}
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+pub struct EdgeTimetree {}
 
 impl GraphEdge for EdgeTimetree {}
 
-impl ClockEdge for EdgeTimetree {}
-
-impl ClockMessages<ClockSet> for EdgeTimetree {
-  fn to_parent(&self) -> &ClockSet {
-    &self.clock_to_parent
-  }
-
-  fn to_parent_mut(&mut self) -> &mut ClockSet {
-    &mut self.clock_to_parent
-  }
-
-  fn to_child(&self) -> &ClockSet {
-    &self.clock_to_child
-  }
-
-  fn to_child_mut(&mut self) -> &mut ClockSet {
-    &mut self.clock_to_child
-  }
-
-  fn from_child(&self) -> &ClockSet {
-    &self.clock_from_child
-  }
-
-  fn from_child_mut(&mut self) -> &mut ClockSet {
-    &mut self.clock_from_child
-  }
-}
-
-impl BranchDistribution<Arc<Distribution<NegLog>>> for EdgeTimetree {}
-
-impl TimeLength for EdgeTimetree {
-  fn time_length(&self) -> Option<f64> {
-    self.time_length
-  }
-
-  fn set_time_length(&mut self, length: Option<f64>) {
-    self.time_length = length;
-  }
-}
-
 impl EdgeFromNwk for EdgeTimetree {
-  fn from_nwk(branch_length: Option<f64>) -> Result<Self, Report> {
-    Ok(Self {
-      base: EdgeAncestral::from_nwk(branch_length)?,
-      ..Self::default()
-    })
+  fn from_nwk(_branch_length: Option<f64>) -> Result<Self, Report> {
+    Ok(Self {})
   }
 }
 
 impl EdgeToNwk for EdgeTimetree {
   fn nwk_weight(&self) -> Option<f64> {
-    self.time_length
+    None
   }
 }
 
 impl EdgeToGraphviz for EdgeTimetree {}
-
-impl TimetreeEdge for EdgeTimetree {
-  fn clock_branch_length(&self) -> Option<f64> {
-    self.clock_branch_length
-  }
-
-  fn set_clock_branch_length(&mut self, length: Option<f64>) {
-    self.clock_branch_length = length;
-  }
-}

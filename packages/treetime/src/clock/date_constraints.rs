@@ -1,5 +1,4 @@
 use crate::make_error;
-use crate::payload::traits::DateConstraintNode;
 use eyre::Report;
 use itertools::Itertools;
 use log::{info, warn};
@@ -8,7 +7,7 @@ use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_io::dates_csv::{DateConstraint, DateValue, DatesMap};
 
 /// The per-node date inputs [`load_date_constraints`] derives from the dates metadata, keyed by node.
@@ -44,7 +43,7 @@ pub fn load_date_constraints<N, E, D>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<DateConstraints, Report>
 where
-  N: DateConstraintNode,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {

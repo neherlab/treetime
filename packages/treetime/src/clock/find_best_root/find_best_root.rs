@@ -4,7 +4,6 @@ use crate::clock::find_best_root::find_best_split::{FindRootResult, find_best_sp
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::make_error;
 use crate::payload::clock_set::ClockSet;
-use crate::payload::traits::ClockEdge;
 use eyre::Report;
 use log::{debug, info};
 use rayon::prelude::*;
@@ -30,7 +29,7 @@ pub fn find_best_root<N, E, D>(
 ) -> Result<FindRootResult, Report>
 where
   N: GraphNode,
-  E: GraphEdge + ClockEdge,
+  E: GraphEdge,
   D: Send + Sync,
 {
   info!("Starting root optimization with method: {params:?}, force_positive={force_positive}");

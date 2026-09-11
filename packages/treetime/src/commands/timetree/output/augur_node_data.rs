@@ -32,11 +32,11 @@ use util_augur_node_data_json::{
 ///   length in substitutions/site (`treeanc.py` sets `node.mutation_length =
 ///   node.branch_length` during branch-length optimization). This drives
 ///   `node_attrs.div` in `augur export v2` (cumulative `mutation_length`), so it
-///   must be the divergence length. Source: `EdgeTimetree.base.branch_length`.
+///   must be the divergence length. Source: `TimetreeEdgeOut.branch_length`.
 /// - `clock_length` = TreeTime `node.clock_length = up.time_before_present -
 ///   time_before_present` (`clock_tree.py:924`): the time-tree branch duration in
 ///   years. Equals `child.numdate - parent.numdate`. Source: difference of
-///   `NodeTimetree.time`.
+///   `TimetreeNodeOut.time`.
 /// - `branch_length` = `clock_length`: `make_time_tree` overwrites
 ///   `node.branch_length = node.clock_length` (`clock_tree.py:925`) and augur
 ///   emits it unchanged under the default `--divergence-units=mutations-per-site`.

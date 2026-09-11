@@ -1,7 +1,6 @@
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::coalescent::time_coordinate::CalendarTime;
-use crate::payload::traits::TimetreeNode;
 use eyre::Report;
 use log::warn;
 use treetime_graph::edge::GraphEdge;
@@ -61,7 +60,7 @@ pub fn collect_coalescent_edges<N, E, D>(
   node_times: &CoalescentNodeTimes,
 ) -> Result<Vec<CoalescentEdgeData>, Report>
 where
-  N: GraphNode + TimetreeNode,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {

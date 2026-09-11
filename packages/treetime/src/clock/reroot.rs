@@ -6,7 +6,6 @@ use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootMethod, RerootSpec, RootObjective};
 use crate::make_error;
 use crate::payload::clock_set::ClockSet;
-use crate::payload::traits::ClockEdge;
 use approx::ulps_eq;
 use eyre::Report;
 use itertools::Itertools;
@@ -70,7 +69,7 @@ pub fn reroot_in_place<N, E, D>(
 ) -> Result<RerootResult, Report>
 where
   N: GraphNode + Default,
-  E: GraphEdge + ClockEdge + Default,
+  E: GraphEdge + Default,
   D: Send + Sync,
 {
   let FindRootResult {
@@ -193,7 +192,7 @@ fn select_root<N, E, D>(
 ) -> Result<FindRootResult, Report>
 where
   N: GraphNode,
-  E: GraphEdge + ClockEdge,
+  E: GraphEdge,
   D: Send + Sync,
 {
   match &reroot_params.spec {
@@ -239,7 +238,7 @@ fn find_oldest_root<N, E, D>(
 ) -> Result<FindRootResult, Report>
 where
   N: GraphNode,
-  E: GraphEdge + ClockEdge,
+  E: GraphEdge,
   D: Send + Sync,
 {
   let Some(oldest_key) = graph
@@ -270,7 +269,7 @@ fn find_tip_group_root<N, E, D>(
 ) -> Result<FindRootResult, Report>
 where
   N: GraphNode,
-  E: GraphEdge + ClockEdge,
+  E: GraphEdge,
   D: Send + Sync,
 {
   if tips.is_empty() {
@@ -301,7 +300,7 @@ fn find_named_root_point<N, E, D>(
 ) -> Result<FindRootResult, Report>
 where
   N: GraphNode,
-  E: GraphEdge + ClockEdge,
+  E: GraphEdge,
   D: Send + Sync,
 {
   let Some(edge) = graph.parent_inbound_edge(node_key)? else {

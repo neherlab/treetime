@@ -1,7 +1,6 @@
 use crate::coalescent::events::collect_tree_events;
 use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
 use crate::coalescent::node_time::CoalescentNodeTimes;
-use crate::payload::traits::TimetreeNode;
 use eyre::Report;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
@@ -20,7 +19,7 @@ pub fn compute_lineage_counts<N, E, D>(
   node_times: &CoalescentNodeTimes,
 ) -> Result<PiecewiseConstantFn, Report>
 where
-  N: GraphNode + TimetreeNode,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {

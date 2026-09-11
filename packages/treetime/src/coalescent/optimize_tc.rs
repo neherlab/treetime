@@ -1,6 +1,5 @@
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
-use crate::payload::traits::TimetreeNode;
 use eyre::Report;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
@@ -39,7 +38,7 @@ pub fn optimize_tc<N, E, D>(
   node_times: &CoalescentNodeTimes,
 ) -> Result<OptimizeTcResult, Report>
 where
-  N: GraphNode + TimetreeNode,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {

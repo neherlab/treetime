@@ -264,7 +264,9 @@ mod tests {
     assert!(actual["data"]["partition"]["fitch"].is_object());
     // GraphJson serializes the concrete graph struct as-is: the command data slot asserted above
     // plus the node and edge topology.
-    let edges = actual["edges"].as_array().expect("graph.json must carry the edge topology");
+    let edges = actual["edges"]
+      .as_array()
+      .expect("graph.json must carry the edge topology");
     assert!(!edges.is_empty());
 
     Ok(())
@@ -730,7 +732,7 @@ mod tests {
       let (mugration, mugration_names, mut mugration_bl) = mugration_graph()?;
       set_mat_branch_lengths(&mugration, &mugration_names, &mut mugration_bl)?;
       let (timetree, timetree_names, _timetree_bl) = timetree_graph()?;
-      set_timetree_mat_branch_lengths(&timetree, &timetree_names)?;
+      let timetree_weights = timetree_mat_nwk_weights(&timetree, &timetree_names)?;
 
       Ok(vec![
         ancestral_to_mat(&ancestral, &ancestral_names, &ancestral_bl)?,
@@ -738,20 +740,8 @@ mod tests {
         prune_to_mat(&prune, &prune_names, &prune_bl)?,
         clock_to_mat(&clock, &clock_names, &clock_bl)?,
         mugration_to_mat(&mugration, &mugration_names, &mugration_bl)?,
-        timetree_to_mat(&timetree, &timetree_names, &timetree_nwk_weights(&timetree))?,
+        timetree_to_mat(&timetree, &timetree_names, &timetree_weights)?,
       ])
-    }
-
-    pub fn timetree_nwk_weights(graph: &GraphTimetree<TimetreeGraphData>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
-      graph
-        .get_edges()
-        .iter()
-        .map(|edge| {
-          let edge = edge.read_arc();
-          let key = edge.key();
-          (key, edge.payload().read_arc().time_length)
-        })
-        .collect()
     }
 
     pub fn auspice_validator() -> Result<Validator, Report> {
@@ -1064,11 +1054,6 @@ mod tests {
         ..
       } = nwk_read_str(MODEL_TREE)?;
       let graph: GraphTimetree = graph;
-      for (index, node) in graph.get_nodes().into_iter().enumerate() {
-        let node = node.write_arc();
-        let mut payload = node.payload().write_arc();
-        payload.time = Some(2020.0 + index as f64);
-      }
       Ok((
         graph.map_data(TimetreeGraphData::new(
           fixed_clock_model()?,
@@ -1096,17 +1081,16 @@ mod tests {
         .map(|(index, node)| {
           let node = node.read_arc();
           let key = node.key();
-          let payload = node.payload().read_arc();
           (
             key,
             TimetreeNodeOut {
               name: names.get(&node.key()).cloned().flatten(),
               desc: None,
               confidence: confidences.get(&key).copied().flatten(),
-              time: payload.time,
+              time: Some(2020.0 + index as f64),
               div: index as f64 / 2.0,
               is_outlier: false,
-              bad_branch: payload.bad_branch,
+              bad_branch: false,
               // Rate-susceptibility dates are produced only by the confidence pass and threaded as a
               // value map; this fixture graph runs no such pass, so production surfaces None here too.
               rate_susceptibility_dates: None,
@@ -1124,15 +1108,13 @@ mod tests {
         .get_edges()
         .iter()
         .map(|edge| {
-          let edge = edge.read_arc();
-          let key = edge.key();
-          let payload = edge.payload().read_arc();
+          let key = edge.read_arc().key();
           (
             key,
             TimetreeEdgeOut {
               branch_length: branch_lengths.get(&key).copied().flatten(),
-              time_length: payload.time_length,
-              clock_branch_length: payload.clock_branch_length,
+              time_length: None,
+              clock_branch_length: None,
               // Strict-clock test graph: the relaxed-clock multiplier is its default 1.0, matching
               // what production reads from the threaded edge state.
               gamma: 1.0,
@@ -1182,10 +1164,15 @@ mod tests {
       Ok(())
     }
 
-    fn set_timetree_mat_branch_lengths(
+    fn timetree_mat_nwk_weights(
       graph: &GraphTimetree<TimetreeGraphData>,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-    ) -> Result<(), Report> {
+    ) -> Result<BTreeMap<GraphEdgeKey, Option<f64>>, Report> {
+      let mut weights: BTreeMap<GraphEdgeKey, Option<f64>> = graph
+        .get_edges()
+        .iter()
+        .map(|edge| (edge.read_arc().key(), None))
+        .collect();
       for (name, length) in [("A", None), ("B", Some(0.0)), ("C", Some(0.5))] {
         let key = graph
           .get_nodes()
@@ -1196,15 +1183,9 @@ mod tests {
           })
           .expect("fixture node must exist");
         let edge_key = graph.node_parent(key)?.expect("fixture node must have a parent").1;
-        graph
-          .get_edge(edge_key)
-          .expect("fixture edge must exist")
-          .write_arc()
-          .payload()
-          .write_arc()
-          .time_length = length;
+        weights.insert(edge_key, length);
       }
-      Ok(())
+      Ok(weights)
     }
 
     fn json_value(value: &impl Serialize) -> Result<Value, Report> {

@@ -2,7 +2,6 @@
 mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::o;
-  use crate::payload::traits::DateConstraintNode;
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -14,7 +13,7 @@ mod tests {
   use treetime_graph::edge::GraphEdge;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_graph::node::{GraphNode, Named, TimeConstraint};
+  use treetime_graph::node::{GraphNode, Named};
   use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
   use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk, NwkParse, nwk_read_str};
   use treetime_utils::io::json::json_read_str;
@@ -29,29 +28,6 @@ mod tests {
   }
 
   impl GraphNode for TestNode {}
-
-  impl TimeConstraint<Arc<Distribution<NegLog>>> for TestNode {
-    fn date_constraint(&self) -> &Option<Arc<Distribution<NegLog>>> {
-      &self.date_constraint
-    }
-    fn set_date_constraint(&mut self, dist: Option<Arc<Distribution<NegLog>>>) {
-      self.date_constraint = dist;
-    }
-    fn time_distribution(&self) -> &Option<Arc<Distribution<NegLog>>> {
-      &self.time_distribution
-    }
-    fn set_time_distribution(&mut self, dist: Option<Arc<Distribution<NegLog>>>) {
-      self.time_distribution = dist;
-    }
-    fn bad_branch(&self) -> bool {
-      self.bad_branch
-    }
-    fn set_bad_branch(&mut self, bad: bool) {
-      self.bad_branch = bad;
-    }
-  }
-
-  impl DateConstraintNode for TestNode {}
 
   impl Named for TestNode {
     fn name(&self) -> Option<impl AsRef<str>> {

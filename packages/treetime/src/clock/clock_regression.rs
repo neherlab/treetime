@@ -3,7 +3,6 @@ use crate::clock::clock_state::{ClockEdgeState, ClockNodeState, ClockState};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::reroot::{RerootParams, reroot_in_place};
 use crate::payload::clock_set::ClockSet;
-use crate::payload::traits::ClockEdge;
 use eyre::Report;
 use log::{debug, info};
 use schemars::JsonSchema;
@@ -99,7 +98,7 @@ pub fn clock_regression_backward<N, E, D>(
 ) -> Result<(), Report>
 where
   N: GraphNode,
-  E: GraphEdge + ClockEdge,
+  E: GraphEdge,
   D: Send + Sync,
 {
   state.map_backward(graph, |context| {
@@ -116,7 +115,7 @@ fn clock_regression_backward_node<N, E, D>(
 ) -> Result<GraphPassNodeOutput<ClockNodeState, ClockEdgeState>, Report>
 where
   N: GraphNode,
-  E: GraphEdge + ClockEdge,
+  E: GraphEdge,
   D: Send + Sync,
 {
   let mut node = context.input;
@@ -186,7 +185,7 @@ pub fn clock_regression_forward<N, E, D>(
 ) -> Result<(), Report>
 where
   N: GraphNode,
-  E: GraphEdge + ClockEdge,
+  E: GraphEdge,
   D: Sync + Send,
 {
   state.map_forward(graph, |context| {
@@ -228,7 +227,7 @@ pub fn estimate_clock_model_with_reroot_policy<N, E, D>(
 ) -> Result<ClockRerootResult, Report>
 where
   N: GraphNode + Default,
-  E: GraphEdge + ClockEdge + Default,
+  E: GraphEdge + Default,
   D: Send + Sync,
 {
   if let Some(rate) = clock_rate {

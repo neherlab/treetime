@@ -15,7 +15,6 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
-  use crate::payload::clock_set::ClockSet;
   use crate::pretty_assert_abs_diff_eq;
   use crate::seq::alignment::get_common_length;
   use crate::timetree::inference::runner::run_timetree;
@@ -298,7 +297,6 @@ mod tests {
     partitions: &PartitionTimetreeAllVec,
     clock_model: &ClockModel,
   ) -> Result<SerializedState, Report> {
-    let edge_clocks = graph_edges_clock_state(graph);
     let graph = json_write_str(graph, JsonPretty(false))?;
     let partitions = partitions
       .iter()
@@ -309,23 +307,7 @@ mod tests {
       graph,
       partitions,
       clock_model,
-      edge_clocks,
     })
-  }
-
-  fn graph_edges_clock_state(graph: &GraphTimetree) -> Vec<EdgeClockState> {
-    graph
-      .get_edges()
-      .iter()
-      .map(|edge| {
-        let edge = edge.read_arc().payload().read_arc();
-        EdgeClockState {
-          to_parent: edge.clock_to_parent.clone(),
-          to_child: edge.clock_to_child.clone(),
-          from_child: edge.clock_from_child.clone(),
-        }
-      })
-      .collect()
   }
 
   /// Polytomy resolution samples; pin the stream so refinement tests stay deterministic.
@@ -390,13 +372,5 @@ mod tests {
     graph: String,
     partitions: Vec<String>,
     clock_model: String,
-    edge_clocks: Vec<EdgeClockState>,
-  }
-
-  #[derive(Debug, PartialEq)]
-  struct EdgeClockState {
-    to_parent: ClockSet,
-    to_child: ClockSet,
-    from_child: ClockSet,
   }
 }

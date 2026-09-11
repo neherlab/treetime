@@ -4,8 +4,6 @@ use crate::coalescent::coalescent::CoalescentModel;
 use crate::optimize::indel::estimate_indel_rate;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::traits::PartitionTimetreeAll;
-use crate::payload::traits::ClockNode;
-use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::timetree::inference::forward_pass::propagate_distributions_forward;
@@ -63,8 +61,8 @@ pub fn run_timetree<N, E, P>(
   clock_state: &mut ClockState,
 ) -> Result<(), Report>
 where
-  N: GraphNode + TimetreeNode + ClockNode + Default,
-  E: GraphEdge + TimetreeEdge + Default,
+  N: GraphNode + Default,
+  E: GraphEdge + Default,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
   info!("# Running timetree inference");
@@ -133,8 +131,8 @@ pub fn commit_clock_branch_lengths<N, E, D>(
   clock_branch_lengths: &mut BTreeMap<GraphEdgeKey, f64>,
   state: &TimetreeState,
 ) where
-  N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
+  N: GraphNode,
+  E: GraphEdge,
   D: Sync + Send,
 {
   let node_time = |key| state.nodes.get(&key).and_then(|node| node.time);
@@ -189,8 +187,8 @@ fn compute_branch_distributions_marginal_mode<N, E, P>(
   state: &mut TimetreeState,
 ) -> Result<(), Report>
 where
-  N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
+  N: GraphNode,
+  E: GraphEdge,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
   let one_mutation = calculate_one_mutation(partitions);
@@ -299,8 +297,8 @@ pub(super) fn create_branch_distributions_input_mode<N, E>(
   state: &mut TimetreeState,
 ) -> Result<(), Report>
 where
-  N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
+  N: GraphNode,
+  E: GraphEdge,
 {
   // Build each edge's point branch-length distribution in parallel, reading its relaxed-clock rate
   // from the value state, and carry the distribution out to insert into the value serially. An edge

@@ -122,10 +122,7 @@ mod tests {
     let time_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = graph
       .get_edges()
       .iter()
-      .map(|edge| {
-        let edge = edge.read_arc();
-        (edge.key(), edge.payload().read_arc().time_length)
-      })
+      .map(|edge| (edge.read_arc().key(), None))
       .collect();
     let nexus = nex_write_str_with(&graph, &names, &time_lengths, &options, &providers)?;
     let expected = concat!(

@@ -1,9 +1,7 @@
-use crate::payload::clock_set::ClockSet;
-use crate::payload::traits::ClockEdge;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use treetime_graph::edge::{ClockMessages, GraphEdge, TimeLength};
+use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
@@ -35,17 +33,13 @@ impl NodeToNwk for NodeClock {
 impl NodeToGraphviz for NodeClock {}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct EdgeClock {
-  pub clock_to_parent: ClockSet,
-  pub clock_to_child: ClockSet,
-  pub clock_from_child: ClockSet, // this is the propagated 'to_parent' msg. only need to avoid recalculation of propagated message
-}
+pub struct EdgeClock {}
 
 impl GraphEdge for EdgeClock {}
 
 impl EdgeFromNwk for EdgeClock {
   fn from_nwk(_branch_length: Option<f64>) -> Result<Self, Report> {
-    Ok(Self::default())
+    Ok(Self {})
   }
 }
 
@@ -56,39 +50,3 @@ impl EdgeToNwk for EdgeClock {
 }
 
 impl EdgeToGraphviz for EdgeClock {}
-
-impl ClockMessages<ClockSet> for EdgeClock {
-  fn to_parent(&self) -> &ClockSet {
-    &self.clock_to_parent
-  }
-
-  fn to_parent_mut(&mut self) -> &mut ClockSet {
-    &mut self.clock_to_parent
-  }
-
-  fn to_child(&self) -> &ClockSet {
-    &self.clock_to_child
-  }
-
-  fn to_child_mut(&mut self) -> &mut ClockSet {
-    &mut self.clock_to_child
-  }
-
-  fn from_child(&self) -> &ClockSet {
-    &self.clock_from_child
-  }
-
-  fn from_child_mut(&mut self) -> &mut ClockSet {
-    &mut self.clock_from_child
-  }
-}
-
-impl TimeLength for EdgeClock {
-  fn time_length(&self) -> Option<f64> {
-    None
-  }
-
-  fn set_time_length(&mut self, _length: Option<f64>) {}
-}
-
-impl ClockEdge for EdgeClock {}

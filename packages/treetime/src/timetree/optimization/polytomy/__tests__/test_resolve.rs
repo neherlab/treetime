@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
-  use crate::payload::clock_set::ClockSet;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
   use crate::timetree::timetree_state::TimetreeState;
@@ -413,12 +412,7 @@ mod tests {
     let (graph, names, mut state, mut branch_lengths) = polytomy_tree()?;
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
-      let key = edge.key();
-      let mut payload = edge.payload().write_arc();
-      payload.clock_to_parent = ClockSet::leaf_contribution(Some(2020.0));
-      payload.clock_to_child = ClockSet::leaf_contribution(Some(2021.0));
-      payload.clock_from_child = ClockSet::leaf_contribution(Some(2022.0));
+      let key = edge.read_arc().key();
       branch_lengths.insert(key, Some(0.25));
       state.edge_mut(key).time_length = Some(3.0);
     }

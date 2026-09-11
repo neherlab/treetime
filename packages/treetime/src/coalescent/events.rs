@@ -1,6 +1,5 @@
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::time_coordinate::CalendarTime;
-use crate::payload::traits::TimetreeNode;
 use eyre::Report;
 use ordered_float::OrderedFloat;
 use treetime_graph::edge::GraphEdge;
@@ -20,7 +19,7 @@ pub fn collect_tree_events<N, E, D>(
   node_times: &CoalescentNodeTimes,
 ) -> Result<(CalendarTime, Vec<(CalendarTime, i32)>, i32), Report>
 where
-  N: GraphNode + TimetreeNode,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {

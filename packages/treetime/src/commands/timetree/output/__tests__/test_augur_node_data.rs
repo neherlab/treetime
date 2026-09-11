@@ -173,6 +173,7 @@ mod tests {
     pub struct SampleCase {
       pub graph: GraphTimetree,
       pub names: BTreeMap<GraphNodeKey, Option<String>>,
+      pub times: BTreeMap<GraphNodeKey, Option<f64>>,
       pub clock_model: ClockModel,
       pub dates: DatesMap,
       pub intervals: Vec<NodeConfidenceInterval>,
@@ -183,7 +184,7 @@ mod tests {
       pub fn write_json(&self) -> String {
         let data = build_augur_node_data_json(
           &self.graph,
-          &timetree_nodes(&self.graph, &self.names),
+          &timetree_nodes(&self.graph, &self.names, &self.times),
           &timetree_edges(&self.graph, &self.branch_lengths),
           &self.clock_model,
           Some(&self.intervals),
@@ -208,7 +209,7 @@ mod tests {
           .collect();
         let data = build_augur_node_data_json(
           &self.graph,
-          &timetree_nodes(&self.graph, &self.names),
+          &timetree_nodes(&self.graph, &self.names, &self.times),
           &timetree_edges(&self.graph, &self.branch_lengths),
           &self.clock_model,
           Some(&self.intervals),
@@ -229,14 +230,18 @@ mod tests {
     pub fn sample_case() -> SampleCase {
       let mut graph = GraphTimetree::new();
       let mut names = BTreeMap::new();
-      let root_key = graph.add_node(make_node(2000.0));
+      let mut times = BTreeMap::new();
+      let root_key = graph.add_node(NodeTimetree::default());
       names.insert(root_key, Some("root".to_owned()));
-      let leaf_a_key = graph.add_node(make_node(2005.0));
+      times.insert(root_key, Some(2000.0));
+      let leaf_a_key = graph.add_node(NodeTimetree::default());
       names.insert(leaf_a_key, Some("leaf_a".to_owned()));
-      let leaf_b_key = graph.add_node(make_node(2010.0));
+      times.insert(leaf_a_key, Some(2005.0));
+      let leaf_b_key = graph.add_node(NodeTimetree::default());
       names.insert(leaf_b_key, Some("leaf_b".to_owned()));
-      let edge_a_key = graph.add_edge(root_key, leaf_a_key, make_edge()).unwrap();
-      let edge_b_key = graph.add_edge(root_key, leaf_b_key, make_edge()).unwrap();
+      times.insert(leaf_b_key, Some(2010.0));
+      let edge_a_key = graph.add_edge(root_key, leaf_a_key, EdgeTimetree::default()).unwrap();
+      let edge_b_key = graph.add_edge(root_key, leaf_b_key, EdgeTimetree::default()).unwrap();
       graph.build().unwrap();
 
       let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = maplit::btreemap! {
@@ -281,6 +286,7 @@ mod tests {
       SampleCase {
         graph,
         names,
+        times,
         clock_model,
         dates,
         intervals,
@@ -291,14 +297,13 @@ mod tests {
     fn timetree_nodes<D: Send + Sync>(
       graph: &GraphTimetree<D>,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
+      times: &BTreeMap<GraphNodeKey, Option<f64>>,
     ) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
       graph
         .get_nodes()
         .iter()
         .map(|node| {
-          let node = node.read_arc();
-          let key = node.key();
-          let payload = node.payload().read_arc();
+          let key = node.read_arc().key();
           (
             key,
             TimetreeNodeOut {
@@ -307,10 +312,10 @@ mod tests {
               // This fixture builds its graph node by node with no input-tree branch support, so
               // production's parse-time confidence map would surface None for every node here too.
               confidence: None,
-              time: payload.time,
+              time: times.get(&key).copied().flatten(),
               div: 0.0,
               is_outlier: false,
-              bad_branch: payload.bad_branch,
+              bad_branch: false,
               // Rate-susceptibility dates are produced only by the confidence pass and threaded as a
               // value map; this fixture graph runs no such pass, so production surfaces None here too.
               rate_susceptibility_dates: None,
@@ -328,15 +333,13 @@ mod tests {
         .get_edges()
         .iter()
         .map(|edge| {
-          let edge = edge.read_arc();
-          let key = edge.key();
-          let payload = edge.payload().read_arc();
+          let key = edge.read_arc().key();
           (
             key,
             TimetreeEdgeOut {
               branch_length: branch_lengths[&key],
-              time_length: payload.time_length,
-              clock_branch_length: payload.clock_branch_length,
+              time_length: None,
+              clock_branch_length: None,
               // Strict-clock test graph: the relaxed-clock multiplier is its default 1.0, matching
               // what production reads from the threaded edge state.
               gamma: 1.0,
@@ -344,16 +347,6 @@ mod tests {
           )
         })
         .collect()
-    }
-
-    fn make_node(time: f64) -> NodeTimetree {
-      let mut node = NodeTimetree::default();
-      node.time = Some(time);
-      node
-    }
-
-    fn make_edge() -> EdgeTimetree {
-      EdgeTimetree::default()
     }
   }
 }

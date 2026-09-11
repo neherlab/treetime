@@ -23,12 +23,6 @@ pub trait ClockMessages<T> {
 /// Defines access to branch length distribution and message to parent
 pub trait BranchDistribution<T> {}
 
-/// Defines access to time-scaled branch length
-pub trait TimeLength {
-  fn time_length(&self) -> Option<f64>;
-  fn set_time_length(&mut self, length: Option<f64>);
-}
-
 pub trait GraphEdge: Debug + Sync + Send {}
 
 /// Composite trait for edges that support ancestral reconstruction.

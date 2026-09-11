@@ -1,5 +1,4 @@
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::payload::traits::{TimetreeEdge, TimetreeNode};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use crate::timetree::timetree_state::{DateEdgeState, DateNodeState, TimetreeState};
 use eyre::Report;
@@ -31,8 +30,8 @@ pub fn propagate_distributions_backward<N, E, D>(
   state: &mut TimetreeState,
 ) -> Result<(), Report>
 where
-  N: GraphNode + TimetreeNode,
-  E: GraphEdge + TimetreeEdge,
+  N: GraphNode,
+  E: GraphEdge,
   D: Send + Sync,
 {
   state.map_backward(graph, |context| {

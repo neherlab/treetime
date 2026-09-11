@@ -2,7 +2,6 @@ use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::edge_data::{coalescent_log_likelihood, collect_coalescent_edges};
 use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::node_time::CoalescentNodeTimes;
-use crate::payload::traits::TimetreeNode;
 use eyre::Report;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdge;
@@ -29,7 +28,7 @@ pub fn compute_coalescent_total_lh<N, E, D>(
   node_times: &CoalescentNodeTimes,
 ) -> Result<LogLh, Report>
 where
-  N: GraphNode + TimetreeNode,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {

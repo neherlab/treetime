@@ -3,7 +3,6 @@ use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood
 use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::make_error;
-use crate::payload::traits::TimetreeNode;
 use eyre::{Report, WrapErr};
 use log::{info, warn};
 use ndarray::{Array1, Array2, array};
@@ -103,7 +102,7 @@ pub fn optimize_skyline<N, E, D>(
   node_times: &CoalescentNodeTimes,
 ) -> Result<SkylineResult, Report>
 where
-  N: GraphNode + TimetreeNode,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {
