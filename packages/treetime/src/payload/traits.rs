@@ -34,8 +34,6 @@ pub trait TimetreeNode: GraphNode + TimeConstraint<Arc<Distribution<NegLog>>> {
 /// Trait for edge types that support timetree inference.
 /// Combines clock edge capabilities with branch distribution and time length.
 pub trait TimetreeEdge: GraphEdge + ClockEdge + BranchDistribution<Arc<Distribution<NegLog>>> + TimeLength {
-  fn set_gamma(&mut self, gamma: f64);
-
   /// Clock-constrained branch length, `clock_rate * gamma * (t_child - t_parent)`, as committed
   /// by [`commit_clock_branch_lengths`](crate::timetree::inference::runner::commit_clock_branch_lengths).
   /// `None` until the first commit, and read back only to damp the next one.

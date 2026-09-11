@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::{BranchDistribution, ClockMessages, GraphEdge, HasBranchLength, TimeLength};
-use treetime_graph::node::{Described, Divergence, GraphNode, Named, Outlier, TimeConstraint};
+use treetime_graph::node::{Described, GraphNode, Named, Outlier, TimeConstraint};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
@@ -50,18 +50,6 @@ impl Described for NodeTimetree {
 
   fn set_desc(&mut self, desc: Option<String>) {
     self.base.set_desc(desc);
-  }
-}
-
-impl Divergence for NodeTimetree {
-  fn div(&self) -> Option<f64> {
-    Some(self.div)
-  }
-
-  fn set_div(&mut self, div: Option<f64>) {
-    if let Some(div) = div {
-      self.div = div;
-    }
   }
 }
 
@@ -285,11 +273,6 @@ impl EdgeToNwk for EdgeTimetree {
 impl EdgeToGraphviz for EdgeTimetree {}
 
 impl TimetreeEdge for EdgeTimetree {
-  // The relaxed-clock rate multiplier lives on the threaded date/clock state, not the payload, so
-  // this setter has nothing to store. It stays to satisfy the `TimetreeEdge` bound until the trait
-  // is dropped.
-  fn set_gamma(&mut self, _gamma: f64) {}
-
   fn clock_branch_length(&self) -> Option<f64> {
     self.clock_branch_length
   }

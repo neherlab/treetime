@@ -261,7 +261,7 @@ where
 
   /// Serial breadth-first forward traversal (roots to leaves, along edge directions).
   ///
-  /// Use this (rather than the parallel [`Self::par_iter_breadth_first_forward`]) when the
+  /// Use this (rather than the parallel pass engine [`GraphPass::try_map_forward`](crate::pass::GraphPass::try_map_forward)) when the
   /// per-node work must capture mutable outer state, which a parallel callback cannot.
   pub fn iter_breadth_first_forward<F>(&self, mut explorer: F) -> Result<(), Report>
   where

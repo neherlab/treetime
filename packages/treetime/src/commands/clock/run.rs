@@ -76,12 +76,13 @@ impl std::ops::Deref for ClockResult {
   }
 }
 
-/// Gather the per-node and per-edge clock outputs off the estimated tree into keyed value maps.
+/// Gather the per-node and per-edge clock outputs into keyed value maps the output writers consume.
 ///
-/// Runs after clock estimation, rerooting, and topology ordering, so it reads the final divergence,
-/// time, and exclusion flags of the post-reroot node set. The clock passes still write these fields
-/// onto the graph payloads (the reroot and best-root search read them there); this step surfaces them
-/// as a standalone value the output writers consume.
+/// Runs after clock estimation, rerooting, and topology ordering. Each node's divergence, time, and
+/// exclusion flags come from the `ClockState` value the pipeline routed through estimation and
+/// rerooting; each node's name from the post-reroot `names` map; each edge's branch length from the
+/// `branch_lengths` map. The graph payloads are not read here. The maps are keyed by the final
+/// (post-reroot) node and edge set.
 fn gather_clock_outputs(
   graph: &GraphClock<ClockGraphData>,
   state: &ClockState,

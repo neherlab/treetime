@@ -19,7 +19,6 @@ All nodes and edges are stored as `Arc<RwLock<_>>` (using `parking_lot`) for con
 - `GraphNode` - marker trait (`Clone + Debug + Sync + Send`)
 - `Named` - read/write node name
 - `Described` - read/write node description
-- `Divergence` - evolutionary distance from root
 - `Outlier` - outlier flag
 - `TimeConstraint<T>` - time distribution and bad-branch flag
 
