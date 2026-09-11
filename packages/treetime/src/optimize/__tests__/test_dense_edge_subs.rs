@@ -19,6 +19,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::Arc;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::LogLh;
@@ -170,7 +171,14 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &aln,
+      &node_names(&graph),
+    )?
+    .value();
     marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     let partition = partitions[0].read_arc();
@@ -294,7 +302,14 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &aln,
+      &node_names(&graph),
+    )?
+    .value();
     marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     let partition = partitions[0].read_arc();

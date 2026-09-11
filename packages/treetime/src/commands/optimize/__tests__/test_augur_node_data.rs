@@ -2,6 +2,7 @@
 mod tests {
   use approx::assert_relative_eq;
   use pretty_assertions::assert_eq;
+  use treetime_graph::value_maps::node_names;
   use treetime_utils::io::json::json_read_str;
   use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
@@ -135,7 +136,7 @@ mod tests {
 
     let root = helpers::project_root();
     let alphabet = Alphabet::default();
-    let NwkParse { graph, confidences } = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
+    let NwkParse { graph, confidences, .. } = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
     let sequences = read_many_fasta(&[root.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet).unwrap();
 
     let params = OptimizeParams {
@@ -151,13 +152,14 @@ mod tests {
       topology_ops: TopologyOps::default(),
     };
 
+    let names = node_names(&graph);
     let input = OptimizeInput {
       graph,
       alphabet,
       sequences,
     };
 
-    let output = pipeline::run(&params, input, &NoopProgress).unwrap();
+    let output = pipeline::run(&params, input, &names, &NoopProgress).unwrap();
 
     let data = helpers::build_augur_node_data_json_from_output(
       &output,

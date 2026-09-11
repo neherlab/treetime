@@ -13,13 +13,14 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_distribution::{Distribution, NegLog};
+  use treetime_graph::value_maps::node_names;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 
   fn create_graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<(GraphTimetree, DateConstraints), Report> {
     let graph = nwk_read_str(tree_nwk)?.graph;
-    let constraints = load_date_constraints(dates, &graph)?;
+    let constraints = load_date_constraints(dates, &graph, &node_names(&graph))?;
     Ok((graph, constraints))
   }
 

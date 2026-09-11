@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, NodeOptimizeOps};
-use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Whether a scalar is in the physical domain of a phylogenetic branch length.
 pub fn is_valid_branch_length_value(branch_length: f64) -> bool {
@@ -17,13 +17,15 @@ pub fn is_valid_branch_length(branch_length: Option<f64>) -> bool {
 }
 
 /// Return user-facing descriptions of all invalid branch lengths in graph order.
-pub fn invalid_branch_length_descriptions<N, E, D>(graph: &Graph<N, E, D>) -> Result<Vec<String>, Report>
+pub fn invalid_branch_length_descriptions<N, E, D>(
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> Result<Vec<String>, Report>
 where
   N: NodeOptimizeOps,
   E: GraphEdge + HasBranchLength,
   D: Send + Sync,
 {
-  let names = node_names(graph);
   let branch_lengths = edge_branch_lengths(graph);
   graph
     .get_edges()
@@ -34,8 +36,8 @@ where
       (!is_valid_branch_length(branch_length)).then_some((edge.source(), edge.target(), branch_length))
     })
     .map(|(source, target, branch_length)| {
-      let source = node_label(&names, source);
-      let target = node_label(&names, target);
+      let source = node_label(names, source);
+      let target = node_label(names, target);
       let branch_length = branch_length.map_or_else(|| "missing".to_owned(), |value| value.to_string());
       Ok(format!("{source} -> {target}: {branch_length}"))
     })

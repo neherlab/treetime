@@ -4,6 +4,7 @@ use crate::partition::timetree::partition::GraphTimetree;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use maplit::btreemap;
+use treetime_graph::value_maps::node_names;
 use treetime_io::dates_csv::DateConstraint;
 use treetime_io::nwk::nwk_read_str;
 use treetime_utils::o;
@@ -19,7 +20,7 @@ pub fn setup_graph() -> Result<(GraphTimetree, DateConstraints), Report> {
     o!("leaf3") => Some(DateConstraint::exact(2012.0)),
   };
   let graph: GraphTimetree = nwk_read_str(TREE_NWK)?.graph;
-  let constraints = load_date_constraints(&dates, &graph)?;
+  let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
   Ok((graph, constraints))
 }
 

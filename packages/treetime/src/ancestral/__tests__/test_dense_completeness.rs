@@ -49,6 +49,7 @@ NNGTACGTAC
       &profile_branch_lengths(&graph),
       std::slice::from_ref(&partition),
       &aln,
+      &node_names(&graph),
     )?
     .value();
     Ok((graph, partition))
@@ -187,6 +188,7 @@ ACGTACGTAC
       &profile_branch_lengths(&graph),
       std::slice::from_ref(&partition),
       &aln,
+      &node_names(&graph),
     )?
     .value();
     Ok((graph, partition))

@@ -9,6 +9,7 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use rstest::rstest;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
@@ -266,7 +267,7 @@ mod tests {
       dates: &DatesMap,
     ) -> Result<(GraphTimetree, DateConstraints), Report> {
       let graph = nwk_read_str(tree_nwk)?.graph;
-      let constraints = load_date_constraints(dates, &graph)?;
+      let constraints = load_date_constraints(dates, &graph, &node_names(&graph))?;
       Ok((graph, constraints))
     }
   }

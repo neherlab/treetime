@@ -12,12 +12,13 @@ use eyre::Report;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use std::collections::BTreeMap;
 use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::reroot::{self as topology_reroot, remove_node_if_trivial, split_edge};
-use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+use treetime_graph::value_maps::edge_branch_lengths;
 
 use topology_reroot::{EdgeSplitInfo, RerootResult};
 
@@ -63,6 +64,7 @@ pub fn reroot_in_place<N, E, D>(
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<RerootResult, Report>
 where
   N: GraphNode + Named + Default,
@@ -71,7 +73,7 @@ where
 {
   let FindRootResult {
     edge, split, clock_set, ..
-  } = select_root(graph, state, options, params, reroot_params)?;
+  } = select_root(graph, state, options, params, reroot_params, names)?;
 
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
   let Some(edge_key) = edge else {
@@ -179,6 +181,7 @@ fn select_root<N, E, D>(
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<FindRootResult, Report>
 where
   N: GraphNode + Named,
@@ -198,7 +201,7 @@ where
       find_best_root(graph, state, options, params, false, RootObjective::FixedRate(0.0))
     },
     RerootSpec::Method(RerootMethod::Oldest) => find_oldest_root(graph, state, options, reroot_params.objective),
-    RerootSpec::Tips(tips) => find_tip_group_root(graph, state, options, tips, reroot_params.objective),
+    RerootSpec::Tips(tips) => find_tip_group_root(graph, state, options, tips, reroot_params.objective, names),
   }
 }
 
@@ -236,6 +239,7 @@ fn find_tip_group_root<N, E, D>(
   options: &ClockParams,
   tips: &[String],
   objective: RootObjective,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<FindRootResult, Report>
 where
   N: GraphNode + Named,
@@ -246,7 +250,6 @@ where
     return make_error!("--reroot-tips requires at least one tip name");
   }
 
-  let names = node_names(graph);
   let tip_keys = tips
     .iter()
     .map(|tip| {

@@ -7,13 +7,14 @@ mod tests {
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use maplit::btreemap;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::o;
 
   fn graph_with_dates(nwk: &str, dates: &DatesMap) -> Result<(GraphTimetree, DateConstraints), Report> {
     let graph = nwk_read_str(nwk)?.graph;
-    let constraints = load_date_constraints(dates, &graph)?;
+    let constraints = load_date_constraints(dates, &graph, &node_names(&graph))?;
     Ok((graph, constraints))
   }
 

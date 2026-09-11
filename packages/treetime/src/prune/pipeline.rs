@@ -15,7 +15,7 @@ use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::fasta::FastaRecord;
 
 pub struct PruneParams {
@@ -45,12 +45,17 @@ pub struct PruneOutput {
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-pub fn run(params: &PruneParams, mut input: PruneInput) -> Result<PruneOutput, Report> {
+pub fn run(
+  params: &PruneParams,
+  mut input: PruneInput,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> Result<PruneOutput, Report> {
   // Entry snapshots propagated through the whole prune pipeline: every downstream name and branch
-  // length read comes from these maps, not the payload. `assign_node_names` after a merge refreshes
-  // `names` to the post-topology labels; the collapse and merge producers maintain `branch_lengths`
-  // in place across the topology edits, so both maps exit reflecting the final pruned tree.
-  let mut names = node_names(&input.graph);
+  // length read comes from these maps, not the payload. `names` is threaded in from the parse;
+  // `assign_node_names` after a merge refreshes it to the post-topology labels; the collapse and merge
+  // producers maintain `branch_lengths` in place across the topology edits, so both maps exit
+  // reflecting the final pruned tree.
+  let mut names = names.clone();
   let mut branch_lengths = edge_branch_lengths(&input.graph);
 
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
@@ -66,6 +71,7 @@ pub fn run(params: &PruneParams, mut input: PruneInput) -> Result<PruneOutput, R
       sequences,
       GtrModelName::JC69,
       None,
+      &names,
     )?;
     match created.partition {
       MarginalPartition::Sparse(p) => vec![Arc::new(RwLock::new(p))],

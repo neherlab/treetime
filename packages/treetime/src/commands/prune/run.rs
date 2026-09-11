@@ -17,7 +17,6 @@ use std::sync::Arc;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
-use treetime_graph::value_maps::node_names;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
@@ -37,7 +36,8 @@ pub fn run_prune(
   let parse = nwk_read_file(args.tree())?;
   let graph: GraphAncestral = parse.graph;
   let confidences = parse.confidences;
-  let input_order = leaf_order(&graph)?;
+  let names = parse.names;
+  let input_order = leaf_order(&graph, &names)?;
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 
   let resolved = args.resolve_outputs()?;
@@ -71,7 +71,7 @@ pub fn run_prune(
 
   progress.check_cancelled()?;
   progress.report("Pruning", 0.4, "");
-  let output = pipeline::run(&params, input)?;
+  let output = pipeline::run(&params, input, &names)?;
   let pipeline::PruneOutput {
     graph,
     gtr,
@@ -84,8 +84,10 @@ pub fn run_prune(
   // slot until that read moves onto the result value; both copies leave the graph then.
   let seq = partitions.first().map(Arc::clone);
   let mut graph = graph.map_data(PruneGraphData::new(gtr.clone(), partitions));
-  let topology_order = args.topology_order.resolve_topology_order(&graph, Some(input_order))?;
-  topology_order.apply(&mut graph)?;
+  let topology_order = args
+    .topology_order
+    .resolve_topology_order(&graph, &names, Some(input_order))?;
+  topology_order.apply(&mut graph, &names)?;
   progress.report("Writing output", 0.8, "");
 
   // Gather the per-node name/confidence and per-edge branch length off the ordered tree into keyed
@@ -176,13 +178,15 @@ fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   Ok(())
 }
 
-fn leaf_order<N, E, D>(graph: &Graph<N, E, D>) -> Result<Vec<String>, Report>
+fn leaf_order<N, E, D>(
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> Result<Vec<String>, Report>
 where
   N: GraphNode + Named,
   E: GraphEdge,
   D: Sync + Send,
 {
-  let names = node_names(graph);
   graph
     .get_leaves()
     .into_iter()

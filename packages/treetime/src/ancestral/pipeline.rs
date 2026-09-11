@@ -155,7 +155,7 @@ where
       progress.check_cancelled()?;
       progress.report("Inferring GTR model", 0.2, "");
 
-      let created = create_marginal_partition(&graph, 0, alphabet, &sequences, params.model, params.dense)?;
+      let created = create_marginal_partition(&graph, 0, alphabet, &sequences, params.model, params.dense, names)?;
 
       match created.partition {
         MarginalPartition::Sparse(partition) => {
@@ -201,7 +201,7 @@ where
 
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          initialize_marginal(&graph, branch_lengths, &partitions, &sequences)?;
+          initialize_marginal(&graph, branch_lengths, &partitions, &sequences, names)?;
           marginal_update(&graph, branch_lengths, &partitions)?;
 
           if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {

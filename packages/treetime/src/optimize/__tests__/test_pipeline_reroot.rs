@@ -11,6 +11,7 @@ mod tests {
   use std::path::Path;
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::node::{GraphNodeKey, Named};
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::{FastaRecord, read_many_fasta};
   use treetime_io::nwk::nwk_read_file;
 
@@ -89,6 +90,7 @@ mod tests {
     let leaves_before = graph.get_leaves().len();
     let root_children_before = root_child_keys(&graph);
 
+    let names = node_names(&graph);
     let output = run(
       &params_with(Some(RerootSpec::Method(RerootMethod::MinDev))),
       OptimizeInput {
@@ -96,6 +98,7 @@ mod tests {
         alphabet,
         sequences,
       },
+      &names,
       &NoopProgress,
     )?;
 
@@ -116,6 +119,7 @@ mod tests {
     let root_before = root_key(&graph);
     let tips: Vec<String> = leaf_names(&graph).into_iter().take(2).collect();
 
+    let names = node_names(&graph);
     let output = run(
       &params_with(Some(RerootSpec::Tips(tips))),
       OptimizeInput {
@@ -123,6 +127,7 @@ mod tests {
         alphabet,
         sequences,
       },
+      &names,
       &NoopProgress,
     )?;
 
@@ -141,6 +146,7 @@ mod tests {
     let mut params = params_with(Some(RerootSpec::Method(RerootMethod::MinDev)));
     params.dense = Some(true);
 
+    let names = node_names(&graph);
     let output = run(
       &params,
       OptimizeInput {
@@ -148,6 +154,7 @@ mod tests {
         alphabet,
         sequences,
       },
+      &names,
       &NoopProgress,
     )?;
 
@@ -163,6 +170,7 @@ mod tests {
     let (graph, alphabet, sequences) = load()?;
     let leaves_before = graph.get_leaves().len();
 
+    let names = node_names(&graph);
     let output = run(
       &params_with(None),
       OptimizeInput {
@@ -170,6 +178,7 @@ mod tests {
         alphabet,
         sequences,
       },
+      &names,
       &NoopProgress,
     )?;
 

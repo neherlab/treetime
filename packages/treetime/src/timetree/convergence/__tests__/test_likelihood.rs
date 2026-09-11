@@ -23,6 +23,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::LogLh;
@@ -188,7 +189,7 @@ mod tests {
         o!("leaf3") => Some(DateConstraint::exact(2012.0)),
       };
       let graph: GraphTimetree = nwk_read_str("((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;")?.graph;
-      let constraints = load_date_constraints(&dates, &graph)?;
+      let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
       Ok((graph, constraints))
     }
 

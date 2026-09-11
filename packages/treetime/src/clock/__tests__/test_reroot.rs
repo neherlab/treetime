@@ -65,7 +65,15 @@ mod tests {
       spec: RerootSpec::Method(RerootMethod::MinDev),
       ..RerootParams::default()
     };
-    let actual = reroot_in_place(&mut graph, &mut state, &options, &branch_params, &reroot_params)?;
+    let names_tt_9 = node_names(&graph);
+    let actual = reroot_in_place(
+      &mut graph,
+      &mut state,
+      &options,
+      &branch_params,
+      &reroot_params,
+      &names_tt_9,
+    )?;
     let actual_split = actual.edge_split.expect("fixture should select an interior root point");
 
     assert_eq!(expected_edge, actual_split.old_edge_key);
@@ -98,19 +106,23 @@ mod tests {
     };
     let branch_params = BranchPointOptimizationParams::default();
 
+    let names_tt_8 = node_names(&graph_ascending);
     reroot_in_place(
       &mut graph_ascending,
       &mut state_ascending,
       &options_ascending,
       &branch_params,
       &reroot_params,
+      &names_tt_8,
     )?;
+    let names_tt_7 = node_names(&graph_descending);
     reroot_in_place(
       &mut graph_descending,
       &mut state_descending,
       &options_descending,
       &branch_params,
       &reroot_params,
+      &names_tt_7,
     )?;
 
     let expected = nwk_write_str(
@@ -143,12 +155,14 @@ mod tests {
       ..RerootParams::default()
     };
 
+    let names_tt_6 = node_names(&graph);
     reroot_in_place(
       &mut graph,
       &mut state,
       &options,
       &BranchPointOptimizationParams::default(),
       &reroot_params,
+      &names_tt_6,
     )?;
 
     let node_count_after = graph.get_nodes().len();
@@ -171,12 +185,14 @@ mod tests {
       ..RerootParams::default()
     };
 
+    let names_tt_5 = node_names(&graph);
     let reroot_result = reroot_in_place(
       &mut graph,
       &mut state,
       &options,
       &BranchPointOptimizationParams::default(),
       &reroot_params,
+      &names_tt_5,
     )?;
 
     if reroot_result.new_root_key != old_root_key {
@@ -196,12 +212,14 @@ mod tests {
 
     let reroot_params = RerootParams::default();
 
+    let names_tt_4 = node_names(&graph);
     reroot_in_place(
       &mut graph,
       &mut state,
       &options,
       &BranchPointOptimizationParams::default(),
       &reroot_params,
+      &names_tt_4,
     )?;
 
     let node_count_after = graph.get_nodes().len();
@@ -224,12 +242,14 @@ mod tests {
       ..RerootParams::default()
     };
 
+    let names_tt_3 = node_names(&graph);
     let reroot_result = reroot_in_place(
       &mut graph,
       &mut state,
       &options,
       &BranchPointOptimizationParams::default(),
       &reroot_params,
+      &names_tt_3,
     )?;
 
     let root = graph
@@ -269,12 +289,14 @@ mod tests {
       ..RerootParams::default()
     };
 
+    let names_tt_2 = node_names(&graph);
     let result = reroot_in_place(
       &mut graph,
       &mut state,
       &options,
       &BranchPointOptimizationParams::default(),
       &reroot_params,
+      &names_tt_2,
     );
 
     assert_error!(result, "Reroot tip not found: missing");
@@ -289,12 +311,14 @@ mod tests {
       ..RerootParams::default()
     };
 
+    let names_tt_1 = node_names(&graph);
     let reroot_result = reroot_in_place(
       &mut graph,
       &mut state,
       &options,
       &BranchPointOptimizationParams::default(),
       &reroot_params,
+      &names_tt_1,
     )?;
 
     let root = graph

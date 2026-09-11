@@ -81,6 +81,7 @@ pub fn apply_pseudo_counts(pi: Array1<f64>, pc: Option<f64>) -> Array1<f64> {
 pub fn execute_mugration(
   graph: GraphAncestral,
   confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   traits: &BTreeMap<String, String>,
   attribute: &str,
   weights: Option<&BTreeMap<String, f64>>,
@@ -159,7 +160,7 @@ pub fn execute_mugration(
     MIN_BRANCH_LENGTH_FRACTION,
     filter_uninformative_root,
   );
-  partition.attach_traits(&graph, traits)?;
+  partition.attach_traits(&graph, traits, names)?;
 
   let partition = Arc::new(RwLock::new(partition));
 

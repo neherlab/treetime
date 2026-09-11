@@ -134,7 +134,14 @@ mod tests {
         DENSE_NUC_ALPHABET.clone(),
         get_common_length(&aln)?,
       )));
-      initialize_marginal(&graph, &profile_branch_lengths(&graph), from_ref(&partition), &aln)?.value();
+      initialize_marginal(
+        &graph,
+        &profile_branch_lengths(&graph),
+        from_ref(&partition),
+        &aln,
+        &node_names(&graph),
+      )?
+      .value();
       let counts = partition
         .read_arc()
         .count_transitions(&graph, &edge_branch_lengths(&graph))?;

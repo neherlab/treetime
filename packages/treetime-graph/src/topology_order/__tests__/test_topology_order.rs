@@ -1,13 +1,15 @@
 #[cfg(test)]
 mod tests {
   use crate::topology_order::*;
+  use crate::value_maps::node_names;
   use pretty_assertions::assert_eq;
 
   #[test]
   fn topology_order_descendant_count_sorts_children_ascending() -> Result<(), Report> {
     let mut graph = fixture_tree()?;
     let original = child_names(&graph, "root")?;
-    TopologyOrderSpec::default().apply(&mut graph)?;
+    let names = node_names(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -21,7 +23,8 @@ mod tests {
   #[test]
   fn topology_order_descendant_count_reverse_sorts_children_descending() -> Result<(), Report> {
     let mut graph = fixture_tree()?;
-    TopologyOrderSpec::descendant_count(true).apply(&mut graph)?;
+    let names = node_names(&graph);
+    TopologyOrderSpec::descendant_count(true).apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -34,7 +37,8 @@ mod tests {
   #[test]
   fn topology_order_keep_preserves_outbound_order() -> Result<(), Report> {
     let mut graph = fixture_tree()?;
-    TopologyOrderSpec::keep().apply(&mut graph)?;
+    let names = node_names(&graph);
+    TopologyOrderSpec::keep().apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -60,7 +64,8 @@ mod tests {
     graph.add_edge(right, right_only, TestEdge::new())?;
     graph.build()?;
 
-    TopologyOrderSpec::default().apply(&mut graph)?;
+    let names = node_names(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -81,7 +86,8 @@ mod tests {
         .collect(),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
-    spec.apply(&mut graph)?;
+    let names = node_names(&graph);
+    spec.apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -103,7 +109,8 @@ mod tests {
     graph.add_edge(c, a, TestEdge::new())?;
     graph.build()?;
 
-    let err = TopologyOrderSpec::default().apply(&mut graph).unwrap_err();
+    let names = node_names(&graph);
+    let err = TopologyOrderSpec::default().apply(&mut graph, &names).unwrap_err();
 
     assert!(err.to_string().contains("directed cycle"));
 
@@ -117,7 +124,8 @@ mod tests {
       preset: TopologyOrderPreset::Height,
       ..TopologyOrderSpec::default()
     };
-    spec.apply(&mut graph)?;
+    let names = node_names(&graph);
+    spec.apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -135,7 +143,8 @@ mod tests {
       preset: TopologyOrderPreset::HeightReverse,
       ..TopologyOrderSpec::default()
     };
-    spec.apply(&mut graph)?;
+    let names = node_names(&graph);
+    spec.apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -156,7 +165,8 @@ mod tests {
       preset: TopologyOrderPreset::Divergence,
       ..TopologyOrderSpec::default()
     };
-    spec.apply(&mut graph)?;
+    let names = node_names(&graph);
+    spec.apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -173,7 +183,8 @@ mod tests {
       preset: TopologyOrderPreset::DivergenceReverse,
       ..TopologyOrderSpec::default()
     };
-    spec.apply(&mut graph)?;
+    let names = node_names(&graph);
+    spec.apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -190,7 +201,8 @@ mod tests {
       preset: TopologyOrderPreset::Label,
       ..TopologyOrderSpec::default()
     };
-    spec.apply(&mut graph)?;
+    let names = node_names(&graph);
+    spec.apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -208,7 +220,8 @@ mod tests {
       preset: TopologyOrderPreset::LabelReverse,
       ..TopologyOrderSpec::default()
     };
-    spec.apply(&mut graph)?;
+    let names = node_names(&graph);
+    spec.apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -231,7 +244,8 @@ mod tests {
         .collect(),
       target_aggregate: TopologyOrderTargetAggregate::Median,
     };
-    spec.apply(&mut graph)?;
+    let names = node_names(&graph);
+    spec.apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -244,7 +258,8 @@ mod tests {
   #[test]
   fn topology_order_propagates_through_nested_levels() -> Result<(), Report> {
     let mut graph = fixture_deep_tree()?;
-    TopologyOrderSpec::default().apply(&mut graph)?;
+    let names = node_names(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let deep_children = child_names(ordered, "deep")?;
@@ -268,7 +283,8 @@ mod tests {
         .collect(),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
-    spec.apply(&mut graph)?;
+    let names = node_names(&graph);
+    spec.apply(&mut graph, &names)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -286,7 +302,8 @@ mod tests {
       target_order: vec![],
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
-    let err = spec.apply(&mut graph).unwrap_err();
+    let names = node_names(&graph);
+    let err = spec.apply(&mut graph, &names).unwrap_err();
     assert!(err.to_string().contains("non-empty target order"));
   }
 
@@ -302,7 +319,8 @@ mod tests {
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
 
-    let error = spec.apply(&mut graph).unwrap_err();
+    let names = node_names(&graph);
+    let error = spec.apply(&mut graph, &names).unwrap_err();
 
     assert!(error.to_string().contains("duplicate leaf label 'B'"));
   }
@@ -323,7 +341,8 @@ mod tests {
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
 
-    let error = spec.apply(&mut graph).unwrap_err();
+    let names = node_names(&graph);
+    let error = spec.apply(&mut graph, &names).unwrap_err();
 
     assert!(error.to_string().contains("final leaf label 'B' is duplicated"));
     Ok(())
@@ -341,7 +360,8 @@ mod tests {
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
 
-    spec.apply(&mut graph)?;
+    let names = node_names(&graph);
+    spec.apply(&mut graph, &names)?;
 
     assert_eq!(vec!["DEF", "BC", "A"], child_names(&graph, "root")?);
     Ok(())
@@ -353,9 +373,11 @@ mod tests {
     let mut graph = graph.map_data(NonCloneData);
     let data = std::ptr::from_ref(graph.data());
 
-    TopologyOrderSpec::default().apply(&mut graph)?;
+    let names = node_names(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names)?;
     let first = child_names_with_data(&graph, "root")?;
-    TopologyOrderSpec::default().apply(&mut graph)?;
+    let names = node_names(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names)?;
     let second = child_names_with_data(&graph, "root")?;
 
     assert_eq!(first, second);

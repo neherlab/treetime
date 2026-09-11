@@ -10,6 +10,7 @@ use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
 use log::info;
 use std::collections::BTreeMap;
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
 
 /// Reroot tree for optimal temporal signal and update partition state.
@@ -26,6 +27,7 @@ pub fn reroot_tree(
   branch_params: &BranchPointOptimizationParams,
   reroot_spec: &RerootSpec,
   force_positive_rate: bool,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<ClockModel, Report> {
   let reroot_params = RerootParams {
     spec: reroot_spec.clone(),
@@ -52,6 +54,7 @@ pub fn reroot_tree(
     branch_params,
     &reroot_params,
     None,
+    names,
   )
   .wrap_err("Failed to estimate clock model with reroot")?;
 

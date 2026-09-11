@@ -81,7 +81,14 @@ mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(get_gtr_by_name(model)?, graph)?,
     ))];
-    initialize_marginal(graph, &profile_branch_lengths(graph), &dense_partitions, &aln)?.value();
+    initialize_marginal(
+      graph,
+      &profile_branch_lengths(graph),
+      &dense_partitions,
+      &aln,
+      &node_names(graph),
+    )?
+    .value();
     marginal_update(graph, &profile_branch_lengths(graph), &sparse_partitions)?.value();
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);

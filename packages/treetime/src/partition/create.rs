@@ -7,10 +7,11 @@ use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::seq::alignment::get_common_length;
 use eyre::Report;
+use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::NodeAncestralOps;
-use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+use treetime_graph::node::{GraphNodeKey, NodeAncestralOps};
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::fasta::FastaRecord;
 
 pub enum MarginalPartition {
@@ -34,6 +35,7 @@ pub fn create_marginal_partition<N, E>(
   sequences: &[FastaRecord],
   model_name: GtrModelName,
   dense: Option<bool>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<PartitionCreated, Report>
 where
   N: NodeAncestralOps,
@@ -41,10 +43,9 @@ where
 {
   let dense = dense.unwrap_or_else(infer_dense);
   let branch_lengths = edge_branch_lengths(graph);
-  let names = node_names(graph);
 
   if !dense {
-    let fitch = create_fitch_partition(graph, index, alphabet, sequences, &names)?;
+    let fitch = create_fitch_partition(graph, index, alphabet, sequences, names)?;
     let gtr = match model_name {
       GtrModelName::Infer => infer_gtr_fitch(&fitch, graph, &branch_lengths)?,
       _ => get_gtr_by_name(model_name)?,
@@ -56,7 +57,7 @@ where
       model_name,
     })
   } else if model_name == GtrModelName::Infer {
-    let fitch = create_fitch_partition(graph, index, alphabet, sequences, &names)?;
+    let fitch = create_fitch_partition(graph, index, alphabet, sequences, names)?;
     let gtr = infer_gtr_fitch(&fitch, graph, &branch_lengths)?;
     log_gtr(&gtr, model_name);
     let partition = fitch.into_marginal_dense(gtr);

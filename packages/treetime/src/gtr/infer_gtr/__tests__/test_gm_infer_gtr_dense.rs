@@ -19,6 +19,7 @@ mod tests {
   use eyre::Report;
   use lazy_static::lazy_static;
   use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::value_maps::node_names;
 
   use parking_lot::RwLock;
   use rstest::rstest;
@@ -150,7 +151,14 @@ mod tests {
       get_common_length(aln)?,
     )));
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), from_ref(&partition), aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      from_ref(&partition),
+      aln,
+      &node_names(&graph),
+    )?
+    .value();
     Ok((graph, partition))
   }
 
@@ -176,7 +184,14 @@ mod tests {
       get_common_length(&aln)?,
     )));
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), from_ref(&partition), &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      from_ref(&partition),
+      &aln,
+      &node_names(&graph),
+    )?
+    .value();
     Ok((graph, partition))
   }
 

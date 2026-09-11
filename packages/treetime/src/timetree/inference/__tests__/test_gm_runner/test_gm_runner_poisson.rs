@@ -34,7 +34,7 @@ mod tests {
 
     let graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?.graph;
     let dates = load_dates_for_dataset(dataset)?;
-    let constraints = load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
 
     let branch_distributions = create_poisson_branch_distributions(
       &graph,

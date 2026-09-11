@@ -14,7 +14,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::dates_csv::DatesMap;
 
 pub struct ClockPipelineParams {
@@ -48,12 +48,13 @@ pub struct ClockOutput {
 pub fn run(
   params: &ClockPipelineParams,
   mut input: ClockInput,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   progress: &dyn ProgressSink,
 ) -> Result<ClockOutput, Report> {
   progress.check_cancelled()?;
   progress.report("Assigning dates", 0.1, "");
   let mut state = ClockState::new(&input.graph);
-  assign_dates(&input.graph, &input.dates, &mut state)?;
+  assign_dates(&input.graph, &input.dates, &mut state, names)?;
 
   progress.check_cancelled()?;
   progress.report("Clock regression", 0.3, "");
@@ -66,6 +67,7 @@ pub fn run(
     params.clock_filter,
     params.allow_negative_rate,
     &params.reroot_spec,
+    names,
   )?;
 
   if let Some(delta) = new_outliers {
@@ -73,11 +75,22 @@ pub fn run(
   }
 
   // Post-reroot re-snapshot. Estimation rerooted the tree in place: the best-root search rewrites
-  // edge branch lengths on the payload and can split an edge (adding a node and edge key) or merge
-  // the old trivial root (removing keys). Re-capture both value maps from the post-reroot graph so
-  // the gather and the command's output writers read the final tree, not the pre-reroot payload.
+  // edge branch lengths on the payload and can split an edge (adding a node key) or merge the old
+  // trivial root (removing keys). Re-capture the branch-length map from the post-reroot graph, and
+  // reproject the threaded names onto the post-reroot node set: a surviving node keeps its threaded
+  // name (no clock pass renames), and the `N::default` node the split adds is absent from the map
+  // and resolves to `None` -- exactly what a payload read would yield. Clock, unlike timetree, does
+  // not name the new root, so the map must not synthesize a name for it.
   let branch_lengths = edge_branch_lengths(&input.graph);
-  let names = node_names(&input.graph);
+  let names: BTreeMap<GraphNodeKey, Option<String>> = input
+    .graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let key = node.read_arc().key();
+      (key, names.get(&key).cloned().flatten())
+    })
+    .collect();
   let regression_results =
     gather_clock_regression_results(&input.graph, &mut state, &clock_model, &names, &branch_lengths)?;
 
@@ -101,6 +114,7 @@ fn estimate_clock_model_with_prefilter(
   clock_filter_threshold: f64,
   allow_negative_rate: bool,
   reroot_spec: &RerootSpec,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(ClockModel, Option<i32>), Report> {
   let delta = (clock_filter_threshold > 0.0)
     .then(|| -> Result<i32, Report> {
@@ -121,6 +135,7 @@ fn estimate_clock_model_with_prefilter(
         branch_params,
         &reroot_params,
         None,
+        names,
       )?;
       let regression = result.regression();
       if regression.clock_rate() < 0.0 {
@@ -141,7 +156,7 @@ fn estimate_clock_model_with_prefilter(
     force_positive_rate: !allow_negative_rate,
     ..RerootParams::default()
   };
-  let result = estimate_clock_model_with_reroot_policy(graph, state, options, None, keep_root, branch_params, &reroot_params, None)
+  let result = estimate_clock_model_with_reroot_policy(graph, state, options, None, keep_root, branch_params, &reroot_params, None, names)
     .wrap_err_with(|| {
       if delta.is_some() {
         "Clock model estimation failed after outlier filtering. The pre-filter step removed outliers but the clock rate remains negative at all root positions.".to_owned()

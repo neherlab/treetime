@@ -8,6 +8,7 @@ pub mod tests {
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
+  use treetime_graph::value_maps::node_names;
 
   use parking_lot::RwLock;
   use std::sync::{Arc, LazyLock};
@@ -109,7 +110,14 @@ pub mod tests {
       get_common_length(&aln)?,
     )))];
 
-    let log_lh = initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+    let log_lh = initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &aln,
+      &node_names(&graph),
+    )?
+    .value();
     Ok(log_lh)
   }
 }

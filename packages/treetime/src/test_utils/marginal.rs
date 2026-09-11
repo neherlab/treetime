@@ -22,7 +22,14 @@ pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> 
   let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
   let partitions = [Arc::new(RwLock::new(partition))];
 
-  initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln).map(|log_lh| log_lh.value())
+  initialize_marginal(
+    &graph,
+    &profile_branch_lengths(&graph),
+    &partitions,
+    &aln,
+    &node_names(&graph),
+  )
+  .map(|log_lh| log_lh.value())
 }
 
 pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {

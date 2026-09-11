@@ -8,7 +8,6 @@ use log::warn;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::node_names;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
 #[derive(Debug, Clone)]
@@ -30,8 +29,8 @@ pub fn collect_outliers(
   clock_model: &ClockModel,
   iqd: f64,
   given_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Vec<OutlierRecord> {
-  let names = node_names(graph);
   graph
     .get_leaves()
     .iter()
@@ -66,8 +65,9 @@ pub fn report_bad_branches(
   clock_model: &ClockModel,
   iqd: f64,
   given_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) {
-  let outliers = collect_outliers(graph, clock_state, clock_model, iqd, given_dates);
+  let outliers = collect_outliers(graph, clock_state, clock_model, iqd, given_dates, names);
   if outliers.is_empty() {
     return;
   }

@@ -224,7 +224,12 @@ where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  fn attach_sequences(&mut self, graph: &Graph<N, E, ()>, aln: &[FastaRecord]) -> Result<(), Report>;
+  fn attach_sequences(
+    &mut self,
+    graph: &Graph<N, E, ()>,
+    aln: &[FastaRecord],
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+  ) -> Result<(), Report>;
 
   fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq;
 

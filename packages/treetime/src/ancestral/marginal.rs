@@ -44,6 +44,7 @@ pub fn initialize_marginal<N, E, P>(
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   partitions: &[Arc<RwLock<P>>],
   aln: &[FastaRecord],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<LogLh, Report>
 where
   N: GraphNode + Named,
@@ -51,7 +52,7 @@ where
   P: PartitionMarginalOps<N, E> + ?Sized,
 {
   for partition in partitions {
-    partition.write_arc().attach_sequences(graph, aln)?;
+    partition.write_arc().attach_sequences(graph, aln, names)?;
   }
   marginal_update(graph, branch_lengths, partitions)
 }

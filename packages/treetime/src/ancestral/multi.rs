@@ -76,7 +76,15 @@ pub fn reconstruct_marginal_partition(
   } = plan;
 
   let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns, names)?;
-  let created = create_marginal_partition(graph, index, alphabet.clone(), &sequences, gtr_model, params.dense)?;
+  let created = create_marginal_partition(
+    graph,
+    index,
+    alphabet.clone(),
+    &sequences,
+    gtr_model,
+    params.dense,
+    names,
+  )?;
   let partition: Arc<RwLock<dyn MarginalAugurPartition>> = match created.partition {
     MarginalPartition::Sparse(partition) => Arc::new(RwLock::new(partition)),
     MarginalPartition::Dense(partition) => Arc::new(RwLock::new(partition)),
@@ -84,7 +92,7 @@ pub fn reconstruct_marginal_partition(
 
   // Dense partitions attach their leaf sequences here; sparse partitions already carry them from
   // construction (`attach_sequences` is a no-op for sparse), so the call is uniform and safe.
-  partition.write_arc().attach_sequences(graph, &sequences)?;
+  partition.write_arc().attach_sequences(graph, &sequences, names)?;
 
   let single = std::slice::from_ref(&partition);
   marginal_update(graph, branch_lengths, single)?;

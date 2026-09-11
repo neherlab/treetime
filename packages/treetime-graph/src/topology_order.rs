@@ -4,7 +4,7 @@ mod __tests__;
 use crate::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use crate::graph::{Graph, SafeNode};
 use crate::node::{GraphNode, GraphNodeKey, Named};
-use crate::value_maps::{edge_branch_lengths, node_names};
+use crate::value_maps::edge_branch_lengths;
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
@@ -53,7 +53,11 @@ impl TopologyOrderSpec {
   ///
   /// All fallible computation and validation completes before the graph is
   /// mutated. Node and edge keys and their slot storage remain unchanged.
-  pub fn apply<N, E, D>(&self, graph: &mut Graph<N, E, D>) -> Result<(), Report>
+  pub fn apply<N, E, D>(
+    &self,
+    graph: &mut Graph<N, E, D>,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+  ) -> Result<(), Report>
   where
     N: GraphNode + Named,
     E: GraphEdge + HasBranchLength,
@@ -80,13 +84,11 @@ impl TopologyOrderSpec {
           build_order(graph, &keys, reverse)
         },
         TopologyOrderPreset::Label | TopologyOrderPreset::LabelReverse => {
-          let names = node_names(graph);
-          let keys = compute_labels(graph, &postorder, &names)?;
+          let keys = compute_labels(graph, &postorder, names)?;
           build_order(graph, &keys, reverse)
         },
         TopologyOrderPreset::TargetOrder | TopologyOrderPreset::TargetOrderReverse => {
-          let names = node_names(graph);
-          let keys = compute_target_scores(graph, &postorder, &names, &self.target_order, self.target_aggregate)?;
+          let keys = compute_target_scores(graph, &postorder, names, &self.target_order, self.target_aggregate)?;
           build_order(graph, &keys, reverse)
         },
       }

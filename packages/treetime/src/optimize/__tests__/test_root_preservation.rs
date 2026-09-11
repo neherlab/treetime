@@ -17,6 +17,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
 
@@ -30,7 +31,14 @@ mod tests {
     let gtr = jc69(JC69Params::default())?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
     let partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![Arc::new(RwLock::new(partition))];
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &aln,
+      &node_names(&graph),
+    )?
+    .value();
     marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     let mixed: Vec<Arc<RwLock<dyn PartitionOptimizeOps>>> = partitions
       .into_iter()

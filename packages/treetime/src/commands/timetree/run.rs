@@ -29,7 +29,7 @@ use std::path::{Path, PathBuf};
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::fasta::FastaWriter;
 use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
@@ -45,6 +45,7 @@ pub fn run_timetree_estimation(
   let input_data = load_input_data(args)?;
   let input_leaf_order = input_data.input_leaf_order.clone();
   let confidences = input_data.confidences;
+  let parse_names = input_data.names;
 
   // Resolve outputs up front so the tracelog path (which the pipeline writes during the run) is
   // known before the pipeline starts. Topology ordering is resolved separately, after the pipeline.
@@ -115,24 +116,22 @@ pub fn run_timetree_estimation(
     dates: input_data.dates,
   };
 
-  let output = pipeline::run(&params, input, tracelog, progress)?;
+  let output = pipeline::run(&params, input, &parse_names, tracelog, progress)?;
 
-  // Name any unnamed internal node before serialization. Rerooting introduces a fresh root node
-  // that the load-time naming pass never saw, and polytomy resolution only re-names when it changes
-  // the topology, so on a run without polytomy resolution the rerooted root reaches output unnamed.
-  // v0 and the `ancestral` command give every internal node a `NODE_<n>` name; assigning one here
-  // keeps the reconstructed FASTA, the augur node data, and the tree outputs consistent and matches
-  // v0 rather than leaking an empty label or a key-derived placeholder.
-  assign_node_names(&output.graph)?;
-
-  // Post-mutation re-snapshot. The pipeline rerooted the tree and resolved polytomies inside the
-  // refinement loop, and the `assign_node_names` above labels the fresh root; capture the node-name
-  // and per-edge branch-length maps from the final graph here. Every downstream reader -- the
-  // reconstructed FASTA writer, the gather, and the tree/augur output writers -- reads each node's
-  // name and each edge's branch length from these maps instead of the payload. The later
-  // `marginal_update` and reconstruction touch neither names nor branch lengths, and topology
-  // ordering only permutes keys, so the maps still describe the final tree at every later point.
-  let names = node_names(&output.graph);
+  // Name any unnamed internal node before serialization, and capture the resulting node-name map.
+  // Rerooting introduces a fresh root node that the load-time naming pass never saw, and polytomy
+  // resolution only re-names when it changes the topology, so on a run without polytomy resolution
+  // the rerooted root reaches output unnamed. v0 and the `ancestral` command give every internal
+  // node a `NODE_<n>` name; assigning one here keeps the reconstructed FASTA, the augur node data,
+  // and the tree outputs consistent and matches v0 rather than leaking an empty label or a
+  // key-derived placeholder.
+  //
+  // `assign_node_names` returns `node_names` taken after the write, so this is also the post-mutation
+  // re-snapshot: every downstream reader -- the reconstructed FASTA writer, the gather, and the
+  // tree/augur output writers -- reads each node's name from this map instead of the payload. The
+  // later `marginal_update` and reconstruction touch neither names nor branch lengths, and topology
+  // ordering only permutes keys, so the map still describes the final tree at every later point.
+  let names = assign_node_names(&output.graph)?;
   let branch_lengths_opt = edge_branch_lengths(&output.graph);
 
   // Node-keyed descriptions for the reconstructed-FASTA writer and the node-output gather, rebuilt
@@ -245,8 +244,8 @@ pub fn run_timetree_estimation(
 
   let topology_order = args
     .topology_order
-    .resolve_topology_order(&graph, Some(input_leaf_order))?;
-  topology_order.apply(&mut graph)?;
+    .resolve_topology_order(&graph, &names, Some(input_leaf_order))?;
+  topology_order.apply(&mut graph, &names)?;
 
   let (nodes, edges) = gather_timetree_outputs(
     &graph,

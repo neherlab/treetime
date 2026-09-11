@@ -170,7 +170,12 @@ where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  fn attach_sequences(&mut self, _graph: &Graph<N, E, ()>, _aln: &[FastaRecord]) -> Result<(), Report> {
+  fn attach_sequences(
+    &mut self,
+    _graph: &Graph<N, E, ()>,
+    _aln: &[FastaRecord],
+    _names: &BTreeMap<GraphNodeKey, Option<String>>,
+  ) -> Result<(), Report> {
     Ok(())
   }
 

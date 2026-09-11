@@ -189,7 +189,14 @@ mod tests {
       get_common_length(aln)?,
     )))];
 
-    initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln)?.value();
+    initialize_marginal(
+      graph,
+      &profile_branch_lengths(graph),
+      &partitions,
+      aln,
+      &node_names(graph),
+    )?
+    .value();
 
     Ok(partitions)
   }

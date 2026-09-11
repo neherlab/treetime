@@ -16,6 +16,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
 
@@ -93,6 +94,7 @@ mod tests {
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
     let max_iter = 5;
+    let names_tt_6 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -104,6 +106,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_6,
     )?;
 
     // One entry per executed iteration, regardless of how the loop stopped.
@@ -136,6 +139,7 @@ mod tests {
     let indel_lh = manual_total_indel_log_lh(&graph, &sparse_partitions);
     let expected_total_lh = sparse_lh + dense_lh + indel_lh;
 
+    let names_tt_5 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -147,6 +151,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_5,
     )?;
 
     assert_eq!(result.lh_history.len(), 1);
@@ -170,6 +175,7 @@ mod tests {
     let max_iter = 50;
     let dp = f64::INFINITY;
 
+    let names_tt_4 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -181,6 +187,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_4,
     )?;
 
     assert_eq!(result.stopped_at, Some((1, ConvergenceReason::Converged)));
@@ -195,6 +202,7 @@ mod tests {
     let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
+    let names_tt_3 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -206,6 +214,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_3,
     )?;
 
     assert!(result.lh_history.is_empty());
@@ -223,6 +232,7 @@ mod tests {
     let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
+    let names_tt_2 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -234,6 +244,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_2,
     )?;
 
     for (i, lh) in result.lh_history.iter().map(|log_lh| log_lh.value()).enumerate() {
@@ -267,6 +278,7 @@ mod tests {
     let initial_dense_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
     let initial_lh = initial_sparse_lh + initial_dense_lh + manual_total_indel_log_lh(&graph, &sparse_partitions);
 
+    let names_tt_1 = node_names(&graph);
     run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -278,6 +290,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_1,
     )?;
 
     let final_sparse_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();

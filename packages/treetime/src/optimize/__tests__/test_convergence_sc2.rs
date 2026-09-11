@@ -49,6 +49,7 @@ mod tests {
     initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
 
     let max_iter = 50;
+    let names_tt_2 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -60,6 +61,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_2,
     )?;
 
     assert!(
@@ -98,6 +100,7 @@ mod tests {
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
     initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
 
+    let names_tt_1 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -109,6 +112,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_1,
     )?;
 
     assert!(

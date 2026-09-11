@@ -48,7 +48,7 @@ mod tests {
 
     let mut graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?.graph;
     let dates = load_dates_for_dataset(dataset)?;
-    let constraints = load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
 
     let aln = load_alignment_for_dataset(dataset)?;
     let dense_partition = Arc::new(RwLock::new(PartitionTimetree::Dense(PartitionMarginalDense::new(
@@ -59,12 +59,13 @@ mod tests {
     ))));
 
     let partitions: PartitionTimetreeAllVec = vec![dense_partition];
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &node_names(&graph))?.value();
     let mut clock_state = ClockState::new(&graph);
-    initialize_node_divergences(&graph, &mut clock_state)?;
+    initialize_node_divergences(&graph, &mut clock_state, &node_names(&graph))?;
 
     let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times();
     let mut clock_estimate_state = ClockState::seed_from_values(&graph, &times);
+    let names_tt_1 = node_names(&graph);
     let clock_model = estimate_clock_model_with_reroot_policy(
       &mut graph,
       &mut clock_estimate_state,
@@ -73,7 +74,7 @@ mod tests {
       true,
       &BranchPointOptimizationParams::default(),
       &RerootParams::default(),
-      None,
+      None, &names_tt_1
     )?
     .into_clock_model()?;
 

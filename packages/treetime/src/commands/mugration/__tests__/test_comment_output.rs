@@ -13,14 +13,16 @@ mod tests {
 
   #[test]
   fn test_mugration_annotated_tree_has_trait_comments() -> Result<(), Report> {
-    let NwkParse { graph, confidences } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let NwkParse { graph, confidences, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
     };
+    let names_tt_1 = node_names(&graph);
     let result = execute_mugration(
       graph,
       &confidences,
+      &names_tt_1,
       &traits,
       "country",
       None,

@@ -21,7 +21,6 @@ use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named, NodeAncestralOps};
-use treetime_graph::value_maps::node_names;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
@@ -229,12 +228,16 @@ where
   N: NodeAncestralOps,
   E: EdgeOptimizeOps,
 {
-  fn attach_sequences(&mut self, graph: &Graph<N, E, ()>, aln: &[FastaRecord]) -> Result<(), Report> {
+  fn attach_sequences(
+    &mut self,
+    graph: &Graph<N, E, ()>,
+    aln: &[FastaRecord],
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+  ) -> Result<(), Report> {
     let aln_by_name = aln.iter().fold(BTreeMap::new(), |mut records, record| {
       records.entry(record.seq_name.as_str()).or_insert(record);
       records
     });
-    let names = node_names(graph);
     for leaf in graph.get_leaves() {
       let leaf_key = leaf.read_arc().key();
 

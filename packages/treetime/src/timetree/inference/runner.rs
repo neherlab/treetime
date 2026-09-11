@@ -70,7 +70,7 @@ where
   info!("# Running timetree inference");
 
   info!("## Calculating divergence distances");
-  initialize_node_divergences(graph, clock_state)?;
+  initialize_node_divergences(graph, clock_state, names)?;
 
   // Rebuild the state's maps for the current topology, carrying every value-resident date field
   // forward. Times, distributions, bad-branch flags, and time lengths all live on the state now

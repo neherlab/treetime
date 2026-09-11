@@ -34,7 +34,11 @@ pub fn run_optimize(
   for record in &mut aln {
     apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());
   }
-  let NwkParse { graph, confidences } = nwk_read_file(args.tree())?;
+  let NwkParse {
+    graph,
+    confidences,
+    names,
+  } = nwk_read_file(args.tree())?;
 
   let resolved = args.resolve_outputs()?;
 
@@ -57,7 +61,7 @@ pub fn run_optimize(
     sequences: aln,
   };
 
-  let output = pipeline::run(&params, input, progress)?;
+  let output = pipeline::run(&params, input, &names, progress)?;
   let pipeline::OptimizeOutput {
     graph,
     gtr,
@@ -73,8 +77,8 @@ pub fn run_optimize(
     sparse_partitions,
     dense_partitions,
   ));
-  let topology_order = args.topology_order.resolve_topology_order(&graph, None)?;
-  topology_order.apply(&mut graph)?;
+  let topology_order = args.topology_order.resolve_topology_order(&graph, &names, None)?;
+  topology_order.apply(&mut graph, &names)?;
   progress.report("Writing output", 0.9, "");
 
   // Gather the per-node name/confidence into a keyed value map the output writers consume. The name

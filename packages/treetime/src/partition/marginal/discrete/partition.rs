@@ -13,7 +13,6 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
-use treetime_graph::value_maps::node_names;
 use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::argmax_first;
 
@@ -45,15 +44,15 @@ impl PartitionMarginalDiscrete {
     &mut self,
     graph: &Graph<N, E, ()>,
     traits: &BTreeMap<String, String>,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
   ) -> Result<(), Report>
   where
     N: GraphNode + Named,
     E: EdgeOptimizeOps,
   {
     let n_states = self.n_states();
-    validate_trait_names(graph, traits)?;
+    validate_trait_names(graph, traits, names)?;
 
-    let names = node_names(graph);
     for leaf in graph.get_leaves() {
       let leaf_key = leaf.read_arc().key();
       let leaf_name = names[&leaf_key].clone().unwrap_or_default();

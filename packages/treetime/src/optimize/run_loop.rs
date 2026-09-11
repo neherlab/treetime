@@ -19,6 +19,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
@@ -79,7 +80,11 @@ pub fn run_optimize_loop(
   opt_method: BranchOptMethod,
   no_indels: bool,
   topology_ops: TopologyOps,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<OptimizeLoopResult, Report> {
+  // Owned working copy of the threaded names, refreshed from each `assign_node_names` the topology
+  // cleanup runs and returned so `run_optimize` reads the final tree's names without a payload re-read.
+  let mut names = names.clone();
   // The loop's source of truth for branch lengths, keyed by edge id, mirroring the edge payload
   // field type (`Option<f64>`) so a missing weight stays `None` end to end. Seeded from the tree
   // once, then updated in place by the per-edge optimizer, damping, and topology cleanup
@@ -192,6 +197,7 @@ pub fn run_optimize_loop(
       &zero_optimal_edges,
       topology_ops,
       &mut branch_lengths,
+      &mut names,
     )?;
     if topology_changed {
       best_lh = LogLh::IMPOSSIBLE;
@@ -207,6 +213,7 @@ pub fn run_optimize_loop(
   // gather and the post-loop marginal pass) rather than off the edge payload.
   Ok(OptimizeLoopResult {
     branch_lengths,
+    names,
     lh_history,
     stopped_at,
   })
@@ -249,6 +256,10 @@ pub struct OptimizeLoopResult {
   /// source of truth; `run_optimize` feeds it to the post-loop marginal pass and the output gather
   /// instead of reading the edge payload.
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+
+  /// Final node names, keyed by node id, refreshed from each `assign_node_names` the loop's topology
+  /// cleanup runs. `run_optimize` returns these instead of re-reading the node payload after the loop.
+  pub names: BTreeMap<GraphNodeKey, Option<String>>,
 
   /// Total log-likelihood recorded at the start of each iteration, before that iteration's
   /// branch-length update. Length equals the number of iterations actually executed
@@ -396,6 +407,7 @@ pub fn prune_and_merge_in_loop(
   zero_optimal_edges: &[GraphEdgeKey],
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  names: &mut BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<bool, Report> {
   let mut topology_changed = false;
 
@@ -432,7 +444,7 @@ pub fn prune_and_merge_in_loop(
 
   if topology_changed {
     graph.build()?;
-    assign_node_names(graph)?;
+    *names = assign_node_names(graph)?;
   }
 
   Ok(topology_changed)
@@ -487,11 +499,12 @@ pub fn apply_initial_guess_mode<P>(
   mixed_partitions: &[Arc<RwLock<P>>],
   mode: InitialGuessMode,
   no_indels: bool,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report>
 where
   P: PartitionOptimizeOps + ?Sized,
 {
-  let invalid_branch_lengths = invalid_branch_length_descriptions(graph)?;
+  let invalid_branch_lengths = invalid_branch_length_descriptions(graph, names)?;
   if let Some(message) = invalid_branch_length_warning(&invalid_branch_lengths) {
     warn!("{message}");
   }

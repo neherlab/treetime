@@ -17,6 +17,7 @@ mod tests {
   use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
   use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::value_maps::node_names;
   use treetime_utils::{
     pretty_assert_abs_diff_eq, pretty_assert_array_nonneg, pretty_assert_array_offdiag_upper_bounded,
     pretty_assert_array_positive,
@@ -52,7 +53,14 @@ mod tests {
       get_common_length(aln)?,
     )));
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), from_ref(&partition), aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      from_ref(&partition),
+      aln,
+      &node_names(&graph),
+    )?
+    .value();
     Ok((graph, partition))
   }
 

@@ -10,6 +10,7 @@ mod tests {
   use crate::seq::indel::InDel;
   use eyre::Report;
   use indoc::indoc;
+  use treetime_graph::value_maps::node_names;
 
   use parking_lot::RwLock;
   use std::sync::Arc;
@@ -112,7 +113,14 @@ mod tests {
         get_common_length(&aln)?,
       )))];
 
-      initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+      initialize_marginal(
+        &graph,
+        &profile_branch_lengths(&graph),
+        &partitions,
+        &aln,
+        &node_names(&graph),
+      )?
+      .value();
       marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
       Ok((graph, partitions))

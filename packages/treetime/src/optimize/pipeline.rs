@@ -31,7 +31,7 @@ use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
-use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::fasta::FastaRecord;
 use treetime_utils::{make_error, make_report};
 
@@ -86,6 +86,7 @@ pub struct OptimizeOutput {
 pub fn run(
   params: &OptimizeParams,
   mut input: OptimizeInput,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   progress: &dyn ProgressSink,
 ) -> Result<OptimizeOutput, Report> {
   if !(0.0..1.0).contains(&params.damping) {
@@ -99,6 +100,7 @@ pub fn run(
     &input.sequences,
     params.model,
     params.dense,
+    names,
   )?;
   let model_name = created.model_name;
 
@@ -139,6 +141,7 @@ pub fn run(
       &profile_branch_lengths(&input.graph),
       &dense_partitions,
       &input.sequences,
+      names,
     )?;
     marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &dense_partitions)?;
   }
@@ -150,7 +153,13 @@ pub fn run(
     normalize_partition_rates(&input.graph, &dense_partitions);
   }
 
-  apply_initial_guess_mode(&input.graph, &mixed_partitions, params.initial_guess, params.no_indels)?;
+  apply_initial_guess_mode(
+    &input.graph,
+    &mixed_partitions,
+    params.initial_guess,
+    params.no_indels,
+    names,
+  )?;
 
   if let Some(spec) = &params.reroot_spec {
     info!("Rerooting before optimization: {spec:?}");
@@ -166,8 +175,22 @@ pub fn run(
       params.opt_method,
       params.no_indels,
     )?;
-    reroot_optimize(&mut input.graph, spec, &sparse_partitions, &dense_partitions)?;
+    reroot_optimize(&mut input.graph, spec, &sparse_partitions, &dense_partitions, names)?;
   }
+
+  // Post-reroot names for the optimization loop. Reproject the threaded names onto the current node
+  // set: a rerooted tree drops the old trivial root and adds an `N::default` split node (absent from
+  // the map, so `None`); without a reroot the projection is the threaded map unchanged. The loop
+  // refreshes this from each `assign_node_names` its topology cleanup runs.
+  let loop_names: BTreeMap<GraphNodeKey, Option<String>> = input
+    .graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let key = node.read_arc().key();
+      (key, names.get(&key).cloned().flatten())
+    })
+    .collect();
 
   progress.check_cancelled()?;
   progress.report("Optimizing branch lengths", 0.3, "");
@@ -182,6 +205,7 @@ pub fn run(
     params.opt_method,
     params.no_indels,
     params.topology_ops,
+    &loop_names,
   )?;
   let branch_lengths = loop_result.branch_lengths;
 
@@ -203,11 +227,11 @@ pub fn run(
     return make_error!("optimize produced no partition to read the GTR from");
   };
 
-  // Post-loop re-snapshot. The loop's topology cleanup can collapse edges, resolve polytomies, and
-  // re-run `assign_node_names` (adding or removing node keys and naming new internal nodes); capture
-  // the node-name map from the post-loop graph so the command gather and output writers read the
-  // final tree's names, not the pre-loop payload.
-  let names = node_names(&input.graph);
+  // The loop's topology cleanup collapses edges, resolves polytomies, and re-runs `assign_node_names`
+  // (adding or removing node keys and naming new internal nodes); the loop refreshes and returns the
+  // node-name map from each such call, so the command gather and output writers read the final tree's
+  // names, not the pre-loop payload.
+  let names = loop_result.names;
 
   Ok(OptimizeOutput {
     graph: input.graph,
@@ -253,6 +277,7 @@ fn reroot_optimize(
   spec: &RerootSpec,
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report> {
   let variance = VarianceModel::default();
   let topo = RerootTopologyParams::default();
@@ -272,7 +297,7 @@ fn reroot_optimize(
       )?
     },
     RerootSpec::Tips(tips) => {
-      let tip_keys = resolve_tip_keys(graph, tips)?;
+      let tip_keys = resolve_tip_keys(graph, tips, names)?;
       let mrca = common_ancestor(graph, &tip_keys)?;
       reroot_at_node(graph, mrca, topo, |_graph, _inverted| Ok(()))?
     },
@@ -299,8 +324,11 @@ fn reroot_optimize(
   Ok(())
 }
 
-fn resolve_tip_keys(graph: &GraphAncestral, tips: &[String]) -> Result<Vec<GraphNodeKey>, Report> {
-  let names = node_names(graph);
+fn resolve_tip_keys(
+  graph: &GraphAncestral,
+  tips: &[String],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> Result<Vec<GraphNodeKey>, Report> {
   tips
     .iter()
     .map(|tip| {

@@ -14,6 +14,7 @@ mod tests {
   use std::path::Path;
   use treetime_distribution::Distribution;
   use treetime_graph::node::Named;
+  use treetime_graph::value_maps::node_names;
   use treetime_grid::grid::Grid;
   use treetime_io::dates_csv::read_dates;
   use treetime_io::nwk::nwk_read_file;
@@ -136,7 +137,7 @@ mod tests {
       &Some(o!("name")),
       &Some(o!("date")),
     )?;
-    let constraints = load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
     Ok((graph, constraints))
   }
 }

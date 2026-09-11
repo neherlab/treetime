@@ -171,7 +171,13 @@ mod tests {
       Alphabet::default(),
       length,
     )))];
-    initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln)?;
+    initialize_marginal(
+      graph,
+      &profile_branch_lengths(graph),
+      &partitions,
+      aln,
+      &node_names(graph),
+    )?;
     reconstruct_named(graph, &partitions)
   }
 }

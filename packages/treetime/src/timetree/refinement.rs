@@ -21,7 +21,8 @@ use log::info;
 use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+use treetime_graph::node::GraphNodeKey;
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
 pub(crate) struct Refinement<'a> {
@@ -49,6 +50,11 @@ pub(crate) struct Refinement<'a> {
   /// Committed clock-constrained branch lengths keyed by edge, routed so the M-step damps against
   /// the previous round's value without reading it back off the payload.
   pub clock_branch_lengths: &'a mut BTreeMap<GraphEdgeKey, f64>,
+  /// Per-node names routed across the loop instead of read off the payload. Polytomy resolution adds
+  /// nodes and re-runs `assign_node_names`; this map is refreshed from that call's return so every
+  /// later reader (this round's `run_timetree` and the pipeline's post-loop consumers) sees the
+  /// current labels without a payload read.
+  pub names: &'a mut BTreeMap<GraphNodeKey, Option<String>>,
 }
 
 impl Refinement<'_> {
@@ -142,7 +148,7 @@ impl Refinement<'_> {
     }
 
     info!("Resolved polytomies, introduced {resolved_nodes} new nodes");
-    assign_node_names(self.graph)?;
+    *self.names = assign_node_names(self.graph)?;
     propagate_bad_branches(self.graph, self.state)?;
     prepare_tree_after_topology_change(self.graph, self.state)
       .wrap_err("Failed to prepare tree after topology change")?;
@@ -174,7 +180,7 @@ impl Refinement<'_> {
     // serves all. Topology resolution and its `assign_node_names` ran before `rebuild_inference`, so
     // the snapshot reflects the current tree.
     let run_branch_lengths = edge_branch_lengths(self.graph);
-    let run_names = node_names(self.graph);
+    let run_names = &*self.names;
 
     if !self.partitions.is_empty() {
       info!("Updating ancestral sequences via marginal reconstruction");
@@ -191,7 +197,7 @@ impl Refinement<'_> {
         self.graph,
         self.partitions,
         &run_branch_lengths,
-        &run_names,
+        run_names,
         self.clock_model,
         None,
         self.options.no_indels,
@@ -210,7 +216,7 @@ impl Refinement<'_> {
       self.graph,
       self.partitions,
       &run_branch_lengths,
-      &run_names,
+      run_names,
       self.clock_model,
       self.prior,
       self.options.no_indels,
@@ -244,6 +250,7 @@ impl Refinement<'_> {
       self.branch_params,
       &RerootParams::default(),
       Some(self.clock_model.clock_rate()),
+      self.names,
     )
     .wrap_err("Failed to update clock model")?
     .into_clock_model()?;

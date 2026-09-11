@@ -17,6 +17,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
   use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::nwk::nwk_read_str;
 
   // At very high iteration counts, the exponential damping factor decays below the floor.
@@ -103,6 +104,7 @@ mod tests {
     let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
+    let names_tt_6 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -114,6 +116,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_6,
     )?;
 
     let (iter, reason) = result.stopped_at.expect("loop should have stopped");
@@ -134,6 +137,7 @@ mod tests {
 
     // Undamped with dp=0 (convergence/oscillation checks never fire) forces the
     // worsened condition to be the only active stopping criterion.
+    let names_tt_5 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -145,6 +149,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_5,
     )?;
 
     match result.stopped_at {
@@ -181,6 +186,7 @@ mod tests {
     let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
 
+    let names_tt_4 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -192,6 +198,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       true,
       TopologyOps::default(),
+      &names_tt_4,
     )?;
 
     let (_iter, reason) = result.stopped_at.expect("loop should stop");
@@ -221,6 +228,7 @@ mod tests {
 
     // Use damping to prevent the worsened condition from firing, but set dp
     // large enough that the oscillation check catches the 2-cycle.
+    let names_tt_3 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -232,6 +240,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_3,
     )?;
 
     let (iter, reason) = result.stopped_at.expect("loop should have stopped");
@@ -254,6 +263,7 @@ mod tests {
 
     // Only 2 iterations with dp=0 and damping. The worsened condition requires
     // i >= 2, so with max_iter=2 (iterations 0 and 1) it cannot fire.
+    let names_tt_2 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -265,6 +275,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_2,
     )?;
 
     assert_eq!(result.lh_history.len(), 2);
@@ -287,6 +298,7 @@ mod tests {
     let empty_sparse = vec![];
     let mixed = collect_optimize_partitions(&dense_partitions, &empty_sparse);
 
+    let names_tt_1 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &empty_sparse,
@@ -298,6 +310,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_1,
     )?;
 
     assert!(

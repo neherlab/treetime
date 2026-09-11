@@ -5,6 +5,7 @@ use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
 use crate::partition::traits::{HasLogLh, MarginalPass, PartitionMarginalOps, PartitionMarginalPasses};
 use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use eyre::Report;
+use std::collections::BTreeMap;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
@@ -43,10 +44,15 @@ impl PartitionMarginalPasses<NodeTimetree, EdgeTimetree> for PartitionTimetree {
 }
 
 impl PartitionMarginalOps<NodeTimetree, EdgeTimetree> for PartitionTimetree {
-  fn attach_sequences(&mut self, graph: &GraphTimetree, aln: &[FastaRecord]) -> Result<(), Report> {
+  fn attach_sequences(
+    &mut self,
+    graph: &GraphTimetree,
+    aln: &[FastaRecord],
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+  ) -> Result<(), Report> {
     match self {
-      Self::Dense(partition) => partition.attach_sequences(graph, aln),
-      Self::Sparse(partition) => partition.attach_sequences(graph, aln),
+      Self::Dense(partition) => partition.attach_sequences(graph, aln, names),
+      Self::Sparse(partition) => partition.attach_sequences(graph, aln, names),
     }
   }
 

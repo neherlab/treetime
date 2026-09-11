@@ -9,7 +9,6 @@ use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::node_names;
 use treetime_io::dates_csv::{DateConstraint, DateValue, DatesMap};
 
 /// The per-node date inputs [`load_date_constraints`] derives from the dates metadata, keyed by node.
@@ -39,7 +38,11 @@ pub fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribut
   }
 }
 
-pub fn load_date_constraints<N, E, D>(dates: &DatesMap, graph: &Graph<N, E, D>) -> Result<DateConstraints, Report>
+pub fn load_date_constraints<N, E, D>(
+  dates: &DatesMap,
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> Result<DateConstraints, Report>
 where
   N: DateConstraintNode,
   E: GraphEdge,
@@ -56,7 +59,6 @@ where
   let mut time_distributions: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>> = BTreeMap::new();
   let mut bad_branches: BTreeMap<GraphNodeKey, bool> = BTreeMap::new();
 
-  let names = node_names(graph);
   graph.iter_depth_first_postorder_forward(|node| {
     let key = node.key;
 

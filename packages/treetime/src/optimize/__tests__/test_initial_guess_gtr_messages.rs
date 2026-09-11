@@ -9,6 +9,7 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
+  use treetime_graph::value_maps::node_names;
 
   use ndarray::array;
   use parking_lot::RwLock;
@@ -50,7 +51,14 @@ mod tests {
       alphabet,
       get_common_length(aln)?,
     )))];
-    initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln)?.value();
+    initialize_marginal(
+      graph,
+      &profile_branch_lengths(graph),
+      &partitions,
+      aln,
+      &node_names(graph),
+    )?
+    .value();
     Ok(partitions)
   }
 

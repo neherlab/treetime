@@ -12,12 +12,11 @@ use std::path::{Path, PathBuf};
 use strum::IntoEnumIterator;
 use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
-use treetime_graph::value_maps::node_names;
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::NwkStyle;
-use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk, nwk_read_file};
+use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk, NwkParse, nwk_read_file};
 use treetime_utils::io::fs::read_file_to_string;
 use treetime_utils::{make_error, make_report};
 
@@ -795,6 +794,7 @@ impl TopologyOrderArgs {
   pub fn resolve_topology_order<N, E, D>(
     &self,
     graph: &Graph<N, E, D>,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
     input_order: Option<Vec<String>>,
   ) -> Result<TopologyOrderSpec, Report>
   where
@@ -816,7 +816,7 @@ impl TopologyOrderArgs {
     };
 
     let target_order = if preset.is_target_order() {
-      self.target_order(graph, input_order)?
+      self.target_order(graph, names, input_order)?
     } else {
       vec![]
     };
@@ -867,6 +867,7 @@ impl TopologyOrderArgs {
   fn target_order<N, E, D>(
     &self,
     graph: &Graph<N, E, D>,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
     input_order: Option<Vec<String>>,
   ) -> Result<Vec<String>, Report>
   where
@@ -878,16 +879,18 @@ impl TopologyOrderArgs {
       .topology_order_target_source
       .unwrap_or(TopologyOrderTargetSourceArg::Input)
     {
-      TopologyOrderTargetSourceArg::Input => input_order.map_or_else(|| leaf_order(graph), Ok),
+      TopologyOrderTargetSourceArg::Input => input_order.map_or_else(|| leaf_order(graph, names), Ok),
       TopologyOrderTargetSourceArg::ReferenceTopology => {
         let path = self
           .topology_order_target_file
           .as_ref()
           .ok_or_else(|| make_report!("--topology-order-target-file is required for reference-topology"))?;
-        let graph = nwk_read_file::<OrderNode, OrderEdge, ()>(path)
-          .wrap_err("When reading target reference topology")?
-          .graph;
-        leaf_order(&graph)
+        let NwkParse {
+          graph: ref_graph,
+          names: ref_names,
+          ..
+        } = nwk_read_file::<OrderNode, OrderEdge, ()>(path).wrap_err("When reading target reference topology")?;
+        leaf_order(&ref_graph, &ref_names)
       },
       TopologyOrderTargetSourceArg::List => {
         let path = self
@@ -1008,13 +1011,15 @@ impl From<TopologyOrderTargetAggregateArg> for TopologyOrderTargetAggregate {
   }
 }
 
-fn leaf_order<N, E, D>(graph: &Graph<N, E, D>) -> Result<Vec<String>, Report>
+fn leaf_order<N, E, D>(
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> Result<Vec<String>, Report>
 where
   N: GraphNode + Named,
   E: GraphEdge,
   D: Sync + Send,
 {
-  let names = node_names(graph);
   graph
     .get_leaves()
     .into_iter()

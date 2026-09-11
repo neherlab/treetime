@@ -22,6 +22,7 @@ mod tests {
   use rstest::rstest;
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
 
@@ -60,6 +61,7 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
+    let names_tt_4 = node_names(&graph_with);
     let result_with = run_optimize_loop(
       &mut graph_with,
       &sparse_with,
@@ -71,8 +73,10 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_4,
     )?;
 
+    let names_tt_3 = node_names(&graph_without);
     let result_without = run_optimize_loop(
       &mut graph_without,
       &sparse_without,
@@ -84,6 +88,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       true,
       TopologyOps::default(),
+      &names_tt_3,
     )?;
 
     assert!(
@@ -141,6 +146,7 @@ mod tests {
     let mut graph_flag: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (dense_f, sparse_f, mixed_f) = setup_partitions(&graph_flag, &aln)?;
 
+    let names_tt_2 = node_names(&graph_no_flag);
     let result_no_flag = run_optimize_loop(
       &mut graph_no_flag,
       &sparse_nf,
@@ -152,8 +158,10 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      &names_tt_2,
     )?;
 
+    let names_tt_1 = node_names(&graph_flag);
     let result_flag = run_optimize_loop(
       &mut graph_flag,
       &sparse_f,
@@ -165,6 +173,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       true,
       TopologyOps::default(),
+      &names_tt_1,
     )?;
 
     assert_eq!(
@@ -187,7 +196,7 @@ mod tests {
   fn test_no_indels_initial_guess_never_accepts_zero_bl_with_indels() -> Result<(), Report> {
     let (graph, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     inject_indel_on_first_edge(&graph, &partitions)?;
-    let result = apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, true);
+    let result = apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, true, &node_names(&graph));
     assert!(
       result.is_ok(),
       "no_indels=true should accept zero-BL indel edges in Never mode, got: {result:?}"
@@ -217,8 +226,8 @@ mod tests {
     let graph_without_indel: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
     let (_, _, partitions_without_indel) = setup_identical_partitions(&graph_without_indel)?;
 
-    apply_initial_guess_mode(&graph_with_indel, &partitions_with_indel, mode, true)?;
-    apply_initial_guess_mode(&graph_without_indel, &partitions_without_indel, mode, true)?;
+    apply_initial_guess_mode(&graph_with_indel, &partitions_with_indel, mode, true, &node_names(&graph_with_indel))?;
+    apply_initial_guess_mode(&graph_without_indel, &partitions_without_indel, mode, true, &node_names(&graph_without_indel))?;
 
     let expected = get_branch_lengths(&graph_without_indel);
     let actual = get_branch_lengths(&graph_with_indel);

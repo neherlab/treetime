@@ -25,7 +25,7 @@ use log::{info, warn};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -72,8 +72,14 @@ pub fn run_ancestral_reconstruction(
 
   progress.check_cancelled()?;
   progress.report("Parsing tree", 0.1, "");
-  let NwkParse { graph, confidences } = nwk_read_file(ancestral_args.tree())?;
-  let topology_order = ancestral_args.topology_order.resolve_topology_order(&graph, None)?;
+  let NwkParse {
+    graph,
+    confidences,
+    names,
+  } = nwk_read_file(ancestral_args.tree())?;
+  let topology_order = ancestral_args
+    .topology_order
+    .resolve_topology_order(&graph, &names, None)?;
 
   let resolved = ancestral_args.resolve_outputs()?;
   let mut output_fasta = if resolved
@@ -99,14 +105,13 @@ pub fn run_ancestral_reconstruction(
     ignore_missing_alns: ancestral_args.ignore_missing_alns,
   };
 
-  // Snapshot names and per-edge branch lengths before the graph moves into the pipeline. Every
-  // reconstruction consumer reads its node label and edge branch length from these keyed value maps
-  // threaded down from here instead of off the graph payload. Ancestral never renames or re-lengths
-  // after parse, so these snapshots mirror exactly what a consumer would have read off the payload
-  // at any later point. Two branch-length map shapes are kept distinct: the `f64`
+  // Snapshot per-edge branch lengths before the graph moves into the pipeline. Every reconstruction
+  // consumer reads its node label from the `names` map threaded from the parse and its edge branch
+  // length from these keyed value maps instead of off the graph payload. Ancestral never renames or
+  // re-lengths after parse, so these snapshots mirror exactly what a consumer would have read off the
+  // payload at any later point. Two branch-length map shapes are kept distinct: the `f64`
   // `profile_branch_lengths` map feeds the marginal passes, while the `Option<f64>`
   // `edge_branch_lengths` map preserves a missing weight as `None` for the output writers and gather.
-  let names = node_names(&graph);
   let profile_branch_lengths_input = profile_branch_lengths(&graph);
   let branch_lengths_opt = edge_branch_lengths(&graph);
 
@@ -182,7 +187,7 @@ pub fn run_ancestral_reconstruction(
     mask.clone(),
     aa_node_data.clone(),
   ));
-  topology_order.apply(&mut graph)?;
+  topology_order.apply(&mut graph, &names)?;
   progress.report("Writing output", 0.9, "");
 
   // Gather the per-node name/confidence and per-edge branch length off the ordered tree into keyed

@@ -20,12 +20,17 @@ use util_newick::{
   NewickGraph, NewickValue, newick_from_reader, newick_from_string, write_beast_attrs, write_label, write_nhx_attrs,
 };
 
-/// A parsed Newick tree: the graph together with the per-node input-tree branch support.
+/// A parsed Newick tree: the graph together with the per-node input-tree branch support and names.
 ///
 /// `confidences` is keyed by the graph's own node keys and holds each node's Newick branch support
 /// (bootstrap or posterior), with `None` where a node carried no confidence annotation. It lets a
 /// consumer read each node's input branch support as a value threaded from the parse rather than off
 /// the node payload.
+///
+/// `names` is keyed by the graph's own node keys and holds each node's name: the parsed name for
+/// named nodes and the synthetic `NODE_xxxxx` name that `assign_node_names` assigns to internals,
+/// with `None` where a node has no name. It lets a consumer read each node's name as a value
+/// threaded from the parse rather than off the node payload.
 #[derive(Debug)]
 pub struct NwkParse<N, E, D = ()>
 where
@@ -35,6 +40,7 @@ where
 {
   pub graph: Graph<N, E, D>,
   pub confidences: BTreeMap<GraphNodeKey, Option<f64>>,
+  pub names: BTreeMap<GraphNodeKey, Option<String>>,
 }
 
 pub fn nwk_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<NwkParse<N, E, D>, Report>
@@ -122,9 +128,13 @@ where
 
   graph.build()?;
 
-  assign_node_names(&graph)?;
+  let names = assign_node_names(&graph)?;
 
-  Ok(NwkParse { graph, confidences })
+  Ok(NwkParse {
+    graph,
+    confidences,
+    names,
+  })
 }
 
 #[derive(Clone, SmartDefault)]

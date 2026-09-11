@@ -9,7 +9,6 @@ use crate::seq::gap_fill::apply_gap_fill;
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::node_names;
 use treetime_io::dates_csv::{DatesMap, read_dates};
 use treetime_io::fasta::{FastaRecord, read_many_fasta};
 use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -20,6 +19,10 @@ pub struct InputData {
   /// output gather reads each node's input branch support from here rather than off the payload;
   /// a node the pipeline creates after the parse is absent and reads as `None`.
   pub confidences: BTreeMap<GraphNodeKey, Option<f64>>,
+  /// Per-node names read from the parse (parsed labels plus the synthetic `NODE_<n>` names
+  /// `assign_node_names` gives internals), keyed by node. Threaded into the pipeline so every name
+  /// read comes from a value map rather than the payload.
+  pub names: BTreeMap<GraphNodeKey, Option<String>>,
   pub input_leaf_order: Vec<String>,
   pub alphabet: Alphabet,
   pub aln: Option<Vec<FastaRecord>>,
@@ -29,13 +32,20 @@ pub struct InputData {
 }
 
 pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report> {
-  let (graph, confidences): (GraphTimetree, BTreeMap<GraphNodeKey, Option<f64>>) = if let Some(tree_path) = &args.tree {
-    let NwkParse { graph, confidences } = nwk_read_file(tree_path).wrap_err("Failed to load tree from file")?;
-    (graph, confidences)
+  let (graph, confidences, names): (
+    GraphTimetree,
+    BTreeMap<GraphNodeKey, Option<f64>>,
+    BTreeMap<GraphNodeKey, Option<String>>,
+  ) = if let Some(tree_path) = &args.tree {
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_file(tree_path).wrap_err("Failed to load tree from file")?;
+    (graph, confidences, names)
   } else {
     todo!("Tree inference from alignment not yet implemented")
   };
-  let names = node_names(&graph);
   let input_leaf_order = graph
     .get_leaves()
     .into_iter()
@@ -74,7 +84,7 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
       &args.date_column_args.date_column,
     )
     .wrap_err("When reading dates")?;
-    load_date_constraints(&dates, &graph).wrap_err("Failed to load date constraints")?;
+    load_date_constraints(&dates, &graph, &names).wrap_err("Failed to load date constraints")?;
     Some(dates)
   } else {
     None
@@ -83,6 +93,7 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
   Ok(InputData {
     graph,
     confidences,
+    names,
     input_leaf_order,
     alphabet,
     aln,

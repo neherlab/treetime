@@ -10,6 +10,7 @@ mod tests {
   use approx::assert_ulps_eq;
   use eyre::Report;
   use std::path::Path;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::nwk_read_file;
 
@@ -47,13 +48,14 @@ mod tests {
       topology_ops: TopologyOps::default(),
     };
 
+    let names = node_names(&graph);
     let input = OptimizeInput {
       graph,
       alphabet,
       sequences,
     };
 
-    let output = run(&params, input, &NoopProgress)?;
+    let output = run(&params, input, &names, &NoopProgress)?;
 
     // Normalization contract: average rate 1 => mu == 1.0 for a single partition.
     assert_ulps_eq!(output.gtr.mu, 1.0, max_ulps = 4);

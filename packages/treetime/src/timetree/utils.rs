@@ -10,7 +10,7 @@ use treetime_distribution::{Distribution, DistributionFunction, NegLog};
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
-use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Grid floor as a fraction of one mutation's worth of time. Keeps the first grid point strictly
 /// above the hard boundary at `t = 0`, so the divergent `-ln p` there is never stored on the grid.
@@ -22,15 +22,18 @@ const MIN_TIME_MUTATION_FRACTION: f64 = 0.01;
 /// [`ClockState`], not on the node payload; a node absent from the state (introduced by a topology
 /// change since the last rebuild) is inserted with default fields before its divergence is written,
 /// so a fresh polytomy or reroot node gets its divergence here rather than a stale zero.
-pub fn initialize_node_divergences<N, E, D>(graph: &Graph<N, E, D>, clock_state: &mut ClockState) -> Result<(), Report>
+pub fn initialize_node_divergences<N, E, D>(
+  graph: &Graph<N, E, D>,
+  clock_state: &mut ClockState,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> Result<(), Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
   D: Send + Sync,
 {
   let branch_lengths = edge_branch_lengths(graph);
-  let names = node_names(graph);
-  let divs = compute_divs(graph, OnlyLeaves(false), &branch_lengths, &names)?;
+  let divs = compute_divs(graph, OnlyLeaves(false), &branch_lengths, names)?;
   for node_ref in graph.get_nodes() {
     let node = node_ref.read_arc();
     let key = node.key();

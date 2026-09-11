@@ -49,7 +49,7 @@ use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_io::dates_csv::DatesMap;
 use treetime_io::fasta::FastaRecord;
@@ -152,6 +152,7 @@ pub struct TimetreeOutput {
 pub fn run(
   params: &TimetreeParams,
   mut input: TimetreeInput,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   tracelog: Option<Box<dyn Write + Send>>,
   progress: &dyn ProgressSink,
 ) -> Result<TimetreeOutput, Report> {
@@ -176,7 +177,7 @@ pub fn run(
   )?;
 
   let date_constraints = if let Some(dates) = &input.dates {
-    load_date_constraints(dates, &input.graph).wrap_err("Failed to load date constraints")?
+    load_date_constraints(dates, &input.graph, names).wrap_err("Failed to load date constraints")?
   } else {
     DateConstraints::default()
   };
@@ -196,7 +197,7 @@ pub fn run(
   // The node dates come from the date state, and the clock set is recomputed by every backward
   // regression, so neither is seeded from the payload.
   let mut clock_state = ClockState::new(&input.graph);
-  initialize_node_divergences(&input.graph, &mut clock_state)?;
+  initialize_node_divergences(&input.graph, &mut clock_state, names)?;
 
   let branch_params = BranchPointOptimizationParams::default();
 
@@ -220,6 +221,7 @@ pub fn run(
     &branch_params,
     &reroot_params,
     None,
+    names,
   )
   .wrap_err("Failed to infer clock model")?
   .into_clock_model()?;
@@ -232,8 +234,13 @@ pub fn run(
       },
       BranchLengthMode::Marginal => {
         info!("Branch length mode: Marginal - initializing partitions from alignment");
-        let init =
-          initialize_partitions_from_params(params, &input.graph, input.alphabet.clone(), input.sequences.as_deref())?;
+        let init = initialize_partitions_from_params(
+          params,
+          &input.graph,
+          input.alphabet.clone(),
+          input.sequences.as_deref(),
+          names,
+        )?;
         (init.partitions, Some(init.gtr), Some(init.model_name))
       },
     };
@@ -241,7 +248,13 @@ pub fn run(
   if let Some(aln) = input.sequences.as_deref() {
     if params.branch_length_mode == BranchLengthMode::Marginal && !partitions.is_empty() {
       info!("### ML branch-length optimization (pre-reroot)");
-      initialize_marginal(&input.graph, &profile_branch_lengths(&input.graph), &partitions, aln)?;
+      initialize_marginal(
+        &input.graph,
+        &profile_branch_lengths(&input.graph),
+        &partitions,
+        aln,
+        names,
+      )?;
       optimize_branch_lengths_pre_step(&input.graph, &partitions, params.no_indels)
         .wrap_err("ML branch-length optimization (pre-reroot) failed")?;
     }
@@ -259,6 +272,7 @@ pub fn run(
       &branch_params,
       &params.reroot_spec,
       !params.allow_negative_rate,
+      names,
     )
     .wrap_err("Failed to reroot tree (pre-ancestral)")?;
   }
@@ -277,7 +291,14 @@ pub fn run(
     let given_dates = timetree_state.likely_times();
     clock_state.reseed_transitional_from_times(&input.graph, &given_dates, &BTreeMap::new());
     let result = clock_filter_inplace(&input.graph, &mut clock_state, &clock_model, params.clock_filter)?;
-    report_bad_branches(&input.graph, &clock_state, &clock_model, result.iqd, &given_dates);
+    report_bad_branches(
+      &input.graph,
+      &clock_state,
+      &clock_model,
+      result.iqd,
+      &given_dates,
+      names,
+    );
     apply_outlier_bad_branches(&input.graph, &clock_state, &mut timetree_state)?;
   }
 
@@ -314,6 +335,7 @@ pub fn run(
       &branch_params,
       &params.reroot_spec,
       !params.allow_negative_rate,
+      names,
     )
     .wrap_err("Failed to reroot tree (post-ancestral)")?;
   }
@@ -322,15 +344,29 @@ pub fn run(
   // clock lengths held in the map.
   let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
 
-  // Initial time tree. Snapshot the current per-edge lengths and per-node names for this pass; the
-  // branch-distribution construction and forward pass read them instead of the payload.
+  // Post-reroot names for the rest of the pipeline. The pre-ancestral and post-ancestral reroots ran
+  // above; reproject the threaded names onto the current node set (a surviving node keeps its name,
+  // the `N::default` split node each reroot adds is absent and resolves to `None`, dropped nodes fall
+  // out). Held in an owned map from here: polytomy resolution in the loop refreshes it from
+  // `assign_node_names`, and the post-loop consumers read the current labels from it.
+  let mut names: BTreeMap<GraphNodeKey, Option<String>> = input
+    .graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let key = node.read_arc().key();
+      (key, names.get(&key).cloned().flatten())
+    })
+    .collect();
+
+  // Initial time tree. Snapshot the current per-edge lengths for this pass; the branch-distribution
+  // construction and forward pass read them and the names map instead of the payload.
   let run_branch_lengths = edge_branch_lengths(&input.graph);
-  let run_names = node_names(&input.graph);
   run_timetree(
     &mut input.graph,
     &partitions,
     &run_branch_lengths,
-    &run_names,
+    &names,
     &clock_model,
     None,
     params.no_indels,
@@ -377,12 +413,11 @@ pub fn run(
   if prior_wanted {
     let prior = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
     let run_branch_lengths = edge_branch_lengths(&input.graph);
-    let run_names = node_names(&input.graph);
     run_timetree(
       &mut input.graph,
       &partitions,
       &run_branch_lengths,
-      &run_names,
+      &names,
       &clock_model,
       Some(&prior),
       params.no_indels,
@@ -467,6 +502,7 @@ pub fn run(
       state: &mut timetree_state,
       clock_state: &mut clock_state,
       clock_branch_lengths: &mut clock_branch_lengths,
+      names: &mut names,
     }
     .run()
     .wrap_err_with(|| format!("When running round {i}"))?;
@@ -532,6 +568,7 @@ pub fn run(
       params.no_indels,
       &mut timetree_state,
       &mut clock_state,
+      &names,
     )
     .wrap_err("Rate susceptibility analysis failed")?
   } else {
@@ -541,12 +578,11 @@ pub fn run(
   if time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
     let run_branch_lengths = edge_branch_lengths(&input.graph);
-    let run_names = node_names(&input.graph);
     run_timetree(
       &mut input.graph,
       &partitions,
       &run_branch_lengths,
-      &run_names,
+      &names,
       &clock_model,
       final_prior,
       params.no_indels,
@@ -574,20 +610,12 @@ pub fn run(
     }
   }
 
-  // Post-inference node-name snapshot for the confidence-interval labels. Captured here, after the
-  // last pass that could rename or re-parent a node, so each interval reads its label from the map
-  // instead of the payload.
-  let confidence_names = node_names(&input.graph);
+  // Confidence-interval labels read from the threaded names map, current after the loop's last
+  // `assign_node_names` (the last pass that could rename or re-parent a node), so each interval reads
+  // its label from the map instead of the payload.
   let confidence_intervals = (matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always)
     || rate_std.is_some())
-  .then(|| {
-    extract_confidence_intervals(
-      &input.graph,
-      &timetree_state,
-      &rate_susceptibility_dates,
-      &confidence_names,
-    )
-  });
+  .then(|| extract_confidence_intervals(&input.graph, &timetree_state, &rate_susceptibility_dates, &names));
 
   let coalescent_output = build_coalescent_output(coalescent, &coalescent_tc, params.gen_per_year, &skyline_params)?;
 
@@ -856,11 +884,12 @@ fn initialize_partitions_from_params(
   graph: &GraphTimetree,
   alphabet: Alphabet,
   aln: Option<&[FastaRecord]>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<PartitionInitResult, Report> {
   let model_name = params.model;
 
   let aln_data = aln.ok_or_else(|| make_report!("Alignment required for marginal reconstruction"))?;
-  let created = create_marginal_partition(graph, 0, alphabet, aln_data, model_name, params.dense)?;
+  let created = create_marginal_partition(graph, 0, alphabet, aln_data, model_name, params.dense, names)?;
 
   // Read the GTR from the owning partition (single source of truth), not from a
   // standalone clone. Timetree does not mutate the GTR after creation, so this
@@ -932,6 +961,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_distribution::Distribution;
+  use treetime_graph::value_maps::node_names;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::nwk_read_str;
@@ -1113,7 +1143,7 @@ mod tests {
       o!("c")    => Some(DateConstraint::exact(2010.0)),
     };
     let graph = nwk_read_str("((a:1,b:1)x:1,c:1)root:0;")?.graph;
-    let constraints = load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
     Ok((graph, constraints))
   }
 

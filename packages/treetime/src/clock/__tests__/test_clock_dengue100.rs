@@ -17,6 +17,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::path::Path;
   use treetime_graph::node::Named;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::dates_csv::read_dates;
   use treetime_io::nwk::nwk_read_file;
 
@@ -34,7 +35,7 @@ mod tests {
       &Some(o!("date")),
     )?;
     let mut state = ClockState::new(&graph);
-    assign_dates(&graph, &dates, &mut state)?;
+    assign_dates(&graph, &dates, &mut state, &node_names(&graph))?;
     Ok((graph, state))
   }
 
@@ -52,6 +53,7 @@ mod tests {
       force_positive_rate: false,
       ..RerootParams::default()
     };
+    let names_tt_2 = node_names(graph);
     let prefilter_result = estimate_clock_model_with_reroot_policy(
       graph,
       state,
@@ -61,6 +63,7 @@ mod tests {
       &params,
       &prefilter_reroot_params,
       None,
+      &names_tt_2,
     )?;
     let pre_regression = prefilter_result.regression();
 
@@ -69,6 +72,7 @@ mod tests {
 
     // Final regression: require positive rate
     let final_reroot_params = RerootParams::default();
+    let names_tt_1 = node_names(graph);
     let final_result = estimate_clock_model_with_reroot_policy(
       graph,
       state,
@@ -78,6 +82,7 @@ mod tests {
       &params,
       &final_reroot_params,
       None,
+      &names_tt_1,
     )?;
 
     Ok((final_result.into_clock_model()?, filter_result.new_outliers))
@@ -222,7 +227,8 @@ mod tests {
       branch_params: BranchPointOptimizationParams::default(),
       reroot_spec: RerootSpec::default(),
     };
-    let output = pipeline::run(&params, ClockInput { graph, dates }, &NoopProgress)?;
+    let names = node_names(&graph);
+    let output = pipeline::run(&params, ClockInput { graph, dates }, &names, &NoopProgress)?;
     let actual_outliers = get_outlier_names(&output.graph, &output.state);
 
     assert_eq!(expected_outliers, actual_outliers);
@@ -257,7 +263,8 @@ mod tests {
       branch_params: BranchPointOptimizationParams::default(),
       reroot_spec: RerootSpec::default(),
     };
-    let output = pipeline::run(&params, ClockInput { graph, dates }, &NoopProgress)?;
+    let names = node_names(&graph);
+    let output = pipeline::run(&params, ClockInput { graph, dates }, &names, &NoopProgress)?;
     assert!(
       output.clock_model.clock_rate() < 0.0,
       "keep-root on dengue/100 should yield a negative rate, got {:.6e}",

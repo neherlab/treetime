@@ -21,6 +21,7 @@ mod tests {
   use maplit::btreemap;
   use rstest::rstest;
   use treetime_distribution::Distribution;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::o;
@@ -36,7 +37,7 @@ mod tests {
     };
     let graph: GraphTimetree =
       nwk_read_str("((leaf1:0.005,leaf2:0.005,leaf3:0.005)internal:0.01,leaf4:0.02)root:0.0;")?.graph;
-    let constraints = load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
     Ok((graph, constraints))
   }
 

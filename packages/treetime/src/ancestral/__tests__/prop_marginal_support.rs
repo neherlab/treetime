@@ -51,7 +51,14 @@ pub mod tests {
       length,
     )))];
 
-    let log_lh = initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &input.alignment)?.value();
+    let log_lh = initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &input.alignment,
+      &node_names(&graph),
+    )?
+    .value();
     Ok((log_lh, partitions))
   }
 

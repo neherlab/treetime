@@ -7,8 +7,7 @@ use ndarray::Array2;
 use std::collections::BTreeMap;
 use treetime_graph::edge::EdgeOptimizeOps;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
-use treetime_graph::value_maps::node_names;
+use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 
 pub(crate) fn one_hot_profile(index: usize, n_states: usize) -> Array2<f64> {
   let mut profile = Array2::zeros((1, n_states));
@@ -23,12 +22,12 @@ pub(crate) fn uniform_profile(n_states: usize) -> Array2<f64> {
 pub(crate) fn validate_trait_names<N, E>(
   graph: &Graph<N, E, ()>,
   traits: &BTreeMap<String, String>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report>
 where
   N: GraphNode + Named,
   E: EdgeOptimizeOps,
 {
-  let names = node_names(graph);
   let leaf_names: IndexSet<String> = graph
     .get_leaves()
     .iter()

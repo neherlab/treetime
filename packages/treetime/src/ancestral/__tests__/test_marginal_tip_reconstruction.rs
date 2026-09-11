@@ -210,7 +210,13 @@ mod tests {
       get_common_length(aln)?,
     )));
     let partitions = [partition];
-    initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln)?;
+    initialize_marginal(
+      graph,
+      &profile_branch_lengths(graph),
+      &partitions,
+      aln,
+      &node_names(graph),
+    )?;
     Ok(to_strings(reconstruct_named(graph, &partitions, impute)?))
   }
 

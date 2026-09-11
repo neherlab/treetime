@@ -116,6 +116,7 @@ mod tests {
     let initial_node_count = graph.get_nodes().len();
 
     // Should complete without error - edge split and trivial root removal are now always enabled
+    let names_tt_3 = node_names(&graph);
     let clock_model = reroot_tree(
       &mut graph,
       &mut clock_state,
@@ -126,6 +127,7 @@ mod tests {
       &BranchPointOptimizationParams::default(),
       &RerootSpec::default(),
       true,
+      &names_tt_3,
     )?;
 
     // Verify we still have a valid tree with exactly one root
@@ -499,6 +501,7 @@ mod tests {
     marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     // First reroot call (simulating keep_root=false flow)
+    let names_tt_2 = node_names(&graph);
     let clock_model_1 = reroot_tree(
       &mut graph,
       &mut clock_state,
@@ -509,6 +512,7 @@ mod tests {
       &BranchPointOptimizationParams::default(),
       &RerootSpec::default(),
       true,
+      &names_tt_2,
     )?;
 
     // Verify tree validity after first reroot
@@ -525,6 +529,7 @@ mod tests {
     // their stable keys in place, so the same date constraints seed the post-reroot date state; the
     // split node the reroot introduced gets no constraint entry, matching a fresh seed.
     let timetree_state_2 = TimetreeState::seed_from_values(&graph, &constraints);
+    let names_tt_1 = node_names(&graph);
     let clock_model_2 = reroot_tree(
       &mut graph,
       &mut clock_state,
@@ -535,6 +540,7 @@ mod tests {
       &BranchPointOptimizationParams::default(),
       &RerootSpec::default(),
       true,
+      &names_tt_1,
     )?;
 
     // Verify tree validity after second reroot

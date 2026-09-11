@@ -13,6 +13,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
   use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::nwk::nwk_read_str;
 
   #[test]
@@ -138,6 +139,7 @@ mod tests {
     let damping = 0.75;
     let dp = 0.1;
 
+    let names_tt_2 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -148,7 +150,7 @@ mod tests {
       damping,
       method,
       false,
-      TopologyOps::default(),
+      TopologyOps::default(), &names_tt_2
     )?;
 
     assert!(
@@ -196,6 +198,7 @@ mod tests {
     // exercises the full damping trajectory rather than possibly stopping after two
     // near-identical likelihoods.
     let dp = 0.0;
+    let names_tt_1 = node_names(&graph);
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -206,7 +209,7 @@ mod tests {
       0.75,
       method,
       false,
-      TopologyOps::default(),
+      TopologyOps::default(), &names_tt_1
     )?;
 
     // Strict non-regression: damped optimization must not degrade likelihood.

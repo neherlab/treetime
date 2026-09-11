@@ -190,19 +190,26 @@ mod tests {
     let partitions = vec![Arc::new(RwLock::new(PartitionTimetree::Dense(
       PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?),
     )))];
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?;
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &aln,
+      &node_names(&graph),
+    )?;
 
     let dates: DatesMap = btreemap! {
       "A".to_owned() => Some(DateConstraint::exact(2010.0)),
       "B".to_owned() => Some(DateConstraint::exact(2015.0)),
       "C".to_owned() => Some(DateConstraint::exact(2020.0)),
     };
-    let constraints = load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
     let mut clock_state = ClockState::new(&graph);
-    initialize_node_divergences(&graph, &mut clock_state)?;
+    initialize_node_divergences(&graph, &mut clock_state, &node_names(&graph))?;
 
     let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times();
     let mut clock_estimate_state = ClockState::seed_from_values(&graph, &times);
+    let names_tt_1 = node_names(&graph);
     let clock_model = estimate_clock_model_with_reroot_policy(
       &mut graph,
       &mut clock_estimate_state,
@@ -212,6 +219,7 @@ mod tests {
       &BranchPointOptimizationParams::default(),
       &RerootParams::default(),
       None,
+      &names_tt_1,
     )?
     .into_clock_model()?;
     let mut state = TimetreeState::seed_from_values(&graph, &constraints);
@@ -297,6 +305,7 @@ mod tests {
 
     let mut clock_state = ClockState::new(graph);
     let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
+    let mut names = node_names(graph);
 
     Refinement {
       graph,
@@ -311,6 +320,7 @@ mod tests {
       state,
       clock_state: &mut clock_state,
       clock_branch_lengths: &mut clock_branch_lengths,
+      names: &mut names,
     }
     .run()
   }

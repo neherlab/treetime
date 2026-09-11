@@ -256,7 +256,14 @@ mod tests {
         length,
       )))];
 
-      initialize_marginal(&graph, &profile_branch_lengths(&graph), &dense_partitions, &aln)?.value();
+      initialize_marginal(
+        &graph,
+        &profile_branch_lengths(&graph),
+        &dense_partitions,
+        &aln,
+        &node_names(&graph),
+      )?
+      .value();
       marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
       marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
 
@@ -264,6 +271,7 @@ mod tests {
       initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
 
       let dp = 0.1;
+      let names_tt_1 = node_names(&graph);
       let result = run_optimize_loop(
         &mut graph,
         &sparse_partitions,
@@ -275,6 +283,7 @@ mod tests {
         method,
         false,
         TopologyOps::default(),
+        &names_tt_1,
       )?;
 
       // Append a trailing likelihood measurement so `lh_history.last()` reflects the state

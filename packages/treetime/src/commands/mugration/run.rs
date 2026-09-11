@@ -32,6 +32,7 @@ pub fn run_mugration(
   let parse = nwk_read_file(tree_path)?;
   let graph: GraphAncestral = parse.graph;
   let confidences = parse.confidences;
+  let names = parse.names;
 
   let resolved = mugration_args.resolve_outputs()?;
 
@@ -67,6 +68,7 @@ pub fn run_mugration(
   let mut result = execute_mugration(
     graph,
     &confidences,
+    &names,
     &traits,
     mugration_args.attribute(),
     weights.as_ref(),
@@ -81,8 +83,8 @@ pub fn run_mugration(
 
   let topology_order = mugration_args
     .topology_order
-    .resolve_topology_order(&result.graph, None)?;
-  topology_order.apply(&mut result.graph)?;
+    .resolve_topology_order(&result.graph, &names, None)?;
+  topology_order.apply(&mut result.graph, &names)?;
   progress.report("Writing output", 0.8, "");
 
   let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = result

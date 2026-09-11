@@ -10,6 +10,7 @@ mod tests {
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
+  use treetime_graph::value_maps::node_names;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 
@@ -22,7 +23,7 @@ mod tests {
       o!("B") => o!("?"),
     };
 
-    partition.attach_traits(&graph, &traits)?;
+    partition.attach_traits(&graph, &traits, &node_names(&graph))?;
 
     let node_a_profile = helpers::get_node_profile(&graph, &partition, "A");
     assert_abs_diff_eq!(node_a_profile[0], 0.0, epsilon = 1e-10);
@@ -45,7 +46,7 @@ mod tests {
       o!("A") => o!("usa"),
     };
 
-    let result = partition.attach_traits(&graph, &traits);
+    let result = partition.attach_traits(&graph, &traits, &node_names(&graph));
     assert_error!(result, "Mugration: tree leaves missing from metadata: B");
 
     Ok(())
@@ -62,7 +63,7 @@ mod tests {
     };
 
     // "C" has no matching tree leaf. Attachment warns and proceeds; matched leaves are unaffected.
-    partition.attach_traits(&graph, &traits)?;
+    partition.attach_traits(&graph, &traits, &node_names(&graph))?;
 
     let node_a_profile = helpers::get_node_profile(&graph, &partition, "A");
     assert_abs_diff_eq!(node_a_profile[0], 0.0, epsilon = 1e-10);
@@ -81,7 +82,7 @@ mod tests {
     let mut partition = helpers::make_partition(["usa", "germany"])?;
     let traits = helpers::make_fixture_traits();
 
-    partition.attach_traits(&graph, &traits)?;
+    partition.attach_traits(&graph, &traits, &node_names(&graph))?;
 
     let branch_lengths = profile_branch_lengths(&graph);
     marginal_process_backward_indexed(&mut partition, &graph, &branch_lengths)?;
@@ -118,7 +119,7 @@ mod tests {
     let mut partition = helpers::make_partition(["usa", "germany"])?;
     let traits = helpers::make_fixture_traits();
 
-    partition.attach_traits(&graph, &traits)?;
+    partition.attach_traits(&graph, &traits, &node_names(&graph))?;
 
     let partition = Arc::new(RwLock::new(partition));
     let actual_log_lh = marginal_update(

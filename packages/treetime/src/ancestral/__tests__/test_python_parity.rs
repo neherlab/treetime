@@ -81,7 +81,14 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &aln,
+      &node_names(&graph),
+    )?
+    .value();
 
     let mut root_seq = String::new();
     let names = node_names(&graph);
@@ -195,7 +202,14 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &aln,
+      &node_names(&graph),
+    )?
+    .value();
 
     // Find node AB and check profile at position 0
     let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
@@ -241,7 +255,14 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &aln,
+      &node_names(&graph),
+    )?
+    .value();
 
     // Find root node
     let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("Node root not found"))?;
@@ -283,7 +304,14 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &aln,
+      &node_names(&graph),
+    )?
+    .value();
 
     let cd_key = find_node_key_by_name(&graph, "CD").ok_or_else(|| make_report!("Node CD not found"))?;
     let partition = partitions[0].read_arc();
@@ -326,7 +354,14 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &aln,
+      &node_names(&graph),
+    )?
+    .value();
 
     let partition = partitions[0].read_arc();
 
@@ -377,7 +412,14 @@ mod tests {
 
     let partitions = [Arc::clone(&partition1), Arc::clone(&partition2)];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &aln,
+      &node_names(&graph),
+    )?
+    .value();
     let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("Node root not found"))?;
 
     let p1 = partition1.read_arc();
@@ -439,7 +481,14 @@ mod tests {
 
     let partitions = [Arc::clone(&partition1), Arc::clone(&partition2)];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &aln,
+      &node_names(&graph),
+    )?
+    .value();
 
     let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
 
@@ -500,6 +549,7 @@ mod tests {
       &profile_branch_lengths(&graph),
       from_ref(&dense_partition),
       &aln,
+      &node_names(&graph),
     )?
     .value();
 

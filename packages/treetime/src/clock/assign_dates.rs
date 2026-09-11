@@ -2,7 +2,8 @@ use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_state::ClockState;
 use crate::make_error;
 use eyre::Report;
-use treetime_graph::value_maps::node_names;
+use std::collections::BTreeMap;
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DatesMap;
 
 const MIN_GOOD_LEAVES: usize = 3;
@@ -12,14 +13,18 @@ const MIN_GOOD_LEAVES: usize = 3;
 /// `bad_branch` is set bottom-up: a node is bad when it has no date and every child is bad (or it
 /// is a dateless leaf). The postorder walk visits children before parents, so each child's flag is
 /// already in `state` when the parent reads it.
-pub fn assign_dates(graph: &GraphClock, dates: &DatesMap, state: &mut ClockState) -> Result<(), Report> {
+pub fn assign_dates(
+  graph: &GraphClock,
+  dates: &DatesMap,
+  state: &mut ClockState,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> Result<(), Report> {
   let n_dates = dates.iter().filter(|(_, d)| d.is_some()).count();
   if n_dates == 0 {
     return make_error!("No valid date information found in {dates:#?}");
   }
 
   let mut n_bad_leaves = 0;
-  let names = node_names(graph);
   graph.iter_depth_first_postorder_forward(|node| {
     let name = names[&node.key].clone();
     let time: Option<f64> = name

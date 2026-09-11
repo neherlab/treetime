@@ -103,7 +103,14 @@ mod tests {
     )));
     let partitions = [Arc::clone(&partition)];
 
-    let log_lh = initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln)?.value();
+    let log_lh = initialize_marginal(
+      graph,
+      &profile_branch_lengths(graph),
+      &partitions,
+      aln,
+      &node_names(graph),
+    )?
+    .value();
     Ok((log_lh, partition))
   }
 
@@ -455,7 +462,14 @@ mod tests {
     )));
     let partitions = [Arc::clone(&partition)];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&graph),
+      &partitions,
+      &aln,
+      &node_names(&graph),
+    )?
+    .value();
 
     // Verify all marginal posterior rows sum to 1.0
     let partition = partition.read_arc();

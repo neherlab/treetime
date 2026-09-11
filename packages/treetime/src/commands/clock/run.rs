@@ -1,4 +1,4 @@
-use crate::clock::clock_graph::GraphClock;
+use crate::clock::clock_graph::{EdgeClock, GraphClock, NodeClock};
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_output::write_clock_model;
 use crate::clock::clock_regression::ClockParams;
@@ -18,9 +18,8 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
-use treetime_graph::value_maps::node_names;
 use treetime_io::dates_csv::read_dates;
-use treetime_io::nwk::nwk_read_file;
+use treetime_io::nwk::{NwkParse, nwk_read_file};
 
 #[derive(serde::Serialize)]
 pub struct ClockGraphData {
@@ -141,13 +140,12 @@ pub fn run_clock(
   progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
 
-  let graph: GraphClock = if let Some(tree) = &clock_args.tree {
-    nwk_read_file(tree)
+  let NwkParse { graph, names, .. } = if let Some(tree) = &clock_args.tree {
+    nwk_read_file::<NodeClock, EdgeClock, ()>(tree)
   } else {
     return make_error!("Tree inference is not implemented. Provide a tree file with --tree");
-  }?
-  .graph;
-  let input_order = leaf_order(&graph)?;
+  }?;
+  let input_order = leaf_order(&graph, &names)?;
 
   let dates = read_dates(
     clock_args.metadata(),
@@ -187,7 +185,7 @@ pub fn run_clock(
 
   let input = ClockInput { graph, dates };
 
-  let output = pipeline::run(&params, input, progress)?;
+  let output = pipeline::run(&params, input, &names, progress)?;
   let pipeline::ClockOutput {
     graph,
     state,
@@ -199,8 +197,8 @@ pub fn run_clock(
   let mut graph = graph.map_data(ClockGraphData::new(clock_model, regression_results));
   let topology_order = clock_args
     .topology_order
-    .resolve_topology_order(&graph, Some(input_order))?;
-  topology_order.apply(&mut graph)?;
+    .resolve_topology_order(&graph, &names, Some(input_order))?;
+  topology_order.apply(&mut graph, &names)?;
   progress.report("Writing output", 0.8, "");
 
   // The pipeline's post-reroot name and branch-length maps carry the final tree's values; topology
@@ -230,13 +228,15 @@ pub fn run_clock(
   Ok(ClockResult { graph, nodes, edges })
 }
 
-fn leaf_order<N, E, D>(graph: &Graph<N, E, D>) -> Result<Vec<String>, Report>
+fn leaf_order<N, E, D>(
+  graph: &Graph<N, E, D>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> Result<Vec<String>, Report>
 where
   N: GraphNode + Named,
   E: GraphEdge,
   D: Sync + Send,
 {
-  let names = node_names(graph);
   graph
     .get_leaves()
     .into_iter()
