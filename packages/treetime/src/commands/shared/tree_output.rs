@@ -2,11 +2,11 @@ use crate::clock::clock_graph::GraphClock;
 use crate::commands::ancestral::result::{AncestralGraphData, AncestralNodeOut, AncestralOutputMaps};
 use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
 use crate::commands::mugration::augur_node_data::{build_confidence_map, compute_entropy};
-use crate::commands::optimize::result::{OptimizeGraphData, OptimizeNodeOut};
-use crate::commands::prune::result::{PruneGraphData, PruneNodeOut};
-use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut};
+use crate::commands::optimize::result::{OptimizeGraphData, OptimizeNodeOut, OptimizeOutputMaps};
+use crate::commands::prune::result::{PruneGraphData, PruneNodeOut, PruneOutputMaps};
+use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut, TimetreeOutputMaps};
 use crate::mugration::result::{MugrationGraphData, MugrationNodeOut};
-use crate::partition::traits::{BranchTopology, PartitionBranchOps};
+use crate::partition::traits::BranchTopology;
 use crate::payload::ancestral::GraphAncestral;
 use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, mutation_event_strings};
@@ -97,6 +97,7 @@ pub fn write_optimize_tree_outputs(
   graph: &GraphAncestral<OptimizeGraphData>,
   nodes: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &OptimizeOutputMaps,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
@@ -111,9 +112,9 @@ pub fn write_optimize_tree_outputs(
     outputs,
     providers,
     "optimize",
-    || optimize_to_auspice(graph, nodes, branch_lengths, &updated),
-    || optimize_to_phyloxml(graph, nodes, branch_lengths),
-    || optimize_to_mat(graph, &names, branch_lengths),
+    || optimize_to_auspice(graph, nodes, branch_lengths, maps, &updated),
+    || optimize_to_phyloxml(graph, nodes, branch_lengths, maps),
+    || optimize_to_mat(graph, &names, branch_lengths, maps),
   )
 }
 
@@ -121,6 +122,7 @@ pub fn write_prune_tree_outputs(
   graph: &GraphAncestral<PruneGraphData>,
   nodes: &BTreeMap<GraphNodeKey, PruneNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &PruneOutputMaps,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
@@ -135,9 +137,9 @@ pub fn write_prune_tree_outputs(
     outputs,
     providers,
     "prune",
-    || prune_to_auspice(graph, nodes, branch_lengths, &updated),
-    || prune_to_phyloxml(graph, nodes, branch_lengths),
-    || prune_to_mat(graph, &names, branch_lengths),
+    || prune_to_auspice(graph, nodes, branch_lengths, maps, &updated),
+    || prune_to_phyloxml(graph, nodes, branch_lengths, maps),
+    || prune_to_mat(graph, &names, branch_lengths, maps),
   )
 }
 
@@ -193,6 +195,7 @@ pub fn write_timetree_tree_outputs(
   graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
   nodes: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
+  maps: &TimetreeOutputMaps,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
@@ -214,9 +217,9 @@ pub fn write_timetree_tree_outputs(
     outputs,
     providers,
     "timetree",
-    || timetree_to_auspice(graph, nodes, &updated),
-    || timetree_to_phyloxml(graph, nodes, edges),
-    || timetree_to_mat(graph, &names, &nwk_weights),
+    || timetree_to_auspice(graph, nodes, maps, &updated),
+    || timetree_to_phyloxml(graph, nodes, edges, maps),
+    || timetree_to_mat(graph, &names, &nwk_weights, maps),
   )
 }
 
@@ -325,9 +328,10 @@ pub(crate) fn optimize_to_auspice(
   graph: &GraphAncestral<OptimizeGraphData>,
   nodes: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &OptimizeOutputMaps,
   updated: &str,
 ) -> Result<AuspiceTree, Report> {
-  let root_sequences = optimize_root_sequences(graph)?;
+  let root_sequences = optimize_root_sequences(maps);
   let data = auspice_data(
     "TreeTime optimize analysis",
     updated,
@@ -336,7 +340,7 @@ pub(crate) fn optimize_to_auspice(
     None,
     None,
     Some(root_sequences),
-    optimize_has_mutations(graph),
+    maps.root_sequence.is_some(),
   );
   auspice_from_graph(graph, data, |context| {
     let out = &nodes[&context.node_key];
@@ -346,7 +350,7 @@ pub(crate) fn optimize_to_auspice(
       &name,
       div,
       out.confidence,
-      optimize_mutations(graph, context.edge_key)?,
+      optimize_mutations(maps, context.edge_key),
       None,
       None,
     )
@@ -357,9 +361,10 @@ pub(crate) fn prune_to_auspice(
   graph: &GraphAncestral<PruneGraphData>,
   nodes: &BTreeMap<GraphNodeKey, PruneNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &PruneOutputMaps,
   updated: &str,
 ) -> Result<AuspiceTree, Report> {
-  let root_sequences = prune_root_sequences(graph)?;
+  let root_sequences = prune_root_sequences(maps);
   let data = auspice_data(
     "TreeTime prune analysis",
     updated,
@@ -368,7 +373,7 @@ pub(crate) fn prune_to_auspice(
     None,
     None,
     Some(root_sequences),
-    !graph.data().partitions.is_empty(),
+    maps.root_sequence.is_some(),
   );
   auspice_from_graph(graph, data, |context| {
     let out = &nodes[&context.node_key];
@@ -378,7 +383,7 @@ pub(crate) fn prune_to_auspice(
       &name,
       div,
       out.confidence,
-      prune_mutations(graph, context.edge_key)?,
+      prune_mutations(maps, context.edge_key),
       None,
       None,
     )
@@ -461,9 +466,10 @@ pub(crate) fn mugration_to_auspice(
 pub(crate) fn timetree_to_auspice(
   graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
   nodes: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
+  maps: &TimetreeOutputMaps,
   updated: &str,
 ) -> Result<AuspiceTree, Report> {
-  let root_sequences = timetree_root_sequences(graph)?;
+  let root_sequences = timetree_root_sequences(maps);
   let data = auspice_data(
     "TreeTime timetree analysis",
     updated,
@@ -475,7 +481,7 @@ pub(crate) fn timetree_to_auspice(
     Some(COLORING_BAD_BRANCH.to_owned()),
     None,
     Some(root_sequences),
-    !graph.data().partitions.is_empty(),
+    maps.root_sequence.is_some(),
   );
   auspice_from_graph(graph, data, |context| {
     let out = &nodes[&context.node_key];
@@ -489,7 +495,7 @@ pub(crate) fn timetree_to_auspice(
       confidence,
       Some(out.bad_branch || out.is_outlier),
       BTreeMap::new(),
-      group_mutations(timetree_mutations(graph, context.edge_key)?)?,
+      group_mutations(timetree_mutations(maps, context.edge_key))?,
       None,
     ))
   })
@@ -711,6 +717,7 @@ pub(crate) fn optimize_to_phyloxml(
   graph: &GraphAncestral<OptimizeGraphData>,
   nodes: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &OptimizeOutputMaps,
 ) -> Result<Phyloxml, Report> {
   phyloxml_from_graph(graph, "TreeTime optimize analysis", |context| {
     let out = &nodes[&context.node_key];
@@ -723,8 +730,8 @@ pub(crate) fn optimize_to_phyloxml(
       div,
       branch_length,
       out.confidence,
-      optimize_mutations(graph, context.edge_key)?,
-      &optimize_node_sequences(graph, context.node_key),
+      optimize_mutations(maps, context.edge_key),
+      &optimize_node_sequences(maps, context.node_key),
     )
   })
 }
@@ -733,6 +740,7 @@ pub(crate) fn prune_to_phyloxml(
   graph: &GraphAncestral<PruneGraphData>,
   nodes: &BTreeMap<GraphNodeKey, PruneNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &PruneOutputMaps,
 ) -> Result<Phyloxml, Report> {
   phyloxml_from_graph(graph, "TreeTime prune analysis", |context| {
     let out = &nodes[&context.node_key];
@@ -745,8 +753,8 @@ pub(crate) fn prune_to_phyloxml(
       div,
       branch_length,
       out.confidence,
-      prune_mutations(graph, context.edge_key)?,
-      &prune_node_sequences(graph, context.node_key),
+      prune_mutations(maps, context.edge_key),
+      &prune_node_sequences(maps, context.node_key),
     )
   })
 }
@@ -834,6 +842,7 @@ pub(crate) fn timetree_to_phyloxml(
   graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
   nodes: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
+  maps: &TimetreeOutputMaps,
 ) -> Result<Phyloxml, Report> {
   phyloxml_from_graph(graph, "TreeTime timetree analysis", |context| {
     let out = &nodes[&context.node_key];
@@ -862,7 +871,7 @@ pub(crate) fn timetree_to_phyloxml(
     if context.edge_key.is_some() {
       properties.push(property(REF_GAMMA, DT_DOUBLE, APPLIES_BRANCH, &gamma.to_string()));
     }
-    for mutation in timetree_mutations(graph, context.edge_key)? {
+    for mutation in timetree_mutations(maps, context.edge_key) {
       properties.push(mutation_property(&mutation)?);
     }
     let date = out.time.map(|value| {
@@ -886,7 +895,7 @@ pub(crate) fn timetree_to_phyloxml(
     clade.confidence = input_branch_confidence(out.confidence, "timetree", &name)?;
     clade.date = date;
     clade.property = properties;
-    clade.sequence = phyloxml_sequences(&timetree_node_sequences(graph, context.node_key));
+    clade.sequence = phyloxml_sequences(&timetree_node_sequences(maps, context.node_key));
     Ok(clade)
   })
 }
@@ -1019,14 +1028,15 @@ pub(crate) fn optimize_to_mat(
   graph: &GraphAncestral<OptimizeGraphData>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &OptimizeOutputMaps,
 ) -> Result<UsherTree, Report> {
-  let reference = optimize_root_sequences(graph)?.remove(NUC_TRACK);
+  let reference = optimize_root_sequences(maps).remove(NUC_TRACK);
   mat_from_graph(
     graph,
     names,
     nwk_weights,
     reference.as_deref(),
-    |_node_key, edge_key| optimize_mutations(graph, Some(edge_key)),
+    |_node_key, edge_key| Ok(optimize_mutations(maps, Some(edge_key))),
   )
 }
 
@@ -1034,14 +1044,15 @@ pub(crate) fn prune_to_mat(
   graph: &GraphAncestral<PruneGraphData>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &PruneOutputMaps,
 ) -> Result<UsherTree, Report> {
-  let reference = prune_root_sequences(graph)?.remove(NUC_TRACK);
+  let reference = prune_root_sequences(maps).remove(NUC_TRACK);
   mat_from_graph(
     graph,
     names,
     nwk_weights,
     reference.as_deref(),
-    |_node_key, edge_key| prune_mutations(graph, Some(edge_key)),
+    |_node_key, edge_key| Ok(prune_mutations(maps, Some(edge_key))),
   )
 }
 
@@ -1065,14 +1076,15 @@ pub(crate) fn timetree_to_mat(
   graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &TimetreeOutputMaps,
 ) -> Result<UsherTree, Report> {
-  let reference = timetree_root_sequences(graph)?.remove(NUC_TRACK);
+  let reference = timetree_root_sequences(maps).remove(NUC_TRACK);
   mat_from_graph(
     graph,
     names,
     nwk_weights,
     reference.as_deref(),
-    |_node_key, edge_key| timetree_mutations(graph, Some(edge_key)),
+    |_node_key, edge_key| Ok(timetree_mutations(maps, Some(edge_key))),
   )
 }
 
@@ -1320,80 +1332,52 @@ fn auspice_coordinate(coordinate: i64, name: &str, field: &str) -> Result<isize,
     .wrap_err_with(|| format!("CDS annotation '{name}' {field} does not fit Auspice coordinates"))
 }
 
-fn optimize_root_sequences(graph: &GraphAncestral<OptimizeGraphData>) -> Result<BTreeMap<String, String>, Report> {
-  let sequence = if let Some(partition) = graph.data().dense_partitions.first() {
-    Some(partition.read_arc().root_sequence(graph)?)
-  } else if let Some(partition) = graph.data().sparse_partitions.first() {
-    Some(partition.read_arc().root_sequence(graph)?)
-  } else {
-    None
-  };
-  Ok(
-    sequence
-      .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
-      .unwrap_or_default(),
-  )
-}
-
-fn optimize_node_sequences(
-  graph: &GraphAncestral<OptimizeGraphData>,
-  node_key: GraphNodeKey,
-) -> BTreeMap<String, String> {
-  let sequence = if let Some(partition) = graph.data().dense_partitions.first() {
-    Some(partition.read_arc().node_sequence(node_key))
-  } else {
-    graph
-      .data()
-      .sparse_partitions
-      .first()
-      .map(|partition| partition.read_arc().node_sequence(node_key))
-  };
-  sequence
+fn optimize_root_sequences(maps: &OptimizeOutputMaps) -> BTreeMap<String, String> {
+  maps
+    .root_sequence
+    .as_ref()
     .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
     .unwrap_or_default()
 }
 
-fn prune_root_sequences(graph: &GraphAncestral<PruneGraphData>) -> Result<BTreeMap<String, String>, Report> {
-  graph.data().partitions.first().map_or_else(
-    || Ok(BTreeMap::new()),
-    |partition| {
-      Ok(btreemap! {
-        NUC_TRACK.to_owned() => partition.read_arc().root_sequence(graph)?.to_string(),
-      })
-    },
-  )
+fn optimize_node_sequences(maps: &OptimizeOutputMaps, node_key: GraphNodeKey) -> BTreeMap<String, String> {
+  maps
+    .node_sequences
+    .get(&node_key)
+    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
+    .unwrap_or_default()
 }
 
-fn prune_node_sequences(graph: &GraphAncestral<PruneGraphData>, node_key: GraphNodeKey) -> BTreeMap<String, String> {
-  graph.data().partitions.first().map_or_else(BTreeMap::new, |partition| {
-    btreemap! {
-      NUC_TRACK.to_owned() => partition.read_arc().node_sequence(node_key).to_string(),
-    }
-  })
+fn prune_root_sequences(maps: &PruneOutputMaps) -> BTreeMap<String, String> {
+  maps
+    .root_sequence
+    .as_ref()
+    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
+    .unwrap_or_default()
 }
 
-fn timetree_root_sequences(
-  graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
-) -> Result<BTreeMap<String, String>, Report> {
-  graph.data().partitions.first().map_or_else(
-    || Ok(BTreeMap::new()),
-    |partition| {
-      Ok(btreemap! {
-        NUC_TRACK.to_owned() => partition.read_arc().root_sequence(graph)?.to_string(),
-      })
-    },
-  )
+fn prune_node_sequences(maps: &PruneOutputMaps, node_key: GraphNodeKey) -> BTreeMap<String, String> {
+  maps
+    .node_sequences
+    .get(&node_key)
+    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
+    .unwrap_or_default()
 }
 
-fn timetree_node_sequences(
-  graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
-  node_key: GraphNodeKey,
-) -> BTreeMap<String, String> {
-  graph.data().partitions.first().map_or_else(BTreeMap::new, |partition| {
-    btreemap! {
-      NUC_TRACK.to_owned() => partition.read_arc().node_sequence(node_key).to_string(),
-    }
-  })
+fn timetree_root_sequences(maps: &TimetreeOutputMaps) -> BTreeMap<String, String> {
+  maps
+    .root_sequence
+    .as_ref()
+    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
+    .unwrap_or_default()
+}
+
+fn timetree_node_sequences(maps: &TimetreeOutputMaps, node_key: GraphNodeKey) -> BTreeMap<String, String> {
+  maps
+    .node_sequences
+    .get(&node_key)
+    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
+    .unwrap_or_default()
 }
 
 fn ancestral_node_mutations(
@@ -1429,56 +1413,22 @@ fn ancestral_all_mutations(graph: &GraphAncestral<AncestralGraphData>, maps: &An
     .collect()
 }
 
-fn optimize_has_mutations(graph: &GraphAncestral<OptimizeGraphData>) -> bool {
-  !graph.data().dense_partitions.is_empty() || !graph.data().sparse_partitions.is_empty()
+fn optimize_mutations(maps: &OptimizeOutputMaps, edge_key: Option<GraphEdgeKey>) -> Vec<Mutation> {
+  edge_key
+    .and_then(|edge_key| maps.edge_mutations.get(&edge_key).cloned())
+    .unwrap_or_default()
 }
 
-fn optimize_mutations(
-  graph: &GraphAncestral<OptimizeGraphData>,
-  edge_key: Option<GraphEdgeKey>,
-) -> Result<Vec<Mutation>, Report> {
-  let Some(edge_key) = edge_key else {
-    return Ok(vec![]);
-  };
-  if let Some(partition) = graph.data().dense_partitions.first() {
-    partition
-      .read_arc()
-      .edge_mutations(graph, edge_key, MutationTrack::Nucleotide)
-  } else if let Some(partition) = graph.data().sparse_partitions.first() {
-    partition
-      .read_arc()
-      .edge_mutations(graph, edge_key, MutationTrack::Nucleotide)
-  } else {
-    Ok(vec![])
-  }
+fn prune_mutations(maps: &PruneOutputMaps, edge_key: Option<GraphEdgeKey>) -> Vec<Mutation> {
+  edge_key
+    .and_then(|edge_key| maps.edge_mutations.get(&edge_key).cloned())
+    .unwrap_or_default()
 }
 
-fn prune_mutations(
-  graph: &GraphAncestral<PruneGraphData>,
-  edge_key: Option<GraphEdgeKey>,
-) -> Result<Vec<Mutation>, Report> {
-  match (graph.data().partitions.first(), edge_key) {
-    (Some(partition), Some(edge_key)) => {
-      partition
-        .read_arc()
-        .edge_mutations(graph, edge_key, MutationTrack::Nucleotide)
-    },
-    _ => Ok(vec![]),
-  }
-}
-
-fn timetree_mutations(
-  graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
-  edge_key: Option<GraphEdgeKey>,
-) -> Result<Vec<Mutation>, Report> {
-  match (graph.data().partitions.first(), edge_key) {
-    (Some(partition), Some(edge_key)) => {
-      partition
-        .read_arc()
-        .edge_mutations(graph, edge_key, MutationTrack::Nucleotide)
-    },
-    _ => Ok(vec![]),
-  }
+fn timetree_mutations(maps: &TimetreeOutputMaps, edge_key: Option<GraphEdgeKey>) -> Vec<Mutation> {
+  edge_key
+    .and_then(|edge_key| maps.edge_mutations.get(&edge_key).cloned())
+    .unwrap_or_default()
 }
 
 fn mugration_traits(

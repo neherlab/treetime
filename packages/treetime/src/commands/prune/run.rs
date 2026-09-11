@@ -1,23 +1,26 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::commands::prune::result::{EdgeOut, PruneGraphData, PruneNodeOut, PruneResult};
+use crate::commands::prune::result::{EdgeOut, PruneGraphData, PruneNodeOut, PruneOutputMaps, PruneResult};
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_prune_tree_outputs;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_error;
+use crate::partition::traits::PartitionBranchOps;
 use crate::prune::pipeline::{self, PruneInput, PruneParams};
-use eyre::Report;
+use crate::seq::mutation::MutationTrack;
+use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::warn;
 use maplit::btreeset;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_io::fasta::read_many_fasta;
+use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
@@ -144,11 +147,26 @@ pub fn run_prune(
     }
   }
 
+  // Gather the per-node/per-edge sequence and mutation values off the partition into plain value maps
+  // the output writers consume, taking the partition read out of the serialization path. Only the
+  // auspice, phyloxml, and MAT writers read these maps; prune's default Newick/Nexus outputs carry no
+  // mutation comments (empty comment provider), so they never read a mutation. Prune also applies its
+  // final `--prune-empty` and `--merge-shared-mutations` topology edits without a following marginal
+  // pass, leaving output-tree edges whose `subs_ml` was never populated. Gathering unconditionally
+  // would read those unpopulated edges for outputs that never serialize them, so gather only when a
+  // map-consuming tree output is requested.
+  let maps = if resolved.tree_outputs.keys().any(prune_output_consumes_maps) {
+    gather_prune_output_maps(&graph)?
+  } else {
+    PruneOutputMaps::default()
+  };
+
   if !resolved.tree_outputs.is_empty() {
     write_prune_tree_outputs(
       &graph,
       &nodes,
       &branch_lengths,
+      &maps,
       &resolved.tree_outputs,
       &CommentProviders::new(),
     )?;
@@ -161,6 +179,63 @@ pub fn run_prune(
     edges,
     seq,
     gtr,
+  })
+}
+
+/// Whether a tree-output kind reads the gathered prune value maps.
+///
+/// The auspice, phyloxml, and MAT writers build their nodes and edges from the value maps; the Newick,
+/// Nexus, Graphviz, and internal-graph writers do not (prune supplies no mutation comment provider).
+fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
+  matches!(
+    kind,
+    TreeWriteKind::Auspice
+      | TreeWriteKind::Phyloxml
+      | TreeWriteKind::PhyloxmlJson
+      | TreeWriteKind::MatPb
+      | TreeWriteKind::MatJson
+  )
+}
+
+/// Gather the per-node nucleotide sequences, root sequence, and per-edge nucleotide mutations the tree
+/// writers read off the prune partition.
+///
+/// The per-edge mutation map is keyed by the inbound edge of every node reached on a walk from the
+/// single root, i.e. exactly the output-tree edges the tree, MAT, and Newick-comment writers traverse.
+/// Prune applies its final `--prune-empty` and `--merge-shared-mutations` topology edits without a
+/// following marginal pass, so the node and edge stores can still hold detached nodes and orphan edges
+/// whose `subs_ml` was never populated. Those never appear on the tree walk, so reading
+/// `edge_mutations` only for reached edges avoids touching an unpopulated edge.
+pub(crate) fn gather_prune_output_maps(graph: &GraphAncestral<PruneGraphData>) -> Result<PruneOutputMaps, Report> {
+  let Some(partition) = graph.data().partitions.first() else {
+    return Ok(PruneOutputMaps::default());
+  };
+  let partition = partition.read_arc();
+  let root_sequence = Some(partition.root_sequence(graph)?);
+  let node_sequences = graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let key = node.read_arc().key();
+      (key, partition.node_sequence(key))
+    })
+    .collect();
+  let mut edge_mutations = BTreeMap::new();
+  let root = graph
+    .get_exactly_one_root()
+    .wrap_err("When gathering prune tree mutations")?;
+  let mut queue = VecDeque::from([Arc::clone(&root)]);
+  while let Some(node) = queue.pop_front() {
+    for (child, edge) in graph.children_of(&node.read_arc()) {
+      let edge_key = edge.read_arc().key();
+      edge_mutations.insert(edge_key, partition.edge_mutations(graph, edge_key, MutationTrack::Nucleotide)?);
+      queue.push_back(child);
+    }
+  }
+  Ok(PruneOutputMaps {
+    root_sequence,
+    node_sequences,
+    edge_mutations,
   })
 }
 

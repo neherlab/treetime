@@ -3,12 +3,14 @@ use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::payload::ancestral::GraphAncestral;
+use crate::seq::mutation::{Mutation, Sub};
 use parking_lot::RwLock;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
+use treetime_primitives::Seq;
 
 #[derive(Serialize)]
 pub struct OptimizeGraphData {
@@ -32,6 +34,23 @@ impl OptimizeGraphData {
       dense_partitions,
     }
   }
+}
+
+/// Nucleotide sequences and mutations gathered from the optimize partition for the output writers.
+///
+/// Gathered once, serially, from the partition while it is in scope in the command, so the auspice,
+/// phyloxml, MAT, Newick-comment, and augur writers read plain value maps instead of reading the
+/// partition during serialization.
+#[derive(Debug, Default)]
+pub struct OptimizeOutputMaps {
+  /// Reconstructed nucleotide root sequence, or `None` when no partition exists.
+  pub root_sequence: Option<Seq>,
+  /// Reconstructed nucleotide sequence per node, for phyloxml clades.
+  pub node_sequences: BTreeMap<GraphNodeKey, Seq>,
+  /// Nucleotide mutations (substitutions followed by indels) per edge.
+  pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  /// Parent-edge substitutions per edge, feeding the augur divergence-in-mutations counts.
+  pub edge_subs: BTreeMap<GraphEdgeKey, Vec<Sub>>,
 }
 
 /// Per-node optimize output as a value: the name and input branch support the output writers read.

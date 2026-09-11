@@ -1,16 +1,17 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::augur_node_data::write_augur_node_data_json;
-use crate::commands::optimize::result::{EdgeOut, OptimizeGraphData, OptimizeNodeOut, OptimizeResult};
+use crate::commands::optimize::result::{EdgeOut, OptimizeGraphData, OptimizeNodeOut, OptimizeOutputMaps, OptimizeResult};
 use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_optimize_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
-use crate::partition::traits::MutationCommentProvider;
-use crate::seq::div::compute_edge_mutation_counts;
+use crate::partition::traits::{EdgeMutationCommentProvider, PartitionBranchOps};
+use crate::payload::ancestral::GraphAncestral;
 use crate::seq::gap_fill::apply_gap_fill;
+use crate::seq::mutation::MutationTrack;
 use eyre::Report;
 use log::info;
 use std::collections::BTreeMap;
@@ -108,27 +109,30 @@ pub fn run_optimize(
     .map(|(&key, &branch_length)| (key, EdgeOut { branch_length }))
     .collect();
 
+  // Gather the per-node/per-edge sequence and mutation values off the partition into plain value maps
+  // the output writers consume. This is the only place that reads sequences and mutations from the
+  // partition; the tree, node-data, and Newick-comment writers read the maps instead.
+  let maps = gather_optimize_output_maps(&graph)?;
+
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     let gtr_output = GtrOutput::new(&graph.data().gtr, graph.data().model_name);
     write_gtr_json(&gtr_output, path)?;
   }
 
   if !resolved.tree_outputs.is_empty() {
-    if !graph.data().dense_partitions.is_empty() {
-      let guard = graph.data().dense_partitions[0].read_arc();
-      let provider = MutationCommentProvider::new(&*guard, &graph);
+    // Dense and sparse reconstructions annotate Newick/Nexus nodes with their inbound mutations; the
+    // partition-less case emits no such comments. The comment provider now reads the gathered per-edge
+    // mutation map rather than the partition.
+    if maps.root_sequence.is_some() {
+      let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph);
       let providers = CommentProviders::new().with(&provider);
-      write_optimize_tree_outputs(&graph, &nodes, &branch_lengths, &resolved.tree_outputs, &providers)?;
-    } else if !graph.data().sparse_partitions.is_empty() {
-      let guard = graph.data().sparse_partitions[0].read_arc();
-      let provider = MutationCommentProvider::new(&*guard, &graph);
-      let providers = CommentProviders::new().with(&provider);
-      write_optimize_tree_outputs(&graph, &nodes, &branch_lengths, &resolved.tree_outputs, &providers)?;
+      write_optimize_tree_outputs(&graph, &nodes, &branch_lengths, &maps, &resolved.tree_outputs, &providers)?;
     } else {
       write_optimize_tree_outputs(
         &graph,
         &nodes,
         &branch_lengths,
+        &maps,
         &resolved.tree_outputs,
         &CommentProviders::new(),
       )?;
@@ -138,17 +142,18 @@ pub fn run_optimize(
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     let mutation_counts = match args.divergence_units {
       DivergenceUnits::Mutations => {
-        let partition: &dyn crate::partition::traits::PartitionBranchOps = if !graph.data().dense_partitions.is_empty()
-        {
-          &*graph.data().dense_partitions[0].read_arc()
-        } else if !graph.data().sparse_partitions.is_empty() {
-          &*graph.data().sparse_partitions[0].read_arc()
-        } else {
+        if graph.data().dense_partitions.is_empty() && graph.data().sparse_partitions.is_empty() {
           return make_error!(
             "--divergence-units=mutations requires ancestral reconstruction but no partitions are available"
           );
-        };
-        Some(compute_edge_mutation_counts(&graph, partition)?)
+        }
+        Some(
+          maps
+            .edge_subs
+            .iter()
+            .map(|(&key, subs)| (key, subs.len()))
+            .collect::<BTreeMap<GraphEdgeKey, usize>>(),
+        )
       },
       DivergenceUnits::MutationsPerSite => None,
     };
@@ -181,5 +186,54 @@ pub fn run_optimize(
     model_name,
     sparse_partitions,
     dense_partitions,
+  })
+}
+
+/// Gather the per-node nucleotide sequences, root sequence, per-edge nucleotide mutations, and per-edge
+/// substitutions the output writers read off the optimize partition.
+pub(crate) fn gather_optimize_output_maps(graph: &GraphAncestral<OptimizeGraphData>) -> Result<OptimizeOutputMaps, Report> {
+  if let Some(partition) = graph.data().dense_partitions.first() {
+    gather_optimize_partition_maps(graph, &*partition.read_arc())
+  } else if let Some(partition) = graph.data().sparse_partitions.first() {
+    gather_optimize_partition_maps(graph, &*partition.read_arc())
+  } else {
+    Ok(OptimizeOutputMaps::default())
+  }
+}
+
+fn gather_optimize_partition_maps(
+  graph: &GraphAncestral<OptimizeGraphData>,
+  partition: &dyn PartitionBranchOps,
+) -> Result<OptimizeOutputMaps, Report> {
+  let root_sequence = Some(partition.root_sequence(graph)?);
+  let node_sequences = graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let key = node.read_arc().key();
+      (key, partition.node_sequence(key))
+    })
+    .collect();
+  let edge_mutations = graph
+    .get_edges()
+    .iter()
+    .map(|edge| {
+      let key = edge.read_arc().key();
+      Ok((key, partition.edge_mutations(graph, key, MutationTrack::Nucleotide)?))
+    })
+    .collect::<Result<BTreeMap<_, _>, Report>>()?;
+  let edge_subs = graph
+    .get_edges()
+    .iter()
+    .map(|edge| {
+      let key = edge.read_arc().key();
+      Ok((key, partition.edge_subs(graph, key)?))
+    })
+    .collect::<Result<BTreeMap<_, _>, Report>>()?;
+  Ok(OptimizeOutputMaps {
+    root_sequence,
+    node_sequences,
+    edge_mutations,
+    edge_subs,
   })
 }

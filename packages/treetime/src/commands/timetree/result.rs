@@ -3,12 +3,14 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::partition::timetree::partition::GraphTimetree;
 use crate::partition::timetree::partition::PartitionTimetreeAllVec;
+use crate::seq::mutation::Mutation;
 use crate::timetree::confidence::NodeConfidenceInterval;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DatesMap;
+use treetime_primitives::Seq;
 
 #[derive(Serialize)]
 pub struct TimetreeGraphData {
@@ -41,6 +43,21 @@ impl TimetreeGraphData {
       mutation_counts,
     }
   }
+}
+
+/// Nucleotide sequences and mutations gathered from the timetree partition for the tree writers.
+///
+/// Gathered once, serially, from the partition while it is in scope in the command, so the auspice,
+/// phyloxml, MAT, and Newick-comment writers read plain value maps instead of reading the partition
+/// during serialization.
+#[derive(Debug, Default)]
+pub struct TimetreeOutputMaps {
+  /// Reconstructed nucleotide root sequence, or `None` when no partition exists.
+  pub root_sequence: Option<Seq>,
+  /// Reconstructed nucleotide sequence per node, for phyloxml clades.
+  pub node_sequences: BTreeMap<GraphNodeKey, Seq>,
+  /// Nucleotide mutations (substitutions followed by indels) per edge.
+  pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
 }
 
 /// Per-node timetree output as a value.

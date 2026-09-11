@@ -194,6 +194,47 @@ impl NodeCommentProvider for MutationCommentProvider<'_> {
   }
 }
 
+/// Newick/Nexus node-comment provider that reads a gathered per-edge nucleotide mutation map.
+///
+/// Mirrors [`MutationCommentProvider`], but reads mutations from a value map instead of the partition,
+/// so the tree writers no longer touch the partition during serialization.
+pub struct EdgeMutationCommentProvider<'a> {
+  edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  graph: &'a dyn BranchTopology,
+}
+
+impl<'a> EdgeMutationCommentProvider<'a> {
+  pub fn new(edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>, graph: &'a dyn BranchTopology) -> Self {
+    Self { edge_mutations, graph }
+  }
+}
+
+impl NodeCommentProvider for EdgeMutationCommentProvider<'_> {
+  fn node_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report> {
+    let Some((_parent_key, edge_key)) = self.graph.node_parent(key)? else {
+      return Ok(BTreeMap::new());
+    };
+    let mut mutations = self.edge_mutations[&edge_key].clone();
+    if mutations.is_empty() {
+      return Ok(BTreeMap::new());
+    }
+    mutations.sort_by_key(|mutation| match &mutation.event {
+      MutationEvent::Substitution(substitution) => substitution.pos(),
+      MutationEvent::Insertion(segment) | MutationEvent::Deletion(segment) => segment.range.0,
+    });
+    let mutations = mutations
+      .iter()
+      .map(|mutation| mutation_event_strings(&mutation.event))
+      .collect::<Result<Vec<_>, _>>()?
+      .into_iter()
+      .flatten()
+      .join(",");
+    Ok(btreemap! {
+      "mutations".to_owned() => mutations,
+    })
+  }
+}
+
 /// The two marginal representations, borrowed for one pass. Dense and discrete partitions share the
 /// indexed dense machinery and travel through the `Indexed` arm; sparse partitions travel through
 /// `Sparse`. The marginal boundary matches on this to run the corresponding tail, keeping the two

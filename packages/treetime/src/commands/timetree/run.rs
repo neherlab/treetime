@@ -12,12 +12,15 @@ use crate::commands::timetree::output::coalescent::{
   CoalescentOutput, write_coalescent_delimited, write_coalescent_json,
 };
 use crate::commands::timetree::output::date_comment::DateCommentProvider;
-use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut, TimetreeResult};
+use crate::commands::timetree::result::{
+  TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult,
+};
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::partition::timetree::partition::GraphTimetree;
-use crate::partition::traits::MutationCommentProvider;
+use crate::partition::traits::{EdgeMutationCommentProvider, PartitionBranchOps};
 use crate::seq::div::compute_edge_mutation_counts;
+use crate::seq::mutation::MutationTrack;
 use crate::timetree::confidence::write_confidence_intervals_file;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::pipeline::{self, TimetreeInput, TimetreeParams};
@@ -261,6 +264,10 @@ pub fn run_timetree_estimation(
     &confidences,
   );
 
+  // Gather the per-node/per-edge sequence and mutation values off the partition into plain value maps
+  // the tree writers consume, taking the partition read out of the serialization path.
+  let maps = gather_timetree_output_maps(&graph)?;
+
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
     match graph.data().confidence_intervals.as_ref() {
       Some(intervals) => {
@@ -329,14 +336,15 @@ pub fn run_timetree_estimation(
       .filter_map(|(key, out)| out.time.map(|time| (*key, time)))
       .collect();
     let date_provider = DateCommentProvider::new(&date_times);
-    if !graph.data().partitions.is_empty() {
-      let guard = graph.data().partitions[0].read_arc();
-      let provider = MutationCommentProvider::new(&*guard, &graph);
+    // The mutation comment provider now reads the gathered per-edge mutation map rather than the
+    // partition; the partition-less case emits only the date comment.
+    if maps.root_sequence.is_some() {
+      let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph);
       let providers = CommentProviders::new().with(&provider).with(&date_provider);
-      write_timetree_tree_outputs(&graph, &nodes, &edges, &resolved.tree_outputs, &providers)?;
+      write_timetree_tree_outputs(&graph, &nodes, &edges, &maps, &resolved.tree_outputs, &providers)?;
     } else {
       let providers = CommentProviders::new().with(&date_provider);
-      write_timetree_tree_outputs(&graph, &nodes, &edges, &resolved.tree_outputs, &providers)?;
+      write_timetree_tree_outputs(&graph, &nodes, &edges, &maps, &resolved.tree_outputs, &providers)?;
     }
   }
 
@@ -441,6 +449,37 @@ fn gather_timetree_outputs(
     .collect();
 
   (nodes, edges)
+}
+
+/// Gather the per-node nucleotide sequences, root sequence, and per-edge nucleotide mutations the tree
+/// writers read off the timetree partition.
+pub(crate) fn gather_timetree_output_maps(graph: &GraphTimetree<TimetreeGraphData>) -> Result<TimetreeOutputMaps, Report> {
+  let Some(partition) = graph.data().partitions.first() else {
+    return Ok(TimetreeOutputMaps::default());
+  };
+  let partition = partition.read_arc();
+  let root_sequence = Some(partition.root_sequence(graph)?);
+  let node_sequences = graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let key = node.read_arc().key();
+      (key, partition.node_sequence(key))
+    })
+    .collect();
+  let edge_mutations = graph
+    .get_edges()
+    .iter()
+    .map(|edge| {
+      let key = edge.read_arc().key();
+      Ok((key, partition.edge_mutations(graph, key, MutationTrack::Nucleotide)?))
+    })
+    .collect::<Result<BTreeMap<_, _>, Report>>()?;
+  Ok(TimetreeOutputMaps {
+    root_sequence,
+    node_sequences,
+    edge_mutations,
+  })
 }
 
 /// Writes one coalescent output file, or reports the absence of a coalescent.

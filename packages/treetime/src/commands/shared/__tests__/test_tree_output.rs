@@ -445,9 +445,12 @@ mod tests {
     use crate::clock::clock_graph::GraphClock;
     use crate::clock::clock_model::ClockModel;
     use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
-    use crate::commands::optimize::result::{OptimizeGraphData, OptimizeNodeOut};
-    use crate::commands::prune::result::{PruneGraphData, PruneNodeOut};
-    use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut};
+    use crate::commands::optimize::result::{OptimizeGraphData, OptimizeNodeOut, OptimizeOutputMaps};
+    use crate::commands::optimize::run::gather_optimize_output_maps;
+    use crate::commands::prune::result::{PruneGraphData, PruneNodeOut, PruneOutputMaps};
+    use crate::commands::prune::run::gather_prune_output_maps;
+    use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut, TimetreeOutputMaps};
+    use crate::commands::timetree::run::gather_timetree_output_maps;
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::gtr::gtr::{GTR, GTRParams};
     use crate::mugration::result::{MugrationGraphData, MugrationNodeOut, MugrationResult};
@@ -487,6 +490,18 @@ mod tests {
 
     pub fn ancestral_maps(graph: &GraphAncestral<AncestralGraphData>) -> AncestralOutputMaps {
       gather_ancestral_output_maps(graph).unwrap()
+    }
+
+    pub fn optimize_maps(graph: &GraphAncestral<OptimizeGraphData>) -> OptimizeOutputMaps {
+      gather_optimize_output_maps(graph).unwrap()
+    }
+
+    pub fn prune_maps(graph: &GraphAncestral<PruneGraphData>) -> PruneOutputMaps {
+      gather_prune_output_maps(graph).unwrap()
+    }
+
+    pub fn timetree_maps(graph: &GraphTimetree<TimetreeGraphData>) -> TimetreeOutputMaps {
+      gather_timetree_output_maps(graph).unwrap()
     }
 
     pub fn ancestral_graph(
@@ -655,6 +670,7 @@ mod tests {
         &optimize_graph,
         &optimize_nodes(&optimize_names, &optimize_graph, &btreemap! {}),
         &optimize_bl,
+        &optimize_maps(&optimize_graph),
         "2026-07-19",
       )?;
       let (prune_graph, prune_names, prune_bl) = prune_graph()?;
@@ -662,6 +678,7 @@ mod tests {
         &prune_graph,
         &prune_nodes(&prune_names, &prune_graph, &btreemap! {}),
         &prune_bl,
+        &prune_maps(&prune_graph),
         "2026-07-19",
       )?;
       let (clock_graph, clock_names, _clock_bl) = clock_graph()?;
@@ -677,6 +694,7 @@ mod tests {
       let timetree = timetree_to_auspice(
         &timetree_graph,
         &timetree_nodes(&timetree_names, &timetree_graph, &btreemap! {}),
+        &timetree_maps(&timetree_graph),
         "2026-07-19",
       )?;
 
@@ -701,6 +719,7 @@ mod tests {
             &optimize_graph,
             &optimize_nodes(&optimize_names, &optimize_graph, &btreemap! {}),
             &optimize_bl,
+            &optimize_maps(&optimize_graph),
           )?
         },
         {
@@ -709,6 +728,7 @@ mod tests {
             &prune_graph,
             &prune_nodes(&prune_names, &prune_graph, &btreemap! {}),
             &prune_bl,
+            &prune_maps(&prune_graph),
           )?
         },
         {
@@ -729,6 +749,7 @@ mod tests {
             &timetree_graph,
             &timetree_nodes(&timetree_names, &timetree_graph, &btreemap! {}),
             &timetree_edges(&timetree_graph, &timetree_bl),
+            &timetree_maps(&timetree_graph),
           )?
         },
       ])
@@ -750,11 +771,11 @@ mod tests {
 
       Ok(vec![
         ancestral_to_mat(&ancestral, &ancestral_names, &ancestral_bl, &ancestral_maps(&ancestral))?,
-        optimize_to_mat(&optimize, &optimize_names, &optimize_bl)?,
-        prune_to_mat(&prune, &prune_names, &prune_bl)?,
+        optimize_to_mat(&optimize, &optimize_names, &optimize_bl, &optimize_maps(&optimize))?,
+        prune_to_mat(&prune, &prune_names, &prune_bl, &prune_maps(&prune))?,
         clock_to_mat(&clock, &clock_names, &clock_bl)?,
         mugration_to_mat(&mugration, &mugration_names, &mugration_bl)?,
-        timetree_to_mat(&timetree, &timetree_names, &timetree_weights)?,
+        timetree_to_mat(&timetree, &timetree_names, &timetree_weights, &timetree_maps(&timetree))?,
       ])
     }
 
@@ -774,6 +795,7 @@ mod tests {
         &graph,
         &optimize_nodes(&names, &graph, &btreemap! {}),
         &branch_lengths,
+        &optimize_maps(&graph),
         "2026-07-19",
       )
     }
