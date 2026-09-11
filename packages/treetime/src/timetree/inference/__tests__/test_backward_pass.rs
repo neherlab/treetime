@@ -12,7 +12,6 @@ mod tests {
   use ndarray::array;
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
-  use treetime_graph::edge::BranchDistribution;
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::nwk_read_str;
@@ -24,25 +23,15 @@ mod tests {
   fn test_backward_pass_computes_internal_node_time() -> Result<(), Report> {
     let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:2.5)I:1.0)root;")?;
 
-    // Set leaf A's time distribution to point at 2013.0
     let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
-    {
-      let leaf_node = graph.get_node(leaf_key).expect("leaf A exists");
-      let mut payload = leaf_node.read_arc().payload().write_arc();
-      payload.time_distribution = Some(Arc::new(Distribution::point(2013.0, 0.0)));
-    }
-
+    let mut state = TimetreeState::new(&graph);
+    // Set leaf A's time distribution to point at 2013.0
+    set_leaf_time(&mut state, leaf_key, 2013.0);
     // Set branch length distribution on edge from I to A (branch length 2.5 years)
-    for edge in graph.get_edges() {
-      let edge_read = edge.read_arc();
-      if edge_read.target() == leaf_key {
-        let mut payload = edge_read.payload().write_arc();
-        payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(2.5, 0.0))));
-      }
-    }
+    set_edge_branch_dist(&graph, &mut state, leaf_key, 2.5);
 
     // Run backward pass
-    let state = run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, state, None)?;
 
     // Check internal node I has time distribution centered at 2013.0 - 2.5 = 2010.5
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal node I not found");
@@ -70,34 +59,15 @@ mod tests {
     let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
     let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
 
+    let mut state = TimetreeState::new(&graph);
     // Set time distributions on leaves
-    {
-      let node_a = graph.get_node(leaf_a_key).expect("leaf A exists");
-      let mut payload = node_a.read_arc().payload().write_arc();
-      payload.time_distribution = Some(Arc::new(Distribution::point(2015.0, 0.0)));
-    }
-    {
-      let node_b = graph.get_node(leaf_b_key).expect("leaf B exists");
-      let mut payload = node_b.read_arc().payload().write_arc();
-      payload.time_distribution = Some(Arc::new(Distribution::point(2014.0, 0.0)));
-    }
-
+    set_leaf_time(&mut state, leaf_a_key, 2015.0);
+    set_leaf_time(&mut state, leaf_b_key, 2014.0);
     // Set branch length distributions
-    for edge in graph.get_edges() {
-      let edge_read = edge.read_arc();
-      let target = edge_read.target();
-      let branch_length = if target == leaf_a_key {
-        3.0
-      } else if target == leaf_b_key {
-        2.0
-      } else {
-        continue;
-      };
-      let mut payload = edge_read.payload().write_arc();
-      payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 0.0))));
-    }
+    set_edge_branch_dist(&graph, &mut state, leaf_a_key, 3.0);
+    set_edge_branch_dist(&graph, &mut state, leaf_b_key, 2.0);
 
-    let state = run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, state, None)?;
 
     // Internal node I should have time at 2012.0 (both children agree)
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal node I not found");
@@ -124,38 +94,18 @@ mod tests {
     let date_a = 2015.0;
     let date_b = 2014.0;
 
+    let mut state = TimetreeState::new(&graph);
     // Set time distributions on leaves (date constraints)
-    {
-      let node_a = graph.get_node(leaf_a_key).expect("leaf A exists");
-      let mut payload = node_a.read_arc().payload().write_arc();
-      payload.time_distribution = Some(Arc::new(Distribution::point(date_a, 0.0)));
-    }
-    {
-      let node_b = graph.get_node(leaf_b_key).expect("leaf B exists");
-      let mut payload = node_b.read_arc().payload().write_arc();
-      payload.time_distribution = Some(Arc::new(Distribution::point(date_b, 0.0)));
-    }
-
+    set_leaf_time(&mut state, leaf_a_key, date_a);
+    set_leaf_time(&mut state, leaf_b_key, date_b);
     // Set branch length distributions
-    for edge in graph.get_edges() {
-      let edge_read = edge.read_arc();
-      let target = edge_read.target();
-      let branch_length = if target == leaf_a_key {
-        3.0
-      } else if target == leaf_b_key {
-        2.0
-      } else {
-        continue;
-      };
-      let mut payload = edge_read.payload().write_arc();
-      payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(branch_length, 0.0))));
-    }
+    set_edge_branch_dist(&graph, &mut state, leaf_a_key, 3.0);
+    set_edge_branch_dist(&graph, &mut state, leaf_b_key, 2.0);
 
     let coalescent_model = coalescent_model(0.01)?;
 
     // Two passes on one threaded state, as the pipeline runs them: the second pass starts from the
     // first pass's refined posteriors, the counterpart of the old payload round-trip between passes.
-    let mut state = TimetreeState::seed_from_payloads(&graph);
     propagate_distributions_backward(&graph, Some(&coalescent_model), &mut state)?;
     propagate_distributions_backward(&graph, Some(&coalescent_model), &mut state)?;
 
@@ -186,14 +136,15 @@ mod tests {
     let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal I not found");
 
-    set_leaf_time(&graph, leaf_a_key, 2015.0);
-    set_leaf_time(&graph, leaf_b_key, 2014.0);
-    set_edge_branch_dist(&graph, leaf_a_key, 3.0);
-    set_edge_branch_dist(&graph, leaf_b_key, 2.0);
+    let mut state = TimetreeState::new(&graph);
+    set_leaf_time(&mut state, leaf_a_key, 2015.0);
+    set_leaf_time(&mut state, leaf_b_key, 2014.0);
+    set_edge_branch_dist(&graph, &mut state, leaf_a_key, 3.0);
+    set_edge_branch_dist(&graph, &mut state, leaf_b_key, 2.0);
 
     let coalescent_model = coalescent_model(1e-6)?;
 
-    let state = run_backward_pass(&graph, Some(&coalescent_model))?;
+    let state = run_backward_pass(&graph, state, Some(&coalescent_model))?;
 
     let actual = node_time_distribution(&state, internal_key).and_then(|distribution| distribution.likely_time());
     let expected = Some(2012.0);
@@ -212,16 +163,16 @@ mod tests {
     let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
 
     let constraint = Distribution::range((2014.0, 2015.0), 0.0);
+    let mut state = TimetreeState::new(&graph);
     {
-      let node = graph.get_node(leaf_key).expect("leaf A exists");
-      let mut payload = node.read_arc().payload().write_arc();
-      payload.date_constraint = Some(Arc::new(constraint.clone()));
+      let node = state.node_mut(leaf_key);
+      node.date_constraint = Some(Arc::new(constraint.clone()));
       // What a forward pass leaves behind: the range narrowed down by the rest of the tree.
-      payload.time_distribution = Some(Arc::new(Distribution::point(2014.2, 0.0)));
+      node.time_distribution = Some(Arc::new(Distribution::point(2014.2, 0.0)));
     }
-    set_edge_branch_dist(&graph, leaf_key, 3.0);
+    set_edge_branch_dist(&graph, &mut state, leaf_key, 3.0);
 
-    let state = run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, state, None)?;
 
     let actual = node_time_distribution(&state, leaf_key).expect("leaf A should have a time distribution");
     assert_eq!(&constraint, actual.as_ref());
@@ -239,13 +190,14 @@ mod tests {
     let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal I not found");
 
-    set_date_constraint(&graph, leaf_a_key, Distribution::range((2014.0, 2016.0), 0.0));
-    set_date_constraint(&graph, leaf_b_key, Distribution::range((2013.0, 2015.0), 0.0));
-    set_date_constraint(&graph, internal_key, Distribution::range((2012.0, 2014.0), 0.0));
-    set_edge_branch_dist(&graph, leaf_a_key, 3.0);
-    set_edge_branch_dist(&graph, leaf_b_key, 2.0);
+    let mut state = TimetreeState::new(&graph);
+    set_date_constraint(&mut state, leaf_a_key, Distribution::range((2014.0, 2016.0), 0.0));
+    set_date_constraint(&mut state, leaf_b_key, Distribution::range((2013.0, 2015.0), 0.0));
+    set_date_constraint(&mut state, internal_key, Distribution::range((2012.0, 2014.0), 0.0));
+    set_edge_branch_dist(&graph, &mut state, leaf_a_key, 3.0);
+    set_edge_branch_dist(&graph, &mut state, leaf_b_key, 2.0);
 
-    let state = run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, state, None)?;
 
     let actual = node_time_distribution(&state, internal_key).expect("internal node should have a time distribution");
     let expected = Distribution::range((2012.0, 2013.0), 0.0);
@@ -261,24 +213,13 @@ mod tests {
 
     let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
 
+    let mut state = TimetreeState::new(&graph);
     // Set leaf time distribution
-    {
-      let leaf_node = graph.get_node(leaf_key).expect("leaf A exists");
-      let mut payload = leaf_node.read_arc().payload().write_arc();
-      payload.time_distribution = Some(Arc::new(Distribution::point(2013.0, 0.0)));
-    }
-
+    set_leaf_time(&mut state, leaf_key, 2013.0);
     // Set branch length distribution
-    for edge in graph.get_edges() {
-      let edge_read = edge.read_arc();
-      if edge_read.target() == leaf_key {
-        let mut payload = edge_read.payload().write_arc();
-        payload.set_branch_length_distribution(Some(Arc::new(Distribution::point(2.5, 0.0))));
-      }
-    }
+    set_edge_branch_dist(&graph, &mut state, leaf_key, 2.5);
 
     // The backward message stays in the value, so run on a state and read it back off that state.
-    let mut state = TimetreeState::seed_from_payloads(&graph);
     propagate_distributions_backward(&graph, None, &mut state)?;
 
     // Check edge from I to A has msg_to_parent set
@@ -310,21 +251,19 @@ mod tests {
     let leaf_a_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
     let leaf_b_key = find_node_key_by_name(&graph, "B").expect("leaf B not found");
 
+    let mut state = TimetreeState::new(&graph);
     // Set time distributions on leaves
-    set_leaf_time(&graph, leaf_a_key, 2015.0);
-    set_leaf_time(&graph, leaf_b_key, 2014.0);
+    set_leaf_time(&mut state, leaf_a_key, 2015.0);
+    set_leaf_time(&mut state, leaf_b_key, 2014.0);
 
     // Mark B as bad_branch
-    {
-      let node_b = graph.get_node(leaf_b_key).expect("leaf B exists");
-      node_b.read_arc().payload().write_arc().bad_branch = true;
-    }
+    state.node_mut(leaf_b_key).bad_branch = true;
 
     // Set branch length distributions on both edges
-    set_edge_branch_dist(&graph, leaf_a_key, 3.0);
-    set_edge_branch_dist(&graph, leaf_b_key, 2.0);
+    set_edge_branch_dist(&graph, &mut state, leaf_a_key, 3.0);
+    set_edge_branch_dist(&graph, &mut state, leaf_b_key, 2.0);
 
-    let state = run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, state, None)?;
 
     // I should get time only from A: 2015.0 - 3.0 = 2012.0
     let internal_key = find_node_key_by_name(&graph, "I").expect("internal node I not found");
@@ -345,9 +284,10 @@ mod tests {
     // Reference tree: only A
     let ref_graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0)I:1.0)root;")?;
     let ref_a_key = find_node_key_by_name(&ref_graph, "A").expect("leaf A not found");
-    set_leaf_time(&ref_graph, ref_a_key, 2015.0);
-    set_edge_branch_dist(&ref_graph, ref_a_key, 3.0);
-    let ref_state = run_backward_pass(&ref_graph, None)?;
+    let mut ref_state = TimetreeState::new(&ref_graph);
+    set_leaf_time(&mut ref_state, ref_a_key, 2015.0);
+    set_edge_branch_dist(&ref_graph, &mut ref_state, ref_a_key, 3.0);
+    let ref_state = run_backward_pass(&ref_graph, ref_state, None)?;
 
     let ref_internal_key = find_node_key_by_name(&ref_graph, "I").expect("internal I not found");
     let ref_time = node_time_distribution(&ref_state, ref_internal_key)
@@ -359,21 +299,16 @@ mod tests {
     let test_graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:3.0,B:2.0)I:1.0)root;")?;
     let test_a_key = find_node_key_by_name(&test_graph, "A").expect("leaf A not found");
     let test_b_key = find_node_key_by_name(&test_graph, "B").expect("leaf B not found");
-    set_leaf_time(&test_graph, test_a_key, 2015.0);
-    set_leaf_time(&test_graph, test_b_key, 2014.0);
-    set_edge_branch_dist(&test_graph, test_a_key, 3.0);
-    set_edge_branch_dist(&test_graph, test_b_key, 2.0);
+    let mut test_state = TimetreeState::new(&test_graph);
+    set_leaf_time(&mut test_state, test_a_key, 2015.0);
+    set_leaf_time(&mut test_state, test_b_key, 2014.0);
+    set_edge_branch_dist(&test_graph, &mut test_state, test_a_key, 3.0);
+    set_edge_branch_dist(&test_graph, &mut test_state, test_b_key, 2.0);
 
     // Mark B as bad
-    test_graph
-      .get_node(test_b_key)
-      .expect("B exists")
-      .read_arc()
-      .payload()
-      .write_arc()
-      .bad_branch = true;
+    test_state.node_mut(test_b_key).bad_branch = true;
 
-    let test_state = run_backward_pass(&test_graph, None)?;
+    let test_state = run_backward_pass(&test_graph, test_state, None)?;
 
     let test_internal_key = find_node_key_by_name(&test_graph, "I").expect("internal I not found");
     let test_time = node_time_distribution(&test_state, test_internal_key)
@@ -406,14 +341,15 @@ mod tests {
 
     // A fine child grid keeps the re-window's linear resampling faithful to the analytic parabola.
     let x = Array1::linspace(2000.0, 2010.0, 2001);
-    set_leaf_function(&graph, a, &x, gaussian_neglog(&x, 2002.0, 1.0))?;
-    set_leaf_function(&graph, b, &x, gaussian_neglog(&x, 2008.0, 1.0))?;
-    set_leaf_function(&graph, c, &x, gaussian_neglog(&x, 2005.0, 2.0))?;
-    set_edge_branch_dist(&graph, a, 0.0);
-    set_edge_branch_dist(&graph, b, 0.0);
-    set_edge_branch_dist(&graph, c, 0.0);
+    let mut state = TimetreeState::new(&graph);
+    set_leaf_function(&mut state, a, &x, gaussian_neglog(&x, 2002.0, 1.0))?;
+    set_leaf_function(&mut state, b, &x, gaussian_neglog(&x, 2008.0, 1.0))?;
+    set_leaf_function(&mut state, c, &x, gaussian_neglog(&x, 2005.0, 2.0))?;
+    set_edge_branch_dist(&graph, &mut state, a, 0.0);
+    set_edge_branch_dist(&graph, &mut state, b, 0.0);
+    set_edge_branch_dist(&graph, &mut state, c, 0.0);
 
-    let state = run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, state, None)?;
 
     let internal = find_node_key_by_name(&graph, "I").expect("internal node I not found");
     let dist = node_time_distribution(&state, internal).expect("internal node should have a time distribution");
@@ -447,12 +383,13 @@ mod tests {
 
     let fold_in_order = |newick: &str| -> Result<(Array1<f64>, f64), Report> {
       let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>(newick)?;
+      let mut state = TimetreeState::new(&graph);
       for (name, y) in [("A", &ya), ("B", &yb), ("C", &yc)] {
         let key = find_node_key_by_name(&graph, name).expect("leaf not found");
-        set_leaf_function(&graph, key, &x, y.clone())?;
-        set_edge_branch_dist(&graph, key, 0.0);
+        set_leaf_function(&mut state, key, &x, y.clone())?;
+        set_edge_branch_dist(&graph, &mut state, key, 0.0);
       }
-      let state = run_backward_pass(&graph, None)?;
+      let state = run_backward_pass(&graph, state, None)?;
       let internal = find_node_key_by_name(&graph, "I").expect("internal node I not found");
       let dist = node_time_distribution(&state, internal).expect("internal node should have a time distribution");
       Ok((
@@ -488,14 +425,15 @@ mod tests {
     let x = Array1::linspace(2000.0, 2010.0, 11);
     // means 2002, 2008, 2005 with precisions 1, 1, 2:
     // weighted mean = (2002 + 2008 + 2*2005) / 4 = 2005, which is a grid point.
-    set_leaf_function(&graph, a, &x, gaussian_neglog(&x, 2002.0, 1.0))?;
-    set_leaf_function(&graph, b, &x, gaussian_neglog(&x, 2008.0, 1.0))?;
-    set_leaf_function(&graph, c, &x, gaussian_neglog(&x, 2005.0, 2.0))?;
-    set_edge_branch_dist(&graph, a, 0.0);
-    set_edge_branch_dist(&graph, b, 0.0);
-    set_edge_branch_dist(&graph, c, 0.0);
+    let mut state = TimetreeState::new(&graph);
+    set_leaf_function(&mut state, a, &x, gaussian_neglog(&x, 2002.0, 1.0))?;
+    set_leaf_function(&mut state, b, &x, gaussian_neglog(&x, 2008.0, 1.0))?;
+    set_leaf_function(&mut state, c, &x, gaussian_neglog(&x, 2005.0, 2.0))?;
+    set_edge_branch_dist(&graph, &mut state, a, 0.0);
+    set_edge_branch_dist(&graph, &mut state, b, 0.0);
+    set_edge_branch_dist(&graph, &mut state, c, 0.0);
 
-    let state = run_backward_pass(&graph, None)?;
+    let state = run_backward_pass(&graph, state, None)?;
 
     let internal = find_node_key_by_name(&graph, "I").expect("internal node I not found");
     let dist = node_time_distribution(&state, internal).expect("internal node should have a time distribution");
@@ -514,13 +452,13 @@ mod tests {
     use super::*;
     use treetime_graph::graph::Graph;
 
-    /// Seed the date state from the payloads, run the backward pass on it, and return the state so the
-    /// assertions read the refined node posteriors and backward messages from the value.
+    /// Run the backward pass on the given value state and return it, so the assertions read the
+    /// refined node posteriors and backward messages from the value.
     pub(super) fn run_backward_pass(
       graph: &Graph<NodeTimetree, EdgeTimetree, ()>,
+      mut state: TimetreeState,
       coalescent_model: Option<&CoalescentModel>,
     ) -> Result<TimetreeState, Report> {
-      let mut state = TimetreeState::seed_from_payloads(graph);
       propagate_distributions_backward(graph, coalescent_model, &mut state)?;
       Ok(state)
     }
@@ -535,32 +473,24 @@ mod tests {
 
     /// Give a node the date it was loaded with, and nothing else: the backward pass is what lifts
     /// it into the node's time distribution.
-    pub(super) fn set_date_constraint(
-      graph: &Graph<NodeTimetree, EdgeTimetree, ()>,
-      key: GraphNodeKey,
-      dist: Distribution<NegLog>,
-    ) {
-      let node = graph.get_node(key).expect("node exists");
-      node.read_arc().payload().write_arc().date_constraint = Some(Arc::new(dist));
+    pub(super) fn set_date_constraint(state: &mut TimetreeState, key: GraphNodeKey, dist: Distribution<NegLog>) {
+      state.node_mut(key).date_constraint = Some(Arc::new(dist));
     }
 
-    pub(super) fn set_leaf_time(graph: &Graph<NodeTimetree, EdgeTimetree, ()>, key: GraphNodeKey, time: f64) {
-      let node = graph.get_node(key).expect("node exists");
-      node.read_arc().payload().write_arc().time_distribution = Some(Arc::new(Distribution::point(time, 0.0)));
+    pub(super) fn set_leaf_time(state: &mut TimetreeState, key: GraphNodeKey, time: f64) {
+      state.node_mut(key).time_distribution = Some(Arc::new(Distribution::point(time, 0.0)));
     }
 
     pub(super) fn set_edge_branch_dist(
       graph: &Graph<NodeTimetree, EdgeTimetree, ()>,
+      state: &mut TimetreeState,
       target_key: GraphNodeKey,
       bl: f64,
     ) {
       for edge in graph.get_edges() {
         let edge_read = edge.read_arc();
         if edge_read.target() == target_key {
-          edge_read
-            .payload()
-            .write_arc()
-            .set_branch_length_distribution(Some(Arc::new(Distribution::point(bl, 0.0))));
+          state.edge_mut(edge_read.key()).branch_length_distribution = Some(Arc::new(Distribution::point(bl, 0.0)));
         }
       }
     }
@@ -575,14 +505,13 @@ mod tests {
     /// Give a leaf a gridded `Function` time distribution so that its backward message is a
     /// `Function` (the operand kind that the common-grid fold must resample and add).
     pub(super) fn set_leaf_function(
-      graph: &Graph<NodeTimetree, EdgeTimetree, ()>,
+      state: &mut TimetreeState,
       key: GraphNodeKey,
       x: &Array1<f64>,
       y: Array1<f64>,
     ) -> Result<(), Report> {
       let dist = Distribution::function(x.clone(), y)?;
-      let node = graph.get_node(key).expect("node exists");
-      node.read_arc().payload().write_arc().time_distribution = Some(Arc::new(dist));
+      state.node_mut(key).time_distribution = Some(Arc::new(dist));
       Ok(())
     }
 

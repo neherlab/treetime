@@ -915,10 +915,10 @@ mod tests {
     CoalescentSolve, CoalescentTcReport, CoalescentTimescale, build_coalescent_output, coalescent_mode,
     estimate_coalescent_tc,
   };
-  use crate::clock::date_constraints::load_date_constraints;
-  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
+  use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::partition::timetree::partition::GraphTimetree;
+  use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use maplit::btreemap;
   use ndarray::array;
@@ -978,17 +978,13 @@ mod tests {
     // A fixed user Tc now writes a single-segment, band-less document spanning the tree, diverging
     // from v0 by explicit decision (kb/decisions/coalescent-output-schema.md). The span is the
     // lineage-count breakpoint range, matching the tree's [2000, 2010] date span.
-    let graph = dated_tree()?;
+    let (graph, constraints) = dated_tree()?;
     let params = SkylineParams {
       n_std: N_STD,
       ..SkylineParams::default()
     };
-    let timescale = estimate_coalescent_tc(
-      CoalescentMode::Fixed(2.5),
-      &graph,
-      &params,
-      &coalescent_node_times_from_payloads(&graph),
-    )?
+    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
+    let timescale = estimate_coalescent_tc(CoalescentMode::Fixed(2.5), &graph, &params, &node_times)?
     .expect("a fixed Tc yields a coalescent timescale");
 
     let actual = build_coalescent_output(CoalescentMode::Fixed(2.5), &timescale, GEN_PER_YEAR, &params)?
@@ -1099,7 +1095,7 @@ mod tests {
     Ok(())
   }
 
-  fn dated_tree() -> Result<GraphTimetree, Report> {
+  fn dated_tree() -> Result<(GraphTimetree, DateConstraints), Report> {
     // Small dated 3-tip tree spanning [2000, 2010] with two binary mergers, enough for a
     // multi-segment skyline solve.
     let dates: DatesMap = btreemap! {
@@ -1110,8 +1106,8 @@ mod tests {
       o!("c")    => Some(DateConstraint::exact(2010.0)),
     };
     let graph = nwk_read_str("((a:1,b:1)x:1,c:1)root:0;")?;
-    load_date_constraints(&dates, &graph)?;
-    Ok(graph)
+    let constraints = load_date_constraints(&dates, &graph)?;
+    Ok((graph, constraints))
   }
 
   #[test]
@@ -1121,19 +1117,15 @@ mod tests {
     // copy: `estimate_coalescent_tc` must carry the solve's own boundaries and band into the
     // `CoalescentTcReport`, unpermuted and unresized. The oracle is a direct `optimize_skyline`
     // call with the same deterministic inputs, so any drop or transpose in the copy shows up.
-    let graph = dated_tree()?;
+    let (graph, constraints) = dated_tree()?;
     let params = SkylineParams {
       n_points: 3,
       ..SkylineParams::default()
     };
 
-    let solve = optimize_skyline(&graph, &params, &coalescent_node_times_from_payloads(&graph))?;
-    let timescale = estimate_coalescent_tc(
-      CoalescentMode::Skyline,
-      &graph,
-      &params,
-      &coalescent_node_times_from_payloads(&graph),
-    )?
+    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
+    let solve = optimize_skyline(&graph, &params, &node_times)?;
+    let timescale = estimate_coalescent_tc(CoalescentMode::Skyline, &graph, &params, &node_times)?
     .expect("skyline mode yields a coalescent timescale");
     let report = timescale
       .report

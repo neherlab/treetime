@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::clock::date_constraints::load_date_constraints;
-  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
+  use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
+  use crate::coalescent::node_time::CoalescentNodeTimes;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -62,7 +62,7 @@ mod tests {
     // Oracle: one edge with probability 0.25 contributes ln(0.25).
     let expected = 0.25_f64.ln();
 
-    let state = TimetreeState::seed_from_payloads(&graph);
+    let state = helpers::positional_state(&graph);
     let actual = compute_positional_log_lh(&graph, &state)
       .expect("positional log-likelihood must be available")
       .value();
@@ -75,7 +75,7 @@ mod tests {
   fn test_likelihood_positional_log_lh_absent_without_distributions() -> Result<(), Report> {
     let graph: GraphTimetree = nwk_read_str("(child:0.1)root;")?;
 
-    let state = TimetreeState::seed_from_payloads(&graph);
+    let state = TimetreeState::new(&graph);
     let actual = compute_positional_log_lh(&graph, &state);
 
     assert_eq!(None, actual);
@@ -84,12 +84,13 @@ mod tests {
 
   #[test]
   fn test_likelihood_coalescent_log_lh_matches_total_lh() -> Result<(), Report> {
-    let graph = helpers::coalescent_graph()?;
+    let (graph, constraints) = helpers::coalescent_graph()?;
     let tc = Distribution::constant(1.0);
+    let node_times = helpers::coalescent_node_times(&graph, &constraints);
     // Oracle: compute_coalescent_total_lh() is the coalescent model's whole-tree log-likelihood.
-    let expected = compute_coalescent_total_lh(&graph, &tc, &coalescent_node_times_from_payloads(&graph))?.value();
+    let expected = compute_coalescent_total_lh(&graph, &tc, &node_times)?.value();
 
-    let actual = compute_coalescent_log_lh(&graph, Some(&tc), &coalescent_node_times_from_payloads(&graph))
+    let actual = compute_coalescent_log_lh(&graph, Some(&tc), &node_times)
       .expect("coalescent log-likelihood must be available")
       .value();
 
@@ -99,9 +100,10 @@ mod tests {
 
   #[test]
   fn test_likelihood_coalescent_log_lh_absent_without_model() -> Result<(), Report> {
-    let graph = helpers::coalescent_graph()?;
+    let (graph, constraints) = helpers::coalescent_graph()?;
+    let node_times = helpers::coalescent_node_times(&graph, &constraints);
 
-    let actual = compute_coalescent_log_lh(&graph, None, &coalescent_node_times_from_payloads(&graph));
+    let actual = compute_coalescent_log_lh(&graph, None, &node_times);
 
     assert_eq!(None, actual);
     Ok(())
@@ -114,7 +116,7 @@ mod tests {
     let partitions = [helpers::partition_with_root_log_lh(root_key, -2.0)?];
     let mut optimizer = TimetreeOptimizer::new(1, false);
     let expected = -2.0 + 0.25_f64.ln();
-    let state = TimetreeState::seed_from_payloads(&graph);
+    let state = helpers::positional_state(&graph);
 
     assert!(optimizer.next_iter().is_some());
     optimizer.record(1, 0, NodeTimeChange::default(), &graph, &partitions, &state, None)?;
@@ -154,35 +156,30 @@ mod tests {
 
     pub fn positional_graph() -> Result<GraphTimetree, Report> {
       let graph: GraphTimetree = nwk_read_str("(child:0.1)root;")?;
-      let root_key = find_node_key_by_name(&graph, "root").expect("root must exist");
-      let child_key = find_node_key_by_name(&graph, "child").expect("child must exist");
-      graph
-        .get_node(root_key)
-        .expect("root must exist")
-        .read_arc()
-        .payload()
-        .write_arc()
-        .time = Some(2000.0);
-      graph
-        .get_node(child_key)
-        .expect("child must exist")
-        .read_arc()
-        .payload()
-        .write_arc()
-        .time = Some(2005.0);
-      graph
+      Ok(graph)
+    }
+
+    /// The date state the positional-likelihood tests exercise, built as values: committed times on
+    /// the two nodes and a branch-length distribution on the single edge, the same fields the
+    /// payload-reading seed used to lift off the graph.
+    pub fn positional_state(graph: &GraphTimetree) -> TimetreeState {
+      let root_key = find_node_key_by_name(graph, "root").expect("root must exist");
+      let child_key = find_node_key_by_name(graph, "child").expect("child must exist");
+      let mut state = TimetreeState::new(graph);
+      state.node_mut(root_key).time = Some(2000.0);
+      state.node_mut(child_key).time = Some(2005.0);
+      let edge_key = graph
         .get_edges()
         .into_iter()
         .next()
         .expect("one edge must exist")
         .read_arc()
-        .payload()
-        .write_arc()
-        .branch_length_distribution = Some(Arc::new(Distribution::range((0.0, 10.0), 0.25)));
-      Ok(graph)
+        .key();
+      state.edge_mut(edge_key).branch_length_distribution = Some(Arc::new(Distribution::range((0.0, 10.0), 0.25)));
+      state
     }
 
-    pub fn coalescent_graph() -> Result<GraphTimetree, Report> {
+    pub fn coalescent_graph() -> Result<(GraphTimetree, DateConstraints), Report> {
       let dates = btreemap! {
         o!("root") => Some(DateConstraint::exact(2000.0)),
         o!("internal1") => Some(DateConstraint::exact(2005.0)),
@@ -191,8 +188,15 @@ mod tests {
         o!("leaf3") => Some(DateConstraint::exact(2012.0)),
       };
       let graph: GraphTimetree = nwk_read_str("((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;")?;
-      load_date_constraints(&dates, &graph)?;
-      Ok(graph)
+      let constraints = load_date_constraints(&dates, &graph)?;
+      Ok((graph, constraints))
+    }
+
+    /// The coalescent node-time value the collectors consume, derived from the date constraints
+    /// [`load_date_constraints`] returns via the value seed, matching what the payload-reading seed
+    /// produced right after the constraints load.
+    pub fn coalescent_node_times(graph: &GraphTimetree, constraints: &DateConstraints) -> CoalescentNodeTimes {
+      TimetreeState::seed_from_values(graph, constraints).coalescent_node_times()
     }
   }
 }

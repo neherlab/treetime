@@ -10,7 +10,6 @@ mod tests {
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
-  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -63,11 +62,8 @@ mod tests {
         .all(|node| { node.read_arc().payload().read_arc().time_distribution.is_some() })
     );
 
-    let edge_lh = compute_coalescent_total_lh(&graph, &tc, &coalescent_node_times_from_payloads(&graph))?;
-    let model = CoalescentModel::new(
-      &compute_lineage_counts(&graph, &coalescent_node_times_from_payloads(&graph))?,
-      &tc,
-    )?;
+    let edge_lh = compute_coalescent_total_lh(&graph, &tc, &state.coalescent_node_times())?;
+    let model = CoalescentModel::new(&compute_lineage_counts(&graph, &state.coalescent_node_times())?, &tc)?;
     let node_lh = -graph
       .get_nodes()
       .iter()
@@ -201,7 +197,7 @@ mod tests {
       "B".to_owned() => Some(DateConstraint::exact(2015.0)),
       "C".to_owned() => Some(DateConstraint::exact(2020.0)),
     };
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state)?;
 
@@ -213,7 +209,7 @@ mod tests {
       &BranchPointOptimizationParams::default(),
       None,
     )?;
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    let mut state = TimetreeState::seed_from_values(&graph, &constraints);
     let run_branch_lengths = edge_branch_lengths(&graph);
     let run_names = node_names(&graph);
     run_timetree(

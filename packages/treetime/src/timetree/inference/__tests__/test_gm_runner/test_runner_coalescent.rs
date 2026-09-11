@@ -8,11 +8,10 @@ mod tests {
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
   use crate::clock::clock_state::ClockState;
-  use crate::clock::date_constraints::load_date_constraints;
+  use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
-  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
@@ -42,9 +41,10 @@ mod tests {
     let dataset = "flu_h3n2_20";
     let case = &OUTPUTS[dataset];
 
-    let (graph, partitions, clock_model) = build_timetree_setup(dataset, case)?;
+    let (graph, partitions, clock_model, constraints) = build_timetree_setup(dataset, case)?;
     let mut graph = graph;
-    let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph, &coalescent_node_times_from_payloads(&graph))?, &Distribution::constant(tc))?;
+    let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
+    let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph, &node_times)?, &Distribution::constant(tc))?;
     let mut state = TimetreeState::new(&graph);
     let mut clock_state = ClockState::new(&graph);
     let run_branch_lengths = edge_branch_lengths(&graph);
@@ -81,10 +81,10 @@ mod tests {
   fn build_timetree_setup(
     dataset: &str,
     case: &super::super::test_gm_runner_support::support::DatasetOutputs,
-  ) -> Result<(GraphTimetree, PartitionTimetreeAllVec, ClockModel), Report> {
+  ) -> Result<(GraphTimetree, PartitionTimetreeAllVec, ClockModel, DateConstraints), Report> {
     let mut graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?;
     let dates = load_dates_for_dataset(dataset)?;
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
     let aln = load_alignment_for_dataset(dataset)?;
     let dense_partition = Arc::new(RwLock::new(PartitionTimetree::Dense(PartitionMarginalDense::new(
@@ -108,6 +108,6 @@ mod tests {
       None,
     )?;
 
-    Ok((graph, partitions, clock_model))
+    Ok((graph, partitions, clock_model, constraints))
   }
 }

@@ -102,7 +102,7 @@ mod tests {
 
     let mut graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?;
     let dates = load_dates_for_dataset(dataset)?;
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
     let aln = load_alignment_for_dataset(dataset)?;
     let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln, &node_names(&graph))?;
@@ -137,7 +137,7 @@ mod tests {
       None,
     )?;
 
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    let mut state = TimetreeState::seed_from_values(&graph, &constraints);
     let run_branch_lengths = edge_branch_lengths(&graph);
     let run_names = node_names(&graph);
     run_timetree(

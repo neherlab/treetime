@@ -34,7 +34,7 @@ mod tests {
 
     let graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?;
     let dates = load_dates_for_dataset(dataset)?;
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
     create_poisson_branch_distributions(
       &graph,
@@ -43,9 +43,16 @@ mod tests {
       case.sequence_length(),
       GRID_POINTS,
     )?;
-    // The Poisson builder writes the branch distributions onto the payloads; seed the value state
-    // from them and run the passes on that state, which holds the committed times for extraction.
-    let mut state = TimetreeState::seed_from_payloads(&graph);
+    // Seed the node date state from the constraint values, then lift the Poisson branch-length
+    // distributions the builder wrote onto the edge payloads into the edge state. The v0-Poisson
+    // builder has no value-returning form yet, so the edge distributions are the one field still
+    // read off the payload; converting the builder is the field-removal task's concern.
+    let mut state = TimetreeState::seed_from_values(&graph, &constraints);
+    for edge_ref in graph.get_edges() {
+      let edge = edge_ref.read_arc();
+      let dist = edge.payload().read_arc().branch_length_distribution.clone();
+      state.edge_mut(edge.key()).branch_length_distribution = dist;
+    }
     propagate_distributions_backward(&graph, None, &mut state)?;
     propagate_distributions_forward(&graph, &node_names(&graph), &mut state)?;
 
