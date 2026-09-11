@@ -12,9 +12,8 @@
 /// formula: m = parent's child count at the merger node.
 #[cfg(test)]
 mod tests {
-  use super::super::helpers::setup_graph;
-  use crate::clock::date_constraints::load_date_constraints;
-  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
+  use super::super::helpers::{coalescent_node_times, setup_graph};
+  use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::partition::timetree::partition::GraphTimetree;
   use approx::assert_abs_diff_eq;
@@ -26,7 +25,7 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::o;
 
-  fn setup_polytomy_graph() -> Result<GraphTimetree, Report> {
+  fn setup_polytomy_graph() -> Result<(GraphTimetree, DateConstraints), Report> {
     let dates = btreemap! {
       o!("root") => Some(DateConstraint::exact(2000.0)),
       o!("internal") => Some(DateConstraint::exact(2005.0)),
@@ -37,8 +36,8 @@ mod tests {
     };
     let graph: GraphTimetree =
       nwk_read_str("((leaf1:0.005,leaf2:0.005,leaf3:0.005)internal:0.01,leaf4:0.02)root:0.0;")?;
-    load_date_constraints(&dates, &graph)?;
-    Ok(graph)
+    let constraints = load_date_constraints(&dates, &graph)?;
+    Ok((graph, constraints))
   }
 
   // Binary tree: all formulas agree (m=2 for every edge).
@@ -51,8 +50,8 @@ mod tests {
   #[case::tc_100(100.0,   -8.316728083308085)]
   #[trace]
   fn test_gm_total_lh_binary(#[case] tc: f64, #[case] expected: f64) -> Result<(), Report> {
-    let graph = setup_graph()?;
-    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc), &coalescent_node_times_from_payloads(&graph))?.value();
+    let (graph, constraints) = setup_graph()?;
+    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc), &coalescent_node_times(&graph, &constraints))?.value();
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-8);
     Ok(())
   }
@@ -68,8 +67,8 @@ mod tests {
   #[case::tc_100(100.0,  -10.586991619508176)]
   #[trace]
   fn test_gm_total_lh_polytomy(#[case] tc: f64, #[case] expected: f64) -> Result<(), Report> {
-    let graph = setup_polytomy_graph()?;
-    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc), &coalescent_node_times_from_payloads(&graph))?.value();
+    let (graph, constraints) = setup_polytomy_graph()?;
+    let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc), &coalescent_node_times(&graph, &constraints))?.value();
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-8);
     Ok(())
   }

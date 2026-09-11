@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::date_constraints::load_date_constraints;
+  use super::super::helpers::coalescent_node_times;
+  use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
-  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
   use crate::o;
   use crate::partition::timetree::partition::GraphTimetree;
   use eyre::{Report, WrapErr};
@@ -42,9 +42,9 @@ mod tests {
   fn test_gm_coalescent_model_matches_v0_node_contributions(#[case] snapshot_file: &str) -> Result<(), Report> {
     let snapshot: Snapshot = json_read_file(Path::new(FIXTURES_DIR).join(snapshot_file))
       .wrap_err_with(|| format!("When reading snapshot {snapshot_file}"))?;
-    let graph = load_graph(&snapshot)?;
+    let (graph, constraints) = load_graph(&snapshot)?;
     let model = CoalescentModel::new(
-      &compute_lineage_counts(&graph, &coalescent_node_times_from_payloads(&graph))?,
+      &compute_lineage_counts(&graph, &coalescent_node_times(&graph, &constraints))?,
       &Distribution::constant(snapshot.inputs.tc),
     )?;
     let tbp_grid = Grid::from_range_n_points(
@@ -126,7 +126,7 @@ mod tests {
     n_points: usize,
   }
 
-  fn load_graph(snapshot: &Snapshot) -> Result<GraphTimetree, Report> {
+  fn load_graph(snapshot: &Snapshot) -> Result<(GraphTimetree, DateConstraints), Report> {
     let fixtures_dir = Path::new(FIXTURES_DIR);
     let graph = nwk_read_file(fixtures_dir.join(&snapshot.inputs.tree_path))?;
     let dates = read_dates(
@@ -136,7 +136,7 @@ mod tests {
       &Some(o!("name")),
       &Some(o!("date")),
     )?;
-    load_date_constraints(&dates, &graph)?;
-    Ok(graph)
+    let constraints = load_date_constraints(&dates, &graph)?;
+    Ok((graph, constraints))
   }
 }

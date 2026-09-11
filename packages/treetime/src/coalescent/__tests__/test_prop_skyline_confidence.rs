@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::coalescent::__tests__::helpers::setup_graph;
-  use crate::coalescent::node_time::coalescent_node_times_from_payloads;
+  use crate::coalescent::__tests__::helpers::{coalescent_node_times, setup_graph};
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use proptest::prelude::*;
   use treetime_utils::{prop_assert_array_finite, prop_assert_array_nonneg, prop_assert_array_positive};
@@ -15,7 +14,7 @@ mod tests {
       stiffness in 0.01_f64..10.0,
       n_std in 0.0_f64..4.0,
     ) {
-      let graph = setup_graph().unwrap();
+      let (graph, constraints) = setup_graph().unwrap();
       let params = SkylineParams {
         n_points,
         stiffness,
@@ -24,7 +23,7 @@ mod tests {
         max_iter: 1000,
       };
 
-      let result = optimize_skyline(&graph, &params, &coalescent_node_times_from_payloads(&graph)).unwrap();
+      let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints)).unwrap();
 
       prop_assert_array_finite!(result.log_tc_variances);
       prop_assert_array_positive!(result.log_tc_variances);
