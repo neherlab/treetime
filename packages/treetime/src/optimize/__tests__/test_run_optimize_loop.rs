@@ -13,9 +13,9 @@ mod tests {
   use eyre::Report;
   use parking_lot::RwLock;
   use statrs::function::factorial::ln_factorial;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::Seq;
 
@@ -53,6 +53,7 @@ mod tests {
   fn manual_total_indel_log_lh(
     graph: &GraphAncestral,
     sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> f64 {
     let total_indels: usize = graph
       .get_edges()
@@ -62,7 +63,13 @@ mod tests {
     let total_branch_length: f64 = graph
       .get_edges()
       .iter()
-      .map(|edge_ref| edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0))
+      .map(|edge_ref| {
+        branch_lengths
+          .get(&edge_ref.read_arc().key())
+          .copied()
+          .flatten()
+          .unwrap_or(0.0)
+      })
       .sum();
     let indel_rate = if total_indels > 0 && total_branch_length > 0.0 {
       total_indels as f64 / total_branch_length
@@ -75,7 +82,7 @@ mod tests {
       .iter()
       .map(|edge_ref| {
         let edge_key = edge_ref.read_arc().key();
-        let branch_length = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+        let branch_length = branch_lengths.get(&edge_key).copied().flatten().unwrap_or(0.0);
         let indel_count = manual_indel_count_on_edge(sparse_partitions, edge_key);
         manual_poisson_indel_log_lh(indel_count, indel_rate, branch_length)
       })
@@ -89,9 +96,15 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_records_lh_history() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) =
+      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let max_iter = 5;
     let names_tt_6 = names.clone();
@@ -106,6 +119,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_6,
     )?;
 
@@ -118,16 +132,18 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_records_joint_likelihood_with_sparse_indels() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) =
+      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let first_edge_key = graph.get_edges()[0].read_arc().key();
-    graph.get_edges()[0]
-      .write_arc()
-      .payload()
-      .write_arc()
-      .set_branch_length(Some(0.1));
+    branch_lengths.insert(first_edge_key, Some(0.1));
     sparse_partitions[0]
       .write_arc()
       .edges
@@ -135,9 +151,9 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
-    let sparse_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
-    let dense_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
-    let indel_lh = manual_total_indel_log_lh(&graph, &sparse_partitions);
+    let sparse_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+    let dense_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions)?.value();
+    let indel_lh = manual_total_indel_log_lh(&graph, &sparse_partitions, &branch_lengths);
     let expected_total_lh = sparse_lh + dense_lh + indel_lh;
 
     let names_tt_5 = names.clone();
@@ -152,6 +168,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_5,
     )?;
 
@@ -170,9 +187,15 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_breaks_on_convergence() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) =
+      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let max_iter = 50;
     let dp = f64::INFINITY;
@@ -189,6 +212,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_4,
     )?;
 
@@ -201,9 +225,15 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_zero_max_iter_is_noop() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) =
+      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_3 = names.clone();
     let result = run_optimize_loop(
@@ -217,6 +247,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_3,
     )?;
 
@@ -232,9 +263,15 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_all_likelihoods_finite() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) =
+      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_2 = names.clone();
     let result = run_optimize_loop(
@@ -248,6 +285,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_2,
     )?;
 
@@ -263,15 +301,17 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_improves_likelihood() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) =
+      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
     let first_edge_key = graph.get_edges()[0].read_arc().key();
-    graph.get_edges()[0]
-      .write_arc()
-      .payload()
-      .write_arc()
-      .set_branch_length(Some(0.1));
+    branch_lengths.insert(first_edge_key, Some(0.1));
     sparse_partitions[0]
       .write_arc()
       .edges
@@ -279,12 +319,15 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
-    let initial_sparse_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
-    let initial_dense_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
-    let initial_lh = initial_sparse_lh + initial_dense_lh + manual_total_indel_log_lh(&graph, &sparse_partitions);
+    let initial_sparse_lh =
+      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+    let initial_dense_lh =
+      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions)?.value();
+    let initial_lh =
+      initial_sparse_lh + initial_dense_lh + manual_total_indel_log_lh(&graph, &sparse_partitions, &branch_lengths);
 
     let names_tt_1 = names.clone();
-    run_optimize_loop(
+    let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
       &dense_partitions,
@@ -295,12 +338,16 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_1,
     )?;
+    let branch_lengths = result.branch_lengths;
 
-    let final_sparse_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
-    let final_dense_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
-    let final_lh = final_sparse_lh + final_dense_lh + manual_total_indel_log_lh(&graph, &sparse_partitions);
+    let final_sparse_lh =
+      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+    let final_dense_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions)?.value();
+    let final_lh =
+      final_sparse_lh + final_dense_lh + manual_total_indel_log_lh(&graph, &sparse_partitions, &branch_lengths);
 
     assert!(
       final_lh >= initial_lh,

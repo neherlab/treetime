@@ -16,7 +16,6 @@ mod tests {
 
   use parking_lot::RwLock;
   use std::sync::Arc;
-  use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -26,7 +25,12 @@ mod tests {
   #[test]
   fn test_eval_zero_branch_mismatch_no_nan() -> Result<(), Report> {
     // Tree with zero-length branches to force the edge case
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;")?;
     let graph: GraphAncestral = graph;
 
     // Alignment with mismatches: leaf A differs from leaf B at multiple positions,
@@ -61,18 +65,25 @@ mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &dense_partitions, &aln, &names)?.value();
-    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&branch_lengths),
+      &dense_partitions,
+      &aln,
+      &names,
+    )?
+    .value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 
     // Do NOT call initial_guess_mixed -- leave branch lengths at 0.0
     // to exercise the zero-branch mismatch code path.
-    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
+    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton, &mut branch_lengths)?;
 
     // All branch lengths must be finite after optimization
     for edge_ref in graph.get_edges() {
-      let bl = edge_ref.read_arc().payload().read_arc().branch_length().unwrap();
+      let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap();
       assert!(
         bl.is_finite(),
         "Branch length must be finite after optimization, got {bl}"

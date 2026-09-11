@@ -62,7 +62,12 @@ pub mod tests {
     aln_str: &str,
     gtr: GTR,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalDense>>; 1]), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(newick)?;
     let graph: GraphAncestral = graph;
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -74,7 +79,14 @@ pub mod tests {
       get_common_length(&aln)?,
     )))];
 
-    let log_lh = initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
+    let log_lh = initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&branch_lengths),
+      &partitions,
+      &aln,
+      &names,
+    )?
+    .value();
     Ok((log_lh, partitions))
   }
 
@@ -84,14 +96,19 @@ pub mod tests {
     aln_str: &str,
     gtr: GTR,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalSparse>>; 1]), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(newick)?;
     let graph: GraphAncestral = graph;
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?))];
-    let log_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    let log_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
     Ok((log_lh, partitions))
   }
 }

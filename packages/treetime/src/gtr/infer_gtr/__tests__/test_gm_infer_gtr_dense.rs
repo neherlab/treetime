@@ -18,7 +18,6 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use lazy_static::lazy_static;
-  use treetime_graph::value_maps::edge_branch_lengths;
 
   use parking_lot::RwLock;
   use rstest::rstest;
@@ -28,6 +27,7 @@ mod tests {
   use std::path::{Path, PathBuf};
   use std::slice::from_ref;
   use std::sync::Arc;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_file, nwk_read_str};
 
@@ -44,11 +44,9 @@ mod tests {
 
     let fasta_str = alignment_to_fasta(&case.alignment);
     let aln = read_many_fasta_str(&fasta_str, &*NUC_ALPHABET)?;
-    let (graph, partition) = setup_dense_partition(&case.tree, &aln)?;
+    let (graph, partition, branch_lengths) = setup_dense_partition(&case.tree, &aln)?;
 
-    let counts = partition
-      .read_arc()
-      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
+    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     // Short synthetic sequences: limited floating-point accumulation, tight tolerance
@@ -71,10 +69,8 @@ mod tests {
     let case = &INPUTS.real[case_name];
     let expected = &OUTPUTS.real[case_name];
 
-    let (graph, partition) = setup_dense_partition_from_files(&case.tree_path, &case.alignment_path)?;
-    let counts = partition
-      .read_arc()
-      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
+    let (graph, partition, branch_lengths) = setup_dense_partition_from_files(&case.tree_path, &case.alignment_path)?;
+    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     // BLAS drift between NumPy and ndarray scales with sequence length. mpox_clade_ii_20
@@ -135,8 +131,20 @@ mod tests {
   fn setup_dense_partition(
     tree_nwk: &str,
     aln: &[FastaRecord],
-  ) -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(tree_nwk)?;
+  ) -> Result<
+    (
+      GraphAncestral,
+      Arc<RwLock<PartitionMarginalDense>>,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
+    ),
+    Report,
+  > {
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(tree_nwk)?;
     let graph: GraphAncestral = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
@@ -153,23 +161,35 @@ mod tests {
 
     initialize_marginal(
       &graph,
-      &profile_branch_lengths(&graph),
+      &profile_branch_lengths(&branch_lengths),
       from_ref(&partition),
       aln,
       &names,
     )?
     .value();
-    Ok((graph, partition))
+    Ok((graph, partition, branch_lengths))
   }
 
   fn setup_dense_partition_from_files(
     tree_path: impl AsRef<Path>,
     alignment_path: impl AsRef<Path>,
-  ) -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
+  ) -> Result<
+    (
+      GraphAncestral,
+      Arc<RwLock<PartitionMarginalDense>>,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
+    ),
+    Report,
+  > {
     let tree_path = PROJECT_ROOT.join(tree_path);
     let alignment_path = PROJECT_ROOT.join(alignment_path);
 
-    let NwkParse { graph, names, .. } = nwk_read_file(&tree_path)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_file(&tree_path)?;
 
     let graph: GraphAncestral = graph;
     let aln = read_many_fasta(&[&alignment_path], &*NUC_ALPHABET)?;
@@ -188,13 +208,13 @@ mod tests {
 
     initialize_marginal(
       &graph,
-      &profile_branch_lengths(&graph),
+      &profile_branch_lengths(&branch_lengths),
       from_ref(&partition),
       &aln,
       &names,
     )?
     .value();
-    Ok((graph, partition))
+    Ok((graph, partition, branch_lengths))
   }
 
   fn alignment_to_fasta(aln: &BTreeMap<String, String>) -> String {

@@ -16,28 +16,46 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   fn setup_dense(
     newick: &str,
     fasta: &str,
-  ) -> Result<(GraphAncestral, Vec<Arc<RwLock<dyn PartitionOptimizeOps>>>), Report> {
+  ) -> Result<
+    (
+      GraphAncestral,
+      Vec<Arc<RwLock<dyn PartitionOptimizeOps>>>,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
+    ),
+    Report,
+  > {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
-    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(newick)?;
     let graph: GraphAncestral = graph;
     let gtr = jc69(JC69Params::default())?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
     let partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![Arc::new(RwLock::new(partition))];
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
-    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&branch_lengths),
+      &partitions,
+      &aln,
+      &names,
+    )?
+    .value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
     let mixed: Vec<Arc<RwLock<dyn PartitionOptimizeOps>>> = partitions
       .into_iter()
       .map(|p| -> Arc<RwLock<dyn PartitionOptimizeOps>> { p })
       .collect();
-    Ok((graph, mixed))
+    Ok((graph, mixed, branch_lengths))
   }
 
   fn root_edge_branch_lengths(
@@ -70,8 +88,7 @@ mod tests {
 
   #[test]
   fn test_root_preservation_ratio_preserved_after_optimization() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense(BIFURCATING_TREE, ALIGNMENT)?;
-    let mut branch_lengths = edge_branch_lengths(&graph);
+    let (graph, partitions, mut branch_lengths) = setup_dense(BIFURCATING_TREE, ALIGNMENT)?;
 
     let (bl0_before, bl1_before) = root_edge_branch_lengths(&graph, &branch_lengths);
     let total_before = bl0_before + bl1_before;
@@ -98,8 +115,7 @@ mod tests {
   #[test]
   fn test_root_preservation_both_edges_zero_uses_equal_split() -> Result<(), Report> {
     let tree = "((A:0.1,B:0.2)AB:0.0,(C:0.15,D:0.12)CD:0.0)root:0.0;";
-    let (graph, partitions) = setup_dense(tree, ALIGNMENT)?;
-    let mut branch_lengths = edge_branch_lengths(&graph);
+    let (graph, partitions, mut branch_lengths) = setup_dense(tree, ALIGNMENT)?;
 
     run_optimize_mixed_inner(
       &graph,
@@ -138,8 +154,7 @@ mod tests {
       >F
       GGGGACGTACGTACGA
     "#};
-    let (graph, partitions) = setup_dense(tree, fasta)?;
-    let mut branch_lengths = edge_branch_lengths(&graph);
+    let (graph, partitions, mut branch_lengths) = setup_dense(tree, fasta)?;
 
     {
       let root = graph.get_exactly_one_root()?;
@@ -163,8 +178,7 @@ mod tests {
   #[test]
   fn test_root_preservation_asymmetric_ratio() -> Result<(), Report> {
     let tree = "((A:0.05,B:0.05)AB:0.9,(C:0.05,D:0.05)CD:0.01)root:0.0;";
-    let (graph, partitions) = setup_dense(tree, ALIGNMENT)?;
-    let mut branch_lengths = edge_branch_lengths(&graph);
+    let (graph, partitions, mut branch_lengths) = setup_dense(tree, ALIGNMENT)?;
 
     let (bl0_before, bl1_before) = root_edge_branch_lengths(&graph, &branch_lengths);
     let total_before = bl0_before + bl1_before;

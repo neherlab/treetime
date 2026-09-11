@@ -6,7 +6,7 @@ use crate::partition::traits::{MarginalPass, PartitionMarginalPasses};
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::node::{GraphNodeKey, NodeAncestralOps};
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range_union::range_union;
@@ -14,7 +14,7 @@ use treetime_utils::interval::range_union::range_union;
 impl<N, E> MarginalPartition<N, E> for PartitionMarginalDense
 where
   N: NodeAncestralOps,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn marginal_data(&self) -> &MarginalData {
     &self.data
@@ -37,7 +37,7 @@ where
 impl<N, E> IndexedMarginalPartition<N, E> for PartitionMarginalDense
 where
   N: NodeAncestralOps,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn indexed_missing_node(&self, _key: GraphNodeKey) -> Result<DenseNodePartition, Report> {
     Ok(DenseNodePartition {
@@ -115,7 +115,7 @@ where
 impl<N, E> PartitionMarginalPasses<N, E> for PartitionMarginalDense
 where
   N: NodeAncestralOps,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn as_marginal_pass(&mut self) -> MarginalPass<'_, N, E> {
     MarginalPass::Indexed(self)

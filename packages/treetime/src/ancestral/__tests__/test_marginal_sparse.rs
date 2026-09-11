@@ -23,6 +23,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::{Arc, LazyLock};
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -116,6 +117,7 @@ mod tests {
   /// inspection of node/edge posteriors.
   fn run_sparse_marginal(
     graph: &GraphAncestral,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     gtr: GTR,
@@ -123,7 +125,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
     let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, graph)?))];
-    let log_lh = marginal_update(graph, &profile_branch_lengths(graph), &partitions)?.value();
+    let log_lh = marginal_update(graph, &profile_branch_lengths(branch_lengths), &partitions)?.value();
     Ok((log_lh, partitions))
   }
 
@@ -133,9 +135,14 @@ mod tests {
   /// under different rootings of the same unrooted topology. Returns only the scalar
   /// log-likelihood, discarding the partition data.
   fn run_sparse_lh_for_newick(newick: &str, aln: &[FastaRecord], gtr: GTR) -> Result<f64, Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(newick)?;
     let graph: GraphAncestral = graph;
-    let (log_lh, _) = run_sparse_marginal(&graph, &names, aln, gtr)?;
+    let (log_lh, _) = run_sparse_marginal(&graph, &branch_lengths, &names, aln, gtr)?;
     Ok(log_lh)
   }
 
@@ -181,7 +188,12 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let graph: GraphAncestral = graph;
 
@@ -192,7 +204,12 @@ mod tests {
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
 
-    let log_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions_marginal_sparse)?.value();
+    let log_lh = marginal_update(
+      &graph,
+      &profile_branch_lengths(&branch_lengths),
+      &partitions_marginal_sparse,
+    )?
+    .value();
 
     // generate ancestral reconstruction and test against expectation
     let mut actual = BTreeMap::new();
@@ -256,12 +273,17 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let graph: GraphAncestral = graph;
     let gtr = jc69(JC69Params::default())?;
 
-    let (log_lh, partitions) = run_sparse_marginal(&graph, &names, &aln, gtr)?;
+    let (log_lh, partitions) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
 
     // Verify log-likelihood is in expected range (tree with 4 leaves, 16 sites)
     // Matches test_ancestral_reconstruction_marginal_sparse value
@@ -303,7 +325,12 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let graph: GraphAncestral = graph;
     let gtr = jc69(JC69Params::default())?;
@@ -312,8 +339,8 @@ mod tests {
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?))];
 
-    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
-    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
 
     // Verify log-likelihood value matches expected (same tree/alignment as normalization test)
     pretty_assert_ulps_eq!(-55.33813399214274, log_lh_first, epsilon = 1e-6);
@@ -399,12 +426,17 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let graph: GraphAncestral = graph;
     let gtr = make_nonuniform_gtr()?;
 
-    let (log_lh, partitions) = run_sparse_marginal(&graph, &names, &aln, gtr)?;
+    let (log_lh, partitions) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
 
     // note that this LH is slightly different from dense or python treetime due to
     // different handling of ambiguous characters (value from test_scripts/ancestral_sparse.py)
@@ -464,7 +496,12 @@ mod tests {
       mu,
     })?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
 
     let graph: GraphAncestral = graph;
     // Generate all possible triplets (4^3 = 64 combinations)
@@ -478,7 +515,12 @@ mod tests {
           let fitch = create_fitch_partition(&graph, 0, alphabet.clone(), &aln, &names)?;
           let partitions_marginal_sparse = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr.clone(), &graph)?))];
 
-          let log_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions_marginal_sparse)?.value();
+          let log_lh = marginal_update(
+            &graph,
+            &profile_branch_lengths(&branch_lengths),
+            &partitions_marginal_sparse,
+          )?
+          .value();
           total_lh += log_lh.exp();
         }
       }
@@ -513,14 +555,19 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let graph: GraphAncestral = graph;
     let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?,
     ))];
-    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
 
     let actual_by_edge = {
       let partition = partitions[0].read_arc();
@@ -591,8 +638,19 @@ mod tests {
         &*NUC_ALPHABET,
       )?;
       ThreadPoolBuilder::new().num_threads(threads).build()?.install(|| {
-        let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
-        let (_, partitions) = run_sparse_marginal(&graph, &names, &alignment, jc69(JC69Params::default())?)?;
+        let NwkParse {
+          graph,
+          names,
+          branch_lengths,
+          ..
+        } = nwk_read_str(newick)?;
+        let (_, partitions) = run_sparse_marginal(
+          &graph,
+          &branch_lengths,
+          &names,
+          &alignment,
+          jc69(JC69Params::default())?,
+        )?;
         let partition = partitions[0].read_arc();
         Ok((
           partition.nodes[&graph.get_exactly_one_root()?.read_arc().key()]
@@ -631,7 +689,7 @@ mod tests {
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       partition: &PartitionMarginalSparse,
       seqs_by_name: &BTreeMap<String, Seq>,
-    ) -> Result<BTreeMap<treetime_graph::edge::GraphEdgeKey, Vec<Sub>>, Report> {
+    ) -> Result<BTreeMap<GraphEdgeKey, Vec<Sub>>, Report> {
       graph
         .get_edges()
         .iter()

@@ -20,6 +20,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::{Arc, LazyLock};
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -81,6 +82,7 @@ mod tests {
   /// every node and position.
   fn run_dense_marginal(
     graph: &GraphAncestral,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     gtr: GTR,
@@ -93,7 +95,7 @@ mod tests {
       get_common_length(aln)?,
     )))];
 
-    let log_lh = initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln, names)?.value();
+    let log_lh = initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?.value();
     Ok((log_lh, partitions))
   }
 
@@ -103,9 +105,14 @@ mod tests {
   /// same alignment under different rootings of the same unrooted topology.
   /// Returns only the scalar log-likelihood, discarding the partition data.
   fn run_dense_lh_for_newick(newick: &str, aln: &[FastaRecord], gtr: GTR) -> Result<f64, Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(newick)?;
     let graph: GraphAncestral = graph;
-    let (log_lh, _) = run_dense_marginal(&graph, &names, aln, gtr)?;
+    let (log_lh, _) = run_dense_marginal(&graph, &branch_lengths, &names, aln, gtr)?;
     Ok(log_lh)
   }
 
@@ -168,7 +175,12 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_7_TAXON)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_7_TAXON)?;
 
     let graph: GraphAncestral = graph;
     let gtr = jc69(JC69Params {
@@ -176,7 +188,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (_, partitions) = run_dense_marginal(&graph, &names, &ALN_7_TAXON, gtr)?;
+    let (_, partitions) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_marginal(
@@ -215,14 +227,19 @@ mod tests {
   /// model combination.
   #[test]
   fn test_marginal_dense_probability_normalization() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_7_TAXON)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_7_TAXON)?;
     let graph: GraphAncestral = graph;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
 
-    let (log_lh, partitions) = run_dense_marginal(&graph, &names, &ALN_7_TAXON, gtr)?;
+    let (log_lh, partitions) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
     // Regression check: known-good log-likelihood for this tree/alignment/model
     pretty_assert_ulps_eq!(-57.712498930787206, log_lh, epsilon = 1e-6);
@@ -263,17 +280,22 @@ mod tests {
   /// in-place mutation of node/edge profiles.
   #[test]
   fn test_marginal_dense_update_is_idempotent() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_7_TAXON)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_7_TAXON)?;
     let graph: GraphAncestral = graph;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
 
-    let (log_lh_init, partitions) = run_dense_marginal(&graph, &names, &ALN_7_TAXON, gtr)?;
+    let (log_lh_init, partitions) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
-    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
-    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
 
     // Repeated updates must produce identical log-likelihood to initialization
     pretty_assert_ulps_eq!(log_lh_init, log_lh_first, epsilon = 1e-10);
@@ -371,7 +393,12 @@ mod tests {
       mu,
     })?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
 
     let graph: GraphAncestral = graph;
     let states = ['A', 'C', 'G', 'T'];
@@ -379,7 +406,7 @@ mod tests {
       for &state_b in &states {
         for &state_c in &states {
           let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?;
-          let (log_lh, _) = run_dense_marginal(&graph, &names, &aln, gtr.clone())?;
+          let (log_lh, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr.clone())?;
           total_lh += log_lh.exp();
         }
       }

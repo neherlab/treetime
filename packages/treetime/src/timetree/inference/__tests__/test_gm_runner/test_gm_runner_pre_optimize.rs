@@ -19,7 +19,8 @@ mod tests {
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
-  use treetime_graph::value_maps::edge_branch_lengths;
+  use std::collections::BTreeMap;
+  use treetime_graph::edge::GraphEdgeKey;
 
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use eyre::Report;
@@ -29,14 +30,13 @@ mod tests {
   use rstest::rstest;
 
   use std::sync::Arc;
-  use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
-  fn extract_branch_lengths(graph: &GraphTimetree) -> Vec<f64> {
+  fn extract_branch_lengths(graph: &GraphTimetree, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
       .iter()
-      .map(|e| e.read_arc().payload().read_arc().branch_length().unwrap_or(0.0))
+      .map(|e| branch_lengths[&e.read_arc().key()].unwrap_or(0.0))
       .collect_vec()
   }
 
@@ -52,7 +52,7 @@ mod tests {
   fn test_gm_runner_pre_optimize_changes_branch_lengths(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
 
-    let NwkParse { graph, names, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
 
     let graph: GraphTimetree = graph;
     let aln = load_alignment_for_dataset(dataset)?;
@@ -62,9 +62,9 @@ mod tests {
     )));
 
     let partitions: PartitionTimetreeAllVec = vec![sparse_partition];
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &partitions, &aln, &names)?.value();
 
-    let before = extract_branch_lengths(&graph);
+    let before = extract_branch_lengths(&graph, &branch_lengths);
 
     // Run one pass of ML optimization (matching v0's optimize_tree(max_iter=1))
     #[allow(trivial_casts)]
@@ -72,9 +72,9 @@ mod tests {
       .iter()
       .map(|p| Arc::clone(p) as Arc<RwLock<dyn PartitionOptimizeOps>>)
       .collect();
-    run_optimize_mixed(&graph, &opt_partitions, BranchOptMethod::BrentSqrt)?;
+    run_optimize_mixed(&graph, &opt_partitions, BranchOptMethod::BrentSqrt, &mut branch_lengths)?;
 
-    let after = extract_branch_lengths(&graph);
+    let after = extract_branch_lengths(&graph, &branch_lengths);
 
     // At least some branch lengths should change
     let n_changed = before
@@ -103,7 +103,7 @@ mod tests {
   fn test_gm_runner_pre_optimize_pipeline_succeeds(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
 
-    let NwkParse { graph, names, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
 
     let mut graph: GraphTimetree = graph;
     let dates = load_dates_for_dataset(dataset)?;
@@ -116,9 +116,9 @@ mod tests {
     )));
 
     let partitions: PartitionTimetreeAllVec = vec![sparse_partition];
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &partitions, &aln, &names)?.value();
     let mut clock_state = ClockState::new(&graph);
-    initialize_node_divergences(&graph, &mut clock_state, &names)?;
+    initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
     // Pre-optimization step (matching v0 flow)
     #[allow(trivial_casts)]
@@ -126,10 +126,10 @@ mod tests {
       .iter()
       .map(|p| Arc::clone(p) as Arc<RwLock<dyn PartitionOptimizeOps>>)
       .collect();
-    run_optimize_mixed(&graph, &opt_partitions, BranchOptMethod::BrentSqrt)?;
+    run_optimize_mixed(&graph, &opt_partitions, BranchOptMethod::BrentSqrt, &mut branch_lengths)?;
     crate::ancestral::marginal::marginal_update(
       &graph,
-      &profile_branch_lengths(&graph),
+      &profile_branch_lengths(&branch_lengths),
       &partitions,
     )?;
 
@@ -144,12 +144,13 @@ mod tests {
       true,
       &BranchPointOptimizationParams::default(),
       &RerootParams::default(),
+      &mut branch_lengths,
       None, &names_tt_1
     )?
     .into_clock_model()?;
 
     let mut state = TimetreeState::seed_from_values(&graph, &constraints);
-    let run_branch_lengths = edge_branch_lengths(&graph);
+    let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
     run_timetree(
       &mut graph,

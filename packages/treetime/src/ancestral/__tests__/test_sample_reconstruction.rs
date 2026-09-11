@@ -96,7 +96,12 @@ mod tests {
         &Alphabet::default(),
       )?;
 
-      let NwkParse { graph, names, .. } = nwk_read_str(TREE)?;
+      let NwkParse {
+        graph,
+        names,
+        branch_lengths,
+        ..
+      } = nwk_read_str(TREE)?;
 
       let graph: GraphAncestral = graph;
       let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
@@ -104,7 +109,7 @@ mod tests {
         fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
       ))];
 
-      marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
 
       let mut rng = StdRng::seed_from_u64(seed);
       let mut out = BTreeMap::new();

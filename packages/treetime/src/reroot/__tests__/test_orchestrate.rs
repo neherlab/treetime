@@ -9,13 +9,14 @@ mod tests {
   use crate::reroot::variance::VarianceModel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use treetime_graph::edge::HasBranchLength;
+  use std::collections::BTreeMap;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
-  fn root_to_tip_distances(graph: &GraphAncestral) -> Vec<f64> {
+  fn root_to_tip_distances(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     let root_key = graph.get_exactly_one_root().unwrap().read_arc().key();
     let mut distances = Vec::new();
-    collect_distances(graph, root_key, 0.0, &mut distances);
+    collect_distances(graph, root_key, 0.0, &mut distances, branch_lengths);
     distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
     distances
   }
@@ -25,6 +26,7 @@ mod tests {
     node_key: treetime_graph::node::GraphNodeKey,
     dist: f64,
     out: &mut Vec<f64>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) {
     let node = graph.get_node(node_key).unwrap();
     let node = node.read_arc();
@@ -35,17 +37,22 @@ mod tests {
     for &edge_key in node.outbound() {
       let edge = graph.get_edge(edge_key).unwrap();
       let edge = edge.read_arc();
-      let bl = edge.payload().read_arc().branch_length().unwrap_or(0.0);
-      collect_distances(graph, edge.target(), dist + bl, out);
+      let bl = branch_lengths[&edge.key()].unwrap_or(0.0);
+      collect_distances(graph, edge.target(), dist + bl, out, branch_lengths);
     }
   }
 
   #[test]
   fn test_orchestrate_reroot_reduces_rtt_variance() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("(A:0.1,B:0.3)root;")?;
     let mut graph: GraphAncestral = graph;
     let variance = VarianceModel::default();
-    let field = compute_div_stats(&graph, &variance)?;
+    let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
     reroot_in_place::<_, _, _, DivStats, _>(
       &mut graph,
@@ -54,10 +61,11 @@ mod tests {
       &variance,
       &BrentParams::default(),
       RerootTopologyParams::default(),
+      &mut branch_lengths,
       |_graph, _inverted| Ok(()),
     )?;
 
-    let dists = root_to_tip_distances(&graph);
+    let dists = root_to_tip_distances(&graph, &branch_lengths);
     assert_eq!(dists.len(), 2);
     assert_abs_diff_eq!(dists[0], dists[1], epsilon = 1e-6);
     Ok(())
@@ -65,10 +73,15 @@ mod tests {
 
   #[test]
   fn test_orchestrate_brent_finds_equidistant_root() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("(A:0.1,B:0.3)root;")?;
     let mut graph: GraphAncestral = graph;
     let variance = VarianceModel::default();
-    let field = compute_div_stats(&graph, &variance)?;
+    let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
     reroot_in_place::<_, _, _, DivStats, _>(
       &mut graph,
@@ -77,26 +90,33 @@ mod tests {
       &variance,
       &BrentParams::default(),
       RerootTopologyParams::default(),
+      &mut branch_lengths,
       |_graph, _inverted| Ok(()),
     )?;
 
-    let dists = root_to_tip_distances(&graph);
+    let dists = root_to_tip_distances(&graph, &branch_lengths);
     assert_abs_diff_eq!(dists[0], dists[1], epsilon = 1e-6);
     Ok(())
   }
 
   #[test]
   fn test_orchestrate_endpoint_snap_split_zero_roots_at_source() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("(A:0.1,B:0.3)root;")?;
     let graph: GraphAncestral = graph;
     let variance = VarianceModel::default();
-    let field = compute_div_stats(&graph, &variance)?;
+    let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
     let best = find_best_root(
       &graph,
       &field.edge_stats,
       &field.root_stats,
       &variance,
+      &branch_lengths,
       &BrentParams::default(),
     )?;
 
@@ -115,10 +135,15 @@ mod tests {
   // to B, so snap-to-nearest reroots to internal node i -- a real topology change.
   #[test]
   fn test_orchestrate_no_split_snaps_to_nearer_endpoint() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.5)i:0.02,C:0.2)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.5)i:0.02,C:0.2)root;")?;
     let mut graph: GraphAncestral = graph;
     let variance = VarianceModel::default();
-    let field = compute_div_stats(&graph, &variance)?;
+    let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
     let root_before = graph.get_exactly_one_root().unwrap().read_arc().key();
 
     reroot_in_place::<_, _, _, DivStats, _>(
@@ -131,6 +156,7 @@ mod tests {
         split_edge: false,
         remove_trivial_root: true,
       },
+      &mut branch_lengths,
       |_graph, _inverted| Ok(()),
     )?;
 

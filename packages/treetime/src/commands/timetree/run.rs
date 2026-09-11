@@ -29,7 +29,6 @@ use std::path::{Path, PathBuf};
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::fasta::FastaWriter;
 use treetime_io::nwk::CommentProviders;
 use treetime_utils::io::file::create_file_or_stdout;
@@ -114,6 +113,7 @@ pub fn run_timetree_estimation(
     alphabet: input_data.alphabet,
     sequences: input_data.aln,
     dates: input_data.dates,
+    branch_lengths: input_data.branch_lengths,
   };
 
   let output = pipeline::run(&params, input, &parse_names, tracelog, progress)?;
@@ -132,7 +132,7 @@ pub fn run_timetree_estimation(
   // later `marginal_update` and reconstruction touch neither names nor branch lengths, and topology
   // ordering only permutes keys, so the map still describes the final tree at every later point.
   let names = assign_node_names(output.names, &output.graph)?;
-  let branch_lengths_opt = edge_branch_lengths(&output.graph);
+  let branch_lengths_opt = output.branch_lengths;
 
   // Node-keyed descriptions for the reconstructed-FASTA writer and the node-output gather, rebuilt
   // from the name-keyed `aln_descs` captured from the input alignment. A leaf resolves to its FASTA
@@ -229,6 +229,7 @@ pub fn run_timetree_estimation(
     clock_state,
     timetree_state,
     names: _,
+    branch_lengths: _,
   } = output;
   let mut graph = graph.map_data(TimetreeGraphData::new(
     clock_model,
@@ -246,7 +247,7 @@ pub fn run_timetree_estimation(
   let topology_order = args
     .topology_order
     .resolve_topology_order(&graph, &names, Some(input_leaf_order))?;
-  topology_order.apply(&mut graph, &names)?;
+  topology_order.apply(&mut graph, &names, &branch_lengths_opt)?;
 
   let (nodes, edges) = gather_timetree_outputs(
     &graph,

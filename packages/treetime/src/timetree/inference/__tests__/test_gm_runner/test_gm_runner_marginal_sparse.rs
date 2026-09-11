@@ -16,7 +16,6 @@ mod tests {
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
-  use treetime_graph::value_maps::edge_branch_lengths;
 
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use eyre::Report;
@@ -52,7 +51,7 @@ mod tests {
     let case = &OUTPUTS[dataset];
     let expected = case.marginal_dense();
 
-    let NwkParse { graph, names, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
 
     let mut graph: GraphTimetree = graph;
     let dates = load_dates_for_dataset(dataset)?;
@@ -65,9 +64,9 @@ mod tests {
     )));
 
     let partitions: PartitionTimetreeAllVec = vec![sparse_partition];
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &partitions, &aln, &names)?.value();
     let mut clock_state = ClockState::new(&graph);
-    initialize_node_divergences(&graph, &mut clock_state, &names)?;
+    initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
     let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times();
     let mut clock_estimate_state = ClockState::seed_from_values(&graph, &times);
@@ -80,12 +79,13 @@ mod tests {
       true,
       &BranchPointOptimizationParams::default(),
       &RerootParams::default(),
+      &mut branch_lengths,
       None, &names_tt_1
     )?
     .into_clock_model()?;
 
     let mut state = TimetreeState::new(&graph);
-    let run_branch_lengths = edge_branch_lengths(&graph);
+    let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
     run_timetree(
       &mut graph,

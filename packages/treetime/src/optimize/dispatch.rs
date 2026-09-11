@@ -1,6 +1,5 @@
 use crate::optimize::branch_length::{is_valid_branch_length_value, validate_branch_length_value};
 use crate::optimize::indel::estimate_indel_rate;
-use crate::optimize::iteration::commit_branch_lengths;
 use crate::optimize::likelihood::evaluate_with_indels;
 use crate::optimize::method_brent::{brent_inner, brent_log_inner, brent_sqrt_inner};
 use crate::optimize::method_newton::{newton_inner, newton_log_inner, newton_sqrt_inner};
@@ -14,10 +13,9 @@ use parking_lot::RwLock;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
-use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Unified optimization function for mixed partition types.
 ///
@@ -28,10 +26,11 @@ pub fn run_optimize_mixed<N, E, P>(
   graph: &Graph<N, E, ()>,
   partitions: &[Arc<RwLock<P>>],
   method: BranchOptMethod,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   P: PartitionOptimizeOps + ?Sized,
 {
   let total_length = total_sequence_length(partitions);
@@ -39,10 +38,8 @@ where
     return make_error!("Total sequence length across all partitions is zero; cannot optimize branch lengths");
   }
 
-  let mut branch_lengths = edge_branch_lengths(graph);
-  let indel_rate = estimate_indel_rate(graph, partitions, &branch_lengths);
-  run_optimize_mixed_inner(graph, partitions, method, indel_rate, false, &mut branch_lengths)?;
-  commit_branch_lengths(graph, &branch_lengths);
+  let indel_rate = estimate_indel_rate(graph, partitions, branch_lengths);
+  run_optimize_mixed_inner(graph, partitions, method, indel_rate, false, branch_lengths)?;
   Ok(())
 }
 
@@ -52,15 +49,14 @@ pub fn run_optimize_mixed_with_indel_rate<N, E, P>(
   partitions: &[Arc<RwLock<P>>],
   method: BranchOptMethod,
   indel_rate: f64,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   P: PartitionOptimizeOps + ?Sized,
 {
-  let mut branch_lengths = edge_branch_lengths(graph);
-  run_optimize_mixed_inner(graph, partitions, method, indel_rate, false, &mut branch_lengths)?;
-  commit_branch_lengths(graph, &branch_lengths);
+  run_optimize_mixed_inner(graph, partitions, method, indel_rate, false, branch_lengths)?;
   Ok(())
 }
 
@@ -74,7 +70,7 @@ pub fn run_optimize_mixed_inner<N, E, P>(
 ) -> Result<(), Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   P: PartitionOptimizeOps + ?Sized,
 {
   let total_length = total_sequence_length(partitions);
@@ -313,10 +309,11 @@ pub fn initial_guess_mixed<N, E, P>(
   partitions: &[Arc<RwLock<P>>],
   overwrite_valid: bool,
   no_indels: bool,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   P: PartitionOptimizeOps + ?Sized,
 {
   let total_length: usize = partitions
@@ -329,16 +326,14 @@ where
   }
 
   let one_mutation = 1.0 / total_length as f64;
-  let branch_lengths = edge_branch_lengths(graph);
   let indel_rate = if no_indels {
     0.0
   } else {
-    estimate_indel_rate(graph, partitions, &branch_lengths)
+    estimate_indel_rate(graph, partitions, branch_lengths)
   };
 
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.read_arc().key();
-    let mut edge = edge_ref.write_arc().payload().write_arc();
 
     let indel_count: usize = if no_indels {
       0
@@ -350,7 +345,7 @@ where
     };
 
     if !overwrite_valid {
-      if let Some(bl) = edge.branch_length() {
+      if let Some(bl) = branch_lengths.get(&edge_key).copied().flatten() {
         // A finite positive BL is always valid. A zero BL is valid only
         // if the edge has no indels: with indels present, the Poisson
         // derivative diverges at t=0 and estimate_indel_rate() needs
@@ -391,7 +386,7 @@ where
     } else {
       one_mutation * 0.1
     };
-    edge.set_branch_length(Some(branch_length));
+    branch_lengths.insert(edge_key, Some(branch_length));
   }
 
   Ok(())

@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::ancestral::marginal::profile_branch_lengths;
 use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partition};
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
@@ -14,7 +13,12 @@ use treetime_utils::sync::random::get_random_number_generator;
 /// in-memory: the graph is parsed from a string and sequences are built directly.
 #[test]
 fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
-  let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+  let NwkParse {
+    graph,
+    names,
+    branch_lengths,
+    ..
+  } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
   let graph: GraphAncestral = graph;
   let aa = Alphabet::new(AlphabetName::Aa).unwrap();
 
@@ -33,7 +37,6 @@ fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
 
   let mut rng = get_random_number_generator(params.seed);
   let name_map = names.clone();
-  let branch_lengths = profile_branch_lengths(&graph);
   let reconstructed = plans
     .into_iter()
     .enumerate()

@@ -2,7 +2,7 @@ use crate::partition::traits::PartitionBranchOps;
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, NodeOptimizeOps};
 use treetime_utils::collections::container::get_exactly_one;
@@ -12,7 +12,7 @@ pub struct OnlyLeaves(pub bool);
 
 /// Calculate mapping of node name to node divergence (accumulated by summing branch lengths).
 /// Only nodes with names are included in the result.
-pub fn compute_divs<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
+pub fn compute_divs<N: NodeOptimizeOps, E: GraphEdge, D: Send + Sync>(
   graph: &Graph<N, E, D>,
   only_leaves: OnlyLeaves,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -49,7 +49,7 @@ pub fn compute_divs<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
 ///
 /// Returns a map from edge key to the number of canonical (non-gap, non-ambiguous)
 /// substitutions on that edge, as determined by `PartitionBranchOps::edge_subs()`.
-pub fn compute_edge_mutation_counts<N: NodeOptimizeOps, E: EdgeOptimizeOps, D: Send + Sync>(
+pub fn compute_edge_mutation_counts<N: NodeOptimizeOps, E: GraphEdge, D: Send + Sync>(
   graph: &Graph<N, E, D>,
   partition: &dyn PartitionBranchOps,
 ) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {

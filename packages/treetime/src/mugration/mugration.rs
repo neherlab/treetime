@@ -16,6 +16,7 @@ use parking_lot::RwLock;
 use statrs::statistics::Statistics;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 
 #[derive(Debug)]
@@ -82,6 +83,7 @@ pub fn execute_mugration(
   graph: GraphAncestral,
   confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   traits: &BTreeMap<String, String>,
   attribute: &str,
   weights: Option<&BTreeMap<String, f64>>,
@@ -166,7 +168,7 @@ pub fn execute_mugration(
 
   let log_lh = marginal_update(
     &graph,
-    &profile_branch_lengths(&graph),
+    &profile_branch_lengths(branch_lengths),
     std::slice::from_ref(&partition),
   )?;
   info!("Mugration: initial log likelihood = {:.4}", log_lh.value());
@@ -174,6 +176,7 @@ pub fn execute_mugration(
   let log_lh = refine_gtr_iterative(
     &graph,
     &partition,
+    branch_lengths,
     iterations,
     fixed_pi.as_ref(),
     pc.unwrap_or(1.0),
@@ -189,6 +192,7 @@ pub fn execute_mugration(
     graph,
     confidences,
     names,
+    branch_lengths,
     partition,
     attribute,
     log_lh,

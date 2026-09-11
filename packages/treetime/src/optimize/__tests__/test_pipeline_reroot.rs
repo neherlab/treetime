@@ -10,7 +10,7 @@ mod tests {
   use eyre::Report;
   use std::collections::BTreeMap;
   use std::path::Path;
-  use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta};
   use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -21,6 +21,7 @@ mod tests {
       BTreeMap<GraphNodeKey, Option<String>>,
       Alphabet,
       Vec<FastaRecord>,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
   > {
@@ -29,11 +30,16 @@ mod tests {
       .and_then(Path::parent)
       .expect("workspace root");
     let alphabet = Alphabet::default();
-    let NwkParse { graph, names, .. } = nwk_read_file(workspace_root.join("data/flu/h3n2/20/tree.nwk"))?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_file(workspace_root.join("data/flu/h3n2/20/tree.nwk"))?;
     let graph: GraphAncestral = graph;
     let aln = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
     let sequences = read_many_fasta(&[aln.to_str().expect("utf-8 path")], &alphabet)?;
-    Ok((graph, names, alphabet, sequences))
+    Ok((graph, names, alphabet, sequences, branch_lengths))
   }
 
   fn params_with(reroot_spec: Option<RerootSpec>) -> OptimizeParams {
@@ -51,14 +57,10 @@ mod tests {
     }
   }
 
-  fn assert_branch_lengths_valid(graph: &GraphAncestral) {
+  fn assert_branch_lengths_valid(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) {
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
-      let bl = edge
-        .payload()
-        .read_arc()
-        .branch_length()
-        .expect("every edge has a branch length after optimization");
+      let bl = branch_lengths[&edge.key()].expect("every edge has a branch length after optimization");
       assert!(bl.is_finite() && bl >= 0.0, "invalid branch length {bl}");
     }
   }
@@ -93,7 +95,7 @@ mod tests {
 
   #[test]
   fn test_optimize_pipeline_reroot_min_dev_changes_root() -> Result<(), Report> {
-    let (graph, names, alphabet, sequences) = load()?;
+    let (graph, names, alphabet, sequences, branch_lengths) = load()?;
     let leaves_before = graph.get_leaves().len();
     let root_children_before = root_child_keys(&graph);
     let output = run(
@@ -102,13 +104,14 @@ mod tests {
         graph,
         alphabet,
         sequences,
+        branch_lengths,
       },
       &names,
       &NoopProgress,
     )?;
 
     assert_eq!(output.graph.get_leaves().len(), leaves_before);
-    assert_branch_lengths_valid(&output.graph);
+    assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
     let root_children_after = root_child_keys(&output.graph);
     assert_ne!(
       root_children_before, root_children_after,
@@ -119,7 +122,7 @@ mod tests {
 
   #[test]
   fn test_optimize_pipeline_reroot_tips_changes_root() -> Result<(), Report> {
-    let (graph, names, alphabet, sequences) = load()?;
+    let (graph, names, alphabet, sequences, branch_lengths) = load()?;
     let leaves_before = graph.get_leaves().len();
     let root_before = root_key(&graph);
     let tips: Vec<String> = leaf_names(&graph, &names).into_iter().take(2).collect();
@@ -129,13 +132,14 @@ mod tests {
         graph,
         alphabet,
         sequences,
+        branch_lengths,
       },
       &names,
       &NoopProgress,
     )?;
 
     assert_eq!(output.graph.get_leaves().len(), leaves_before);
-    assert_branch_lengths_valid(&output.graph);
+    assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
     let root_after = root_key(&output.graph);
     assert_ne!(root_before, root_after, "tip-based reroot should move the root");
     Ok(())
@@ -143,7 +147,7 @@ mod tests {
 
   #[test]
   fn test_optimize_pipeline_reroot_min_dev_dense_completes() -> Result<(), Report> {
-    let (graph, names, alphabet, sequences) = load()?;
+    let (graph, names, alphabet, sequences, branch_lengths) = load()?;
     let leaves_before = graph.get_leaves().len();
 
     let mut params = params_with(Some(RerootSpec::Method(RerootMethod::MinDev)));
@@ -154,13 +158,14 @@ mod tests {
         graph,
         alphabet,
         sequences,
+        branch_lengths,
       },
       &names,
       &NoopProgress,
     )?;
 
     assert_eq!(output.graph.get_leaves().len(), leaves_before);
-    assert_branch_lengths_valid(&output.graph);
+    assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
     Ok(())
   }
 
@@ -168,7 +173,7 @@ mod tests {
   // flags; both must complete and preserve the tree.
   #[test]
   fn test_optimize_pipeline_keep_root_completes() -> Result<(), Report> {
-    let (graph, names, alphabet, sequences) = load()?;
+    let (graph, names, alphabet, sequences, branch_lengths) = load()?;
     let leaves_before = graph.get_leaves().len();
     let output = run(
       &params_with(None),
@@ -176,13 +181,14 @@ mod tests {
         graph,
         alphabet,
         sequences,
+        branch_lengths,
       },
       &names,
       &NoopProgress,
     )?;
 
     assert_eq!(output.graph.get_leaves().len(), leaves_before);
-    assert_branch_lengths_valid(&output.graph);
+    assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
     Ok(())
   }
 }

@@ -5,7 +5,7 @@ use itertools::Itertools;
 use log::warn;
 use ndarray::Array2;
 use std::collections::BTreeMap;
-use treetime_graph::edge::EdgeOptimizeOps;
+use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
 
@@ -26,7 +26,7 @@ pub(crate) fn validate_trait_names<N, E>(
 ) -> Result<(), Report>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   let leaf_names: IndexSet<String> = graph
     .get_leaves()

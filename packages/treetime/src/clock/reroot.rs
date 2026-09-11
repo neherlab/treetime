@@ -14,11 +14,12 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use treetime_graph::common_ancestor::common_ancestor;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
-use treetime_graph::reroot::{self as topology_reroot, remove_node_if_trivial, split_edge};
-use treetime_graph::value_maps::edge_branch_lengths;
+use treetime_graph::reroot::{
+  self as topology_reroot, record_merge, record_split, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
+};
 
 use topology_reroot::{EdgeSplitInfo, RerootResult};
 
@@ -64,6 +65,7 @@ pub fn reroot_in_place<N, E, D>(
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<RerootResult, Report>
 where
@@ -73,7 +75,7 @@ where
 {
   let FindRootResult {
     edge, split, clock_set, ..
-  } = select_root(graph, state, options, params, reroot_params, names)?;
+  } = select_root(graph, state, options, params, reroot_params, branch_lengths, names)?;
 
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
   let Some(edge_key) = edge else {
@@ -98,17 +100,20 @@ where
   } else if ulps_eq!(split, 1.0, max_ulps = 5) {
     (target_key, None)
   } else if reroot_params.split_edge {
-    let split_info = create_new_root_node(graph, state, edge_key, split, clock_set)?;
+    let length = branch_lengths.get(&edge_key).copied().flatten();
+    let split_info = create_new_root_node(graph, state, edge_key, split, length, clock_set)?;
+    record_split(branch_lengths, &split_info);
     (split_info.new_node_key, Some(split_info))
   } else {
     (if split < 0.5 { source_key } else { target_key }, None)
   };
 
   let (inverted_edge_keys, edge_merge) = if new_root_key != old_root_key {
-    let mut inverted = apply_reroot(graph, state, old_root_key, new_root_key, options)?;
+    let mut inverted = apply_reroot(graph, state, old_root_key, new_root_key, branch_lengths, options)?;
 
     let merge = if reroot_params.remove_trivial_root {
-      remove_node_if_trivial(graph, old_root_key)?
+      let (parent_branch, child_branch) = trivial_node_branch_lengths(graph, old_root_key, branch_lengths);
+      remove_node_if_trivial(graph, old_root_key, parent_branch, child_branch)?
     } else {
       None
     };
@@ -116,6 +121,7 @@ where
     // Remove edges consumed by the merge (they no longer exist in the graph)
     if let Some(merge) = &merge {
       inverted.retain(|k| *k != merge.parent_edge_key && *k != merge.child_edge_key);
+      record_merge(branch_lengths, merge);
       // Keep the clock state consistent with the mutated node/edge set: the removed node and the two
       // edges it joined are gone; the merged edge takes their place with default messages (recomputed
       // by the next backward pass; a keep-root pass never reads them).
@@ -145,14 +151,15 @@ fn create_new_root_node<N, E, D>(
   state: &mut ClockState,
   edge_key: GraphEdgeKey,
   split: f64,
+  branch_length: Option<f64>,
   clock_set: ClockSet,
 ) -> Result<EdgeSplitInfo, Report>
 where
   N: GraphNode + Default,
-  E: GraphEdge + HasBranchLength + Default,
+  E: GraphEdge + Default,
   D: Send + Sync,
 {
-  let split_info = split_edge(graph, edge_key, split)?;
+  let split_info = split_edge(graph, edge_key, split, branch_length)?;
 
   // Keep the clock state consistent with the mutated node/edge set: the split replaces one edge with
   // two and inserts one node. The new node carries the evaluated clock set at the split point; its
@@ -181,6 +188,7 @@ fn select_root<N, E, D>(
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<FindRootResult, Report>
 where
@@ -194,14 +202,31 @@ where
       state,
       options,
       params,
+      branch_lengths,
       reroot_params.force_positive_rate,
       reroot_params.objective,
     ),
-    RerootSpec::Method(RerootMethod::MinDev) => {
-      find_best_root(graph, state, options, params, false, RootObjective::FixedRate(0.0))
+    RerootSpec::Method(RerootMethod::MinDev) => find_best_root(
+      graph,
+      state,
+      options,
+      params,
+      branch_lengths,
+      false,
+      RootObjective::FixedRate(0.0),
+    ),
+    RerootSpec::Method(RerootMethod::Oldest) => {
+      find_oldest_root(graph, state, options, branch_lengths, reroot_params.objective)
     },
-    RerootSpec::Method(RerootMethod::Oldest) => find_oldest_root(graph, state, options, reroot_params.objective),
-    RerootSpec::Tips(tips) => find_tip_group_root(graph, state, options, tips, reroot_params.objective, names),
+    RerootSpec::Tips(tips) => find_tip_group_root(
+      graph,
+      state,
+      options,
+      tips,
+      branch_lengths,
+      reroot_params.objective,
+      names,
+    ),
   }
 }
 
@@ -209,6 +234,7 @@ fn find_oldest_root<N, E, D>(
   graph: &Graph<N, E, D>,
   state: &ClockState,
   options: &ClockParams,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
@@ -230,7 +256,7 @@ where
     return make_error!("Cannot reroot to oldest tip because no dated leaves were found");
   };
 
-  find_named_root_point(graph, state, options, oldest_key, objective)
+  find_named_root_point(graph, state, options, oldest_key, branch_lengths, objective)
 }
 
 fn find_tip_group_root<N, E, D>(
@@ -238,6 +264,7 @@ fn find_tip_group_root<N, E, D>(
   state: &ClockState,
   options: &ClockParams,
   tips: &[String],
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   objective: RootObjective,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<FindRootResult, Report>
@@ -261,7 +288,7 @@ where
     })
     .try_collect::<_, Vec<_>, _>()?;
   let mrca_key = common_ancestor(graph, &tip_keys)?;
-  find_named_root_point(graph, state, options, mrca_key, objective)
+  find_named_root_point(graph, state, options, mrca_key, branch_lengths, objective)
 }
 
 fn find_named_root_point<N, E, D>(
@@ -269,6 +296,7 @@ fn find_named_root_point<N, E, D>(
   state: &ClockState,
   options: &ClockParams,
   node_key: GraphNodeKey,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
@@ -288,8 +316,7 @@ where
   };
 
   let split = 0.5;
-  let branch_lengths = edge_branch_lengths(graph);
-  let cost_fn = BranchPointCostFunction::new(graph, state, edge, &branch_lengths, options, objective)?;
+  let cost_fn = BranchPointCostFunction::new(graph, state, edge, branch_lengths, options, objective)?;
   let clock_set = cost_fn.evaluate_clock_set(split)?;
   Ok(FindRootResult {
     edge: Some(edge),
@@ -306,15 +333,15 @@ fn apply_reroot<N, E, D>(
   state: &mut ClockState,
   old_root_key: GraphNodeKey,
   new_root_key: GraphNodeKey,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &ClockParams,
 ) -> Result<Vec<GraphEdgeKey>, Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   D: Send + Sync,
 {
   let inverted_edge_keys = topology_reroot::apply_reroot_topology(graph, old_root_key, new_root_key)?;
-  let branch_lengths = edge_branch_lengths(graph);
 
   for edge_key in &inverted_edge_keys {
     let edge_len = branch_lengths[edge_key].unwrap();

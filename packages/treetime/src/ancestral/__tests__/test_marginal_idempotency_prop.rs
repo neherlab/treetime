@@ -8,7 +8,7 @@ mod tests {
   use crate::seq::composition::Composition;
   use proptest::prelude::*;
   use rand::SeedableRng;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::AlphabetLike;
   use treetime_utils::prop_assert_abs_diff_eq;
 
@@ -43,13 +43,14 @@ mod tests {
     /// Companion example test: `test_marginal_idempotency_example_dense`.
     #[test]
     fn test_prop_marginal_idempotency_dense(input in arb_marginal_input_small()) {
-      let graph: GraphAncestral = nwk_read_str(&input.newick).unwrap().graph;
+      let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
+      let graph: GraphAncestral = graph;
       let (_, partitions) = run_dense_marginal(&input).unwrap();
 
-      let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)
+      let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)
         .unwrap()
         .value();
-      let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)
+      let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)
         .unwrap()
         .value();
 
@@ -77,13 +78,14 @@ mod tests {
     /// Companion example test: `test_marginal_idempotency_example_sparse`.
     #[test]
     fn test_prop_marginal_idempotency_sparse(input in arb_marginal_input_small()) {
-      let graph: GraphAncestral = nwk_read_str(&input.newick).unwrap().graph;
+      let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
+      let graph: GraphAncestral = graph;
       let (_, partitions) = run_sparse_marginal(&input).unwrap();
 
-      let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)
+      let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)
         .unwrap()
         .value();
-      let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)
+      let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)
         .unwrap()
         .value();
 
@@ -95,7 +97,8 @@ mod tests {
     /// pairing, so an output pass must not rewrite either.
     #[test]
     fn test_prop_marginal_sparse_map_composition_matches_sequence(input in arb_marginal_input_small()) {
-      let graph: GraphAncestral = nwk_read_str(&input.newick).unwrap().graph;
+      let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
+      let graph: GraphAncestral = graph;
       let (_, partitions) = run_sparse_marginal(&input).unwrap();
       let mut rng = rand::rngs::StdRng::seed_from_u64(0);
 

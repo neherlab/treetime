@@ -20,8 +20,6 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_graph::edge::HasBranchLength;
-  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::Seq;
 
@@ -31,23 +29,23 @@ mod tests {
     let NwkParse {
       graph: mut graph_with,
       names: graph_with_names,
+      branch_lengths: mut branch_lengths_with,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let (dense_with, sparse_with, mixed_with) = setup_partitions(&graph_with, &graph_with_names, &aln)?;
+    let (dense_with, sparse_with, mixed_with) =
+      setup_partitions(&graph_with, &graph_with_names, &aln, &mut branch_lengths_with)?;
 
     let NwkParse {
       graph: mut graph_without,
       names: graph_without_names,
+      branch_lengths: mut branch_lengths_without,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let (dense_without, sparse_without, mixed_without) = setup_partitions(&graph_without, &graph_without_names, &aln)?;
+    let (dense_without, sparse_without, mixed_without) =
+      setup_partitions(&graph_without, &graph_without_names, &aln, &mut branch_lengths_without)?;
 
     let first_edge_key = graph_with.get_edges()[0].read_arc().key();
-    graph_with.get_edges()[0]
-      .write_arc()
-      .payload()
-      .write_arc()
-      .set_branch_length(Some(0.1));
+    branch_lengths_with.insert(first_edge_key, Some(0.1));
     sparse_with[0]
       .write_arc()
       .edges
@@ -56,11 +54,7 @@ mod tests {
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     let first_edge_key_without = graph_without.get_edges()[0].read_arc().key();
-    graph_without.get_edges()[0]
-      .write_arc()
-      .payload()
-      .write_arc()
-      .set_branch_length(Some(0.1));
+    branch_lengths_without.insert(first_edge_key_without, Some(0.1));
     sparse_without[0]
       .write_arc()
       .edges
@@ -80,6 +74,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths_with,
       &names_tt_4,
     )?;
 
@@ -95,6 +90,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       true,
       TopologyOps::default(),
+      branch_lengths_without,
       &names_tt_3,
     )?;
 
@@ -110,16 +106,17 @@ mod tests {
   #[test]
   fn test_no_indels_optimizer_ignores_indel_counts() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let (_, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (_, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let first_edge_key = graph.get_edges()[0].read_arc().key();
-    graph.get_edges()[0]
-      .write_arc()
-      .payload()
-      .write_arc()
-      .set_branch_length(Some(0.05));
+    branch_lengths.insert(first_edge_key, Some(0.05));
     sparse_partitions[0]
       .write_arc()
       .edges
@@ -127,9 +124,8 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
-    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
 
-    let mut branch_lengths = edge_branch_lengths(&graph);
     let bl_before = branch_lengths.clone();
 
     run_optimize_mixed_inner(
@@ -151,16 +147,19 @@ mod tests {
     let NwkParse {
       graph: mut graph_no_flag,
       names: graph_no_flag_names,
+      branch_lengths: mut branch_lengths_nf,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let (dense_nf, sparse_nf, mixed_nf) = setup_partitions(&graph_no_flag, &graph_no_flag_names, &aln)?;
+    let (dense_nf, sparse_nf, mixed_nf) =
+      setup_partitions(&graph_no_flag, &graph_no_flag_names, &aln, &mut branch_lengths_nf)?;
 
     let NwkParse {
       graph: mut graph_flag,
       names: graph_flag_names,
+      branch_lengths: mut branch_lengths_f,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let (dense_f, sparse_f, mixed_f) = setup_partitions(&graph_flag, &graph_flag_names, &aln)?;
+    let (dense_f, sparse_f, mixed_f) = setup_partitions(&graph_flag, &graph_flag_names, &aln, &mut branch_lengths_f)?;
 
     let names_tt_2 = graph_no_flag_names.clone();
     let result_no_flag = run_optimize_loop(
@@ -174,6 +173,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths_nf,
       &names_tt_2,
     )?;
 
@@ -189,6 +189,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       true,
       TopologyOps::default(),
+      branch_lengths_f,
       &names_tt_1,
     )?;
 
@@ -210,9 +211,16 @@ mod tests {
 
   #[test]
   fn test_no_indels_initial_guess_never_accepts_zero_bl_with_indels() -> Result<(), Report> {
-    let (graph, names, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    let (graph, names, partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     inject_indel_on_first_edge(&graph, &partitions)?;
-    let result = apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, true, &names);
+    let result = apply_initial_guess_mode(
+      &graph,
+      &partitions,
+      InitialGuessMode::Never,
+      true,
+      &mut branch_lengths,
+      &names,
+    );
     assert!(
       result.is_ok(),
       "no_indels=true should accept zero-BL indel edges in Never mode, got: {result:?}"
@@ -227,9 +235,9 @@ mod tests {
   #[trace]
   fn test_no_indels_initial_guess_ignores_indel_counts(#[case] mode: InitialGuessMode,
   ) -> Result<(), Report> {
-    let NwkParse { graph: graph_with_indel, names: graph_with_indel_names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse { graph: graph_with_indel, names: graph_with_indel_names, branch_lengths: mut branch_lengths_with_indel, .. } = nwk_read_str(TREE_NEWICK)?;
     let (dense_with_indel, sparse_with_indel, partitions_with_indel) =
-      setup_identical_partitions(&graph_with_indel, &graph_with_indel_names)?;
+      setup_identical_partitions(&graph_with_indel, &graph_with_indel_names, &mut branch_lengths_with_indel)?;
     let indels = vec![InDel::del((0, 2), Seq::try_from_str("AC")?)?];
     inject_indels_on_first_edge(
       &graph_with_indel,
@@ -238,14 +246,15 @@ mod tests {
       &indels,
     );
 
-    let NwkParse { graph: graph_without_indel, names: graph_without_indel_names, .. } = nwk_read_str(TREE_NEWICK)?;
-    let (_, _, partitions_without_indel) = setup_identical_partitions(&graph_without_indel, &graph_without_indel_names)?;
+    let NwkParse { graph: graph_without_indel, names: graph_without_indel_names, branch_lengths: mut branch_lengths_without_indel, .. } = nwk_read_str(TREE_NEWICK)?;
+    let (_, _, partitions_without_indel) =
+      setup_identical_partitions(&graph_without_indel, &graph_without_indel_names, &mut branch_lengths_without_indel)?;
 
-    apply_initial_guess_mode(&graph_with_indel, &partitions_with_indel, mode, true, &graph_with_indel_names)?;
-    apply_initial_guess_mode(&graph_without_indel, &partitions_without_indel, mode, true, &graph_without_indel_names)?;
+    apply_initial_guess_mode(&graph_with_indel, &partitions_with_indel, mode, true, &mut branch_lengths_with_indel, &graph_with_indel_names)?;
+    apply_initial_guess_mode(&graph_without_indel, &partitions_without_indel, mode, true, &mut branch_lengths_without_indel, &graph_without_indel_names)?;
 
-    let expected = get_branch_lengths(&graph_without_indel);
-    let actual = get_branch_lengths(&graph_with_indel);
+    let expected = get_branch_lengths(&graph_without_indel, &branch_lengths_without_indel);
+    let actual = get_branch_lengths(&graph_with_indel, &branch_lengths_with_indel);
     assert_eq!(expected, actual);
     Ok(())
   }

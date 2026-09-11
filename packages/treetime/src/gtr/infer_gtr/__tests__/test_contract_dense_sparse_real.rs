@@ -42,7 +42,6 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::traits::TransitionCounting;
   use crate::seq::alignment::get_common_length;
-  use treetime_graph::value_maps::edge_branch_lengths;
 
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -123,7 +122,12 @@ mod tests {
     let aln = read_many_fasta(&[&alignment_path], &*DENSE_NUC_ALPHABET)?;
 
     let dense = {
-      let NwkParse { graph, names, .. } = nwk_read_file(&tree_path)?;
+      let NwkParse {
+        graph,
+        names,
+        branch_lengths,
+        ..
+      } = nwk_read_file(&tree_path)?;
       let graph: GraphAncestral = graph;
       let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
         0,
@@ -136,15 +140,13 @@ mod tests {
       )));
       initialize_marginal(
         &graph,
-        &profile_branch_lengths(&graph),
+        &profile_branch_lengths(&branch_lengths),
         from_ref(&partition),
         &aln,
         &names,
       )?
       .value();
-      let counts = partition
-        .read_arc()
-        .count_transitions(&graph, &edge_branch_lengths(&graph))?;
+      let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
       let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
       let n_states = partition.read_arc().alphabet.n_canonical();
       GTR::new(GTRParams {
@@ -156,10 +158,15 @@ mod tests {
     };
 
     let sparse = {
-      let NwkParse { graph, names, .. } = nwk_read_file(&tree_path)?;
+      let NwkParse {
+        graph,
+        names,
+        branch_lengths,
+        ..
+      } = nwk_read_file(&tree_path)?;
       let graph: GraphAncestral = graph;
       let fitch = create_fitch_partition(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &aln, &names)?;
-      infer_gtr_fitch(&fitch, &graph, &edge_branch_lengths(&graph))?
+      infer_gtr_fitch(&fitch, &graph, &branch_lengths)?
     };
 
     Ok(DenseSparseGtr { dense, sparse })

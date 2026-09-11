@@ -13,6 +13,7 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use std::collections::BTreeMap;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -40,19 +41,25 @@ mod tests {
       BTreeMap<GraphNodeKey, Option<String>>,
       ClockParams,
       ClockState,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
   > {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let graph: GraphClock = graph;
     let times = leaf_times(&names, &graph, dates);
 
     let options = ClockParams::default();
     let mut state = ClockState::seed_from_values(&graph, &times);
-    clock_regression_backward(&graph, &mut state, &options, None)?;
-    clock_regression_forward(&graph, &mut state, &options, None)?;
+    clock_regression_backward(&graph, &mut state, &options, &branch_lengths, None)?;
+    clock_regression_forward(&graph, &mut state, &options, &branch_lengths, None)?;
 
-    Ok((graph, names, options, state))
+    Ok((graph, names, options, state, branch_lengths))
   }
 
   fn setup_test_graph() -> Result<
@@ -61,6 +68,7 @@ mod tests {
       BTreeMap<GraphNodeKey, Option<String>>,
       ClockParams,
       ClockState,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
   > {
@@ -96,13 +104,14 @@ mod tests {
 
   #[test]
   fn test_find_best_root_grid() -> Result<(), Report> {
-    let (graph, names, options, state) = setup_test_graph()?;
+    let (graph, names, options, state, branch_lengths) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
       &state,
       &options,
       &BranchPointOptimizationParams::grid(),
+      &branch_lengths,
       true,
       RootObjective::EstimatedRate,
     )?;
@@ -126,13 +135,14 @@ mod tests {
 
   #[test]
   fn test_find_best_root_grid_with_params() -> Result<(), Report> {
-    let (graph, names, options, state) = setup_test_graph()?;
+    let (graph, names, options, state, branch_lengths) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
       &state,
       &options,
       &BranchPointOptimizationParams::grid_with(GridSearchParams { n_points: 51 }),
+      &branch_lengths,
       true,
       RootObjective::EstimatedRate,
     )?;
@@ -156,13 +166,14 @@ mod tests {
 
   #[test]
   fn test_find_best_root_grid_scores_fixed_rate_objective() -> Result<(), Report> {
-    let (graph, names, options, state) = setup_test_graph()?;
+    let (graph, names, options, state, branch_lengths) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
       &state,
       &options,
       &BranchPointOptimizationParams::grid(),
+      &branch_lengths,
       true,
       RootObjective::FixedRate(0.0),
     )?;
@@ -179,13 +190,14 @@ mod tests {
 
   #[test]
   fn test_find_best_root_brent() -> Result<(), Report> {
-    let (graph, names, options, state) = setup_test_graph()?;
+    let (graph, names, options, state, branch_lengths) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
       &state,
       &options,
       &BranchPointOptimizationParams::brent(),
+      &branch_lengths,
       true,
       RootObjective::EstimatedRate,
     )?;
@@ -209,7 +221,7 @@ mod tests {
 
   #[test]
   fn test_find_best_root_brent_with_params() -> Result<(), Report> {
-    let (graph, names, options, state) = setup_test_graph()?;
+    let (graph, names, options, state, branch_lengths) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
@@ -219,6 +231,7 @@ mod tests {
         brent_max_iters: 25,
         brent_tolerance: 1e-8,
       }),
+      &branch_lengths,
       true,
       RootObjective::EstimatedRate,
     )?;
@@ -242,13 +255,14 @@ mod tests {
 
   #[test]
   fn test_find_best_root_golden_section() -> Result<(), Report> {
-    let (graph, names, options, state) = setup_test_graph()?;
+    let (graph, names, options, state, branch_lengths) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
       &state,
       &options,
       &BranchPointOptimizationParams::golden_section(),
+      &branch_lengths,
       true,
       RootObjective::EstimatedRate,
     )?;
@@ -272,7 +286,7 @@ mod tests {
 
   #[test]
   fn test_find_best_root_golden_section_with_params() -> Result<(), Report> {
-    let (graph, names, options, state) = setup_test_graph()?;
+    let (graph, names, options, state, branch_lengths) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
@@ -282,6 +296,7 @@ mod tests {
         golden_max_iters: 25,
         golden_tolerance: 1e-8,
       }),
+      &branch_lengths,
       true,
       RootObjective::EstimatedRate,
     )?;
@@ -305,7 +320,7 @@ mod tests {
 
   #[test]
   fn test_optimization_methods_improve_on_grid() -> Result<(), Report> {
-    let (graph, names, options, state) = setup_test_graph()?;
+    let (graph, names, options, state, branch_lengths) = setup_test_graph()?;
 
     // Run all three methods
     let grid_result = find_best_root(
@@ -313,6 +328,7 @@ mod tests {
       &state,
       &options,
       &BranchPointOptimizationParams::grid(),
+      &branch_lengths,
       true,
       RootObjective::EstimatedRate,
     )?;
@@ -321,6 +337,7 @@ mod tests {
       &state,
       &options,
       &BranchPointOptimizationParams::brent(),
+      &branch_lengths,
       true,
       RootObjective::EstimatedRate,
     )?;
@@ -329,6 +346,7 @@ mod tests {
       &state,
       &options,
       &BranchPointOptimizationParams::golden_section(),
+      &branch_lengths,
       true,
       RootObjective::EstimatedRate,
     )?;
@@ -369,6 +387,7 @@ mod tests {
       BTreeMap<GraphNodeKey, Option<String>>,
       ClockParams,
       ClockState,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
   > {
@@ -383,13 +402,14 @@ mod tests {
 
   #[test]
   fn test_find_best_root_force_positive_true_rejects_negative_rate() -> Result<(), Report> {
-    let (graph, names, options, state) = setup_negative_rate_graph()?;
+    let (graph, names, options, state, branch_lengths) = setup_negative_rate_graph()?;
 
     let result = find_best_root(
       &graph,
       &state,
       &options,
       &BranchPointOptimizationParams::grid(),
+      &branch_lengths,
       true,
       RootObjective::EstimatedRate,
     );
@@ -409,13 +429,14 @@ mod tests {
 
   #[test]
   fn test_find_best_root_force_positive_false_accepts_negative_rate() -> Result<(), Report> {
-    let (graph, names, options, state) = setup_negative_rate_graph()?;
+    let (graph, names, options, state, branch_lengths) = setup_negative_rate_graph()?;
 
     let best_root = find_best_root(
       &graph,
       &state,
       &options,
       &BranchPointOptimizationParams::grid(),
+      &branch_lengths,
       false,
       RootObjective::EstimatedRate,
     )?;

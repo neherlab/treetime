@@ -2,7 +2,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::partition::traits::{PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps};
 use eyre::Report;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_graph::reroot::RerootChanges;
@@ -35,7 +35,7 @@ impl PartitionRerootOps for PartitionTimetree {
 impl<N, E> PartitionTimetreeOps<N, E> for PartitionTimetree
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>) {
     match self {

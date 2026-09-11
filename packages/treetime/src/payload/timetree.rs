@@ -10,7 +10,7 @@ use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
-use treetime_graph::edge::{BranchDistribution, ClockMessages, GraphEdge, HasBranchLength, TimeLength};
+use treetime_graph::edge::{BranchDistribution, ClockMessages, GraphEdge, TimeLength};
 use treetime_graph::node::{GraphNode, Outlier, TimeConstraint};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
@@ -111,9 +111,9 @@ pub struct EdgeTimetree {
   pub base: EdgeAncestral,
   pub time_length: Option<f64>,
   /// Clock-constrained branch length in substitutions per site, `clock_rate * gamma * dt` over
-  /// the inferred node times. Distinct from `base.branch_length`, which stays the ML or input
-  /// length the branch-length grid is centred on and the root-to-tip regression reads; this one
-  /// is what sequence profiles propagate along. v0 keeps the same two-length split as
+  /// the inferred node times. Distinct from the raw input-tree branch length (threaded as a value
+  /// map, the length the branch-length grid is centred on and the root-to-tip regression reads);
+  /// this one is what sequence profiles propagate along. v0 keeps the same two-length split as
   /// `branch_length` and `mutation_length`.
   pub clock_branch_length: Option<f64>,
   #[serde(skip)]
@@ -125,22 +125,6 @@ pub struct EdgeTimetree {
 }
 
 impl GraphEdge for EdgeTimetree {}
-
-impl HasBranchLength for EdgeTimetree {
-  fn branch_length(&self) -> Option<f64> {
-    self.base.branch_length()
-  }
-
-  fn set_branch_length(&mut self, weight: Option<f64>) {
-    self.base.set_branch_length(weight);
-  }
-
-  /// The clock-constrained length once it has been committed, the ML or input length before
-  /// that and after a topology change has invalidated it.
-  fn profile_branch_length(&self) -> Option<f64> {
-    self.clock_branch_length.or_else(|| self.branch_length())
-  }
-}
 
 impl ClockEdge for EdgeTimetree {}
 

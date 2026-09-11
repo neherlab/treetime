@@ -8,10 +8,10 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use treetime_graph::edge::{GraphEdge, HasBranchLength};
+  use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
-  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+  use treetime_graph::value_maps::node_names;
 
   #[derive(Clone, Debug, PartialEq, Eq)]
   struct AnnotNode {
@@ -55,14 +55,17 @@ mod tests {
 
   impl GraphEdge for AnnotEdge {}
 
-  impl HasBranchLength for AnnotEdge {
-    fn branch_length(&self) -> Option<f64> {
-      self.0
-    }
-
-    fn set_branch_length(&mut self, weight: Option<f64>) {
-      self.0 = weight;
-    }
+  fn edge_branch_lengths<D: Send + Sync>(
+    graph: &Graph<AnnotNode, AnnotEdge, D>,
+  ) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+    graph
+      .get_edges()
+      .iter()
+      .map(|edge| {
+        let edge = edge.read_arc();
+        (edge.key(), edge.payload().read_arc().0)
+      })
+      .collect()
   }
 
   impl EdgeFromNwk for AnnotEdge {

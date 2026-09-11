@@ -22,7 +22,6 @@ use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
 pub(crate) struct Refinement<'a> {
@@ -50,6 +49,9 @@ pub(crate) struct Refinement<'a> {
   /// Committed clock-constrained branch lengths keyed by edge, routed so the M-step damps against
   /// the previous round's value without reading it back off the payload.
   pub clock_branch_lengths: &'a mut BTreeMap<GraphEdgeKey, f64>,
+  /// Raw per-edge branch lengths routed across the loop instead of read off the payload. Polytomy
+  /// resolution adds and merges edges and updates this map in place.
+  pub branch_lengths: &'a mut BTreeMap<GraphEdgeKey, Option<f64>>,
   /// Per-node names routed across the loop instead of read off the payload. Polytomy resolution adds
   /// nodes and re-runs `assign_node_names`; this map is refreshed from that call's return so every
   /// later reader (this round's `run_timetree` and the pipeline's post-loop consumers) sees the
@@ -114,10 +116,9 @@ impl Refinement<'_> {
       self.options.relax.first().copied().unwrap_or(1.0),
       self.options.relax.get(1).copied().unwrap_or(1.0)
     );
-    let branch_lengths = edge_branch_lengths(self.graph);
     apply_relaxed_clock(
       self.graph,
-      &branch_lengths,
+      self.branch_lengths,
       &self.options.relax,
       1.0 / total_length as f64,
       self.clock_model.clock_rate(),
@@ -140,6 +141,7 @@ impl Refinement<'_> {
       total_length,
       self.merger_rate,
       self.rng,
+      self.branch_lengths,
       self.state,
     )
     .wrap_err("Polytomy resolution failed")?;
@@ -175,18 +177,18 @@ impl Refinement<'_> {
   }
 
   fn rebuild_inference(&mut self, topology_changed: bool) -> Result<(), Report> {
-    // Snapshot the current per-edge lengths and per-node names once for every pass below; the
-    // marginal reconstruction and neither run_timetree call renames or re-lengths, so one snapshot
-    // serves all. Topology resolution and its `assign_node_names` ran before `rebuild_inference`, so
-    // the snapshot reflects the current tree.
-    let run_branch_lengths = edge_branch_lengths(self.graph);
+    // Use the routed per-edge length and per-node name maps for every pass below; the marginal
+    // reconstruction and neither run_timetree call renames or re-lengths, so one read serves all.
+    // Topology resolution and its `assign_node_names` ran before `rebuild_inference` and updated both
+    // maps, so they reflect the current tree.
+    let run_branch_lengths = &*self.branch_lengths;
     let run_names = &*self.names;
 
     if !self.partitions.is_empty() {
       info!("Updating ancestral sequences via marginal reconstruction");
       marginal_update(
         self.graph,
-        &timetree_branch_lengths(self.graph, &run_branch_lengths, self.clock_branch_lengths),
+        &timetree_branch_lengths(self.graph, run_branch_lengths, self.clock_branch_lengths),
         self.partitions,
       )?;
     }
@@ -196,7 +198,7 @@ impl Refinement<'_> {
       run_timetree(
         self.graph,
         self.partitions,
-        &run_branch_lengths,
+        run_branch_lengths,
         run_names,
         self.clock_model,
         None,
@@ -215,7 +217,7 @@ impl Refinement<'_> {
     run_timetree(
       self.graph,
       self.partitions,
-      &run_branch_lengths,
+      run_branch_lengths,
       run_names,
       self.clock_model,
       self.prior,
@@ -249,6 +251,7 @@ impl Refinement<'_> {
       true,
       self.branch_params,
       &RerootParams::default(),
+      self.branch_lengths,
       Some(self.clock_model.clock_rate()),
       self.names,
     )

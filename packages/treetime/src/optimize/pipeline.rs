@@ -4,7 +4,7 @@ use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
-use crate::optimize::iteration::{apply_damping, commit_branch_lengths};
+use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::run_loop::{
   apply_initial_guess_mode, collect_optimize_partitions, marginal_branch_lengths, normalize_partition_rates,
@@ -31,7 +31,6 @@ use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
-use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::fasta::FastaRecord;
 use treetime_utils::{make_error, make_report};
 
@@ -59,6 +58,10 @@ pub struct OptimizeInput {
   pub graph: GraphAncestral,
   pub alphabet: Alphabet,
   pub sequences: Vec<FastaRecord>,
+  /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. The optimize loop
+  /// takes ownership and makes it the source of truth: the initial guess, reroot, and per-edge
+  /// optimizer all update it, and it exits as `OptimizeOutput.branch_lengths`.
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -93,6 +96,8 @@ pub fn run(
     return make_error!("damping must be in [0.0, 1.0), got {}", params.damping);
   }
 
+  let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
+
   let created = create_marginal_partition(
     &input.graph,
     0,
@@ -100,6 +105,7 @@ pub fn run(
     &input.sequences,
     params.model,
     params.dense,
+    &branch_lengths,
     names,
   )?;
   let model_name = created.model_name;
@@ -134,23 +140,31 @@ pub fn run(
     }
   }
 
-  marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &sparse_partitions)?;
+  marginal_update(
+    &input.graph,
+    &profile_branch_lengths(&branch_lengths),
+    &sparse_partitions,
+  )?;
   if !dense_partitions.is_empty() {
     initialize_marginal(
       &input.graph,
-      &profile_branch_lengths(&input.graph),
+      &profile_branch_lengths(&branch_lengths),
       &dense_partitions,
       &input.sequences,
       names,
     )?;
-    marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &dense_partitions)?;
+    marginal_update(
+      &input.graph,
+      &profile_branch_lengths(&branch_lengths),
+      &dense_partitions,
+    )?;
   }
 
   let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 
   if model_name == GtrModelName::Infer {
-    normalize_partition_rates(&input.graph, &sparse_partitions);
-    normalize_partition_rates(&input.graph, &dense_partitions);
+    normalize_partition_rates(&sparse_partitions, &mut branch_lengths);
+    normalize_partition_rates(&dense_partitions, &mut branch_lengths);
   }
 
   apply_initial_guess_mode(
@@ -158,6 +172,7 @@ pub fn run(
     &mixed_partitions,
     params.initial_guess,
     params.no_indels,
+    &mut branch_lengths,
     names,
   )?;
 
@@ -174,8 +189,16 @@ pub fn run(
       &dense_partitions,
       params.opt_method,
       params.no_indels,
+      &mut branch_lengths,
     )?;
-    reroot_optimize(&mut input.graph, spec, &sparse_partitions, &dense_partitions, names)?;
+    reroot_optimize(
+      &mut input.graph,
+      spec,
+      &sparse_partitions,
+      &dense_partitions,
+      &mut branch_lengths,
+      names,
+    )?;
   }
 
   // Post-reroot names for the optimization loop. Reproject the threaded names onto the current node
@@ -205,6 +228,7 @@ pub fn run(
     params.opt_method,
     params.no_indels,
     params.topology_ops,
+    branch_lengths,
     &loop_names,
   )?;
   let branch_lengths = loop_result.branch_lengths;
@@ -252,22 +276,19 @@ fn pre_reroot_optimize(
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
   opt_method: BranchOptMethod,
   no_indels: bool,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  let old_branch_lengths = edge_branch_lengths(graph);
+  let old_branch_lengths = branch_lengths.clone();
 
-  let mut branch_lengths = if no_indels {
-    let mut branch_lengths = edge_branch_lengths(graph);
-    run_optimize_mixed_inner(graph, mixed_partitions, opt_method, 0.0, true, &mut branch_lengths)?;
-    branch_lengths
+  if no_indels {
+    run_optimize_mixed_inner(graph, mixed_partitions, opt_method, 0.0, true, branch_lengths)?;
   } else {
-    run_optimize_mixed(graph, mixed_partitions, opt_method)?;
-    edge_branch_lengths(graph)
-  };
+    run_optimize_mixed(graph, mixed_partitions, opt_method, branch_lengths)?;
+  }
 
-  apply_damping(&mut branch_lengths, &old_branch_lengths, PRE_REROOT_DAMPING, 0);
-  commit_branch_lengths(graph, &branch_lengths);
-  marginal_update(graph, &profile_branch_lengths(graph), sparse_partitions)?;
-  marginal_update(graph, &profile_branch_lengths(graph), dense_partitions)?;
+  apply_damping(branch_lengths, &old_branch_lengths, PRE_REROOT_DAMPING, 0);
+  marginal_update(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?;
+  marginal_update(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;
   Ok(())
 }
 
@@ -277,6 +298,7 @@ fn reroot_optimize(
   spec: &RerootSpec,
   sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
   dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report> {
   let variance = VarianceModel::default();
@@ -285,7 +307,7 @@ fn reroot_optimize(
 
   let reroot_result = match spec {
     RerootSpec::Method(RerootMethod::MinDev) => {
-      let field = compute_div_stats(graph, &variance)?;
+      let field = compute_div_stats(graph, branch_lengths, &variance)?;
       reroot_in_place::<_, _, _, DivStats, _>(
         graph,
         &field.edge_stats,
@@ -293,13 +315,14 @@ fn reroot_optimize(
         &variance,
         &opt_params,
         topo,
+        branch_lengths,
         |_graph, _inverted| Ok(()),
       )?
     },
     RerootSpec::Tips(tips) => {
       let tip_keys = resolve_tip_keys(graph, tips, names)?;
       let mrca = common_ancestor(graph, &tip_keys)?;
-      reroot_at_node(graph, mrca, topo, |_graph, _inverted| Ok(()))?
+      reroot_at_node(graph, mrca, topo, branch_lengths, |_graph, _inverted| Ok(()))?
     },
     RerootSpec::Method(method) => {
       return make_error!("optimize cannot reroot with a date-dependent method: {method:?}");
@@ -319,8 +342,8 @@ fn reroot_optimize(
     partition.write_arc().apply_reroot(&changes)?;
   }
 
-  marginal_update(graph, &profile_branch_lengths(graph), sparse_partitions)?;
-  marginal_update(graph, &profile_branch_lengths(graph), dense_partitions)?;
+  marginal_update(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?;
+  marginal_update(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;
   Ok(())
 }
 

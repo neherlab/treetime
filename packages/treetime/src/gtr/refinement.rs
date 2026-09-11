@@ -11,15 +11,15 @@ use ndarray::Array1;
 use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
-use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_primitives::LogLh;
 
 pub fn refine_gtr_iterative<N, E, P>(
   graph: &Graph<N, E, ()>,
   partition: &Arc<RwLock<P>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   iterations: usize,
   fixed_pi: Option<&Array1<f64>>,
   pc: f64,
@@ -28,7 +28,7 @@ pub fn refine_gtr_iterative<N, E, P>(
 ) -> Result<LogLh, Report>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
   P: TransitionCounting<N, E> + PartitionMarginalPasses<N, E> + HasGtr,
 {
   let n_states = partition.read_arc().gtr().pi.len();
@@ -38,8 +38,7 @@ where
     ..InferGtrOptions::default()
   };
 
-  let branch_lengths = edge_branch_lengths(graph);
-  let counts = partition.read_arc().count_transitions(graph, &branch_lengths)?;
+  let counts = partition.read_arc().count_transitions(graph, branch_lengths)?;
   let result = infer_gtr_impl(&counts, &options)?;
   *partition.write_arc().gtr_mut() = build_gtr_from_inference(n_states, &result)?;
   debug!(
@@ -48,7 +47,7 @@ where
   );
 
   if optimize_rate {
-    optimize_gtr_rate(graph, partition)?;
+    optimize_gtr_rate(graph, partition, branch_lengths)?;
     debug!(
       "GTR refinement: initial rate optimization, mu = {:.6}",
       partition.read_arc().gtr().mu
@@ -56,12 +55,12 @@ where
   }
 
   for i in 0..iterations {
-    let counts = partition.read_arc().count_transitions(graph, &branch_lengths)?;
+    let counts = partition.read_arc().count_transitions(graph, branch_lengths)?;
     let result = infer_gtr_impl(&counts, &options)?;
     *partition.write_arc().gtr_mut() = build_gtr_from_inference(n_states, &result)?;
 
     if optimize_rate {
-      optimize_gtr_rate(graph, partition)?;
+      optimize_gtr_rate(graph, partition, branch_lengths)?;
     }
     debug!(
       "GTR refinement: iteration {i}, mu = {:.6}",
@@ -78,7 +77,7 @@ where
   }
 
   let partitions = std::slice::from_ref(partition);
-  let log_lh = marginal_update(graph, &profile_branch_lengths(graph), partitions)?;
+  let log_lh = marginal_update(graph, &profile_branch_lengths(branch_lengths), partitions)?;
 
   let guard = partition.read_arc();
   let gtr = guard.gtr();
@@ -101,10 +100,14 @@ fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<
   })
 }
 
-fn optimize_gtr_rate<N, E, P>(graph: &Graph<N, E, ()>, partition: &Arc<RwLock<P>>) -> Result<(), Report>
+fn optimize_gtr_rate<N, E, P>(
+  graph: &Graph<N, E, ()>,
+  partition: &Arc<RwLock<P>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<(), Report>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
   P: PartitionMarginalPasses<N, E> + HasGtr,
 {
   let old_mu = partition.read_arc().gtr().mu;
@@ -116,9 +119,9 @@ where
 
   let partitions = std::slice::from_ref(partition);
 
-  // Branch lengths stay fixed while only the substitution rate is optimized, so collect them once
-  // and thread the same map into every backward pass the Brent search evaluates.
-  let branch_lengths = profile_branch_lengths(graph);
+  // Branch lengths stay fixed while only the substitution rate is optimized, so derive the profile
+  // map once and route the same map into every backward pass the Brent search evaluates.
+  let branch_lengths = profile_branch_lengths(branch_lengths);
 
   let cost_fn = GtrRateCostFn {
     graph,
@@ -163,7 +166,7 @@ where
   Ok(())
 }
 
-struct GtrRateCostFn<'a, N: GraphNode, E: EdgeOptimizeOps, P> {
+struct GtrRateCostFn<'a, N: GraphNode, E: GraphEdge, P> {
   graph: &'a Graph<N, E, ()>,
   partition: &'a Arc<RwLock<P>>,
   partitions: &'a [Arc<RwLock<P>>],
@@ -174,7 +177,7 @@ struct GtrRateCostFn<'a, N: GraphNode, E: EdgeOptimizeOps, P> {
 impl<N, E, P> GtrRateCostFn<'_, N, E, P>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
   P: PartitionMarginalPasses<N, E> + HasGtr,
 {
   fn neg_log_lh(&self, sqrt_mu: f64) -> f64 {
@@ -199,7 +202,7 @@ where
 impl<N, E, P> CostFunction for &GtrRateCostFn<'_, N, E, P>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
   P: PartitionMarginalPasses<N, E> + HasGtr,
 {
   type Param = f64;

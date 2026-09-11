@@ -14,7 +14,6 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::dates_csv::DatesMap;
 
 pub struct ClockPipelineParams {
@@ -29,6 +28,10 @@ pub struct ClockPipelineParams {
 pub struct ClockInput {
   pub graph: GraphClock,
   pub dates: DatesMap,
+  /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. Routed through
+  /// estimation (the reroot search updates it in place) and read by the regression gather instead of
+  /// the edge payload.
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -58,6 +61,7 @@ pub fn run(
 
   progress.check_cancelled()?;
   progress.report("Clock regression", 0.3, "");
+  let mut branch_lengths = input.branch_lengths;
   let (clock_model, new_outliers) = estimate_clock_model_with_prefilter(
     &mut input.graph,
     &mut state,
@@ -67,6 +71,7 @@ pub fn run(
     params.clock_filter,
     params.allow_negative_rate,
     &params.reroot_spec,
+    &mut branch_lengths,
     names,
   )?;
 
@@ -74,14 +79,12 @@ pub fn run(
     info!("Clock filter changed outlier status for {delta} leaf nodes");
   }
 
-  // Post-reroot re-snapshot. Estimation rerooted the tree in place: the best-root search rewrites
-  // edge branch lengths on the payload and can split an edge (adding a node key) or merge the old
-  // trivial root (removing keys). Re-capture the branch-length map from the post-reroot graph, and
-  // reproject the threaded names onto the post-reroot node set: a surviving node keeps its threaded
-  // name (no clock pass renames), and the `N::default` node the split adds is absent from the map
-  // and resolves to `None` -- exactly what a payload read would yield. Clock, unlike timetree, does
-  // not name the new root, so the map must not synthesize a name for it.
-  let branch_lengths = edge_branch_lengths(&input.graph);
+  // Estimation rerooted the tree in place: the best-root search updates `branch_lengths` for the new
+  // edge set (a split adds two edges and drops one; merging the old trivial root drops two and adds
+  // one), so the routed map is already current. Reproject the routed names onto the post-reroot node
+  // set: a surviving node keeps its name (no clock pass renames), and the `N::default` node the split
+  // adds is absent from the map and resolves to `None`. Clock, unlike timetree, does not name the new
+  // root, so the map must not synthesize a name for it.
   let names: BTreeMap<GraphNodeKey, Option<String>> = input
     .graph
     .get_nodes()
@@ -114,6 +117,7 @@ fn estimate_clock_model_with_prefilter(
   clock_filter_threshold: f64,
   allow_negative_rate: bool,
   reroot_spec: &RerootSpec,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(ClockModel, Option<i32>), Report> {
   let delta = (clock_filter_threshold > 0.0)
@@ -134,6 +138,7 @@ fn estimate_clock_model_with_prefilter(
         keep_root,
         branch_params,
         &reroot_params,
+        branch_lengths,
         None,
         names,
       )?;
@@ -147,7 +152,7 @@ fn estimate_clock_model_with_prefilter(
           regression.clock_rate()
         );
       }
-      Ok(clock_filter_inplace(graph, state, regression, clock_filter_threshold)?.new_outliers)
+      Ok(clock_filter_inplace(graph, state, regression, branch_lengths, clock_filter_threshold)?.new_outliers)
     })
     .transpose()?;
 
@@ -156,7 +161,7 @@ fn estimate_clock_model_with_prefilter(
     force_positive_rate: !allow_negative_rate,
     ..RerootParams::default()
   };
-  let result = estimate_clock_model_with_reroot_policy(graph, state, options, None, keep_root, branch_params, &reroot_params, None, names)
+  let result = estimate_clock_model_with_reroot_policy(graph, state, options, None, keep_root, branch_params, &reroot_params, branch_lengths, None, names)
     .wrap_err_with(|| {
       if delta.is_some() {
         "Clock model estimation failed after outlier filtering. The pre-filter step removed outliers but the clock rate remains negative at all root positions.".to_owned()

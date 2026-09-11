@@ -18,9 +18,8 @@ use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
@@ -80,17 +79,18 @@ pub fn run_optimize_loop(
   opt_method: BranchOptMethod,
   no_indels: bool,
   topology_ops: TopologyOps,
+  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<OptimizeLoopResult, Report> {
-  // Owned working copy of the threaded names, refreshed from each `assign_node_names` the topology
+  // Owned working copy of the routed names, refreshed from each `assign_node_names` the topology
   // cleanup runs and returned so `run_optimize` reads the final tree's names without a payload re-read.
   let mut names = names.clone();
-  // The loop's source of truth for branch lengths, keyed by edge id, mirroring the edge payload
-  // field type (`Option<f64>`) so a missing weight stays `None` end to end. Seeded from the tree
-  // once, then updated in place by the per-edge optimizer, damping, and topology cleanup
-  // (topology producers insert new-edge keys and drop removed ones). The marginal reconstruction
-  // reads the derived per-edge length (see [`marginal_branch_lengths`]).
-  let mut branch_lengths = edge_branch_lengths(graph);
+  // The loop's source of truth for branch lengths, keyed by edge id, holding `Option<f64>` so a
+  // missing weight stays `None` end to end. Supplied by the caller (the parsed lengths after any
+  // initial guess and reroot), then updated in place by the per-edge optimizer, damping, and topology
+  // cleanup (topology producers insert new-edge keys and drop removed ones). The marginal
+  // reconstruction reads the derived per-edge length (see [`marginal_branch_lengths`]).
+  let mut branch_lengths = branch_lengths;
 
   let indel_rate = if no_indels {
     0.0
@@ -499,19 +499,20 @@ pub fn apply_initial_guess_mode<P>(
   mixed_partitions: &[Arc<RwLock<P>>],
   mode: InitialGuessMode,
   no_indels: bool,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report>
 where
   P: PartitionOptimizeOps + ?Sized,
 {
-  let invalid_branch_lengths = invalid_branch_length_descriptions(graph, names)?;
+  let invalid_branch_lengths = invalid_branch_length_descriptions(graph, branch_lengths, names)?;
   if let Some(message) = invalid_branch_length_warning(&invalid_branch_lengths) {
     warn!("{message}");
   }
 
   match mode {
-    InitialGuessMode::Auto => initial_guess_mixed(graph, mixed_partitions, false, no_indels),
-    InitialGuessMode::Always => initial_guess_mixed(graph, mixed_partitions, true, no_indels),
+    InitialGuessMode::Auto => initial_guess_mixed(graph, mixed_partitions, false, no_indels, branch_lengths),
+    InitialGuessMode::Always => initial_guess_mixed(graph, mixed_partitions, true, no_indels, branch_lengths),
     InitialGuessMode::Never => {
       if !invalid_branch_lengths.is_empty() {
         return make_error!(
@@ -522,8 +523,7 @@ where
         );
       }
       // `Never` makes no branch-length writes, so the input tree's lengths are the ones checked.
-      let branch_lengths = edge_branch_lengths(graph);
-      if !no_indels && any_indel_edge_has_zero_branch_length(graph, mixed_partitions, &branch_lengths) {
+      if !no_indels && any_indel_edge_has_zero_branch_length(graph, mixed_partitions, branch_lengths) {
         return make_error!(
           "--branch-length-initial-guess=never requires non-zero branch lengths on edges that carry indels, \
            but some indel-bearing edges have branch length zero. \
@@ -558,7 +558,10 @@ pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -
 /// is scaled by `total_average`. The value `mu * t` (expected substitutions) is preserved,
 /// but now the average rate across all partitions equals 1, making branch lengths directly
 /// interpretable as substitutions per site.
-pub fn normalize_partition_rates<P: HasGtr>(graph: &GraphAncestral, partitions: &[Arc<RwLock<P>>]) {
+pub fn normalize_partition_rates<P: HasGtr>(
+  partitions: &[Arc<RwLock<P>>],
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+) {
   let total_length: usize = partitions.iter().map(|p| p.read_arc().sequence_length()).sum();
 
   if total_length == 0 {
@@ -577,10 +580,7 @@ pub fn normalize_partition_rates<P: HasGtr>(graph: &GraphAncestral, partitions: 
     partition.write_arc().normalize_rate(total_average);
   }
 
-  for edge_ref in graph.get_edges() {
-    let mut edge = edge_ref.write_arc().payload().write_arc();
-    if let Some(bl) = edge.branch_length() {
-      edge.set_branch_length(Some(bl * total_average));
-    }
+  for value in branch_lengths.values_mut().flatten() {
+    *value *= total_average;
   }
 }

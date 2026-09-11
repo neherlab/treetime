@@ -14,6 +14,7 @@ pub mod tests {
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
 
   use parking_lot::RwLock;
@@ -45,6 +46,7 @@ pub mod tests {
     graph: &GraphAncestral,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
+    branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<
     (
       Vec<Arc<RwLock<PartitionMarginalDense>>>,
@@ -67,11 +69,18 @@ pub mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
-    initialize_marginal(graph, &profile_branch_lengths(graph), &dense_partitions, aln, names)?.value();
-    marginal_update(graph, &profile_branch_lengths(graph), &sparse_partitions)?.value();
+    initialize_marginal(
+      graph,
+      &profile_branch_lengths(branch_lengths),
+      &dense_partitions,
+      aln,
+      names,
+    )?
+    .value();
+    marginal_update(graph, &profile_branch_lengths(branch_lengths), &sparse_partitions)?.value();
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-    initial_guess_mixed(graph, &mixed_partitions, true, false)?;
+    initial_guess_mixed(graph, &mixed_partitions, true, false, branch_lengths)?;
 
     Ok((dense_partitions, sparse_partitions, mixed_partitions))
   }
@@ -80,9 +89,10 @@ pub mod tests {
     graph: &GraphAncestral,
     dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
     sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<f64, Report> {
-    let dense_lh = marginal_update(graph, &profile_branch_lengths(graph), dense_partitions)?.value();
-    let sparse_lh = marginal_update(graph, &profile_branch_lengths(graph), sparse_partitions)?.value();
+    let dense_lh = marginal_update(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?.value();
+    let sparse_lh = marginal_update(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?.value();
     Ok(dense_lh + sparse_lh)
   }
 }

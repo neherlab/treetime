@@ -10,7 +10,6 @@ mod tests {
   use crate::timetree::utils::{create_poisson_branch_distributions, extract_node_times};
   use eyre::Report;
   use rstest::rstest;
-  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
@@ -32,7 +31,7 @@ mod tests {
     let case = &OUTPUTS[dataset];
     let expected = case.poisson();
 
-    let NwkParse { graph, names, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
+    let NwkParse { graph, names, branch_lengths, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
 
     let graph: GraphTimetree = graph;
     let dates = load_dates_for_dataset(dataset)?;
@@ -40,7 +39,7 @@ mod tests {
 
     let branch_distributions = create_poisson_branch_distributions(
       &graph,
-      &edge_branch_lengths(&graph),
+      &branch_lengths,
       case.clock_rate(),
       case.sequence_length(),
       GRID_POINTS,

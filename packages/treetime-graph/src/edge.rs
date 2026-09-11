@@ -9,23 +9,6 @@ use std::hash::Hash;
 use std::mem::swap;
 use std::sync::Arc;
 
-/// Defines how to read and write branch length
-pub trait HasBranchLength {
-  fn branch_length(&self) -> Option<f64>;
-  fn set_branch_length(&mut self, branch_length: Option<f64>);
-
-  /// Branch length used to propagate sequence profiles, in substitutions per site.
-  ///
-  /// Defaults to [`branch_length`](Self::branch_length), the ML or input length that branch
-  /// optimization writes. A timetree edge overrides it with the clock-constrained length
-  /// implied by the inferred node times, which is what closes the timetree refinement loop:
-  /// without it nothing in the loop writes substitution-space lengths and the marginal
-  /// reconstruction is idempotent across rounds.
-  fn profile_branch_length(&self) -> Option<f64> {
-    self.branch_length()
-  }
-}
-
 /// Defines access to clock message passing fields on edges
 #[allow(clippy::wrong_self_convention)]
 pub trait ClockMessages<T> {
@@ -52,10 +35,6 @@ pub trait GraphEdge: Debug + Sync + Send {}
 /// Currently equivalent to `GraphEdge` for consistency with `NodeAncestralOps`.
 pub trait EdgeAncestralOps: GraphEdge {}
 impl<T: GraphEdge> EdgeAncestralOps for T {}
-
-/// Composite trait for edges that support tree optimization
-pub trait EdgeOptimizeOps: GraphEdge + HasBranchLength {}
-impl<T: GraphEdge + HasBranchLength> EdgeOptimizeOps for T {}
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphEdgeKey(pub usize);

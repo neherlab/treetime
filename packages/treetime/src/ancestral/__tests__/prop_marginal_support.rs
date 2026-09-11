@@ -39,7 +39,12 @@ pub mod tests {
   pub fn run_dense_marginal(
     input: &MarginalTestInput,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalDense>>; 1]), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(&input.newick)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(&input.newick)?;
     let graph: GraphAncestral = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&input.alignment)?;
@@ -53,7 +58,7 @@ pub mod tests {
 
     let log_lh = initialize_marginal(
       &graph,
-      &profile_branch_lengths(&graph),
+      &profile_branch_lengths(&branch_lengths),
       &partitions,
       &input.alignment,
       &names,
@@ -83,7 +88,12 @@ pub mod tests {
   pub fn run_sparse_marginal(
     input: &MarginalTestInput,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalSparse>>; 1]), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(&input.newick)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(&input.newick)?;
     let graph: GraphAncestral = graph;
     let alphabet = Alphabet::default();
     let length = get_common_length(&input.alignment)?;
@@ -92,7 +102,7 @@ pub mod tests {
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(input.gtr.clone(), &graph)?,
     ))];
-    let log_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    let log_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
     Ok((log_lh, partitions))
   }
 }

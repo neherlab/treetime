@@ -31,7 +31,12 @@ mod tests {
     let tree_path = workspace_root.join("data/flu/h3n2/20/tree.nwk");
     let aln_path = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
 
-    let NwkParse { graph, names, .. } = nwk_read_file(&tree_path)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_file(&tree_path)?;
 
     let graph: GraphAncestral = graph;
     let sequences = read_many_fasta(&[aln_path.to_str().expect("utf-8 path")], &alphabet)?;
@@ -52,6 +57,7 @@ mod tests {
       graph,
       alphabet,
       sequences,
+      branch_lengths,
     };
 
     let output = run(&params, input, &names, &NoopProgress)?;

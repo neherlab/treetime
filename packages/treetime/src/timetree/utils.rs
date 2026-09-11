@@ -7,10 +7,9 @@ use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, DistributionFunction, NegLog};
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
-use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Grid floor as a fraction of one mutation's worth of time. Keeps the first grid point strictly
 /// above the hard boundary at `t = 0`, so the divergent `-ln p` there is never stored on the grid.
@@ -25,15 +24,15 @@ const MIN_TIME_MUTATION_FRACTION: f64 = 0.01;
 pub fn initialize_node_divergences<N, E, D>(
   graph: &Graph<N, E, D>,
   clock_state: &mut ClockState,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
   D: Send + Sync,
 {
-  let branch_lengths = edge_branch_lengths(graph);
-  let divs = compute_divs(graph, OnlyLeaves(false), &branch_lengths, names)?;
+  let divs = compute_divs(graph, OnlyLeaves(false), branch_lengths, names)?;
   for node_ref in graph.get_nodes() {
     let node = node_ref.read_arc();
     let key = node.key();
@@ -86,7 +85,7 @@ pub fn create_poisson_branch_distributions<N, E, D>(
 ) -> Result<BTreeMap<GraphEdgeKey, Arc<Distribution<NegLog>>>, Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   D: Send + Sync,
 {
   let seq_len_f64 = seq_len as f64;

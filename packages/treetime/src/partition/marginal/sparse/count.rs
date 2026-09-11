@@ -6,7 +6,7 @@ use crate::partition::traits::TransitionCounting;
 use eyre::Report;
 use ndarray::{Array1, Array2};
 use std::collections::BTreeMap;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_utils::array::ndarray::argmax_first;
@@ -21,7 +21,7 @@ impl PartitionMarginalSparse {
   ) -> Result<MutationCounts, Report>
   where
     N: GraphNode,
-    E: EdgeOptimizeOps,
+    E: GraphEdge,
   {
     let n_states = self.gtr.pi.len();
     let min_bl = MIN_BRANCH_LENGTH_FRACTION / self.length as f64;
@@ -170,7 +170,7 @@ impl PartitionMarginalSparse {
 impl<N, E> TransitionCounting<N, E> for PartitionMarginalSparse
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn count_transitions(
     &self,

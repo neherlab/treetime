@@ -98,7 +98,12 @@ pub mod tests {
   /// construct a single dense partition with the given GTR model, and run both passes via
   /// `initialize_marginal`.
   pub fn run_dense_marginal_get_log_lh(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(newick)?;
     let graph: GraphAncestral = graph;
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -110,7 +115,14 @@ pub mod tests {
       get_common_length(&aln)?,
     )))];
 
-    let log_lh = initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
+    let log_lh = initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&branch_lengths),
+      &partitions,
+      &aln,
+      &names,
+    )?
+    .value();
     Ok(log_lh)
   }
 }

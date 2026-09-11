@@ -7,7 +7,8 @@ mod tests {
   use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use pretty_assertions::assert_eq;
-  use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+  use std::collections::BTreeMap;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::io::json::{JsonPretty, json_write_str};
@@ -15,8 +16,21 @@ mod tests {
 
   /// `((A,B,C)P)root` with each child edge carrying a distinct mutation length. The node times
   /// `apply_plan` acts on are passed to it directly (`parent_time` and each [`ChildRef::time`]).
-  fn polytomy_graph() -> Result<(GraphTimetree, GraphNodeKey, Vec<ChildRef>), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2,C:0.15)P:0.05)root;")?;
+  fn polytomy_graph() -> Result<
+    (
+      GraphTimetree,
+      GraphNodeKey,
+      Vec<ChildRef>,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
+    ),
+    Report,
+  > {
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2,C:0.15)P:0.05)root;")?;
     let graph: GraphTimetree = graph;
 
     let parent_key = find_node_key_by_name(&graph, &names, "P").ok_or_else(|| make_report!("P not found"))?;
@@ -25,12 +39,7 @@ mod tests {
     for (name, time, mutation_length) in [("A", 2020.0, 0.3), ("B", 2018.0, 0.4), ("C", 2016.0, 0.5)] {
       let node_key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| make_report!("{name} not found"))?;
       let edge_key = find_edge_key(&graph, &names, "P", name).ok_or_else(|| make_report!("P->{name} not found"))?;
-      let edge = graph.get_edge(edge_key).expect("Edge must exist");
-      edge
-        .write_arc()
-        .payload()
-        .write_arc()
-        .set_branch_length(Some(mutation_length));
+      branch_lengths.insert(edge_key, Some(mutation_length));
       children.push(ChildRef {
         node_key,
         edge_key,
@@ -38,7 +47,7 @@ mod tests {
       });
     }
 
-    Ok((graph, parent_key, children))
+    Ok((graph, parent_key, children, branch_lengths))
   }
 
   fn child_edge_of(graph: &GraphTimetree, node_key: GraphNodeKey) -> GraphEdgeKey {
@@ -55,7 +64,7 @@ mod tests {
 
   #[test]
   fn test_apply_plan_reparents_children_keeping_edge_key_and_mutation_length() -> Result<(), Report> {
-    let (mut graph, parent_key, children) = polytomy_graph()?;
+    let (mut graph, parent_key, children, mut branch_lengths) = polytomy_graph()?;
     let mut state = TimetreeState::new(&graph);
     let original_edges: Vec<GraphEdgeKey> = children.iter().map(|child| child.edge_key).collect();
 
@@ -69,7 +78,15 @@ mod tests {
       roots: vec![2, 3],
     };
 
-    let created = apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut state)?;
+    let created = apply_plan(
+      &mut graph,
+      parent_key,
+      2000.0,
+      &children,
+      &plan,
+      &mut branch_lengths,
+      &mut state,
+    )?;
     assert_eq!(created, 1);
 
     for (index, child) in children.iter().enumerate() {
@@ -81,8 +98,7 @@ mod tests {
     }
 
     for (child, expected) in children.iter().zip([0.3, 0.4, 0.5]) {
-      let edge = graph.get_edge(child.edge_key).expect("Edge must exist");
-      let mutation_length = edge.read_arc().payload().read_arc().branch_length();
+      let mutation_length = branch_lengths.get(&child.edge_key).copied().flatten();
       pretty_assert_abs_diff_eq!(
         mutation_length.expect("observed mutation length must survive reparenting"),
         expected,
@@ -95,7 +111,7 @@ mod tests {
 
   #[test]
   fn test_apply_plan_builds_the_planned_topology() -> Result<(), Report> {
-    let (mut graph, parent_key, children) = polytomy_graph()?;
+    let (mut graph, parent_key, children, mut branch_lengths) = polytomy_graph()?;
     let mut state = TimetreeState::new(&graph);
 
     let plan = SubtreePlan {
@@ -106,7 +122,15 @@ mod tests {
       }],
       roots: vec![2, 3],
     };
-    apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut state)?;
+    apply_plan(
+      &mut graph,
+      parent_key,
+      2000.0,
+      &children,
+      &plan,
+      &mut branch_lengths,
+      &mut state,
+    )?;
 
     let merger_key = parent_of(&graph, children[0].node_key);
     assert_eq!(
@@ -146,7 +170,7 @@ mod tests {
 
   #[test]
   fn test_apply_plan_sets_time_lengths_from_the_new_parent() -> Result<(), Report> {
-    let (mut graph, parent_key, children) = polytomy_graph()?;
+    let (mut graph, parent_key, children, mut branch_lengths) = polytomy_graph()?;
     let mut state = TimetreeState::new(&graph);
 
     let plan = SubtreePlan {
@@ -157,7 +181,15 @@ mod tests {
       }],
       roots: vec![2, 3],
     };
-    apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut state)?;
+    apply_plan(
+      &mut graph,
+      parent_key,
+      2000.0,
+      &children,
+      &plan,
+      &mut branch_lengths,
+      &mut state,
+    )?;
 
     let time_length_of =
       |edge_key: GraphEdgeKey| -> f64 { state.edge(edge_key).time_length.expect("time_length must be set") };
@@ -177,7 +209,7 @@ mod tests {
 
   #[test]
   fn test_apply_plan_gives_merger_edges_zero_mutation_length() -> Result<(), Report> {
-    let (mut graph, parent_key, children) = polytomy_graph()?;
+    let (mut graph, parent_key, children, mut branch_lengths) = polytomy_graph()?;
     let mut state = TimetreeState::new(&graph);
 
     let plan = SubtreePlan {
@@ -188,17 +220,19 @@ mod tests {
       }],
       roots: vec![2, 3],
     };
-    apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut state)?;
+    apply_plan(
+      &mut graph,
+      parent_key,
+      2000.0,
+      &children,
+      &plan,
+      &mut branch_lengths,
+      &mut state,
+    )?;
 
     let merger_key = parent_of(&graph, children[0].node_key);
     let merger_edge = child_edge_of(&graph, merger_key);
-    let mutation_length = graph
-      .get_edge(merger_edge)
-      .expect("Edge must exist")
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length();
+    let mutation_length = branch_lengths.get(&merger_edge).copied().flatten();
 
     pretty_assert_abs_diff_eq!(
       mutation_length.expect("a new branch must have an explicit mutation length"),
@@ -210,7 +244,7 @@ mod tests {
 
   #[test]
   fn test_apply_plan_nests_mergers_that_reference_earlier_mergers() -> Result<(), Report> {
-    let (mut graph, parent_key, children) = polytomy_graph()?;
+    let (mut graph, parent_key, children, mut branch_lengths) = polytomy_graph()?;
     let mut state = TimetreeState::new(&graph);
 
     // ((A,B) at 2012, C) at 2005 -- the second merger consumes the first.
@@ -230,7 +264,15 @@ mod tests {
       roots: vec![4],
     };
 
-    let created = apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut state)?;
+    let created = apply_plan(
+      &mut graph,
+      parent_key,
+      2000.0,
+      &children,
+      &plan,
+      &mut branch_lengths,
+      &mut state,
+    )?;
     assert_eq!(created, 2);
 
     let inner = parent_of(&graph, children[0].node_key);
@@ -254,7 +296,7 @@ mod tests {
 
   #[test]
   fn test_apply_plan_rejects_a_merger_referencing_a_later_merger() -> Result<(), Report> {
-    let (mut graph, parent_key, children) = polytomy_graph()?;
+    let (mut graph, parent_key, children, mut branch_lengths) = polytomy_graph()?;
     let mut state = TimetreeState::new(&graph);
 
     // Lineage 4 is the second merger's own node, which does not exist yet.
@@ -276,7 +318,15 @@ mod tests {
     let before = json_write_str(&graph, JsonPretty(false))?;
 
     assert_error!(
-      apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut state),
+      apply_plan(
+        &mut graph,
+        parent_key,
+        2000.0,
+        &children,
+        &plan,
+        &mut branch_lengths,
+        &mut state
+      ),
       "Polytomy plan merger 0 referenced lineage 4 before it was created. This is an internal error. Please report it to developers."
     );
     let after = json_write_str(&graph, JsonPretty(false))?;

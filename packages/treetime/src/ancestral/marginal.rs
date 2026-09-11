@@ -7,35 +7,33 @@ use log::trace;
 use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{LogLh, Seq, seq};
 
-/// The per-edge branch length each marginal pass propagates sequence profiles along, keyed by edge.
+/// The branch length that propagates sequence profiles along an edge: the clock-constrained length
+/// when one has been committed, otherwise the raw ML or input length.
 ///
-/// The value is `profile_branch_length().unwrap_or(0.0)`: the clock-constrained length for a
-/// timetree edge (`clock_branch_length` when committed, else the ML or input length) and the ML or
-/// input length for every other edge. Collected once at the boundary and threaded into the passes,
-/// so the branch length is an explicit pass input rather than a value reached back off the graph
-/// edge inside each parallel worker. Callers that maintain their own branch lengths (branch-length
-/// optimization, timetree commit) supply their own map instead of this one.
-pub fn profile_branch_lengths<N, E, D>(graph: &Graph<N, E, D>) -> BTreeMap<GraphEdgeKey, f64>
-where
-  N: GraphNode,
-  E: GraphEdge + HasBranchLength,
-  D: Send + Sync,
-{
-  graph
-    .get_edges()
+/// This is the domain choice that a timetree edge makes (`clock_branch_length` over the raw length);
+/// every other command has no clock length and falls back to the raw length. Kept as a free function
+/// so the choice stays named and testable where a profile map is derived.
+pub fn profile_branch_length(clock: Option<f64>, raw: Option<f64>) -> Option<f64> {
+  clock.or(raw)
+}
+
+/// Derive the per-edge profile branch length map (`f64`) each marginal pass propagates sequence
+/// profiles along, from the raw input-tree branch length value map.
+///
+/// The value is `raw.unwrap_or(0.0)`: an edge with no length resolves to `0.0` for the passes. For a
+/// timetree the clock-constrained length is combined in separately via
+/// [`timetree_branch_lengths`](crate::timetree::inference::runner::timetree_branch_lengths); this
+/// helper serves the non-timetree marginal passes (ancestral, optimize, clock, mugration).
+pub fn profile_branch_lengths(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> BTreeMap<GraphEdgeKey, f64> {
+  branch_lengths
     .iter()
-    .map(|edge| {
-      let edge = edge.read_arc();
-      let key = edge.key();
-      let branch_length = edge.payload().read_arc().profile_branch_length().unwrap_or(0.0);
-      (key, branch_length)
-    })
+    .map(|(key, raw)| (*key, profile_branch_length(None, *raw).unwrap_or(0.0)))
     .collect()
 }
 
@@ -48,7 +46,7 @@ pub fn initialize_marginal<N, E, P>(
 ) -> Result<LogLh, Report>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
   P: PartitionMarginalOps<N, E> + ?Sized,
 {
   for partition in partitions {
@@ -60,8 +58,8 @@ where
 /// Run the marginal backward and forward passes over the given partitions, propagating profiles
 /// along the supplied per-edge branch lengths, and return the substitution log likelihood.
 ///
-/// Branch lengths are an explicit input: the caller decides whether they come from the graph (via
-/// [`profile_branch_lengths`]) or from its own store. Each partition contributes its own
+/// Branch lengths are an explicit input: the caller decides whether they come from the parsed
+/// input tree (via [`profile_branch_lengths`]) or from its own store. Each partition contributes its own
 /// substitution model; the boundary dispatches dense and sparse representations to their separate
 /// tails via [`MarginalPass`].
 pub fn marginal_update<N, E, P>(
@@ -71,7 +69,7 @@ pub fn marginal_update<N, E, P>(
 ) -> Result<LogLh, Report>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
   P: PartitionMarginalPasses<N, E> + ?Sized,
 {
   marginal_backward(graph, branch_lengths, partitions)?;
@@ -88,7 +86,7 @@ pub fn marginal_backward<N, E, P>(
 ) -> Result<(), Report>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
   P: PartitionMarginalPasses<N, E> + ?Sized,
 {
   for partition in partitions {
@@ -108,7 +106,7 @@ fn marginal_forward<N, E, P>(
 ) -> Result<(), Report>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
   P: PartitionMarginalPasses<N, E> + ?Sized,
 {
   for partition in partitions {
@@ -140,7 +138,7 @@ pub fn ancestral_reconstruction_marginal<N, E, P>(
 ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
   P: PartitionMarginalOps<N, E> + ?Sized,
 {
   // Preorder traversal is sequential, so a single threaded RNG yields deterministic output under a

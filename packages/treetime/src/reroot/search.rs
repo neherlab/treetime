@@ -4,10 +4,9 @@ use crate::reroot::traits::RootStats;
 use crate::reroot::variance::VarianceModel;
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
-use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Find the best root position over the whole tree.
 ///
@@ -21,11 +20,12 @@ pub fn find_best_root<N, E, D, S>(
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
   root_stats: &S,
   variance: &VarianceModel,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   params: &BrentParams,
 ) -> Result<FindRootResult<S>, Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   D: Send + Sync,
   S: RootStats,
 {
@@ -36,10 +36,9 @@ where
     score: root_stats.score(),
   };
 
-  let branch_lengths = edge_branch_lengths(graph);
   for edge_obj in graph.get_edges() {
     let edge_key = edge_obj.read_arc().key();
-    let res = find_best_split(graph, edge_key, edge_stats, &branch_lengths, variance, params)?;
+    let res = find_best_split(graph, edge_key, edge_stats, branch_lengths, variance, params)?;
     if res.score < best.score {
       best = res;
     }

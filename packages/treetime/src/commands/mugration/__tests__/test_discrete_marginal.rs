@@ -80,13 +80,13 @@ mod tests {
 
   #[test]
   fn test_discrete_marginal_passes_normalize_backward_and_forward_profiles() -> Result<(), Report> {
-    let (graph, names) = helpers::make_fixture_graph()?;
+    let (graph, names, raw_branch_lengths) = helpers::make_fixture_graph()?;
     let mut partition = helpers::make_partition(["usa", "germany"])?;
     let traits = helpers::make_fixture_traits();
 
     partition.attach_traits(&graph, &traits, &names)?;
 
-    let branch_lengths = profile_branch_lengths(&graph);
+    let branch_lengths = profile_branch_lengths(&raw_branch_lengths);
     marginal_process_backward_indexed(&mut partition, &graph, &branch_lengths)?;
 
     let root_profile = helpers::get_node_profile(&graph, &names, &partition, "root");
@@ -117,7 +117,7 @@ mod tests {
 
   #[test]
   fn test_discrete_marginal_run_returns_finite_log_lh_and_reconstructs_internal_trait() -> Result<(), Report> {
-    let (graph, names) = helpers::make_fixture_graph()?;
+    let (graph, names, raw_branch_lengths) = helpers::make_fixture_graph()?;
     let mut partition = helpers::make_partition(["usa", "germany"])?;
     let traits = helpers::make_fixture_traits();
 
@@ -126,7 +126,7 @@ mod tests {
     let partition = Arc::new(RwLock::new(partition));
     let actual_log_lh = marginal_update(
       &graph,
-      &profile_branch_lengths(&graph),
+      &profile_branch_lengths(&raw_branch_lengths),
       std::slice::from_ref(&partition),
     )?
     .value();
@@ -161,6 +161,7 @@ mod tests {
     use maplit::btreemap;
     use ndarray::Array1;
     use std::collections::BTreeMap;
+    use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::{NwkParse, nwk_read_str};
     use treetime_utils::pretty_assert_abs_diff_eq;
@@ -183,9 +184,21 @@ mod tests {
       ))
     }
 
-    pub(super) fn make_fixture_graph() -> Result<(GraphAncestral, BTreeMap<GraphNodeKey, Option<String>>), Report> {
-      let NwkParse { graph, names, .. } = nwk_read_str("((A:0.01,B:0.01)inner:0.01,C:0.25)root;")?;
-      Ok((graph, names))
+    pub(super) fn make_fixture_graph() -> Result<
+      (
+        GraphAncestral,
+        BTreeMap<GraphNodeKey, Option<String>>,
+        BTreeMap<GraphEdgeKey, Option<f64>>,
+      ),
+      Report,
+    > {
+      let NwkParse {
+        graph,
+        names,
+        branch_lengths,
+        ..
+      } = nwk_read_str("((A:0.01,B:0.01)inner:0.01,C:0.25)root;")?;
+      Ok((graph, names, branch_lengths))
     }
 
     pub(super) fn make_fixture_traits() -> BTreeMap<String, String> {

@@ -6,7 +6,6 @@ mod tests {
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   use super::super::test_convergence_support::tests::{
@@ -31,23 +30,23 @@ mod tests {
     // assertion to the reference ties this test to cross-method agreement
     // rather than to a hand-chosen LH range that would silently drift.
     let lh_ref = {
-      let NwkParse { graph: graph_ref, names: graph_ref_names, .. } = nwk_read_str(TREE_NEWICK)?;
-      let (dp_ref, sp_ref, mp_ref) = setup_partitions(&graph_ref, &graph_ref_names, &aln)?;
+      let NwkParse { graph: graph_ref, names: graph_ref_names, branch_lengths: mut branch_lengths_ref, .. } = nwk_read_str(TREE_NEWICK)?;
+      let (dp_ref, sp_ref, mp_ref) = setup_partitions(&graph_ref, &graph_ref_names, &aln, &mut branch_lengths_ref)?;
       for _ in 0..max_iter {
-        run_optimize_mixed(&graph_ref, &mp_ref, BranchOptMethod::BrentSqrt)?;
+        run_optimize_mixed(&graph_ref, &mp_ref, BranchOptMethod::BrentSqrt, &mut branch_lengths_ref)?;
       }
-      compute_total_lh(&graph_ref, &dp_ref, &sp_ref)?
+      compute_total_lh(&graph_ref, &dp_ref, &sp_ref, &branch_lengths_ref)?
     };
 
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
 
     let graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     for _ in 0..max_iter {
-      run_optimize_mixed(&graph, &mixed_partitions, method)?;
+      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
     }
-    let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
+    let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions, &branch_lengths)?;
 
     // The undamped alternating optimization produces a stable 2-cycle. Each
     // method must converge to within 1e-2 of the BrentSqrt reference's final
@@ -73,21 +72,21 @@ mod tests {
   #[trace]
   fn test_optimization_improves_or_maintains_likelihood(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
 
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let initial_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
+    let initial_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions, &branch_lengths)?;
     // Initial log-lh should be negative (log of probability < 1)
     assert!(initial_lh < 0.0, "Initial log-LH should be negative: {initial_lh}");
 
     // Run several optimization steps
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &mixed_partitions, method)?;
+      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
     }
 
-    let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
+    let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions, &branch_lengths)?;
 
     // Strict non-regression: optimization must not degrade likelihood.
     // This test runs pure branch length optimization without marginal reconstruction
@@ -115,30 +114,30 @@ mod tests {
   #[trace]
   fn test_optimization_produces_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
 
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     // Collect initial branch lengths
     let initial_total: f64 = graph
       .get_edges()
       .iter()
-      .filter_map(|e| e.read_arc().payload().read_arc().branch_length())
+      .filter_map(|e| branch_lengths[&e.read_arc().key()])
       .sum();
 
     // Run several optimization iterations
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &mixed_partitions, method)?;
-      marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
-      marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions)?.value();
+      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
     }
 
     // Verify all branch lengths are in valid range
     let mut final_total = 0.0;
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
-      let branch_length = edge.payload().read_arc().branch_length();
+      let branch_length = branch_lengths[&edge.key()];
       if let Some(bl) = branch_length {
         // Branch lengths should be non-negative and reasonable (< 10 subs/site)
         assert!(bl >= 0.0, "Branch length should be non-negative: {bl}");

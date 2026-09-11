@@ -140,7 +140,12 @@ pub fn run_clock(
   progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
 
-  let NwkParse { graph, names, .. } = if let Some(tree) = &clock_args.tree {
+  let NwkParse {
+    graph,
+    names,
+    branch_lengths,
+    ..
+  } = if let Some(tree) = &clock_args.tree {
     nwk_read_file::<NodeClock, EdgeClock, ()>(tree)
   } else {
     return make_error!("Tree inference is not implemented. Provide a tree file with --tree");
@@ -183,7 +188,11 @@ pub fn run_clock(
     reroot_spec: clock_args.reroot.spec(),
   };
 
-  let input = ClockInput { graph, dates };
+  let input = ClockInput {
+    graph,
+    dates,
+    branch_lengths,
+  };
 
   let output = pipeline::run(&params, input, &names, progress)?;
   let pipeline::ClockOutput {
@@ -198,7 +207,7 @@ pub fn run_clock(
   let topology_order = clock_args
     .topology_order
     .resolve_topology_order(&graph, &names, Some(input_order))?;
-  topology_order.apply(&mut graph, &names)?;
+  topology_order.apply(&mut graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.8, "");
 
   // The pipeline's post-reroot name and branch-length maps carry the final tree's values; topology

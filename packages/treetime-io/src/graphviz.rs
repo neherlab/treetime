@@ -4,7 +4,7 @@ use itertools::{Itertools, iproduct};
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::{Graph, SafeNode};
 use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_utils::io::file::create_file_or_stdout;
@@ -200,18 +200,9 @@ pub trait NodeToGraphviz {
 }
 
 /// Defines how to display edge information when writing to GraphViz (.dot) file.
-/// Default implementations derive label and weight from `HasBranchLength`.
-pub trait EdgeToGraphviz: HasBranchLength {
-  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self
-      .branch_length()
-      .map(|weight| format_weight(weight, &NwkWriteOptions::default()))
-  }
-
-  fn to_graphviz_weight(&self) -> Option<f64> {
-    self.branch_length()
-  }
-
+/// Edge display hook for GraphViz (.dot) output. Edge label and weight are supplied by the caller's
+/// per-edge weight value map; this trait carries only extra attributes.
+pub trait EdgeToGraphviz {
   fn to_graphviz_attributes(&self) -> BTreeMap<String, String> {
     BTreeMap::<String, String>::new()
   }

@@ -164,7 +164,12 @@ mod tests {
   #[test]
   fn test_dense_edge_subs_match_reconstructed_branch_differences() -> Result<(), Report> {
     let aln = divergent_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let graph: GraphAncestral = graph;
     let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
       0,
@@ -173,8 +178,15 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
-    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&branch_lengths),
+      &partitions,
+      &aln,
+      &names,
+    )?
+    .value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
 
     let partition = partitions[0].read_arc();
 
@@ -290,7 +302,12 @@ mod tests {
   #[test]
   fn test_dense_edge_subs_is_canonical_filter_present() -> Result<(), Report> {
     let aln = divergent_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let graph: GraphAncestral = graph;
     let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
       0,
@@ -299,8 +316,15 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
-    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&branch_lengths),
+      &partitions,
+      &aln,
+      &names,
+    )?
+    .value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
 
     let partition = partitions[0].read_arc();
     for edge_ref in graph.get_edges() {

@@ -13,7 +13,6 @@ use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use log::info;
 use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
@@ -33,6 +32,7 @@ pub fn run_mugration(
   let graph: GraphAncestral = parse.graph;
   let confidences = parse.confidences;
   let names = parse.names;
+  let branch_lengths = parse.branch_lengths;
 
   let resolved = mugration_args.resolve_outputs()?;
 
@@ -69,6 +69,7 @@ pub fn run_mugration(
     graph,
     &confidences,
     &names,
+    &branch_lengths,
     &traits,
     mugration_args.attribute(),
     weights.as_ref(),
@@ -84,14 +85,8 @@ pub fn run_mugration(
   let topology_order = mugration_args
     .topology_order
     .resolve_topology_order(&result.graph, &names, None)?;
-  topology_order.apply(&mut result.graph, &names)?;
+  topology_order.apply(&mut result.graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.8, "");
-
-  let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = result
-    .edges
-    .iter()
-    .map(|(key, edge)| (*key, edge.branch_length))
-    .collect();
 
   if !resolved.tree_outputs.is_empty() {
     let provider = DiscreteCommentProvider::new(&result.graph.data().partition, &result.graph.data().traits.attribute);

@@ -14,12 +14,14 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str(tree).unwrap();
     let names_tt_1 = names.clone();
     let result = execute_mugration(
       graph,
       &confidences,
       &names_tt_1,
+      &branch_lengths,
       traits,
       "country",
       None,

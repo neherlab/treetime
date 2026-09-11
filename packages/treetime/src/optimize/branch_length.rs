@@ -1,10 +1,9 @@
 use crate::make_report;
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, NodeOptimizeOps};
-use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Whether a scalar is in the physical domain of a phylogenetic branch length.
 pub fn is_valid_branch_length_value(branch_length: f64) -> bool {
@@ -19,14 +18,14 @@ pub fn is_valid_branch_length(branch_length: Option<f64>) -> bool {
 /// Return user-facing descriptions of all invalid branch lengths in graph order.
 pub fn invalid_branch_length_descriptions<N, E, D>(
   graph: &Graph<N, E, D>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<Vec<String>, Report>
 where
   N: NodeOptimizeOps,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   D: Send + Sync,
 {
-  let branch_lengths = edge_branch_lengths(graph);
   graph
     .get_edges()
     .iter()

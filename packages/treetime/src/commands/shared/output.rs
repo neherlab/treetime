@@ -10,7 +10,7 @@ use std::ffi::OsString;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use strum::IntoEnumIterator;
-use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
@@ -1048,24 +1048,12 @@ impl NodeFromNwk for OrderNode {
 }
 
 #[derive(Clone, Debug, Default)]
-struct OrderEdge {
-  branch_length: Option<f64>,
-}
+struct OrderEdge {}
 
 impl GraphEdge for OrderEdge {}
 
-impl HasBranchLength for OrderEdge {
-  fn branch_length(&self) -> Option<f64> {
-    self.branch_length
-  }
-
-  fn set_branch_length(&mut self, branch_length: Option<f64>) {
-    self.branch_length = branch_length;
-  }
-}
-
 impl EdgeFromNwk for OrderEdge {
-  fn from_nwk(weight: Option<f64>) -> Result<Self, Report> {
-    Ok(Self { branch_length: weight })
+  fn from_nwk(_branch_length: Option<f64>) -> Result<Self, Report> {
+    Ok(Self {})
   }
 }

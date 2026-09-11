@@ -9,15 +9,18 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::Named;
-  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::nwk::{NwkParse, NwkWriteOptions, nwk_read_str, nwk_write_str};
 
   use crate::test_utils::{TestEdge, TestNode, find_edge_key, find_node_key_by_name};
 
   #[test]
   fn test_graph_traversal_serial_depth_first_preorder_forward() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut actual = vec![];
     graph.iter_depth_first_preorder_forward(|node| {
@@ -32,8 +35,12 @@ mod tests {
 
   #[test]
   fn test_graph_traversal_serial_depth_first_postorder_forward() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut actual = vec![];
     graph.iter_depth_first_postorder_forward(|node| {
@@ -48,8 +55,12 @@ mod tests {
 
   #[test]
   fn test_graph_traversal_serial_breadth_first_forward() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut actual = vec![];
     graph.iter_breadth_first_forward(|node| {
@@ -64,8 +75,12 @@ mod tests {
 
   #[test]
   fn test_graph_traversal_serial_breadth_first_reverse() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut actual = vec![];
     graph.iter_breadth_first_backward(|node| {
@@ -80,8 +95,12 @@ mod tests {
 
   #[test]
   fn test_graph_traversal_try_serial_breadth_first_forward_ok() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     // Serial traversal captures mutable outer state directly, with no Arc/Mutex.
     let mut visited = vec![];
@@ -97,8 +116,12 @@ mod tests {
 
   #[test]
   fn test_graph_traversal_try_serial_breadth_first_forward_stops_at_first_error() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     // "AB" and "CD" both error, but "AB" is visited first in breadth-first order. The traversal
     // must surface the "AB" error and stop before visiting "CD" or any deeper node.
@@ -120,7 +143,12 @@ mod tests {
 
   #[test]
   fn test_graph_traversal_try_serial_breadth_first_forward_single_node() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>("root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("root:0.01;")?;
 
     let mut visited = vec![];
     graph.iter_breadth_first_forward(|node| {
@@ -135,7 +163,12 @@ mod tests {
 
   #[test]
   fn test_graph_traversal_try_serial_breadth_first_forward_error_at_root() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1)root:0.01;")?;
 
     let mut visited = vec![];
     let result = graph.iter_breadth_first_forward(|node| {
@@ -155,8 +188,12 @@ mod tests {
 
   #[test]
   fn test_graph_traversal_try_serial_breadth_first_backward_ok() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut visited = vec![];
     graph.iter_breadth_first_backward(|node| {
@@ -171,8 +208,12 @@ mod tests {
 
   #[test]
   fn test_graph_traversal_try_serial_breadth_first_backward_stops_at_first_error() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut visited = vec![];
     let result = graph.iter_breadth_first_backward(|node| {
@@ -192,8 +233,12 @@ mod tests {
 
   #[test]
   fn test_graph_traversal_try_depth_first_postorder_forward_ok() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut visited = vec![];
     graph.iter_depth_first_postorder_forward(|node| {
@@ -208,8 +253,12 @@ mod tests {
 
   #[test]
   fn test_graph_traversal_try_depth_first_postorder_forward_stops_at_first_error() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut visited = vec![];
     let result = graph.iter_depth_first_postorder_forward(|node| {
@@ -229,17 +278,17 @@ mod tests {
 
   #[test]
   fn test_graph_collapse_edge_simple_chain() -> Result<(), Report> {
-    let NwkParse { mut graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.2)internal:0.1)root;")?;
+    let NwkParse {
+      mut graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.2)internal:0.1)root;")?;
 
     let root_to_internal = find_edge_key(&graph, &names, "root", "internal").unwrap();
     graph.collapse_edge(root_to_internal)?;
 
-    let output_nwk = nwk_write_str(
-      &graph,
-      &names,
-      &edge_branch_lengths(&graph),
-      &NwkWriteOptions::default(),
-    )?;
+    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
     assert_eq!(output_nwk, "(A:0.2)root;");
 
     Ok(())
@@ -247,17 +296,17 @@ mod tests {
 
   #[test]
   fn test_graph_collapse_edge_binary_tree() -> Result<(), Report> {
-    let NwkParse { mut graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.2)internal:0.1,B:0.3)root;")?;
+    let NwkParse {
+      mut graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.2)internal:0.1,B:0.3)root;")?;
 
     let root_to_internal = find_edge_key(&graph, &names, "root", "internal").unwrap();
     graph.collapse_edge(root_to_internal)?;
 
-    let output_nwk = nwk_write_str(
-      &graph,
-      &names,
-      &edge_branch_lengths(&graph),
-      &NwkWriteOptions::default(),
-    )?;
+    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
     assert_eq!(output_nwk, "(B:0.3,A:0.2)root;");
 
     Ok(())
@@ -265,18 +314,17 @@ mod tests {
 
   #[test]
   fn test_graph_collapse_edge_complex_tree() -> Result<(), Report> {
-    let NwkParse { mut graph, names, .. } =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.3,B:0.4)left:0.1,(C:0.5,D:0.6)right:0.2)root;")?;
+    let NwkParse {
+      mut graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.3,B:0.4)left:0.1,(C:0.5,D:0.6)right:0.2)root;")?;
 
     let root_to_left = find_edge_key(&graph, &names, "root", "left").unwrap();
     graph.collapse_edge(root_to_left)?;
 
-    let output_nwk = nwk_write_str(
-      &graph,
-      &names,
-      &edge_branch_lengths(&graph),
-      &NwkWriteOptions::default(),
-    )?;
+    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
     assert_eq!(output_nwk, "((C:0.5,D:0.6)right:0.2,A:0.3,B:0.4)root;");
 
     Ok(())
@@ -302,17 +350,17 @@ mod tests {
 
   #[test]
   fn test_graph_collapse_edge_leaf_edge() -> Result<(), Report> {
-    let NwkParse { mut graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>("(A:0.1,B:0.2)root;")?;
+    let NwkParse {
+      mut graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("(A:0.1,B:0.2)root;")?;
 
     let root_to_a = find_edge_key(&graph, &names, "root", "A").unwrap();
     graph.collapse_edge(root_to_a)?;
 
-    let output_nwk = nwk_write_str(
-      &graph,
-      &names,
-      &edge_branch_lengths(&graph),
-      &NwkWriteOptions::default(),
-    )?;
+    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
     assert_eq!(output_nwk, "(B:0.2)root;");
 
     Ok(())
@@ -320,7 +368,12 @@ mod tests {
 
   #[test]
   fn test_graph_collapse_edge_no_duplicate_edges() -> Result<(), Report> {
-    let NwkParse { mut graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.2)internal:0.1)root;")?;
+    let NwkParse {
+      mut graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.2)internal:0.1)root;")?;
 
     let root_to_internal = find_edge_key(&graph, &names, "root", "internal").unwrap();
     graph.collapse_edge(root_to_internal)?;
@@ -352,18 +405,17 @@ mod tests {
 
   #[test]
   fn test_graph_collapse_edge_adjacency_lists_maintained() -> Result<(), Report> {
-    let NwkParse { mut graph, names, .. } =
-      nwk_read_str::<TestNode, TestEdge, ()>("((A:0.3,B:0.4)left:0.1,right:0.2)root;")?;
+    let NwkParse {
+      mut graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((A:0.3,B:0.4)left:0.1,right:0.2)root;")?;
 
     let root_to_left = find_edge_key(&graph, &names, "root", "left").unwrap();
     graph.collapse_edge(root_to_left)?;
 
-    let output_nwk = nwk_write_str(
-      &graph,
-      &names,
-      &edge_branch_lengths(&graph),
-      &NwkWriteOptions::default(),
-    )?;
+    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
     assert_eq!(output_nwk, "(right:0.2,A:0.3,B:0.4)root;");
 
     Ok(())
@@ -413,8 +465,12 @@ mod tests {
 
   #[test]
   fn test_graph_collapse_edge_adjacency_consistency() -> Result<(), Report> {
-    let NwkParse { mut graph, names, .. } =
-      nwk_read_str::<TestNode, TestEdge, ()>("((leaf1:0.2,leaf2:0.3)internal:0.1)root;")?;
+    let NwkParse {
+      mut graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str::<TestNode, TestEdge, ()>("((leaf1:0.2,leaf2:0.3)internal:0.1)root;")?;
 
     let root_to_internal = find_edge_key(&graph, &names, "root", "internal").unwrap();
     graph.collapse_edge(root_to_internal)?;

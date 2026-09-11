@@ -5,7 +5,7 @@ mod tests {
   use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
-  use crate::optimize::iteration::{apply_damping, commit_branch_lengths};
+  use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop, run_optimize_loop};
@@ -23,9 +23,8 @@ mod tests {
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
-  use treetime_graph::edge::HasBranchLength;
-  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::AsciiChar;
@@ -58,17 +57,22 @@ mod tests {
   fn test_optimize_find_zero_optimal_internal_edges_empty_graph() -> Result<(), Report> {
     let graph = GraphAncestral::new();
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
+    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &BTreeMap::new());
     assert_eq!(edges.len(), 0);
     Ok(())
   }
 
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_no_zero_edges() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let graph: GraphAncestral = graph;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
+    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
     assert_eq!(edges.len(), 0);
     Ok(())
   }
@@ -76,10 +80,15 @@ mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_skips_leaves() -> Result<(), Report> {
     // A has bl=0.0 but is a leaf: should NOT be collected
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.0,B:0.2)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("(A:0.0,B:0.2)root;")?;
     let graph: GraphAncestral = graph;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
+    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
     assert_eq!(edges.len(), 0);
     Ok(())
   }
@@ -87,10 +96,15 @@ mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_collects_internal() -> Result<(), Report> {
     // I has bl=0.0 and is internal: should be collected
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)I:0.0,C:0.3)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)I:0.0,C:0.3)root;")?;
     let graph: GraphAncestral = graph;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
+    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
     assert_eq!(edges.len(), 1);
     let edge_key = edges[0];
     let edge = graph.get_edge(edge_key).unwrap();
@@ -105,22 +119,31 @@ mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_multiple() -> Result<(), Report> {
     // Both internal nodes have bl=0.0
-    let NwkParse { graph, names, .. } = nwk_read_str("(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;")?;
     let graph: GraphAncestral = graph;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
+    let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
     assert_eq!(edges.len(), 2);
     Ok(())
   }
 
   #[test]
   fn test_optimize_prune_and_merge_empty_list() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let mut graph: GraphAncestral = graph;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
-    let mut branch_lengths = edge_branch_lengths(&graph);
     let mut names_tt_13 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
@@ -144,7 +167,12 @@ mod tests {
     //
     // After collapse of I: root has 4 children (A, B, C, D) - polytomy
     // A, B, C share sub A0T -> merge creates new internal node
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
     let mut graph: GraphAncestral = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
@@ -185,11 +213,8 @@ mod tests {
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
     // Set bl to 0.0 and pass damped value (simulating damping override in prune_and_merge_in_loop)
-    if let Some(edge) = graph.get_edge(ri_key) {
-      edge.write_arc().payload().write_arc().set_branch_length(Some(0.0));
-    }
+    branch_lengths.insert(ri_key, Some(0.0));
 
-    let mut branch_lengths = edge_branch_lengths(&graph);
     let mut names_tt_12 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
@@ -245,38 +270,36 @@ mod tests {
     )?;
 
     // A and B are identical: the internal edge AB should be optimized to zero
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
     let mut graph: GraphAncestral = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
-    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
 
     let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 
-    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().len();
 
     // Run optimize loop with topology cleanup
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
-      let sparse_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+      let sparse_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
       let total_lh = sparse_lh;
 
       if (total_lh - lh_prev).abs() < 1e-2 {
         break;
       }
 
-      let old_branch_lengths = edge_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions, method)?;
-      let mut branch_lengths = edge_branch_lengths(&graph);
-      let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
+      let old_branch_lengths = branch_lengths.clone();
+      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_11 = names.clone();
       prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_11)?;
-      commit_branch_lengths(&graph, &branch_lengths);
 
       lh_prev = total_lh;
     }
@@ -291,7 +314,7 @@ mod tests {
 
     // All remaining branch lengths should be non-negative
     for edge in graph.get_edges() {
-      let bl = edge.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+      let bl = branch_lengths.get(&edge.read_arc().key()).copied().flatten().unwrap_or(0.0);
       assert!(bl >= 0.0, "Negative branch length after optimization: {bl}");
     }
 
@@ -324,36 +347,34 @@ mod tests {
       &nuc,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;")?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;")?;
 
     let mut graph: GraphAncestral = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
-    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
 
     let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 
-    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().len();
 
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
-      let total_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+      let total_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
       if (total_lh - lh_prev).abs() < 1e-2 {
         break;
       }
 
-      let old_branch_lengths = edge_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions, method)?;
-      let mut branch_lengths = edge_branch_lengths(&graph);
-      let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
+      let old_branch_lengths = branch_lengths.clone();
+      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_10 = names.clone();
       prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_10)?;
-      commit_branch_lengths(&graph, &branch_lengths);
 
       lh_prev = total_lh;
     }
@@ -392,7 +413,12 @@ mod tests {
       &nuc,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
 
     let mut graph: GraphAncestral = graph;
 
@@ -400,12 +426,11 @@ mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
 
     let initial_node_count = graph.get_nodes().len();
 
     // A and B share mutation A->T at pos 0 (root MAP = A due to 3-vs-2 majority)
-    let mut branch_lengths = edge_branch_lengths(&graph);
     let merged = merge_shared_mutation_branches(&mut graph, &sparse_partitions, &mut branch_lengths)?;
     assert!(merged > 0, "A and B should share mutation A->T, triggering merge");
     graph.build()?;
@@ -418,7 +443,7 @@ mod tests {
     // The critical test: marginal_update after merge must produce finite log-likelihood.
     // Before the composition fix, the merge-created node had zero composition,
     // causing the backward pass to produce incorrect values.
-    let lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+    let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
     assert!(lh.is_finite(), "log-likelihood must be finite after merge: {lh}");
     assert!(lh < 0.0, "log-likelihood must be negative: {lh}");
 
@@ -431,7 +456,12 @@ mod tests {
     // it: merge C1+C2 (shared reversion), hoist the reverting group, retire the helper.
     // Tree: root -> U -> V -> {C1, C2, C3}. U->V carries {A0T, C5G}; C1 and C2 revert A0T,
     // C3 keeps it. Parsimony optimum is 2 mutations.
-    let NwkParse { graph, names, .. } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
     let mut graph: GraphAncestral = graph;
 
     let mut partition = PartitionMarginalSparse {
@@ -465,7 +495,6 @@ mod tests {
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
     // Empty zero-optimal list: the old loop was a no-op here. The hoist must still fire.
-    let mut branch_lengths = edge_branch_lengths(&graph);
     let mut names_tt_9 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
@@ -505,7 +534,12 @@ mod tests {
     //
     // Both I1 and I2 should be collapsed. The guard for already-removed edges
     // must handle the case where collapsing I1 removes I2's inbound edge.
-    let NwkParse { graph, names, .. } = nwk_read_str("(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;")?;
     let mut graph: GraphAncestral = graph;
 
     let ri1_key = find_edge_key(&graph, &names, "root", "I1").unwrap();
@@ -514,7 +548,6 @@ mod tests {
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
-    let mut branch_lengths = edge_branch_lengths(&graph);
     let mut names_tt_8 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
@@ -566,37 +599,35 @@ mod tests {
       &nuc,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
     let mut graph: GraphAncestral = graph;
 
     let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, nuc, get_common_length(&aln)?)))];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &dense_partitions, &aln, &names)?.value();
-    marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions, &aln, &names)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions)?.value();
 
     let sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
 
-    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().len();
 
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
-      let dense_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
+      let dense_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions)?.value();
       if (dense_lh - lh_prev).abs() < 1e-2 {
         break;
       }
 
-      let old_branch_lengths = edge_branch_lengths(&graph);
-      run_optimize_mixed(&graph, &mixed_partitions, method)?;
-      let mut branch_lengths = edge_branch_lengths(&graph);
-      let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
+      let old_branch_lengths = branch_lengths.clone();
+      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+        let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_7 = names.clone();
       prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_7)?;
-      commit_branch_lengths(&graph, &branch_lengths);
 
       lh_prev = dense_lh;
     }
@@ -610,7 +641,7 @@ mod tests {
 
     // All remaining branch lengths should be non-negative
     for edge in graph.get_edges() {
-      let bl = edge.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+      let bl = branch_lengths.get(&edge.read_arc().key()).copied().flatten().unwrap_or(0.0);
       assert!(bl >= 0.0, "Negative branch length after optimization: {bl}");
     }
 
@@ -621,7 +652,12 @@ mod tests {
   fn test_optimize_prune_and_merge_names_new_nodes() -> Result<(), Report> {
     // Collapse zero-length I, then merge A+B+C (shared sub A0T) under a new
     // internal node. The new node must receive a NODE_NNNNNNN name.
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
     let mut graph: GraphAncestral = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
@@ -661,11 +697,8 @@ mod tests {
     let sparse = vec![Arc::new(RwLock::new(partition))];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
-    if let Some(edge) = graph.get_edge(ri_key) {
-      edge.write_arc().payload().write_arc().set_branch_length(Some(0.0));
-    }
+    branch_lengths.insert(ri_key, Some(0.0));
 
-    let mut branch_lengths = edge_branch_lengths(&graph);
     let mut names_tt_6 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
@@ -696,7 +729,12 @@ mod tests {
     // Same setup as the collapse+merge test, but with merge-siblings disabled. Collapsing the
     // zero-length internal edge still forms the polytomy; without merge, the shared-mutation
     // siblings A, B, C stay as direct children of root rather than being grouped under a node.
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
     let mut graph: GraphAncestral = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
@@ -733,15 +771,12 @@ mod tests {
     let sparse = vec![Arc::new(RwLock::new(partition))];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
-    if let Some(edge) = graph.get_edge(ri_key) {
-      edge.write_arc().payload().write_arc().set_branch_length(Some(0.0));
-    }
+    branch_lengths.insert(ri_key, Some(0.0));
 
     let ops = TopologyOps {
       merge_siblings: false,
       ..TopologyOps::default()
     };
-    let mut branch_lengths = edge_branch_lengths(&graph);
     let mut names_tt_5 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
@@ -769,7 +804,12 @@ mod tests {
   fn test_optimize_prune_and_merge_flip_disabled_keeps_reversion() -> Result<(), Report> {
     // Reversion polytomy. With flip-parent-child disabled, merge still groups the two reverting
     // children, but the reverting mutation is not hoisted away, so it remains in the tree.
-    let NwkParse { graph, names, .. } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
     let mut graph: GraphAncestral = graph;
 
     let mut partition = PartitionMarginalSparse {
@@ -806,7 +846,6 @@ mod tests {
       flip_parent_child: false,
       ..TopologyOps::default()
     };
-    let mut branch_lengths = edge_branch_lengths(&graph);
     let mut names_tt_4 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
@@ -837,7 +876,12 @@ mod tests {
   fn test_optimize_prune_and_merge_all_ops_disabled_is_noop() -> Result<(), Report> {
     // With every topology step disabled, the reversion polytomy is left untouched: no collapse,
     // no merge, no hoist. The tree shape and its mutation content are unchanged.
-    let NwkParse { graph, names, .. } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
     let mut graph: GraphAncestral = graph;
 
     let mut partition = PartitionMarginalSparse {
@@ -876,7 +920,6 @@ mod tests {
       merge_siblings: false,
       flip_parent_child: false,
     };
-    let mut branch_lengths = edge_branch_lengths(&graph);
     let mut names_tt_3 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
@@ -925,7 +968,7 @@ mod tests {
       &nuc,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
     let mut graph: GraphAncestral = graph;
 
@@ -933,11 +976,11 @@ mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
 
     let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().len();
 
@@ -956,7 +999,9 @@ mod tests {
       0.75,
       method,
       false,
-      ops, &names_tt_2
+      ops,
+      branch_lengths,
+      &names_tt_2,
     )?;
 
     assert_eq!(
@@ -991,7 +1036,12 @@ mod tests {
       &nuc,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
     let mut graph: GraphAncestral = graph;
 
@@ -999,11 +1049,11 @@ mod tests {
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
 
     let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().len();
 
@@ -1019,6 +1069,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_1,
     )?;
 

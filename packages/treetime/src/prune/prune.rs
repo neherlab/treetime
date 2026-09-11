@@ -1,4 +1,3 @@
-use crate::optimize::iteration::commit_branch_lengths;
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -23,9 +22,8 @@ pub fn prune_nodes(
 ) -> Result<(), Report> {
   // `names` is the pre-prune node-name map propagated from the command entry: collapse removes nodes
   // but never renames survivors, so the pre-prune label of every surviving node is its final label.
-  // `branch_lengths` is the payload-mirror map the collapse producers read and update in place; it
-  // is committed back to the edge payload at the end so payload readers not yet on the value map
-  // see the pruned lengths (prune stays bit-identical).
+  // `branch_lengths` is the value map the collapse producers read and update in place, and it exits
+  // reflecting the pruned tree.
   prune_internal_nodes(
     graph,
     partitions,
@@ -38,7 +36,6 @@ pub fn prune_nodes(
   graph.build()?;
   prune_leaves(graph, partitions, node_names, names, branch_lengths)?;
   graph.build()?;
-  commit_branch_lengths(graph, branch_lengths);
   Ok(())
 }
 

@@ -17,7 +17,7 @@ use itertools::izip;
 use maplit::btreemap;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, GraphNodeKey, NodeAncestralOps};
@@ -118,7 +118,7 @@ impl PartitionRerootOps for PartitionMarginalDense {
 impl<N, E> TransitionCounting<N, E> for PartitionMarginalDense
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn count_transitions(
     &self,
@@ -201,7 +201,7 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
 impl<N, E> PartitionTimetreeOps<N, E> for PartitionMarginalDense
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>) {
     let graph_node_keys: BTreeSet<GraphNodeKey> = graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();
@@ -226,7 +226,7 @@ where
 impl<N, E> PartitionMarginalOps<N, E> for PartitionMarginalDense
 where
   N: NodeAncestralOps,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn attach_sequences(
     &mut self,

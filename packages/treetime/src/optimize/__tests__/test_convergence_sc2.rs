@@ -35,17 +35,22 @@ mod tests {
     let tree_path = workspace_root.join("data/sc2/2844/tree.nwk");
     let aln_path = workspace_root.join("data/sc2/2844/aln.fasta.xz");
     let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet)?;
-    let NwkParse { mut graph, names, .. } = nwk_read_file(&tree_path)?;
+    let NwkParse {
+      mut graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_file(&tree_path)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
 
     let dense_partitions = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let max_iter = 50;
     let names_tt_2 = names.clone();
@@ -60,6 +65,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_2,
     )?;
 
@@ -87,17 +93,22 @@ mod tests {
     let tree_path = workspace_root.join("data/flu/h3n2/20/tree.nwk");
     let aln_path = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
     let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet)?;
-    let NwkParse { mut graph, names, .. } = nwk_read_file(&tree_path)?;
+    let NwkParse {
+      mut graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_file(&tree_path)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
 
     let dense_partitions = vec![];
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-    initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
+    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let names_tt_1 = names.clone();
     let result = run_optimize_loop(
@@ -111,6 +122,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_1,
     )?;
 

@@ -6,7 +6,6 @@ mod tests {
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::nex::NexWriteOptions;
   use treetime_io::nwk::{CommentProviders, NwkParse, NwkStyle, nwk_read_str};
   use treetime_utils::o;
@@ -17,6 +16,7 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -27,6 +27,7 @@ mod tests {
       graph,
       &confidences,
       &names_tt_1,
+      &branch_lengths,
       &traits,
       "country",
       None,
@@ -45,13 +46,7 @@ mod tests {
       style: NwkStyle::Beast,
       ..NexWriteOptions::default()
     };
-    let actual = treetime_io::nex::nex_write_str_with(
-      &result.graph,
-      &names,
-      &edge_branch_lengths(&result.graph),
-      &options,
-      &providers,
-    )?;
+    let actual = treetime_io::nex::nex_write_str_with(&result.graph, &names, &branch_lengths, &options, &providers)?;
     let expected = indoc! {r#"
       #NEXUS
       Begin Taxa;

@@ -23,7 +23,9 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::{Arc, LazyLock};
   use treetime_graph::node::GraphNodeKey;
-  use treetime_graph::reroot::{RerootChanges, apply_reroot_topology, remove_node_if_trivial, split_edge};
+  use treetime_graph::reroot::{
+    RerootChanges, apply_reroot_topology, record_split, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
+  };
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::AsciiChar;
@@ -226,7 +228,12 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
@@ -299,7 +306,12 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
@@ -344,7 +356,12 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let graph: GraphAncestral = graph;
     let alphabet = Alphabet::default();
 
@@ -394,7 +411,12 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
@@ -469,8 +491,12 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse { graph, names, .. } =
-      nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
     let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
@@ -548,7 +574,12 @@ mod tests {
     )?;
 
     // CDE is a polytomy with 3 children: C, D, E
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
     let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
@@ -635,7 +666,12 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
@@ -735,7 +771,12 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let mut graph: GraphAncestral = graph;
     let alphabet = Alphabet::default();
 
@@ -804,7 +845,7 @@ mod tests {
       .collect();
 
     // Split AB->A at 0.5 to insert new root node
-    let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5)?;
+    let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5, branch_lengths[&edge_ab_a_key])?;
     let new_root_key = split_info.new_node_key;
     let parent_side_key = split_info.parent_side_edge_key; // AB -> new_root
     let child_side_key = split_info.child_side_edge_key; // new_root -> A
@@ -974,7 +1015,12 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let mut graph: GraphAncestral = graph;
     let alphabet = Alphabet::default();
 
@@ -1043,14 +1089,15 @@ mod tests {
     };
 
     // Split AB->A at midpoint
-    let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5)?;
+    let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5, branch_lengths[&edge_ab_a_key])?;
     let new_root_key = split_info.new_node_key;
 
     // Invert path from new_root to old_root
     let inverted_edge_keys = apply_reroot_topology(&mut graph, old_root_key, new_root_key)?;
 
     // Old root is now trivial (1 parent: AB, 1 child: CD) - remove it
-    let edge_merge = remove_node_if_trivial(&mut graph, old_root_key)?;
+    let (old_root_parent, old_root_child) = trivial_node_branch_lengths(&graph, old_root_key, &branch_lengths);
+    let edge_merge = remove_node_if_trivial(&mut graph, old_root_key, old_root_parent, old_root_child)?;
     assert!(edge_merge.is_some(), "old root should be trivial after reroot");
 
     let changes = RerootChanges {
@@ -1121,7 +1168,12 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let mut graph: GraphAncestral = graph;
     let alphabet = Alphabet::default();
 
@@ -1142,7 +1194,7 @@ mod tests {
 
     // Run initial marginal pass before reroot
     let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![Arc::new(RwLock::new(sparse))];
-    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
 
     // Reroot on AB->A
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
@@ -1159,7 +1211,9 @@ mod tests {
       .map(|e| e.read_arc().key())
       .expect("AB->A edge not found");
 
-    let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5)?;
+    let mut branch_lengths = branch_lengths;
+    let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5, branch_lengths[&edge_ab_a_key])?;
+    record_split(&mut branch_lengths, &split_info);
     let new_root_key = split_info.new_node_key;
     let inverted_edge_keys = apply_reroot_topology(&mut graph, old_root_key, new_root_key)?;
 
@@ -1172,7 +1226,7 @@ mod tests {
     partitions[0].write_arc().apply_reroot(&changes)?;
 
     // Run marginal pass after reroot
-    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
 
     let partition = partitions[0].read_arc();
     let root_edge_totals: Vec<(_, usize)> = graph

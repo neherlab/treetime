@@ -10,7 +10,7 @@ use maplit::btreemap;
 use ndarray::Array1;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_primitives::LogLh;
@@ -48,7 +48,7 @@ impl PartitionMarginalDiscrete {
   ) -> Result<(), Report>
   where
     N: GraphNode,
-    E: EdgeOptimizeOps,
+    E: GraphEdge,
   {
     let n_states = self.n_states();
     validate_trait_names(graph, traits, names)?;
@@ -130,7 +130,7 @@ impl HasLogLh for PartitionMarginalDiscrete {
 impl<N, E> TransitionCounting<N, E> for PartitionMarginalDiscrete
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn count_transitions(
     &self,
@@ -144,7 +144,7 @@ where
 impl<N, E> MarginalPartition<N, E> for PartitionMarginalDiscrete
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn marginal_data(&self) -> &MarginalData {
     &self.data
@@ -167,7 +167,7 @@ where
 impl<N, E> IndexedMarginalPartition<N, E> for PartitionMarginalDiscrete
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn indexed_missing_node(&self, _key: GraphNodeKey) -> Result<DenseNodePartition, Report> {
     Ok(DenseNodePartition {
@@ -195,7 +195,7 @@ where
 impl<N, E> PartitionMarginalPasses<N, E> for PartitionMarginalDiscrete
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn as_marginal_pass(&mut self) -> MarginalPass<'_, N, E> {
     MarginalPass::Indexed(self)

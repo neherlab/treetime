@@ -13,7 +13,7 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
@@ -126,7 +126,7 @@ impl PartitionOptimizeOps for PartitionMarginalSparse {
 impl<N, E> PartitionTimetreeOps<N, E> for PartitionMarginalSparse
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>) {
     let graph_node_keys: BTreeSet<GraphNodeKey> = graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();
@@ -154,7 +154,7 @@ where
 impl<N, E> PartitionMarginalPasses<N, E> for PartitionMarginalSparse
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn as_marginal_pass(&mut self) -> MarginalPass<'_, N, E> {
     MarginalPass::Sparse(self)
@@ -168,7 +168,7 @@ where
 impl<N, E> PartitionMarginalOps<N, E> for PartitionMarginalSparse
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn attach_sequences(
     &mut self,

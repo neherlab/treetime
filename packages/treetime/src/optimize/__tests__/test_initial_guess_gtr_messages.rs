@@ -15,7 +15,7 @@ mod tests {
   use ndarray::array;
   use parking_lot::RwLock;
   use std::sync::Arc;
-  use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -45,6 +45,7 @@ mod tests {
     graph: &GraphAncestral,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalDense>>>, Report> {
     let alphabet = Alphabet::default();
     let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
@@ -53,15 +54,15 @@ mod tests {
       alphabet,
       get_common_length(aln)?,
     )))];
-    initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln, names)?.value();
+    initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?.value();
     Ok(partitions)
   }
 
-  fn get_branch_lengths(graph: &GraphAncestral) -> Vec<f64> {
+  fn get_branch_lengths(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
       .iter()
-      .map(|edge| edge.read_arc().payload().read_arc().branch_length().unwrap_or(0.0))
+      .map(|edge| branch_lengths[&edge.read_arc().key()].unwrap_or(0.0))
       .collect()
   }
 
@@ -82,27 +83,44 @@ mod tests {
     let NwkParse {
       graph: graph_stale,
       names: graph_stale_names,
+      branch_lengths: mut branch_lengths_stale,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let partitions_stale = setup_dense_jc69(&graph_stale, &graph_stale_names, &aln)?;
-    marginal_update(&graph_stale, &profile_branch_lengths(&graph_stale), &partitions_stale)?.value();
+    let partitions_stale = setup_dense_jc69(&graph_stale, &graph_stale_names, &aln, &branch_lengths_stale)?;
+    marginal_update(
+      &graph_stale,
+      &profile_branch_lengths(&branch_lengths_stale),
+      &partitions_stale,
+    )?
+    .value();
     partitions_stale[0].write_arc().data.gtr = f81_gtr.clone();
-    initial_guess_mixed(&graph_stale, &partitions_stale, true, false)?;
-    let bl_stale = get_branch_lengths(&graph_stale);
+    initial_guess_mixed(&graph_stale, &partitions_stale, true, false, &mut branch_lengths_stale)?;
+    let bl_stale = get_branch_lengths(&graph_stale, &branch_lengths_stale);
 
     // Scenario 2: fresh F81 messages (the fix)
     // Replace GTR AND re-run marginal_update.
     let NwkParse {
       graph: graph_fresh,
       names: graph_fresh_names,
+      branch_lengths: mut branch_lengths_fresh,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let partitions_fresh = setup_dense_jc69(&graph_fresh, &graph_fresh_names, &aln)?;
-    marginal_update(&graph_fresh, &profile_branch_lengths(&graph_fresh), &partitions_fresh)?.value();
+    let partitions_fresh = setup_dense_jc69(&graph_fresh, &graph_fresh_names, &aln, &branch_lengths_fresh)?;
+    marginal_update(
+      &graph_fresh,
+      &profile_branch_lengths(&branch_lengths_fresh),
+      &partitions_fresh,
+    )?
+    .value();
     partitions_fresh[0].write_arc().data.gtr = f81_gtr;
-    marginal_update(&graph_fresh, &profile_branch_lengths(&graph_fresh), &partitions_fresh)?.value();
-    initial_guess_mixed(&graph_fresh, &partitions_fresh, true, false)?;
-    let bl_fresh = get_branch_lengths(&graph_fresh);
+    marginal_update(
+      &graph_fresh,
+      &profile_branch_lengths(&branch_lengths_fresh),
+      &partitions_fresh,
+    )?
+    .value();
+    initial_guess_mixed(&graph_fresh, &partitions_fresh, true, false, &mut branch_lengths_fresh)?;
+    let bl_fresh = get_branch_lengths(&graph_fresh, &branch_lengths_fresh);
 
     assert_ne!(
       bl_stale, bl_fresh,
@@ -124,14 +142,19 @@ mod tests {
     })?;
 
     // Run full initialization with the fix: JC69, update, replace, update, guess
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let partitions = setup_dense_jc69(&graph, &names, &aln)?;
-    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    let partitions = setup_dense_jc69(&graph, &names, &aln, &branch_lengths)?;
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
     partitions[0].write_arc().data.gtr = f81_gtr.clone();
-    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
-    initial_guess_mixed(&graph, &partitions, true, false)?;
-    let bl_first = get_branch_lengths(&graph);
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    initial_guess_mixed(&graph, &partitions, true, false, &mut branch_lengths)?;
+    let bl_first = get_branch_lengths(&graph, &branch_lengths);
 
     // Run marginal_update + initial_guess again on the same graph.
     // Branch lengths changed from initial_guess, so marginal_update
@@ -142,14 +165,15 @@ mod tests {
     let NwkParse {
       graph: graph2,
       names: graph2_names,
+      branch_lengths: mut branch_lengths2,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let partitions2 = setup_dense_jc69(&graph2, &graph2_names, &aln)?;
-    marginal_update(&graph2, &profile_branch_lengths(&graph2), &partitions2)?.value();
+    let partitions2 = setup_dense_jc69(&graph2, &graph2_names, &aln, &branch_lengths2)?;
+    marginal_update(&graph2, &profile_branch_lengths(&branch_lengths2), &partitions2)?.value();
     partitions2[0].write_arc().data.gtr = f81_gtr;
-    marginal_update(&graph2, &profile_branch_lengths(&graph2), &partitions2)?.value();
-    initial_guess_mixed(&graph2, &partitions2, true, false)?;
-    let bl_second = get_branch_lengths(&graph2);
+    marginal_update(&graph2, &profile_branch_lengths(&branch_lengths2), &partitions2)?.value();
+    initial_guess_mixed(&graph2, &partitions2, true, false, &mut branch_lengths2)?;
+    let bl_second = get_branch_lengths(&graph2, &branch_lengths2);
 
     assert_eq!(
       bl_first, bl_second,

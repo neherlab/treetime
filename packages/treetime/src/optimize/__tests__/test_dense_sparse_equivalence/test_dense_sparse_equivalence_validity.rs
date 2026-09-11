@@ -6,7 +6,6 @@ mod tests {
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   use super::super::test_dense_sparse_equivalence_support::tests::{
@@ -24,20 +23,20 @@ mod tests {
   #[trace]
   fn test_dense_optimization_produces_valid_results(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let partitions = setup_dense_only(&graph, &names, &aln)?;
+    let partitions = setup_dense_only(&graph, &names, &aln, &branch_lengths)?;
 
-    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &partitions, method)?;
-      let lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+      run_optimize_mixed(&graph, &partitions, method, &mut branch_lengths)?;
+      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }
 
-    let final_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    let final_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
 
     // Final log-LH should be in expected range for this simple tree
     // 16 sites, 4 leaves, mostly identical sequences -> log-LH between -100 and -10
@@ -54,12 +53,7 @@ mod tests {
 
     // Branch lengths should be valid and bounded
     for edge in graph.get_edges() {
-      let bl = edge
-        .read_arc()
-        .payload()
-        .read_arc()
-        .branch_length()
-        .expect("branch length must be set on every edge after optimization");
+      let bl = branch_lengths[&edge.read_arc().key()].expect("branch length must be set on every edge after optimization");
       assert!(bl.is_finite(), "Branch length should be finite");
       assert!(bl >= 0.0, "Branch length should be non-negative");
       assert!(bl < 10.0, "Branch length {bl} should be reasonable (< 10)");
@@ -79,20 +73,20 @@ mod tests {
   #[trace]
   fn test_sparse_optimization_produces_valid_results(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let partitions = setup_sparse_only(&graph, &names, &aln)?;
+    let partitions = setup_sparse_only(&graph, &names, &aln, &branch_lengths)?;
 
-    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &partitions, method)?;
-      let lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+      run_optimize_mixed(&graph, &partitions, method, &mut branch_lengths)?;
+      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }
 
-    let final_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    let final_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
 
     // Final log-LH should be in expected range for this simple tree
     // 16 sites, 4 leaves, mostly identical sequences -> log-LH between -100 and -10
@@ -109,12 +103,7 @@ mod tests {
 
     // Branch lengths should be valid and bounded
     for edge in graph.get_edges() {
-      let bl = edge
-        .read_arc()
-        .payload()
-        .read_arc()
-        .branch_length()
-        .expect("branch length must be set on every edge after optimization");
+      let bl = branch_lengths[&edge.read_arc().key()].expect("branch length must be set on every edge after optimization");
       assert!(bl.is_finite(), "Branch length should be finite");
       assert!(bl >= 0.0, "Branch length should be non-negative");
       assert!(bl < 10.0, "Branch length {bl} should be reasonable (< 10)");

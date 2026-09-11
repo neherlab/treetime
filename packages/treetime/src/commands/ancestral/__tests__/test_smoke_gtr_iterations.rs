@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::params::MethodAncestral;
   use crate::ancestral::pipeline::{AncestralInput, AncestralParams};
   use crate::ancestral::sample::SampleMode;
@@ -24,7 +23,12 @@ mod tests {
   #[test]
   fn test_smoke_ancestral_gtr_iterations_sparse() -> Result<(), Report> {
     let alphabet = Alphabet::default();
-    let NwkParse { graph, names, .. } = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
     let sequences = read_many_fasta(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
 
     let params = AncestralParams {
@@ -39,7 +43,6 @@ mod tests {
       sample_from_profile: SampleMode::Argmax,
       ignore_missing_alns: false,
     };
-    let branch_lengths = profile_branch_lengths(&graph);
     let input = AncestralInput {
       graph,
       alphabet,
@@ -62,7 +65,12 @@ mod tests {
   #[test]
   fn test_smoke_ancestral_gtr_iterations_dense() -> Result<(), Report> {
     let alphabet = Alphabet::default();
-    let NwkParse { graph, names, .. } = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
     let sequences = read_many_fasta(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
 
     let params = AncestralParams {
@@ -77,7 +85,6 @@ mod tests {
       sample_from_profile: SampleMode::Argmax,
       ignore_missing_alns: false,
     };
-    let branch_lengths = profile_branch_lengths(&graph);
     let input = AncestralInput {
       graph,
       alphabet,

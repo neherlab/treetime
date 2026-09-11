@@ -17,7 +17,6 @@ use std::io::Write;
 use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::csv::CsvStructWriter;
 use treetime_utils::io::file::create_file_or_stdout;
 
@@ -63,6 +62,7 @@ pub fn compute_rate_susceptibility(
   coalescent: Option<&CoalescentModel>,
   rate_std: f64,
   no_indels: bool,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   state: &mut TimetreeState,
   clock_state: &mut ClockState,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -86,9 +86,9 @@ pub fn compute_rate_susceptibility(
   // which is the desired effective rate at each branch.
   let original_gammas = save_gammas(state);
 
-  // Snapshot the current per-edge lengths and per-node names once. The three passes below only
-  // rescale gammas on the state; none renames or re-lengths, so the same snapshot feeds all three.
-  let run_branch_lengths = edge_branch_lengths(graph);
+  // Use the routed per-edge length and per-node name maps. The three passes below only rescale gammas
+  // on the state; none renames or re-lengths, so the same maps feed all three.
+  let run_branch_lengths = branch_lengths;
   let run_names = names;
 
   // Run 1: upper rate bound
@@ -97,7 +97,7 @@ pub fn compute_rate_susceptibility(
   run_timetree(
     graph,
     partitions,
-    &run_branch_lengths,
+    run_branch_lengths,
     run_names,
     clock_model,
     coalescent,
@@ -114,7 +114,7 @@ pub fn compute_rate_susceptibility(
   run_timetree(
     graph,
     partitions,
-    &run_branch_lengths,
+    run_branch_lengths,
     run_names,
     clock_model,
     coalescent,
@@ -131,7 +131,7 @@ pub fn compute_rate_susceptibility(
   run_timetree(
     graph,
     partitions,
-    &run_branch_lengths,
+    run_branch_lengths,
     run_names,
     clock_model,
     coalescent,

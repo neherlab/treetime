@@ -14,7 +14,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::assign_node_names::assign_node_names;
-  use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -46,8 +46,21 @@ mod tests {
   /// Returns the graph together with the date state seeded from the node times, the value
   /// `resolve_polytomies` reads. The edge branch lengths are zeroed so no branch carries reconstructed
   /// substitutions; the resolution timing comes from the node times alone.
-  fn polytomy_tree() -> Result<(GraphTimetree, BTreeMap<GraphNodeKey, Option<String>>, TimetreeState), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
+  fn polytomy_tree() -> Result<
+    (
+      GraphTimetree,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      TimetreeState,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
+    ),
+    Report,
+  > {
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
     let graph: GraphTimetree = graph;
     let mut state = TimetreeState::new(&graph);
     for (name, time) in [
@@ -60,14 +73,27 @@ mod tests {
       set_time(&graph, &names, &mut state, name, time)?;
     }
     for edge in graph.get_edges() {
-      edge.read_arc().payload().write_arc().set_branch_length(Some(0.0));
+      branch_lengths.insert(edge.read_arc().key(), Some(0.0));
     }
-    Ok((graph, names, state))
+    Ok((graph, names, state, branch_lengths))
   }
 
   /// A 6-way polytomy, closer to what the sweep is meant for.
-  fn wide_polytomy_tree() -> Result<(GraphTimetree, BTreeMap<GraphNodeKey, Option<String>>, TimetreeState), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1,C:0.1,D:0.1,E:0.1,F:0.1)P:0.05)root;")?;
+  fn wide_polytomy_tree() -> Result<
+    (
+      GraphTimetree,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      TimetreeState,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
+    ),
+    Report,
+  > {
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.1,C:0.1,D:0.1,E:0.1,F:0.1)P:0.05)root;")?;
     let graph: GraphTimetree = graph;
     let mut state = TimetreeState::new(&graph);
     for (name, time) in [
@@ -83,13 +109,26 @@ mod tests {
       set_time(&graph, &names, &mut state, name, time)?;
     }
     for edge in graph.get_edges() {
-      edge.read_arc().payload().write_arc().set_branch_length(Some(0.0));
+      branch_lengths.insert(edge.read_arc().key(), Some(0.0));
     }
-    Ok((graph, names, state))
+    Ok((graph, names, state, branch_lengths))
   }
 
-  fn binary_tree() -> Result<(GraphTimetree, BTreeMap<GraphNodeKey, Option<String>>, TimetreeState), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.05,(C:0.15,D:0.1)CD:0.08)root;")?;
+  fn binary_tree() -> Result<
+    (
+      GraphTimetree,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      TimetreeState,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
+    ),
+    Report,
+  > {
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.05,(C:0.15,D:0.1)CD:0.08)root;")?;
     let graph: GraphTimetree = graph;
     let mut state = TimetreeState::new(&graph);
     for (name, time) in [
@@ -103,7 +142,7 @@ mod tests {
     ] {
       set_time(&graph, &names, &mut state, name, time)?;
     }
-    Ok((graph, names, state))
+    Ok((graph, names, state, branch_lengths))
   }
 
   fn no_partitions() -> Vec<PartitionTimetreeRef> {
@@ -115,11 +154,25 @@ mod tests {
   /// These fixtures carry no partitions, so every branch has zero reconstructed substitutions
   /// and the total alignment length never enters: the sampled history is shaped by the merger
   /// rate alone.
-  fn resolve(graph: &mut GraphTimetree, state: &mut TimetreeState, rng: &mut dyn RngCore) -> Result<usize, Report> {
+  fn resolve(
+    graph: &mut GraphTimetree,
+    state: &mut TimetreeState,
+    branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+    rng: &mut dyn RngCore,
+  ) -> Result<usize, Report> {
     let merger_rate = PiecewiseConstantFn::new(array![], array![TEST_MERGER_RATE]);
     // `state` carries the node times `resolve_polytomies` reads, seeded as a value by the fixtures
     // instead of read off the graph payload.
-    resolve_polytomies(graph, &no_partitions(), TEST_MUTATION_RATE, 0, &merger_rate, rng, state)
+    resolve_polytomies(
+      graph,
+      &no_partitions(),
+      TEST_MUTATION_RATE,
+      0,
+      &merger_rate,
+      rng,
+      branch_lengths,
+      state,
+    )
   }
 
   /// Names of the leaves reachable from `node_key`.
@@ -148,10 +201,10 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_leaves_a_binary_tree_alone() -> Result<(), Report> {
-    let (mut graph, names, mut state) = binary_tree()?;
+    let (mut graph, names, mut state, mut branch_lengths) = binary_tree()?;
     let mut rng = get_random_number_generator(Some(1));
 
-    let created = resolve(&mut graph, &mut state, &mut rng)?;
+    let created = resolve(&mut graph, &mut state, &mut branch_lengths, &mut rng)?;
 
     assert_eq!(created, 0, "a binary tree has no polytomy to resolve");
     Ok(())
@@ -159,11 +212,11 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_resolves_a_three_way_polytomy() -> Result<(), Report> {
-    let (mut graph, names, mut state) = polytomy_tree()?;
+    let (mut graph, names, mut state, mut branch_lengths) = polytomy_tree()?;
     let abc_key = find_node_key_by_name(&graph, &names, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
     let mut rng = get_random_number_generator(Some(11));
 
-    let created = resolve(&mut graph, &mut state, &mut rng)?;
+    let created = resolve(&mut graph, &mut state, &mut branch_lengths, &mut rng)?;
 
     assert_eq!(created, 1, "a 3-way polytomy needs one merger to become a bifurcation");
     let degree = graph
@@ -178,12 +231,12 @@ mod tests {
   proptest! {
     #[test]
     fn test_prop_resolve_polytomies_preserves_every_leaf(seed in any::<u64>()) {
-      let (mut graph, names, mut state) = wide_polytomy_tree().unwrap();
+      let (mut graph, names, mut state, mut branch_lengths) = wide_polytomy_tree().unwrap();
       let parent_key = find_node_key_by_name(&graph, &names, "P").expect("P must exist");
       let before = leaf_names_under(&graph, &names, parent_key);
       let mut rng = get_random_number_generator(Some(seed));
 
-      resolve(&mut graph, &mut state, &mut rng).unwrap();
+      resolve(&mut graph, &mut state, &mut branch_lengths, &mut rng).unwrap();
 
       let after = leaf_names_under(&graph, &names, parent_key);
       prop_assert_eq!(before, after);
@@ -191,9 +244,9 @@ mod tests {
 
     #[test]
     fn test_prop_resolve_polytomies_leaves_no_single_child_nodes(seed in any::<u64>()) {
-      let (mut graph, names, mut state) = wide_polytomy_tree().unwrap();
+      let (mut graph, names, mut state, mut branch_lengths) = wide_polytomy_tree().unwrap();
       let mut rng = get_random_number_generator(Some(seed));
-      resolve(&mut graph, &mut state, &mut rng).unwrap();
+      resolve(&mut graph, &mut state, &mut branch_lengths, &mut rng).unwrap();
 
       let has_single_child_node = graph.get_nodes().into_iter().any(|node| {
         let node = node.read_arc();
@@ -208,9 +261,9 @@ mod tests {
     // Compare the resolved topology by the set of leaf-name clusters it induces, which is
     // independent of node keys and traversal order.
     let clusters = |seed: u64| -> Result<BTreeSet<Vec<String>>, Report> {
-      let (mut graph, names, mut state) = wide_polytomy_tree()?;
+      let (mut graph, names, mut state, mut branch_lengths) = wide_polytomy_tree()?;
       let mut rng = get_random_number_generator(Some(seed));
-      resolve(&mut graph, &mut state, &mut rng)?;
+      resolve(&mut graph, &mut state, &mut branch_lengths, &mut rng)?;
       Ok(
         graph
           .get_nodes()
@@ -234,9 +287,9 @@ mod tests {
   #[test]
   fn test_resolve_polytomies_different_seeds_can_differ() -> Result<(), Report> {
     let clusters = |seed: u64| -> Result<BTreeSet<Vec<String>>, Report> {
-      let (mut graph, names, mut state) = wide_polytomy_tree()?;
+      let (mut graph, names, mut state, mut branch_lengths) = wide_polytomy_tree()?;
       let mut rng = get_random_number_generator(Some(seed));
-      resolve(&mut graph, &mut state, &mut rng)?;
+      resolve(&mut graph, &mut state, &mut branch_lengths, &mut rng)?;
       Ok(
         graph
           .get_nodes()
@@ -260,7 +313,12 @@ mod tests {
   #[test]
   fn test_resolve_polytomies_without_a_time_window_is_a_noop() -> Result<(), Report> {
     // The polytomy sits at the same time as its children, so no merger fits above them.
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
     let graph: GraphTimetree = graph;
     let mut state = TimetreeState::new(&graph);
     for (name, time) in [
@@ -275,7 +333,7 @@ mod tests {
     let mut graph = graph;
     let mut rng = get_random_number_generator(Some(1));
 
-    let created = resolve(&mut graph, &mut state, &mut rng)?;
+    let created = resolve(&mut graph, &mut state, &mut branch_lengths, &mut rng)?;
 
     assert_eq!(created, 0, "no window above the polytomy means no resolution");
     let abc_key = find_node_key_by_name(&graph, &names, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
@@ -290,12 +348,12 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_dates_new_nodes_between_parent_and_children() -> Result<(), Report> {
-    let (mut graph, names, mut state) = wide_polytomy_tree()?;
+    let (mut graph, names, mut state, mut branch_lengths) = wide_polytomy_tree()?;
     let parent_key = find_node_key_by_name(&graph, &names, "P").ok_or_else(|| make_report!("P not found"))?;
     let parent_time = 1980.0;
     let mut rng = get_random_number_generator(Some(9));
 
-    resolve(&mut graph, &mut state, &mut rng)?;
+    resolve(&mut graph, &mut state, &mut branch_lengths, &mut rng)?;
 
     for node in graph.get_nodes() {
       let node = node.read_arc();
@@ -335,10 +393,10 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_names_new_nodes() -> Result<(), Report> {
-    let (mut graph, names, mut state) = polytomy_tree()?;
+    let (mut graph, names, mut state, mut branch_lengths) = polytomy_tree()?;
     let mut rng = get_random_number_generator(Some(11));
 
-    let created = resolve(&mut graph, &mut state, &mut rng)?;
+    let created = resolve(&mut graph, &mut state, &mut branch_lengths, &mut rng)?;
     assert_eq!(created, 1);
 
     let names = assign_node_names(names, &graph)?;
@@ -352,7 +410,7 @@ mod tests {
 
   #[test]
   fn test_prepare_tree_after_topology_change_resets_derived_state_preserves_inputs() -> Result<(), Report> {
-    let (graph, names, mut state) = polytomy_tree()?;
+    let (graph, names, mut state, mut branch_lengths) = polytomy_tree()?;
 
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
@@ -361,7 +419,7 @@ mod tests {
       payload.clock_to_parent = ClockSet::leaf_contribution(Some(2020.0));
       payload.clock_to_child = ClockSet::leaf_contribution(Some(2021.0));
       payload.clock_from_child = ClockSet::leaf_contribution(Some(2022.0));
-      payload.set_branch_length(Some(0.25));
+      branch_lengths.insert(key, Some(0.25));
       state.edge_mut(key).time_length = Some(3.0);
     }
 
@@ -416,13 +474,13 @@ mod tests {
       let key = edge.key();
       // The branch-length distribution, backward message, and relaxed-clock rate multiplier live in the
       // date-state value now, reset by `TimetreeState::reset_date_edges_for_topology_change`;
-      // `prepare_tree_after_topology_change` preserves the branch length on the payload and the inferred
-      // time length on the date state.
+      // `prepare_tree_after_topology_change` leaves the branch-length value map untouched and preserves
+      // the inferred time length on the date state.
       pretty_assert_abs_diff_eq!(
-        edge
-          .payload()
-          .read_arc()
-          .branch_length()
+        branch_lengths
+          .get(&key)
+          .copied()
+          .flatten()
           .expect("branch length must be preserved"),
         0.25,
         epsilon = 1e-10

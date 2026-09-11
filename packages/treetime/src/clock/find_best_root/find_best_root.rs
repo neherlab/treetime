@@ -8,11 +8,11 @@ use crate::payload::traits::ClockEdge;
 use eyre::Report;
 use log::{debug, info};
 use rayon::prelude::*;
+use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::GraphEdge;
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
-use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_utils::collections::container::get_exactly_one;
 
 /// Find the best new root node
@@ -24,6 +24,7 @@ pub fn find_best_root<N, E, D>(
   state: &ClockState,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   force_positive: bool,
   objective: RootObjective,
 ) -> Result<FindRootResult, Report>
@@ -34,7 +35,6 @@ where
 {
   info!("Starting root optimization with method: {params:?}, force_positive={force_positive}");
 
-  let branch_lengths = edge_branch_lengths(graph);
   let root = graph.get_exactly_one_root()?;
   let mut best_root_node = Arc::clone(&root);
 
@@ -97,7 +97,7 @@ where
     debug!("Optimizing position on parent branch");
     let inbound = best_root_node.inbound();
     let edge = get_exactly_one(inbound).expect("Not implemented: multiple parent nodes");
-    let res = find_best_split(graph, state, *edge, &branch_lengths, options, params, objective)?;
+    let res = find_best_split(graph, state, *edge, branch_lengths, options, params, objective)?;
     debug!(
       "Parent branch optimization result: chi-squared = {:.6e}, split = {:.6}",
       res.chisq, res.split
@@ -116,7 +116,7 @@ where
   // Check if some place on a child branch is better
   for (child_branch_count, e) in best_root_node.outbound().iter().enumerate() {
     debug!("Optimizing position on child branch {child_branch_count}");
-    let res = find_best_split(graph, state, *e, &branch_lengths, options, params, objective)?;
+    let res = find_best_split(graph, state, *e, branch_lengths, options, params, objective)?;
     debug!(
       "Child branch {} optimization result: chi-squared = {:.6e}, split = {:.6}",
       child_branch_count, res.chisq, res.split

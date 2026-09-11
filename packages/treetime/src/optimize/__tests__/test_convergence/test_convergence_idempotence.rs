@@ -7,7 +7,6 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_graph::edge::HasBranchLength;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   use super::super::test_convergence_support::tests::{
@@ -25,23 +24,23 @@ mod tests {
   #[trace]
   fn test_optimization_converges_with_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
 
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let mut lh_history = Vec::with_capacity(20);
 
     // Run optimization iterations
     for i in 0..20 {
-      run_optimize_mixed(&graph, &mixed_partitions, method)?;
-      let lh = marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value() + marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
+      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions)?.value() + marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
 
       lh_history.push(lh);
 
       // After each iteration, all branch lengths should be non-negative and bounded
       for edge in graph.get_edges() {
-        let branch_length = edge.read_arc().payload().read_arc().branch_length();
+        let branch_length = branch_lengths[&edge.read_arc().key()];
         if let Some(bl) = branch_length {
           assert!(bl >= 0.0, "Branch length should be non-negative at iter {i}: {bl}");
           assert!(bl < 10.0, "Branch length too large at iter {i}: {bl}");
@@ -79,28 +78,28 @@ mod tests {
     let aln = simple_alignment()?;
 
     // Run optimization on first graph
-    let NwkParse { graph: graph1, names: graph1_names, .. } = nwk_read_str(TREE_NEWICK)?;
-    let (dense_partitions1, sparse_partitions1, mixed_partitions1) = setup_partitions(&graph1, &graph1_names, &aln)?;
+    let NwkParse { graph: graph1, names: graph1_names, branch_lengths: mut branch_lengths1, .. } = nwk_read_str(TREE_NEWICK)?;
+    let (dense_partitions1, sparse_partitions1, mixed_partitions1) = setup_partitions(&graph1, &graph1_names, &aln, &mut branch_lengths1)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph1, &mixed_partitions1, method)?;
-      marginal_update(&graph1, &profile_branch_lengths(&graph1), &dense_partitions1)?.value();
-      marginal_update(&graph1, &profile_branch_lengths(&graph1), &sparse_partitions1)?.value();
+      run_optimize_mixed(&graph1, &mixed_partitions1, method, &mut branch_lengths1)?;
+      marginal_update(&graph1, &profile_branch_lengths(&branch_lengths1), &dense_partitions1)?.value();
+      marginal_update(&graph1, &profile_branch_lengths(&branch_lengths1), &sparse_partitions1)?.value();
     }
 
-    let lh1 = compute_total_lh(&graph1, &dense_partitions1, &sparse_partitions1)?;
+    let lh1 = compute_total_lh(&graph1, &dense_partitions1, &sparse_partitions1, &branch_lengths1)?;
 
     // Run optimization on second independent graph
-    let NwkParse { graph: graph2, names: graph2_names, .. } = nwk_read_str(TREE_NEWICK)?;
-    let (dense_partitions2, sparse_partitions2, mixed_partitions2) = setup_partitions(&graph2, &graph2_names, &aln)?;
+    let NwkParse { graph: graph2, names: graph2_names, branch_lengths: mut branch_lengths2, .. } = nwk_read_str(TREE_NEWICK)?;
+    let (dense_partitions2, sparse_partitions2, mixed_partitions2) = setup_partitions(&graph2, &graph2_names, &aln, &mut branch_lengths2)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph2, &mixed_partitions2, method)?;
-      marginal_update(&graph2, &profile_branch_lengths(&graph2), &dense_partitions2)?.value();
-      marginal_update(&graph2, &profile_branch_lengths(&graph2), &sparse_partitions2)?.value();
+      run_optimize_mixed(&graph2, &mixed_partitions2, method, &mut branch_lengths2)?;
+      marginal_update(&graph2, &profile_branch_lengths(&branch_lengths2), &dense_partitions2)?.value();
+      marginal_update(&graph2, &profile_branch_lengths(&branch_lengths2), &sparse_partitions2)?.value();
     }
 
-    let lh2 = compute_total_lh(&graph2, &dense_partitions2, &sparse_partitions2)?;
+    let lh2 = compute_total_lh(&graph2, &dense_partitions2, &sparse_partitions2, &branch_lengths2)?;
 
     // Both runs should converge to same likelihood
     pretty_assert_ulps_eq!(lh1, lh2, max_ulps = 100);

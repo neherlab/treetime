@@ -1,7 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
 use crate::gtr::gtr::GTR;
-use crate::optimize::iteration::commit_branch_lengths;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -15,7 +14,6 @@ use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::fasta::FastaRecord;
 
 pub struct PruneParams {
@@ -29,6 +27,10 @@ pub struct PruneInput {
   pub graph: GraphAncestral,
   pub alphabet: Alphabet,
   pub sequences: Option<Vec<FastaRecord>>,
+  /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. The collapse and
+  /// merge producers update it in place across the topology edits; it exits as
+  /// `PruneOutput.branch_lengths`.
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -50,13 +52,13 @@ pub fn run(
   mut input: PruneInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<PruneOutput, Report> {
-  // Entry snapshots propagated through the whole prune pipeline: every downstream name and branch
-  // length read comes from these maps, not the payload. `names` is threaded in from the parse;
-  // `assign_node_names` after a merge refreshes it to the post-topology labels; the collapse and merge
-  // producers maintain `branch_lengths` in place across the topology edits, so both maps exit
-  // reflecting the final pruned tree.
+  // Entry maps propagated through the whole prune pipeline: every downstream name and branch length
+  // read comes from these maps, not the payload. `names` comes from the parse; `assign_node_names`
+  // after a merge refreshes it to the post-topology labels; the collapse and merge producers maintain
+  // `branch_lengths` in place across the topology edits, so both maps exit reflecting the final pruned
+  // tree.
   let mut names = names.clone();
-  let mut branch_lengths = edge_branch_lengths(&input.graph);
+  let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
 
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
   let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = if needs_sequences {
@@ -71,6 +73,7 @@ pub fn run(
       sequences,
       GtrModelName::JC69,
       None,
+      &branch_lengths,
       &names,
     )?;
     match created.partition {
@@ -99,11 +102,9 @@ pub fn run(
   )?;
 
   if params.merge_shared_mutations {
-    // The merge producer updates the same branch-length map in place instead of the payload; commit
-    // it back so payload readers not yet on the value map see the merged lengths, and refresh
-    // `names` from the post-merge topology so downstream name readers get the reassigned labels.
+    // The merge producer updates the branch-length map in place; refresh `names` from the post-merge
+    // topology so downstream name readers get the reassigned labels.
     merge_shared_mutation_branches(&mut input.graph, &partitions, &mut branch_lengths)?;
-    commit_branch_lengths(&input.graph, &branch_lengths);
     input.graph.build()?;
     names = assign_node_names(names, &input.graph)?;
   }

@@ -30,7 +30,7 @@ pub mod tests {
 
   use parking_lot::RwLock;
   use std::sync::{Arc, LazyLock};
-  use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
 
   pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -57,6 +57,7 @@ pub mod tests {
     graph: &GraphAncestral,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalDense>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
@@ -66,7 +67,7 @@ pub mod tests {
       get_common_length(aln)?,
     )))];
 
-    initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln, names)?.value();
+    initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?.value();
 
     Ok(partitions)
   }
@@ -75,22 +76,23 @@ pub mod tests {
     graph: &GraphAncestral,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalSparse>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
     let partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
-    marginal_update(graph, &profile_branch_lengths(graph), &partitions)?.value();
+    marginal_update(graph, &profile_branch_lengths(branch_lengths), &partitions)?.value();
 
     Ok(partitions)
   }
 
-  pub fn get_branch_lengths(graph: &GraphAncestral) -> Vec<f64> {
+  pub fn get_branch_lengths(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
       .iter()
-      .map(|edge| edge.read_arc().payload().read_arc().branch_length().unwrap_or(0.0))
+      .map(|edge| branch_lengths[&edge.read_arc().key()].unwrap_or(0.0))
       .collect()
   }
 }

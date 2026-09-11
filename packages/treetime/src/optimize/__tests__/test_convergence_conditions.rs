@@ -4,7 +4,7 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
-  use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping, commit_branch_lengths};
+  use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping};
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{
     ConvergenceReason, collect_optimize_partitions, marginal_branch_lengths, run_optimize_loop,
@@ -15,8 +15,7 @@ mod tests {
   use num_traits::pow::pow;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
-  use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   // At very high iteration counts, the exponential damping factor decays below the floor.
@@ -31,9 +30,9 @@ mod tests {
     #[case] expected_old_weight: f64,
   ) -> Result<(), Report> {
     let damping = 0.75;
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
+    let NwkParse { graph, names, branch_lengths, .. } = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
     let graph: GraphAncestral = graph;
-    let old_bls = edge_branch_lengths(&graph);
+    let old_bls = branch_lengths;
 
     // Set all "optimized" branch lengths to zero.
     let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(0.0))).collect();
@@ -55,10 +54,15 @@ mod tests {
     let expected_old_weight = pow(damping, iteration + 1);
     assert!(expected_old_weight > DAMPING_FLOOR);
 
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
 
     let graph: GraphAncestral = graph;
-    let old_bls = edge_branch_lengths(&graph);
+    let old_bls = branch_lengths;
 
     let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(0.0))).collect();
 
@@ -70,42 +74,20 @@ mod tests {
     Ok(())
   }
 
-  // Round-trip: snapshot, modify the payload, restore from the snapshot, verify identical.
-  #[test]
-  fn test_convergence_conditions_restore_branch_lengths_roundtrip() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
-    let original = edge_branch_lengths(&graph);
-
-    // Modify all branch lengths on the payload.
-    for edge_ref in graph.get_edges() {
-      let mut edge = edge_ref.write_arc().payload().write_arc();
-      let bl = edge.branch_length().unwrap_or(0.0);
-      edge.set_branch_length(Some(bl * 5.0 + 0.42));
-    }
-
-    // Verify they changed
-    let modified = edge_branch_lengths(&graph);
-    assert_ne!(
-      original, modified,
-      "Branch lengths should have changed after modification"
-    );
-
-    // Restore the snapshot onto the payload and verify match.
-    commit_branch_lengths(&graph, &original);
-    let restored = edge_branch_lengths(&graph);
-    assert_eq!(original, restored);
-    Ok(())
-  }
-
   // The convergence check fires when successive likelihoods are within dp.
   // On a toy tree with damping, the loop should converge within a few iterations.
   #[test]
   fn test_convergence_conditions_converged_reason() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) =
+      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_6 = names.clone();
     let result = run_optimize_loop(
@@ -119,6 +101,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_6,
     )?;
 
@@ -135,9 +118,15 @@ mod tests {
   #[test]
   fn test_convergence_conditions_worsened_reverts_to_best() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) =
+      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     // Undamped with dp=0 (convergence/oscillation checks never fire) forces the
     // worsened condition to be the only active stopping criterion.
@@ -153,6 +142,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_5,
     )?;
 
@@ -187,9 +177,15 @@ mod tests {
   #[test]
   fn test_convergence_conditions_worsened_rollback_reproduces_best_lh() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) =
+      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_4 = names.clone();
     let result = run_optimize_loop(
@@ -203,6 +199,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       true,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_4,
     )?;
 
@@ -228,9 +225,15 @@ mod tests {
   #[test]
   fn test_convergence_conditions_oscillation_detection() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) =
+      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     // Use damping to prevent the worsened condition from firing, but set dp
     // large enough that the oscillation check catches the 2-cycle.
@@ -246,6 +249,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_3,
     )?;
 
@@ -264,9 +268,15 @@ mod tests {
   #[test]
   fn test_convergence_conditions_exhausts_max_iter() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) =
+      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     // Only 2 iterations with dp=0 and damping. The worsened condition requires
     // i >= 2, so with max_iter=2 (iterations 0 and 1) it cannot fire.
@@ -282,6 +292,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_2,
     )?;
 
@@ -297,11 +308,17 @@ mod tests {
   #[test]
   fn test_convergence_conditions_dense_only_converges() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
 
     // Use the setup but only dense partitions (sparse empty)
-    let (dense_partitions, _sparse_partitions, _mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, _sparse_partitions, _mixed_partitions) =
+      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let empty_sparse = vec![];
     let mixed = collect_optimize_partitions(&dense_partitions, &empty_sparse);
@@ -318,6 +335,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       false,
       TopologyOps::default(),
+      branch_lengths,
       &names_tt_1,
     )?;
 

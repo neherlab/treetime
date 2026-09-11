@@ -4,7 +4,7 @@ mod __tests__;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
@@ -36,31 +36,19 @@ impl GraphNode for NodeAncestral {}
 impl NodeToGraphviz for NodeAncestral {}
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct EdgeAncestral {
-  pub branch_length: Option<f64>,
-}
+pub struct EdgeAncestral {}
 
 impl GraphEdge for EdgeAncestral {}
 
-impl HasBranchLength for EdgeAncestral {
-  fn branch_length(&self) -> Option<f64> {
-    self.branch_length
-  }
-
-  fn set_branch_length(&mut self, weight: Option<f64>) {
-    self.branch_length = weight;
-  }
-}
-
 impl EdgeFromNwk for EdgeAncestral {
-  fn from_nwk(branch_length: Option<f64>) -> Result<Self, Report> {
-    Ok(Self { branch_length })
+  fn from_nwk(_branch_length: Option<f64>) -> Result<Self, Report> {
+    Ok(Self {})
   }
 }
 
 impl EdgeToNwk for EdgeAncestral {
   fn nwk_weight(&self) -> Option<f64> {
-    self.branch_length()
+    None
   }
 }
 

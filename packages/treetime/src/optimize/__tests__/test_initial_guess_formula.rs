@@ -19,7 +19,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::Arc;
-  use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -32,18 +32,23 @@ mod tests {
   #[test]
   fn test_initial_guess_formula_sparse() -> Result<(), Report> {
     let aln = divergent_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let partitions = setup_sparse(&graph, &names, &aln)?;
+    let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
-    initial_guess_mixed(&graph, &partitions, true, false)?;
+    initial_guess_mixed(&graph, &partitions, true, false, &mut branch_lengths)?;
 
     let p = partitions[0].read_arc();
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
       let sub_count = p.edge_subs(&graph, edge_key)?.len();
       let effective_length = p.edge_effective_length(&graph, edge_key)?;
-      let actual_bl = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+      let actual_bl = branch_lengths[&edge_key].unwrap_or(0.0);
 
       let expected_bl = if effective_length > 0 {
         sub_count as f64 / effective_length as f64
@@ -61,18 +66,23 @@ mod tests {
   #[test]
   fn test_initial_guess_formula_dense() -> Result<(), Report> {
     let aln = divergent_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let partitions = setup_dense(&graph, &names, &aln)?;
+    let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
-    initial_guess_mixed(&graph, &partitions, true, false)?;
+    initial_guess_mixed(&graph, &partitions, true, false, &mut branch_lengths)?;
 
     let p = partitions[0].read_arc();
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
       let sub_count = p.edge_subs(&graph, edge_key)?.len();
       let effective_length = p.edge_effective_length(&graph, edge_key)?;
-      let actual_bl = edge_ref.read_arc().payload().read_arc().branch_length().unwrap_or(0.0);
+      let actual_bl = branch_lengths[&edge_key].unwrap_or(0.0);
 
       let expected_bl = if effective_length > 0 {
         sub_count as f64 / effective_length as f64
@@ -92,22 +102,31 @@ mod tests {
     let NwkParse {
       graph: graph_dense,
       names: graph_dense_names,
+      branch_lengths: mut branch_lengths_dense,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let NwkParse {
       graph: graph_sparse,
       names: graph_sparse_names,
+      branch_lengths: mut branch_lengths_sparse,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
 
-    let partitions_dense = setup_dense(&graph_dense, &graph_dense_names, &aln)?;
-    let partitions_sparse = setup_sparse(&graph_sparse, &graph_sparse_names, &aln)?;
+    let partitions_dense = setup_dense(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
+    let partitions_sparse = setup_sparse(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
 
-    initial_guess_mixed(&graph_dense, &partitions_dense, true, false)?;
-    initial_guess_mixed(&graph_sparse, &partitions_sparse, true, false)?;
+    initial_guess_mixed(&graph_dense, &partitions_dense, true, false, &mut branch_lengths_dense)?;
+    initial_guess_mixed(
+      &graph_sparse,
+      &partitions_sparse,
+      true,
+      false,
+      &mut branch_lengths_sparse,
+    )?;
 
-    let dense_branch_lengths = branch_lengths_by_child_name(&graph_dense, &graph_dense_names)?;
-    let sparse_branch_lengths = branch_lengths_by_child_name(&graph_sparse, &graph_sparse_names)?;
+    let dense_branch_lengths = branch_lengths_by_child_name(&graph_dense, &graph_dense_names, &branch_lengths_dense)?;
+    let sparse_branch_lengths =
+      branch_lengths_by_child_name(&graph_sparse, &graph_sparse_names, &branch_lengths_sparse)?;
 
     assert_eq!(dense_branch_lengths, sparse_branch_lengths);
     Ok(())
@@ -120,16 +139,18 @@ mod tests {
     let NwkParse {
       graph: graph_dense,
       names: graph_dense_names,
+      branch_lengths: branch_lengths_dense,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let NwkParse {
       graph: graph_sparse,
       names: graph_sparse_names,
+      branch_lengths: branch_lengths_sparse,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
 
-    let partitions_dense = setup_dense(&graph_dense, &graph_dense_names, &aln)?;
-    let partitions_sparse = setup_sparse(&graph_sparse, &graph_sparse_names, &aln)?;
+    let partitions_dense = setup_dense(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
+    let partitions_sparse = setup_sparse(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
 
     let dense_metrics =
       optimization_metrics_by_child_name(&graph_dense, &graph_dense_names, &*partitions_dense[0].read_arc(), 0.1)?;
@@ -190,13 +211,14 @@ mod tests {
     graph: &GraphAncestral,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalSparse>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
     let partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
-    marginal_update(graph, &profile_branch_lengths(graph), &partitions)?.value();
+    marginal_update(graph, &profile_branch_lengths(branch_lengths), &partitions)?.value();
 
     Ok(partitions)
   }
@@ -205,6 +227,7 @@ mod tests {
     graph: &GraphAncestral,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalDense>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
@@ -214,7 +237,7 @@ mod tests {
       get_common_length(aln)?,
     )))];
 
-    initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln, names)?.value();
+    initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?.value();
 
     Ok(partitions)
   }
@@ -222,6 +245,7 @@ mod tests {
   fn branch_lengths_by_child_name(
     graph: &GraphAncestral,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<BTreeMap<String, f64>, Report> {
     graph
       .get_edges()
@@ -230,7 +254,7 @@ mod tests {
         let edge_ref = edge_ref.read_arc();
         let child_key = edge_ref.target();
         let child_name = names[&child_key].clone().unwrap();
-        let branch_length = edge_ref.payload().read_arc().branch_length().unwrap_or(0.0);
+        let branch_length = branch_lengths[&edge_ref.key()].unwrap_or(0.0);
         Ok((child_name, branch_length))
       })
       .collect()

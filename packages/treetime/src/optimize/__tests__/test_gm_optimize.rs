@@ -8,7 +8,6 @@ mod tests {
 
   use crate::optimize::params::BranchOptMethod;
   use std::path::Path;
-  use treetime_graph::edge::HasBranchLength;
 
   use helpers::{load_gm_inputs, load_gm_outputs, setup_and_run};
 
@@ -41,7 +40,14 @@ mod tests {
       .graph
       .get_edges()
       .iter()
-      .map(|e| e.read_arc().payload().read_arc().branch_length().unwrap_or(0.0))
+      .map(|e| {
+        result
+          .branch_lengths
+          .get(&e.read_arc().key())
+          .copied()
+          .flatten()
+          .unwrap_or(0.0)
+      })
       .sum();
 
     assert_relative_eq!(v1_total_bl, expected.final_total_branch_length, max_relative = 0.05);
@@ -89,7 +95,7 @@ mod tests {
       .iter()
       .filter_map(|e| {
         let edge = e.read_arc();
-        let bl = edge.payload().read_arc().branch_length()?;
+        let bl = result.branch_lengths.get(&edge.key()).copied().flatten()?;
         let target_key = edge.target();
         let node = result.graph.get_node(target_key)?;
         let name = result.names.get(&node.read_arc().key()).cloned().flatten()?;
@@ -191,6 +197,7 @@ mod tests {
     use std::fs::read_to_string;
     use std::path::Path;
     use std::sync::Arc;
+    use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::fasta::read_many_fasta;
     use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -213,6 +220,7 @@ mod tests {
     pub struct OptimizeResult {
       pub graph: GraphAncestral,
       pub names: BTreeMap<GraphNodeKey, Option<String>>,
+      pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
       pub lh_history: Vec<f64>,
       pub stopped_at: Option<(usize, crate::optimize::run_loop::ConvergenceReason)>,
     }
@@ -242,7 +250,12 @@ mod tests {
       let tree_path = workspace_root.join(&case.tree);
       let aln_path = workspace_root.join(&case.aln);
       let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet_sparse)?;
-      let NwkParse { graph, names, .. } = nwk_read_file(&tree_path)?;
+      let NwkParse {
+        graph,
+        names,
+        mut branch_lengths,
+        ..
+      } = nwk_read_file(&tree_path)?;
       let mut graph: GraphAncestral = graph;
 
       let fitch = create_fitch_partition(&graph, 0, alphabet_sparse, &aln, &names)?;
@@ -258,12 +271,19 @@ mod tests {
         length,
       )))];
 
-      initialize_marginal(&graph, &profile_branch_lengths(&graph), &dense_partitions, &aln, &names)?.value();
-      marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
-      marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
+      initialize_marginal(
+        &graph,
+        &profile_branch_lengths(&branch_lengths),
+        &dense_partitions,
+        &aln,
+        &names,
+      )?
+      .value();
+      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions)?.value();
 
       let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-      initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
+      initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
       let dp = 0.1;
       let names_tt_1 = names.clone();
@@ -278,20 +298,23 @@ mod tests {
         method,
         false,
         TopologyOps::default(),
+        branch_lengths,
         &names_tt_1,
       )?;
+      let branch_lengths = result.branch_lengths;
 
       // Append a trailing likelihood measurement so `lh_history.last()` reflects the state
       // AFTER the final in-loop branch-length update (`run_optimize_loop` records the LH
       // at the START of each iteration, before that iteration's update).
       let mut lh_history = result.lh_history.into_iter().map(LogLh::value).collect_vec();
-      let sparse_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
-      let dense_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
+      let sparse_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+      let dense_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions)?.value();
       lh_history.push(sparse_lh + dense_lh);
 
       Ok(OptimizeResult {
         graph,
         names,
+        branch_lengths,
         lh_history,
         stopped_at: result.stopped_at,
       })

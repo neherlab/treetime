@@ -1,7 +1,7 @@
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, HasBranchLength};
+use treetime_graph::edge::GraphEdge;
 use treetime_graph::node::{GraphNode, Named};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
@@ -38,15 +38,6 @@ impl NodeToGraphviz for TestNode {}
 pub struct TestEdge(pub Option<f64>);
 
 impl GraphEdge for TestEdge {}
-
-impl HasBranchLength for TestEdge {
-  fn branch_length(&self) -> Option<f64> {
-    self.0
-  }
-  fn set_branch_length(&mut self, weight: Option<f64>) {
-    self.0 = weight;
-  }
-}
 
 impl EdgeFromNwk for TestEdge {
   fn from_nwk(weight: Option<f64>) -> Result<Self, Report> {

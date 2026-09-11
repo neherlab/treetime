@@ -31,7 +31,12 @@ ACGTACGTNN
 >D
 NNGTACGTAC
 ";
-    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(newick)?;
     let graph: GraphAncestral = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
@@ -46,7 +51,7 @@ NNGTACGTAC
 
     initialize_marginal(
       &graph,
-      &profile_branch_lengths(&graph),
+      &profile_branch_lengths(&branch_lengths),
       std::slice::from_ref(&partition),
       &aln,
       &names,
@@ -67,7 +72,12 @@ ACGTACGTNN
 >D
 NNGTACGTAC
 ";
-    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(newick)?;
     let graph: GraphAncestral = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
@@ -79,7 +89,7 @@ NNGTACGTAC
     ));
     marginal_update(
       &graph,
-      &profile_branch_lengths(&graph),
+      &profile_branch_lengths(&branch_lengths),
       std::slice::from_ref(&partition),
     )?
     .value();
@@ -172,7 +182,12 @@ AC--ACGTAC
 >D
 ACGTACGTAC
 ";
-    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(newick)?;
     let graph: GraphAncestral = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
@@ -187,7 +202,7 @@ ACGTACGTAC
 
     initialize_marginal(
       &graph,
-      &profile_branch_lengths(&graph),
+      &profile_branch_lengths(&branch_lengths),
       std::slice::from_ref(&partition),
       &aln,
       &names,
@@ -249,7 +264,12 @@ AC--ACGTAC
 >D
 ACGTACGTAC
 ";
-    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(newick)?;
     let graph: GraphAncestral = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
@@ -261,7 +281,7 @@ ACGTACGTAC
     ));
     marginal_update(
       &graph,
-      &profile_branch_lengths(&graph),
+      &profile_branch_lengths(&branch_lengths),
       std::slice::from_ref(&partition),
     )?
     .value();

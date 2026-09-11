@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
-use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update};
+use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update, profile_branch_lengths};
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
@@ -63,7 +63,7 @@ pub fn reconstruct_marginal_partition(
   plan: PartitionPlan,
   params: &MarginalPartitionParams,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   rng: &mut dyn rand::RngCore,
 ) -> Result<ReconstructedPartition, Report> {
   let PartitionPlan {
@@ -83,6 +83,7 @@ pub fn reconstruct_marginal_partition(
     &sequences,
     gtr_model,
     params.dense,
+    branch_lengths,
     names,
   )?;
   let partition: Arc<RwLock<dyn MarginalAugurPartition>> = match created.partition {
@@ -95,7 +96,8 @@ pub fn reconstruct_marginal_partition(
   partition.write_arc().attach_sequences(graph, &sequences, names)?;
 
   let single = std::slice::from_ref(&partition);
-  marginal_update(graph, branch_lengths, single)?;
+  let profile_lengths = profile_branch_lengths(branch_lengths);
+  marginal_update(graph, &profile_lengths, single)?;
   ancestral_reconstruction_marginal(
     graph,
     params.include_leaves,

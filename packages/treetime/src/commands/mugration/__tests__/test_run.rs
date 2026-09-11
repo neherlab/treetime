@@ -156,6 +156,7 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -167,6 +168,7 @@ mod tests {
       graph,
       &confidences,
       &names_tt_14,
+      &branch_lengths,
       &traits,
       "country",
       None,
@@ -213,6 +215,7 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -230,6 +233,7 @@ mod tests {
       graph,
       &confidences,
       &names_tt_13,
+      &branch_lengths,
       &traits,
       "country",
       Some(&weights),
@@ -263,6 +267,7 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -279,6 +284,7 @@ mod tests {
       graph,
       &confidences,
       &names_tt_12,
+      &branch_lengths,
       &traits,
       "country",
       Some(&weights),
@@ -312,6 +318,7 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -329,6 +336,7 @@ mod tests {
       graph,
       &confidences,
       &names_tt_11,
+      &branch_lengths,
       &traits,
       "country",
       Some(&weights),
@@ -358,6 +366,7 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -375,6 +384,7 @@ mod tests {
       graph,
       &confidences,
       &names_tt_10,
+      &branch_lengths,
       &traits,
       "country",
       Some(&weights),
@@ -412,12 +422,14 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.1)root;")?;
     let names_tt_9 = names.clone();
     let v0 = execute_mugration(
       graph,
       &confidences,
       &names_tt_9,
+      &branch_lengths,
       &traits,
       "country",
       None,
@@ -433,12 +445,14 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.1)root;")?;
     let names_tt_8 = names.clone();
     let filtered = execute_mugration(
       graph,
       &confidences,
       &names_tt_8,
+      &branch_lengths,
       &traits,
       "country",
       None,
@@ -472,12 +486,14 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names_tt_7 = names.clone();
     let base_result = execute_mugration(
       graph,
       &confidences,
       &names_tt_7,
+      &branch_lengths,
       &traits,
       "country",
       None,
@@ -495,12 +511,14 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names_tt_6 = names.clone();
     let corrected_result = execute_mugration(
       graph,
       &confidences,
       &names_tt_6,
+      &branch_lengths,
       &traits,
       "country",
       None,
@@ -524,6 +542,7 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2)root;").unwrap();
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -535,6 +554,7 @@ mod tests {
       graph,
       &confidences,
       &names_tt_5,
+      &branch_lengths,
       &traits,
       "country",
       None,
@@ -565,12 +585,14 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str(tree)?;
     let names_tt_4 = names.clone();
     let result_no_iter = execute_mugration(
       graph,
       &confidences,
       &names_tt_4,
+      &branch_lengths,
       &traits,
       "country",
       None,
@@ -587,12 +609,14 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str(tree)?;
     let names_tt_3 = names.clone();
     let result_with_iter = execute_mugration(
       graph,
       &confidences,
       &names_tt_3,
+      &branch_lengths,
       &traits,
       "country",
       None,
@@ -644,12 +668,14 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str(tree)?;
     let names_tt_2 = names.clone();
     let result = execute_mugration(
       graph,
       &confidences,
       &names_tt_2,
+      &branch_lengths,
       &traits,
       "country",
       None,
@@ -678,12 +704,14 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names_tt_1 = names.clone();
     let result = execute_mugration(
       graph,
       &confidences,
       &names_tt_1,
+      &branch_lengths,
       &traits,
       "country",
       None,

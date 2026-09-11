@@ -139,6 +139,7 @@ mod tests {
       graph,
       confidences,
       names,
+      branch_lengths,
     } = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
     let sequences = read_many_fasta(&[root.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet).unwrap();
 
@@ -158,6 +159,7 @@ mod tests {
       graph,
       alphabet,
       sequences,
+      branch_lengths,
     };
 
     let output = pipeline::run(&params, input, &names, &NoopProgress).unwrap();
@@ -214,26 +216,16 @@ mod tests {
         .collect()
     }
 
-    pub fn branch_lengths<D: Send + Sync>(graph: &GraphAncestral<D>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
-      graph
-        .get_edges()
-        .iter()
-        .map(|edge| {
-          let edge = edge.read_arc();
-          (edge.key(), edge.payload().read_arc().branch_length)
-        })
-        .collect()
-    }
-
     pub fn write_json(nwk: &str) -> String {
       let parse = nwk_read_str(nwk).unwrap();
       let graph: GraphAncestral = parse.graph;
       let names = parse.names;
       let confidences = parse.confidences;
+      let branch_lengths = parse.branch_lengths;
       let data = build_augur_node_data_json(
         &graph,
         &node_outputs(&names, &graph, &confidences),
-        &branch_lengths(&graph),
+        &branch_lengths,
         Some(Path::new("aln.fasta")),
         Some(Path::new("tree.nwk")),
         None,
@@ -251,6 +243,7 @@ mod tests {
       let graph: GraphAncestral = parse.graph;
       let names = parse.names;
       let confidences = parse.confidences;
+      let branch_lengths = parse.branch_lengths;
       let edges = graph.get_edges();
       let counts: BTreeMap<GraphEdgeKey, usize> = edge_counts
         .iter()
@@ -259,7 +252,7 @@ mod tests {
       let data = build_augur_node_data_json(
         &graph,
         &node_outputs(&names, &graph, &confidences),
-        &branch_lengths(&graph),
+        &branch_lengths,
         Some(Path::new("aln.fasta")),
         Some(Path::new("tree.nwk")),
         Some(&counts),

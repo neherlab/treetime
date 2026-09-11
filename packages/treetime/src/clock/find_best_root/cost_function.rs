@@ -5,7 +5,7 @@ use crate::payload::clock_set::ClockSet;
 use argmin::core::{CostFunction, Error};
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_utils::make_report;
@@ -33,7 +33,7 @@ impl<'a> BranchPointCostFunction<'a> {
   ) -> Result<BranchPointCostFunction<'a>, Report>
   where
     N: GraphNode,
-    E: GraphEdge + HasBranchLength,
+    E: GraphEdge,
     D: Send + Sync,
   {
     let edge_obj = graph

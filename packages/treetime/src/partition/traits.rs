@@ -15,7 +15,7 @@ use parking_lot::RwLock;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
@@ -201,7 +201,7 @@ impl NodeCommentProvider for MutationCommentProvider<'_> {
 pub enum MarginalPass<'a, N, E>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   Indexed(&'a mut dyn IndexedMarginalPartition<N, E>),
   Sparse(&'a mut PartitionMarginalSparse),
@@ -210,7 +210,7 @@ where
 pub trait PartitionMarginalPasses<N, E>: HasLogLh + Send + Sync
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   /// Borrow this partition as one of the two marginal representations, so the boundary can run the
   /// matching backward/forward tail.
@@ -222,7 +222,7 @@ where
 pub trait PartitionMarginalOps<N, E>: PartitionMarginalPasses<N, E>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn attach_sequences(
     &mut self,
@@ -257,7 +257,7 @@ pub trait HasLogLh {
 pub trait TransitionCounting<N, E>: HasGtr + Send + Sync
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn count_transitions(
     &self,
@@ -303,7 +303,7 @@ pub trait PartitionRerootOps: Send + Sync {
 pub trait PartitionTimetreeOps<N, E>: PartitionOptimizeOps + Send + Sync
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   /// Ensure partition has entries for all nodes and edges in the graph.
   ///
@@ -320,7 +320,7 @@ pub trait PartitionTimetreeAll<N, E>:
   PartitionBranchOps + PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
 }
 
@@ -329,7 +329,7 @@ impl<T, N, E> PartitionTimetreeAll<N, E> for T
 where
   T: PartitionBranchOps + PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh,
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
 }
 

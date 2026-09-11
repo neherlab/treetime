@@ -17,6 +17,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::Arc;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -35,11 +36,16 @@ mod tests {
       >B
       GCGT
     "#})?;
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.4,B:0.1)root:0.0;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("(A:0.4,B:0.1)root:0.0;")?;
     let graph: GraphAncestral = graph;
 
-    let sparse = reconstruct_sparse(&graph, &names, &aln, false)?;
-    let dense = reconstruct_dense(&graph, &names, &aln, false)?;
+    let sparse = reconstruct_sparse(&graph, &branch_lengths, &names, &aln, false)?;
+    let dense = reconstruct_dense(&graph, &branch_lengths, &names, &aln, false)?;
 
     // Oracle: the observed input alignment. `A` retains its observed `ACGT`.
     assert_eq!("ACGT", sparse["A"]);
@@ -61,7 +67,12 @@ mod tests {
       >C
       ATGTC
     "#})?;
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root:0.0;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root:0.0;")?;
     let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
@@ -69,7 +80,7 @@ mod tests {
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?;
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?;
 
     let seqs = reconstruct_named(&graph, &names, &partitions, false)?;
 
@@ -103,19 +114,24 @@ mod tests {
       >C
       ACGT
     "#})?;
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
     let graph: GraphAncestral = graph;
 
     // Without imputation the tip echoes its observed input (`N` and `R` preserved).
-    let sparse_plain = reconstruct_sparse(&graph, &names, &aln, false)?;
-    let dense_plain = reconstruct_dense(&graph, &names, &aln, false)?;
+    let sparse_plain = reconstruct_sparse(&graph, &branch_lengths, &names, &aln, false)?;
+    let dense_plain = reconstruct_dense(&graph, &branch_lengths, &names, &aln, false)?;
     assert_eq!("ANRT", sparse_plain["A"]);
     assert_eq!(sparse_plain, dense_plain);
 
     // With imputation, `N`->`C` and `R`->`G` (position 1 is `C` in every other tip; position 2 is
     // `G`, and `R={A,G}` resolves to `G`). Gaps would stay gaps; there are none here.
-    let sparse_imputed = reconstruct_sparse(&graph, &names, &aln, true)?;
-    let dense_imputed = reconstruct_dense(&graph, &names, &aln, true)?;
+    let sparse_imputed = reconstruct_sparse(&graph, &branch_lengths, &names, &aln, true)?;
+    let dense_imputed = reconstruct_dense(&graph, &branch_lengths, &names, &aln, true)?;
     assert_eq!("ACGT", sparse_imputed["A"]);
     assert_eq!(sparse_imputed, dense_imputed);
     Ok(())
@@ -135,11 +151,16 @@ mod tests {
       >C
       ACGT
     "#})?;
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
     let graph: GraphAncestral = graph;
 
-    let sparse = reconstruct_sparse(&graph, &names, &aln, true)?;
-    let dense = reconstruct_dense(&graph, &names, &aln, true)?;
+    let sparse = reconstruct_sparse(&graph, &branch_lengths, &names, &aln, true)?;
+    let dense = reconstruct_dense(&graph, &branch_lengths, &names, &aln, true)?;
 
     // Oracle: TreeTime v0 Python reference output.
     assert_eq!("ACGT", sparse["A"]);
@@ -182,6 +203,7 @@ mod tests {
 
   fn reconstruct_sparse(
     graph: &GraphAncestral,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     impute: bool,
@@ -190,12 +212,13 @@ mod tests {
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
-    marginal_update(graph, &profile_branch_lengths(graph), &partitions)?;
+    marginal_update(graph, &profile_branch_lengths(branch_lengths), &partitions)?;
     Ok(to_strings(reconstruct_named(graph, names, &partitions, impute)?))
   }
 
   fn reconstruct_dense(
     graph: &GraphAncestral,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     impute: bool,
@@ -207,7 +230,7 @@ mod tests {
       get_common_length(aln)?,
     )));
     let partitions = [partition];
-    initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln, names)?;
+    initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?;
     Ok(to_strings(reconstruct_named(graph, names, &partitions, impute)?))
   }
 

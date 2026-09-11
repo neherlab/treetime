@@ -17,6 +17,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::path::Path;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::read_dates;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -24,9 +25,22 @@ mod tests {
   const DATA_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/dengue/100");
 
   /// Load dengue/100 graph with dates assigned into a fresh clock state.
-  fn load_dengue100() -> Result<(GraphClock, BTreeMap<GraphNodeKey, Option<String>>, ClockState), Report> {
+  fn load_dengue100() -> Result<
+    (
+      GraphClock,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      ClockState,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
+    ),
+    Report,
+  > {
     let data_dir = Path::new(DATA_DIR);
-    let NwkParse { graph, names, .. } = nwk_read_file(data_dir.join("tree.nwk"))?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_file(data_dir.join("tree.nwk"))?;
     let graph: GraphClock = graph;
     let dates = read_dates(
       data_dir.join("metadata.tsv"),
@@ -37,7 +51,7 @@ mod tests {
     )?;
     let mut state = ClockState::new(&graph);
     assign_dates(&graph, &dates, &mut state, &names)?;
-    Ok((graph, names, state))
+    Ok((graph, names, state, branch_lengths))
   }
 
   /// Run the full prefilter pipeline: pre-filter with force_positive=false,
@@ -47,6 +61,7 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     state: &mut ClockState,
     clock_params: &ClockParams,
+    branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<(ClockModel, i32), Report> {
     let params = BranchPointOptimizationParams::default();
 
@@ -64,13 +79,14 @@ mod tests {
       false,
       &params,
       &prefilter_reroot_params,
+      branch_lengths,
       None,
       &names_tt_2,
     )?;
     let pre_regression = prefilter_result.regression();
 
     // Filter outliers
-    let filter_result = clock_filter_inplace(graph, state, pre_regression, 3.0)?;
+    let filter_result = clock_filter_inplace(graph, state, pre_regression, branch_lengths, 3.0)?;
 
     // Final regression: require positive rate
     let final_reroot_params = RerootParams::default();
@@ -83,6 +99,7 @@ mod tests {
       false,
       &params,
       &final_reroot_params,
+      branch_lengths,
       None,
       &names_tt_1,
     )?;
@@ -118,9 +135,15 @@ mod tests {
   /// The pre-filter step must use force_positive_rate=false to proceed.
   #[test]
   fn test_dengue100_clock_pipeline_structural_properties() -> Result<(), Report> {
-    let (mut graph, names, mut state) = load_dengue100()?;
+    let (mut graph, names, mut state, mut branch_lengths) = load_dengue100()?;
 
-    let (clock_model, new_outliers) = run_prefilter_pipeline(&mut graph, &names, &mut state, &ClockParams::default())?;
+    let (clock_model, new_outliers) = run_prefilter_pipeline(
+      &mut graph,
+      &names,
+      &mut state,
+      &ClockParams::default(),
+      &mut branch_lengths,
+    )?;
     let outlier_names = get_outlier_names(&names, &graph, &state);
 
     // Pipeline completes with positive rate
@@ -172,9 +195,15 @@ mod tests {
   /// these values should converge toward v0 and this test should be updated.
   #[test]
   fn test_dengue100_clock_pipeline_golden_master() -> Result<(), Report> {
-    let (mut graph, names, mut state) = load_dengue100()?;
+    let (mut graph, names, mut state, mut branch_lengths) = load_dengue100()?;
 
-    let (clock_model, _) = run_prefilter_pipeline(&mut graph, &names, &mut state, &ClockParams::default())?;
+    let (clock_model, _) = run_prefilter_pipeline(
+      &mut graph,
+      &names,
+      &mut state,
+      &ClockParams::default(),
+      &mut branch_lengths,
+    )?;
     let outlier_names = get_outlier_names(&names, &graph, &state);
 
     // v1 golden master values (captured from current implementation)
@@ -206,27 +235,34 @@ mod tests {
       variance_offset_leaf: 1e-4,
     };
 
-    let (mut expected_graph, expected_names, mut expected_state) = load_dengue100()?;
+    let (mut expected_graph, expected_names, mut expected_state, mut expected_branch_lengths) = load_dengue100()?;
     let (_expected_clock_model, _) = run_prefilter_pipeline(
       &mut expected_graph,
       &expected_names,
       &mut expected_state,
       &custom_params,
+      &mut expected_branch_lengths,
     )?;
     let expected_outliers = get_outlier_names(&expected_names, &expected_graph, &expected_state);
 
-    let (mut default_graph, default_names, mut default_state) = load_dengue100()?;
+    let (mut default_graph, default_names, mut default_state, mut default_branch_lengths) = load_dengue100()?;
     let (_default_clock_model, _) = run_prefilter_pipeline(
       &mut default_graph,
       &default_names,
       &mut default_state,
       &ClockParams::default(),
+      &mut default_branch_lengths,
     )?;
     let default_outliers = get_outlier_names(&default_names, &default_graph, &default_state);
     assert_ne!(default_outliers, expected_outliers);
 
     let data_dir = Path::new(DATA_DIR);
-    let NwkParse { graph, names, .. } = nwk_read_file(data_dir.join("tree.nwk"))?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_file(data_dir.join("tree.nwk"))?;
     let graph: GraphClock = graph;
     let dates = read_dates(
       data_dir.join("metadata.tsv"),
@@ -243,7 +279,16 @@ mod tests {
       branch_params: BranchPointOptimizationParams::default(),
       reroot_spec: RerootSpec::default(),
     };
-    let output = pipeline::run(&params, ClockInput { graph, dates }, &names, &NoopProgress)?;
+    let output = pipeline::run(
+      &params,
+      ClockInput {
+        graph,
+        dates,
+        branch_lengths,
+      },
+      &names,
+      &NoopProgress,
+    )?;
     let actual_outliers = get_outlier_names(&names, &output.graph, &output.state);
 
     assert_eq!(expected_outliers, actual_outliers);
@@ -262,7 +307,12 @@ mod tests {
   #[test]
   fn test_dengue100_clock_pipeline_keep_root_allows_negative_rate() -> Result<(), Report> {
     let data_dir = Path::new(DATA_DIR);
-    let NwkParse { graph, names, .. } = nwk_read_file(data_dir.join("tree.nwk"))?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_file(data_dir.join("tree.nwk"))?;
     let graph: GraphClock = graph;
     let dates = read_dates(
       data_dir.join("metadata.tsv"),
@@ -279,7 +329,16 @@ mod tests {
       branch_params: BranchPointOptimizationParams::default(),
       reroot_spec: RerootSpec::default(),
     };
-    let output = pipeline::run(&params, ClockInput { graph, dates }, &names, &NoopProgress)?;
+    let output = pipeline::run(
+      &params,
+      ClockInput {
+        graph,
+        dates,
+        branch_lengths,
+      },
+      &names,
+      &NoopProgress,
+    )?;
     assert!(
       output.clock_model.clock_rate() < 0.0,
       "keep-root on dengue/100 should yield a negative rate, got {:.6e}",

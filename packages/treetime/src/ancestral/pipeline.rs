@@ -1,7 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
 use crate::ancestral::fitch::{ancestral_reconstruction_fitch, create_fitch_partition};
-use crate::ancestral::marginal::{ancestral_reconstruction_marginal, initialize_marginal, marginal_update};
+use crate::ancestral::marginal::{
+  ancestral_reconstruction_marginal, initialize_marginal, marginal_update, profile_branch_lengths,
+};
 use crate::ancestral::mask::create_mask;
 use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::sample::SampleMode;
@@ -81,13 +83,14 @@ pub fn run<F>(
   params: &AncestralParams,
   input: AncestralInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   mut on_sequence: F,
   progress: &dyn ProgressSink,
 ) -> Result<AncestralOutputFull, Report>
 where
   F: FnMut(GraphNodeKey, &Seq) -> Result<(), Report>,
 {
+  let profile_lengths = profile_branch_lengths(branch_lengths);
   if params.site_specific_gtr {
     return make_error!(
       "--site-specific-gtr is not yet integrated into the ancestral reconstruction pipeline. \
@@ -155,7 +158,16 @@ where
       progress.check_cancelled()?;
       progress.report("Inferring GTR model", 0.2, "");
 
-      let created = create_marginal_partition(&graph, 0, alphabet, &sequences, params.model, params.dense, names)?;
+      let created = create_marginal_partition(
+        &graph,
+        0,
+        alphabet,
+        &sequences,
+        params.model,
+        params.dense,
+        branch_lengths,
+        names,
+      )?;
 
       match created.partition {
         MarginalPartition::Sparse(partition) => {
@@ -163,10 +175,19 @@ where
 
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          marginal_update(&graph, branch_lengths, &partitions)?;
+          marginal_update(&graph, &profile_lengths, &partitions)?;
 
           if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
-            refine_gtr_iterative(&graph, &partitions[0], params.gtr_iterations, None, 1.0, None, false)?;
+            refine_gtr_iterative(
+              &graph,
+              &partitions[0],
+              branch_lengths,
+              params.gtr_iterations,
+              None,
+              1.0,
+              None,
+              false,
+            )?;
           }
 
           progress.check_cancelled()?;
@@ -201,11 +222,20 @@ where
 
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          initialize_marginal(&graph, branch_lengths, &partitions, &sequences, names)?;
-          marginal_update(&graph, branch_lengths, &partitions)?;
+          initialize_marginal(&graph, &profile_lengths, &partitions, &sequences, names)?;
+          marginal_update(&graph, &profile_lengths, &partitions)?;
 
           if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
-            refine_gtr_iterative(&graph, &partitions[0], params.gtr_iterations, None, 1.0, None, false)?;
+            refine_gtr_iterative(
+              &graph,
+              &partitions[0],
+              branch_lengths,
+              params.gtr_iterations,
+              None,
+              1.0,
+              None,
+              false,
+            )?;
           }
 
           progress.check_cancelled()?;

@@ -18,7 +18,7 @@ use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
 
@@ -64,13 +64,13 @@ pub fn run_timetree<N, E, P>(
 ) -> Result<(), Report>
 where
   N: GraphNode + TimetreeNode + ClockNode + Default,
-  E: GraphEdge + HasBranchLength + TimetreeEdge + Default,
+  E: GraphEdge + TimetreeEdge + Default,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
   info!("# Running timetree inference");
 
   info!("## Calculating divergence distances");
-  initialize_node_divergences(graph, clock_state, names)?;
+  initialize_node_divergences(graph, clock_state, branch_lengths, names)?;
 
   // Rebuild the state's maps for the current topology, carrying every value-resident date field
   // forward. Times, distributions, bad-branch flags, and time lengths all live on the state now
@@ -110,8 +110,8 @@ pub const CLOCK_BRANCH_LENGTH_DAMPING: f64 = 0.5;
 
 /// Commit each edge's clock-constrained branch length, `clock_rate * gamma * (t_child - t_parent)`.
 ///
-/// This is what [`HasBranchLength::profile_branch_length`] returns afterwards, and so what the
-/// marginal reconstruction propagates sequence profiles along. It is the constrained M-step of
+/// This is the clock-constrained length the marginal reconstruction propagates sequence profiles
+/// along afterwards (see [`timetree_branch_lengths`]). It is the constrained M-step of
 /// the refinement loop: `branch_length` stays the free ML or input estimate, while profiles move
 /// along lengths the inferred times imply. v0 gets this for free by running the whole timetree in
 /// divergence units, where `branch_length = clock_length` is dimensionally a no-op; v1 works in
@@ -190,7 +190,7 @@ fn compute_branch_distributions_marginal_mode<N, E, P>(
 ) -> Result<(), Report>
 where
   N: GraphNode + TimetreeNode,
-  E: GraphEdge + HasBranchLength + TimetreeEdge,
+  E: GraphEdge + TimetreeEdge,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
   let one_mutation = calculate_one_mutation(partitions);
@@ -267,7 +267,7 @@ where
 fn calculate_one_mutation<N, E, P>(partitions: &[Arc<RwLock<P>>]) -> f64
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
   let total_length: usize = partitions
@@ -283,7 +283,7 @@ fn collect_contributions<N, E, P>(
 ) -> Result<Vec<OptimizationContribution>, Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
   partitions
@@ -300,7 +300,7 @@ pub(super) fn create_branch_distributions_input_mode<N, E>(
 ) -> Result<(), Report>
 where
   N: GraphNode + TimetreeNode,
-  E: GraphEdge + HasBranchLength + TimetreeEdge,
+  E: GraphEdge + TimetreeEdge,
 {
   // Build each edge's point branch-length distribution in parallel, reading its relaxed-clock rate
   // from the value state, and carry the distribution out to insert into the value serially. An edge
@@ -355,7 +355,7 @@ pub fn timetree_branch_lengths<N, E, D>(
 ) -> BTreeMap<GraphEdgeKey, f64>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   D: Send + Sync,
 {
   graph

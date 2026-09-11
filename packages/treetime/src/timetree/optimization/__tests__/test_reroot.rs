@@ -88,7 +88,12 @@ mod tests {
   fn test_reroot_tree_sparse_with_edge_split() -> Result<(), Report> {
     // Test that reroot works correctly with sparse partitions when edge split is enabled
     let aln = gap_free_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphTimetree = graph;
     let constraints = date_constraints(&names, &graph);
 
@@ -106,8 +111,8 @@ mod tests {
     let clock_params = ClockParams::default();
     let timetree_state = TimetreeState::seed_from_values(&graph, &constraints);
     let mut clock_state = ClockState::seed_from_values(&graph, &timetree_state.likely_times());
-    clock_regression_backward(&graph, &mut clock_state, &clock_params, None)?;
-    clock_regression_forward(&graph, &mut clock_state, &clock_params, None)?;
+    clock_regression_backward(&graph, &mut clock_state, &clock_params, &branch_lengths, None)?;
+    clock_regression_forward(&graph, &mut clock_state, &clock_params, &branch_lengths, None)?;
 
     let partitions = vec![sparse_partition];
 
@@ -127,6 +132,7 @@ mod tests {
       &BranchPointOptimizationParams::default(),
       &RerootSpec::default(),
       true,
+      &mut branch_lengths,
       &names_tt_3,
     )?;
 
@@ -476,7 +482,12 @@ mod tests {
     // Regression test: verify reroot_tree completes without panicking
     // when keep_root=false (reroot enabled) with sparse partitions
     let aln = gap_free_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphTimetree = graph;
     let constraints = date_constraints(&names, &graph);
 
@@ -494,8 +505,8 @@ mod tests {
     let clock_params = ClockParams::default();
     let timetree_state_1 = TimetreeState::seed_from_values(&graph, &constraints);
     let mut clock_state = ClockState::seed_from_values(&graph, &timetree_state_1.likely_times());
-    clock_regression_backward(&graph, &mut clock_state, &clock_params, None)?;
-    clock_regression_forward(&graph, &mut clock_state, &clock_params, None)?;
+    clock_regression_backward(&graph, &mut clock_state, &clock_params, &branch_lengths, None)?;
+    clock_regression_forward(&graph, &mut clock_state, &clock_params, &branch_lengths, None)?;
 
     let partitions = vec![sparse_partition];
 
@@ -503,7 +514,7 @@ mod tests {
     let initial_leaf_count = graph.get_leaves().len();
 
     // Initialize marginal for the sparse partition
-    marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
 
     // First reroot call (simulating keep_root=false flow)
     let names_tt_2 = names.clone();
@@ -517,6 +528,7 @@ mod tests {
       &BranchPointOptimizationParams::default(),
       &RerootSpec::default(),
       true,
+      &mut branch_lengths,
       &names_tt_2,
     )?;
 
@@ -545,6 +557,7 @@ mod tests {
       &BranchPointOptimizationParams::default(),
       &RerootSpec::default(),
       true,
+      &mut branch_lengths,
       &names_tt_1,
     )?;
 

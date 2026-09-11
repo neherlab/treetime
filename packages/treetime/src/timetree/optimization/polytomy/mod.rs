@@ -28,11 +28,12 @@ use crate::timetree::optimization::polytomy::sweep::{Lineage, simulate_subtree};
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use log::debug;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::reroot::remove_node_if_trivial;
+use treetime_graph::reroot::{record_merge, remove_node_if_trivial, trivial_node_branch_lengths};
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::make_error;
 
@@ -83,6 +84,7 @@ pub fn resolve_polytomies(
   total_length: usize,
   merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn rand::RngCore,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   state: &mut TimetreeState,
 ) -> Result<usize, Report> {
   let polytomy_keys = find_polytomy_nodes(graph);
@@ -104,12 +106,13 @@ pub fn resolve_polytomies(
       merger_rate,
       rng,
       &mut topology_validated,
+      branch_lengths,
       state,
     )?;
     total_created += created;
   }
 
-  let obsolete_count = remove_single_child_nodes(graph)?;
+  let obsolete_count = remove_single_child_nodes(graph, branch_lengths)?;
   if obsolete_count > 0 {
     debug!("Removed {obsolete_count} obsolete single-child nodes");
   }
@@ -138,11 +141,12 @@ fn resolve_single_polytomy(
   merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn rand::RngCore,
   topology_validated: &mut bool,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   state: &mut TimetreeState,
 ) -> Result<usize, Report> {
   let parent_time = inferred_time(state, node_key)?;
 
-  let children = collect_children(graph, partitions, node_key, total_length, state)?;
+  let children = collect_children(graph, partitions, node_key, total_length, branch_lengths, state)?;
   if children.len() < 3 {
     return Ok(0);
   }
@@ -178,7 +182,7 @@ fn resolve_single_polytomy(
     })
     .collect();
 
-  let created = apply_plan(graph, node_key, parent_time, &child_refs, &plan, state)?;
+  let created = apply_plan(graph, node_key, parent_time, &child_refs, &plan, branch_lengths, state)?;
 
   debug!(
     "Polytomy at node {node_key}: {} children -> {} children, created {created} nodes",
@@ -202,6 +206,7 @@ fn collect_children(
   partitions: &[PartitionTimetreeRef],
   node_key: GraphNodeKey,
   total_length: usize,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   state: &TimetreeState,
 ) -> Result<Vec<ChildInfo>, Report> {
   let edge_keys = {
@@ -218,7 +223,7 @@ fn collect_children(
       let child_key = edge.target();
 
       let time = inferred_time(state, child_key)?;
-      let mutation_length = edge.payload().read_arc().branch_length();
+      let mutation_length = branch_lengths.get(&edge_key).copied().flatten();
 
       Ok(ChildInfo {
         node_key: child_key,
@@ -280,7 +285,10 @@ fn inferred_time(state: &TimetreeState, node_key: GraphNodeKey) -> Result<f64, R
 ///
 /// Uses `remove_node_if_trivial` which properly sums branch lengths into the
 /// merged edge and calls `graph.build()` per removal.
-fn remove_single_child_nodes(graph: &mut GraphTimetree) -> Result<usize, Report> {
+fn remove_single_child_nodes(
+  graph: &mut GraphTimetree,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> Result<usize, Report> {
   let mut removed_count = 0;
 
   loop {
@@ -294,7 +302,9 @@ fn remove_single_child_nodes(graph: &mut GraphTimetree) -> Result<usize, Report>
       break;
     };
 
-    if remove_node_if_trivial(graph, node_key)?.is_some() {
+    let (parent_branch, child_branch) = trivial_node_branch_lengths(graph, node_key, branch_lengths);
+    if let Some(merge) = remove_node_if_trivial(graph, node_key, parent_branch, child_branch)? {
+      record_merge(branch_lengths, &merge);
       removed_count += 1;
     }
   }

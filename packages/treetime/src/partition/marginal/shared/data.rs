@@ -8,7 +8,7 @@ use eyre::Report;
 use ndarray::prelude::*;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_utils::array::ndarray::argmax_first;
@@ -80,7 +80,7 @@ impl MarginalData {
 pub trait MarginalPartition<N, E>: Send + Sync
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn marginal_data(&self) -> &MarginalData;
   fn marginal_data_mut(&mut self) -> &mut MarginalData;
@@ -96,7 +96,7 @@ where
 pub trait IndexedMarginalPartition<N, E>: MarginalPartition<N, E>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   fn indexed_missing_node(&self, key: GraphNodeKey) -> Result<DenseNodePartition, Report>;
 

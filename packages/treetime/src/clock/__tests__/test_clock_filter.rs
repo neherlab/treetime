@@ -10,6 +10,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::assert_error;
@@ -22,11 +23,17 @@ mod tests {
       GraphClock,
       BTreeMap<GraphNodeKey, Option<String>>,
       BTreeMap<GraphNodeKey, Option<f64>>,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
   > {
     let tree = "(((A:0.1,B:0.2):0.01,(C:0.15,D:0.25):0.01):0.01,((E:0.12,F:0.18):0.01,(G:2.0,H:3.0):0.01):0.01)root;";
-    let NwkParse { graph, names, .. } = nwk_read_str(tree)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(tree)?;
     let graph: GraphClock = graph;
 
     // Good clock: rate=0.01/year, base=2000 → date = div/0.01 + 2000
@@ -53,7 +60,7 @@ mod tests {
       })
       .collect();
 
-    Ok((graph, names, times))
+    Ok((graph, names, times, branch_lengths))
   }
 
   fn get_outlier_names(
@@ -79,11 +86,11 @@ mod tests {
 
   #[test]
   fn test_clock_filter_positive_rate_identifies_outliers() -> Result<(), Report> {
-    let (graph, names, times) = setup_outlier_graph()?;
+    let (graph, names, times, branch_lengths) = setup_outlier_graph()?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
     let mut state = ClockState::seed_from_values(&graph, &times);
-    let result = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0)?;
+    let result = clock_filter_inplace(&graph, &mut state, &clock_model, &branch_lengths, 3.0)?;
 
     assert!(result.iqd > 0.0, "IQD should be positive");
     let outliers = get_outlier_names(&names, &graph, &state);
@@ -94,14 +101,14 @@ mod tests {
 
   #[test]
   fn test_clock_filter_negative_rate_identifies_same_outliers() -> Result<(), Report> {
-    let (graph, names, times) = setup_outlier_graph()?;
+    let (graph, names, times, branch_lengths) = setup_outlier_graph()?;
     // Negative rate model: slope inverted, intercept adjusted.
     // IQD-based filtering uses |deviation| > IQD*threshold, so the absolute-value
     // comparison makes outlier detection slope-sign-invariant for extreme outliers.
     let clock_model = ClockModel::for_testing(-0.005, 10.5);
 
     let mut state = ClockState::seed_from_values(&graph, &times);
-    let result = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0)?;
+    let result = clock_filter_inplace(&graph, &mut state, &clock_model, &branch_lengths, 3.0)?;
 
     assert!(result.iqd > 0.0, "IQD should be positive");
     let outliers = get_outlier_names(&names, &graph, &state);
@@ -112,11 +119,11 @@ mod tests {
 
   #[test]
   fn test_clock_filter_rejects_no_dated_leaves() -> Result<(), Report> {
-    let (graph, times) = helpers::setup_low_cardinality_graph(0)?;
+    let (graph, times, branch_lengths) = helpers::setup_low_cardinality_graph(0)?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
     let mut state = ClockState::seed_from_values(&graph, &times);
-    let result = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0);
+    let result = clock_filter_inplace(&graph, &mut state, &clock_model, &branch_lengths, 3.0);
 
     assert_error!(result, "Clock filtering requires at least one dated leaf");
     Ok(())
@@ -131,11 +138,11 @@ mod tests {
   #[case::three_dated_leaves(3)]
   #[trace]
   fn test_clock_filter_accepts_low_cardinality_input(#[case] dated_leaf_count: usize) -> Result<(), Report> {
-    let (graph, times) = helpers::setup_low_cardinality_graph(dated_leaf_count)?;
+    let (graph, times, branch_lengths) = helpers::setup_low_cardinality_graph(dated_leaf_count)?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
     let mut state = ClockState::seed_from_values(&graph, &times);
-    let result = clock_filter_inplace(&graph, &mut state, &clock_model, 3.0)?;
+    let result = clock_filter_inplace(&graph, &mut state, &clock_model, &branch_lengths, 3.0)?;
 
     assert!(result.iqd.is_finite());
     Ok(())
@@ -145,13 +152,26 @@ mod tests {
     use crate::clock::clock_graph::GraphClock;
     use eyre::Report;
     use std::collections::BTreeMap;
+    use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::{NwkParse, nwk_read_str};
 
     pub fn setup_low_cardinality_graph(
       dated_leaf_count: usize,
-    ) -> Result<(GraphClock, BTreeMap<GraphNodeKey, Option<f64>>), Report> {
-      let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    ) -> Result<
+      (
+        GraphClock,
+        BTreeMap<GraphNodeKey, Option<f64>>,
+        BTreeMap<GraphEdgeKey, Option<f64>>,
+      ),
+      Report,
+    > {
+      let NwkParse {
+        graph,
+        names,
+        branch_lengths,
+        ..
+      } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
       let graph: GraphClock = graph;
 
       let times = graph
@@ -162,7 +182,7 @@ mod tests {
         .map(|(index, leaf)| (leaf.read_arc().key(), Some(2000.0 + index as f64)))
         .collect();
 
-      Ok((graph, times))
+      Ok((graph, times, branch_lengths))
     }
   }
 }

@@ -41,6 +41,10 @@ where
   pub graph: Graph<N, E, D>,
   pub confidences: BTreeMap<GraphNodeKey, Option<f64>>,
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  /// Each edge's raw input-tree branch length, keyed by the graph's own edge keys, with `None`
+  /// where an edge carried no `:length`. Threaded from the parse so a consumer reads each branch
+  /// length as a value rather than off the edge payload.
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
 pub fn nwk_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<NwkParse<N, E, D>, Report>
@@ -93,6 +97,7 @@ where
   let mut node_keys: Vec<GraphNodeKey> = Vec::with_capacity(nwk_graph.nodes.len());
   let mut confidences: BTreeMap<GraphNodeKey, Option<f64>> = BTreeMap::new();
   let mut names: BTreeMap<GraphNodeKey, Option<String>> = BTreeMap::new();
+  let mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = BTreeMap::new();
   for (nwk_idx, nwk_node) in nwk_graph.nodes.iter().enumerate() {
     let name: Option<&str> = nwk_node.name.as_deref().filter(|n| !n.is_empty());
 
@@ -125,7 +130,8 @@ where
     })?;
 
     let edge = E::from_nwk(nwk_edge.data.branch_length)?;
-    graph.add_edge(*source, *target, edge)?;
+    let edge_key = graph.add_edge(*source, *target, edge)?;
+    branch_lengths.insert(edge_key, nwk_edge.data.branch_length);
   }
 
   graph.build()?;
@@ -136,6 +142,7 @@ where
     graph,
     confidences,
     names,
+    branch_lengths,
   })
 }
 

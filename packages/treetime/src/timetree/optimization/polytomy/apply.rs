@@ -8,7 +8,8 @@ use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use crate::timetree::optimization::polytomy::sweep::SubtreePlan;
 use crate::timetree::timetree_state::{DateNodeState, TimetreeState};
 use eyre::Report;
-use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+use std::collections::BTreeMap;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::make_internal_error;
 
@@ -40,6 +41,7 @@ pub fn apply_plan(
   parent_time: f64,
   children: &[ChildRef],
   plan: &SubtreePlan,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   state: &mut TimetreeState,
 ) -> Result<usize, Report> {
   // Validate the complete forest before graph mutation so plan application is atomic.
@@ -68,6 +70,7 @@ pub fn apply_plan(
         lineage,
         new_node_key,
         merger.time,
+        branch_lengths,
         state,
       )?;
     }
@@ -84,6 +87,7 @@ pub fn apply_plan(
       lineage,
       parent_key,
       parent_time,
+      branch_lengths,
       state,
     )?;
   }
@@ -173,6 +177,7 @@ fn attach(
   lineage: usize,
   new_parent_key: GraphNodeKey,
   new_parent_time: f64,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   state: &mut TimetreeState,
 ) -> Result<(), Report> {
   let Some(&lineage_time) = times.get(lineage) else {
@@ -191,11 +196,10 @@ fn attach(
         "Polytomy plan referenced merger node {lineage} before it was created; mergers must only reference earlier mergers"
       );
     };
-    let mut payload = EdgeTimetree::default();
-    // The sweep only merges lineages that have placed every substitution, so the branch
-    // above a merger node carries none.
-    payload.set_branch_length(Some(0.0));
-    let new_edge_key = graph.add_edge(new_parent_key, node_key, payload)?;
+    let new_edge_key = graph.add_edge(new_parent_key, node_key, EdgeTimetree::default())?;
+    // The sweep only merges lineages that have placed every substitution, so the branch above a
+    // merger node carries none.
+    branch_lengths.insert(new_edge_key, Some(0.0));
     state.edges.entry(new_edge_key).or_default().time_length = Some(time_length);
   }
 

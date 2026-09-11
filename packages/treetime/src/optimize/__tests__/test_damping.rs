@@ -3,7 +3,7 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, compute_total_lh, setup_partitions, simple_alignment,
   };
-  use crate::optimize::iteration::{apply_damping, commit_branch_lengths};
+  use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::run_optimize_loop;
   use crate::payload::ancestral::GraphAncestral;
@@ -11,30 +11,38 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
-  use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   #[test]
-  fn test_edge_branch_lengths_captures_all_edges() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+  fn test_parse_branch_lengths_covers_all_edges() -> Result<(), Report> {
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let saved = edge_branch_lengths(&graph);
+    let saved = branch_lengths;
     let edges = graph.get_edges();
     assert_eq!(saved.len(), edges.len());
     for edge_ref in &edges {
       let edge = edge_ref.read_arc();
-      let expected = edge.payload().read_arc().branch_length();
-      assert_eq!(saved[&edge.key()], expected);
+      assert!(saved.contains_key(&edge.key()));
     }
     Ok(())
   }
 
   #[test]
   fn test_apply_damping_zero_is_noop() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let original = edge_branch_lengths(&graph);
+    let original = branch_lengths;
 
     // Simulate optimization: double every branch length in the map.
     let mut optimized: BTreeMap<GraphEdgeKey, Option<f64>> =
@@ -58,9 +66,9 @@ mod tests {
   #[trace]
   fn test_apply_damping_weights_match_v0(#[case] iteration: usize, #[case] expected_old_weight: f64) -> Result<(), Report> {
     let damping = 0.75;
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
+    let NwkParse { graph, names, branch_lengths, .. } = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
     let graph: GraphAncestral = graph;
-    let old_bls = edge_branch_lengths(&graph);
+    let old_bls = branch_lengths;
 
     // Set all "optimized" branch lengths to zero.
     let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(0.0))).collect();
@@ -76,9 +84,14 @@ mod tests {
 
   #[test]
   fn test_apply_damping_blends_correctly() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?;
     let graph: GraphAncestral = graph;
-    let old_bls = edge_branch_lengths(&graph);
+    let old_bls = branch_lengths;
 
     // Set "optimized" branch lengths to 3x the input.
     let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> =
@@ -106,9 +119,14 @@ mod tests {
 
     let mut prev_damped = old_bl;
     for iteration in 0..10 {
-      let NwkParse { graph, names, .. } = nwk_read_str("(A:1.0)root:0.0;")?;
+      let NwkParse {
+        graph,
+        names,
+        branch_lengths,
+        ..
+      } = nwk_read_str("(A:1.0)root:0.0;")?;
       let graph: GraphAncestral = graph;
-      let old_bls = edge_branch_lengths(&graph);
+      let old_bls = branch_lengths;
       let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(optimized_bl))).collect();
 
       apply_damping(&mut bls, &old_bls, damping, iteration);
@@ -136,9 +154,9 @@ mod tests {
   #[trace]
   fn test_damped_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let max_iter = 10;
     let damping = 0.75;
@@ -155,7 +173,7 @@ mod tests {
       damping,
       method,
       false,
-      TopologyOps::default(), &names_tt_2
+      TopologyOps::default(), branch_lengths, &names_tt_2
     )?;
 
     assert!(
@@ -164,13 +182,10 @@ mod tests {
     );
 
     // Final log-likelihood must be within a tight range around the observed fixed point.
-    // The toy tree (4 leaves, 16 sites, JC69) converges near -72.41. Use the post-loop
-    // marginal pass so `final_lh` reflects the state after the last branch-length update,
-    // not the pre-update measurement recorded in `lh_history`.
-    // The loop returns its branch-length map without writing the payload; materialize it so the
-    // payload-reading likelihood helper measures the final optimized state.
-    commit_branch_lengths(&graph, &result.branch_lengths);
-    let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
+    // The toy tree (4 leaves, 16 sites, JC69) converges near -72.41. Measure the likelihood from
+    // the loop's final branch-length map so `final_lh` reflects the state after the last
+    // branch-length update, not the pre-update measurement recorded in `lh_history`.
+    let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions, &result.branch_lengths)?;
     assert!(
       final_lh > -73.0 && final_lh < -72.0,
       "Final log-lh {final_lh:.6} outside expected range (-73.0, -72.0)"
@@ -194,11 +209,11 @@ mod tests {
   #[trace]
   fn test_damped_optimization_does_not_regress(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let initial_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
+    let initial_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions, &branch_lengths)?;
 
     // Force all 10 iterations (never break on convergence) so the non-regression check
     // exercises the full damping trajectory rather than possibly stopping after two
@@ -215,14 +230,13 @@ mod tests {
       0.75,
       method,
       false,
-      TopologyOps::default(), &names_tt_1
+      TopologyOps::default(), branch_lengths, &names_tt_1
     )?;
 
     // Strict non-regression: damped optimization must not degrade likelihood.
     // Damping blends new and old branch lengths as a convex combination,
     // so overall likelihood should improve or hold steady.
-    commit_branch_lengths(&graph, &result.branch_lengths);
-    let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions)?;
+    let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions, &result.branch_lengths)?;
     assert!(
       final_lh >= initial_lh,
       "Damped optimization regressed: {initial_lh:.6} -> {final_lh:.6}"

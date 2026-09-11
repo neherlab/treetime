@@ -19,7 +19,7 @@ mod tests {
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
-  use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -83,13 +83,14 @@ mod tests {
     graph: &GraphAncestral,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalSparse>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
     let partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
-    marginal_update(graph, &profile_branch_lengths(graph), &partitions)?.value();
+    marginal_update(graph, &profile_branch_lengths(branch_lengths), &partitions)?.value();
 
     Ok(partitions)
   }
@@ -98,6 +99,7 @@ mod tests {
     graph: &GraphAncestral,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalDense>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
@@ -107,25 +109,30 @@ mod tests {
       get_common_length(aln)?,
     )))];
 
-    initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln, names)?.value();
+    initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?.value();
 
     Ok(partitions)
   }
 
-  fn get_branch_lengths(graph: &GraphAncestral) -> Vec<f64> {
+  fn get_branch_lengths(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
       .iter()
-      .map(|edge| edge.read_arc().payload().read_arc().branch_length().unwrap_or(0.0))
+      .map(|edge| branch_lengths[&edge.read_arc().key()].unwrap_or(0.0))
       .collect()
   }
 
   #[test]
   fn test_sparse_effective_length_no_gaps() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let partitions = setup_sparse(&graph, &names, &aln)?;
+    let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
@@ -140,9 +147,14 @@ mod tests {
   #[test]
   fn test_dense_effective_length_no_gaps() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let partitions = setup_dense(&graph, &names, &aln)?;
+    let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
@@ -157,9 +169,14 @@ mod tests {
   #[test]
   fn test_sparse_effective_length_shared_gaps() -> Result<(), Report> {
     let aln = gappy_alignment_shared()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let partitions = setup_sparse(&graph, &names, &aln)?;
+    let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
@@ -175,9 +192,14 @@ mod tests {
   #[test]
   fn test_dense_effective_length_shared_gaps() -> Result<(), Report> {
     let aln = gappy_alignment_shared()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let partitions = setup_dense(&graph, &names, &aln)?;
+    let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
@@ -193,9 +215,14 @@ mod tests {
   #[test]
   fn test_sparse_effective_length_one_leaf_gapped() -> Result<(), Report> {
     let aln = gappy_alignment_one_leaf()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let partitions = setup_sparse(&graph, &names, &aln)?;
+    let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     let mut found_reduced = false;
     for edge_ref in graph.get_edges() {
@@ -215,9 +242,14 @@ mod tests {
   #[test]
   fn test_dense_edge_subs_excludes_gap_positions() -> Result<(), Report> {
     let aln = gappy_alignment_one_leaf()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let partitions = setup_dense(&graph, &names, &aln)?;
+    let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     let p = partitions[0].read_arc();
     for edge_ref in graph.get_edges() {
@@ -242,21 +274,23 @@ mod tests {
     let NwkParse {
       graph: graph_clean,
       names: graph_clean_names,
+      branch_lengths: mut branch_lengths_clean,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let partitions_clean = setup_sparse(&graph_clean, &graph_clean_names, &aln_clean)?;
-    initial_guess_mixed(&graph_clean, &partitions_clean, true, false)?;
-    let bl_clean = get_branch_lengths(&graph_clean);
+    let partitions_clean = setup_sparse(&graph_clean, &graph_clean_names, &aln_clean, &branch_lengths_clean)?;
+    initial_guess_mixed(&graph_clean, &partitions_clean, true, false, &mut branch_lengths_clean)?;
+    let bl_clean = get_branch_lengths(&graph_clean, &branch_lengths_clean);
 
     let aln_gappy = gappy_alignment_shared()?;
     let NwkParse {
       graph: graph_gappy,
       names: graph_gappy_names,
+      branch_lengths: mut branch_lengths_gappy,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let partitions_gappy = setup_sparse(&graph_gappy, &graph_gappy_names, &aln_gappy)?;
-    initial_guess_mixed(&graph_gappy, &partitions_gappy, true, false)?;
-    let bl_gappy = get_branch_lengths(&graph_gappy);
+    let partitions_gappy = setup_sparse(&graph_gappy, &graph_gappy_names, &aln_gappy, &branch_lengths_gappy)?;
+    initial_guess_mixed(&graph_gappy, &partitions_gappy, true, false, &mut branch_lengths_gappy)?;
+    let bl_gappy = get_branch_lengths(&graph_gappy, &branch_lengths_gappy);
 
     // With 4 shared gap positions out of 16, the effective length is 12.
     // Substitutions at non-gap positions are the same, so the per-site rate

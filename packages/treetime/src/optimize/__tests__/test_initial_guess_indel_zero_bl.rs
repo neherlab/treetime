@@ -12,8 +12,9 @@ mod tests {
   use indoc::indoc;
 
   use parking_lot::RwLock;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
-  use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::seq::Seq;
@@ -24,18 +25,13 @@ mod tests {
 
   #[test]
   fn test_initial_guess_auto_preserves_zero_bl_without_indels() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense(TREE_ZERO_BL)?;
+    let (graph, partitions, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
 
-    initial_guess_mixed(&graph, &partitions, false, false)?;
+    initial_guess_mixed(&graph, &partitions, false, false, &mut branch_lengths)?;
 
     // All edges should remain zero: no indels, zero is valid
     for edge_ref in graph.get_edges() {
-      let bl = edge_ref
-        .read_arc()
-        .payload()
-        .read_arc()
-        .branch_length()
-        .unwrap_or(f64::NAN);
+      let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap_or(f64::NAN);
       assert!(bl == 0.0, "Without indels, Auto mode should preserve zero BL, got {bl}");
     }
     Ok(())
@@ -43,7 +39,7 @@ mod tests {
 
   #[test]
   fn test_initial_guess_auto_overrides_zero_bl_with_indels() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense(TREE_ZERO_BL)?;
+    let (graph, partitions, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
 
     // Inject an indel on the first edge
     let edge_key = graph.get_edges()[0].read_arc().key();
@@ -60,15 +56,10 @@ mod tests {
       });
     }
 
-    initial_guess_mixed(&graph, &partitions, false, false)?;
+    initial_guess_mixed(&graph, &partitions, false, false, &mut branch_lengths)?;
 
     // The indel-bearing edge should now have a positive BL
-    let bl = graph.get_edges()[0]
-      .read_arc()
-      .payload()
-      .read_arc()
-      .branch_length()
-      .unwrap_or(0.0);
+    let bl = branch_lengths[&graph.get_edges()[0].read_arc().key()].unwrap_or(0.0);
     assert!(
       bl > 0.0,
       "Auto mode should override zero BL on indel-bearing edge, got {bl}"
@@ -76,12 +67,7 @@ mod tests {
 
     // Non-indel edges should remain zero
     for edge_ref in graph.get_edges().iter().skip(1) {
-      let bl = edge_ref
-        .read_arc()
-        .payload()
-        .read_arc()
-        .branch_length()
-        .unwrap_or(f64::NAN);
+      let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap_or(f64::NAN);
       assert!(bl == 0.0, "Non-indel edge should remain zero, got {bl}");
     }
     Ok(())
@@ -90,7 +76,16 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub fn setup_dense(newick: &str) -> Result<(GraphAncestral, Vec<Arc<RwLock<PartitionMarginalDense>>>), Report> {
+    pub fn setup_dense(
+      newick: &str,
+    ) -> Result<
+      (
+        GraphAncestral,
+        Vec<Arc<RwLock<PartitionMarginalDense>>>,
+        BTreeMap<GraphEdgeKey, Option<f64>>,
+      ),
+      Report,
+    > {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let aln = read_many_fasta_str(
         indoc! {r#"
@@ -103,7 +98,12 @@ mod tests {
         "#},
         &alphabet,
       )?;
-      let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+      let NwkParse {
+        graph,
+        names,
+        branch_lengths,
+        ..
+      } = nwk_read_str(newick)?;
       let graph: GraphAncestral = graph;
 
       let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
@@ -113,10 +113,17 @@ mod tests {
         get_common_length(&aln)?,
       )))];
 
-      initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
-      marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
+      initialize_marginal(
+        &graph,
+        &profile_branch_lengths(&branch_lengths),
+        &partitions,
+        &aln,
+        &names,
+      )?
+      .value();
+      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
 
-      Ok((graph, partitions))
+      Ok((graph, partitions, branch_lengths))
     }
   }
   use helpers::*;

@@ -167,6 +167,7 @@ impl MugrationResult {
     graph: GraphAncestral,
     confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     partition: PartitionMarginalDiscrete,
     attribute: &str,
     log_lh: LogLh,
@@ -198,9 +199,9 @@ impl MugrationResult {
       .get_edges()
       .iter()
       .map(|edge| {
-        let edge = edge.read_arc();
-        let branch_length = edge.payload().read_arc().branch_length;
-        (edge.key(), EdgeOut { branch_length })
+        let key = edge.read_arc().key();
+        let branch_length = branch_lengths.get(&key).copied().flatten();
+        (key, EdgeOut { branch_length })
       })
       .collect();
 

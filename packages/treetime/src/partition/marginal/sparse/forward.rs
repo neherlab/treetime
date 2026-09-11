@@ -13,7 +13,7 @@ use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_graph::pass::{GraphPass, GraphPassForwardContext, GraphPassNodeOutput};
@@ -27,7 +27,7 @@ pub fn process_forward_indexed<N, E>(
 ) -> Result<(), Report>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   let alphabet = partition.alphabet.clone();
   let gtr = partition.gtr.clone();
@@ -56,7 +56,7 @@ fn process_node_forward_indexed<N, E>(
 ) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report>
 where
   N: GraphNode,
-  E: EdgeOptimizeOps,
+  E: GraphEdge,
 {
   let mut node = context.input;
 

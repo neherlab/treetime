@@ -6,11 +6,10 @@ use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_graph::pass::GraphPassNodeOutput;
-use treetime_graph::value_maps::edge_branch_lengths;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ClockFilterResult {
@@ -30,11 +29,12 @@ pub fn clock_filter_inplace<N, E, D>(
   graph: &Graph<N, E, D>,
   state: &mut ClockState,
   clock_line: &(impl ClockLine + Sync),
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   threshold: f64,
 ) -> Result<ClockFilterResult, Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   D: Send + Sync,
 {
   log::info!("### Filtering outliers (threshold={threshold})");
@@ -45,12 +45,11 @@ where
   );
 
   // Assign divergence to each node: div = parent.div + branch_length, parents before children.
-  let branch_lengths = edge_branch_lengths(graph);
   state.map_forward(graph, |context| {
     let mut node = context.input;
     let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
       let parent = context.parent.expect("Non-root node must have a parent");
-      node.div = parent.div + edge_branch_length(edge_key, &branch_lengths);
+      node.div = parent.div + edge_branch_length(edge_key, branch_lengths);
       Some(edge)
     } else {
       node.div = 0.0;

@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod __tests__;
 
-use crate::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use crate::edge::{GraphEdge, GraphEdgeKey};
 use crate::graph::{Graph, SafeNode};
 use crate::node::{GraphNode, GraphNodeKey};
-use crate::value_maps::edge_branch_lengths;
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
@@ -57,10 +56,11 @@ impl TopologyOrderSpec {
     &self,
     graph: &mut Graph<N, E, D>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<(), Report>
   where
     N: GraphNode,
-    E: GraphEdge + HasBranchLength,
+    E: GraphEdge,
     D: Sync + Send,
   {
     let order = if self.preset == TopologyOrderPreset::Keep {
@@ -79,8 +79,7 @@ impl TopologyOrderSpec {
           build_order(graph, &keys, reverse)
         },
         TopologyOrderPreset::Divergence | TopologyOrderPreset::DivergenceReverse => {
-          let branch_lengths = edge_branch_lengths(graph);
-          let keys = compute_divergences(graph, &postorder, &branch_lengths);
+          let keys = compute_divergences(graph, &postorder, branch_lengths);
           build_order(graph, &keys, reverse)
         },
         TopologyOrderPreset::Label | TopologyOrderPreset::LabelReverse => {

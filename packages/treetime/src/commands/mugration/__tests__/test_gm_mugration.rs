@@ -204,6 +204,7 @@ mod tests {
         graph,
         confidences,
         names,
+        branch_lengths,
       } = nwk_read_file(&tree_path)?;
 
       // Read trait values using in-memory parsing
@@ -240,6 +241,7 @@ mod tests {
         graph,
         &confidences,
         &names_tt_1,
+        &branch_lengths,
         &traits,
         &fixture.attribute,
         weights.as_ref(),

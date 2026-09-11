@@ -38,6 +38,7 @@ pub fn run_optimize(
     graph,
     confidences,
     names,
+    branch_lengths,
   } = nwk_read_file(args.tree())?;
 
   let resolved = args.resolve_outputs()?;
@@ -59,6 +60,7 @@ pub fn run_optimize(
     graph,
     alphabet,
     sequences: aln,
+    branch_lengths,
   };
 
   let output = pipeline::run(&params, input, &names, progress)?;
@@ -78,7 +80,7 @@ pub fn run_optimize(
     dense_partitions,
   ));
   let topology_order = args.topology_order.resolve_topology_order(&graph, &names, None)?;
-  topology_order.apply(&mut graph, &names)?;
+  topology_order.apply(&mut graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.9, "");
 
   // Gather the per-node name/confidence into a keyed value map the output writers consume. The name

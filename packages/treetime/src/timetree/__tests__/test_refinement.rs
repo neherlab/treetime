@@ -33,9 +33,8 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
-  use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::fasta::read_many_fasta_str;
@@ -49,10 +48,18 @@ mod tests {
   #[test]
   #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_refinement_rebuilds_complete_coalescent_state_after_topology_change() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut clock_model, mut state) = create_polytomy_state()?;
+    let (mut graph, names, partitions, mut clock_model, mut state, mut branch_lengths) = create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
 
-    let outcome = refine(&mut graph, &names, &partitions, &mut clock_model, Some(&tc), &mut state)?;
+    let outcome = refine(
+      &mut graph,
+      &names,
+      &partitions,
+      &mut clock_model,
+      Some(&tc),
+      &mut state,
+      &mut branch_lengths,
+    )?;
 
     assert_eq!(0, outcome.sequence_changes);
     assert_eq!(TopologyOutcome::Changed { resolved_nodes: 1 }, outcome.topology);
@@ -90,7 +97,15 @@ mod tests {
     // Kingman's node and edge factorizations telescope to the same objective.
     pretty_assert_abs_diff_eq!(node_lh, edge_lh.value(), epsilon = 1e-10);
 
-    let outcome = refine(&mut graph, &names, &partitions, &mut clock_model, Some(&tc), &mut state)?;
+    let outcome = refine(
+      &mut graph,
+      &names,
+      &partitions,
+      &mut clock_model,
+      Some(&tc),
+      &mut state,
+      &mut branch_lengths,
+    )?;
     assert_eq!(TopologyOutcome::Unchanged, outcome.topology);
 
     Ok(())
@@ -98,7 +113,7 @@ mod tests {
 
   #[test]
   fn test_refinement_missing_time_preserves_inference_state() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut clock_model, mut state) = create_polytomy_state()?;
+    let (mut graph, names, partitions, mut clock_model, mut state, mut branch_lengths) = create_polytomy_state()?;
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     state.node_mut(root_key).time = None;
     let expected_error = format!(
@@ -114,6 +129,7 @@ mod tests {
         &mut clock_model,
         Some(&Distribution::constant(10.0)),
         &mut state,
+        &mut branch_lengths,
       ),
       expected_error
     );
@@ -126,7 +142,7 @@ mod tests {
 
   #[test]
   fn test_refinement_non_finite_time_preserves_inference_state() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut clock_model, mut state) = create_polytomy_state()?;
+    let (mut graph, names, partitions, mut clock_model, mut state, mut branch_lengths) = create_polytomy_state()?;
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     state.node_mut(root_key).time = Some(f64::NAN);
     let before = serialize_state(&graph, &partitions, &clock_model)?;
@@ -139,6 +155,7 @@ mod tests {
         &mut clock_model,
         Some(&Distribution::constant(10.0)),
         &mut state,
+        &mut branch_lengths,
       ),
       format!(
         "Polytomy resolution failed: Polytomy resolution requires a finite inferred time for node {root_key}, but it has NaN"
@@ -162,13 +179,29 @@ mod tests {
   #[test]
   #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_refinement_unchanged_topology_recomputes_missing_time() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut clock_model, mut state) = create_polytomy_state()?;
+    let (mut graph, names, partitions, mut clock_model, mut state, mut branch_lengths) = create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
-    refine(&mut graph, &names, &partitions, &mut clock_model, Some(&tc), &mut state)?;
+    refine(
+      &mut graph,
+      &names,
+      &partitions,
+      &mut clock_model,
+      Some(&tc),
+      &mut state,
+      &mut branch_lengths,
+    )?;
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     state.node_mut(root_key).time = None;
 
-    let outcome = refine(&mut graph, &names, &partitions, &mut clock_model, None, &mut state)?;
+    let outcome = refine(
+      &mut graph,
+      &names,
+      &partitions,
+      &mut clock_model,
+      None,
+      &mut state,
+      &mut branch_lengths,
+    )?;
 
     assert_eq!(TopologyOutcome::Unchanged, outcome.topology);
     assert!(state.node(root_key).time.is_some_and(f64::is_finite));
@@ -183,10 +216,16 @@ mod tests {
       PartitionTimetreeAllVec,
       ClockModel,
       TimetreeState,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
   > {
-    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.01,B:0.01,C:0.01)root;")?;
+    let NwkParse {
+      graph,
+      names,
+      mut branch_lengths,
+      ..
+    } = nwk_read_str("(A:0.01,B:0.01,C:0.01)root;")?;
     let mut graph: GraphTimetree = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(
@@ -203,7 +242,13 @@ mod tests {
     let partitions = vec![Arc::new(RwLock::new(PartitionTimetree::Dense(
       PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?),
     )))];
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?;
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&branch_lengths),
+      &partitions,
+      &aln,
+      &names,
+    )?;
 
     let dates: DatesMap = btreemap! {
       "A".to_owned() => Some(DateConstraint::exact(2010.0)),
@@ -212,7 +257,7 @@ mod tests {
     };
     let constraints = load_date_constraints(&dates, &graph, &names)?;
     let mut clock_state = ClockState::new(&graph);
-    initialize_node_divergences(&graph, &mut clock_state, &names)?;
+    initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
     let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times();
     let mut clock_estimate_state = ClockState::seed_from_values(&graph, &times);
@@ -225,12 +270,13 @@ mod tests {
       true,
       &BranchPointOptimizationParams::default(),
       &RerootParams::default(),
+      &mut branch_lengths,
       None,
       &names_tt_1,
     )?
     .into_clock_model()?;
     let mut state = TimetreeState::seed_from_values(&graph, &constraints);
-    let run_branch_lengths = edge_branch_lengths(&graph);
+    let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
     run_timetree(
       &mut graph,
@@ -244,12 +290,7 @@ mod tests {
       &mut clock_state,
     )?;
 
-    for edge in graph.get_edges() {
-      let mut payload = edge.read_arc().payload().write_arc();
-      payload.set_branch_length(Some(0.0));
-    }
-
-    Ok((graph, names, partitions, clock_model, state))
+    Ok((graph, names, partitions, clock_model, state, run_branch_lengths))
   }
 
   fn serialize_state(
@@ -302,6 +343,7 @@ mod tests {
     clock_model: &mut ClockModel,
     coalescent_tc: Option<&Distribution>,
     state: &mut TimetreeState,
+    branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<RefinementOutcome, Report> {
     let pinned_tc = Distribution::constant(REFINEMENT_TEST_TC);
     let coalescent = CoalescentModel::new(
@@ -328,6 +370,7 @@ mod tests {
       state,
       clock_state: &mut clock_state,
       clock_branch_lengths: &mut clock_branch_lengths,
+      branch_lengths,
       names: &mut names,
     }
     .run()

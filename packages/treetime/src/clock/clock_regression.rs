@@ -16,7 +16,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_graph::reroot::RerootResult;
-use treetime_graph::value_maps::edge_branch_lengths;
 
 #[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
@@ -95,6 +94,7 @@ pub fn clock_regression_backward<N, E, D>(
   graph: &Graph<N, E, D>,
   state: &mut ClockState,
   options: &ClockParams,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<(), Report>
 where
@@ -102,9 +102,8 @@ where
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
-  let branch_lengths = edge_branch_lengths(graph);
   state.map_backward(graph, |context| {
-    clock_regression_backward_node(graph, options, prev_clock_rate, &branch_lengths, context)
+    clock_regression_backward_node(graph, options, prev_clock_rate, branch_lengths, context)
   })
 }
 
@@ -182,6 +181,7 @@ pub fn clock_regression_forward<N, E, D>(
   graph: &Graph<N, E, D>,
   state: &mut ClockState,
   options: &ClockParams,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<(), Report>
 where
@@ -189,7 +189,6 @@ where
   E: GraphEdge + ClockEdge,
   D: Sync + Send,
 {
-  let branch_lengths = edge_branch_lengths(graph);
   state.map_forward(graph, |context| {
     let mut node = context.input;
     let parent_message = if let Some((edge_key, mut edge)) = context.parent_edge {
@@ -223,6 +222,7 @@ pub fn estimate_clock_model_with_reroot_policy<N, E, D>(
   keep_root: bool,
   optimization_params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<ClockRerootResult, Report>
@@ -238,12 +238,12 @@ where
   }
 
   info!("### Running backward regression");
-  clock_regression_backward(graph, state, options, prev_clock_rate)?;
+  clock_regression_backward(graph, state, options, branch_lengths, prev_clock_rate)?;
   debug!("Backward regression completed");
 
   let reroot_result = if !keep_root {
     info!("### Running forward regression to find optimal root");
-    clock_regression_forward(graph, state, options, prev_clock_rate)?;
+    clock_regression_forward(graph, state, options, branch_lengths, prev_clock_rate)?;
     debug!("Forward regression completed");
 
     info!("### Finding best root and rerooting tree");
@@ -251,7 +251,15 @@ where
       || reroot_params.clone(),
       |rate| reroot_params.with_objective(RootObjective::FixedRate(rate)),
     );
-    let reroot_result = reroot_in_place(graph, state, options, optimization_params, &reroot_params, names)?;
+    let reroot_result = reroot_in_place(
+      graph,
+      state,
+      options,
+      optimization_params,
+      &reroot_params,
+      branch_lengths,
+      names,
+    )?;
     info!("Rerooted to node {}", reroot_result.new_root_key.0);
     debug!("Rerooting completed");
     Some(reroot_result)

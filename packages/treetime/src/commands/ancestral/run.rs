@@ -1,6 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::attach::sanitize_to_alphabet;
-use crate::ancestral::marginal::profile_branch_lengths;
 use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partition};
 use crate::ancestral::pipeline::{self, AncestralInput, AncestralParams, AncestralPartition};
 use crate::commands::ancestral::aa_node_data::{
@@ -25,7 +24,6 @@ use log::{info, warn};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -76,6 +74,7 @@ pub fn run_ancestral_reconstruction(
     graph,
     confidences,
     names,
+    branch_lengths: branch_lengths_opt,
   } = nwk_read_file(ancestral_args.tree())?;
   let topology_order = ancestral_args
     .topology_order
@@ -105,15 +104,12 @@ pub fn run_ancestral_reconstruction(
     ignore_missing_alns: ancestral_args.ignore_missing_alns,
   };
 
-  // Snapshot per-edge branch lengths before the graph moves into the pipeline. Every reconstruction
-  // consumer reads its node label from the `names` map threaded from the parse and its edge branch
-  // length from these keyed value maps instead of off the graph payload. Ancestral never renames or
-  // re-lengths after parse, so these snapshots mirror exactly what a consumer would have read off the
-  // payload at any later point. Two branch-length map shapes are kept distinct: the `f64`
-  // `profile_branch_lengths` map feeds the marginal passes, while the `Option<f64>`
-  // `edge_branch_lengths` map preserves a missing weight as `None` for the output writers and gather.
-  let profile_branch_lengths_input = profile_branch_lengths(&graph);
-  let branch_lengths_opt = edge_branch_lengths(&graph);
+  // Every reconstruction consumer reads its node label from the `names` map from the parse and its
+  // edge branch length from the parsed `branch_lengths` value map instead of off the graph payload.
+  // Ancestral never renames or re-lengths after parse, so this map mirrors exactly what a consumer
+  // would have read off the payload at any later point. The pipeline and the amino-acid path derive
+  // the `f64` profile map (missing weight resolved to `0.0`) for the marginal passes from it, while
+  // the `Option<f64>` map is read directly by the output writers and gather.
 
   let input = AncestralInput {
     graph,
@@ -125,7 +121,7 @@ pub fn run_ancestral_reconstruction(
     &params,
     input,
     &names,
-    &profile_branch_lengths_input,
+    &branch_lengths_opt,
     |key, seq| {
       if let Some(ref mut writer) = output_fasta {
         let name = names[&key].as_deref().unwrap_or("");
@@ -153,7 +149,7 @@ pub fn run_ancestral_reconstruction(
       aa_fasta_template.as_deref(),
       &result.output.graph,
       &names,
-      &profile_branch_lengths_input,
+      &branch_lengths_opt,
       progress,
     )?)
   } else {
@@ -187,7 +183,7 @@ pub fn run_ancestral_reconstruction(
     mask.clone(),
     aa_node_data.clone(),
   ));
-  topology_order.apply(&mut graph, &names)?;
+  topology_order.apply(&mut graph, &names, &branch_lengths_opt)?;
   progress.report("Writing output", 0.9, "");
 
   // Gather the per-node name/confidence and per-edge branch length off the ordered tree into keyed
@@ -337,7 +333,7 @@ fn run_aa_reconstructions(
   aa_fasta_template: Option<&str>,
   graph: &GraphAncestral,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   progress: &dyn ProgressSink,
 ) -> Result<AaNodeData, Report> {
   let read_alphabet = Alphabet::new(AlphabetName::Aa)?;

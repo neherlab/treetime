@@ -19,7 +19,7 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::make_error;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
-use crate::optimize::iteration::{apply_damping, commit_branch_lengths};
+use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchLengthMode, BranchOptMethod};
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::timetree::partition::{
@@ -49,7 +49,6 @@ use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_io::dates_csv::DatesMap;
 use treetime_io::fasta::FastaRecord;
@@ -106,6 +105,10 @@ pub struct TimetreeInput {
   pub alphabet: Alphabet,
   pub sequences: Option<Vec<FastaRecord>>,
   pub dates: Option<DatesMap>,
+  /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. The pipeline takes
+  /// ownership and maintains it in place: the ML pre-steps, reroots, and polytomy resolution update
+  /// it, and it exits as `TimetreeOutput.branch_lengths`.
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
 #[derive(Serialize)]
@@ -137,6 +140,11 @@ pub struct TimetreeOutput {
   /// clock length from here.
   #[serde(skip)]
   pub clock_branch_lengths: BTreeMap<GraphEdgeKey, f64>,
+  /// Final raw per-edge branch lengths keyed by edge, maintained in place across the pipeline's ML
+  /// pre-steps, reroots, and polytomy resolution. The output gather and the tree writers read each
+  /// edge's raw length from here rather than off the graph payload.
+  #[serde(skip)]
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   /// Persistent per-node clock state carrying the node divergence and outlier flag as values instead
   /// of on the graph payload. The output gather reads each node's divergence and outlier flag from
   /// here rather than off the payload.
@@ -203,7 +211,13 @@ pub fn run(
   // The node dates come from the date state, and the clock set is recomputed by every backward
   // regression, so neither is seeded from the payload.
   let mut clock_state = ClockState::new(&input.graph);
-  initialize_node_divergences(&input.graph, &mut clock_state, names)?;
+
+  // The raw per-edge branch lengths, maintained in place for the whole pipeline: the parsed lengths,
+  // updated by the ML pre-steps, the reroots, and polytomy resolution. Every consumer reads its edge
+  // length from here instead of off the graph payload.
+  let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
+
+  initialize_node_divergences(&input.graph, &mut clock_state, &branch_lengths, names)?;
 
   let branch_params = BranchPointOptimizationParams::default();
 
@@ -226,6 +240,7 @@ pub fn run(
     params.keep_root,
     &branch_params,
     &reroot_params,
+    &mut branch_lengths,
     None,
     names,
   )
@@ -245,6 +260,7 @@ pub fn run(
           &input.graph,
           input.alphabet.clone(),
           input.sequences.as_deref(),
+          &branch_lengths,
           names,
         )?;
         (init.partitions, Some(init.gtr), Some(init.model_name))
@@ -256,12 +272,12 @@ pub fn run(
       info!("### ML branch-length optimization (pre-reroot)");
       initialize_marginal(
         &input.graph,
-        &profile_branch_lengths(&input.graph),
+        &profile_branch_lengths(&branch_lengths),
         &partitions,
         aln,
         names,
       )?;
-      optimize_branch_lengths_pre_step(&input.graph, &partitions, params.no_indels)
+      optimize_branch_lengths_pre_step(&input.graph, &partitions, params.no_indels, &mut branch_lengths)
         .wrap_err("ML branch-length optimization (pre-reroot) failed")?;
     }
   }
@@ -278,6 +294,7 @@ pub fn run(
       &branch_params,
       &params.reroot_spec,
       !params.allow_negative_rate,
+      &mut branch_lengths,
       names,
     )
     .wrap_err("Failed to reroot tree (pre-ancestral)")?;
@@ -296,7 +313,13 @@ pub fn run(
     // tree writers) reads the divergence and outlier flag from the threaded state.
     let given_dates = timetree_state.likely_times();
     clock_state.reseed_transitional_from_times(&input.graph, &given_dates, &BTreeMap::new());
-    let result = clock_filter_inplace(&input.graph, &mut clock_state, &clock_model, params.clock_filter)?;
+    let result = clock_filter_inplace(
+      &input.graph,
+      &mut clock_state,
+      &clock_model,
+      &branch_lengths,
+      params.clock_filter,
+    )?;
     report_bad_branches(
       &input.graph,
       &clock_state,
@@ -315,8 +338,8 @@ pub fn run(
       },
       BranchLengthMode::Marginal => {
         info!("### ML branch-length optimization (post-reroot)");
-        marginal_update(&input.graph, &profile_branch_lengths(&input.graph), &partitions)?;
-        optimize_branch_lengths_pre_step(&input.graph, &partitions, params.no_indels)
+        marginal_update(&input.graph, &profile_branch_lengths(&branch_lengths), &partitions)?;
+        optimize_branch_lengths_pre_step(&input.graph, &partitions, params.no_indels, &mut branch_lengths)
           .wrap_err("ML branch-length optimization (post-reroot) failed")?;
       },
     }
@@ -341,6 +364,7 @@ pub fn run(
       &branch_params,
       &params.reroot_spec,
       !params.allow_negative_rate,
+      &mut branch_lengths,
       names,
     )
     .wrap_err("Failed to reroot tree (post-ancestral)")?;
@@ -367,11 +391,10 @@ pub fn run(
 
   // Initial time tree. Snapshot the current per-edge lengths for this pass; the branch-distribution
   // construction and forward pass read them and the names map instead of the payload.
-  let run_branch_lengths = edge_branch_lengths(&input.graph);
   run_timetree(
     &mut input.graph,
     &partitions,
-    &run_branch_lengths,
+    &branch_lengths,
     &names,
     &clock_model,
     None,
@@ -418,11 +441,10 @@ pub fn run(
 
   if prior_wanted {
     let prior = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
-    let run_branch_lengths = edge_branch_lengths(&input.graph);
     run_timetree(
       &mut input.graph,
       &partitions,
-      &run_branch_lengths,
+      &branch_lengths,
       &names,
       &clock_model,
       Some(&prior),
@@ -508,6 +530,7 @@ pub fn run(
       state: &mut timetree_state,
       clock_state: &mut clock_state,
       clock_branch_lengths: &mut clock_branch_lengths,
+      branch_lengths: &mut branch_lengths,
       names: &mut names,
     }
     .run()
@@ -572,6 +595,7 @@ pub fn run(
       final_prior,
       rate_std,
       params.no_indels,
+      &branch_lengths,
       &mut timetree_state,
       &mut clock_state,
       &names,
@@ -583,11 +607,10 @@ pub fn run(
 
   if time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
-    let run_branch_lengths = edge_branch_lengths(&input.graph);
     run_timetree(
       &mut input.graph,
       &partitions,
-      &run_branch_lengths,
+      &branch_lengths,
       &names,
       &clock_model,
       final_prior,
@@ -610,7 +633,7 @@ pub fn run(
     if !partitions.is_empty() {
       marginal_update(
         &input.graph,
-        &timetree_branch_lengths(&input.graph, &run_branch_lengths, &clock_branch_lengths),
+        &timetree_branch_lengths(&input.graph, &branch_lengths, &clock_branch_lengths),
         &partitions,
       )?;
     }
@@ -637,6 +660,7 @@ pub fn run(
     coalescent: coalescent_output,
     rate_susceptibility_dates,
     clock_branch_lengths,
+    branch_lengths,
     clock_state,
     timetree_state,
     names,
@@ -891,12 +915,22 @@ fn initialize_partitions_from_params(
   graph: &GraphTimetree,
   alphabet: Alphabet,
   aln: Option<&[FastaRecord]>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<PartitionInitResult, Report> {
   let model_name = params.model;
 
   let aln_data = aln.ok_or_else(|| make_report!("Alignment required for marginal reconstruction"))?;
-  let created = create_marginal_partition(graph, 0, alphabet, aln_data, model_name, params.dense, names)?;
+  let created = create_marginal_partition(
+    graph,
+    0,
+    alphabet,
+    aln_data,
+    model_name,
+    params.dense,
+    branch_lengths,
+    names,
+  )?;
 
   // Read the GTR from the owning partition (single source of truth), not from a
   // standalone clone. Timetree does not mutate the GTR after creation, so this
@@ -923,30 +957,20 @@ fn optimize_branch_lengths_pre_step(
   graph: &GraphTimetree,
   partitions: &[PartitionTimetreeRef],
   no_indels: bool,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  let old_branch_lengths = edge_branch_lengths(graph);
+  let old_branch_lengths = branch_lengths.clone();
 
-  let mut branch_lengths = if no_indels {
-    let mut branch_lengths = edge_branch_lengths(graph);
-    run_optimize_mixed_inner(
-      graph,
-      partitions,
-      BranchOptMethod::BrentSqrt,
-      0.0,
-      true,
-      &mut branch_lengths,
-    )
-    .wrap_err("ML branch-length optimization pre-step failed")?;
-    branch_lengths
-  } else {
-    run_optimize_mixed(graph, partitions, BranchOptMethod::BrentSqrt)
+  if no_indels {
+    run_optimize_mixed_inner(graph, partitions, BranchOptMethod::BrentSqrt, 0.0, true, branch_lengths)
       .wrap_err("ML branch-length optimization pre-step failed")?;
-    edge_branch_lengths(graph)
-  };
+  } else {
+    run_optimize_mixed(graph, partitions, BranchOptMethod::BrentSqrt, branch_lengths)
+      .wrap_err("ML branch-length optimization pre-step failed")?;
+  }
 
-  apply_damping(&mut branch_lengths, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
-  commit_branch_lengths(graph, &branch_lengths);
-  marginal_update(graph, &profile_branch_lengths(graph), partitions)?;
+  apply_damping(branch_lengths, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
+  marginal_update(graph, &profile_branch_lengths(branch_lengths), partitions)?;
 
   Ok(())
 }

@@ -10,7 +10,8 @@ mod tests {
     let mut graph = fixture_tree()?;
     let original = child_names(&graph, "root")?;
     let names = node_names(&graph);
-    TopologyOrderSpec::default().apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -25,7 +26,8 @@ mod tests {
   fn topology_order_descendant_count_reverse_sorts_children_descending() -> Result<(), Report> {
     let mut graph = fixture_tree()?;
     let names = node_names(&graph);
-    TopologyOrderSpec::descendant_count(true).apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    TopologyOrderSpec::descendant_count(true).apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -39,7 +41,8 @@ mod tests {
   fn topology_order_keep_preserves_outbound_order() -> Result<(), Report> {
     let mut graph = fixture_tree()?;
     let names = node_names(&graph);
-    TopologyOrderSpec::keep().apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    TopologyOrderSpec::keep().apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -66,7 +69,8 @@ mod tests {
     graph.build()?;
 
     let names = node_names(&graph);
-    TopologyOrderSpec::default().apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -88,7 +92,8 @@ mod tests {
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
     let names = node_names(&graph);
-    spec.apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -111,7 +116,10 @@ mod tests {
     graph.build()?;
 
     let names = node_names(&graph);
-    let err = TopologyOrderSpec::default().apply(&mut graph, &names).unwrap_err();
+    let __bl = edge_branch_lengths(&graph);
+    let err = TopologyOrderSpec::default()
+      .apply(&mut graph, &names, &__bl)
+      .unwrap_err();
 
     assert!(err.to_string().contains("directed cycle"));
 
@@ -126,7 +134,8 @@ mod tests {
       ..TopologyOrderSpec::default()
     };
     let names = node_names(&graph);
-    spec.apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -145,7 +154,8 @@ mod tests {
       ..TopologyOrderSpec::default()
     };
     let names = node_names(&graph);
-    spec.apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -167,7 +177,8 @@ mod tests {
       ..TopologyOrderSpec::default()
     };
     let names = node_names(&graph);
-    spec.apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -185,7 +196,8 @@ mod tests {
       ..TopologyOrderSpec::default()
     };
     let names = node_names(&graph);
-    spec.apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -203,7 +215,8 @@ mod tests {
       ..TopologyOrderSpec::default()
     };
     let names = node_names(&graph);
-    spec.apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -222,7 +235,8 @@ mod tests {
       ..TopologyOrderSpec::default()
     };
     let names = node_names(&graph);
-    spec.apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -246,7 +260,8 @@ mod tests {
       target_aggregate: TopologyOrderTargetAggregate::Median,
     };
     let names = node_names(&graph);
-    spec.apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -260,7 +275,8 @@ mod tests {
   fn topology_order_propagates_through_nested_levels() -> Result<(), Report> {
     let mut graph = fixture_deep_tree()?;
     let names = node_names(&graph);
-    TopologyOrderSpec::default().apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let deep_children = child_names(ordered, "deep")?;
@@ -285,7 +301,8 @@ mod tests {
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
     let names = node_names(&graph);
-    spec.apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
     let actual = child_names(ordered, "root")?;
@@ -304,7 +321,8 @@ mod tests {
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
     let names = node_names(&graph);
-    let err = spec.apply(&mut graph, &names).unwrap_err();
+    let __bl = edge_branch_lengths(&graph);
+    let err = spec.apply(&mut graph, &names, &__bl).unwrap_err();
     assert!(err.to_string().contains("non-empty target order"));
   }
 
@@ -321,7 +339,8 @@ mod tests {
     };
 
     let names = node_names(&graph);
-    let error = spec.apply(&mut graph, &names).unwrap_err();
+    let __bl = edge_branch_lengths(&graph);
+    let error = spec.apply(&mut graph, &names, &__bl).unwrap_err();
 
     assert!(error.to_string().contains("duplicate leaf label 'B'"));
   }
@@ -343,7 +362,8 @@ mod tests {
     };
 
     let names = node_names(&graph);
-    let error = spec.apply(&mut graph, &names).unwrap_err();
+    let __bl = edge_branch_lengths(&graph);
+    let error = spec.apply(&mut graph, &names, &__bl).unwrap_err();
 
     assert!(error.to_string().contains("final leaf label 'B' is duplicated"));
     Ok(())
@@ -362,7 +382,8 @@ mod tests {
     };
 
     let names = node_names(&graph);
-    spec.apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &__bl)?;
 
     assert_eq!(vec!["DEF", "BC", "A"], child_names(&graph, "root")?);
     Ok(())
@@ -375,10 +396,12 @@ mod tests {
     let data = std::ptr::from_ref(graph.data());
 
     let names = node_names(&graph);
-    TopologyOrderSpec::default().apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
     let first = child_names_with_data(&graph, "root")?;
     let names = node_names(&graph);
-    TopologyOrderSpec::default().apply(&mut graph, &names)?;
+    let __bl = edge_branch_lengths(&graph);
+    TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
     let second = child_names_with_data(&graph, "root")?;
 
     assert_eq!(first, second);
@@ -521,14 +544,17 @@ mod tests {
 
   impl GraphEdge for TestEdge {}
 
-  impl HasBranchLength for TestEdge {
-    fn branch_length(&self) -> Option<f64> {
-      self.branch_length
-    }
-
-    fn set_branch_length(&mut self, branch_length: Option<f64>) {
-      self.branch_length = branch_length;
-    }
+  /// Snapshot each edge's `branch_length` field into an edge-keyed value map, matching what the
+  /// production parse produces for `TopologyOrderSpec::apply`.
+  fn edge_branch_lengths<D: Send + Sync>(graph: &Graph<TestNode, TestEdge, D>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+    graph
+      .get_edges()
+      .iter()
+      .map(|edge| {
+        let edge = edge.read_arc();
+        (edge.key(), edge.payload().read_arc().branch_length)
+      })
+      .collect()
   }
 
   #[derive(Debug)]

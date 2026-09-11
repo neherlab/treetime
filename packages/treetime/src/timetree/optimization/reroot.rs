@@ -10,6 +10,7 @@ use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
 use log::info;
 use std::collections::BTreeMap;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
 
@@ -27,6 +28,7 @@ pub fn reroot_tree(
   branch_params: &BranchPointOptimizationParams,
   reroot_spec: &RerootSpec,
   force_positive_rate: bool,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<ClockModel, Report> {
   let reroot_params = RerootParams {
@@ -53,6 +55,7 @@ pub fn reroot_tree(
     false,
     branch_params,
     &reroot_params,
+    branch_lengths,
     None,
     names,
   )
@@ -74,7 +77,7 @@ pub fn reroot_tree(
           .wrap_err("Failed to apply reroot changes to partition")?;
       }
 
-      marginal_update(graph, &profile_branch_lengths(graph), partitions)
+      marginal_update(graph, &profile_branch_lengths(branch_lengths), partitions)
         .wrap_err("Failed to update marginal after reroot")?;
     }
   }

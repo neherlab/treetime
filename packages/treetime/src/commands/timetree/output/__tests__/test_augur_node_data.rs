@@ -164,7 +164,7 @@ mod tests {
     use ndarray::array;
     use std::collections::BTreeMap;
     use std::path::Path;
-    use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
+    use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
@@ -176,6 +176,7 @@ mod tests {
       pub clock_model: ClockModel,
       pub dates: DatesMap,
       pub intervals: Vec<NodeConfidenceInterval>,
+      pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
     }
 
     impl SampleCase {
@@ -183,7 +184,7 @@ mod tests {
         let data = build_augur_node_data_json(
           &self.graph,
           &timetree_nodes(&self.graph, &self.names),
-          &timetree_edges(&self.graph),
+          &timetree_edges(&self.graph, &self.branch_lengths),
           &self.clock_model,
           Some(&self.intervals),
           Some(&self.dates),
@@ -208,7 +209,7 @@ mod tests {
         let data = build_augur_node_data_json(
           &self.graph,
           &timetree_nodes(&self.graph, &self.names),
-          &timetree_edges(&self.graph),
+          &timetree_edges(&self.graph, &self.branch_lengths),
           &self.clock_model,
           Some(&self.intervals),
           Some(&self.dates),
@@ -234,9 +235,14 @@ mod tests {
       names.insert(leaf_a_key, Some("leaf_a".to_owned()));
       let leaf_b_key = graph.add_node(make_node(2010.0));
       names.insert(leaf_b_key, Some("leaf_b".to_owned()));
-      graph.add_edge(root_key, leaf_a_key, make_edge(0.005)).unwrap();
-      graph.add_edge(root_key, leaf_b_key, make_edge(0.010)).unwrap();
+      let edge_a_key = graph.add_edge(root_key, leaf_a_key, make_edge()).unwrap();
+      let edge_b_key = graph.add_edge(root_key, leaf_b_key, make_edge()).unwrap();
       graph.build().unwrap();
+
+      let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = maplit::btreemap! {
+        edge_a_key => Some(0.005),
+        edge_b_key => Some(0.010),
+      };
 
       // Regression covariance over [rate, intercept]: cov[0,0] is the rate variance.
       let stats = ClockModelStats::Estimated(RegressionStats {
@@ -278,6 +284,7 @@ mod tests {
         clock_model,
         dates,
         intervals,
+        branch_lengths,
       }
     }
 
@@ -313,7 +320,10 @@ mod tests {
         .collect()
     }
 
-    fn timetree_edges<D: Send + Sync>(graph: &GraphTimetree<D>) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
+    fn timetree_edges<D: Send + Sync>(
+      graph: &GraphTimetree<D>,
+      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    ) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
       graph
         .get_edges()
         .iter()
@@ -324,7 +334,7 @@ mod tests {
           (
             key,
             TimetreeEdgeOut {
-              branch_length: payload.branch_length(),
+              branch_length: branch_lengths[&key],
               time_length: payload.time_length,
               clock_branch_length: payload.clock_branch_length,
               // Strict-clock test graph: the relaxed-clock multiplier is its default 1.0, matching
@@ -342,10 +352,8 @@ mod tests {
       node
     }
 
-    fn make_edge(branch_length: f64) -> EdgeTimetree {
-      let mut edge = EdgeTimetree::default();
-      edge.base.branch_length = Some(branch_length);
-      edge
+    fn make_edge() -> EdgeTimetree {
+      EdgeTimetree::default()
     }
   }
 }

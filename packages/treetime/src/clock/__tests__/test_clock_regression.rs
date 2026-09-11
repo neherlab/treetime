@@ -13,7 +13,6 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   pub fn compute_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
@@ -33,17 +32,22 @@ mod tests {
       o!("D") => 2005.0,
     };
 
-    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let graph: GraphClock = graph;
-    let divs = compute_divs(&graph, OnlyLeaves(true), &edge_branch_lengths(&graph), &names)?;
+    let divs = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;
     let naive_rate = compute_naive_rate(&dates, &divs);
 
     let times = helpers::leaf_times(&names, &graph, &dates);
     let mut state = ClockState::seed_from_values(&graph, &times);
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
 
-    clock_regression_backward(&graph, &mut state, &ClockParams::default(), None)?;
+    clock_regression_backward(&graph, &mut state, &ClockParams::default(), &branch_lengths, None)?;
     let clock = ClockModel::from_regression(&ClockRegression::from_clock_set(&state.node(root_key).clock_set)?)?;
     pretty_assert_abs_diff_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-10);
 
@@ -53,7 +57,7 @@ mod tests {
       variance_offset_leaf: 1.0,
     };
 
-    clock_regression_backward(&graph, &mut state, options, None)?;
+    clock_regression_backward(&graph, &mut state, options, &branch_lengths, None)?;
     let clock = ClockModel::from_regression(&ClockRegression::from_clock_set(&state.node(root_key).clock_set)?)?;
     pretty_assert_ulps_eq!(0.007710610618916924, clock.clock_rate(), max_ulps = 4);
 
@@ -98,11 +102,16 @@ mod tests {
     }
 
     pub(super) fn root_clock_set(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockSet, Report> {
-      let NwkParse { graph, names, .. } = nwk_read_str(tree)?;
+      let NwkParse {
+        graph,
+        names,
+        branch_lengths,
+        ..
+      } = nwk_read_str(tree)?;
       let graph: GraphClock = graph;
       let times = leaf_times(&names, &graph, dates);
       let mut state = ClockState::seed_from_values(&graph, &times);
-      clock_regression_backward(&graph, &mut state, &ClockParams::default(), None)?;
+      clock_regression_backward(&graph, &mut state, &ClockParams::default(), &branch_lengths, None)?;
       let root_key = graph.get_exactly_one_root()?.read_arc().key();
       let clock_set = state.node(root_key).clock_set.clone();
       Ok(clock_set)

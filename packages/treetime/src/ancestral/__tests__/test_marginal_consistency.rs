@@ -25,6 +25,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::slice::from_ref;
   use std::sync::{Arc, LazyLock};
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -90,6 +91,7 @@ mod tests {
   /// Returns the total log-likelihood and the populated partition.
   fn run_dense_marginal(
     graph: &GraphAncestral,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     gtr: GTR,
@@ -103,7 +105,7 @@ mod tests {
     )));
     let partitions = [Arc::clone(&partition)];
 
-    let log_lh = initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln, names)?.value();
+    let log_lh = initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?.value();
     Ok((log_lh, partition))
   }
 
@@ -122,6 +124,7 @@ mod tests {
   /// Returns the total log-likelihood and the populated partition.
   fn run_sparse_marginal(
     graph: &GraphAncestral,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     gtr: GTR,
@@ -131,7 +134,7 @@ mod tests {
     let partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, graph)?));
     let partitions = [Arc::clone(&partition)];
 
-    let log_lh = marginal_update(graph, &profile_branch_lengths(graph), &partitions)?.value();
+    let log_lh = marginal_update(graph, &profile_branch_lengths(branch_lengths), &partitions)?.value();
     Ok((log_lh, partition))
   }
 
@@ -148,7 +151,12 @@ mod tests {
   #[test]
   fn test_marginal_dense_sparse_log_lh_consistency_gap_free() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
 
     let gtr_dense = jc69(JC69Params {
@@ -160,8 +168,8 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (log_lh_dense, _) = run_dense_marginal(&graph, &names, &aln, gtr_dense)?;
-    let (log_lh_sparse, _) = run_sparse_marginal(&graph, &names, &aln, gtr_sparse)?;
+    let (log_lh_dense, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
+    let (log_lh_sparse, _) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
 
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
@@ -181,7 +189,12 @@ mod tests {
   #[test]
   fn test_marginal_sparse_varpos_matches_dense_profile_gap_free() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
 
     let gtr_dense = jc69(JC69Params {
@@ -193,8 +206,8 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (_, dense_partition) = run_dense_marginal(&graph, &names, &aln, gtr_dense)?;
-    let (_, sparse_partition) = run_sparse_marginal(&graph, &names, &aln, gtr_sparse)?;
+    let (_, dense_partition) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
+    let (_, sparse_partition) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("Root node not found"))?;
     let ab_key = find_node_key_by_name(&graph, &names, "AB").ok_or_else(|| make_report!("AB node not found"))?;
@@ -247,7 +260,12 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
 
     let graph: GraphAncestral = graph;
 
@@ -260,8 +278,8 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (log_lh_dense, dense_partition) = run_dense_marginal(&graph, &names, &aln, gtr_dense)?;
-    let (log_lh_sparse, sparse_partition) = run_sparse_marginal(&graph, &names, &aln, gtr_sparse)?;
+    let (log_lh_dense, dense_partition) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
+    let (log_lh_sparse, sparse_partition) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
 
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
@@ -310,7 +328,12 @@ mod tests {
   #[test]
   fn test_marginal_dense_sparse_ambiguous_r_reference_state_consistency() -> Result<(), Report> {
     let aln = ambiguous_r_in_g_clade_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
 
     let gtr_dense = jc69(JC69Params {
@@ -322,8 +345,8 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (log_lh_dense, dense_partition) = run_dense_marginal(&graph, &names, &aln, gtr_dense)?;
-    let (log_lh_sparse, sparse_partition) = run_sparse_marginal(&graph, &names, &aln, gtr_sparse)?;
+    let (log_lh_dense, dense_partition) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
+    let (log_lh_sparse, sparse_partition) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
 
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
@@ -426,7 +449,12 @@ mod tests {
 
     // 3-taxon tree with long branches (from v0 test, branch lengths rounded)
     let tree_newick = "((A:0.601,B:0.301):0.1,C:0.2):0.001;";
-    let NwkParse { graph, names, .. } = nwk_read_str(tree_newick)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(tree_newick)?;
     let graph: GraphAncestral = graph;
 
     // 64bp alignment: all 4^3 = 64 three-taxon state combinations (A x B x C)
@@ -450,7 +478,14 @@ mod tests {
     )));
     let partitions = [Arc::clone(&partition)];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
+    initialize_marginal(
+      &graph,
+      &profile_branch_lengths(&branch_lengths),
+      &partitions,
+      &aln,
+      &names,
+    )?
+    .value();
 
     // Verify all marginal posterior rows sum to 1.0
     let partition = partition.read_arc();
@@ -477,7 +512,12 @@ mod tests {
   #[test]
   fn test_marginal_sparse_uniform_site_rates_matches_scalar() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
     let seq_len = get_common_length(&aln)?;
 
@@ -486,7 +526,7 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    let (log_lh_scalar, _) = run_sparse_marginal(&graph, &names, &aln, gtr_scalar)?;
+    let (log_lh_scalar, _) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_scalar)?;
 
     // Run with uniform site_rates (all 1.0) - must produce identical results
     let mut gtr_uniform = jc69(JC69Params {
@@ -494,7 +534,7 @@ mod tests {
       ..JC69Params::default()
     })?;
     gtr_uniform.set_site_rates(Array1::ones(seq_len));
-    let (log_lh_uniform, _) = run_sparse_marginal(&graph, &names, &aln, gtr_uniform)?;
+    let (log_lh_uniform, _) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
 
     pretty_assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
 
@@ -505,7 +545,12 @@ mod tests {
   #[test]
   fn test_marginal_dense_uniform_site_rates_matches_scalar() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
     let seq_len = get_common_length(&aln)?;
 
@@ -513,14 +558,14 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    let (log_lh_scalar, _) = run_dense_marginal(&graph, &names, &aln, gtr_scalar)?;
+    let (log_lh_scalar, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_scalar)?;
 
     let mut gtr_uniform = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
     gtr_uniform.set_site_rates(Array1::ones(seq_len));
-    let (log_lh_uniform, _) = run_dense_marginal(&graph, &names, &aln, gtr_uniform)?;
+    let (log_lh_uniform, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
 
     pretty_assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
 

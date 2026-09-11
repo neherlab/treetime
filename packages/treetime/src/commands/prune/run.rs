@@ -37,6 +37,7 @@ pub fn run_prune(
   let graph: GraphAncestral = parse.graph;
   let confidences = parse.confidences;
   let names = parse.names;
+  let branch_lengths_input = parse.branch_lengths;
   let input_order = leaf_order(&graph, &names)?;
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 
@@ -67,6 +68,7 @@ pub fn run_prune(
     graph,
     alphabet,
     sequences,
+    branch_lengths: branch_lengths_input,
   };
 
   progress.check_cancelled()?;
@@ -87,7 +89,7 @@ pub fn run_prune(
   let topology_order = args
     .topology_order
     .resolve_topology_order(&graph, &names, Some(input_order))?;
-  topology_order.apply(&mut graph, &names)?;
+  topology_order.apply(&mut graph, &names, &branch_lengths_opt)?;
   progress.report("Writing output", 0.8, "");
 
   // Gather the per-node name/confidence and per-edge branch length off the ordered tree into keyed

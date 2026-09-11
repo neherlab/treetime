@@ -3,7 +3,7 @@ use crate::payload::traits::ClockEdge;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use treetime_graph::edge::{ClockMessages, GraphEdge, HasBranchLength, TimeLength};
+use treetime_graph::edge::{ClockMessages, GraphEdge, TimeLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
@@ -36,7 +36,6 @@ impl NodeToGraphviz for NodeClock {}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct EdgeClock {
-  pub branch_length: Option<f64>,
   pub clock_to_parent: ClockSet,
   pub clock_to_child: ClockSet,
   pub clock_from_child: ClockSet, // this is the propagated 'to_parent' msg. only need to avoid recalculation of propagated message
@@ -44,28 +43,15 @@ pub struct EdgeClock {
 
 impl GraphEdge for EdgeClock {}
 
-impl HasBranchLength for EdgeClock {
-  fn branch_length(&self) -> Option<f64> {
-    self.branch_length
-  }
-
-  fn set_branch_length(&mut self, weight: Option<f64>) {
-    self.branch_length = weight;
-  }
-}
-
 impl EdgeFromNwk for EdgeClock {
-  fn from_nwk(branch_length: Option<f64>) -> Result<Self, Report> {
-    Ok(Self {
-      branch_length,
-      ..EdgeClock::default()
-    })
+  fn from_nwk(_branch_length: Option<f64>) -> Result<Self, Report> {
+    Ok(Self::default())
   }
 }
 
 impl EdgeToNwk for EdgeClock {
   fn nwk_weight(&self) -> Option<f64> {
-    self.branch_length()
+    None
   }
 }
 

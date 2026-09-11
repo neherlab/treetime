@@ -4,10 +4,9 @@ use crate::reroot::traits::RootStats;
 use crate::reroot::variance::VarianceModel;
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
-use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Per-edge directional `DivStats` messages plus the aggregate at the current root.
 pub struct DivStatsField {
@@ -26,14 +25,16 @@ pub struct DivStatsField {
 /// rest-of-tree message (`to_child`) by subtracting a child's contribution from
 /// the node aggregate. Statistics are returned in maps rather than stored on the
 /// graph, since the optimize payloads carry no message fields.
-pub fn compute_div_stats<N, E, D>(graph: &Graph<N, E, D>, variance: &VarianceModel) -> Result<DivStatsField, Report>
+pub fn compute_div_stats<N, E, D>(
+  graph: &Graph<N, E, D>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  variance: &VarianceModel,
+) -> Result<DivStatsField, Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength,
+  E: GraphEdge,
   D: Send + Sync,
 {
-  let branch_lengths = edge_branch_lengths(graph);
-
   // Leaves-to-root order (children precede parents).
   let mut backward_order: Vec<GraphNodeKey> = Vec::new();
   graph.iter_breadth_first_backward(|n| {
@@ -60,7 +61,7 @@ where
     }
 
     let parent_edge = parent_edge.ok_or_else(|| make_report!("Non-root node {node_key} has no parent edge"))?;
-    let branch_length = branch_length_of(parent_edge, &branch_lengths)?;
+    let branch_length = branch_length_of(parent_edge, branch_lengths)?;
 
     if is_leaf {
       from_child.insert(
@@ -97,7 +98,7 @@ where
       root_stats
     } else {
       let parent_edge = parent_edge.ok_or_else(|| make_report!("Non-root node {node_key} has no parent edge"))?;
-      let branch_length = branch_length_of(parent_edge, &branch_lengths)?;
+      let branch_length = branch_length_of(parent_edge, branch_lengths)?;
       let tp = *to_parent
         .get(&parent_edge)
         .ok_or_else(|| make_report!("Missing to_parent for edge {parent_edge}"))?;

@@ -10,8 +10,9 @@ mod tests {
   use indoc::indoc;
   use lazy_static::lazy_static;
   use parking_lot::RwLock;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
-  use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::{pretty_assert_array_nonneg, pretty_assert_array_positive};
@@ -27,12 +28,18 @@ mod tests {
     (
       GraphAncestral,
       Arc<RwLock<crate::partition::marginal::sparse::partition::PartitionMarginalSparse>>,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
   > {
     let alphabet = NUC_ALPHABET.clone();
     let aln = read_many_fasta_str(fasta, &alphabet)?;
-    let NwkParse { graph, names, .. } = nwk_read_str(tree_nwk)?;
+    let NwkParse {
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read_str(tree_nwk)?;
     let graph: GraphAncestral = graph;
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let gtr = jc69(JC69Params {
@@ -42,16 +49,16 @@ mod tests {
     let partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
     marginal_update(
       &graph,
-      &profile_branch_lengths(&graph),
+      &profile_branch_lengths(&branch_lengths),
       std::slice::from_ref(&partition),
     )?
     .value();
-    Ok((graph, partition))
+    Ok((graph, partition, branch_lengths))
   }
 
   #[test]
   fn test_sparse_transition_counting_nij_nonneg() -> Result<(), Report> {
-    let (graph, partition) = setup_sparse(
+    let (graph, partition, branch_lengths) = setup_sparse(
       "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
       indoc! {r#"
       >A
@@ -65,9 +72,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition
-      .read_arc()
-      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
+    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
 
     pretty_assert_array_nonneg!(counts.nij);
     pretty_assert_array_nonneg!(counts.Ti);
@@ -77,7 +82,7 @@ mod tests {
 
   #[test]
   fn test_sparse_transition_counting_ti_positive() -> Result<(), Report> {
-    let (graph, partition) = setup_sparse(
+    let (graph, partition, branch_lengths) = setup_sparse(
       "((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;",
       indoc! {r#"
       >A
@@ -91,9 +96,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition
-      .read_arc()
-      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
+    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
 
     pretty_assert_array_positive!(counts.Ti);
 
@@ -102,7 +105,7 @@ mod tests {
 
   #[test]
   fn test_sparse_transition_counting_diagonal_zero() -> Result<(), Report> {
-    let (graph, partition) = setup_sparse(
+    let (graph, partition, branch_lengths) = setup_sparse(
       "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
       indoc! {r#"
       >A
@@ -116,9 +119,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition
-      .read_arc()
-      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
+    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
 
     for i in 0..counts.nij.nrows() {
       #[allow(clippy::float_cmp, reason = "diagonal is zero by construction, no arithmetic")]
@@ -132,7 +133,7 @@ mod tests {
 
   #[test]
   fn test_sparse_transition_counting_root_state_sums_to_length() -> Result<(), Report> {
-    let (graph, partition) = setup_sparse(
+    let (graph, partition, branch_lengths) = setup_sparse(
       "((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;",
       indoc! {r#"
       >A
@@ -146,9 +147,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition
-      .read_arc()
-      .count_transitions(&graph, &edge_branch_lengths(&graph))?;
+    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
 
     assert!(counts.root_state.sum() > 0.0, "root_state should be populated");
 

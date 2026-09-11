@@ -1,14 +1,14 @@
 use crate::payload::clock_set::ClockSet;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
-use treetime_graph::edge::{BranchDistribution, ClockMessages, GraphEdge, HasBranchLength, TimeLength};
+use treetime_graph::edge::{BranchDistribution, ClockMessages, GraphEdge, TimeLength};
 use treetime_graph::node::{GraphNode, Outlier, TimeConstraint};
 
 pub trait ClockNode: Outlier + Send + Sync {
   fn likely_time(&self) -> Option<f64>;
 }
 
-pub trait ClockEdge: ClockMessages<ClockSet> + HasBranchLength + TimeLength + Send + Sync {
+pub trait ClockEdge: ClockMessages<ClockSet> + TimeLength + Send + Sync {
   /// Per-branch relaxed clock rate multiplier. Default 1.0 (strict clock).
   fn gamma(&self) -> f64 {
     1.0

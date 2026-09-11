@@ -5,13 +5,14 @@ mod tests {
     nwk_read_str, nwk_write_str, nwk_write_str_with,
   };
   use eyre::Report;
+  use helpers::edge_branch_lengths;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use treetime_graph::edge::{GraphEdge, HasBranchLength};
+  use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
-  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+  use treetime_graph::value_maps::node_names;
 
   fn beast_options() -> NwkWriteOptions {
     NwkWriteOptions {
@@ -321,14 +322,17 @@ mod tests {
 
     impl GraphEdge for TestEdge {}
 
-    impl HasBranchLength for TestEdge {
-      fn branch_length(&self) -> Option<f64> {
-        self.0
-      }
-
-      fn set_branch_length(&mut self, weight: Option<f64>) {
-        self.0 = weight;
-      }
+    pub(super) fn edge_branch_lengths<D: Send + Sync>(
+      graph: &Graph<TestNode, TestEdge, D>,
+    ) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+      graph
+        .get_edges()
+        .iter()
+        .map(|edge| {
+          let edge = edge.read_arc();
+          (edge.key(), edge.payload().read_arc().0)
+        })
+        .collect()
     }
 
     impl EdgeFromNwk for TestEdge {
