@@ -7,7 +7,7 @@ use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, DistributionFunction, NegLog};
-use treetime_graph::edge::{BranchDistribution, EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
+use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
 use treetime_graph::value_maps::{edge_branch_lengths, node_names};
@@ -65,30 +65,32 @@ where
     .collect()
 }
 
-/// Construct Poisson branch-length distributions on each edge.
+/// Build the Poisson branch-length distribution for each edge, keyed by edge.
 ///
 /// Replicates v0 Python TreeTime's Poisson branch-length distribution:
 /// P(dt) ~ exp(-dt * mu * L) * (dt * mu * L)^(b * L), where:
 /// - `mu` = clock rate (substitutions/site/year)
 /// - `L` = sequence length
 /// - `b` = branch length (substitutions/site)
+///
+/// An edge with no branch length is absent from the returned map.
 pub fn create_poisson_branch_distributions<N, E, D>(
   graph: &Graph<N, E, D>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   mu: f64,
   seq_len: usize,
   n_points: usize,
-) -> Result<(), Report>
+) -> Result<BTreeMap<GraphEdgeKey, Arc<Distribution<NegLog>>>, Report>
 where
   N: GraphNode,
-  E: GraphEdge + HasBranchLength + BranchDistribution<Arc<Distribution<NegLog>>>,
+  E: GraphEdge + HasBranchLength,
   D: Send + Sync,
 {
   let seq_len_f64 = seq_len as f64;
 
+  let mut distributions = BTreeMap::new();
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.read_arc().key();
-    let mut edge = edge_ref.write_arc().payload().write_arc();
 
     if let Some(branch_length) = branch_lengths[&edge_key] {
       let expected_time = branch_length / mu;
@@ -111,9 +113,9 @@ where
 
       let distribution_fn = DistributionFunction::from_range_values((min_time, max_time), neg_log)?;
       let distribution = Distribution::Function(distribution_fn);
-      edge.set_branch_length_distribution(Some(Arc::new(distribution)));
+      distributions.insert(edge_key, Arc::new(distribution));
     }
   }
 
-  Ok(())
+  Ok(distributions)
 }
