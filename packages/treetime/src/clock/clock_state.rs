@@ -19,7 +19,7 @@ use treetime_graph::pass::{
 /// root-to-tip moment sums. The backward pass recomputes `clock_set` from scratch, so its seeded
 /// value is never read; `time`, `bad_branch`, and `is_outlier` are durable inputs carried between
 /// passes.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ClockNodeState {
   pub clock_set: ClockSet,
   pub div: f64,
@@ -34,7 +34,7 @@ pub struct ClockNodeState {
 /// multiplier the re-estimation reads to convert time back to divergence; they are seeded from the
 /// date state in the refinement loop and stay at their defaults elsewhere, where the regression reads
 /// input branch lengths instead.
-#[derive(Debug, Clone, SmartDefault)]
+#[derive(Debug, Clone, SmartDefault, PartialEq)]
 pub struct ClockEdgeState {
   pub clock_to_parent: ClockSet,
   pub clock_to_child: ClockSet,
@@ -108,6 +108,44 @@ impl ClockState {
           is_outlier: payload.is_outlier(),
         };
         (node.key(), state)
+      })
+      .collect();
+    let edges = graph
+      .get_edges()
+      .iter()
+      .map(|edge| (edge.read_arc().key(), ClockEdgeState::default()))
+      .collect();
+    Self { nodes, edges }
+  }
+
+  /// Seed clock state from value inputs instead of the graph payload, for tests that drive the clock
+  /// passes without populating node payloads.
+  ///
+  /// Reproduces exactly what [`seed_from_payloads`](Self::seed_from_payloads) reads at the clock seed
+  /// point, sourcing the one durable input the seed varies from `times`: each node's date comes from
+  /// `times` (`None` for a missing key, matching a leaf without a date). The divergence and outlier
+  /// flag start at their payload defaults (`0.0` and `false`), `bad_branch` starts false, the clock
+  /// set starts default (the backward pass recomputes the root clock set before it is read), and every
+  /// edge starts default.
+  pub fn seed_from_values<N, E, D>(graph: &Graph<N, E, D>, times: &BTreeMap<GraphNodeKey, Option<f64>>) -> Self
+  where
+    N: GraphNode,
+    E: GraphEdge,
+    D: Send + Sync,
+  {
+    let nodes = graph
+      .get_nodes()
+      .iter()
+      .map(|node| {
+        let key = node.read_arc().key();
+        let state = ClockNodeState {
+          clock_set: ClockSet::default(),
+          div: 0.0,
+          time: times.get(&key).copied().flatten(),
+          bad_branch: false,
+          is_outlier: false,
+        };
+        (key, state)
       })
       .collect();
     let edges = graph
