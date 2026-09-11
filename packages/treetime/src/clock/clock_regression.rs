@@ -3,7 +3,7 @@ use crate::clock::clock_state::{ClockEdgeState, ClockNodeState, ClockState};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::reroot::{RerootParams, reroot_in_place};
 use crate::payload::clock_set::ClockSet;
-use crate::payload::traits::{ClockEdge, ClockNode};
+use crate::payload::traits::ClockEdge;
 use eyre::Report;
 use log::{debug, info};
 use schemars::JsonSchema;
@@ -209,38 +209,6 @@ where
     };
     Ok(GraphPassNodeOutput { node, parent_message })
   })
-}
-
-/// Estimates clock model with optional rerooting using default policy.
-///
-/// `prev_clock_rate`: when `Some(rate)`, regression uses solver-updated time lengths
-/// converted to divergence (re-estimation mode). When `None`, uses input branch lengths.
-pub fn estimate_clock_model_with_reroot<N, E, D>(
-  graph: &mut Graph<N, E, D>,
-  options: &ClockParams,
-  clock_rate: Option<f64>,
-  keep_root: bool,
-  optimization_params: &BranchPointOptimizationParams,
-  prev_clock_rate: Option<f64>,
-) -> Result<ClockModel, Report>
-where
-  N: GraphNode + ClockNode + Named + Default,
-  E: GraphEdge + ClockEdge + Default,
-  D: Send + Sync,
-{
-  let reroot_params = RerootParams::default();
-  let mut state = ClockState::seed_from_payloads(graph);
-  let result = estimate_clock_model_with_reroot_policy(
-    graph,
-    &mut state,
-    options,
-    clock_rate,
-    keep_root,
-    optimization_params,
-    &reroot_params,
-    prev_clock_rate,
-  )?;
-  result.into_clock_model()
 }
 
 /// Estimates clock model with optional rerooting using explicit policy.

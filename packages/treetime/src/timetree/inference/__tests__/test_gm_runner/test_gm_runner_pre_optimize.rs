@@ -7,10 +7,11 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::initialize_marginal;
   use crate::ancestral::marginal::profile_branch_lengths;
-  use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot};
+  use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockState;
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+  use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
@@ -128,14 +129,19 @@ mod tests {
       &partitions,
     )?;
 
-    let clock_model = estimate_clock_model_with_reroot(
+    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times();
+    let mut clock_estimate_state = ClockState::seed_from_values(&graph, &times);
+    let clock_model = estimate_clock_model_with_reroot_policy(
       &mut graph,
+      &mut clock_estimate_state,
       &ClockParams::default(),
       Some(case.clock_rate()),
       true,
       &BranchPointOptimizationParams::default(),
+      &RerootParams::default(),
       None,
-    )?;
+    )?
+    .into_clock_model()?;
 
     let mut state = TimetreeState::seed_from_values(&graph, &constraints);
     let run_branch_lengths = edge_branch_lengths(&graph);

@@ -78,54 +78,13 @@ impl ClockState {
     Self { nodes, edges }
   }
 
-  /// Seed clock state from the graph payloads, reading the durable clock inputs each pass needs:
-  /// `time` (via [`ClockNode::likely_time`]), `is_outlier`, and `div`.
-  ///
-  /// The clock set starts at its default: the backward pass recomputes the root clock set from
-  /// scratch before the model extraction reads it, and no other node's clock set is ever read, so a
-  /// seeded value would never be used.
-  ///
-  /// Used at the timetree call sites, where these fields live on `NodeTimetree` between shared
-  /// clock calls. Reading `time` here matches reading `likely_time()` live at the pass, because no
-  /// timetree pass runs between a shared clock call's entry and its regression.
-  pub fn seed_from_payloads<N, E, D>(graph: &Graph<N, E, D>) -> Self
-  where
-    N: GraphNode + ClockNode,
-    E: GraphEdge,
-    D: Send + Sync,
-  {
-    let nodes = graph
-      .get_nodes()
-      .iter()
-      .map(|node| {
-        let node = node.read_arc();
-        let payload = node.payload().read_arc();
-        let state = ClockNodeState {
-          clock_set: ClockSet::default(),
-          div: ClockNode::div(&*payload),
-          time: payload.likely_time(),
-          bad_branch: false,
-          is_outlier: payload.is_outlier(),
-        };
-        (node.key(), state)
-      })
-      .collect();
-    let edges = graph
-      .get_edges()
-      .iter()
-      .map(|edge| (edge.read_arc().key(), ClockEdgeState::default()))
-      .collect();
-    Self { nodes, edges }
-  }
-
   /// Seed clock state from value inputs instead of the graph payload, for tests that drive the clock
   /// passes without populating node payloads.
   ///
-  /// Reproduces exactly what [`seed_from_payloads`](Self::seed_from_payloads) reads at the clock seed
-  /// point, sourcing the one durable input the seed varies from `times`: each node's date comes from
-  /// `times` (`None` for a missing key, matching a leaf without a date). The divergence and outlier
-  /// flag start at their payload defaults (`0.0` and `false`), `bad_branch` starts false, the clock
-  /// set starts default (the backward pass recomputes the root clock set before it is read), and every
+  /// Each node's date comes from `times` (`None` for a missing key, matching a leaf without a date),
+  /// reproducing `NodeTimetree::likely_time` at the clock seed point. The divergence and outlier flag
+  /// start at their payload defaults (`0.0` and `false`), `bad_branch` starts false, the clock set
+  /// starts default (the backward pass recomputes the root clock set before it is read), and every
   /// edge starts default.
   pub fn seed_from_values<N, E, D>(graph: &Graph<N, E, D>, times: &BTreeMap<GraphNodeKey, Option<f64>>) -> Self
   where
