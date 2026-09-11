@@ -10,7 +10,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use treetime_graph::edge::HasBranchLength;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   fn root_to_tip_distances(graph: &GraphAncestral) -> Vec<f64> {
     let root_key = graph.get_exactly_one_root().unwrap().read_arc().key();
@@ -42,7 +42,8 @@ mod tests {
 
   #[test]
   fn test_orchestrate_reroot_reduces_rtt_variance() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.3)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let mut graph: GraphAncestral = graph;
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &variance)?;
 
@@ -64,7 +65,8 @@ mod tests {
 
   #[test]
   fn test_orchestrate_brent_finds_equidistant_root() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.3)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let mut graph: GraphAncestral = graph;
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &variance)?;
 
@@ -85,7 +87,8 @@ mod tests {
 
   #[test]
   fn test_orchestrate_endpoint_snap_split_zero_roots_at_source() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.3)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let graph: GraphAncestral = graph;
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &variance)?;
 
@@ -112,7 +115,8 @@ mod tests {
   // to B, so snap-to-nearest reroots to internal node i -- a real topology change.
   #[test]
   fn test_orchestrate_no_split_snaps_to_nearer_endpoint() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.5)i:0.02,C:0.2)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.5)i:0.02,C:0.2)root;")?;
+    let mut graph: GraphAncestral = graph;
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &variance)?;
     let root_before = graph.get_exactly_one_root().unwrap().read_arc().key();

@@ -9,7 +9,7 @@ use maplit::btreemap;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::GraphNode;
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
@@ -20,7 +20,7 @@ pub fn process_backward_indexed<N, E>(
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<(), Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   let alphabet = partition.alphabet.clone();
@@ -53,7 +53,7 @@ fn process_node_backward_indexed<N, E>(
   >,
 ) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   let mut node = context.input;

@@ -12,9 +12,8 @@ mod tests {
   use parking_lot::RwLock;
   use std::sync::Arc;
   use treetime_graph::value_maps::edge_branch_lengths;
-  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::{pretty_assert_array_nonneg, pretty_assert_array_positive};
 
   lazy_static! {
@@ -33,8 +32,9 @@ mod tests {
   > {
     let alphabet = NUC_ALPHABET.clone();
     let aln = read_many_fasta_str(fasta, &alphabet)?;
-    let graph: GraphAncestral = nwk_read_str(tree_nwk)?.graph;
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
+    let NwkParse { graph, names, .. } = nwk_read_str(tree_nwk)?;
+    let graph: GraphAncestral = graph;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()

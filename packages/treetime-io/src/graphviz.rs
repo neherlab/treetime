@@ -193,9 +193,6 @@ where
 
 /// Defines how to display node information when writing to GraphViz (.dot) file
 pub trait NodeToGraphviz {
-  // Defines how to display label (name) of the node in GraphViz (.dot) file
-  fn to_graphviz_label(&self) -> Option<impl AsRef<str>>;
-
   // Defines how to display additional attributes of the node in GraphViz (.dot) file
   fn to_graphviz_attributes(&self) -> BTreeMap<String, String> {
     BTreeMap::<String, String>::new()

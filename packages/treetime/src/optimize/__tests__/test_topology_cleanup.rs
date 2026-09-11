@@ -26,9 +26,8 @@ mod tests {
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::value_maps::edge_branch_lengths;
-  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
 
@@ -66,7 +65,8 @@ mod tests {
 
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_no_zero_edges() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let graph: GraphAncestral = graph;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
     assert_eq!(edges.len(), 0);
@@ -76,7 +76,8 @@ mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_skips_leaves() -> Result<(), Report> {
     // A has bl=0.0 but is a leaf: should NOT be collected
-    let graph: GraphAncestral = nwk_read_str("(A:0.0,B:0.2)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.0,B:0.2)root;")?;
+    let graph: GraphAncestral = graph;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
     assert_eq!(edges.len(), 0);
@@ -86,7 +87,8 @@ mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_collects_internal() -> Result<(), Report> {
     // I has bl=0.0 and is internal: should be collected
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)I:0.0,C:0.3)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)I:0.0,C:0.3)root;")?;
+    let graph: GraphAncestral = graph;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
     assert_eq!(edges.len(), 1);
@@ -95,7 +97,7 @@ mod tests {
     let target = edge.read_arc().target();
     let target_name = graph
       .get_node(target)
-      .and_then(|n| n.read_arc().payload().read_arc().name.clone());
+      .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
     assert_eq!(target_name.as_deref(), Some("I"));
     Ok(())
   }
@@ -103,7 +105,8 @@ mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_multiple() -> Result<(), Report> {
     // Both internal nodes have bl=0.0
-    let graph: GraphAncestral = nwk_read_str("(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;")?;
+    let graph: GraphAncestral = graph;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &edge_branch_lengths(&graph));
     assert_eq!(edges.len(), 2);
@@ -112,12 +115,13 @@ mod tests {
 
   #[test]
   fn test_optimize_prune_and_merge_empty_list() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let mut graph: GraphAncestral = graph;
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let mut names_tt_13 = node_names(&graph);
+    let mut names_tt_13 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &sparse,
@@ -140,9 +144,10 @@ mod tests {
     //
     // After collapse of I: root has 4 children (A, B, C, D) - polytomy
     // A, B, C share sub A0T -> merge creates new internal node
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
@@ -158,10 +163,10 @@ mod tests {
 
     partition.edges.insert(ri_key, SparseEdgePartition::default());
 
-    let ia_key = find_edge_key(&graph, "I", "A").unwrap();
-    let ib_key = find_edge_key(&graph, "I", "B").unwrap();
-    let rc_key = find_edge_key(&graph, "root", "C").unwrap();
-    let rd_key = find_edge_key(&graph, "root", "D").unwrap();
+    let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
+    let ib_key = find_edge_key(&graph, &names, "I", "B").unwrap();
+    let rc_key = find_edge_key(&graph, &names, "root", "C").unwrap();
+    let rd_key = find_edge_key(&graph, &names, "root", "D").unwrap();
 
     partition
       .edges
@@ -185,7 +190,7 @@ mod tests {
     }
 
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let mut names_tt_12 = node_names(&graph);
+    let mut names_tt_12 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &sparse,
@@ -198,13 +203,13 @@ mod tests {
     assert!(changed);
 
     // I should be gone
-    assert!(find_node_key_by_name(&graph, "I").is_none());
+    assert!(find_node_key_by_name(&graph, &names, "I").is_none());
 
     // D remains directly under root
-    assert!(find_node_key_by_name(&graph, "D").is_some());
+    assert!(find_node_key_by_name(&graph, &names, "D").is_some());
 
     // Root should have 2 children after merging A, B, C into a new subtree
-    let root_key = find_node_key_by_name(&graph, "root").unwrap();
+    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
     assert_eq!(root_node.read_arc().degree_out(), 2);
 
@@ -240,9 +245,10 @@ mod tests {
     )?;
 
     // A and B are identical: the internal edge AB should be optimized to zero
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &node_names(&graph))?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
     marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
@@ -268,7 +274,7 @@ mod tests {
       let mut branch_lengths = edge_branch_lengths(&graph);
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
-      let mut names_tt_11 = node_names(&graph);
+      let mut names_tt_11 = names.clone();
       prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_11)?;
       commit_branch_lengths(&graph, &branch_lengths);
 
@@ -318,9 +324,11 @@ mod tests {
       &nuc,
     )?;
 
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;")?;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &node_names(&graph))?;
+    let mut graph: GraphAncestral = graph;
+
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
     marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
@@ -343,7 +351,7 @@ mod tests {
       let mut branch_lengths = edge_branch_lengths(&graph);
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
-      let mut names_tt_10 = node_names(&graph);
+      let mut names_tt_10 = names.clone();
       prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_10)?;
       commit_branch_lengths(&graph, &branch_lengths);
 
@@ -384,9 +392,11 @@ mod tests {
       &nuc,
     )?;
 
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &node_names(&graph))?;
+    let mut graph: GraphAncestral = graph;
+
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
@@ -421,7 +431,8 @@ mod tests {
     // it: merge C1+C2 (shared reversion), hoist the reverting group, retire the helper.
     // Tree: root -> U -> V -> {C1, C2, C3}. U->V carries {A0T, C5G}; C1 and C2 revert A0T,
     // C3 keeps it. Parsimony optimum is 2 mutations.
-    let mut graph: GraphAncestral = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let mut graph: GraphAncestral = graph;
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
@@ -434,10 +445,10 @@ mod tests {
     };
     populate_test_nodes(&mut partition, &graph);
 
-    let uv = find_edge_key(&graph, "U", "V").unwrap();
-    let vc1 = find_edge_key(&graph, "V", "C1").unwrap();
-    let vc2 = find_edge_key(&graph, "V", "C2").unwrap();
-    let vc3 = find_edge_key(&graph, "V", "C3").unwrap();
+    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
+    let vc1 = find_edge_key(&graph, &names, "V", "C1").unwrap();
+    let vc2 = find_edge_key(&graph, &names, "V", "C2").unwrap();
+    let vc3 = find_edge_key(&graph, &names, "V", "C3").unwrap();
     partition.edges.insert(
       uv,
       SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]),
@@ -455,7 +466,7 @@ mod tests {
 
     // Empty zero-optimal list: the old loop was a no-op here. The hoist must still fire.
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let mut names_tt_9 = node_names(&graph);
+    let mut names_tt_9 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &sparse,
@@ -494,16 +505,17 @@ mod tests {
     //
     // Both I1 and I2 should be collapsed. The guard for already-removed edges
     // must handle the case where collapsing I1 removes I2's inbound edge.
-    let mut graph: GraphAncestral = nwk_read_str("(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let ri1_key = find_edge_key(&graph, "root", "I1").unwrap();
-    let i1i2_key = find_edge_key(&graph, "I1", "I2").unwrap();
+    let ri1_key = find_edge_key(&graph, &names, "root", "I1").unwrap();
+    let i1i2_key = find_edge_key(&graph, &names, "I1", "I2").unwrap();
 
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let mut names_tt_8 = node_names(&graph);
+    let mut names_tt_8 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &sparse,
@@ -516,11 +528,11 @@ mod tests {
     assert!(changed);
 
     // Both I1 and I2 should be gone. A, B become children of root.
-    assert!(find_node_key_by_name(&graph, "I1").is_none());
-    assert!(find_node_key_by_name(&graph, "I2").is_none());
+    assert!(find_node_key_by_name(&graph, &names, "I1").is_none());
+    assert!(find_node_key_by_name(&graph, &names, "I2").is_none());
 
     // root should have 3 children: A, B, C
-    let root_key = find_node_key_by_name(&graph, "root").unwrap();
+    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
     assert_eq!(root_node.read_arc().degree_out(), 3);
 
@@ -554,11 +566,13 @@ mod tests {
       &nuc,
     )?;
 
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+
+    let mut graph: GraphAncestral = graph;
 
     let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, nuc, get_common_length(&aln)?)))];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &dense_partitions, &aln, &node_names(&graph))?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &dense_partitions, &aln, &names)?.value();
     marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
 
     let sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
@@ -580,7 +594,7 @@ mod tests {
       let mut branch_lengths = edge_branch_lengths(&graph);
       let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
-      let mut names_tt_7 = node_names(&graph);
+      let mut names_tt_7 = names.clone();
       prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_7)?;
       commit_branch_lengths(&graph, &branch_lengths);
 
@@ -607,9 +621,10 @@ mod tests {
   fn test_optimize_prune_and_merge_names_new_nodes() -> Result<(), Report> {
     // Collapse zero-length I, then merge A+B+C (shared sub A0T) under a new
     // internal node. The new node must receive a NODE_NNNNNNN name.
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
@@ -625,10 +640,10 @@ mod tests {
 
     partition.edges.insert(ri_key, SparseEdgePartition::default());
 
-    let ia_key = find_edge_key(&graph, "I", "A").unwrap();
-    let ib_key = find_edge_key(&graph, "I", "B").unwrap();
-    let rc_key = find_edge_key(&graph, "root", "C").unwrap();
-    let rd_key = find_edge_key(&graph, "root", "D").unwrap();
+    let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
+    let ib_key = find_edge_key(&graph, &names, "I", "B").unwrap();
+    let rc_key = find_edge_key(&graph, &names, "root", "C").unwrap();
+    let rd_key = find_edge_key(&graph, &names, "root", "D").unwrap();
 
     partition
       .edges
@@ -651,7 +666,7 @@ mod tests {
     }
 
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let mut names_tt_6 = node_names(&graph);
+    let mut names_tt_6 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &sparse,
@@ -666,7 +681,7 @@ mod tests {
     let mut names: Vec<String> = graph
       .get_nodes()
       .iter()
-      .filter_map(|n| n.read_arc().payload().read_arc().name.clone())
+      .filter_map(|n| names_tt_6.get(&n.read_arc().key()).cloned().flatten())
       .collect();
     names.sort();
 
@@ -681,9 +696,10 @@ mod tests {
     // Same setup as the collapse+merge test, but with merge-siblings disabled. Collapsing the
     // zero-length internal edge still forms the polytomy; without merge, the shared-mutation
     // siblings A, B, C stay as direct children of root rather than being grouped under a node.
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
@@ -697,10 +713,10 @@ mod tests {
     populate_test_nodes(&mut partition, &graph);
     partition.edges.insert(ri_key, SparseEdgePartition::default());
 
-    let ia_key = find_edge_key(&graph, "I", "A").unwrap();
-    let ib_key = find_edge_key(&graph, "I", "B").unwrap();
-    let rc_key = find_edge_key(&graph, "root", "C").unwrap();
-    let rd_key = find_edge_key(&graph, "root", "D").unwrap();
+    let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
+    let ib_key = find_edge_key(&graph, &names, "I", "B").unwrap();
+    let rc_key = find_edge_key(&graph, &names, "root", "C").unwrap();
+    let rd_key = find_edge_key(&graph, &names, "root", "D").unwrap();
     partition
       .edges
       .insert(ia_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
@@ -726,7 +742,7 @@ mod tests {
       ..TopologyOps::default()
     };
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let mut names_tt_5 = node_names(&graph);
+    let mut names_tt_5 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &sparse,
@@ -739,10 +755,10 @@ mod tests {
     assert!(changed, "collapse still fires even with merge disabled");
 
     // I collapsed away.
-    assert!(find_node_key_by_name(&graph, "I").is_none());
+    assert!(find_node_key_by_name(&graph, &names, "I").is_none());
 
     // Without merge, root keeps all four children A, B, C, D (no grouping under a new node).
-    let root_key = find_node_key_by_name(&graph, "root").unwrap();
+    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
     assert_eq!(root_node.read_arc().degree_out(), 4);
 
@@ -753,7 +769,8 @@ mod tests {
   fn test_optimize_prune_and_merge_flip_disabled_keeps_reversion() -> Result<(), Report> {
     // Reversion polytomy. With flip-parent-child disabled, merge still groups the two reverting
     // children, but the reverting mutation is not hoisted away, so it remains in the tree.
-    let mut graph: GraphAncestral = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let mut graph: GraphAncestral = graph;
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
@@ -766,10 +783,10 @@ mod tests {
     };
     populate_test_nodes(&mut partition, &graph);
 
-    let uv = find_edge_key(&graph, "U", "V").unwrap();
-    let vc1 = find_edge_key(&graph, "V", "C1").unwrap();
-    let vc2 = find_edge_key(&graph, "V", "C2").unwrap();
-    let vc3 = find_edge_key(&graph, "V", "C3").unwrap();
+    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
+    let vc1 = find_edge_key(&graph, &names, "V", "C1").unwrap();
+    let vc2 = find_edge_key(&graph, &names, "V", "C2").unwrap();
+    let vc3 = find_edge_key(&graph, &names, "V", "C3").unwrap();
     partition.edges.insert(
       uv,
       SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]),
@@ -790,7 +807,7 @@ mod tests {
       ..TopologyOps::default()
     };
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let mut names_tt_4 = node_names(&graph);
+    let mut names_tt_4 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &sparse,
@@ -820,7 +837,8 @@ mod tests {
   fn test_optimize_prune_and_merge_all_ops_disabled_is_noop() -> Result<(), Report> {
     // With every topology step disabled, the reversion polytomy is left untouched: no collapse,
     // no merge, no hoist. The tree shape and its mutation content are unchanged.
-    let mut graph: GraphAncestral = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let mut graph: GraphAncestral = graph;
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
@@ -833,10 +851,10 @@ mod tests {
     };
     populate_test_nodes(&mut partition, &graph);
 
-    let uv = find_edge_key(&graph, "U", "V").unwrap();
-    let vc1 = find_edge_key(&graph, "V", "C1").unwrap();
-    let vc2 = find_edge_key(&graph, "V", "C2").unwrap();
-    let vc3 = find_edge_key(&graph, "V", "C3").unwrap();
+    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
+    let vc1 = find_edge_key(&graph, &names, "V", "C1").unwrap();
+    let vc2 = find_edge_key(&graph, &names, "V", "C2").unwrap();
+    let vc3 = find_edge_key(&graph, &names, "V", "C3").unwrap();
     partition.edges.insert(
       uv,
       SparseEdgePartition::with_fitch_subs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]),
@@ -859,7 +877,7 @@ mod tests {
       flip_parent_child: false,
     };
     let mut branch_lengths = edge_branch_lengths(&graph);
-    let mut names_tt_3 = node_names(&graph);
+    let mut names_tt_3 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &sparse,
@@ -907,9 +925,11 @@ mod tests {
       &nuc,
     )?;
 
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &node_names(&graph))?;
+    let mut graph: GraphAncestral = graph;
+
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
@@ -925,7 +945,7 @@ mod tests {
       collapse_short_branches: false,
       ..TopologyOps::default()
     };
-    let names_tt_2 = node_names(&graph);
+    let names_tt_2 = names.clone();
     run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -971,9 +991,11 @@ mod tests {
       &nuc,
     )?;
 
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &node_names(&graph))?;
+    let mut graph: GraphAncestral = graph;
+
+    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
@@ -985,7 +1007,7 @@ mod tests {
 
     let initial_node_count = graph.get_nodes().len();
 
-    let names_tt_1 = node_names(&graph);
+    let names_tt_1 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,

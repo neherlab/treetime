@@ -13,6 +13,10 @@ pub mod tests {
   //! 3. Initial log-LH (before optimization) should be identical
   //! 4. Final log-LH difference should be bounded
 
+  use std::collections::BTreeMap;
+
+  use treetime_graph::node::GraphNodeKey;
+
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
@@ -23,7 +27,6 @@ pub mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
-  use treetime_graph::value_maps::node_names;
 
   use parking_lot::RwLock;
   use std::sync::{Arc, LazyLock};
@@ -52,6 +55,7 @@ pub mod tests {
 
   pub fn setup_dense_only(
     graph: &GraphAncestral,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalDense>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -62,24 +66,18 @@ pub mod tests {
       get_common_length(aln)?,
     )))];
 
-    initialize_marginal(
-      graph,
-      &profile_branch_lengths(graph),
-      &partitions,
-      aln,
-      &node_names(graph),
-    )?
-    .value();
+    initialize_marginal(graph, &profile_branch_lengths(graph), &partitions, aln, names)?.value();
 
     Ok(partitions)
   }
 
   pub fn setup_sparse_only(
     graph: &GraphAncestral,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
   ) -> Result<Vec<Arc<RwLock<PartitionMarginalSparse>>>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let fitch = create_fitch_partition(graph, 0, alphabet, aln, &node_names(graph))?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
     let partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];

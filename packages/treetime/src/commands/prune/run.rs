@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
@@ -183,7 +183,7 @@ fn leaf_order<N, E, D>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<Vec<String>, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {

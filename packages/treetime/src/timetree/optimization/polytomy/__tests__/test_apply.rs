@@ -9,21 +9,22 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::{assert_error, make_report, pretty_assert_abs_diff_eq};
 
   /// `((A,B,C)P)root` with each child edge carrying a distinct mutation length. The node times
   /// `apply_plan` acts on are passed to it directly (`parent_time` and each [`ChildRef::time`]).
   fn polytomy_graph() -> Result<(GraphTimetree, GraphNodeKey, Vec<ChildRef>), Report> {
-    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)P:0.05)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2,C:0.15)P:0.05)root;")?;
+    let graph: GraphTimetree = graph;
 
-    let parent_key = find_node_key_by_name(&graph, "P").ok_or_else(|| make_report!("P not found"))?;
+    let parent_key = find_node_key_by_name(&graph, &names, "P").ok_or_else(|| make_report!("P not found"))?;
 
     let mut children = Vec::new();
     for (name, time, mutation_length) in [("A", 2020.0, 0.3), ("B", 2018.0, 0.4), ("C", 2016.0, 0.5)] {
-      let node_key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
-      let edge_key = find_edge_key(&graph, "P", name).ok_or_else(|| make_report!("P->{name} not found"))?;
+      let node_key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| make_report!("{name} not found"))?;
+      let edge_key = find_edge_key(&graph, &names, "P", name).ok_or_else(|| make_report!("P->{name} not found"))?;
       let edge = graph.get_edge(edge_key).expect("Edge must exist");
       edge
         .write_arc()

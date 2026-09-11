@@ -20,7 +20,7 @@ use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 
 /// Target resolution of every *stored* timetree time-distribution grid (design D3, proposal Part D).
 ///
@@ -63,7 +63,7 @@ pub fn run_timetree<N, E, P>(
   clock_state: &mut ClockState,
 ) -> Result<(), Report>
 where
-  N: GraphNode + Named + TimetreeNode + ClockNode + Default,
+  N: GraphNode + TimetreeNode + ClockNode + Default,
   E: GraphEdge + HasBranchLength + TimetreeEdge + Default,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
@@ -189,7 +189,7 @@ fn compute_branch_distributions_marginal_mode<N, E, P>(
   state: &mut TimetreeState,
 ) -> Result<(), Report>
 where
-  N: GraphNode + Named + TimetreeNode,
+  N: GraphNode + TimetreeNode,
   E: GraphEdge + HasBranchLength + TimetreeEdge,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
@@ -266,7 +266,7 @@ where
 
 fn calculate_one_mutation<N, E, P>(partitions: &[Arc<RwLock<P>>]) -> f64
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: GraphEdge + HasBranchLength,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {
@@ -282,7 +282,7 @@ fn collect_contributions<N, E, P>(
   edge_key: GraphEdgeKey,
 ) -> Result<Vec<OptimizationContribution>, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: GraphEdge + HasBranchLength,
   P: PartitionTimetreeAll<N, E> + ?Sized,
 {

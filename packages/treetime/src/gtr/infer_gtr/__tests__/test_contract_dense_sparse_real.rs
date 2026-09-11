@@ -43,7 +43,6 @@ mod tests {
   use crate::partition::traits::TransitionCounting;
   use crate::seq::alignment::get_common_length;
   use treetime_graph::value_maps::edge_branch_lengths;
-  use treetime_graph::value_maps::node_names;
 
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -56,7 +55,7 @@ mod tests {
   use std::slice::from_ref;
   use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta;
-  use treetime_io::nwk::nwk_read_file;
+  use treetime_io::nwk::{NwkParse, nwk_read_file};
 
   #[rustfmt::skip]
   #[rstest]
@@ -124,7 +123,8 @@ mod tests {
     let aln = read_many_fasta(&[&alignment_path], &*DENSE_NUC_ALPHABET)?;
 
     let dense = {
-      let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
+      let NwkParse { graph, names, .. } = nwk_read_file(&tree_path)?;
+      let graph: GraphAncestral = graph;
       let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
         0,
         jc69(JC69Params {
@@ -139,7 +139,7 @@ mod tests {
         &profile_branch_lengths(&graph),
         from_ref(&partition),
         &aln,
-        &node_names(&graph),
+        &names,
       )?
       .value();
       let counts = partition
@@ -156,8 +156,9 @@ mod tests {
     };
 
     let sparse = {
-      let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
-      let fitch = create_fitch_partition(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &aln, &node_names(&graph))?;
+      let NwkParse { graph, names, .. } = nwk_read_file(&tree_path)?;
+      let graph: GraphAncestral = graph;
+      let fitch = create_fitch_partition(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &aln, &names)?;
       infer_gtr_fitch(&fitch, &graph, &edge_branch_lengths(&graph))?
     };
 

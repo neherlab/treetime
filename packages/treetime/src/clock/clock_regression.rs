@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 use std::fmt::Debug;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_graph::reroot::RerootResult;
 use treetime_graph::value_maps::edge_branch_lengths;
@@ -227,7 +227,7 @@ pub fn estimate_clock_model_with_reroot_policy<N, E, D>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<ClockRerootResult, Report>
 where
-  N: GraphNode + Named + Default,
+  N: GraphNode + Default,
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {

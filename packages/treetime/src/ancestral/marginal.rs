@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{LogLh, Seq, seq};
 
@@ -47,7 +47,7 @@ pub fn initialize_marginal<N, E, P>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<LogLh, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + ?Sized,
 {
@@ -70,7 +70,7 @@ pub fn marginal_update<N, E, P>(
   partitions: &[Arc<RwLock<P>>],
 ) -> Result<LogLh, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
   P: PartitionMarginalPasses<N, E> + ?Sized,
 {
@@ -87,7 +87,7 @@ pub fn marginal_backward<N, E, P>(
   partitions: &[Arc<RwLock<P>>],
 ) -> Result<(), Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
   P: PartitionMarginalPasses<N, E> + ?Sized,
 {
@@ -107,7 +107,7 @@ fn marginal_forward<N, E, P>(
   partitions: &[Arc<RwLock<P>>],
 ) -> Result<(), Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
   P: PartitionMarginalPasses<N, E> + ?Sized,
 {
@@ -139,7 +139,7 @@ pub fn ancestral_reconstruction_marginal<N, E, P>(
   mut visitor: impl FnMut(GraphNodeKey, &Seq) -> Result<(), Report>,
 ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
   P: PartitionMarginalOps<N, E> + ?Sized,
 {

@@ -1,30 +1,28 @@
 #[cfg(test)]
 mod tests {
   use crate::partition::timetree::partition::GraphTimetree;
-  use crate::payload::timetree::NodeTimetree;
   use crate::timetree::confidence::{extract_confidence_intervals, write_confidence_intervals};
   use approx::assert_relative_eq;
-  use helpers::make_node;
+  use helpers::add_named;
   use maplit::btreemap;
   use ndarray::Array1;
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
-  use treetime_graph::node::Named;
-  use treetime_graph::value_maps::node_names;
 
   #[test]
   fn test_extract_confidence_intervals_includes_unnamed_nodes() {
     let mut graph = GraphTimetree::new();
-    let unnamed_key = graph.add_node(make_node(None));
-    let named_key = graph.add_node(make_node(Some("named")));
+    let mut names = BTreeMap::new();
+    let unnamed_key = add_named(&mut graph, &mut names, None);
+    let named_key = add_named(&mut graph, &mut names, Some("named"));
     graph.build().unwrap();
 
     let state = helpers::state(
       &graph,
       &[(unnamed_key, Some(2020.0), None), (named_key, Some(2021.0), None)],
     );
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
     assert_eq!(intervals.len(), 2);
     // Unnamed node has empty name but valid key
     assert_eq!(intervals[0].name, "");
@@ -34,12 +32,13 @@ mod tests {
   #[test]
   fn test_extract_confidence_intervals_skips_nodes_without_time() {
     let mut graph = GraphTimetree::new();
-    let no_time_key = graph.add_node(make_node(Some("no_time")));
-    let has_time_key = graph.add_node(make_node(Some("has_time")));
+    let mut names = BTreeMap::new();
+    let no_time_key = add_named(&mut graph, &mut names, Some("no_time"));
+    let has_time_key = add_named(&mut graph, &mut names, Some("has_time"));
     graph.build().unwrap();
 
     let state = helpers::state(&graph, &[(no_time_key, None, None), (has_time_key, Some(2021.0), None)]);
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
     assert_eq!(intervals.len(), 1);
     assert_eq!(intervals[0].name, "has_time");
   }
@@ -47,11 +46,12 @@ mod tests {
   #[test]
   fn test_extract_confidence_intervals_uses_date_as_fallback() {
     let mut graph = GraphTimetree::new();
-    let key = graph.add_node(make_node(Some("node_a")));
+    let mut names = BTreeMap::new();
+    let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
 
     let state = helpers::state(&graph, &[(key, Some(2020.5), None)]);
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
     assert_eq!(intervals.len(), 1);
     assert_relative_eq!(intervals[0].date, 2020.5);
     assert_relative_eq!(intervals[0].lower, 2020.5);
@@ -65,12 +65,13 @@ mod tests {
   #[test]
   fn test_extract_confidence_intervals_with_distribution() {
     let mut graph = GraphTimetree::new();
+    let mut names = BTreeMap::new();
     let dist = Arc::new(Distribution::range((2019.0, 2021.0), 0.0));
-    let key = graph.add_node(make_node(Some("node_a")));
+    let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
 
     let state = helpers::state(&graph, &[(key, Some(2020.0), Some(dist))]);
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
     assert_eq!(intervals.len(), 1);
     assert_relative_eq!(intervals[0].date, 2020.0);
     // 90% CI from uniform [2019, 2021]: 0.05 * 2 + 2019 = 2019.1, 0.95 * 2 + 2019 = 2020.9
@@ -81,10 +82,11 @@ mod tests {
   #[test]
   fn test_extract_confidence_intervals_sorted_by_key() {
     let mut graph = GraphTimetree::new();
+    let mut names = BTreeMap::new();
     // Insertion order: zebra (key 0), alpha (key 1), middle (key 2)
-    let zebra_key = graph.add_node(make_node(Some("zebra")));
-    let alpha_key = graph.add_node(make_node(Some("alpha")));
-    let middle_key = graph.add_node(make_node(Some("middle")));
+    let zebra_key = add_named(&mut graph, &mut names, Some("zebra"));
+    let alpha_key = add_named(&mut graph, &mut names, Some("alpha"));
+    let middle_key = add_named(&mut graph, &mut names, Some("middle"));
     graph.build().unwrap();
 
     let state = helpers::state(
@@ -95,7 +97,7 @@ mod tests {
         (middle_key, Some(2022.0), None),
       ],
     );
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
     assert_eq!(intervals.len(), 3);
     // Sorted by GraphNodeKey (insertion order), not alphabetical
     assert_eq!(intervals[0].name, "zebra");
@@ -107,12 +109,13 @@ mod tests {
   fn test_extract_confidence_intervals_rate_only() {
     // Rate susceptibility data but no marginal distribution
     let mut graph = GraphTimetree::new();
-    let key = graph.add_node(make_node(Some("node_a")));
+    let mut names = BTreeMap::new();
+    let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
     let rate_map = btreemap! { key => [2009.0, 2010.0, 2011.0] };
 
     let state = helpers::state(&graph, &[(key, Some(2010.0), None)]);
-    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names);
     assert_eq!(intervals.len(), 1);
     assert_relative_eq!(intervals[0].date, 2010.0);
     // z-score at 0.05 = -1.644854, at 0.95 = +1.644854
@@ -131,13 +134,14 @@ mod tests {
     // Both marginal distribution and rate susceptibility data present.
     // The quadrature combination must be wider than either source alone.
     let mut graph = GraphTimetree::new();
+    let mut names = BTreeMap::new();
     let dist = Arc::new(Distribution::range((2008.0, 2012.0), 0.0));
-    let key = graph.add_node(make_node(Some("node_a")));
+    let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
     let rate_map = btreemap! { key => [2009.0, 2010.0, 2011.0] };
 
     let state = helpers::state(&graph, &[(key, Some(2010.0), Some(dist))]);
-    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names);
     assert_eq!(intervals.len(), 1);
     // Mutation CI from uniform [2008, 2012]: 90% = [2008.2, 2011.8]
     // Rate CI at 90%: [2008.355, 2011.645]
@@ -158,16 +162,17 @@ mod tests {
     // central date, the raw rate CI may not bracket the point estimate.
     // The postcondition clamp ensures lower <= date <= upper.
     let mut graph = GraphTimetree::new();
+    let mut names = BTreeMap::new();
     // date = 2020.5 (final pass), rate susceptibility centered on 2020.0
     // with small variation [2019.9, 2020.0, 2020.1].
     // Rate CI at 90%: 2020.0 +/- 1.645 * 0.1 = [2019.836, 2020.164]
     // date = 2020.5 > 2020.164, so upper must be clamped to date.
-    let key = graph.add_node(make_node(Some("node_a")));
+    let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
     let rate_map = btreemap! { key => [2019.9, 2020.0, 2020.1] };
 
     let state = helpers::state(&graph, &[(key, Some(2020.5), None)]);
-    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names);
     assert_eq!(intervals.len(), 1);
     // Postcondition holds: lower <= date <= upper
     assert!(intervals[0].lower <= intervals[0].date);
@@ -182,15 +187,16 @@ mod tests {
   fn test_extract_confidence_intervals_clamps_when_date_below_rate_ci() {
     // Mirror case: date below the raw rate CI lower bound.
     let mut graph = GraphTimetree::new();
+    let mut names = BTreeMap::new();
     // date = 2019.5 (final pass), rate susceptibility centered on 2020.0
     // Rate CI at 90%: [2019.836, 2020.164]
     // date = 2019.5 < 2019.836, so lower must be clamped to date.
-    let key = graph.add_node(make_node(Some("node_a")));
+    let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
     let rate_map = btreemap! { key => [2019.9, 2020.0, 2020.1] };
 
     let state = helpers::state(&graph, &[(key, Some(2019.5), None)]);
-    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names);
     assert_eq!(intervals.len(), 1);
     assert!(intervals[0].lower <= intervals[0].date);
     assert!(intervals[0].date <= intervals[0].upper);
@@ -235,13 +241,12 @@ mod tests {
     let peak_time = dist.likely_time().unwrap();
 
     let mut graph = GraphTimetree::new();
-    let mut node = NodeTimetree::default();
-    node.base.set_name(Some("skewed"));
-    let key = graph.add_node(node);
+    let mut names = BTreeMap::new();
+    let key = add_named(&mut graph, &mut names, Some("skewed"));
     graph.build().unwrap();
 
     let state = helpers::state(&graph, &[(key, Some(peak_time), Some(Arc::new(dist)))]);
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
     assert_eq!(intervals.len(), 1);
 
     // v0 HPD bounds: [0, 2.3026] (narrowest 90% interval around peak)
@@ -258,10 +263,11 @@ mod tests {
     // name, date, lower, upper. The graph node key is internal (serde-skipped)
     // and must never leak as a serialized column.
     let mut graph = GraphTimetree::new();
-    let key = graph.add_node(make_node(Some("named")));
+    let mut names = BTreeMap::new();
+    let key = add_named(&mut graph, &mut names, Some("named"));
     graph.build().unwrap();
     let state = helpers::state(&graph, &[(key, Some(2020.0), None)]);
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &node_names(&graph));
+    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
 
     let mut buf = Vec::new();
     write_confidence_intervals(&intervals, &mut buf).unwrap();
@@ -275,9 +281,10 @@ mod tests {
     use crate::partition::timetree::partition::GraphTimetree;
     use crate::payload::timetree::NodeTimetree;
     use crate::timetree::timetree_state::TimetreeState;
+    use std::collections::BTreeMap;
     use std::sync::Arc;
     use treetime_distribution::{Distribution, NegLog};
-    use treetime_graph::node::{GraphNodeKey, Named};
+    use treetime_graph::node::GraphNodeKey;
 
     /// Per-node committed time and time distribution the confidence extraction reads, keyed by node.
     pub type NodeTimeEntry = (GraphNodeKey, Option<f64>, Option<Arc<Distribution<NegLog>>>);
@@ -294,10 +301,14 @@ mod tests {
       state
     }
 
-    pub fn make_node(name: Option<&str>) -> NodeTimetree {
-      let mut node = NodeTimetree::default();
-      node.base.set_name(name);
-      node
+    pub fn add_named(
+      graph: &mut GraphTimetree,
+      names: &mut BTreeMap<GraphNodeKey, Option<String>>,
+      name: Option<&str>,
+    ) -> GraphNodeKey {
+      let key = graph.add_node(NodeTimetree::default());
+      names.insert(key, name.map(|n| n.to_owned()));
+      key
     }
   }
 }

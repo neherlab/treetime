@@ -40,11 +40,7 @@ mod tests {
     }
   }
 
-  impl NodeToNwk for TestNode {
-    fn nwk_name(&self) -> Option<impl AsRef<str>> {
-      self.name.as_deref()
-    }
-  }
+  impl NodeToNwk for TestNode {}
 
   #[derive(Clone, Debug, Default)]
   struct TestEdge(Option<f64>);

@@ -10,8 +10,8 @@ mod tests {
   use crate::timetree::utils::{create_poisson_branch_distributions, extract_node_times};
   use eyre::Report;
   use rstest::rstest;
-  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   // --- Poisson tests ---
@@ -32,9 +32,11 @@ mod tests {
     let case = &OUTPUTS[dataset];
     let expected = case.poisson();
 
-    let graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
+
+    let graph: GraphTimetree = graph;
     let dates = load_dates_for_dataset(dataset)?;
-    let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
+    let constraints = load_date_constraints(&dates, &graph, &names)?;
 
     let branch_distributions = create_poisson_branch_distributions(
       &graph,
@@ -50,9 +52,9 @@ mod tests {
       state.edge_mut(edge_key).branch_length_distribution = Some(dist);
     }
     propagate_distributions_backward(&graph, None, &mut state)?;
-    propagate_distributions_forward(&graph, &node_names(&graph), &mut state)?;
+    propagate_distributions_forward(&graph, &names, &mut state)?;
 
-    let actual = extract_node_times(&graph, &node_names(&graph), &state);
+    let actual = extract_node_times(&graph, &names, &state);
     pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);
 
     Ok(())

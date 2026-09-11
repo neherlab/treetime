@@ -92,7 +92,7 @@ mod tests {
         let bl = edge.payload().read_arc().branch_length()?;
         let target_key = edge.target();
         let node = result.graph.get_node(target_key)?;
-        let name = node.read_arc().payload().read_arc().name.clone()?;
+        let name = result.names.get(&node.read_arc().key()).cloned().flatten()?;
         Some((name, bl))
       })
       .collect();
@@ -180,7 +180,6 @@ mod tests {
     use crate::optimize::run_loop::{collect_optimize_partitions, run_optimize_loop};
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::seq::alignment::get_common_length;
-    use treetime_graph::value_maps::node_names;
 
     use crate::payload::ancestral::GraphAncestral;
     use eyre::Report;
@@ -192,8 +191,9 @@ mod tests {
     use std::fs::read_to_string;
     use std::path::Path;
     use std::sync::Arc;
+    use treetime_graph::node::GraphNodeKey;
     use treetime_io::fasta::read_many_fasta;
-    use treetime_io::nwk::nwk_read_file;
+    use treetime_io::nwk::{NwkParse, nwk_read_file};
     use treetime_primitives::LogLh;
 
     #[derive(Clone, Deserialize)]
@@ -212,6 +212,7 @@ mod tests {
 
     pub struct OptimizeResult {
       pub graph: GraphAncestral,
+      pub names: BTreeMap<GraphNodeKey, Option<String>>,
       pub lh_history: Vec<f64>,
       pub stopped_at: Option<(usize, crate::optimize::run_loop::ConvergenceReason)>,
     }
@@ -241,9 +242,10 @@ mod tests {
       let tree_path = workspace_root.join(&case.tree);
       let aln_path = workspace_root.join(&case.aln);
       let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet_sparse)?;
-      let mut graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
+      let NwkParse { graph, names, .. } = nwk_read_file(&tree_path)?;
+      let mut graph: GraphAncestral = graph;
 
-      let fitch = create_fitch_partition(&graph, 0, alphabet_sparse, &aln, &node_names(&graph))?;
+      let fitch = create_fitch_partition(&graph, 0, alphabet_sparse, &aln, &names)?;
       let sparse_partitions = vec![Arc::new(RwLock::new(
         fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
       ))];
@@ -256,14 +258,7 @@ mod tests {
         length,
       )))];
 
-      initialize_marginal(
-        &graph,
-        &profile_branch_lengths(&graph),
-        &dense_partitions,
-        &aln,
-        &node_names(&graph),
-      )?
-      .value();
+      initialize_marginal(&graph, &profile_branch_lengths(&graph), &dense_partitions, &aln, &names)?.value();
       marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
       marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
 
@@ -271,7 +266,7 @@ mod tests {
       initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
 
       let dp = 0.1;
-      let names_tt_1 = node_names(&graph);
+      let names_tt_1 = names.clone();
       let result = run_optimize_loop(
         &mut graph,
         &sparse_partitions,
@@ -296,6 +291,7 @@ mod tests {
 
       Ok(OptimizeResult {
         graph,
+        names,
         lh_history,
         stopped_at: result.stopped_at,
       })

@@ -21,9 +21,8 @@ mod tests {
   use maplit::btreemap;
   use rstest::rstest;
   use treetime_distribution::Distribution;
-  use treetime_graph::value_maps::node_names;
   use treetime_io::dates_csv::DateConstraint;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::o;
 
   fn setup_polytomy_graph() -> Result<(GraphTimetree, DateConstraints), Report> {
@@ -35,9 +34,10 @@ mod tests {
       o!("leaf3") => Some(DateConstraint::exact(2010.0)),
       o!("leaf4") => Some(DateConstraint::exact(2012.0)),
     };
-    let graph: GraphTimetree =
-      nwk_read_str("((leaf1:0.005,leaf2:0.005,leaf3:0.005)internal:0.01,leaf4:0.02)root:0.0;")?.graph;
-    let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
+    let NwkParse { graph, names, .. } =
+      nwk_read_str("((leaf1:0.005,leaf2:0.005,leaf3:0.005)internal:0.01,leaf4:0.02)root:0.0;")?;
+    let graph: GraphTimetree = graph;
+    let constraints = load_date_constraints(&dates, &graph, &names)?;
     Ok((graph, constraints))
   }
 
@@ -51,7 +51,7 @@ mod tests {
   #[case::tc_100(100.0,   -8.316728083308085)]
   #[trace]
   fn test_gm_total_lh_binary(#[case] tc: f64, #[case] expected: f64) -> Result<(), Report> {
-    let (graph, constraints) = setup_graph()?;
+    let (graph, names, constraints) = setup_graph()?;
     let actual = compute_coalescent_total_lh(&graph, &Distribution::constant(tc), &coalescent_node_times(&graph, &constraints))?.value();
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-8);
     Ok(())

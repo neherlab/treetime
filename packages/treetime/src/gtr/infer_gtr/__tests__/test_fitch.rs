@@ -14,9 +14,8 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use treetime_graph::value_maps::edge_branch_lengths;
-  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
@@ -38,10 +37,12 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
 
     let counts_actual = get_mutation_counts_fitch(&graph, &fitch, &edge_branch_lengths(&graph))?;
     assert_eq!(
@@ -74,10 +75,12 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
 
     let counts = get_mutation_counts_fitch(&graph, &fitch, &edge_branch_lengths(&graph))?;
     let actual = infer_gtr_impl(

@@ -2,7 +2,7 @@ use crate::payload::clock_set::ClockSet;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::{BranchDistribution, ClockMessages, GraphEdge, HasBranchLength, TimeLength};
-use treetime_graph::node::{GraphNode, Named, Outlier, TimeConstraint};
+use treetime_graph::node::{GraphNode, Outlier, TimeConstraint};
 
 pub trait ClockNode: Outlier + Send + Sync {
   fn likely_time(&self) -> Option<f64>;
@@ -15,7 +15,7 @@ pub trait ClockEdge: ClockMessages<ClockSet> + HasBranchLength + TimeLength + Se
   }
 }
 
-pub trait DateConstraintNode: GraphNode + Named + TimeConstraint<Arc<Distribution<NegLog>>> {}
+pub trait DateConstraintNode: GraphNode + TimeConstraint<Arc<Distribution<NegLog>>> {}
 
 /// Trait for node types that support timetree inference.
 /// Provides access to time distribution and estimated time fields.

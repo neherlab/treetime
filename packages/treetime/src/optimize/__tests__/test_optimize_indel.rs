@@ -23,7 +23,8 @@ pub mod tests {
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use treetime_graph::value_maps::node_names;
+  use std::collections::BTreeMap;
+  use treetime_graph::node::GraphNodeKey;
 
   use ndarray::array;
   use parking_lot::RwLock;
@@ -32,7 +33,7 @@ pub mod tests {
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::Seq;
 
   /// Inject indels onto the first edge in each partition (both dense and sparse).
@@ -66,6 +67,7 @@ pub mod tests {
   /// Set up partitions with identical sequences (zero substitutions on every edge).
   pub fn setup_identical_partitions(
     graph: &GraphAncestral,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
   ) -> Result<
     (
       Vec<Arc<RwLock<PartitionMarginalDense>>>,
@@ -85,18 +87,11 @@ pub mod tests {
       get_common_length(&aln)?,
     )))];
 
-    let fitch = create_fitch_partition(graph, 1, alphabet_sparse, &aln, &node_names(graph))?;
+    let fitch = create_fitch_partition(graph, 1, alphabet_sparse, &aln, names)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
     ))];
-    initialize_marginal(
-      graph,
-      &profile_branch_lengths(graph),
-      &dense_partitions,
-      &aln,
-      &node_names(graph),
-    )?
-    .value();
+    initialize_marginal(graph, &profile_branch_lengths(graph), &dense_partitions, &aln, names)?.value();
     marginal_update(graph, &profile_branch_lengths(graph), &sparse_partitions)?.value();
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
@@ -108,9 +103,10 @@ pub mod tests {
   /// `estimate_indel_rate` returns 0 when no edges have indels.
   #[test]
   fn test_optimize_indel_estimate_rate_no_indels() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
     let aln = simple_alignment()?;
-    let (_, _, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let (_, _, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     let rate = estimate_indel_rate(&graph, &mixed_partitions, &edge_branch_lengths(&graph));
     assert_abs_diff_eq!(rate, 0.0, epsilon = 1e-15);
@@ -120,9 +116,10 @@ pub mod tests {
   /// `estimate_indel_rate` returns total_indels / total_branch_length.
   #[test]
   fn test_optimize_indel_estimate_rate_with_indels() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
     let aln = simple_alignment()?;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
@@ -142,9 +139,10 @@ pub mod tests {
 
   #[test]
   fn test_optimize_indel_total_log_lh_matches_manual_sum() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
     let aln = simple_alignment()?;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     let first_edge_key = inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
@@ -179,9 +177,10 @@ pub mod tests {
 
   #[test]
   fn test_optimize_indel_total_log_lh_zero_branch_length_with_indels_is_neg_infinity() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
     let aln = simple_alignment()?;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
@@ -202,9 +201,10 @@ pub mod tests {
 
   #[test]
   fn test_optimize_indel_total_log_lh_zero_branch_length_without_indels_is_finite() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
     let aln = simple_alignment()?;
-    let (_, _, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let (_, _, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     graph.get_edges()[0]
       .write_arc()
@@ -223,11 +223,20 @@ pub mod tests {
 
   #[test]
   fn test_optimize_indel_run_optimize_mixed_with_fixed_rate_uses_supplied_indel_rate() -> Result<(), Report> {
-    let graph_low: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_partitions_low, sparse_partitions_low, mixed_partitions_low) = setup_identical_partitions(&graph_low)?;
-    let graph_high: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let NwkParse {
+      graph: graph_low,
+      names: graph_low_names,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
+    let (dense_partitions_low, sparse_partitions_low, mixed_partitions_low) =
+      setup_identical_partitions(&graph_low, &graph_low_names)?;
+    let NwkParse {
+      graph: graph_high,
+      names: graph_high_names,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions_high, sparse_partitions_high, mixed_partitions_high) =
-      setup_identical_partitions(&graph_high)?;
+      setup_identical_partitions(&graph_high, &graph_high_names)?;
 
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph_low, &dense_partitions_low, &sparse_partitions_low, &indels);
@@ -267,8 +276,9 @@ pub mod tests {
   /// the Poisson maximum likelihood estimate (MLE) for indel-bearing edges.
   #[test]
   fn test_optimize_indel_initial_guess_nonzero_with_indels() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph, &names)?;
 
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);
@@ -293,8 +303,9 @@ pub mod tests {
   /// the `indel_rate == 0` fallback path.
   #[test]
   fn test_optimize_indel_initial_guess_zero_bl_tree_with_indels() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph, &names)?;
 
     // Zero all branch lengths to simulate degenerate input
     for edge_ref in graph.get_edges() {
@@ -333,9 +344,10 @@ pub mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_indel_run_optimize_nonzero_with_indels(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
     let aln = simple_alignment()?;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     // Inject indels AFTER setup (which includes marginal_update) to avoid being wiped
     // by the backward pass that recreates DenseEdgePartition from scratch.
@@ -367,9 +379,10 @@ pub mod tests {
   #[case::with_indels(   true)]
   #[trace]
   fn test_optimize_indel_run_optimize_rejects_negative_branch_length(#[case] has_indels: bool) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
     let aln = simple_alignment()?;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     graph.get_edges()[0]
       .write_arc()
@@ -400,8 +413,9 @@ pub mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_indel_zero_bl_pipeline_escapes_zero(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph, &names)?;
 
     // Zero all branch lengths
     for edge_ref in graph.get_edges() {
@@ -672,8 +686,9 @@ pub mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_indel_min_branch_length_clamping(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_identical_partitions(&graph, &names)?;
 
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     let _first_edge_key = inject_indels_on_first_edge(&graph, &dense_partitions, &sparse_partitions, &indels);

@@ -15,9 +15,8 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_graph::value_maps::node_names;
   use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
-  use treetime_io::nwk::{CommentProviders, NodeCommentProvider, NwkStyle, nwk_read_str};
+  use treetime_io::nwk::{CommentProviders, NodeCommentProvider, NwkParse, NwkStyle, nwk_read_str};
   use treetime_primitives::AsciiChar;
 
   fn c(b: u8) -> AsciiChar {
@@ -71,7 +70,8 @@ mod tests {
 
   #[test]
   fn test_timetree_mutation_provider_produces_comments() -> Result<(), Report> {
-    let graph: GraphTimetree = nwk_read_str("(A:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1)root;")?;
+    let graph: GraphTimetree = graph;
     let partition = make_test_partition(
       &graph,
       100,
@@ -92,7 +92,8 @@ mod tests {
 
   #[test]
   fn test_timetree_nexus_output_includes_mutations_and_date() -> Result<(), Report> {
-    let graph: GraphTimetree = nwk_read_str("(A:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1)root;")?;
+    let graph: GraphTimetree = graph;
     let partition = make_test_partition(
       &graph,
       100,
@@ -126,7 +127,7 @@ mod tests {
         (edge.key(), edge.payload().read_arc().time_length)
       })
       .collect();
-    let nexus = nex_write_str_with(&graph, &node_names(&graph), &time_lengths, &options, &providers)?;
+    let nexus = nex_write_str_with(&graph, &names, &time_lengths, &options, &providers)?;
     let expected = concat!(
       indoc! {r#"
         #NEXUS

@@ -12,7 +12,7 @@ mod tests {
 
   #[test]
   fn test_total_lh_returns_finite_value() -> Result<(), Report> {
-    let (graph, constraints) = setup_graph()?;
+    let (graph, names, constraints) = setup_graph()?;
     let tc = Distribution::constant(1.0);
 
     let lh = compute_coalescent_total_lh(&graph, &tc, &coalescent_node_times(&graph, &constraints))?.value();
@@ -25,7 +25,7 @@ mod tests {
   fn test_total_lh_negative_for_reasonable_tc() -> Result<(), Report> {
     // The coalescent log-likelihood is a log-probability sum, always negative
     // for non-trivial trees (multiple edges with survival + merger costs).
-    let (graph, constraints) = setup_graph()?;
+    let (graph, names, constraints) = setup_graph()?;
     let tc = Distribution::constant(1.0);
 
     let lh = compute_coalescent_total_lh(&graph, &tc, &coalescent_node_times(&graph, &constraints))?.value();
@@ -42,7 +42,7 @@ mod tests {
   #[case::very_large(100.0)]
   #[trace]
   fn test_total_lh_finite_for_tc(#[case] tc_value: f64) -> Result<(), Report> {
-    let (graph, constraints) = setup_graph()?;
+    let (graph, names, constraints) = setup_graph()?;
     let tc = Distribution::constant(tc_value);
 
     let lh = compute_coalescent_total_lh(&graph, &tc, &coalescent_node_times(&graph, &constraints))?.value();
@@ -54,7 +54,7 @@ mod tests {
   #[test]
   fn test_total_lh_differs_across_tc_values() -> Result<(), Report> {
     // The coalescent LH depends on Tc. Different Tc values produce different LH.
-    let (graph, constraints) = setup_graph()?;
+    let (graph, names, constraints) = setup_graph()?;
     let node_times = coalescent_node_times(&graph, &constraints);
 
     let lh_small = compute_coalescent_total_lh(&graph, &Distribution::constant(0.1), &node_times)?.value();
@@ -70,7 +70,7 @@ mod tests {
   #[test]
   fn test_total_lh_monotonic_near_optimum() -> Result<(), Report> {
     // The coalescent LH should peak near the optimal Tc.
-    let (graph, constraints) = setup_graph()?;
+    let (graph, names, constraints) = setup_graph()?;
     let node_times = coalescent_node_times(&graph, &constraints);
     let opt = optimize_tc(&graph, &node_times)?;
 
@@ -95,7 +95,7 @@ mod tests {
   fn test_total_lh_matches_optimize_tc_likelihood() -> Result<(), Report> {
     // Both code paths call coalescent_log_likelihood() with identical inputs for
     // constant Tc. Results should agree to machine precision.
-    let (graph, constraints) = setup_graph()?;
+    let (graph, names, constraints) = setup_graph()?;
     let node_times = coalescent_node_times(&graph, &constraints);
     let opt = optimize_tc(&graph, &node_times)?;
 
@@ -109,7 +109,7 @@ mod tests {
   #[test]
   fn test_total_lh_with_formula_distribution() -> Result<(), Report> {
     // A constant Formula should give the same result as Distribution::constant.
-    let (graph, constraints) = setup_graph()?;
+    let (graph, names, constraints) = setup_graph()?;
     let node_times = coalescent_node_times(&graph, &constraints);
     let tc_value = 5.0;
     let tc_const = Distribution::constant(tc_value);
@@ -129,8 +129,8 @@ mod tests {
 
   #[test]
   fn test_total_lh_rejects_child_older_than_parent() -> Result<(), Report> {
-    let (graph, constraints) = setup_graph()?;
-    let leaf_key = find_node_key_by_name(&graph, "leaf1").expect("leaf1 not found");
+    let (graph, names, constraints) = setup_graph()?;
+    let leaf_key = find_node_key_by_name(&graph, &names, "leaf1").expect("leaf1 not found");
     let mut node_times = coalescent_node_times(&graph, &constraints);
     node_times
       .get_mut(&leaf_key)

@@ -8,15 +8,16 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   // Oracle: the value inputs passed to `seed_from_values` plus its documented contract -- the seeded
   // date comes from `times` (`None` for a missing key), and `div`/`is_outlier`/`bad_branch`/`clock_set`
   // and every edge start at their defaults.
   #[test]
   fn test_clock_state_seed_from_values_sources_times_and_defaults_the_rest() -> Result<(), Report> {
-    let graph: GraphClock = nwk_read_str("(A:0.1,B:0.2)root;")?.graph;
-    let key_of = helpers::key_by_name(&graph);
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let graph: GraphClock = graph;
+    let key_of = helpers::key_by_name(&names, &graph);
     let (a, b, root) = (key_of["A"], key_of["B"], key_of["root"]);
 
     // Seed A with a date, leave B explicitly dateless, and omit root entirely (a missing key).
@@ -47,13 +48,16 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub(super) fn key_by_name(graph: &GraphClock) -> BTreeMap<String, GraphNodeKey> {
+    pub(super) fn key_by_name(
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      graph: &GraphClock,
+    ) -> BTreeMap<String, GraphNodeKey> {
       graph
         .get_nodes()
         .iter()
         .map(|node| {
           let node = node.read_arc();
-          let name = node.payload().read_arc().name.clone().expect("node has a name");
+          let name = names.get(&node.key()).cloned().flatten().expect("node has a name");
           (name, node.key())
         })
         .collect()

@@ -16,7 +16,7 @@ mod tests {
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
-  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+  use treetime_graph::value_maps::edge_branch_lengths;
 
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use eyre::Report;
@@ -25,7 +25,7 @@ mod tests {
   use rstest::rstest;
 
   use std::sync::Arc;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
@@ -52,24 +52,26 @@ mod tests {
     let case = &OUTPUTS[dataset];
     let expected = case.marginal_dense();
 
-    let mut graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
+
+    let mut graph: GraphTimetree = graph;
     let dates = load_dates_for_dataset(dataset)?;
-    let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
+    let constraints = load_date_constraints(&dates, &graph, &names)?;
 
     let aln = load_alignment_for_dataset(dataset)?;
-    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln, &node_names(&graph))?;
+    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln, &names)?;
     let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     )));
 
     let partitions: PartitionTimetreeAllVec = vec![sparse_partition];
-    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &node_names(&graph))?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
     let mut clock_state = ClockState::new(&graph);
-    initialize_node_divergences(&graph, &mut clock_state, &node_names(&graph))?;
+    initialize_node_divergences(&graph, &mut clock_state, &names)?;
 
     let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times();
     let mut clock_estimate_state = ClockState::seed_from_values(&graph, &times);
-    let names_tt_1 = node_names(&graph);
+    let names_tt_1 = names.clone();
     let clock_model = estimate_clock_model_with_reroot_policy(
       &mut graph,
       &mut clock_estimate_state,
@@ -84,7 +86,7 @@ mod tests {
 
     let mut state = TimetreeState::new(&graph);
     let run_branch_lengths = edge_branch_lengths(&graph);
-    let run_names = node_names(&graph);
+    let run_names = names.clone();
     run_timetree(
       &mut graph,
       &partitions,
@@ -97,7 +99,7 @@ mod tests {
       &mut clock_state,
     )?;
 
-    let actual = extract_node_times(&graph, &node_names(&graph), &state);
+    let actual = extract_node_times(&graph, &names, &state);
     pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);
 
     Ok(())

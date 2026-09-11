@@ -147,6 +147,12 @@ pub struct TimetreeOutput {
   /// from here rather than off the payload.
   #[serde(skip)]
   pub timetree_state: TimetreeState,
+  /// Final node names keyed by node, routed through the pipeline as a value instead of on the graph
+  /// payload. Surviving nodes keep their parsed or previously assigned names; the caller completes it
+  /// with [`assign_node_names`](treetime_graph::assign_node_names::assign_node_names) to label any
+  /// node a reroot introduced after the last topology pass.
+  #[serde(skip)]
+  pub names: BTreeMap<GraphNodeKey, Option<String>>,
 }
 
 pub fn run(
@@ -633,6 +639,7 @@ pub fn run(
     clock_branch_lengths,
     clock_state,
     timetree_state,
+    names,
   })
 }
 
@@ -961,10 +968,9 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_distribution::Distribution;
-  use treetime_graph::value_maps::node_names;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::{o, pretty_assert_array_eq};
 
   // N_e = T_c * gen_per_year (packages/treetime/src/coalescent/population_size.rs).
@@ -1142,8 +1148,8 @@ mod tests {
       o!("b")    => Some(DateConstraint::exact(2010.0)),
       o!("c")    => Some(DateConstraint::exact(2010.0)),
     };
-    let graph = nwk_read_str("((a:1,b:1)x:1,c:1)root:0;")?.graph;
-    let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
+    let NwkParse { graph, names, .. } = nwk_read_str("((a:1,b:1)x:1,c:1)root:0;")?;
+    let constraints = load_date_constraints(&dates, &graph, &names)?;
     Ok((graph, constraints))
   }
 

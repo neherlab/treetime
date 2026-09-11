@@ -9,11 +9,10 @@ pub mod tests {
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
-  use treetime_graph::value_maps::node_names;
 
   use parking_lot::RwLock;
   use std::sync::Arc;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   /// Run marginal ancestral reconstruction using dense representation.
   ///
@@ -40,7 +39,8 @@ pub mod tests {
   pub fn run_dense_marginal(
     input: &MarginalTestInput,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalDense>>; 1]), Report> {
-    let graph: GraphAncestral = nwk_read_str(&input.newick)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(&input.newick)?;
+    let graph: GraphAncestral = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&input.alignment)?;
 
@@ -56,7 +56,7 @@ pub mod tests {
       &profile_branch_lengths(&graph),
       &partitions,
       &input.alignment,
-      &node_names(&graph),
+      &names,
     )?
     .value();
     Ok((log_lh, partitions))
@@ -83,11 +83,12 @@ pub mod tests {
   pub fn run_sparse_marginal(
     input: &MarginalTestInput,
   ) -> Result<(f64, [Arc<RwLock<PartitionMarginalSparse>>; 1]), Report> {
-    let graph: GraphAncestral = nwk_read_str(&input.newick)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(&input.newick)?;
+    let graph: GraphAncestral = graph;
     let alphabet = Alphabet::default();
     let length = get_common_length(&input.alignment)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &input.alignment, &node_names(&graph))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &input.alignment, &names)?;
     let partitions = [Arc::new(RwLock::new(
       fitch.into_marginal_sparse(input.gtr.clone(), &graph)?,
     ))];

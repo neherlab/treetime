@@ -10,9 +10,8 @@ mod tests {
   use approx::assert_ulps_eq;
   use eyre::Report;
   use std::path::Path;
-  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta;
-  use treetime_io::nwk::nwk_read_file;
+  use treetime_io::nwk::{NwkParse, nwk_read_file};
 
   // `optimize --gtr=infer` must serialize the GTR after rate normalization.
   // `normalize_partition_rates` rescales `mu` so the average substitution rate
@@ -32,7 +31,9 @@ mod tests {
     let tree_path = workspace_root.join("data/flu/h3n2/20/tree.nwk");
     let aln_path = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
 
-    let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_file(&tree_path)?;
+
+    let graph: GraphAncestral = graph;
     let sequences = read_many_fasta(&[aln_path.to_str().expect("utf-8 path")], &alphabet)?;
 
     let params = OptimizeParams {
@@ -47,8 +48,6 @@ mod tests {
       reroot_spec: None,
       topology_ops: TopologyOps::default(),
     };
-
-    let names = node_names(&graph);
     let input = OptimizeInput {
       graph,
       alphabet,

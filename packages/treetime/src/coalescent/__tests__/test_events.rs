@@ -12,16 +12,20 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use treetime_distribution::{Distribution, NegLog};
-  use treetime_graph::value_maps::node_names;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::assert_error;
 
-  fn create_graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<(GraphTimetree, DateConstraints), Report> {
-    let graph = nwk_read_str(tree_nwk)?.graph;
-    let constraints = load_date_constraints(dates, &graph, &node_names(&graph))?;
-    Ok((graph, constraints))
+  fn create_graph_with_dates(
+    tree_nwk: &str,
+    dates: &DatesMap,
+  ) -> Result<(GraphTimetree, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
+    let NwkParse { graph, names, .. } = nwk_read_str(tree_nwk)?;
+    let constraints = load_date_constraints(dates, &graph, &names)?;
+    Ok((graph, names, constraints))
   }
 
   fn cal(t: f64) -> CalendarTime {
@@ -38,7 +42,7 @@ mod tests {
       "child3".to_owned() => Some(DateConstraint::exact(2015.0)),
     };
 
-    let (graph, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
+    let (graph, names, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
     let node_times = coalescent_node_times(&graph, &constraints);
     let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph, &node_times)?;
 
@@ -63,7 +67,7 @@ mod tests {
       "leaf3".to_owned() => Some(DateConstraint::exact(2012.0)),
     };
 
-    let (graph, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
+    let (graph, names, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
     let node_times = coalescent_node_times(&graph, &constraints);
     let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph, &node_times)?;
 
@@ -94,7 +98,7 @@ mod tests {
       "leaf3".to_owned() => Some(DateConstraint::exact(2012.0)),
     };
 
-    let (graph, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
+    let (graph, names, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
     let node_times = coalescent_node_times(&graph, &constraints);
     let (_present_time, events, _terminal_lineage_count) = collect_tree_events(&graph, &node_times)?;
 
@@ -118,7 +122,7 @@ mod tests {
       "leaf3".to_owned() => Some(DateConstraint::exact(2012.0)),
     };
 
-    let (graph, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
+    let (graph, names, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
     let node_times = coalescent_node_times(&graph, &constraints);
 
     assert_error!(
@@ -138,7 +142,7 @@ mod tests {
       "child2".to_owned() => Some(DateConstraint::exact(2010.0)),
       "child3".to_owned() => Some(DateConstraint::exact(2015.0)),
     };
-    let (mut graph, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
+    let (mut graph, names, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
     let new_key = graph.add_node(NodeTimetree::default());
     let mut node_times = coalescent_node_times(&graph, &constraints);
     // The disconnected node is active (has a time) but unreachable from the root, matching the payload
@@ -171,7 +175,7 @@ mod tests {
       "child3".to_owned() => Some(DateConstraint::exact(2010.0)),
     };
 
-    let (graph, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
+    let (graph, names, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
     let node_times = coalescent_node_times(&graph, &constraints);
     let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph, &node_times)?;
 
@@ -194,8 +198,8 @@ mod tests {
       "child2".to_owned() => Some(DateConstraint::exact(2010.0)),
       "child3".to_owned() => Some(DateConstraint::exact(2015.0)),
     };
-    let (graph, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
-    let child3_key = find_node_key_by_name(&graph, "child3").expect("child3 not found");
+    let (graph, names, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
+    let child3_key = find_node_key_by_name(&graph, &names, "child3").expect("child3 not found");
     let mut node_times = coalescent_node_times(&graph, &constraints);
     node_times
       .get_mut(&child3_key)
@@ -222,7 +226,7 @@ mod tests {
       "child2".to_owned() => Some(DateConstraint::exact(2010.0)),
       "child3".to_owned() => Some(DateConstraint::exact(2015.0)),
     };
-    let (graph, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
+    let (graph, names, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
     let node_times = coalescent_node_times(&graph, &constraints);
 
     let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph, &node_times)?;
@@ -246,7 +250,7 @@ mod tests {
       "leaf4".to_owned() => Some(DateConstraint::exact(2010.0)),
       "leaf5".to_owned() => Some(DateConstraint::exact(2015.0)),
     };
-    let (graph, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
+    let (graph, names, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
     let node_times = coalescent_node_times(&graph, &constraints);
 
     let (present_time, events, terminal_lineage_count) = collect_tree_events(&graph, &node_times)?;

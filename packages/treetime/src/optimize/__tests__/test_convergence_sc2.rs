@@ -8,7 +8,6 @@ mod tests {
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{collect_optimize_partitions, run_optimize_loop};
-  use treetime_graph::value_maps::node_names;
 
   use eyre::Report;
 
@@ -16,7 +15,7 @@ mod tests {
   use std::path::Path;
   use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta;
-  use treetime_io::nwk::nwk_read_file;
+  use treetime_io::nwk::{NwkParse, nwk_read_file};
 
   /// Regression test: sparse optimize loop converges on sc2/2844 (dataset with indels).
   ///
@@ -36,9 +35,9 @@ mod tests {
     let tree_path = workspace_root.join("data/sc2/2844/tree.nwk");
     let aln_path = workspace_root.join("data/sc2/2844/aln.fasta.xz");
     let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet)?;
-    let mut graph = nwk_read_file(&tree_path)?.graph;
+    let NwkParse { mut graph, names, .. } = nwk_read_file(&tree_path)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
@@ -49,7 +48,7 @@ mod tests {
     initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
 
     let max_iter = 50;
-    let names_tt_2 = node_names(&graph);
+    let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -88,9 +87,9 @@ mod tests {
     let tree_path = workspace_root.join("data/flu/h3n2/20/tree.nwk");
     let aln_path = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
     let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet)?;
-    let mut graph = nwk_read_file(&tree_path)?.graph;
+    let NwkParse { mut graph, names, .. } = nwk_read_file(&tree_path)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
@@ -100,7 +99,7 @@ mod tests {
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
     initial_guess_mixed(&graph, &mixed_partitions, true, false)?;
 
-    let names_tt_1 = node_names(&graph);
+    let names_tt_1 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,

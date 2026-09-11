@@ -105,7 +105,7 @@ pub fn run(
     merge_shared_mutation_branches(&mut input.graph, &partitions, &mut branch_lengths)?;
     commit_branch_lengths(&input.graph, &branch_lengths);
     input.graph.build()?;
-    names = assign_node_names(&input.graph)?;
+    names = assign_node_names(names, &input.graph)?;
   }
 
   let gtr = (!partitions.is_empty()).then(|| partitions[0].read_arc().gtr.clone());

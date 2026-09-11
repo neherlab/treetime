@@ -8,7 +8,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   /// Build a fixed 4-taxon test input for marginal idempotency verification.
   ///
@@ -76,7 +76,8 @@ TCGGCCGTGTRTTG--
   #[test]
   fn test_marginal_idempotency_example_dense() -> Result<(), Report> {
     let input = example_input()?;
-    let graph: GraphAncestral = nwk_read_str(&input.newick)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(&input.newick)?;
+    let graph: GraphAncestral = graph;
     let (_, partitions) = run_dense_marginal(&input)?;
 
     let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
@@ -103,7 +104,8 @@ TCGGCCGTGTRTTG--
   #[test]
   fn test_marginal_idempotency_example_sparse() -> Result<(), Report> {
     let input = example_input()?;
-    let graph: GraphAncestral = nwk_read_str(&input.newick)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(&input.newick)?;
+    let graph: GraphAncestral = graph;
     let (_, partitions) = run_sparse_marginal(&input)?;
 
     let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();

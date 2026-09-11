@@ -3,18 +3,18 @@ use crate::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphab
 use crate::payload::ancestral::GraphAncestral;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
-use treetime_graph::value_maps::node_names;
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
-use treetime_io::nwk::nwk_read_str;
+use treetime_io::nwk::{NwkParse, nwk_read_str};
 use treetime_primitives::Seq;
 
 #[test]
 fn test_attach_synthesizes_all_unknown_for_missing_tip() {
-  let graph = helpers::four_leaf_tree();
+  let (graph, names) = helpers::four_leaf_tree();
   let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
   let sequences = helpers::records(&[("A", "ACGT"), ("B", "ACGT"), ("C", "ACGT")]);
 
-  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &node_names(&graph)).unwrap();
+  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &names).unwrap();
   let by_name = helpers::by_name(completed);
 
   assert_eq!(4, by_name.len());
@@ -24,11 +24,11 @@ fn test_attach_synthesizes_all_unknown_for_missing_tip() {
 
 #[test]
 fn test_attach_aborts_above_one_third_missing() {
-  let graph = helpers::two_leaf_tree();
+  let (graph, names) = helpers::two_leaf_tree();
   let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
   let sequences = helpers::records(&[("A", "ACGT")]);
 
-  let err = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &node_names(&graph)).unwrap_err();
+  let err = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &names).unwrap_err();
 
   assert!(err.to_string().contains("one third"));
   assert!(err.to_string().contains("--ignore-missing-alns"));
@@ -36,11 +36,11 @@ fn test_attach_aborts_above_one_third_missing() {
 
 #[test]
 fn test_attach_ignore_missing_alns_bypasses_threshold() {
-  let graph = helpers::two_leaf_tree();
+  let (graph, names) = helpers::two_leaf_tree();
   let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
   let sequences = helpers::records(&[("A", "ACGT")]);
 
-  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, true, &node_names(&graph)).unwrap();
+  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, true, &names).unwrap();
   let by_name = helpers::by_name(completed);
 
   assert_eq!(2, by_name.len());
@@ -50,11 +50,11 @@ fn test_attach_ignore_missing_alns_bypasses_threshold() {
 #[test]
 fn test_attach_exactly_one_third_missing_does_not_abort() {
   // v0 uses strict `>` with float division: 1 of 3 missing (1 > 3/3 == 1.0 is false) must not abort.
-  let graph = helpers::three_leaf_tree();
+  let (graph, names) = helpers::three_leaf_tree();
   let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
   let sequences = helpers::records(&[("A", "ACGT"), ("B", "ACGT")]);
 
-  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &node_names(&graph)).unwrap();
+  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &names).unwrap();
   let by_name = helpers::by_name(completed);
 
   assert_eq!(3, by_name.len());
@@ -63,11 +63,11 @@ fn test_attach_exactly_one_third_missing_does_not_abort() {
 
 #[test]
 fn test_attach_keeps_extra_records_not_matching_any_leaf() {
-  let graph = helpers::two_leaf_tree();
+  let (graph, names) = helpers::two_leaf_tree();
   let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
   let sequences = helpers::records(&[("A", "ACGT"), ("B", "ACGT"), ("reference", "ACGT")]);
 
-  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &node_names(&graph)).unwrap();
+  let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &names).unwrap();
   let by_name = helpers::by_name(completed);
 
   assert_eq!(3, by_name.len());
@@ -94,18 +94,19 @@ fn test_sanitize_to_alphabet_folds_stop_into_unknown_for_no_stop_alphabet() {
 mod helpers {
   use super::*;
 
-  pub fn two_leaf_tree() -> GraphAncestral {
-    nwk_read_str("(A:0.1,B:0.1)root;").unwrap().graph
+  pub fn two_leaf_tree() -> (GraphAncestral, BTreeMap<GraphNodeKey, Option<String>>) {
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+    (graph, names)
   }
 
-  pub fn three_leaf_tree() -> GraphAncestral {
-    nwk_read_str("(A:0.1,B:0.1,C:0.1)root;").unwrap().graph
+  pub fn three_leaf_tree() -> (GraphAncestral, BTreeMap<GraphNodeKey, Option<String>>) {
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;").unwrap();
+    (graph, names)
   }
 
-  pub fn four_leaf_tree() -> GraphAncestral {
-    nwk_read_str("((A:0.1,B:0.1):0.1,(C:0.1,D:0.1):0.1)root;")
-      .unwrap()
-      .graph
+  pub fn four_leaf_tree() -> (GraphAncestral, BTreeMap<GraphNodeKey, Option<String>>) {
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1):0.1,(C:0.1,D:0.1):0.1)root;").unwrap();
+    (graph, names)
   }
 
   pub fn records(entries: &[(&str, &str)]) -> Vec<FastaRecord> {

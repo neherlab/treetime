@@ -4,7 +4,7 @@ use crate::payload::traits::TimetreeNode;
 use eyre::Report;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::GraphNode;
 use treetime_primitives::LogLh;
 
 /// Result of Tc optimization.
@@ -39,7 +39,7 @@ pub fn optimize_tc<N, E, D>(
   node_times: &CoalescentNodeTimes,
 ) -> Result<OptimizeTcResult, Report>
 where
-  N: GraphNode + TimetreeNode + Named,
+  N: GraphNode + TimetreeNode,
   E: GraphEdge,
   D: Sync + Send,
 {

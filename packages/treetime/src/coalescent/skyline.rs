@@ -12,7 +12,7 @@ use ndarray_linalg::{SolveTridiagonal, Tridiagonal};
 use treetime_distribution::{Distribution, DistributionFormula};
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::GraphNode;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::exp;
@@ -103,7 +103,7 @@ pub fn optimize_skyline<N, E, D>(
   node_times: &CoalescentNodeTimes,
 ) -> Result<SkylineResult, Report>
 where
-  N: GraphNode + TimetreeNode + Named,
+  N: GraphNode + TimetreeNode,
   E: GraphEdge,
   D: Sync + Send,
 {

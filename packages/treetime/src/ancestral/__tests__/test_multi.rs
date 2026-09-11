@@ -5,8 +5,7 @@ use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::payload::ancestral::GraphAncestral;
 use pretty_assertions::assert_eq;
-use treetime_graph::value_maps::node_names;
-use treetime_io::nwk::nwk_read_str;
+use treetime_io::nwk::{NwkParse, nwk_read_str};
 use treetime_utils::sync::random::get_random_number_generator;
 
 /// Two amino-acid partitions of different lengths reconstruct independently on one shared tree, one
@@ -15,7 +14,8 @@ use treetime_utils::sync::random::get_random_number_generator;
 /// in-memory: the graph is parsed from a string and sequences are built directly.
 #[test]
 fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
-  let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1)root;").unwrap().graph;
+  let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+  let graph: GraphAncestral = graph;
   let aa = Alphabet::new(AlphabetName::Aa).unwrap();
 
   let plans = vec![
@@ -32,7 +32,7 @@ fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
   };
 
   let mut rng = get_random_number_generator(params.seed);
-  let name_map = node_names(&graph);
+  let name_map = names.clone();
   let branch_lengths = profile_branch_lengths(&graph);
   let reconstructed = plans
     .into_iter()

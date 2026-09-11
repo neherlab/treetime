@@ -9,7 +9,6 @@ mod tests {
   use crate::optimize::run_loop::collect_optimize_partitions;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
-  use treetime_graph::value_maps::node_names;
 
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
@@ -19,7 +18,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   // Regression: run_optimize_mixed must not produce -inf/NaN when entering
   // with branch_length=0 and mismatched certain states. Before the fix,
@@ -27,7 +26,8 @@ mod tests {
   #[test]
   fn test_eval_zero_branch_mismatch_no_nan() -> Result<(), Report> {
     // Tree with zero-length branches to force the edge case
-    let graph: GraphAncestral = nwk_read_str("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;")?;
+    let graph: GraphAncestral = graph;
 
     // Alignment with mismatches: leaf A differs from leaf B at multiple positions,
     // so after marginal reconstruction some edges have sites where parent and child
@@ -57,18 +57,11 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    let fitch = create_fitch_partition(&graph, 1, alphabet_sparse, &aln, &node_names(&graph))?;
+    let fitch = create_fitch_partition(&graph, 1, alphabet_sparse, &aln, &names)?;
     let sparse_partitions = vec![Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ))];
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&graph),
-      &dense_partitions,
-      &aln,
-      &node_names(&graph),
-    )?
-    .value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &dense_partitions, &aln, &names)?.value();
     marginal_update(&graph, &profile_branch_lengths(&graph), &sparse_partitions)?.value();
 
     let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);

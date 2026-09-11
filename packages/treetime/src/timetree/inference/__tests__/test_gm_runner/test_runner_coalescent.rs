@@ -20,13 +20,15 @@ mod tests {
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
   use eyre::Report;
-  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
+  use treetime_graph::value_maps::edge_branch_lengths;
 
   use parking_lot::RwLock;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_graph::node::GraphNodeKey;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   /// Verifies the full timetree pipeline completes without panic when coalescent
   /// is enabled. Before the Formula discretization fixes, this would panic on
@@ -42,14 +44,14 @@ mod tests {
     let dataset = "flu_h3n2_20";
     let case = &OUTPUTS[dataset];
 
-    let (graph, partitions, clock_model, constraints) = build_timetree_setup(dataset, case)?;
+    let (graph, names, partitions, clock_model, constraints) = build_timetree_setup(dataset, case)?;
     let mut graph = graph;
     let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
     let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph, &node_times)?, &Distribution::constant(tc))?;
     let mut state = TimetreeState::new(&graph);
     let mut clock_state = ClockState::new(&graph);
     let run_branch_lengths = edge_branch_lengths(&graph);
-    let run_names = node_names(&graph);
+    let run_names = names.clone();
     run_timetree(
       &mut graph,
       &partitions,
@@ -62,7 +64,7 @@ mod tests {
       &mut clock_state,
     )?;
 
-    let times = extract_node_times(&graph, &node_names(&graph), &state);
+    let times = extract_node_times(&graph, &names, &state);
     let expected_count = graph.num_nodes();
     assert_eq!(
       expected_count,
@@ -82,10 +84,20 @@ mod tests {
   fn build_timetree_setup(
     dataset: &str,
     case: &super::super::test_gm_runner_support::support::DatasetOutputs,
-  ) -> Result<(GraphTimetree, PartitionTimetreeAllVec, ClockModel, DateConstraints), Report> {
-    let mut graph: GraphTimetree = nwk_read_str(case.rerooted_tree_nwk())?.graph;
+  ) -> Result<
+    (
+      GraphTimetree,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      PartitionTimetreeAllVec,
+      ClockModel,
+      DateConstraints,
+    ),
+    Report,
+  > {
+    let NwkParse { graph, names, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
+    let mut graph: GraphTimetree = graph;
     let dates = load_dates_for_dataset(dataset)?;
-    let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
+    let constraints = load_date_constraints(&dates, &graph, &names)?;
 
     let aln = load_alignment_for_dataset(dataset)?;
     let dense_partition = Arc::new(RwLock::new(PartitionTimetree::Dense(PartitionMarginalDense::new(
@@ -96,20 +108,13 @@ mod tests {
     ))));
 
     let partitions: PartitionTimetreeAllVec = vec![dense_partition];
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&graph),
-      &partitions,
-      &aln,
-      &node_names(&graph),
-    )?
-    .value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
     let mut clock_state = ClockState::new(&graph);
-    initialize_node_divergences(&graph, &mut clock_state, &node_names(&graph))?;
+    initialize_node_divergences(&graph, &mut clock_state, &names)?;
 
     let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times();
     let mut clock_estimate_state = ClockState::seed_from_values(&graph, &times);
-    let names_tt_1 = node_names(&graph);
+    let names_tt_1 = names.clone();
     let clock_model = estimate_clock_model_with_reroot_policy(
       &mut graph,
       &mut clock_estimate_state,
@@ -123,6 +128,6 @@ mod tests {
     )?
     .into_clock_model()?;
 
-    Ok((graph, partitions, clock_model, constraints))
+    Ok((graph, names, partitions, clock_model, constraints))
   }
 }

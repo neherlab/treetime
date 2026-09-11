@@ -7,8 +7,10 @@ mod tests {
   use crate::seq::mutation::Sub;
   use parking_lot::RwLock;
   use proptest::prelude::*;
+  use std::collections::BTreeMap;
   use std::collections::BTreeSet;
   use std::sync::Arc;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_graph::value_maps::edge_branch_lengths;
 
   proptest! {
@@ -23,7 +25,7 @@ mod tests {
       revert_masks in prop::collection::vec(0_u32..32, 3..7),
       own_counts in prop::collection::vec(0_usize..3, 3..7),
     ) {
-      let (mut graph, partition, before) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
+      let (mut graph, names, partition, before) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
       let sparse = vec![partition];
 
       let mut branch_lengths = edge_branch_lengths(&graph);
@@ -46,14 +48,14 @@ mod tests {
       revert_masks in prop::collection::vec(0_u32..32, 3..7),
       own_counts in prop::collection::vec(0_usize..3, 3..7),
     ) {
-      let (mut graph, partition, _before) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
-      let leaves_before = helpers::leaf_names(&graph);
+      let (mut graph, names, partition, _before) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
+      let leaves_before = helpers::leaf_names(&names, &graph);
       let sparse = vec![partition];
 
       let mut branch_lengths = edge_branch_lengths(&graph);
       resolve_polytomies(&mut graph, &sparse, &helpers::no_dense(), TopologyOps::default(), &mut branch_lengths).unwrap();
 
-      prop_assert_eq!(helpers::leaf_names(&graph), leaves_before);
+      prop_assert_eq!(helpers::leaf_names(&names, &graph), leaves_before);
 
       for bl in branch_lengths.values().flatten() {
         prop_assert!(*bl >= 0.0, "negative branch length {bl}");
@@ -109,7 +111,7 @@ mod tests {
     use crate::test_utils::find_edge_key;
     use itertools::Itertools;
     use maplit::btreemap;
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::nwk::{NwkParse, nwk_read_str};
     use treetime_primitives::{AsciiChar, Seq, seq};
 
     fn c(b: u8) -> AsciiChar {
@@ -120,12 +122,12 @@ mod tests {
       vec![]
     }
 
-    pub fn leaf_names(graph: &GraphAncestral) -> BTreeSet<String> {
+    pub fn leaf_names(names: &BTreeMap<GraphNodeKey, Option<String>>, graph: &GraphAncestral) -> BTreeSet<String> {
       graph
         .get_nodes()
         .iter()
         .filter(|n| n.read_arc().is_leaf())
-        .filter_map(|n| n.read_arc().payload().read_arc().name.clone())
+        .filter_map(|n| names.get(&n.read_arc().key()).cloned().flatten())
         .collect()
     }
 
@@ -147,14 +149,24 @@ mod tests {
       k: usize,
       revert_masks: &[u32],
       own_counts: &[usize],
-    ) -> (GraphAncestral, Arc<RwLock<PartitionMarginalSparse>>, usize) {
+    ) -> (
+      GraphAncestral,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      Arc<RwLock<PartitionMarginalSparse>>,
+      usize,
+    ) {
       let n_children = n_children.min(revert_masks.len()).min(own_counts.len()).max(3);
       let length = 200_usize;
 
       let child_names: Vec<String> = (0..n_children).map(|i| format!("C{i}")).collect();
       let inner = child_names.iter().map(|name| format!("{name}:0.1")).join(",");
       let newick = format!("((({inner})V:0.2)U:0.1)root:0.0;");
-      let graph: GraphAncestral = nwk_read_str(&newick).unwrap().graph;
+      let NwkParse {
+        graph,
+        names: node_names,
+        ..
+      } = nwk_read_str(&newick).unwrap();
+      let graph: GraphAncestral = graph;
 
       // M_v: k substitutions A->C at positions 0..k.
       let parent_subs: Vec<Sub> = (0..k).map(|pos| Sub::new(c(b'A'), pos, c(b'C')).unwrap()).collect();
@@ -180,8 +192,8 @@ mod tests {
       }
 
       let total: usize = edge_mutations.iter().map(|(_, _, subs)| subs.len()).sum();
-      let partition = make_partition(&graph, length, &edge_mutations);
-      (graph, partition, total)
+      let partition = make_partition(&graph, &node_names, length, &edge_mutations);
+      (graph, node_names, partition, total)
     }
 
     /// Build a bifurcating-root case `root -> {V, S}`. V has `g` children in the sibling's G
@@ -204,7 +216,12 @@ mod tests {
         .map(|name| format!("{name}:0.1"))
         .join(",");
       let newick = format!("(({children})V:0.1,S:0.1)root:0.0;");
-      let graph: GraphAncestral = nwk_read_str(&newick).unwrap().graph;
+      let NwkParse {
+        graph,
+        names: node_names,
+        ..
+      } = nwk_read_str(&newick).unwrap();
+      let graph: GraphAncestral = graph;
 
       let mut edge_mutations: Vec<(String, String, Vec<Sub>)> = vec![(
         "root".to_owned(),
@@ -230,12 +247,13 @@ mod tests {
       }
 
       let before: usize = edge_mutations.iter().map(|(_, _, subs)| subs.len()).sum();
-      let partition = make_partition(&graph, length, &edge_mutations);
+      let partition = make_partition(&graph, &node_names, length, &edge_mutations);
       (graph, partition, before, 1 + own_total)
     }
 
     fn make_partition(
       graph: &GraphAncestral,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
       edge_mutations: &[(String, String, Vec<Sub>)],
     ) -> Arc<RwLock<PartitionMarginalSparse>> {
@@ -261,7 +279,7 @@ mod tests {
 
       for (source, target, subs) in edge_mutations {
         let edge_key =
-          find_edge_key(graph, source, target).unwrap_or_else(|| panic!("edge {source}->{target} missing"));
+          find_edge_key(graph, names, source, target).unwrap_or_else(|| panic!("edge {source}->{target} missing"));
         partition
           .edges
           .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));

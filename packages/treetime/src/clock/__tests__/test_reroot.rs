@@ -6,13 +6,14 @@ mod tests {
   use crate::clock::reroot::{RerootParams, reroot_in_place};
   use crate::o;
   use crate::pretty_assert_ulps_eq;
+  use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use treetime_graph::node::Named;
   use treetime_graph::reroot::remove_node_if_trivial;
-  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
-  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_graph::assign_node_names::assign_node_names;
+  use treetime_io::nwk::{NwkParse, NwkWriteOptions, nwk_read_str, nwk_write_str};
   use treetime_utils::assert_error;
 
   use helpers::{setup_reroot_test_graph, setup_reroot_test_graph_with_dates};
@@ -25,11 +26,10 @@ mod tests {
     //      mid  B
     //      /
     //     A
-    let mut graph: GraphClock = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
+    let mut graph: GraphClock = graph;
 
-    let mid_key = graph
-      .find_node(|node| node.name.as_deref() == Some("mid"))
-      .expect("Expected node named 'mid'");
+    let mid_key = find_node_key_by_name(&graph, &names, "mid").expect("Expected node named 'mid'");
 
     remove_node_if_trivial(&mut graph, mid_key)?;
 
@@ -38,7 +38,7 @@ mod tests {
     let expected = "(B:0.2,A:0.8)root;";
     let actual = nwk_write_str(
       &graph,
-      &node_names(&graph),
+      &names,
       &edge_branch_lengths(&graph),
       &NwkWriteOptions::default(),
     )?;
@@ -49,7 +49,7 @@ mod tests {
 
   #[test]
   fn test_reroot_min_dev_matches_fixed_zero_rate_objective() -> Result<(), Report> {
-    let (mut graph, options, mut state) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut state) = setup_reroot_test_graph()?;
     let branch_params = BranchPointOptimizationParams::default();
     let expected = find_best_root(
       &graph,
@@ -65,7 +65,7 @@ mod tests {
       spec: RerootSpec::Method(RerootMethod::MinDev),
       ..RerootParams::default()
     };
-    let names_tt_9 = node_names(&graph);
+    let names_tt_9 = names.clone();
     let actual = reroot_in_place(
       &mut graph,
       &mut state,
@@ -96,9 +96,9 @@ mod tests {
       o!("C") => 2001.0,
       o!("D") => 2000.0,
     };
-    let (mut graph_ascending, options_ascending, mut state_ascending) =
+    let (mut graph_ascending, graph_ascending_names, options_ascending, mut state_ascending) =
       setup_reroot_test_graph_with_dates(&dates_ascending)?;
-    let (mut graph_descending, options_descending, mut state_descending) =
+    let (mut graph_descending, graph_descending_names, options_descending, mut state_descending) =
       setup_reroot_test_graph_with_dates(&dates_descending)?;
     let reroot_params = RerootParams {
       spec: RerootSpec::Method(RerootMethod::MinDev),
@@ -106,7 +106,7 @@ mod tests {
     };
     let branch_params = BranchPointOptimizationParams::default();
 
-    let names_tt_8 = node_names(&graph_ascending);
+    let names_tt_8 = graph_ascending_names.clone();
     reroot_in_place(
       &mut graph_ascending,
       &mut state_ascending,
@@ -115,7 +115,7 @@ mod tests {
       &reroot_params,
       &names_tt_8,
     )?;
-    let names_tt_7 = node_names(&graph_descending);
+    let names_tt_7 = graph_descending_names.clone();
     reroot_in_place(
       &mut graph_descending,
       &mut state_descending,
@@ -125,15 +125,18 @@ mod tests {
       &names_tt_7,
     )?;
 
+    let graph_ascending_names = assign_node_names(graph_ascending_names, &graph_ascending)?;
+    let graph_descending_names = assign_node_names(graph_descending_names, &graph_descending)?;
+
     let expected = nwk_write_str(
       &graph_ascending,
-      &node_names(&graph_ascending),
+      &graph_ascending_names.clone(),
       &edge_branch_lengths(&graph_ascending),
       &NwkWriteOptions::default(),
     )?;
     let actual = nwk_write_str(
       &graph_descending,
-      &node_names(&graph_descending),
+      &graph_descending_names.clone(),
       &edge_branch_lengths(&graph_descending),
       &NwkWriteOptions::default(),
     )?;
@@ -144,7 +147,7 @@ mod tests {
 
   #[test]
   fn test_reroot_policy_allow_edge_split_false_no_new_nodes() -> Result<(), Report> {
-    let (mut graph, options, mut state) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut state) = setup_reroot_test_graph()?;
     let node_count_before = graph.get_nodes().len();
 
     // Both flags false: don't split edges AND don't remove old root
@@ -155,7 +158,7 @@ mod tests {
       ..RerootParams::default()
     };
 
-    let names_tt_6 = node_names(&graph);
+    let names_tt_6 = names.clone();
     reroot_in_place(
       &mut graph,
       &mut state,
@@ -176,7 +179,7 @@ mod tests {
 
   #[test]
   fn test_reroot_policy_remove_old_root_if_trivial_false_preserves_old_root() -> Result<(), Report> {
-    let (mut graph, options, mut state) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut state) = setup_reroot_test_graph()?;
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
 
     let reroot_params = RerootParams {
@@ -185,7 +188,7 @@ mod tests {
       ..RerootParams::default()
     };
 
-    let names_tt_5 = node_names(&graph);
+    let names_tt_5 = names.clone();
     let reroot_result = reroot_in_place(
       &mut graph,
       &mut state,
@@ -207,12 +210,12 @@ mod tests {
 
   #[test]
   fn test_reroot_policy_default_allows_edge_split() -> Result<(), Report> {
-    let (mut graph, options, mut state) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut state) = setup_reroot_test_graph()?;
     let node_count_before = graph.get_nodes().len();
 
     let reroot_params = RerootParams::default();
 
-    let names_tt_4 = node_names(&graph);
+    let names_tt_4 = names.clone();
     reroot_in_place(
       &mut graph,
       &mut state,
@@ -236,13 +239,13 @@ mod tests {
 
   #[test]
   fn test_reroot_tips_uses_mrca_branch() -> Result<(), Report> {
-    let (mut graph, options, mut state) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut state) = setup_reroot_test_graph()?;
     let reroot_params = RerootParams {
       spec: RerootSpec::Tips(vec![o!("A"), o!("B")]),
       ..RerootParams::default()
     };
 
-    let names_tt_3 = node_names(&graph);
+    let names_tt_3 = names.clone();
     let reroot_result = reroot_in_place(
       &mut graph,
       &mut state,
@@ -262,14 +265,7 @@ mod tests {
       .map(|edge_key| {
         let child_key = graph.get_target_node_key(*edge_key)?;
         let child = graph.get_node(child_key).expect("child should exist");
-        Ok(
-          child
-            .read_arc()
-            .payload()
-            .read_arc()
-            .name()
-            .map(|name| name.as_ref().to_owned()),
-        )
+        Ok(names.get(&child_key).cloned().flatten())
       })
       .collect::<Result<Vec<_>, Report>>()?;
 
@@ -283,13 +279,13 @@ mod tests {
 
   #[test]
   fn test_reroot_tips_reports_missing_tip() -> Result<(), Report> {
-    let (mut graph, options, mut state) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut state) = setup_reroot_test_graph()?;
     let reroot_params = RerootParams {
       spec: RerootSpec::Tips(vec![o!("missing")]),
       ..RerootParams::default()
     };
 
-    let names_tt_2 = node_names(&graph);
+    let names_tt_2 = names.clone();
     let result = reroot_in_place(
       &mut graph,
       &mut state,
@@ -305,13 +301,13 @@ mod tests {
 
   #[test]
   fn test_reroot_oldest_uses_oldest_dated_leaf() -> Result<(), Report> {
-    let (mut graph, options, mut state) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut state) = setup_reroot_test_graph()?;
     let reroot_params = RerootParams {
       spec: RerootSpec::Method(RerootMethod::Oldest),
       ..RerootParams::default()
     };
 
-    let names_tt_1 = node_names(&graph);
+    let names_tt_1 = names.clone();
     let reroot_result = reroot_in_place(
       &mut graph,
       &mut state,
@@ -331,14 +327,7 @@ mod tests {
       .map(|edge_key| {
         let child_key = graph.get_target_node_key(*edge_key)?;
         let child = graph.get_node(child_key).expect("child should exist");
-        Ok(
-          child
-            .read_arc()
-            .payload()
-            .read_arc()
-            .name()
-            .map(|name| name.as_ref().to_owned()),
-        )
+        Ok(names.get(&child_key).cloned().flatten())
       })
       .collect::<Result<Vec<_>, Report>>()?;
 
@@ -358,22 +347,20 @@ mod tests {
     use eyre::Report;
     use maplit::btreemap;
     use std::collections::BTreeMap;
-    use treetime_graph::node::{GraphNodeKey, Named};
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_graph::node::GraphNodeKey;
+    use treetime_io::nwk::{NwkParse, nwk_read_str};
 
-    pub fn leaf_times(graph: &GraphClock, dates: &BTreeMap<String, f64>) -> BTreeMap<GraphNodeKey, Option<f64>> {
+    pub fn leaf_times(
+      graph: &GraphClock,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      dates: &BTreeMap<String, f64>,
+    ) -> BTreeMap<GraphNodeKey, Option<f64>> {
       graph
         .get_leaves()
         .iter()
         .map(|node| {
           let node = node.read_arc();
-          let name = node
-            .payload()
-            .read_arc()
-            .name()
-            .expect("Leaf has name")
-            .as_ref()
-            .to_owned();
+          let name = names[&node.key()].clone().expect("Leaf has name");
           (node.key(), dates.get(&name).copied())
         })
         .collect()
@@ -381,19 +368,36 @@ mod tests {
 
     pub fn setup_reroot_test_graph_with_dates(
       dates: &BTreeMap<String, f64>,
-    ) -> Result<(GraphClock, ClockParams, ClockState), Report> {
-      let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
-      let times = leaf_times(&graph, dates);
+    ) -> Result<
+      (
+        GraphClock,
+        BTreeMap<GraphNodeKey, Option<String>>,
+        ClockParams,
+        ClockState,
+      ),
+      Report,
+    > {
+      let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+      let graph: GraphClock = graph;
+      let times = leaf_times(&graph, &names, dates);
 
       let options = ClockParams::default();
       let mut state = ClockState::seed_from_values(&graph, &times);
       clock_regression_backward(&graph, &mut state, &options, None)?;
       clock_regression_forward(&graph, &mut state, &options, None)?;
 
-      Ok((graph, options, state))
+      Ok((graph, names, options, state))
     }
 
-    pub fn setup_reroot_test_graph() -> Result<(GraphClock, ClockParams, ClockState), Report> {
+    pub fn setup_reroot_test_graph() -> Result<
+      (
+        GraphClock,
+        BTreeMap<GraphNodeKey, Option<String>>,
+        ClockParams,
+        ClockState,
+      ),
+      Report,
+    > {
       let dates = btreemap! {
         o!("A") => 2013.0,
         o!("B") => 2022.0,

@@ -3,7 +3,7 @@ mod __tests__;
 
 use crate::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use crate::graph::{Graph, SafeNode};
-use crate::node::{GraphNode, GraphNodeKey, Named};
+use crate::node::{GraphNode, GraphNodeKey};
 use crate::value_maps::edge_branch_lengths;
 use eyre::Report;
 use itertools::Itertools;
@@ -59,7 +59,7 @@ impl TopologyOrderSpec {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
   ) -> Result<(), Report>
   where
-    N: GraphNode + Named,
+    N: GraphNode,
     E: GraphEdge + HasBranchLength,
     D: Sync + Send,
   {

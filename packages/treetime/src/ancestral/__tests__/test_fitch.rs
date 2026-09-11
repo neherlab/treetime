@@ -24,23 +24,15 @@ mod tests {
   use std::sync::{Arc, LazyLock};
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::reroot::{RerootChanges, apply_reroot_topology, remove_node_if_trivial, split_edge};
-  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::AsciiChar;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::vec_of_owned;
 
-  /// Retrieve the name of a graph node by its key. Panics if the node is missing or unnamed.
-  fn get_node_name(graph: &GraphAncestral, key: GraphNodeKey) -> String {
-    let node = graph.get_node(key).expect("node exists");
-    node
-      .read_arc()
-      .payload()
-      .read_arc()
-      .name
-      .clone()
-      .expect("node has name")
+  /// Retrieve the name of a graph node by its key from the threaded name map. Panics if unnamed.
+  fn get_node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {
+    names[&key].clone().expect("node has name")
   }
 
   /// Collect substitution mutations on every edge, keyed by "parent->child" label.
@@ -48,14 +40,18 @@ mod tests {
   /// Each edge's substitutions are formatted as strings (e.g. "A1G" for A->G at position 1).
   /// Used to verify that compression (backward + forward + cleanup) correctly placed
   /// mutations on branches.
-  fn collect_edge_subs(graph: &GraphAncestral, partition: &PartitionFitch) -> BTreeMap<String, Vec<String>> {
+  fn collect_edge_subs(
+    graph: &GraphAncestral,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    partition: &PartitionFitch,
+  ) -> BTreeMap<String, Vec<String>> {
     graph
       .get_edges()
       .iter()
       .map(|edge| {
         let edge = edge.read_arc();
-        let parent_name = get_node_name(graph, edge.source());
-        let child_name = get_node_name(graph, edge.target());
+        let parent_name = get_node_name(names, edge.source());
+        let child_name = get_node_name(names, edge.target());
         let edge_name = format!("{parent_name}->{child_name}");
         let subs = partition.edges[&edge.key()]
           .fitch_subs()
@@ -106,10 +102,15 @@ mod tests {
 
   /// Look up a node by name and return its variable positions after the Fitch backward pass.
   /// Panics if no node with the given name exists.
-  fn get_node_variable_positions_by_name(graph: &GraphAncestral, partition: &PartitionFitch, name: &str) -> Vec<usize> {
+  fn get_node_variable_positions_by_name(
+    graph: &GraphAncestral,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    partition: &PartitionFitch,
+    name: &str,
+  ) -> Vec<usize> {
     for node in graph.get_nodes() {
       let node = node.read_arc();
-      let node_name = node.payload().read_arc().name.clone();
+      let node_name = names[&node.key()].clone();
       if node_name.as_deref() == Some(name) {
         return partition.nodes[&node.key()]
           .seq
@@ -133,13 +134,17 @@ mod tests {
     partition.nodes[&root_key].seq.sequence.as_str().to_owned()
   }
 
-  fn get_internal_sequences(graph: &GraphAncestral, partition: &PartitionFitch) -> BTreeMap<String, String> {
+  fn get_internal_sequences(
+    graph: &GraphAncestral,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    partition: &PartitionFitch,
+  ) -> BTreeMap<String, String> {
     graph
       .get_internal_nodes()
       .iter()
       .map(|node| {
         let node = node.read_arc();
-        let node_name = node.payload().read_arc().name.clone().unwrap();
+        let node_name = names[&node.key()].clone().unwrap();
         let sequence = partition.nodes[&node.key()].seq.sequence.as_str().to_owned();
         (node_name, sequence)
       })
@@ -151,14 +156,18 @@ mod tests {
   /// Each indel is formatted as a range with parent and child states (e.g. "12--13: T -> -"
   /// for a deletion of T at positions 12-13). Used to verify that the Fitch algorithm correctly
   /// identifies gap openings, extensions, and insertions relative to the ancestral sequence.
-  fn collect_edge_indels(graph: &GraphAncestral, partition: &PartitionFitch) -> BTreeMap<String, Vec<String>> {
+  fn collect_edge_indels(
+    graph: &GraphAncestral,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    partition: &PartitionFitch,
+  ) -> BTreeMap<String, Vec<String>> {
     graph
       .get_edges()
       .iter()
       .map(|edge| {
         let edge = edge.read_arc();
-        let parent_name = get_node_name(graph, edge.source());
-        let child_name = get_node_name(graph, edge.target());
+        let parent_name = get_node_name(names, edge.source());
+        let child_name = get_node_name(names, edge.target());
         let edge_name = format!("{parent_name}->{child_name}");
         let indels = partition.edges[&edge.key()]
           .indels
@@ -217,7 +226,8 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
 
@@ -228,12 +238,12 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &node_names(&graph))?;
+    compress_sequences(&graph, &mut partition, &aln, &names)?;
     let partitions_parsimony = [Arc::new(RwLock::new(partition))];
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, false, &partitions_parsimony, |node, seq| {
-      actual.insert(node.payload.name.clone(), seq.to_string());
+      actual.insert(names[&node.key].clone(), seq.to_string());
       Ok(())
     })?;
 
@@ -289,7 +299,8 @@ mod tests {
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
 
@@ -300,12 +311,12 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &node_names(&graph))?;
+    compress_sequences(&graph, &mut partition, &aln, &names)?;
     let partitions_parsimony = [Arc::new(RwLock::new(partition))];
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_fitch(&graph, true, &partitions_parsimony, |node, seq| {
-      actual.insert(node.payload.name.clone(), seq.to_string());
+      actual.insert(names[&node.key].clone(), seq.to_string());
       Ok(())
     })?;
 
@@ -333,7 +344,8 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphAncestral = graph;
     let alphabet = Alphabet::default();
 
     let mut partition = PartitionFitch {
@@ -343,8 +355,8 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &node_names(&graph))?;
-    let actual = get_internal_sequences(&graph, &partition);
+    compress_sequences(&graph, &mut partition, &aln, &names)?;
+    let actual = get_internal_sequences(&graph, &names, &partition);
     let expected = btreemap! {
       o!("AB") => o!("GCGTACGT"),
       o!("CD") => o!("GCGTACGT"),
@@ -382,7 +394,8 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
 
@@ -393,10 +406,10 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &node_names(&graph))?;
+    compress_sequences(&graph, &mut partition, &aln, &names)?;
 
     // Verify substitutions on edges
-    let actual_subs = collect_edge_subs(&graph, &partition);
+    let actual_subs = collect_edge_subs(&graph, &names, &partition);
     let expected_subs = btreemap! {
       o!("AB->A")    => vec_of_owned!["C6G", "T8C"],
       o!("AB->B")    => vec_of_owned!["A1G"],
@@ -408,7 +421,7 @@ mod tests {
     assert_eq!(expected_subs, actual_subs);
 
     // Verify indels on edges
-    let actual_indels = collect_edge_indels(&graph, &partition);
+    let actual_indels = collect_edge_indels(&graph, &names, &partition);
     let expected_indels = btreemap! {
       o!("AB->A")     => vec_of_owned!["14--16: -- -> AC"],
       o!("AB->B")     => vec![],
@@ -456,8 +469,9 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let graph: GraphAncestral =
-      nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?.graph;
+    let NwkParse { graph, names, .. } =
+      nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
+    let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
 
@@ -468,10 +482,10 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &node_names(&graph))?;
+    compress_sequences(&graph, &mut partition, &aln, &names)?;
 
     // Verify substitutions on edges
-    let actual_subs = collect_edge_subs(&graph, &partition);
+    let actual_subs = collect_edge_subs(&graph, &names, &partition);
     let expected_subs = btreemap! {
       o!("AB->A")     => vec![],
       o!("AB->B")     => vec![],
@@ -485,7 +499,7 @@ mod tests {
     assert_eq!(expected_subs, actual_subs);
 
     // Verify indels on edges
-    let actual_indels = collect_edge_indels(&graph, &partition);
+    let actual_indels = collect_edge_indels(&graph, &names, &partition);
     let expected_indels = btreemap! {
       o!("AB->A")     => vec![o!("3--4: A -> -")],
       o!("AB->B")     => vec![o!("1--2: C -> -")],
@@ -534,7 +548,8 @@ mod tests {
     )?;
 
     // CDE is a polytomy with 3 children: C, D, E
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
+    let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
 
@@ -545,7 +560,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &node_names(&graph))?;
+    compress_sequences(&graph, &mut partition, &aln, &names)?;
 
     // Verify substitutions on edges
     //
@@ -556,7 +571,7 @@ mod tests {
     // which commits `T` and charges only `CDE->E` plus `A4T` on `root->CDE`, for two. Two is
     // minimal: B reads `A`, C and D read `T`, and E reads `C`, three distinct states in separate
     // subtrees, so at least two changes are unavoidable.
-    let actual_subs = collect_edge_subs(&graph, &partition);
+    let actual_subs = collect_edge_subs(&graph, &names, &partition);
     let expected_subs = btreemap! {
       o!("AB->A")     => vec![],
       o!("AB->B")     => vec![],
@@ -569,7 +584,7 @@ mod tests {
     assert_eq!(expected_subs, actual_subs);
 
     // Verify indels on edges
-    let actual_indels = collect_edge_indels(&graph, &partition);
+    let actual_indels = collect_edge_indels(&graph, &names, &partition);
     let expected_indels = btreemap! {
       o!("AB->A")     => vec![o!("3--4: A -> -")],
       o!("AB->B")     => vec![o!("1--2: C -> -")],
@@ -620,7 +635,8 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphAncestral = graph;
 
     let alphabet = Alphabet::default();
 
@@ -633,7 +649,7 @@ mod tests {
     };
 
     // Run backward pass only
-    attach_seqs_to_graph(&graph, &mut partition, &aln, &node_names(&graph))?;
+    attach_seqs_to_graph(&graph, &mut partition, &aln, &names)?;
     fitch_backward(&graph, &mut partition)?;
 
     {
@@ -665,11 +681,11 @@ mod tests {
       );
 
       // Verify internal node AB has variable positions (specific values depend on leaf data)
-      let ab_vars = get_node_variable_positions_by_name(&graph, &partition, "AB");
+      let ab_vars = get_node_variable_positions_by_name(&graph, &names, &partition, "AB");
       assert!(!ab_vars.is_empty(), "AB should have variable positions");
 
       // Verify internal node CD has variable positions
-      let cd_vars = get_node_variable_positions_by_name(&graph, &partition, "CD");
+      let cd_vars = get_node_variable_positions_by_name(&graph, &names, &partition, "CD");
       assert!(!cd_vars.is_empty(), "CD should have variable positions");
     }
 
@@ -719,7 +735,8 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let mut graph: GraphAncestral = graph;
     let alphabet = Alphabet::default();
 
     let mut fitch = PartitionFitch {
@@ -729,7 +746,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, &aln, &node_names(&graph))?;
+    compress_sequences(&graph, &mut fitch, &aln, &names)?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -739,8 +756,8 @@ mod tests {
 
     // Find relevant node keys and the AB->A edge key
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
-    let ab_key = find_node_key_by_name(&graph, "AB").expect("AB node not found");
-    let a_key = find_node_key_by_name(&graph, "A").expect("A node not found");
+    let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB node not found");
+    let a_key = find_node_key_by_name(&graph, &names, "A").expect("A node not found");
 
     let edge_ab_a_key = graph
       .get_edges()
@@ -957,7 +974,8 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let mut graph: GraphAncestral = graph;
     let alphabet = Alphabet::default();
 
     let mut fitch = PartitionFitch {
@@ -967,7 +985,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, &aln, &node_names(&graph))?;
+    compress_sequences(&graph, &mut fitch, &aln, &names)?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -976,8 +994,8 @@ mod tests {
     let mut sparse = fitch.into_marginal_sparse(gtr, &graph)?;
 
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
-    let ab_key = find_node_key_by_name(&graph, "AB").expect("AB node not found");
-    let a_key = find_node_key_by_name(&graph, "A").expect("A node not found");
+    let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB node not found");
+    let a_key = find_node_key_by_name(&graph, &names, "A").expect("A node not found");
 
     let edge_ab_a_key = graph
       .get_edges()
@@ -995,7 +1013,7 @@ mod tests {
       .iter()
       .find(|e| {
         let e = e.read_arc();
-        let cd_key = find_node_key_by_name(&graph, "CD").unwrap();
+        let cd_key = find_node_key_by_name(&graph, &names, "CD").unwrap();
         e.source() == old_root_key && e.target() == cd_key
       })
       .map(|e| e.read_arc().key())
@@ -1103,7 +1121,8 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let mut graph: GraphAncestral = graph;
     let alphabet = Alphabet::default();
 
     let mut fitch = PartitionFitch {
@@ -1113,7 +1132,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, &aln, &node_names(&graph))?;
+    compress_sequences(&graph, &mut fitch, &aln, &names)?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -1127,8 +1146,8 @@ mod tests {
 
     // Reroot on AB->A
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
-    let ab_key = find_node_key_by_name(&graph, "AB").expect("AB node not found");
-    let a_key = find_node_key_by_name(&graph, "A").expect("A node not found");
+    let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB node not found");
+    let a_key = find_node_key_by_name(&graph, &names, "A").expect("A node not found");
 
     let edge_ab_a_key = graph
       .get_edges()

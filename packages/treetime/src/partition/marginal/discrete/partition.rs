@@ -12,7 +12,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::argmax_first;
 
@@ -47,7 +47,7 @@ impl PartitionMarginalDiscrete {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
   ) -> Result<(), Report>
   where
-    N: GraphNode + Named,
+    N: GraphNode,
     E: EdgeOptimizeOps,
   {
     let n_states = self.n_states();
@@ -143,7 +143,7 @@ where
 
 impl<N, E> MarginalPartition<N, E> for PartitionMarginalDiscrete
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   fn marginal_data(&self) -> &MarginalData {
@@ -166,7 +166,7 @@ where
 
 impl<N, E> IndexedMarginalPartition<N, E> for PartitionMarginalDiscrete
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   fn indexed_missing_node(&self, _key: GraphNodeKey) -> Result<DenseNodePartition, Report> {
@@ -194,7 +194,7 @@ where
 
 impl<N, E> PartitionMarginalPasses<N, E> for PartitionMarginalDiscrete
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   fn as_marginal_pass(&mut self) -> MarginalPass<'_, N, E> {

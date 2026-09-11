@@ -12,13 +12,12 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
   use eyre::Report;
-  use treetime_graph::value_maps::node_names;
 
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   fn setup_dense_with_unknowns() -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
@@ -32,7 +31,8 @@ ACGTACGTNN
 >D
 NNGTACGTAC
 ";
-    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let graph: GraphAncestral = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
@@ -49,7 +49,7 @@ NNGTACGTAC
       &profile_branch_lengths(&graph),
       std::slice::from_ref(&partition),
       &aln,
-      &node_names(&graph),
+      &names,
     )?
     .value();
     Ok((graph, partition))
@@ -67,12 +67,13 @@ ACGTACGTNN
 >D
 NNGTACGTAC
 ";
-    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let graph: GraphAncestral = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let partition = Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ));
@@ -171,7 +172,8 @@ AC--ACGTAC
 >D
 ACGTACGTAC
 ";
-    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let graph: GraphAncestral = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
@@ -188,7 +190,7 @@ ACGTACGTAC
       &profile_branch_lengths(&graph),
       std::slice::from_ref(&partition),
       &aln,
-      &node_names(&graph),
+      &names,
     )?
     .value();
     Ok((graph, partition))
@@ -247,12 +249,13 @@ AC--ACGTAC
 >D
 ACGTACGTAC
 ";
-    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let graph: GraphAncestral = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let partition = Arc::new(RwLock::new(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
     ));

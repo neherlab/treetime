@@ -22,18 +22,25 @@ mod tests {
   use rstest::rstest;
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::value_maps::edge_branch_lengths;
-  use treetime_graph::value_maps::node_names;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::Seq;
 
   #[test]
   fn test_no_indels_drops_indel_contribution_from_likelihood() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let mut graph_with: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_with, sparse_with, mixed_with) = setup_partitions(&graph_with, &aln)?;
+    let NwkParse {
+      graph: mut graph_with,
+      names: graph_with_names,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
+    let (dense_with, sparse_with, mixed_with) = setup_partitions(&graph_with, &graph_with_names, &aln)?;
 
-    let mut graph_without: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_without, sparse_without, mixed_without) = setup_partitions(&graph_without, &aln)?;
+    let NwkParse {
+      graph: mut graph_without,
+      names: graph_without_names,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
+    let (dense_without, sparse_without, mixed_without) = setup_partitions(&graph_without, &graph_without_names, &aln)?;
 
     let first_edge_key = graph_with.get_edges()[0].read_arc().key();
     graph_with.get_edges()[0]
@@ -61,7 +68,7 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
-    let names_tt_4 = node_names(&graph_with);
+    let names_tt_4 = graph_with_names.clone();
     let result_with = run_optimize_loop(
       &mut graph_with,
       &sparse_with,
@@ -76,7 +83,7 @@ mod tests {
       &names_tt_4,
     )?;
 
-    let names_tt_3 = node_names(&graph_without);
+    let names_tt_3 = graph_without_names.clone();
     let result_without = run_optimize_loop(
       &mut graph_without,
       &sparse_without,
@@ -103,8 +110,9 @@ mod tests {
   #[test]
   fn test_no_indels_optimizer_ignores_indel_counts() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (_, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let (_, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     let first_edge_key = graph.get_edges()[0].read_arc().key();
     graph.get_edges()[0]
@@ -140,13 +148,21 @@ mod tests {
   #[test]
   fn test_no_indels_matches_no_indel_data() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let mut graph_no_flag: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_nf, sparse_nf, mixed_nf) = setup_partitions(&graph_no_flag, &aln)?;
+    let NwkParse {
+      graph: mut graph_no_flag,
+      names: graph_no_flag_names,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
+    let (dense_nf, sparse_nf, mixed_nf) = setup_partitions(&graph_no_flag, &graph_no_flag_names, &aln)?;
 
-    let mut graph_flag: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_f, sparse_f, mixed_f) = setup_partitions(&graph_flag, &aln)?;
+    let NwkParse {
+      graph: mut graph_flag,
+      names: graph_flag_names,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
+    let (dense_f, sparse_f, mixed_f) = setup_partitions(&graph_flag, &graph_flag_names, &aln)?;
 
-    let names_tt_2 = node_names(&graph_no_flag);
+    let names_tt_2 = graph_no_flag_names.clone();
     let result_no_flag = run_optimize_loop(
       &mut graph_no_flag,
       &sparse_nf,
@@ -161,7 +177,7 @@ mod tests {
       &names_tt_2,
     )?;
 
-    let names_tt_1 = node_names(&graph_flag);
+    let names_tt_1 = graph_flag_names.clone();
     let result_flag = run_optimize_loop(
       &mut graph_flag,
       &sparse_f,
@@ -194,9 +210,9 @@ mod tests {
 
   #[test]
   fn test_no_indels_initial_guess_never_accepts_zero_bl_with_indels() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     inject_indel_on_first_edge(&graph, &partitions)?;
-    let result = apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, true, &node_names(&graph));
+    let result = apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, true, &names);
     assert!(
       result.is_ok(),
       "no_indels=true should accept zero-BL indel edges in Never mode, got: {result:?}"
@@ -209,12 +225,11 @@ mod tests {
   #[case::auto(  InitialGuessMode::Auto)]
   #[case::always(InitialGuessMode::Always)]
   #[trace]
-  fn test_no_indels_initial_guess_ignores_indel_counts(
-    #[case] mode: InitialGuessMode,
+  fn test_no_indels_initial_guess_ignores_indel_counts(#[case] mode: InitialGuessMode,
   ) -> Result<(), Report> {
-    let graph_with_indel: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let NwkParse { graph: graph_with_indel, names: graph_with_indel_names, .. } = nwk_read_str(TREE_NEWICK)?;
     let (dense_with_indel, sparse_with_indel, partitions_with_indel) =
-      setup_identical_partitions(&graph_with_indel)?;
+      setup_identical_partitions(&graph_with_indel, &graph_with_indel_names)?;
     let indels = vec![InDel::del((0, 2), Seq::try_from_str("AC")?)?];
     inject_indels_on_first_edge(
       &graph_with_indel,
@@ -223,11 +238,11 @@ mod tests {
       &indels,
     );
 
-    let graph_without_indel: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (_, _, partitions_without_indel) = setup_identical_partitions(&graph_without_indel)?;
+    let NwkParse { graph: graph_without_indel, names: graph_without_indel_names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let (_, _, partitions_without_indel) = setup_identical_partitions(&graph_without_indel, &graph_without_indel_names)?;
 
-    apply_initial_guess_mode(&graph_with_indel, &partitions_with_indel, mode, true, &node_names(&graph_with_indel))?;
-    apply_initial_guess_mode(&graph_without_indel, &partitions_without_indel, mode, true, &node_names(&graph_without_indel))?;
+    apply_initial_guess_mode(&graph_with_indel, &partitions_with_indel, mode, true, &graph_with_indel_names)?;
+    apply_initial_guess_mode(&graph_without_indel, &partitions_without_indel, mode, true, &graph_without_indel_names)?;
 
     let expected = get_branch_lengths(&graph_without_indel);
     let actual = get_branch_lengths(&graph_with_indel);

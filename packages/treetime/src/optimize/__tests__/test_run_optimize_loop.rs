@@ -16,8 +16,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::edge::HasBranchLength;
-  use treetime_graph::value_maps::node_names;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::Seq;
 
   fn manual_indel_count_on_edge(
@@ -90,11 +89,12 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_records_lh_history() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let mut graph: GraphAncestral = graph;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     let max_iter = 5;
-    let names_tt_6 = node_names(&graph);
+    let names_tt_6 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -118,8 +118,9 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_records_joint_likelihood_with_sparse_indels() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let mut graph: GraphAncestral = graph;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     let first_edge_key = graph.get_edges()[0].read_arc().key();
     graph.get_edges()[0]
@@ -139,7 +140,7 @@ mod tests {
     let indel_lh = manual_total_indel_log_lh(&graph, &sparse_partitions);
     let expected_total_lh = sparse_lh + dense_lh + indel_lh;
 
-    let names_tt_5 = node_names(&graph);
+    let names_tt_5 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -169,13 +170,14 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_breaks_on_convergence() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let mut graph: GraphAncestral = graph;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     let max_iter = 50;
     let dp = f64::INFINITY;
 
-    let names_tt_4 = node_names(&graph);
+    let names_tt_4 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -199,10 +201,11 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_zero_max_iter_is_noop() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let mut graph: GraphAncestral = graph;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
-    let names_tt_3 = node_names(&graph);
+    let names_tt_3 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -229,10 +232,11 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_all_likelihoods_finite() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let mut graph: GraphAncestral = graph;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
-    let names_tt_2 = node_names(&graph);
+    let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
       &sparse_partitions,
@@ -259,8 +263,9 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_improves_likelihood() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let mut graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let mut graph: GraphAncestral = graph;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
     let first_edge_key = graph.get_edges()[0].read_arc().key();
     graph.get_edges()[0]
       .write_arc()
@@ -278,7 +283,7 @@ mod tests {
     let initial_dense_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &dense_partitions)?.value();
     let initial_lh = initial_sparse_lh + initial_dense_lh + manual_total_indel_log_lh(&graph, &sparse_partitions);
 
-    let names_tt_1 = node_names(&graph);
+    let names_tt_1 = names.clone();
     run_optimize_loop(
       &mut graph,
       &sparse_partitions,

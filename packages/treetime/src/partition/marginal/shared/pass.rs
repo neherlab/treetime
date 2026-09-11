@@ -9,7 +9,7 @@ use itertools::Itertools;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::GraphNode;
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_primitives::LogLh;
 
@@ -19,7 +19,7 @@ pub fn marginal_process_backward_indexed<N, E>(
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<(), Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   let mut missing_nodes = BTreeMap::new();
@@ -51,7 +51,7 @@ fn marginal_process_node_backward_indexed<N, E>(
   context: GraphPassBackwardContext<'_, DenseNodePartition, DenseEdgePartition, DenseNodePartition, DenseEdgePartition>,
 ) -> Result<GraphPassNodeOutput<DenseNodePartition, DenseEdgePartition>, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   let mut node = context.input;
@@ -141,7 +141,7 @@ pub fn marginal_process_forward_indexed<N, E>(
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<(), Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   let gtr = partition.marginal_data().gtr.clone();
@@ -167,7 +167,7 @@ fn marginal_process_node_forward_indexed<N, E>(
   context: GraphPassForwardContext<'_, DenseNodePartition, DenseEdgePartition, DenseNodePartition>,
 ) -> Result<GraphPassNodeOutput<DenseNodePartition, DenseEdgePartition>, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   let mut node = context.input;

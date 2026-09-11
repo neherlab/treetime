@@ -148,7 +148,7 @@ impl Refinement<'_> {
     }
 
     info!("Resolved polytomies, introduced {resolved_nodes} new nodes");
-    *self.names = assign_node_names(self.graph)?;
+    *self.names = assign_node_names(std::mem::take(self.names), self.graph)?;
     propagate_bad_branches(self.graph, self.state)?;
     prepare_tree_after_topology_change(self.graph, self.state)
       .wrap_err("Failed to prepare tree after topology change")?;

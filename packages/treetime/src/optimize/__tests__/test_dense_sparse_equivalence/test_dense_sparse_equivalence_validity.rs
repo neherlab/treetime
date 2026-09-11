@@ -7,7 +7,7 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::edge::HasBranchLength;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   use super::super::test_dense_sparse_equivalence_support::tests::{
     TREE_NEWICK, gap_free_alignment, setup_dense_only, setup_sparse_only,
@@ -24,8 +24,9 @@ mod tests {
   #[trace]
   fn test_dense_optimization_produces_valid_results(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let partitions = setup_dense_only(&graph, &aln)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let partitions = setup_dense_only(&graph, &names, &aln)?;
 
     let initial_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
@@ -78,8 +79,9 @@ mod tests {
   #[trace]
   fn test_sparse_optimization_produces_valid_results(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let partitions = setup_sparse_only(&graph, &aln)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let partitions = setup_sparse_only(&graph, &names, &aln)?;
 
     let initial_lh = marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");

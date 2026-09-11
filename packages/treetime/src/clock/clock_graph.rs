@@ -5,56 +5,34 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use treetime_graph::edge::{ClockMessages, GraphEdge, HasBranchLength, TimeLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::GraphNode;
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
 pub type GraphClock<D = ()> = Graph<NodeClock, EdgeClock, D>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct NodeClock {
-  pub name: Option<String>,
-}
+pub struct NodeClock {}
 
 impl GraphNode for NodeClock {}
 
 impl NodeFromNwk for NodeClock {
   fn from_nwk(
-    name: Option<impl AsRef<str>>,
+    _name: Option<impl AsRef<str>>,
     _confidence: Option<f64>,
     _: &BTreeMap<String, String>,
   ) -> Result<Self, Report> {
-    Ok(Self {
-      name: name.map(|s| s.as_ref().to_owned()),
-    })
+    Ok(Self {})
   }
 }
 
 impl NodeToNwk for NodeClock {
-  fn nwk_name(&self) -> Option<impl AsRef<str>> {
-    self.name.as_deref()
-  }
-
   fn nwk_comments(&self) -> BTreeMap<String, String> {
     BTreeMap::new()
   }
 }
 
-impl Named for NodeClock {
-  fn name(&self) -> Option<impl AsRef<str>> {
-    self.name.as_deref()
-  }
-
-  fn set_name(&mut self, name: Option<impl AsRef<str>>) {
-    self.name = name.map(|n| n.as_ref().to_owned());
-  }
-}
-
-impl NodeToGraphviz for NodeClock {
-  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self.name.as_deref()
-  }
-}
+impl NodeToGraphviz for NodeClock {}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct EdgeClock {

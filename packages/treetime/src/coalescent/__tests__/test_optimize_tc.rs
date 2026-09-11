@@ -7,14 +7,13 @@ mod tests {
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use maplit::btreemap;
-  use treetime_graph::value_maps::node_names;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::o;
 
   fn graph_with_dates(nwk: &str, dates: &DatesMap) -> Result<(GraphTimetree, DateConstraints), Report> {
-    let graph = nwk_read_str(nwk)?.graph;
-    let constraints = load_date_constraints(dates, &graph, &node_names(&graph))?;
+    let NwkParse { graph, names, .. } = nwk_read_str(nwk)?;
+    let constraints = load_date_constraints(dates, &graph, &names)?;
     Ok((graph, constraints))
   }
 
@@ -42,7 +41,7 @@ mod tests {
 
   #[test]
   fn test_optimize_tc_returns_positive_finite_optimum() -> Result<(), Report> {
-    let (graph, constraints) = setup_graph()?;
+    let (graph, names, constraints) = setup_graph()?;
     let result = optimize_tc(&graph, &coalescent_node_times(&graph, &constraints))?;
 
     assert!(result.tc > 0.0, "Optimized Tc should be positive");
@@ -56,7 +55,7 @@ mod tests {
   #[allow(clippy::float_cmp)] // Exact equality is the determinism contract tested here.
   fn test_optimize_tc_is_deterministic() -> Result<(), Report> {
     // The optimum is a closed form (Tc = I/M), so repeated calls are identical.
-    let (graph, constraints) = setup_graph()?;
+    let (graph, names, constraints) = setup_graph()?;
     let node_times = coalescent_node_times(&graph, &constraints);
 
     let a = optimize_tc(&graph, &node_times)?;

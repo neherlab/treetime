@@ -131,7 +131,7 @@ pub fn run_timetree_estimation(
   // tree/augur output writers -- reads each node's name from this map instead of the payload. The
   // later `marginal_update` and reconstruction touch neither names nor branch lengths, and topology
   // ordering only permutes keys, so the map still describes the final tree at every later point.
-  let names = assign_node_names(&output.graph)?;
+  let names = assign_node_names(output.names, &output.graph)?;
   let branch_lengths_opt = edge_branch_lengths(&output.graph);
 
   // Node-keyed descriptions for the reconstructed-FASTA writer and the node-output gather, rebuilt
@@ -228,6 +228,7 @@ pub fn run_timetree_estimation(
     clock_branch_lengths,
     clock_state,
     timetree_state,
+    names: _,
   } = output;
   let mut graph = graph.map_data(TimetreeGraphData::new(
     clock_model,

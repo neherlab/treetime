@@ -9,8 +9,7 @@ use crate::ancestral::__tests__::prop_generators::branch_length::arb_branch_leng
 use crate::payload::ancestral::GraphAncestral;
 use proptest::prelude::*;
 use std::collections::BTreeSet;
-use treetime_graph::node::Named;
-use treetime_io::nwk::nwk_read_str;
+use treetime_io::nwk::{NwkParse, nwk_read_str};
 
 /// Format a subtree with branch length, wrapping in parens only if it's a compound subtree.
 fn format_subtree(subtree: &str, bl: f64) -> String {
@@ -308,13 +307,13 @@ mod tests {
 
     #[test]
     fn test_prop_tree_arb_newick_parseable_and_leaf_names_exact(newick in arb_newick(6)) {
-      let graph: GraphAncestral = nwk_read_str(&newick).unwrap().graph;
+      let NwkParse { graph, names, .. } = nwk_read_str(&newick).unwrap();
+      let graph: GraphAncestral = graph;
 
       let mut actual_names = Vec::new();
       for leaf in graph.get_leaves() {
         let leaf = leaf.read_arc();
-        let payload = leaf.payload().read_arc();
-        let maybe_name = payload.name().map(|name| name.as_ref().to_owned());
+        let maybe_name = names.get(&leaf.key()).cloned().flatten();
         prop_assert!(maybe_name.is_some(), "Leaf node is missing name in Newick: {newick}");
         if let Some(name) = maybe_name {
           actual_names.push(name);

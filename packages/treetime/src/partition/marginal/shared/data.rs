@@ -10,7 +10,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_utils::array::ndarray::argmax_first;
 
 #[derive(Clone, Debug, Serialize)]
@@ -79,7 +79,7 @@ impl MarginalData {
 
 pub trait MarginalPartition<N, E>: Send + Sync
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   fn marginal_data(&self) -> &MarginalData;
@@ -95,7 +95,7 @@ where
 
 pub trait IndexedMarginalPartition<N, E>: MarginalPartition<N, E>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   fn indexed_missing_node(&self, key: GraphNodeKey) -> Result<DenseNodePartition, Report>;

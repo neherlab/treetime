@@ -12,7 +12,6 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use std::iter::once;
-  use treetime_graph::value_maps::node_names;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::{o, vec_of_owned};
 
@@ -153,13 +152,17 @@ mod tests {
 
   #[test]
   fn test_execute_mugration_simple_tree() -> Result<(), Report> {
-    let NwkParse { graph, confidences, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
     };
 
-    let names_tt_14 = node_names(&graph);
+    let names_tt_14 = names.clone();
     let result = execute_mugration(
       graph,
       &confidences,
@@ -206,7 +209,11 @@ mod tests {
 
   #[test]
   fn test_execute_mugration_with_weights() -> Result<(), Report> {
-    let NwkParse { graph, confidences, .. } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
@@ -218,7 +225,7 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let names_tt_13 = node_names(&graph);
+    let names_tt_13 = names.clone();
     let result = execute_mugration(
       graph,
       &confidences,
@@ -252,7 +259,11 @@ mod tests {
 
   #[test]
   fn test_execute_mugration_with_weights_includes_unobserved_weight_states() -> Result<(), Report> {
-    let NwkParse { graph, confidences, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
@@ -263,7 +274,7 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let names_tt_12 = node_names(&graph);
+    let names_tt_12 = names.clone();
     let result = execute_mugration(
       graph,
       &confidences,
@@ -297,7 +308,11 @@ mod tests {
 
   #[test]
   fn test_execute_mugration_with_pseudo_counts() -> Result<(), Report> {
-    let NwkParse { graph, confidences, .. } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
@@ -309,7 +324,7 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let names_tt_11 = node_names(&graph);
+    let names_tt_11 = names.clone();
     let result = execute_mugration(
       graph,
       &confidences,
@@ -339,7 +354,11 @@ mod tests {
     // Smoothing flattens only the initial pi used for the first reconstruction
     // pass; the final equilibrium stays pinned to the raw weight-derived
     // fixed_pi, so the returned model matches the unsmoothed equilibrium.
-    let NwkParse { graph, confidences, .. } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
@@ -351,7 +370,7 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let names_tt_10 = node_names(&graph);
+    let names_tt_10 = names.clone();
     let result = execute_mugration(
       graph,
       &confidences,
@@ -389,8 +408,12 @@ mod tests {
       o!("B") => o!("germany"),
     };
 
-    let NwkParse { graph, confidences, .. } = nwk_read_str("(A:0.1,B:0.1)root;")?;
-    let names_tt_9 = node_names(&graph);
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str("(A:0.1,B:0.1)root;")?;
+    let names_tt_9 = names.clone();
     let v0 = execute_mugration(
       graph,
       &confidences,
@@ -406,8 +429,12 @@ mod tests {
       false,
       false,
     )?;
-    let NwkParse { graph, confidences, .. } = nwk_read_str("(A:0.1,B:0.1)root;")?;
-    let names_tt_8 = node_names(&graph);
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str("(A:0.1,B:0.1)root;")?;
+    let names_tt_8 = names.clone();
     let filtered = execute_mugration(
       graph,
       &confidences,
@@ -441,8 +468,12 @@ mod tests {
       o!("B") => o!("germany"),
     };
 
-    let NwkParse { graph, confidences, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let names_tt_7 = node_names(&graph);
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let names_tt_7 = names.clone();
     let base_result = execute_mugration(
       graph,
       &confidences,
@@ -460,8 +491,12 @@ mod tests {
     )?;
     let base_mu = base_result.partition.data.gtr.mu;
 
-    let NwkParse { graph, confidences, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let names_tt_6 = node_names(&graph);
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let names_tt_6 = names.clone();
     let corrected_result = execute_mugration(
       graph,
       &confidences,
@@ -485,13 +520,17 @@ mod tests {
 
   #[test]
   fn test_execute_mugration_rejects_single_state() {
-    let NwkParse { graph, confidences, .. } = nwk_read_str("(A:0.1,B:0.2)root;").unwrap();
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str("(A:0.1,B:0.2)root;").unwrap();
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("usa"),
     };
 
-    let names_tt_5 = node_names(&graph);
+    let names_tt_5 = names.clone();
     let result = execute_mugration(
       graph,
       &confidences,
@@ -522,8 +561,12 @@ mod tests {
       o!("C") => o!("usa"),
     };
 
-    let NwkParse { graph, confidences, .. } = nwk_read_str(tree)?;
-    let names_tt_4 = node_names(&graph);
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str(tree)?;
+    let names_tt_4 = names.clone();
     let result_no_iter = execute_mugration(
       graph,
       &confidences,
@@ -540,8 +583,12 @@ mod tests {
       false,
     )?;
 
-    let NwkParse { graph, confidences, .. } = nwk_read_str(tree)?;
-    let names_tt_3 = node_names(&graph);
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str(tree)?;
+    let names_tt_3 = names.clone();
     let result_with_iter = execute_mugration(
       graph,
       &confidences,
@@ -593,8 +640,12 @@ mod tests {
       o!("D") => o!("germany"),
     };
 
-    let NwkParse { graph, confidences, .. } = nwk_read_str(tree)?;
-    let names_tt_2 = node_names(&graph);
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str(tree)?;
+    let names_tt_2 = names.clone();
     let result = execute_mugration(
       graph,
       &confidences,
@@ -623,8 +674,12 @@ mod tests {
   #[test]
   fn test_zero_iterations_preserves_initial_model() -> Result<(), Report> {
     let traits = btreemap! { o!("A") => o!("usa"), o!("B") => o!("germany") };
-    let NwkParse { graph, confidences, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let names_tt_1 = node_names(&graph);
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let names_tt_1 = names.clone();
     let result = execute_mugration(
       graph,
       &confidences,

@@ -16,7 +16,8 @@ pub mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
-  use treetime_graph::value_maps::node_names;
+  use std::collections::BTreeMap;
+  use treetime_graph::node::GraphNodeKey;
 
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
@@ -25,7 +26,7 @@ pub mod tests {
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::value_maps::edge_branch_lengths;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::Seq;
 
   const TREE_WITH_LENGTHS: &str = "((A:0.1,B:0.2)AB:0.05,C:0.3)root:0.01;";
@@ -41,38 +42,42 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_detects_nan_from_newick() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_WITHOUT_LENGTHS)?.graph;
-    assert!(!invalid_branch_length_descriptions(&graph, &node_names(&graph))?.is_empty());
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_WITHOUT_LENGTHS)?;
+    let graph: GraphAncestral = graph;
+    assert!(!invalid_branch_length_descriptions(&graph, &names)?.is_empty());
     Ok(())
   }
 
   #[test]
   fn test_initial_guess_mode_detects_explicit_nan() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let graph: GraphAncestral = graph;
     graph.get_edges()[0]
       .write_arc()
       .payload()
       .write_arc()
       .set_branch_length(Some(f64::NAN));
-    assert!(!invalid_branch_length_descriptions(&graph, &node_names(&graph))?.is_empty());
+    assert!(!invalid_branch_length_descriptions(&graph, &names)?.is_empty());
     Ok(())
   }
 
   #[test]
   fn test_initial_guess_mode_detects_negative_branch_length() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let graph: GraphAncestral = graph;
     set_first_branch_length(&graph, -0.1);
-    assert!(!invalid_branch_length_descriptions(&graph, &node_names(&graph))?.is_empty());
+    assert!(!invalid_branch_length_descriptions(&graph, &names)?.is_empty());
     Ok(())
   }
 
   #[test]
   fn test_initial_guess_mode_describes_all_invalid_edges_and_warning() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?.graph;
-    set_branch_length_by_target_name(&graph, "A", -0.1);
-    set_branch_length_by_target_name(&graph, "C", f64::INFINITY);
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let graph: GraphAncestral = graph;
+    set_branch_length_by_target_name(&names, &graph, "A", -0.1);
+    set_branch_length_by_target_name(&names, &graph, "C", f64::INFINITY);
 
-    let descriptions = invalid_branch_length_descriptions(&graph, &node_names(&graph))?;
+    let descriptions = invalid_branch_length_descriptions(&graph, &names)?;
     let expected = vec!["AB -> A: -0.1", "root -> C: inf"];
     assert_eq!(expected, descriptions);
 
@@ -86,14 +91,15 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_no_missing_when_all_finite() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_WITH_LENGTHS)?.graph;
-    assert!(invalid_branch_length_descriptions(&graph, &node_names(&graph))?.is_empty());
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let graph: GraphAncestral = graph;
+    assert!(invalid_branch_length_descriptions(&graph, &names)?.is_empty());
     Ok(())
   }
 
   #[test]
   fn test_initial_guess_mode_auto_preserves_valid_lengths() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let before = get_branch_lengths(&graph);
 
     initial_guess_mixed(&graph, &partitions, false, false)?;
@@ -108,7 +114,7 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_auto_fills_none_from_newick() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_WITHOUT_LENGTHS)?;
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_WITHOUT_LENGTHS)?;
 
     // Before: all edges have None (pest parser returns None for missing branch lengths)
     for edge_ref in graph.get_edges() {
@@ -134,7 +140,7 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_auto_fills_only_missing_edges() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let original_lengths = get_branch_lengths(&graph);
 
     // Set one edge to NaN (simulating a missing branch length)
@@ -175,13 +181,13 @@ pub mod tests {
     #[case] has_indels: bool,
     #[case] expects_error: bool,
   ) -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     set_first_branch_length(&graph, -0.1);
     if has_indels {
       inject_indel_on_first_edge(&graph, &partitions)?;
     }
 
-    let result = apply_initial_guess_mode(&graph, &partitions, mode, false, &node_names(&graph));
+    let result = apply_initial_guess_mode(&graph, &partitions, mode, false, &names);
 
     if expects_error {
       let error = result.expect_err("Never mode must reject a negative branch length");
@@ -201,7 +207,7 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_always_overwrites_all() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let before = get_branch_lengths(&graph);
 
     initial_guess_mixed(&graph, &partitions, true, false)?;
@@ -213,9 +219,9 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_never_accepts_complete_tree() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let before = get_branch_lengths(&graph);
-    apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, false, &node_names(&graph))?;
+    apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, false, &names)?;
     let after = get_branch_lengths(&graph);
     assert_eq!(before, after, "Never mode must leave branch lengths unchanged");
     Ok(())
@@ -223,8 +229,8 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_never_rejects_nan_tree() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_WITHOUT_LENGTHS)?;
-    let result = apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, false, &node_names(&graph));
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_WITHOUT_LENGTHS)?;
+    let result = apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, false, &names);
     let err = result.expect_err("Never mode must reject a tree with NaN branch lengths");
     let msg = format!("{err:?}");
     assert!(
@@ -236,9 +242,9 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_never_accepts_zero_bl_without_indels() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     let before = get_branch_lengths(&graph);
-    apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, false, &node_names(&graph))?;
+    apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, false, &names)?;
     let after = get_branch_lengths(&graph);
     assert_eq!(
       before, after,
@@ -249,9 +255,9 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_never_rejects_zero_bl_with_indels() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     inject_indel_on_first_edge(&graph, &partitions)?;
-    let result = apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, false, &node_names(&graph));
+    let result = apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, false, &names);
     let err = result.expect_err("Never mode must reject zero branch length on an indel-bearing edge");
     let msg = format!("{err:?}");
     assert!(
@@ -267,10 +273,10 @@ pub mod tests {
 
   #[test]
   fn test_initial_guess_mode_never_accepts_positive_bl_with_indels() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     inject_indel_on_first_edge(&graph, &partitions)?;
     let before = get_branch_lengths(&graph);
-    apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, false, &node_names(&graph))?;
+    apply_initial_guess_mode(&graph, &partitions, InitialGuessMode::Never, false, &names)?;
     let after = get_branch_lengths(&graph);
     assert_eq!(
       before, after,
@@ -281,7 +287,7 @@ pub mod tests {
 
   #[test]
   fn test_any_indel_edge_has_zero_bl_false_without_indels() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     assert!(
       !any_indel_edge_has_zero_branch_length(&graph, &partitions, &edge_branch_lengths(&graph)),
       "Without any indels, no indel-bearing zero-BL edges should be detected"
@@ -291,7 +297,7 @@ pub mod tests {
 
   #[test]
   fn test_any_indel_edge_has_zero_bl_false_with_positive_bl() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     inject_indel_on_first_edge(&graph, &partitions)?;
     assert!(
       !any_indel_edge_has_zero_branch_length(&graph, &partitions, &edge_branch_lengths(&graph)),
@@ -302,7 +308,7 @@ pub mod tests {
 
   #[test]
   fn test_any_indel_edge_has_zero_bl_true_with_indel_and_zero_bl() -> Result<(), Report> {
-    let (graph, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
+    let (graph, names, partitions) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     inject_indel_on_first_edge(&graph, &partitions)?;
     assert!(
       any_indel_edge_has_zero_branch_length(&graph, &partitions, &edge_branch_lengths(&graph)),
@@ -330,7 +336,12 @@ pub mod tests {
         .set_branch_length(Some(branch_length));
     }
 
-    pub fn set_branch_length_by_target_name(graph: &GraphAncestral, target_name: &str, branch_length: f64) {
+    pub fn set_branch_length_by_target_name(
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      graph: &GraphAncestral,
+      target_name: &str,
+      branch_length: f64,
+    ) {
       let edge = graph
         .get_edges()
         .into_iter()
@@ -338,7 +349,7 @@ pub mod tests {
           let target = edge_ref.read_arc().target();
           graph
             .get_node(target)
-            .is_some_and(|node| node.read_arc().payload().read_arc().name.as_deref() == Some(target_name))
+            .is_some_and(|node| names.get(&node.read_arc().key()).and_then(|x| x.as_deref()) == Some(target_name))
         })
         .expect("target node must have an incoming edge");
       edge
@@ -365,10 +376,18 @@ pub mod tests {
 
     pub fn setup_dense_with_marginal(
       newick: &str,
-    ) -> Result<(GraphAncestral, Vec<Arc<RwLock<PartitionMarginalDense>>>), Report> {
+    ) -> Result<
+      (
+        GraphAncestral,
+        BTreeMap<GraphNodeKey, Option<String>>,
+        Vec<Arc<RwLock<PartitionMarginalDense>>>,
+      ),
+      Report,
+    > {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let aln = test_alignment()?;
-      let graph: GraphAncestral = nwk_read_str(newick)?.graph;
+      let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+      let graph: GraphAncestral = graph;
 
       let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
         0,
@@ -377,17 +396,10 @@ pub mod tests {
         get_common_length(&aln)?,
       )))];
 
-      initialize_marginal(
-        &graph,
-        &profile_branch_lengths(&graph),
-        &partitions,
-        &aln,
-        &node_names(&graph),
-      )?
-      .value();
+      initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
       marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
-      Ok((graph, partitions))
+      Ok((graph, names, partitions))
     }
 
     fn test_alignment() -> Result<Vec<FastaRecord>, Report> {

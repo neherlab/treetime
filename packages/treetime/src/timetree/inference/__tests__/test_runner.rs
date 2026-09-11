@@ -13,13 +13,13 @@ mod tests {
   use std::collections::BTreeMap;
   use std::io::Cursor;
   use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
-  use treetime_graph::node::Named;
-  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
-  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_io::nwk::{NwkParse, NwkWriteOptions, nwk_read_str, nwk_write_str};
 
   #[test]
   fn test_create_branch_distributions_input_mode_sets_time_length() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?.graph;
+    let NwkParse { graph, names, .. } =
+      nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
     let clock_rate = 0.001; // 0.001 subs/site/year
 
     let mut state = TimetreeState::new(&graph);
@@ -44,7 +44,8 @@ mod tests {
 
   #[test]
   fn test_input_mode_newick_output_uses_time_lengths() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?.graph;
+    let NwkParse { graph, names, .. } =
+      nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
     let clock_rate = 0.001;
 
     let mut state = TimetreeState::new(&graph);
@@ -59,7 +60,7 @@ mod tests {
         (key, state.edge(key).time_length)
       })
       .collect();
-    let newick_output = nwk_write_str(&graph, &node_names(&graph), &time_lengths, &NwkWriteOptions::default())?;
+    let newick_output = nwk_write_str(&graph, &names, &time_lengths, &NwkWriteOptions::default())?;
 
     // Parse output with bio::io::newick (independent from our parser) to verify correctness
     let parsed = newick::read(Cursor::new(&newick_output)).expect("bio::newick should parse our output");
@@ -98,7 +99,7 @@ mod tests {
   /// time = branch_length / (clock_rate * gamma)
   #[test]
   fn test_input_mode_gamma_scales_time_length() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.006)I:0.003)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.006)I:0.003)root;")?;
     let clock_rate = 0.001;
 
     let mut state = TimetreeState::new(&graph);
@@ -110,7 +111,7 @@ mod tests {
       let target = edge_read.target();
       let target_name = graph
         .get_node(target)
-        .and_then(|n| n.read_arc().payload().read_arc().name().map(|s| s.as_ref().to_owned()));
+        .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
       if target_name.as_deref() == Some("A") {
         state.edge_mut(key).gamma = 2.0;
       }
@@ -124,7 +125,7 @@ mod tests {
       let target = edge_read.target();
       let target_name = graph
         .get_node(target)
-        .and_then(|n| n.read_arc().payload().read_arc().name().map(|s| s.as_ref().to_owned()));
+        .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
       let time_length = state.edge(key).time_length;
 
       match target_name.as_deref() {
@@ -152,7 +153,8 @@ mod tests {
   /// pre-gamma behavior: time = branch_length / clock_rate.
   #[test]
   fn test_input_mode_gamma_default_matches_no_gamma() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?.graph;
+    let NwkParse { graph, names, .. } =
+      nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
     let clock_rate = 0.001;
 
     // All edges have default gamma=1.0
@@ -175,7 +177,7 @@ mod tests {
 
   #[test]
   fn test_input_mode_uses_time_length_when_branch_length_is_absent() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A)root;")?;
     let edge = graph.get_edges().pop().expect("tree must contain one edge");
     edge.read_arc().payload().write_arc().set_branch_length(None);
 

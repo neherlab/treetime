@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::GraphNode;
 use treetime_graph::value_maps::edge_branch_lengths;
 use treetime_primitives::LogLh;
 
@@ -27,7 +27,7 @@ pub fn refine_gtr_iterative<N, E, P>(
   optimize_rate: bool,
 ) -> Result<LogLh, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
   P: TransitionCounting<N, E> + PartitionMarginalPasses<N, E> + HasGtr,
 {
@@ -103,7 +103,7 @@ fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<
 
 fn optimize_gtr_rate<N, E, P>(graph: &Graph<N, E, ()>, partition: &Arc<RwLock<P>>) -> Result<(), Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
   P: PartitionMarginalPasses<N, E> + HasGtr,
 {
@@ -173,7 +173,7 @@ struct GtrRateCostFn<'a, N: GraphNode, E: EdgeOptimizeOps, P> {
 
 impl<N, E, P> GtrRateCostFn<'_, N, E, P>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
   P: PartitionMarginalPasses<N, E> + HasGtr,
 {
@@ -198,7 +198,7 @@ where
 
 impl<N, E, P> CostFunction for &GtrRateCostFn<'_, N, E, P>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
   P: PartitionMarginalPasses<N, E> + HasGtr,
 {

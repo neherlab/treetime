@@ -2,7 +2,6 @@
 mod tests {
   use approx::assert_relative_eq;
   use pretty_assertions::assert_eq;
-  use treetime_graph::value_maps::node_names;
   use treetime_utils::io::json::json_read_str;
   use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
@@ -136,7 +135,11 @@ mod tests {
 
     let root = helpers::project_root();
     let alphabet = Alphabet::default();
-    let NwkParse { graph, confidences, .. } = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
+    let NwkParse {
+      graph,
+      confidences,
+      names,
+    } = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
     let sequences = read_many_fasta(&[root.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet).unwrap();
 
     let params = OptimizeParams {
@@ -151,8 +154,6 @@ mod tests {
       reroot_spec: None,
       topology_ops: TopologyOps::default(),
     };
-
-    let names = node_names(&graph);
     let input = OptimizeInput {
       graph,
       alphabet,
@@ -162,6 +163,7 @@ mod tests {
     let output = pipeline::run(&params, input, &names, &NoopProgress).unwrap();
 
     let data = helpers::build_augur_node_data_json_from_output(
+      &names,
       &output,
       &confidences,
       Some(std::path::Path::new("aln.fasta")),
@@ -191,6 +193,7 @@ mod tests {
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
     pub fn node_outputs<D: Send + Sync>(
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &GraphAncestral<D>,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
     ) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
@@ -203,7 +206,7 @@ mod tests {
           (
             key,
             OptimizeNodeOut {
-              name: node.payload().read_arc().name.clone(),
+              name: names.get(&node.key()).cloned().flatten(),
               confidence: confidences.get(&key).copied().flatten(),
             },
           )
@@ -225,10 +228,11 @@ mod tests {
     pub fn write_json(nwk: &str) -> String {
       let parse = nwk_read_str(nwk).unwrap();
       let graph: GraphAncestral = parse.graph;
+      let names = parse.names;
       let confidences = parse.confidences;
       let data = build_augur_node_data_json(
         &graph,
-        &node_outputs(&graph, &confidences),
+        &node_outputs(&names, &graph, &confidences),
         &branch_lengths(&graph),
         Some(Path::new("aln.fasta")),
         Some(Path::new("tree.nwk")),
@@ -245,6 +249,7 @@ mod tests {
     pub fn write_and_read_with_mutations(nwk: &str, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
       let parse = nwk_read_str(nwk).unwrap();
       let graph: GraphAncestral = parse.graph;
+      let names = parse.names;
       let confidences = parse.confidences;
       let edges = graph.get_edges();
       let counts: BTreeMap<GraphEdgeKey, usize> = edge_counts
@@ -253,7 +258,7 @@ mod tests {
         .collect();
       let data = build_augur_node_data_json(
         &graph,
-        &node_outputs(&graph, &confidences),
+        &node_outputs(&names, &graph, &confidences),
         &branch_lengths(&graph),
         Some(Path::new("aln.fasta")),
         Some(Path::new("tree.nwk")),
@@ -272,6 +277,7 @@ mod tests {
     }
 
     pub fn build_augur_node_data_json_from_output(
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
       output: &crate::optimize::pipeline::OptimizeOutput,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
       alignment: Option<&Path>,

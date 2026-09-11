@@ -17,7 +17,6 @@ mod tests {
   use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
   use treetime_graph::value_maps::edge_branch_lengths;
-  use treetime_graph::value_maps::node_names;
   use treetime_utils::{
     pretty_assert_abs_diff_eq, pretty_assert_array_nonneg, pretty_assert_array_offdiag_upper_bounded,
     pretty_assert_array_positive,
@@ -28,7 +27,7 @@ mod tests {
   use std::slice::from_ref;
   use std::sync::Arc;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::default();
@@ -39,7 +38,8 @@ mod tests {
     tree_nwk: &str,
     aln: &[FastaRecord],
   ) -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
-    let graph: GraphAncestral = nwk_read_str(tree_nwk)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(tree_nwk)?;
+    let graph: GraphAncestral = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -58,7 +58,7 @@ mod tests {
       &profile_branch_lengths(&graph),
       from_ref(&partition),
       aln,
-      &node_names(&graph),
+      &names,
     )?
     .value();
     Ok((graph, partition))

@@ -8,7 +8,7 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::edge::HasBranchLength;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   use super::super::test_convergence_support::tests::{
     TREE_NEWICK, compute_total_lh, setup_partitions, simple_alignment,
@@ -25,9 +25,10 @@ mod tests {
   #[trace]
   fn test_optimization_converges_with_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
 
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     let mut lh_history = Vec::with_capacity(20);
 
@@ -78,8 +79,8 @@ mod tests {
     let aln = simple_alignment()?;
 
     // Run optimization on first graph
-    let graph1: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_partitions1, sparse_partitions1, mixed_partitions1) = setup_partitions(&graph1, &aln)?;
+    let NwkParse { graph: graph1, names: graph1_names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let (dense_partitions1, sparse_partitions1, mixed_partitions1) = setup_partitions(&graph1, &graph1_names, &aln)?;
 
     for _ in 0..10 {
       run_optimize_mixed(&graph1, &mixed_partitions1, method)?;
@@ -90,8 +91,8 @@ mod tests {
     let lh1 = compute_total_lh(&graph1, &dense_partitions1, &sparse_partitions1)?;
 
     // Run optimization on second independent graph
-    let graph2: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (dense_partitions2, sparse_partitions2, mixed_partitions2) = setup_partitions(&graph2, &aln)?;
+    let NwkParse { graph: graph2, names: graph2_names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let (dense_partitions2, sparse_partitions2, mixed_partitions2) = setup_partitions(&graph2, &graph2_names, &aln)?;
 
     for _ in 0..10 {
       run_optimize_mixed(&graph2, &mixed_partitions2, method)?;

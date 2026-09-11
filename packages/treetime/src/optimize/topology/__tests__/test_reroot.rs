@@ -7,15 +7,16 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::reroot::{apply_reroot_topology, remove_node_if_trivial, split_edge};
-  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
-  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_io::nwk::{NwkParse, NwkWriteOptions, nwk_read_str, nwk_write_str};
 
   #[test]
   fn test_reroot_split_edge_divides_branch_length() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.6,B:0.4)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.6,B:0.4)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let root_key = find_node_key_by_name(&graph, "root").unwrap();
-    let a_key = find_node_key_by_name(&graph, "A").unwrap();
+    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
+    let a_key = find_node_key_by_name(&graph, &names, "A").unwrap();
 
     let edge_key = graph
       .get_edges()
@@ -53,10 +54,11 @@ mod tests {
 
   #[test]
   fn test_reroot_split_edge_at_midpoint() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("(A:1.0,B:2.0)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:1.0,B:2.0)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let root_key = find_node_key_by_name(&graph, "root").unwrap();
-    let b_key = find_node_key_by_name(&graph, "B").unwrap();
+    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
+    let b_key = find_node_key_by_name(&graph, &names, "B").unwrap();
 
     let edge_key = graph
       .get_edges()
@@ -83,10 +85,11 @@ mod tests {
 
   #[test]
   fn test_reroot_apply_reroot_topology_inverts_path() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let root_key = find_node_key_by_name(&graph, "root").unwrap();
-    let ab_key = find_node_key_by_name(&graph, "AB").unwrap();
+    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
+    let ab_key = find_node_key_by_name(&graph, &names, "AB").unwrap();
 
     let inverted = apply_reroot_topology(&mut graph, root_key, ab_key)?;
 
@@ -106,10 +109,11 @@ mod tests {
 
   #[test]
   fn test_reroot_apply_reroot_topology_multi_hop() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let root_key = find_node_key_by_name(&graph, "root").unwrap();
-    let a_key = find_node_key_by_name(&graph, "A").unwrap();
+    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
+    let a_key = find_node_key_by_name(&graph, &names, "A").unwrap();
 
     let inverted = apply_reroot_topology(&mut graph, root_key, a_key)?;
 
@@ -125,11 +129,12 @@ mod tests {
 
   #[test]
   fn test_reroot_apply_reroot_topology_preserves_leaf_count() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
+    let mut graph: GraphAncestral = graph;
 
     let initial_leaves = graph.get_leaves().len();
-    let root_key = find_node_key_by_name(&graph, "root").unwrap();
-    let cd_key = find_node_key_by_name(&graph, "CD").unwrap();
+    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
+    let cd_key = find_node_key_by_name(&graph, &names, "CD").unwrap();
 
     apply_reroot_topology(&mut graph, root_key, cd_key)?;
 
@@ -146,9 +151,10 @@ mod tests {
     //    mid   B
     //    /
     //   A
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let mid_key = find_node_key_by_name(&graph, "mid").unwrap();
+    let mid_key = find_node_key_by_name(&graph, &names, "mid").unwrap();
 
     let result = remove_node_if_trivial(&mut graph, mid_key)?;
 
@@ -167,7 +173,7 @@ mod tests {
     let expected = "(B:0.2,A:0.8)root;";
     let actual = nwk_write_str(
       &graph,
-      &node_names(&graph),
+      &names,
       &edge_branch_lengths(&graph),
       &NwkWriteOptions::default(),
     )?;
@@ -178,15 +184,16 @@ mod tests {
 
   #[test]
   fn test_reroot_remove_node_if_trivial_non_trivial_returns_none() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
+    let mut graph: GraphAncestral = graph;
 
     // AB has two children, not trivial
-    let ab_key = find_node_key_by_name(&graph, "AB").unwrap();
+    let ab_key = find_node_key_by_name(&graph, &names, "AB").unwrap();
     let result = remove_node_if_trivial(&mut graph, ab_key)?;
     assert!(result.is_none());
 
     // Root has no parent, not trivial
-    let root_key = find_node_key_by_name(&graph, "root").unwrap();
+    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let result = remove_node_if_trivial(&mut graph, root_key)?;
     assert!(result.is_none());
 
@@ -195,10 +202,11 @@ mod tests {
 
   #[test]
   fn test_reroot_full_reroot_and_cleanup_preserves_topology() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root:0.001;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root:0.001;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let root_key = find_node_key_by_name(&graph, "root").unwrap();
-    let cd_key = find_node_key_by_name(&graph, "CD").unwrap();
+    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
+    let cd_key = find_node_key_by_name(&graph, &names, "CD").unwrap();
 
     // Reroot at CD
     apply_reroot_topology(&mut graph, root_key, cd_key)?;
@@ -215,7 +223,7 @@ mod tests {
     // Check total branch length conservation (unrooted tree property)
     let newick = nwk_write_str(
       &graph,
-      &node_names(&graph),
+      &names,
       &edge_branch_lengths(&graph),
       &NwkWriteOptions {
         weight_significant_digits: Some(17),
@@ -232,9 +240,10 @@ mod tests {
   #[test]
   fn test_reroot_remove_trivial_with_partial_branch_lengths() -> Result<(), Report> {
     // One edge has a branch length, the other does not -> merged gets the existing one
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.5)mid,B:0.2)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.5)mid,B:0.2)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let mid_key = find_node_key_by_name(&graph, "mid").unwrap();
+    let mid_key = find_node_key_by_name(&graph, &names, "mid").unwrap();
     let result = remove_node_if_trivial(&mut graph, mid_key)?;
 
     let merge_info = result.expect("Trivial node should be removed");
@@ -249,7 +258,8 @@ mod tests {
 
   #[test]
   fn test_reroot_full_cycle_branch_length_conservation() -> Result<(), Report> {
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
+    let mut graph: GraphAncestral = graph;
 
     // Compute total branch length before reroot
     let total_bl_before: f64 = graph
@@ -258,8 +268,8 @@ mod tests {
       .filter_map(|e| e.read_arc().payload().read_arc().branch_length())
       .sum();
 
-    let root_key = find_node_key_by_name(&graph, "root").unwrap();
-    let ab_key = find_node_key_by_name(&graph, "AB").unwrap();
+    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
+    let ab_key = find_node_key_by_name(&graph, &names, "AB").unwrap();
 
     apply_reroot_topology(&mut graph, root_key, ab_key)?;
     remove_node_if_trivial(&mut graph, root_key)?;

@@ -16,7 +16,7 @@ use std::collections::BTreeMap;
 use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_graph::reroot::{self as topology_reroot, remove_node_if_trivial, split_edge};
 use treetime_graph::value_maps::edge_branch_lengths;
 
@@ -67,7 +67,7 @@ pub fn reroot_in_place<N, E, D>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<RerootResult, Report>
 where
-  N: GraphNode + Named + Default,
+  N: GraphNode + Default,
   E: GraphEdge + ClockEdge + Default,
   D: Send + Sync,
 {
@@ -184,7 +184,7 @@ fn select_root<N, E, D>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<FindRootResult, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {
@@ -242,7 +242,7 @@ fn find_tip_group_root<N, E, D>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<FindRootResult, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: GraphEdge + ClockEdge,
   D: Send + Sync,
 {

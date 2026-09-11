@@ -20,12 +20,12 @@ mod tests {
   use maplit::btreemap;
   use ndarray::array;
   use parking_lot::RwLock;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_graph::value_maps::node_names;
   use treetime_io::dates_csv::DateConstraint;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::LogLh;
   use treetime_utils::{o, pretty_assert_ulps_eq};
 
@@ -59,11 +59,11 @@ mod tests {
 
   #[test]
   fn test_likelihood_positional_log_lh_sums_log_probabilities() -> Result<(), Report> {
-    let graph = helpers::positional_graph()?;
+    let (graph, names) = helpers::positional_graph()?;
     // Oracle: one edge with probability 0.25 contributes ln(0.25).
     let expected = 0.25_f64.ln();
 
-    let state = helpers::positional_state(&graph);
+    let state = helpers::positional_state(&graph, &names);
     let actual = compute_positional_log_lh(&graph, &state)
       .expect("positional log-likelihood must be available")
       .value();
@@ -74,7 +74,8 @@ mod tests {
 
   #[test]
   fn test_likelihood_positional_log_lh_absent_without_distributions() -> Result<(), Report> {
-    let graph: GraphTimetree = nwk_read_str("(child:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(child:0.1)root;")?;
+    let graph: GraphTimetree = graph;
 
     let state = TimetreeState::new(&graph);
     let actual = compute_positional_log_lh(&graph, &state);
@@ -112,12 +113,12 @@ mod tests {
 
   #[test]
   fn test_likelihood_optimizer_total_sums_available_log_lh_components() -> Result<(), Report> {
-    let graph = helpers::positional_graph()?;
-    let root_key = find_node_key_by_name(&graph, "root").expect("root must exist");
+    let (graph, names) = helpers::positional_graph()?;
+    let root_key = find_node_key_by_name(&graph, &names, "root").expect("root must exist");
     let partitions = [helpers::partition_with_root_log_lh(root_key, -2.0)?];
     let mut optimizer = TimetreeOptimizer::new(1, false);
     let expected = -2.0 + 0.25_f64.ln();
-    let state = helpers::positional_state(&graph);
+    let state = helpers::positional_state(&graph, &names);
 
     assert!(optimizer.next_iter().is_some());
     optimizer.record(1, 0, NodeTimeChange::default(), &graph, &partitions, &state, None)?;
@@ -155,17 +156,18 @@ mod tests {
       Ok(Arc::new(RwLock::new(PartitionTimetree::Dense(partition))))
     }
 
-    pub fn positional_graph() -> Result<GraphTimetree, Report> {
-      let graph: GraphTimetree = nwk_read_str("(child:0.1)root;")?.graph;
-      Ok(graph)
+    pub fn positional_graph() -> Result<(GraphTimetree, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+      let NwkParse { graph, names, .. } = nwk_read_str("(child:0.1)root;")?;
+      let graph: GraphTimetree = graph;
+      Ok((graph, names))
     }
 
     /// The date state the positional-likelihood tests exercise, built as values: committed times on
     /// the two nodes and a branch-length distribution on the single edge, the same fields the
     /// payload-reading seed used to lift off the graph.
-    pub fn positional_state(graph: &GraphTimetree) -> TimetreeState {
-      let root_key = find_node_key_by_name(graph, "root").expect("root must exist");
-      let child_key = find_node_key_by_name(graph, "child").expect("child must exist");
+    pub fn positional_state(graph: &GraphTimetree, names: &BTreeMap<GraphNodeKey, Option<String>>) -> TimetreeState {
+      let root_key = find_node_key_by_name(graph, names, "root").expect("root must exist");
+      let child_key = find_node_key_by_name(graph, names, "child").expect("child must exist");
       let mut state = TimetreeState::new(graph);
       state.node_mut(root_key).time = Some(2000.0);
       state.node_mut(child_key).time = Some(2005.0);
@@ -188,8 +190,9 @@ mod tests {
         o!("leaf2") => Some(DateConstraint::exact(2010.0)),
         o!("leaf3") => Some(DateConstraint::exact(2012.0)),
       };
-      let graph: GraphTimetree = nwk_read_str("((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;")?.graph;
-      let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
+      let NwkParse { graph, names, .. } = nwk_read_str("((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;")?;
+      let graph: GraphTimetree = graph;
+      let constraints = load_date_constraints(&dates, &graph, &names)?;
       Ok((graph, constraints))
     }
 

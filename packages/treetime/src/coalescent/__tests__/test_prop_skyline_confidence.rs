@@ -14,7 +14,7 @@ mod tests {
       stiffness in 0.01_f64..10.0,
       n_std in 0.0_f64..4.0,
     ) {
-      let (graph, constraints) = setup_graph().unwrap();
+      let (graph, names, constraints) = setup_graph().unwrap();
       let params = SkylineParams {
         n_points,
         stiffness,

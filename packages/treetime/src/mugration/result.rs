@@ -166,37 +166,33 @@ impl MugrationResult {
   pub fn new(
     graph: GraphAncestral,
     confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
     partition: PartitionMarginalDiscrete,
     attribute: &str,
     log_lh: LogLh,
   ) -> Self {
     // Gather the per-node name/confidence and per-edge branch length off the tree into keyed value
     // maps the output writers consume. Trait assignments and entropy stay sourced from the discrete
-    // partition; only the name, input-branch-support, and branch-length reads move off the payload.
-    // Topology ordering reorders children only, so these maps match what the post-order writers read.
+    // partition; the name comes from the passed name map, and input-branch-support and branch-length
+    // reads move off the payload. Topology ordering reorders children only, so these maps match what
+    // the post-order writers read.
     let nodes: BTreeMap<GraphNodeKey, MugrationNodeOut> = graph
       .get_nodes()
       .iter()
       .map(|node| {
-        let node = node.read_arc();
-        let key = node.key();
-        let payload = node.payload().read_arc();
+        let key = node.read_arc().key();
         (
           key,
           MugrationNodeOut {
-            name: payload.name.clone(),
+            name: names.get(&key).cloned().flatten(),
             confidence: confidences.get(&key).copied().flatten(),
           },
         )
       })
       .collect();
-    // The trait and confidence tables key their rows by node name with a `node_{key}` fallback; feed
-    // them the gathered name map so they read the value rather than the payload.
-    let names: BTreeMap<GraphNodeKey, Option<String>> =
-      nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
-    let assignments = extract_trait_assignments(&graph, &partition, &names);
+    let assignments = extract_trait_assignments(&graph, &partition, names);
     let traits = MugrationTraitsOutput::new(attribute, assignments);
-    let confidence = MugrationConfidenceOutput::new(&graph, &partition, &names);
+    let confidence = MugrationConfidenceOutput::new(&graph, &partition, names);
 
     let edges: BTreeMap<GraphEdgeKey, EdgeOut> = graph
       .get_edges()

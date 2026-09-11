@@ -9,9 +9,8 @@ mod tests {
   use indoc::indoc;
   use itertools::Itertools;
   use maplit::btreemap;
-  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   type EdgeReport = (String, Vec<(String, usize)>, Vec<(usize, usize)>);
 
@@ -19,7 +18,8 @@ mod tests {
   fn compress(nwk: &str, fasta: &str) -> Result<Vec<EdgeReport>, Report> {
     let alphabet = Alphabet::default();
     let aln = read_many_fasta_str(fasta, &alphabet)?;
-    let graph: GraphAncestral = nwk_read_str(nwk)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(nwk)?;
+    let graph: GraphAncestral = graph;
     let mut partition = PartitionFitch {
       index: 0,
       alphabet,
@@ -27,19 +27,9 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &node_names(&graph))?;
+    compress_sequences(&graph, &mut partition, &aln, &names)?;
 
-    let name = |key| -> String {
-      graph
-        .get_node(key)
-        .unwrap()
-        .read_arc()
-        .payload()
-        .read_arc()
-        .name
-        .clone()
-        .unwrap_or_default()
-    };
+    let name = |key| -> String { names.get(&key).cloned().flatten().unwrap_or_default() };
 
     Ok(
       graph

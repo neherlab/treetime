@@ -9,13 +9,13 @@ mod tests {
   use treetime_graph::edge::HasBranchLength;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::Named;
-  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
-  use treetime_io::nwk::{NwkWriteOptions, nwk_read_file, nwk_read_str, nwk_write_str};
+  use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_io::nwk::{NwkParse, NwkWriteOptions, nwk_read_file, nwk_read_str, nwk_write_str};
 
   #[test]
   fn test_nwk_roundtrip_binary_tree() -> Result<(), Report> {
     let input = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root;";
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
 
     // Verify graph structure
     assert_eq!(graph.get_nodes().len(), 7, "Should have 7 nodes");
@@ -35,7 +35,7 @@ mod tests {
     // Verify roundtrip
     let output = nwk_write_str(
       &graph,
-      &node_names(&graph),
+      &names,
       &edge_branch_lengths(&graph),
       &NwkWriteOptions::default(),
     )?;
@@ -46,7 +46,7 @@ mod tests {
   #[test]
   fn test_nwk_parse_no_branch_lengths() -> Result<(), Report> {
     let input = "((A,B)AB,(C,D)CD)root;";
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
 
     // Verify structure is correct
     assert_eq!(graph.get_nodes().len(), 7);
@@ -64,7 +64,7 @@ mod tests {
   #[test]
   fn test_nwk_roundtrip_single_node() -> Result<(), Report> {
     let input = "A;";
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
 
     assert_eq!(graph.get_nodes().len(), 1, "Should have 1 node");
     assert_eq!(graph.get_edges().len(), 0, "Should have 0 edges");
@@ -81,7 +81,7 @@ mod tests {
 
     let output = nwk_write_str(
       &graph,
-      &node_names(&graph),
+      &names,
       &edge_branch_lengths(&graph),
       &NwkWriteOptions::default(),
     )?;
@@ -93,7 +93,7 @@ mod tests {
   fn test_nwk_roundtrip_polytomy() -> Result<(), Report> {
     // Tree with polytomy: root has 3 children
     let input = "(A:0.1,B:0.2,C:0.3)root;";
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
 
     assert_eq!(graph.get_nodes().len(), 4, "Should have 4 nodes");
     assert_eq!(graph.get_edges().len(), 3, "Should have 3 edges");
@@ -106,7 +106,7 @@ mod tests {
 
     let output = nwk_write_str(
       &graph,
-      &node_names(&graph),
+      &names,
       &edge_branch_lengths(&graph),
       &NwkWriteOptions::default(),
     )?;
@@ -118,7 +118,7 @@ mod tests {
   fn test_nwk_roundtrip_nested_polytomy() -> Result<(), Report> {
     // Nested polytomies: internal node also has >2 children
     let input = "((A:0.1,B:0.2,C:0.3)ABC:0.4,D:0.5,E:0.6)root;";
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
 
     assert_eq!(graph.get_nodes().len(), 7, "Should have 7 nodes");
     assert_eq!(graph.get_edges().len(), 6, "Should have 6 edges");
@@ -126,7 +126,7 @@ mod tests {
 
     let output = nwk_write_str(
       &graph,
-      &node_names(&graph),
+      &names,
       &edge_branch_lengths(&graph),
       &NwkWriteOptions::default(),
     )?;
@@ -137,7 +137,7 @@ mod tests {
   #[test]
   fn test_nwk_roundtrip_zero_length_branches() -> Result<(), Report> {
     let input = "((A:0,B:0.2)AB:0,(C:0.2,D:0)CD:0.05)root;";
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
 
     assert_eq!(graph.get_nodes().len(), 7);
     assert_eq!(graph.get_edges().len(), 6);
@@ -152,7 +152,7 @@ mod tests {
 
     let output = nwk_write_str(
       &graph,
-      &node_names(&graph),
+      &names,
       &edge_branch_lengths(&graph),
       &NwkWriteOptions::default(),
     )?;
@@ -163,7 +163,7 @@ mod tests {
   #[test]
   fn test_nwk_parse_verifies_branch_lengths() -> Result<(), Report> {
     let input = "((A:0.123,B:0.456)AB:0.789,C:1.5)root;";
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
 
     // Collect branch lengths by finding edges to specific nodes
     let mut branch_lengths = BTreeMap::new();
@@ -210,7 +210,7 @@ mod tests {
   #[test]
   fn test_nwk_parse_verifies_leaf_names() -> Result<(), Report> {
     let input = "((leaf_A:0.1,leaf_B:0.2)internal:0.1,leaf_C:0.3)root;";
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
 
     let leaf_names: Vec<String> = graph
       .get_leaves()
@@ -258,7 +258,7 @@ mod tests {
   #[test]
   fn test_nwk_parse_with_beast_comment_succeeds() -> Result<(), Report> {
     let input = "(A[&prob=0.95]:0.1,B:0.2);";
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
 
     assert_eq!(graph.get_nodes().len(), 3);
     assert_eq!(graph.get_edges().len(), 2);
@@ -290,14 +290,14 @@ mod tests {
   #[test]
   fn test_nwk_parse_negative_branch_length() -> Result<(), Report> {
     let input = "(A:-0.001,B:0.2)root;";
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>(input)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
 
     assert_eq!(graph.get_nodes().len(), 3);
     assert_eq!(graph.get_edges().len(), 2);
 
     let output = nwk_write_str(
       &graph,
-      &node_names(&graph),
+      &names,
       &edge_branch_lengths(&graph),
       &NwkWriteOptions::default(),
     )?;
@@ -313,7 +313,8 @@ mod tests {
     assert!(!trees.is_empty(), "data/ directory should contain tree.nwk files");
 
     for path in &trees {
-      let graph: Graph<TestNode, TestEdge, ()> = nwk_read_file(path)?.graph;
+      let NwkParse { graph, names, .. } = nwk_read_file(path)?;
+      let graph: Graph<TestNode, TestEdge, ()> = graph;
       assert!(!graph.get_nodes().is_empty(), "Tree {path:?} should have nodes");
       assert!(!graph.get_edges().is_empty(), "Tree {path:?} should have edges");
     }

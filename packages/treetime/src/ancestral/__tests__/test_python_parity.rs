@@ -22,9 +22,8 @@ mod tests {
   use std::path::PathBuf;
   use std::slice::from_ref;
   use std::sync::{Arc, LazyLock};
-  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::{read_many_fasta, read_many_fasta_str};
-  use treetime_io::nwk::{nwk_read_file, nwk_read_str};
+  use treetime_io::nwk::{NwkParse, nwk_read_file, nwk_read_str};
 
   use treetime_utils::make_report;
 
@@ -67,7 +66,9 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta(&[aln_path], &alphabet)?;
 
-    let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_file(&tree_path)?;
+
+    let graph: GraphAncestral = graph;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -81,17 +82,9 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&graph),
-      &partitions,
-      &aln,
-      &node_names(&graph),
-    )?
-    .value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
 
     let mut root_seq = String::new();
-    let names = node_names(&graph);
     ancestral_reconstruction_marginal(
       &graph,
       false,
@@ -190,7 +183,8 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:249-250
   #[test]
   fn test_internal_node_ab_profile_matches_python() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(PYTHON_TREE)?;
+    let graph: GraphAncestral = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -202,17 +196,10 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&graph),
-      &partitions,
-      &aln,
-      &node_names(&graph),
-    )?
-    .value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
 
     // Find node AB and check profile at position 0
-    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
+    let ab_key = find_node_key_by_name(&graph, &names, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
     let partition = partitions[0].read_arc();
     let ab_profile = &partition.data.nodes[&ab_key].profile.dis;
 
@@ -243,7 +230,8 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:245
   #[test]
   fn test_root_profile_matches_python() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(PYTHON_TREE)?;
+    let graph: GraphAncestral = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -255,17 +243,10 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&graph),
-      &partitions,
-      &aln,
-      &node_names(&graph),
-    )?
-    .value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
 
     // Find root node
-    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("Node root not found"))?;
+    let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("Node root not found"))?;
     let partition = partitions[0].read_arc();
     let root_profile = &partition.data.nodes[&root_key].profile.dis;
 
@@ -292,7 +273,8 @@ mod tests {
   /// does not.
   #[test]
   fn test_internal_node_cd_profile_valid() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(PYTHON_TREE)?;
+    let graph: GraphAncestral = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -304,16 +286,9 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&graph),
-      &partitions,
-      &aln,
-      &node_names(&graph),
-    )?
-    .value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
 
-    let cd_key = find_node_key_by_name(&graph, "CD").ok_or_else(|| make_report!("Node CD not found"))?;
+    let cd_key = find_node_key_by_name(&graph, &names, "CD").ok_or_else(|| make_report!("Node CD not found"))?;
     let partition = partitions[0].read_arc();
     let cd_profile = &partition.data.nodes[&cd_key].profile.dis;
 
@@ -342,7 +317,8 @@ mod tests {
   /// distributions everywhere in the tree, not just at spot-checked nodes.
   #[test]
   fn test_all_internal_nodes_normalized() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(PYTHON_TREE)?;
+    let graph: GraphAncestral = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -354,14 +330,7 @@ mod tests {
       get_common_length(&aln)?,
     )))];
 
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&graph),
-      &partitions,
-      &aln,
-      &node_names(&graph),
-    )?
-    .value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
 
     let partition = partitions[0].read_arc();
 
@@ -392,7 +361,8 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:252-274
   #[test]
   fn test_multi_partition_independent_computation() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(PYTHON_TREE)?;
+    let graph: GraphAncestral = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
 
     let gtr1 = make_python_reference_gtr()?;
@@ -412,15 +382,8 @@ mod tests {
 
     let partitions = [Arc::clone(&partition1), Arc::clone(&partition2)];
 
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&graph),
-      &partitions,
-      &aln,
-      &node_names(&graph),
-    )?
-    .value();
-    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("Node root not found"))?;
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
+    let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("Node root not found"))?;
 
     let p1 = partition1.read_arc();
     let p2 = partition2.read_arc();
@@ -462,7 +425,8 @@ mod tests {
   /// Python reference: test_scripts/ancestral_sparse.py:273-274
   #[test]
   fn test_multi_partition_internal_node_ab() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(PYTHON_TREE)?;
+    let graph: GraphAncestral = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
 
     let gtr1 = make_python_reference_gtr()?;
@@ -481,16 +445,9 @@ mod tests {
 
     let partitions = [Arc::clone(&partition1), Arc::clone(&partition2)];
 
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&graph),
-      &partitions,
-      &aln,
-      &node_names(&graph),
-    )?
-    .value();
+    initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
 
-    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
+    let ab_key = find_node_key_by_name(&graph, &names, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
 
     let p1 = partition1.read_arc();
     let ab1 = &p1.data.nodes[&ab_key].profile.dis;
@@ -529,7 +486,9 @@ mod tests {
     // Use simple alignment without gaps or ambiguous characters
     let simple_aln = ">A\nACATCGCCTTACGGAC\n>B\nGCATCCCTGTACTGAC\n>C\nCCGGCGATGTATTGAC\n>D\nTCGGCCGTGTATTGAC\n";
 
-    let graph: GraphAncestral = nwk_read_str(PYTHON_TREE)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(PYTHON_TREE)?;
+
+    let graph: GraphAncestral = graph;
     let aln = read_many_fasta_str(simple_aln, &*NUC_ALPHABET)?;
 
     let gtr = make_python_reference_gtr()?;
@@ -549,12 +508,12 @@ mod tests {
       &profile_branch_lengths(&graph),
       from_ref(&dense_partition),
       &aln,
-      &node_names(&graph),
+      &names,
     )?
     .value();
 
     // Sparse partition
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
     let sparse_log_lh = marginal_update(&graph, &profile_branch_lengths(&graph), from_ref(&sparse_partition))?.value();
 

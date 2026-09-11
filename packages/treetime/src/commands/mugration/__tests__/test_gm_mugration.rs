@@ -144,7 +144,6 @@ mod tests {
     use serde::Deserialize;
     use std::collections::BTreeMap;
     use std::path::PathBuf;
-    use treetime_graph::value_maps::node_names;
     use treetime_io::csv::default_name_candidates;
     use treetime_io::discrete_states_csv::read_discrete_attrs;
     use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -201,7 +200,11 @@ mod tests {
 
       // Read tree directly
       let tree_path = project_root.join(&fixture.tree_path);
-      let NwkParse { graph, confidences, .. } = nwk_read_file(&tree_path)?;
+      let NwkParse {
+        graph,
+        confidences,
+        names,
+      } = nwk_read_file(&tree_path)?;
 
       // Read trait values using in-memory parsing
       let metadata_path = project_root.join(&fixture.metadata_path);
@@ -232,7 +235,7 @@ mod tests {
         None => None,
       };
 
-      let names_tt_1 = node_names(&graph);
+      let names_tt_1 = names.clone();
       execute_mugration(
         graph,
         &confidences,

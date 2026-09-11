@@ -12,9 +12,9 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use treetime_graph::node::{GraphNodeKey, Named};
-  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::value_maps::edge_branch_lengths;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   pub fn compute_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
     let t: f64 = dates.values().sum();
@@ -33,16 +33,13 @@ mod tests {
       o!("D") => 2005.0,
     };
 
-    let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
-    let divs = compute_divs(
-      &graph,
-      OnlyLeaves(true),
-      &edge_branch_lengths(&graph),
-      &node_names(&graph),
-    )?;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+
+    let graph: GraphClock = graph;
+    let divs = compute_divs(&graph, OnlyLeaves(true), &edge_branch_lengths(&graph), &names)?;
     let naive_rate = compute_naive_rate(&dates, &divs);
 
-    let times = helpers::leaf_times(&graph, &dates);
+    let times = helpers::leaf_times(&names, &graph, &dates);
     let mut state = ClockState::seed_from_values(&graph, &times);
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
 
@@ -84,21 +81,26 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub(super) fn leaf_times(graph: &GraphClock, dates: &BTreeMap<String, f64>) -> BTreeMap<GraphNodeKey, Option<f64>> {
+    pub(super) fn leaf_times(
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      graph: &GraphClock,
+      dates: &BTreeMap<String, f64>,
+    ) -> BTreeMap<GraphNodeKey, Option<f64>> {
       graph
         .get_leaves()
         .iter()
         .map(|node| {
           let node = node.read_arc();
-          let name = node.payload().read_arc().name().unwrap().as_ref().to_owned();
+          let name = names[&node.key()].clone().unwrap();
           (node.key(), dates.get(&name).copied())
         })
         .collect()
     }
 
     pub(super) fn root_clock_set(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockSet, Report> {
-      let graph: GraphClock = nwk_read_str(tree)?.graph;
-      let times = leaf_times(&graph, dates);
+      let NwkParse { graph, names, .. } = nwk_read_str(tree)?;
+      let graph: GraphClock = graph;
+      let times = leaf_times(&names, &graph, dates);
       let mut state = ClockState::seed_from_values(&graph, &times);
       clock_regression_backward(&graph, &mut state, &ClockParams::default(), None)?;
       let root_key = graph.get_exactly_one_root()?.read_arc().key();

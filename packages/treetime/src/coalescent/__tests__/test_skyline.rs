@@ -9,9 +9,8 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use rstest::rstest;
-  use treetime_graph::value_maps::node_names;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::assert_error;
 
   const SMALL_TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
@@ -266,8 +265,8 @@ mod tests {
       tree_nwk: &str,
       dates: &DatesMap,
     ) -> Result<(GraphTimetree, DateConstraints), Report> {
-      let graph = nwk_read_str(tree_nwk)?.graph;
-      let constraints = load_date_constraints(dates, &graph, &node_names(&graph))?;
+      let NwkParse { graph, names, .. } = nwk_read_str(tree_nwk)?;
+      let constraints = load_date_constraints(dates, &graph, &names)?;
       Ok((graph, constraints))
     }
   }

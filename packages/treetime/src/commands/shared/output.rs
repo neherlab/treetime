@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use strum::IntoEnumIterator;
 use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::NwkStyle;
@@ -798,7 +798,7 @@ impl TopologyOrderArgs {
     input_order: Option<Vec<String>>,
   ) -> Result<TopologyOrderSpec, Report>
   where
-    N: GraphNode + Named,
+    N: GraphNode,
     E: GraphEdge,
     D: Sync + Send,
   {
@@ -871,7 +871,7 @@ impl TopologyOrderArgs {
     input_order: Option<Vec<String>>,
   ) -> Result<Vec<String>, Report>
   where
-    N: GraphNode + Named,
+    N: GraphNode,
     E: GraphEdge,
     D: Sync + Send,
   {
@@ -1016,7 +1016,7 @@ fn leaf_order<N, E, D>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<Vec<String>, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {
@@ -1033,31 +1033,17 @@ where
 }
 
 #[derive(Clone, Debug, Default)]
-struct OrderNode {
-  name: Option<String>,
-}
+struct OrderNode {}
 
 impl GraphNode for OrderNode {}
 
-impl Named for OrderNode {
-  fn name(&self) -> Option<impl AsRef<str>> {
-    self.name.as_deref()
-  }
-
-  fn set_name(&mut self, name: Option<impl AsRef<str>>) {
-    self.name = name.map(|name| name.as_ref().to_owned());
-  }
-}
-
 impl NodeFromNwk for OrderNode {
   fn from_nwk(
-    name: Option<impl AsRef<str>>,
+    _name: Option<impl AsRef<str>>,
     _confidence: Option<f64>,
     _: &BTreeMap<String, String>,
   ) -> Result<Self, Report> {
-    Ok(Self {
-      name: name.map(|name| name.as_ref().to_owned()),
-    })
+    Ok(Self {})
   }
 }
 

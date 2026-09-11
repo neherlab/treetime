@@ -17,7 +17,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_io::dates_csv::read_dates;
 use treetime_io::nwk::{NwkParse, nwk_read_file};
 
@@ -233,7 +233,7 @@ fn leaf_order<N, E, D>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<Vec<String>, Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: GraphEdge,
   D: Sync + Send,
 {

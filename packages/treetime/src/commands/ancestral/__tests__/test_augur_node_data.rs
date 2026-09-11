@@ -10,8 +10,8 @@ mod tests {
 
   #[test]
   fn test_augur_node_data_ancestral_full_output() {
-    let (graph, partition) = helpers::mutation_case();
-    let actual = helpers::write_json(&graph, &partition, &[false, false, false, false]);
+    let (graph, names, partition) = helpers::mutation_case();
+    let actual = helpers::write_json(&graph, &names, &partition, &[false, false, false, false]);
 
     let expected = format!(
       r#"{{
@@ -56,8 +56,8 @@ mod tests {
 
   #[test]
   fn test_augur_node_data_ancestral_roundtrip() {
-    let (graph, partition) = helpers::mutation_case();
-    let json_str = helpers::write_json(&graph, &partition, &[false, false, false, false]);
+    let (graph, names, partition) = helpers::mutation_case();
+    let json_str = helpers::write_json(&graph, &names, &partition, &[false, false, false, false]);
 
     let original: serde_json::Value = serde_json::from_str(&json_str).unwrap();
     let typed: AugurNodeDataJsonAncestral = json_read_str(&json_str).unwrap();
@@ -71,8 +71,8 @@ mod tests {
 
   #[test]
   fn test_augur_node_data_ancestral_mask_filters_mutations() {
-    let (graph, partition) = helpers::mutation_case();
-    let actual = helpers::write_json(&graph, &partition, &[false, false, false, true]);
+    let (graph, names, partition) = helpers::mutation_case();
+    let actual = helpers::write_json(&graph, &names, &partition, &[false, false, false, true]);
 
     let expected = format!(
       r#"{{
@@ -115,8 +115,8 @@ mod tests {
 
   #[test]
   fn test_augur_node_data_ancestral_root_has_empty_muts() {
-    let (graph, partition) = helpers::mutation_case();
-    let json_str = helpers::write_json(&graph, &partition, &[false, false, false, false]);
+    let (graph, names, partition) = helpers::mutation_case();
+    let json_str = helpers::write_json(&graph, &names, &partition, &[false, false, false, false]);
     let data: AugurNodeDataJsonAncestral = json_read_str(&json_str).unwrap();
 
     // Root has no parent edge: empty mutations. A non-root node carries the
@@ -199,9 +199,8 @@ mod tests {
     use maplit::btreemap;
     use std::collections::BTreeMap;
     use tempfile::tempdir;
-    use treetime_graph::node::{GraphNodeKey, Named};
-    use treetime_graph::value_maps::node_names;
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_graph::node::GraphNodeKey;
+    use treetime_io::nwk::{NwkParse, nwk_read_str};
     use treetime_primitives::{AsciiChar, Seq};
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use treetime_utils::o;
@@ -221,22 +220,26 @@ mod tests {
 
     /// Two-leaf tree where leaf A differs from the root at one position.
     /// Root sequence ACGT, A is ACGA, with the substitution T4A on edge root->A.
-    pub fn mutation_case() -> (GraphAncestral, PartitionFitch) {
-      let graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1)root;").unwrap().graph;
+    pub fn mutation_case() -> (GraphAncestral, BTreeMap<GraphNodeKey, Option<String>>, PartitionFitch) {
+      let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+      let graph: GraphAncestral = graph;
       let seqs = btreemap! { o!("A") => o!("ACGA"), o!("B") => o!("ACGT"), o!("root") => o!("ACGT") };
       let edge_subs = btreemap! { o!("A") => vec![sub(b'T', 3, b'A')] };
-      let partition = build_fitch_partition(&graph, &seqs, &edge_subs, 4);
-      (graph, partition)
+      let partition = build_fitch_partition(&graph, &names, &seqs, &edge_subs, 4);
+      (graph, names, partition)
     }
 
-    pub fn node_name_to_key(graph: &GraphAncestral) -> BTreeMap<String, GraphNodeKey> {
+    pub fn node_name_to_key(
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      graph: &GraphAncestral,
+    ) -> BTreeMap<String, GraphNodeKey> {
       graph
         .get_nodes()
         .into_iter()
         .map(|node| {
           let node = node.read_arc();
           let key = node.key();
-          let name = node.payload().read_arc().name().unwrap().as_ref().to_owned();
+          let name = names[&node.key()].clone().unwrap();
           (name, key)
         })
         .collect()
@@ -244,6 +247,7 @@ mod tests {
 
     pub fn build_fitch_partition(
       graph: &GraphAncestral,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
       seqs: &BTreeMap<String, String>,
       edge_subs_by_child: &BTreeMap<String, Vec<Sub>>,
       length: usize,
@@ -255,8 +259,7 @@ mod tests {
       for node in graph.get_nodes() {
         let node_guard = node.read_arc();
         let key = node_guard.key();
-        let payload = node_guard.payload().read_arc();
-        let name = payload.name().unwrap().as_ref().to_owned();
+        let name = names[&key].clone().unwrap();
         let seq = Seq::try_from_str(&seqs[&name]).unwrap();
         nodes.insert(key, SparseNodePartition::new(&seq, &alphabet).unwrap());
         key_to_name.insert(key, name);
@@ -280,8 +283,13 @@ mod tests {
       }
     }
 
-    pub fn write_json(graph: &GraphAncestral, partition: &PartitionFitch, mask: &[bool]) -> String {
-      let data = build_augur_node_data_json(graph, partition, mask, &node_names(graph), None).unwrap();
+    pub fn write_json(
+      graph: &GraphAncestral,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      partition: &PartitionFitch,
+      mask: &[bool],
+    ) -> String {
+      let data = build_augur_node_data_json(graph, partition, mask, names, None).unwrap();
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
@@ -361,8 +369,8 @@ mod tests {
     }
 
     pub fn build_json_with_aa() -> AugurNodeDataJsonAncestral {
-      let (graph, partition) = mutation_case();
-      let name_to_key = node_name_to_key(&graph);
+      let (graph, names, partition) = mutation_case();
+      let name_to_key = node_name_to_key(&names, &graph);
       let mut aa_node_data = AaNodeData::default();
 
       aa_node_data.add_cds(
@@ -391,7 +399,7 @@ mod tests {
         &graph,
         &partition,
         &[false, false, false, false],
-        &node_names(&graph),
+        &names,
         Some(&aa_node_data),
       )
       .unwrap()

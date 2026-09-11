@@ -69,9 +69,8 @@ mod tests {
     use rand::rngs::StdRng;
     use std::collections::BTreeMap;
     use std::sync::Arc;
-    use treetime_graph::value_maps::node_names;
     use treetime_io::fasta::read_many_fasta_str;
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::nwk::{NwkParse, nwk_read_str};
 
     pub const ROOT_NAME: &str = "root";
 
@@ -97,8 +96,10 @@ mod tests {
         &Alphabet::default(),
       )?;
 
-      let graph: GraphAncestral = nwk_read_str(TREE)?.graph;
-      let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &node_names(&graph))?;
+      let NwkParse { graph, names, .. } = nwk_read_str(TREE)?;
+
+      let graph: GraphAncestral = graph;
+      let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
       let partitions = [Arc::new(RwLock::new(
         fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
       ))];
@@ -107,7 +108,6 @@ mod tests {
 
       let mut rng = StdRng::seed_from_u64(seed);
       let mut out = BTreeMap::new();
-      let names = node_names(&graph);
       ancestral_reconstruction_marginal(&graph, false, false, &partitions, mode, &mut rng, |key, seq| {
         out.insert(names[&key].clone().unwrap_or_default(), seq.to_string());
         Ok(())

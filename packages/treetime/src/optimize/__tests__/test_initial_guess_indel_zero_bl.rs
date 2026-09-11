@@ -10,13 +10,12 @@ mod tests {
   use crate::seq::indel::InDel;
   use eyre::Report;
   use indoc::indoc;
-  use treetime_graph::value_maps::node_names;
 
   use parking_lot::RwLock;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::seq::Seq;
 
   /// All-zero branch length tree. Auto mode (overwrite_valid=false) treats
@@ -104,7 +103,8 @@ mod tests {
         "#},
         &alphabet,
       )?;
-      let graph: GraphAncestral = nwk_read_str(newick)?.graph;
+      let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+      let graph: GraphAncestral = graph;
 
       let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
         0,
@@ -113,14 +113,7 @@ mod tests {
         get_common_length(&aln)?,
       )))];
 
-      initialize_marginal(
-        &graph,
-        &profile_branch_lengths(&graph),
-        &partitions,
-        &aln,
-        &node_names(&graph),
-      )?
-      .value();
+      initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
       marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
       Ok((graph, partitions))

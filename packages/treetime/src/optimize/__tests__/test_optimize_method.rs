@@ -25,10 +25,12 @@ mod tests {
   use ndarray::array;
   use parking_lot::RwLock;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_graph::edge::HasBranchLength;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_graph::value_maps::edge_branch_lengths;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::Seq;
 
   /// At s=0, the first derivative is zero (chain rule factor 2s = 0) and
@@ -257,9 +259,10 @@ mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_method_equivalence_no_indels(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
     let aln = simple_alignment()?;
-    let (_, _, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let (_, _, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
@@ -287,8 +290,9 @@ mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_method_local_optimality(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (mixed_partitions, indel_rate) = setup_with_indels(&graph, 4)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let (mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, 4)?;
 
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
@@ -325,8 +329,9 @@ mod tests {
   #[case::newton_log( BranchOptMethod::NewtonLog)]
   #[trace]
   fn test_optimize_method_stationarity(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (mixed_partitions, indel_rate) = setup_with_indels(&graph, 2)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let (mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, 2)?;
 
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
@@ -360,14 +365,14 @@ mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_cross_method_lh_agreement(#[case] n_indels: usize) -> Result<(), Report> {
-    let graph_brent: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (partitions_brent, rate_brent) = setup_with_indels(&graph_brent, n_indels)?;
+    let NwkParse { graph: graph_brent, names: graph_brent_names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_brent, rate_brent) = setup_with_indels(&graph_brent, &graph_brent_names, n_indels)?;
     run_optimize_mixed(&graph_brent, &partitions_brent, BranchOptMethod::Brent)?;
     let bl_brent = first_edge_bl(&graph_brent);
     let lh_brent = eval_combined_first_edge(&graph_brent, &partitions_brent, rate_brent, bl_brent)?;
 
-    let graph_sqrt: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, n_indels)?;
+    let NwkParse { graph: graph_sqrt, names: graph_sqrt_names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, &graph_sqrt_names, n_indels)?;
     run_optimize_mixed(&graph_sqrt, &partitions_sqrt, BranchOptMethod::NewtonSqrt)?;
     let bl_sqrt = first_edge_bl(&graph_sqrt);
     let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &partitions_sqrt, rate_sqrt, bl_sqrt)?;
@@ -391,14 +396,14 @@ mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_cross_method_lh_agreement_newton_log(#[case] n_indels: usize) -> Result<(), Report> {
-    let graph_brent: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (partitions_brent, rate_brent) = setup_with_indels(&graph_brent, n_indels)?;
+    let NwkParse { graph: graph_brent, names: graph_brent_names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_brent, rate_brent) = setup_with_indels(&graph_brent, &graph_brent_names, n_indels)?;
     run_optimize_mixed(&graph_brent, &partitions_brent, BranchOptMethod::Brent)?;
     let bl_brent = first_edge_bl(&graph_brent);
     let lh_brent = eval_combined_first_edge(&graph_brent, &partitions_brent, rate_brent, bl_brent)?;
 
-    let graph_log: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (partitions_log, rate_log) = setup_with_indels(&graph_log, n_indels)?;
+    let NwkParse { graph: graph_log, names: graph_log_names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_log, rate_log) = setup_with_indels(&graph_log, &graph_log_names, n_indels)?;
     run_optimize_mixed(&graph_log, &partitions_log, BranchOptMethod::NewtonLog)?;
     let bl_log = first_edge_bl(&graph_log);
     let lh_log = eval_combined_first_edge(&graph_log, &partitions_log, rate_log, bl_log)?;
@@ -447,15 +452,17 @@ mod tests {
     // Reference: run BrentSqrt (the v0-matching default) on a fresh graph
     // and capture its post-optimization log-likelihood at the first edge.
     let lh_ref = {
-      let graph_ref: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-      let (partitions_ref, rate_ref) = setup_with_indels(&graph_ref, n_indels)?;
+      let NwkParse { graph: graph_ref, names: graph_ref_names, .. } = nwk_read_str(TREE_NEWICK)?;
+      let (partitions_ref, rate_ref) = setup_with_indels(&graph_ref, &graph_ref_names, n_indels)?;
       run_optimize_mixed(&graph_ref, &partitions_ref, BranchOptMethod::BrentSqrt)?;
       let bl_ref = first_edge_bl(&graph_ref);
       eval_combined_first_edge(&graph_ref, &partitions_ref, rate_ref, bl_ref)?
     };
 
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (partitions, rate) = setup_with_indels(&graph, n_indels)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+
+    let graph: GraphAncestral = graph;
+    let (partitions, rate) = setup_with_indels(&graph, &names, n_indels)?;
     run_optimize_mixed(&graph, &partitions, method)?;
     let bl = first_edge_bl(&graph);
     let lh = eval_combined_first_edge(&graph, &partitions, rate, bl)?;
@@ -473,14 +480,22 @@ mod tests {
   /// in t-space on the Hessian-dominated case.
   #[test]
   fn test_optimize_method_newton_log_improves_over_newton() -> Result<(), Report> {
-    let graph_newton: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (partitions_newton, rate_newton) = setup_with_indels(&graph_newton, 4)?;
+    let NwkParse {
+      graph: graph_newton,
+      names: graph_newton_names,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_newton, rate_newton) = setup_with_indels(&graph_newton, &graph_newton_names, 4)?;
     run_optimize_mixed(&graph_newton, &partitions_newton, BranchOptMethod::Newton)?;
     let bl_newton = first_edge_bl(&graph_newton);
     let lh_newton = eval_combined_first_edge(&graph_newton, &partitions_newton, rate_newton, bl_newton)?;
 
-    let graph_log: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (partitions_log, rate_log) = setup_with_indels(&graph_log, 4)?;
+    let NwkParse {
+      graph: graph_log,
+      names: graph_log_names,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_log, rate_log) = setup_with_indels(&graph_log, &graph_log_names, 4)?;
     run_optimize_mixed(&graph_log, &partitions_log, BranchOptMethod::NewtonLog)?;
     let bl_log = first_edge_bl(&graph_log);
     let lh_log = eval_combined_first_edge(&graph_log, &partitions_log, rate_log, bl_log)?;
@@ -501,14 +516,22 @@ mod tests {
   /// in t-space on the Hessian-dominated case.
   #[test]
   fn test_optimize_method_newton_sqrt_improves_over_newton() -> Result<(), Report> {
-    let graph_newton: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (partitions_newton, rate_newton) = setup_with_indels(&graph_newton, 4)?;
+    let NwkParse {
+      graph: graph_newton,
+      names: graph_newton_names,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_newton, rate_newton) = setup_with_indels(&graph_newton, &graph_newton_names, 4)?;
     run_optimize_mixed(&graph_newton, &partitions_newton, BranchOptMethod::Newton)?;
     let bl_newton = first_edge_bl(&graph_newton);
     let lh_newton = eval_combined_first_edge(&graph_newton, &partitions_newton, rate_newton, bl_newton)?;
 
-    let graph_sqrt: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, 4)?;
+    let NwkParse {
+      graph: graph_sqrt,
+      names: graph_sqrt_names,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, &graph_sqrt_names, 4)?;
     run_optimize_mixed(&graph_sqrt, &partitions_sqrt, BranchOptMethod::NewtonSqrt)?;
     let bl_sqrt = first_edge_bl(&graph_sqrt);
     let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &partitions_sqrt, rate_sqrt, bl_sqrt)?;
@@ -540,20 +563,20 @@ mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_newton_cross_conditioning_ordering(#[case] n_indels: usize) -> Result<(), Report> {
-    let graph_newton: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (partitions_newton, rate_newton) = setup_with_indels(&graph_newton, n_indels)?;
+    let NwkParse { graph: graph_newton, names: graph_newton_names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_newton, rate_newton) = setup_with_indels(&graph_newton, &graph_newton_names, n_indels)?;
     run_optimize_mixed(&graph_newton, &partitions_newton, BranchOptMethod::Newton)?;
     let bl_newton = first_edge_bl(&graph_newton);
     let lh_newton = eval_combined_first_edge(&graph_newton, &partitions_newton, rate_newton, bl_newton)?;
 
-    let graph_sqrt: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, n_indels)?;
+    let NwkParse { graph: graph_sqrt, names: graph_sqrt_names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, &graph_sqrt_names, n_indels)?;
     run_optimize_mixed(&graph_sqrt, &partitions_sqrt, BranchOptMethod::NewtonSqrt)?;
     let bl_sqrt = first_edge_bl(&graph_sqrt);
     let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &partitions_sqrt, rate_sqrt, bl_sqrt)?;
 
-    let graph_log: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (partitions_log, rate_log) = setup_with_indels(&graph_log, n_indels)?;
+    let NwkParse { graph: graph_log, names: graph_log_names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let (partitions_log, rate_log) = setup_with_indels(&graph_log, &graph_log_names, n_indels)?;
     run_optimize_mixed(&graph_log, &partitions_log, BranchOptMethod::NewtonLog)?;
     let bl_log = first_edge_bl(&graph_log);
     let lh_log = eval_combined_first_edge(&graph_log, &partitions_log, rate_log, bl_log)?;
@@ -591,8 +614,9 @@ mod tests {
     #[case] method: BranchOptMethod,
     #[case] n_indels: usize,
   ) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (mixed_partitions, _) = setup_with_indels(&graph, n_indels)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let (mixed_partitions, _) = setup_with_indels(&graph, &names, n_indels)?;
 
     run_optimize_mixed(&graph, &mixed_partitions, method)?;
 
@@ -610,8 +634,9 @@ mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_newton_log_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (mixed_partitions, _) = setup_with_indels(&graph, n_indels)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let (mixed_partitions, _) = setup_with_indels(&graph, &names, n_indels)?;
 
     run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::NewtonLog)?;
 
@@ -629,8 +654,9 @@ mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_newton_sqrt_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (mixed_partitions, _) = setup_with_indels(&graph, n_indels)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let (mixed_partitions, _) = setup_with_indels(&graph, &names, n_indels)?;
 
     run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::NewtonSqrt)?;
 
@@ -648,8 +674,9 @@ mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_newton_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (mixed_partitions, _) = setup_with_indels(&graph, n_indels)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let (mixed_partitions, _) = setup_with_indels(&graph, &names, n_indels)?;
 
     run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton)?;
 
@@ -664,20 +691,32 @@ mod tests {
   fn test_optimize_method_brent_cross_parameterization_lh_agreement() -> Result<(), Report> {
     let n_indels = 3;
 
-    let graph_t: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (parts_t, rate_t) = setup_with_indels(&graph_t, n_indels)?;
+    let NwkParse {
+      graph: graph_t,
+      names: graph_t_names,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
+    let (parts_t, rate_t) = setup_with_indels(&graph_t, &graph_t_names, n_indels)?;
     run_optimize_mixed(&graph_t, &parts_t, BranchOptMethod::Brent)?;
     let bl_t = first_edge_bl(&graph_t);
     let lh_t = eval_combined_first_edge(&graph_t, &parts_t, rate_t, bl_t)?;
 
-    let graph_sqrt: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (parts_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, n_indels)?;
+    let NwkParse {
+      graph: graph_sqrt,
+      names: graph_sqrt_names,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
+    let (parts_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, &graph_sqrt_names, n_indels)?;
     run_optimize_mixed(&graph_sqrt, &parts_sqrt, BranchOptMethod::BrentSqrt)?;
     let bl_sqrt = first_edge_bl(&graph_sqrt);
     let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &parts_sqrt, rate_sqrt, bl_sqrt)?;
 
-    let graph_log: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (parts_log, rate_log) = setup_with_indels(&graph_log, n_indels)?;
+    let NwkParse {
+      graph: graph_log,
+      names: graph_log_names,
+      ..
+    } = nwk_read_str(TREE_NEWICK)?;
+    let (parts_log, rate_log) = setup_with_indels(&graph_log, &graph_log_names, n_indels)?;
     run_optimize_mixed(&graph_log, &parts_log, BranchOptMethod::BrentLog)?;
     let bl_log = first_edge_bl(&graph_log);
     let lh_log = eval_combined_first_edge(&graph_log, &parts_log, rate_log, bl_log)?;
@@ -701,9 +740,10 @@ mod tests {
   /// optimum of the original objective.
   #[test]
   fn test_optimize_method_brent_sqrt_transform_round_trip() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
     let aln = simple_alignment()?;
-    let (_, _, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let (_, _, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     let edge_key = graph.get_edges()[0].read_arc().key();
     let contributions: Vec<OptimizationContribution> = mixed_partitions
@@ -754,9 +794,10 @@ mod tests {
   /// optimum of the original objective.
   #[test]
   fn test_optimize_method_brent_log_transform_round_trip() -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
     let aln = simple_alignment()?;
-    let (_, _, mixed_partitions) = setup_partitions(&graph, &aln)?;
+    let (_, _, mixed_partitions) = setup_partitions(&graph, &names, &aln)?;
 
     let edge_key = graph.get_edges()[0].read_arc().key();
     let contributions: Vec<OptimizationContribution> = mixed_partitions
@@ -810,8 +851,9 @@ mod tests {
   #[case::brent_log( BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_method_brent_bracket_validity(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let graph: GraphAncestral = nwk_read_str(TREE_NEWICK)?.graph;
-    let (mixed_partitions, indel_rate) = setup_with_indels(&graph, 4)?;
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let graph: GraphAncestral = graph;
+    let (mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, 4)?;
 
     // Capture input branch length and compute bracket BEFORE optimization
     // (production code computes the bracket from the input BL). Calls the
@@ -981,10 +1023,11 @@ mod tests {
     /// use the same rate for consistent verification.
     pub(super) fn setup_with_indels(
       graph: &GraphAncestral,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
       n_indels: usize,
     ) -> Result<(crate::partition::traits::PartitionOptimizeVec, f64), Report> {
       let aln = simple_alignment()?;
-      let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(graph, &aln)?;
+      let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(graph, names, &aln)?;
 
       let first_edge_key = graph.get_edges()[0].read_arc().key();
       let indels: Vec<InDel> = (0..n_indels)

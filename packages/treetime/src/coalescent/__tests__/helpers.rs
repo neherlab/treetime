@@ -4,14 +4,15 @@ use crate::partition::timetree::partition::GraphTimetree;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use maplit::btreemap;
-use treetime_graph::value_maps::node_names;
+use std::collections::BTreeMap;
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DateConstraint;
-use treetime_io::nwk::nwk_read_str;
+use treetime_io::nwk::{NwkParse, nwk_read_str};
 use treetime_utils::o;
 
 pub const TREE_NWK: &str = "((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;";
 
-pub fn setup_graph() -> Result<(GraphTimetree, DateConstraints), Report> {
+pub fn setup_graph() -> Result<(GraphTimetree, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
   let dates = btreemap! {
     o!("root") => Some(DateConstraint::exact(2000.0)),
     o!("internal1") => Some(DateConstraint::exact(2005.0)),
@@ -19,9 +20,10 @@ pub fn setup_graph() -> Result<(GraphTimetree, DateConstraints), Report> {
     o!("leaf2") => Some(DateConstraint::exact(2010.0)),
     o!("leaf3") => Some(DateConstraint::exact(2012.0)),
   };
-  let graph: GraphTimetree = nwk_read_str(TREE_NWK)?.graph;
-  let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
-  Ok((graph, constraints))
+  let NwkParse { graph, names, .. } = nwk_read_str(TREE_NWK)?;
+  let graph: GraphTimetree = graph;
+  let constraints = load_date_constraints(&dates, &graph, &names)?;
+  Ok((graph, names, constraints))
 }
 
 /// Build the coalescent node-time value the collectors consume, from the date constraints

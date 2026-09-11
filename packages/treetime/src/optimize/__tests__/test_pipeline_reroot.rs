@@ -8,23 +8,32 @@ mod tests {
   use crate::payload::ancestral::GraphAncestral;
   use crate::progress::NoopProgress;
   use eyre::Report;
+  use std::collections::BTreeMap;
   use std::path::Path;
   use treetime_graph::edge::HasBranchLength;
-  use treetime_graph::node::{GraphNodeKey, Named};
-  use treetime_graph::value_maps::node_names;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta};
-  use treetime_io::nwk::nwk_read_file;
+  use treetime_io::nwk::{NwkParse, nwk_read_file};
 
-  fn load() -> Result<(GraphAncestral, Alphabet, Vec<FastaRecord>), Report> {
+  fn load() -> Result<
+    (
+      GraphAncestral,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      Alphabet,
+      Vec<FastaRecord>,
+    ),
+    Report,
+  > {
     let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .and_then(Path::parent)
       .expect("workspace root");
     let alphabet = Alphabet::default();
-    let graph: GraphAncestral = nwk_read_file(workspace_root.join("data/flu/h3n2/20/tree.nwk"))?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_file(workspace_root.join("data/flu/h3n2/20/tree.nwk"))?;
+    let graph: GraphAncestral = graph;
     let aln = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
     let sequences = read_many_fasta(&[aln.to_str().expect("utf-8 path")], &alphabet)?;
-    Ok((graph, alphabet, sequences))
+    Ok((graph, names, alphabet, sequences))
   }
 
   fn params_with(reroot_spec: Option<RerootSpec>) -> OptimizeParams {
@@ -68,17 +77,15 @@ mod tests {
       .collect()
   }
 
-  fn leaf_names(graph: &GraphAncestral) -> Vec<String> {
+  fn leaf_names(graph: &GraphAncestral, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Vec<String> {
     graph
       .get_leaves()
       .iter()
       .map(|leaf| {
-        leaf
-          .read_arc()
-          .payload()
-          .read_arc()
-          .name()
-          .map(|name| name.as_ref().to_owned())
+        names
+          .get(&leaf.read_arc().key())
+          .cloned()
+          .flatten()
           .expect("leaf has a name")
       })
       .collect()
@@ -86,11 +93,9 @@ mod tests {
 
   #[test]
   fn test_optimize_pipeline_reroot_min_dev_changes_root() -> Result<(), Report> {
-    let (graph, alphabet, sequences) = load()?;
+    let (graph, names, alphabet, sequences) = load()?;
     let leaves_before = graph.get_leaves().len();
     let root_children_before = root_child_keys(&graph);
-
-    let names = node_names(&graph);
     let output = run(
       &params_with(Some(RerootSpec::Method(RerootMethod::MinDev))),
       OptimizeInput {
@@ -114,12 +119,10 @@ mod tests {
 
   #[test]
   fn test_optimize_pipeline_reroot_tips_changes_root() -> Result<(), Report> {
-    let (graph, alphabet, sequences) = load()?;
+    let (graph, names, alphabet, sequences) = load()?;
     let leaves_before = graph.get_leaves().len();
     let root_before = root_key(&graph);
-    let tips: Vec<String> = leaf_names(&graph).into_iter().take(2).collect();
-
-    let names = node_names(&graph);
+    let tips: Vec<String> = leaf_names(&graph, &names).into_iter().take(2).collect();
     let output = run(
       &params_with(Some(RerootSpec::Tips(tips))),
       OptimizeInput {
@@ -140,13 +143,11 @@ mod tests {
 
   #[test]
   fn test_optimize_pipeline_reroot_min_dev_dense_completes() -> Result<(), Report> {
-    let (graph, alphabet, sequences) = load()?;
+    let (graph, names, alphabet, sequences) = load()?;
     let leaves_before = graph.get_leaves().len();
 
     let mut params = params_with(Some(RerootSpec::Method(RerootMethod::MinDev)));
     params.dense = Some(true);
-
-    let names = node_names(&graph);
     let output = run(
       &params,
       OptimizeInput {
@@ -167,10 +168,8 @@ mod tests {
   // flags; both must complete and preserve the tree.
   #[test]
   fn test_optimize_pipeline_keep_root_completes() -> Result<(), Report> {
-    let (graph, alphabet, sequences) = load()?;
+    let (graph, names, alphabet, sequences) = load()?;
     let leaves_before = graph.get_leaves().len();
-
-    let names = node_names(&graph);
     let output = run(
       &params_with(None),
       OptimizeInput {

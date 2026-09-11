@@ -28,11 +28,10 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
-  use treetime_graph::node::Named;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_graph::reroot::RerootChanges;
-  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::{AsciiChar, LogLh, Seq, seq};
   use treetime_utils::make_report;
 
@@ -45,7 +44,7 @@ mod tests {
   /// Per-leaf date inputs as a value map, replacing the payload `time_distribution` the tests used to
   /// write. Each dated leaf carries a point distribution at its date; internal nodes get no entry,
   /// which `seed_from_values` reads as no constraint.
-  fn date_constraints(graph: &GraphTimetree) -> DateConstraints {
+  fn date_constraints(names: &BTreeMap<GraphNodeKey, Option<String>>, graph: &GraphTimetree) -> DateConstraints {
     let dates = btreemap! {
       o!("A") => 2013.0,
       o!("B") => 2022.0,
@@ -56,7 +55,7 @@ mod tests {
     let mut time_distributions = BTreeMap::new();
     for n in graph.get_leaves() {
       let n = n.read_arc();
-      let name = n.payload().read_arc().name().map(|s| s.as_ref().to_owned());
+      let name = names.get(&n.key()).cloned().flatten();
       if let Some(name) = name {
         let date = dates[&name];
         time_distributions.insert(n.key(), Some(Arc::new(Distribution::point(date, 1.0))));
@@ -89,8 +88,9 @@ mod tests {
   fn test_reroot_tree_sparse_with_edge_split() -> Result<(), Report> {
     // Test that reroot works correctly with sparse partitions when edge split is enabled
     let aln = gap_free_alignment()?;
-    let mut graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?.graph;
-    let constraints = date_constraints(&graph);
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let mut graph: GraphTimetree = graph;
+    let constraints = date_constraints(&names, &graph);
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
@@ -98,7 +98,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
       fitch.into_marginal_sparse(gtr, &graph)?,
     )));
@@ -116,7 +116,7 @@ mod tests {
     let initial_node_count = graph.get_nodes().len();
 
     // Should complete without error - edge split and trivial root removal are now always enabled
-    let names_tt_3 = node_names(&graph);
+    let names_tt_3 = names.clone();
     let clock_model = reroot_tree(
       &mut graph,
       &mut clock_state,
@@ -171,13 +171,14 @@ mod tests {
   fn test_sparse_reroot_inverts_subs_and_indels_on_path() -> Result<(), Report> {
     // Tree: (A:0.1,B:0.2)root;
     // After reroot to A, edge direction inverts
-    let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.2)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let graph: GraphTimetree = graph;
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
 
-    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("root not found"))?;
-    let a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| make_report!("A not found"))?;
+    let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("root not found"))?;
+    let a_key = find_node_key_by_name(&graph, &names, "A").ok_or_else(|| make_report!("A not found"))?;
 
     // Find edge from root to A
     let edge_to_a_key = graph
@@ -256,13 +257,14 @@ mod tests {
     // marginal update pass (process_node_backward + process_node_forward).
     //
     // Tree: (A:0.1,B:0.2)root;
-    let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.2)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let graph: GraphTimetree = graph;
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
 
-    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("root not found"))?;
-    let a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| make_report!("A not found"))?;
+    let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("root not found"))?;
+    let a_key = find_node_key_by_name(&graph, &names, "A").ok_or_else(|| make_report!("A not found"))?;
 
     // Find edge from root to A
     let edge_to_a_key = graph
@@ -340,12 +342,13 @@ mod tests {
 
   #[test]
   fn test_reroot_root_sequence_updated_with_indel() -> Result<(), Report> {
-    let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.2)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let graph: GraphTimetree = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
 
-    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("root not found"))?;
-    let a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| make_report!("A not found"))?;
+    let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("root not found"))?;
+    let a_key = find_node_key_by_name(&graph, &names, "A").ok_or_else(|| make_report!("A not found"))?;
     let edge_to_a_key = graph
       .get_edges()
       .iter()
@@ -397,13 +400,14 @@ mod tests {
 
   #[test]
   fn test_reroot_root_sequence_multi_hop() -> Result<(), Report> {
-    let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.3)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.3)root;")?;
+    let graph: GraphTimetree = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
 
-    let root_key = find_node_key_by_name(&graph, "root").ok_or_else(|| make_report!("root not found"))?;
-    let ab_key = find_node_key_by_name(&graph, "AB").ok_or_else(|| make_report!("AB not found"))?;
-    let a_key = find_node_key_by_name(&graph, "A").ok_or_else(|| make_report!("A not found"))?;
+    let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("root not found"))?;
+    let ab_key = find_node_key_by_name(&graph, &names, "AB").ok_or_else(|| make_report!("AB not found"))?;
+    let a_key = find_node_key_by_name(&graph, &names, "A").ok_or_else(|| make_report!("A not found"))?;
 
     let edge_root_ab = graph
       .get_edges()
@@ -472,8 +476,9 @@ mod tests {
     // Regression test: verify reroot_tree completes without panicking
     // when keep_root=false (reroot enabled) with sparse partitions
     let aln = gap_free_alignment()?;
-    let mut graph: GraphTimetree = nwk_read_str(TREE_NEWICK)?.graph;
-    let constraints = date_constraints(&graph);
+    let NwkParse { graph, names, .. } = nwk_read_str(TREE_NEWICK)?;
+    let mut graph: GraphTimetree = graph;
+    let constraints = date_constraints(&names, &graph);
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
@@ -481,7 +486,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &node_names(&graph))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
       fitch.into_marginal_sparse(gtr, &graph)?,
     )));
@@ -501,7 +506,7 @@ mod tests {
     marginal_update(&graph, &profile_branch_lengths(&graph), &partitions)?.value();
 
     // First reroot call (simulating keep_root=false flow)
-    let names_tt_2 = node_names(&graph);
+    let names_tt_2 = names.clone();
     let clock_model_1 = reroot_tree(
       &mut graph,
       &mut clock_state,
@@ -529,7 +534,7 @@ mod tests {
     // their stable keys in place, so the same date constraints seed the post-reroot date state; the
     // split node the reroot introduced gets no constraint entry, matching a fresh seed.
     let timetree_state_2 = TimetreeState::seed_from_values(&graph, &constraints);
-    let names_tt_1 = node_names(&graph);
+    let names_tt_1 = names.clone();
     let clock_model_2 = reroot_tree(
       &mut graph,
       &mut clock_state,

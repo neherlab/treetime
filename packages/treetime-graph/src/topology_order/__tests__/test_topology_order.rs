@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::node::Named;
   use crate::topology_order::*;
   use crate::value_maps::node_names;
   use pretty_assertions::assert_eq;

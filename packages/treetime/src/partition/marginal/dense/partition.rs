@@ -20,7 +20,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named, NodeAncestralOps};
+use treetime_graph::node::{GraphNode, GraphNodeKey, NodeAncestralOps};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
@@ -200,7 +200,7 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
 
 impl<N, E> PartitionTimetreeOps<N, E> for PartitionMarginalDense
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>) {

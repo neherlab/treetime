@@ -8,8 +8,8 @@ use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::{Graph, SafeEdge, SafeNode};
+use treetime_graph::node::GraphNode;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::node::{GraphNode, Named};
 use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::file::open_file_or_stdin;
@@ -45,7 +45,7 @@ where
 
 pub fn nwk_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<NwkParse<N, E, D>, Report>
 where
-  N: GraphNode + NodeFromNwk + Named,
+  N: GraphNode + NodeFromNwk,
   E: GraphEdge + EdgeFromNwk,
   D: Sync + Send + Default,
 {
@@ -55,7 +55,7 @@ where
 
 pub fn nwk_read_str<N, E, D>(nwk_string: impl AsRef<str>) -> Result<NwkParse<N, E, D>, Report>
 where
-  N: GraphNode + NodeFromNwk + Named,
+  N: GraphNode + NodeFromNwk,
   E: GraphEdge + EdgeFromNwk,
   D: Sync + Send + Default,
 {
@@ -65,7 +65,7 @@ where
 
 pub fn nwk_read<N, E, D>(reader: impl Read) -> Result<NwkParse<N, E, D>, Report>
 where
-  N: GraphNode + NodeFromNwk + Named,
+  N: GraphNode + NodeFromNwk,
   E: GraphEdge + EdgeFromNwk,
   D: Sync + Send + Default,
 {
@@ -75,7 +75,7 @@ where
 
 fn graph_from_newick<N, E, D>(nwk_graph: &NewickGraph) -> Result<NwkParse<N, E, D>, Report>
 where
-  N: GraphNode + NodeFromNwk + Named,
+  N: GraphNode + NodeFromNwk,
   E: GraphEdge + EdgeFromNwk,
   D: Sync + Send + Default,
 {
@@ -92,6 +92,7 @@ where
 
   let mut node_keys: Vec<GraphNodeKey> = Vec::with_capacity(nwk_graph.nodes.len());
   let mut confidences: BTreeMap<GraphNodeKey, Option<f64>> = BTreeMap::new();
+  let mut names: BTreeMap<GraphNodeKey, Option<String>> = BTreeMap::new();
   for (nwk_idx, nwk_node) in nwk_graph.nodes.iter().enumerate() {
     let name: Option<&str> = nwk_node.name.as_deref().filter(|n| !n.is_empty());
 
@@ -104,6 +105,7 @@ where
       .wrap_err_with(|| format!("When reading node #{nwk_idx} '{}'", name.unwrap_or_default()))?;
     let key = graph.add_node(node);
     confidences.insert(key, nwk_node.confidence);
+    names.insert(key, name.map(ToOwned::to_owned));
     node_keys.push(key);
   }
 
@@ -128,7 +130,7 @@ where
 
   graph.build()?;
 
-  let names = assign_node_names(&graph)?;
+  let names = assign_node_names(names, &graph)?;
 
   Ok(NwkParse {
     graph,
@@ -358,8 +360,6 @@ pub trait NodeFromNwk: Sized {
 
 /// Defines how to display node information when writing to Newick and Nexus files
 pub trait NodeToNwk {
-  fn nwk_name(&self) -> Option<impl AsRef<str>>;
-
   fn nwk_comments(&self) -> BTreeMap<String, String> {
     BTreeMap::<String, String>::new()
   }

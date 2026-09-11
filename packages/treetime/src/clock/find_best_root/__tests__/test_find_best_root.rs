@@ -13,34 +13,57 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use std::collections::BTreeMap;
-  use treetime_graph::node::{GraphNodeKey, Named};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_graph::node::GraphNodeKey;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
-  fn leaf_times(graph: &GraphClock, dates: &BTreeMap<String, f64>) -> BTreeMap<GraphNodeKey, Option<f64>> {
+  fn leaf_times(
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    graph: &GraphClock,
+    dates: &BTreeMap<String, f64>,
+  ) -> BTreeMap<GraphNodeKey, Option<f64>> {
     graph
       .get_leaves()
       .iter()
       .map(|node| {
         let node = node.read_arc();
-        let name = node.payload().read_arc().name().unwrap().as_ref().to_owned();
+        let name = names[&node.key()].clone().unwrap();
         (node.key(), dates.get(&name).copied())
       })
       .collect()
   }
 
-  fn setup_graph_with_dates(dates: &BTreeMap<String, f64>) -> Result<(GraphClock, ClockParams, ClockState), Report> {
-    let graph: GraphClock = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?.graph;
-    let times = leaf_times(&graph, dates);
+  fn setup_graph_with_dates(
+    dates: &BTreeMap<String, f64>,
+  ) -> Result<
+    (
+      GraphClock,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      ClockParams,
+      ClockState,
+    ),
+    Report,
+  > {
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let graph: GraphClock = graph;
+    let times = leaf_times(&names, &graph, dates);
 
     let options = ClockParams::default();
     let mut state = ClockState::seed_from_values(&graph, &times);
     clock_regression_backward(&graph, &mut state, &options, None)?;
     clock_regression_forward(&graph, &mut state, &options, None)?;
 
-    Ok((graph, options, state))
+    Ok((graph, names, options, state))
   }
 
-  fn setup_test_graph() -> Result<(GraphClock, ClockParams, ClockState), Report> {
+  fn setup_test_graph() -> Result<
+    (
+      GraphClock,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      ClockParams,
+      ClockState,
+    ),
+    Report,
+  > {
     let dates = btreemap! {
       o!("A") => 2013.0,
       o!("B") => 2022.0,
@@ -50,30 +73,30 @@ mod tests {
     setup_graph_with_dates(&dates)
   }
 
-  fn get_edge_node_names(graph: &GraphClock, result: &FindRootResult) -> (String, String) {
+  fn get_edge_node_names(
+    graph: &GraphClock,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    result: &FindRootResult,
+  ) -> (String, String) {
     let edge_key = result.edge.expect("result should have an edge");
     let edge = graph.get_edge(edge_key).expect("edge should exist");
     let edge = edge.read_arc();
-    let source = graph.get_node(edge.source()).expect("source should exist");
-    let target = graph.get_node(edge.target()).expect("target should exist");
-    let source_name = source
-      .read_arc()
-      .payload()
-      .read_arc()
-      .name()
-      .map_or_else(|| "unnamed".to_owned(), |n| n.as_ref().to_owned());
-    let target_name = target
-      .read_arc()
-      .payload()
-      .read_arc()
-      .name()
-      .map_or_else(|| "unnamed".to_owned(), |n| n.as_ref().to_owned());
+    let source_name = names
+      .get(&edge.source())
+      .cloned()
+      .flatten()
+      .unwrap_or_else(|| "unnamed".to_owned());
+    let target_name = names
+      .get(&edge.target())
+      .cloned()
+      .flatten()
+      .unwrap_or_else(|| "unnamed".to_owned());
     (source_name, target_name)
   }
 
   #[test]
   fn test_find_best_root_grid() -> Result<(), Report> {
-    let (graph, options, state) = setup_test_graph()?;
+    let (graph, names, options, state) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
@@ -94,7 +117,7 @@ mod tests {
     );
 
     // Verify edge position - best root is on edge from root to CD
-    let (source, target) = get_edge_node_names(&graph, &best_root);
+    let (source, target) = get_edge_node_names(&graph, &names, &best_root);
     assert_eq!(source, "root");
     assert_eq!(target, "CD");
 
@@ -103,7 +126,7 @@ mod tests {
 
   #[test]
   fn test_find_best_root_grid_with_params() -> Result<(), Report> {
-    let (graph, options, state) = setup_test_graph()?;
+    let (graph, names, options, state) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
@@ -124,7 +147,7 @@ mod tests {
     );
 
     // Verify edge position - best root is on edge from root to CD
-    let (source, target) = get_edge_node_names(&graph, &best_root);
+    let (source, target) = get_edge_node_names(&graph, &names, &best_root);
     assert_eq!(source, "root");
     assert_eq!(target, "CD");
 
@@ -133,7 +156,7 @@ mod tests {
 
   #[test]
   fn test_find_best_root_grid_scores_fixed_rate_objective() -> Result<(), Report> {
-    let (graph, options, state) = setup_test_graph()?;
+    let (graph, names, options, state) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
@@ -156,7 +179,7 @@ mod tests {
 
   #[test]
   fn test_find_best_root_brent() -> Result<(), Report> {
-    let (graph, options, state) = setup_test_graph()?;
+    let (graph, names, options, state) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
@@ -177,7 +200,7 @@ mod tests {
     );
 
     // Verify edge position - best root is on edge from root to CD
-    let (source, target) = get_edge_node_names(&graph, &best_root);
+    let (source, target) = get_edge_node_names(&graph, &names, &best_root);
     assert_eq!(source, "root");
     assert_eq!(target, "CD");
 
@@ -186,7 +209,7 @@ mod tests {
 
   #[test]
   fn test_find_best_root_brent_with_params() -> Result<(), Report> {
-    let (graph, options, state) = setup_test_graph()?;
+    let (graph, names, options, state) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
@@ -210,7 +233,7 @@ mod tests {
     );
 
     // Verify edge position - best root is on edge from root to CD
-    let (source, target) = get_edge_node_names(&graph, &best_root);
+    let (source, target) = get_edge_node_names(&graph, &names, &best_root);
     assert_eq!(source, "root");
     assert_eq!(target, "CD");
 
@@ -219,7 +242,7 @@ mod tests {
 
   #[test]
   fn test_find_best_root_golden_section() -> Result<(), Report> {
-    let (graph, options, state) = setup_test_graph()?;
+    let (graph, names, options, state) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
@@ -240,7 +263,7 @@ mod tests {
     );
 
     // Verify edge position - best root is on edge from root to CD
-    let (source, target) = get_edge_node_names(&graph, &best_root);
+    let (source, target) = get_edge_node_names(&graph, &names, &best_root);
     assert_eq!(source, "root");
     assert_eq!(target, "CD");
 
@@ -249,7 +272,7 @@ mod tests {
 
   #[test]
   fn test_find_best_root_golden_section_with_params() -> Result<(), Report> {
-    let (graph, options, state) = setup_test_graph()?;
+    let (graph, names, options, state) = setup_test_graph()?;
 
     let best_root = find_best_root(
       &graph,
@@ -273,7 +296,7 @@ mod tests {
     );
 
     // Verify edge position - best root is on edge from root to CD
-    let (source, target) = get_edge_node_names(&graph, &best_root);
+    let (source, target) = get_edge_node_names(&graph, &names, &best_root);
     assert_eq!(source, "root");
     assert_eq!(target, "CD");
 
@@ -282,7 +305,7 @@ mod tests {
 
   #[test]
   fn test_optimization_methods_improve_on_grid() -> Result<(), Report> {
-    let (graph, options, state) = setup_test_graph()?;
+    let (graph, names, options, state) = setup_test_graph()?;
 
     // Run all three methods
     let grid_result = find_best_root(
@@ -340,7 +363,15 @@ mod tests {
 
   /// Dates inversely correlated with divergence: negative clock rate at all root positions.
   /// Root-to-tip: A=0.2, B=0.3, C=0.25, D=0.17
-  fn setup_negative_rate_graph() -> Result<(GraphClock, ClockParams, ClockState), Report> {
+  fn setup_negative_rate_graph() -> Result<
+    (
+      GraphClock,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      ClockParams,
+      ClockState,
+    ),
+    Report,
+  > {
     let dates = btreemap! {
       o!("A") => 2017.0,
       o!("B") => 2005.0,
@@ -352,7 +383,7 @@ mod tests {
 
   #[test]
   fn test_find_best_root_force_positive_true_rejects_negative_rate() -> Result<(), Report> {
-    let (graph, options, state) = setup_negative_rate_graph()?;
+    let (graph, names, options, state) = setup_negative_rate_graph()?;
 
     let result = find_best_root(
       &graph,
@@ -378,7 +409,7 @@ mod tests {
 
   #[test]
   fn test_find_best_root_force_positive_false_accepts_negative_rate() -> Result<(), Report> {
-    let (graph, options, state) = setup_negative_rate_graph()?;
+    let (graph, names, options, state) = setup_negative_rate_graph()?;
 
     let best_root = find_best_root(
       &graph,

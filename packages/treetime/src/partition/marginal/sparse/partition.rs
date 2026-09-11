@@ -16,7 +16,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
@@ -125,7 +125,7 @@ impl PartitionOptimizeOps for PartitionMarginalSparse {
 
 impl<N, E> PartitionTimetreeOps<N, E> for PartitionMarginalSparse
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>) {
@@ -153,7 +153,7 @@ where
 
 impl<N, E> PartitionMarginalPasses<N, E> for PartitionMarginalSparse
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   fn as_marginal_pass(&mut self) -> MarginalPass<'_, N, E> {
@@ -167,7 +167,7 @@ where
 
 impl<N, E> PartitionMarginalOps<N, E> for PartitionMarginalSparse
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   fn attach_sequences(

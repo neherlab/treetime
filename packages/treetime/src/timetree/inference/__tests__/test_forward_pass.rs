@@ -9,12 +9,12 @@ mod tests {
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_graph::value_maps::node_names;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   type TestGraph = Graph<NodeTimetree, EdgeTimetree, ()>;
 
@@ -55,17 +55,17 @@ mod tests {
   /// observed dates.
   #[test]
   fn test_forward_pass_leaves_internal_node_with_empty_distribution_undated() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:2.5)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:2.5)root;")?;
 
-    let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
-    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
+    let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
     let mut state = TimetreeState::new(&graph);
     // Internal root carries an empty (irreconcilable) time distribution; the leaf carries a date.
     state.node_mut(root_key).time_distribution = Some(Arc::new(Distribution::empty()));
     set_date(&mut state, leaf_key, Distribution::point(2013.0, 0.0));
 
-    let state = run_forward_pass(&graph, state)?;
+    let state = run_forward_pass(&graph, &names, state)?;
 
     let root_time = node_time(&state, root_key);
 
@@ -82,16 +82,16 @@ mod tests {
   /// year, so the leaf lands at 2010 rather than at 2011.5, the midpoint of the range it was given.
   #[test]
   fn test_forward_pass_refines_uncertain_leaf_date_from_parent() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?.graph;
-    let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
-    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    let NwkParse { graph, names, .. } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?;
+    let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
+    let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
     let mut state = TimetreeState::new(&graph);
     set_time_distribution(&mut state, root_key, Distribution::point(2009.0, 0.0));
     set_date(&mut state, leaf_key, Distribution::range((2009.5, 2013.5), 0.0));
     set_branch_length_distribution(&graph, &mut state, leaf_key, 1.0);
 
-    let state = run_forward_pass(&graph, state)?;
+    let state = run_forward_pass(&graph, &names, state)?;
 
     let leaf_time = node_time(&state, leaf_key).expect("leaf A should be dated");
     pretty_assert_ulps_eq!(leaf_time, 2010.0, max_ulps = 4);
@@ -109,16 +109,16 @@ mod tests {
   /// `commit_clock_branch_lengths` reports. Clamping it to the parent would hide the conflict.
   #[test]
   fn test_forward_pass_keeps_exact_leaf_date_earlier_than_its_parent() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?.graph;
-    let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
-    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    let NwkParse { graph, names, .. } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?;
+    let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
+    let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
     let mut state = TimetreeState::new(&graph);
     set_time_distribution(&mut state, root_key, Distribution::point(2009.0, 0.0));
     set_date(&mut state, leaf_key, Distribution::point(2008.0, 0.0));
     set_branch_length_distribution(&graph, &mut state, leaf_key, 1.0);
 
-    let state = run_forward_pass(&graph, state)?;
+    let state = run_forward_pass(&graph, &names, state)?;
 
     let leaf_time = node_time(&state, leaf_key).expect("leaf A should keep its observed date");
     pretty_assert_ulps_eq!(leaf_time, 2008.0, max_ulps = 4);
@@ -134,15 +134,15 @@ mod tests {
   /// peak of the range alone would put the leaf 3 years before its parent.
   #[test]
   fn test_forward_pass_clamps_uncertain_leaf_date_to_parent_time() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?.graph;
-    let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
-    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    let NwkParse { graph, names, .. } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?;
+    let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
+    let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
     let mut state = TimetreeState::new(&graph);
     set_time_distribution(&mut state, root_key, Distribution::point(2009.0, 0.0));
     set_date(&mut state, leaf_key, Distribution::range((2005.0, 2007.0), 0.0));
 
-    let state = run_forward_pass(&graph, state)?;
+    let state = run_forward_pass(&graph, &names, state)?;
 
     let leaf_time = node_time(&state, leaf_key).expect("leaf A should be dated");
     pretty_assert_ulps_eq!(leaf_time, 2009.0, max_ulps = 4);
@@ -156,9 +156,9 @@ mod tests {
   /// leave the leaf undated, which is worse than the date the input gave it.
   #[test]
   fn test_forward_pass_keeps_uncertain_leaf_date_the_tree_contradicts() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?.graph;
-    let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
-    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    let NwkParse { graph, names, .. } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?;
+    let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
+    let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
     let mut state = TimetreeState::new(&graph);
     set_time_distribution(&mut state, root_key, Distribution::point(2009.0, 0.0));
@@ -166,7 +166,7 @@ mod tests {
     set_date(&mut state, leaf_key, given.clone());
     set_branch_length_distribution(&graph, &mut state, leaf_key, 1.0);
 
-    let state = run_forward_pass(&graph, state)?;
+    let state = run_forward_pass(&graph, &names, state)?;
 
     let leaf_dist = leaf_time_distribution(&state, leaf_key).expect("leaf A should keep its given date");
     assert_eq!(given, leaf_dist);
@@ -193,14 +193,14 @@ mod tests {
     };
 
     let refine = |parent: Distribution<NegLog>| -> Result<f64, Report> {
-      let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?.graph;
-      let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
-      let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+      let NwkParse { graph, names, .. } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?;
+      let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
+      let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
       let mut state = TimetreeState::new(&graph);
       set_time_distribution(&mut state, root_key, parent);
       set_date(&mut state, leaf_key, Distribution::range((2010.5, 2010.6), 0.0));
       set_branch_length_distribution(&graph, &mut state, leaf_key, 1.0);
-      let state = run_forward_pass(&graph, state)?;
+      let state = run_forward_pass(&graph, &names, state)?;
       node_time(&state, leaf_key).ok_or_else(|| eyre::eyre!("leaf A should be dated"))
     };
 
@@ -221,9 +221,9 @@ mod tests {
   /// as is. The parent here resolves a year, the date range a single day.
   #[test]
   fn test_forward_pass_refines_a_date_range_narrower_than_the_parent_grid() -> Result<(), Report> {
-    let graph = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?.graph;
-    let root_key = find_node_key_by_name(&graph, "root").expect("root not found");
-    let leaf_key = find_node_key_by_name(&graph, "A").expect("leaf A not found");
+    let NwkParse { graph, names, .. } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A:1.0)root;")?;
+    let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
+    let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
     let coarse_parent = {
       let t = Array1::linspace(1900.0, 2020.0, 121); // one grid point per year
@@ -236,7 +236,7 @@ mod tests {
     set_date(&mut state, leaf_key, Distribution::range((2010.500, 2010.503), 0.0));
     set_branch_length_distribution(&graph, &mut state, leaf_key, 1.0);
 
-    let state = run_forward_pass(&graph, state)?;
+    let state = run_forward_pass(&graph, &names, state)?;
 
     let leaf_time = node_time(&state, leaf_key).expect("leaf A should be dated");
     assert!(
@@ -252,8 +252,12 @@ mod tests {
 
     /// Run the forward pass on the given value state and return it, so the assertions read the
     /// refined posteriors and committed times from the value.
-    pub(super) fn run_forward_pass(graph: &TestGraph, mut state: TimetreeState) -> Result<TimetreeState, Report> {
-      propagate_distributions_forward(graph, &node_names(graph), &mut state)?;
+    pub(super) fn run_forward_pass(
+      graph: &TestGraph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      mut state: TimetreeState,
+    ) -> Result<TimetreeState, Report> {
+      propagate_distributions_forward(graph, names, &mut state)?;
       Ok(state)
     }
 

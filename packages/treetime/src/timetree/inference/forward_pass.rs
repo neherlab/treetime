@@ -12,7 +12,7 @@ use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_graph::pass::{GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_grid::Side;
 
@@ -28,7 +28,7 @@ pub fn propagate_distributions_forward<N, E, D>(
   state: &mut TimetreeState,
 ) -> Result<(), Report>
 where
-  N: GraphNode + Named + TimetreeNode,
+  N: GraphNode + TimetreeNode,
   E: GraphEdge + TimetreeEdge,
   D: Send + Sync,
 {

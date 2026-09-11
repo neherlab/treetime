@@ -8,9 +8,8 @@ use crate::payload::ancestral::GraphAncestral;
 use ndarray::{Array1, Array2};
 use proptest::prelude::*;
 use std::collections::BTreeSet;
-use treetime_graph::node::Named;
 use treetime_io::fasta::FastaRecord;
-use treetime_io::nwk::nwk_read_str;
+use treetime_io::nwk::{NwkParse, nwk_read_str};
 
 /// Generate valid nucleotide equilibrium frequencies: positive, sum to 1.
 fn arb_pi_nuc() -> impl Strategy<Value = Array1<f64>> {
@@ -185,13 +184,13 @@ mod tests {
 
     #[test]
     fn test_prop_input_arb_marginal_input_parseable_and_taxa_exact(input in arb_marginal_input_small()) {
-      let graph: GraphAncestral = nwk_read_str(&input.newick).unwrap().graph;
+      let NwkParse { graph, names, .. } = nwk_read_str(&input.newick).unwrap();
+      let graph: GraphAncestral = graph;
 
       let mut leaf_names = Vec::new();
       for leaf in graph.get_leaves() {
         let leaf = leaf.read_arc();
-        let payload = leaf.payload().read_arc();
-        let maybe_name = payload.name().map(|name| name.as_ref().to_owned());
+        let maybe_name = names.get(&leaf.key()).cloned().flatten();
         prop_assert!(
           maybe_name.is_some(),
           "Leaf node is missing name in generated Newick: {}",

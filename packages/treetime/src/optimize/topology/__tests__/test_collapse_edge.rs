@@ -18,7 +18,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::sync::Arc;
   use treetime_graph::value_maps::edge_branch_lengths;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
 
@@ -62,11 +62,12 @@ mod tests {
     // Tree: root -> I (bl=0.0) -> A, B
     // I has sub A0T; A has sub G5C; B has no subs
     // After collapse: root -> A has {A0T, G5C}, root -> B has {A0T}
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
-    let ia_key = find_edge_key(&graph, "I", "A").unwrap();
-    let ib_key = find_edge_key(&graph, "I", "B").unwrap();
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
+    let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
+    let ib_key = find_edge_key(&graph, &names, "I", "B").unwrap();
 
     let mut partition = make_sparse_partition(100)?;
     populate_test_nodes(&mut partition, &graph);
@@ -82,7 +83,7 @@ mod tests {
     let sparse = vec![Arc::new(RwLock::new(partition))];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
 
-    let i_node_key = find_node_key_by_name(&graph, "I").unwrap();
+    let i_node_key = find_node_key_by_name(&graph, &names, "I").unwrap();
 
     let mut branch_lengths = edge_branch_lengths(&graph);
     collapse_edge(&mut graph, &sparse, &dense, ri_key, &mut branch_lengths)?;
@@ -95,7 +96,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = target.read_arc().payload().read_arc().name.clone();
+      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
       let edge_data = &p.edges[&edge.key()];
       match target_name.as_deref() {
         Some("A") => {
@@ -118,10 +119,11 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_dense_cleanup() -> Result<(), Report> {
     // Dense partition: stale node/edge entries should be removed after collapse
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
-    let i_key = find_node_key_by_name(&graph, "I").unwrap();
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
+    let i_key = find_node_key_by_name(&graph, &names, "I").unwrap();
 
     let mut dense_partition =
       PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::new(AlphabetName::Nuc)?, 10);
@@ -159,9 +161,10 @@ mod tests {
   fn test_topology_collapse_edge_branch_length_sum() -> Result<(), Report> {
     // Collapsed edge has bl=0.3, child edges bl=0.1 and bl=0.2
     // After collapse: child edges bl = 0.3 + 0.1 = 0.4 and 0.3 + 0.2 = 0.5
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
@@ -173,7 +176,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = target.read_arc().payload().read_arc().name.clone();
+      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
       let bl = branch_lengths[&edge.key()];
 
       match target_name.as_deref() {
@@ -189,9 +192,10 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_branch_length_sum_with_zero() -> Result<(), Report> {
     // Collapsed edge has bl=0.0, child edges preserved unchanged.
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)I:0.0)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)I:0.0)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
@@ -203,7 +207,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = target.read_arc().payload().read_arc().name.clone();
+      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
       let bl = branch_lengths[&edge.key()];
 
       match target_name.as_deref() {
@@ -221,9 +225,10 @@ mod tests {
     // Collapsed edge length present, one child length missing (None): the missing child length
     // is preserved as None (no sum), the present child is summed. Oracle: the Option-aware sum
     // in `collapse_edge` only sums when both operands are `Some`.
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?.graph;
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
-    let ia_key = find_edge_key(&graph, "I", "A").unwrap();
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let mut graph: GraphAncestral = graph;
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
+    let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
 
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
@@ -236,7 +241,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = target.read_arc().payload().read_arc().name.clone();
+      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
       match target_name.as_deref() {
         Some("A") => assert_eq!(branch_lengths[&edge.key()], None),
         Some("B") => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.5, epsilon = 1e-7),
@@ -251,8 +256,9 @@ mod tests {
   fn test_topology_collapse_edge_branch_length_some_plus_none() -> Result<(), Report> {
     // Collapsed edge length missing (None): child lengths are preserved unchanged. Oracle: the
     // Option-aware sum in `collapse_edge` only sums when both operands are `Some`.
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?.graph;
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let mut graph: GraphAncestral = graph;
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
@@ -265,7 +271,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = target.read_arc().payload().read_arc().name.clone();
+      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
       match target_name.as_deref() {
         Some("A") => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.1, epsilon = 1e-7),
         Some("B") => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.2, epsilon = 1e-7),
@@ -282,11 +288,13 @@ mod tests {
     // (collapsed-edge indels prepended to child indels).
     use crate::seq::indel::InDel;
 
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
 
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
-    let ia_key = find_edge_key(&graph, "I", "A").unwrap();
-    let ib_key = find_edge_key(&graph, "I", "B").unwrap();
+    let mut graph: GraphAncestral = graph;
+
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
+    let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
+    let ib_key = find_edge_key(&graph, &names, "I", "B").unwrap();
 
     let mut partition = make_sparse_partition(100)?;
     populate_test_nodes(&mut partition, &graph);
@@ -315,7 +323,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = target.read_arc().payload().read_arc().name.clone();
+      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
       let edge_data = &p.edges[&edge.key()];
       match target_name.as_deref() {
         Some("A") => {
@@ -334,10 +342,11 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_reversion_cancels() -> Result<(), Report> {
     // Collapsed edge A0T + child edge T0A = no net change (reversion).
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1)I:0.0)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1)I:0.0)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
-    let ia_key = find_edge_key(&graph, "I", "A").unwrap();
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
+    let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
 
     let mut partition = make_sparse_partition(100)?;
     populate_test_nodes(&mut partition, &graph);
@@ -364,7 +373,7 @@ mod tests {
         let t = e.read_arc().target();
         graph
           .get_node(t)
-          .and_then(|n| n.read_arc().payload().read_arc().name.clone())
+          .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten())
           .as_deref()
           == Some("A")
       })
@@ -380,9 +389,10 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_no_partitions() -> Result<(), Report> {
     // Graph-only collapse with no partitions: topology still changes correctly.
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?.graph;
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
-    let i_node_key = find_node_key_by_name(&graph, "I").unwrap();
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let mut graph: GraphAncestral = graph;
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
+    let i_node_key = find_node_key_by_name(&graph, &names, "I").unwrap();
 
     let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
     let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
@@ -401,11 +411,12 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_multiple_sparse_partitions() -> Result<(), Report> {
     // Two sparse partitions with independent edge data should both be updated.
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
+    let mut graph: GraphAncestral = graph;
 
-    let ri_key = find_edge_key(&graph, "root", "I").unwrap();
-    let ia_key = find_edge_key(&graph, "I", "A").unwrap();
-    let ib_key = find_edge_key(&graph, "I", "B").unwrap();
+    let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
+    let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
+    let ib_key = find_edge_key(&graph, &names, "I", "B").unwrap();
 
     let mut partition_a = make_sparse_partition(100)?;
     populate_test_nodes(&mut partition_a, &graph);

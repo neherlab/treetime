@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::{BranchDistribution, ClockMessages, GraphEdge, HasBranchLength, TimeLength};
-use treetime_graph::node::{GraphNode, Named, Outlier, TimeConstraint};
+use treetime_graph::node::{GraphNode, Outlier, TimeConstraint};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
@@ -29,16 +29,6 @@ pub struct NodeTimetree {
 }
 
 impl GraphNode for NodeTimetree {}
-
-impl Named for NodeTimetree {
-  fn name(&self) -> Option<impl AsRef<str>> {
-    self.base.name()
-  }
-
-  fn set_name(&mut self, name: Option<impl AsRef<str>>) {
-    self.base.set_name(name);
-  }
-}
 
 impl Outlier for NodeTimetree {}
 
@@ -99,20 +89,12 @@ impl NodeFromNwk for NodeTimetree {
 }
 
 impl NodeToNwk for NodeTimetree {
-  fn nwk_name(&self) -> Option<impl AsRef<str>> {
-    self.base.nwk_name()
-  }
-
   fn nwk_comments(&self) -> BTreeMap<String, String> {
     self.base.nwk_comments()
   }
 }
 
-impl NodeToGraphviz for NodeTimetree {
-  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self.base.name()
-  }
-}
+impl NodeToGraphviz for NodeTimetree {}
 
 impl TimetreeNode for NodeTimetree {
   fn time(&self) -> Option<f64> {

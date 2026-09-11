@@ -8,12 +8,11 @@ pub mod tests {
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
-  use treetime_graph::value_maps::node_names;
 
   use parking_lot::RwLock;
   use std::sync::{Arc, LazyLock};
   use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -99,7 +98,8 @@ pub mod tests {
   /// construct a single dense partition with the given GTR model, and run both passes via
   /// `initialize_marginal`.
   pub fn run_dense_marginal_get_log_lh(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
-    let graph: GraphAncestral = nwk_read_str(newick)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(newick)?;
+    let graph: GraphAncestral = graph;
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
@@ -110,14 +110,7 @@ pub mod tests {
       get_common_length(&aln)?,
     )))];
 
-    let log_lh = initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&graph),
-      &partitions,
-      &aln,
-      &node_names(&graph),
-    )?
-    .value();
+    let log_lh = initialize_marginal(&graph, &profile_branch_lengths(&graph), &partitions, &aln, &names)?.value();
     Ok(log_lh)
   }
 }

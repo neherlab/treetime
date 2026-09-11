@@ -30,17 +30,9 @@ impl NodeFromNwk for TestNode {
   }
 }
 
-impl NodeToNwk for TestNode {
-  fn nwk_name(&self) -> Option<impl AsRef<str>> {
-    self.0.as_deref()
-  }
-}
+impl NodeToNwk for TestNode {}
 
-impl NodeToGraphviz for TestNode {
-  fn to_graphviz_label(&self) -> Option<impl AsRef<str>> {
-    self.0.as_deref()
-  }
-}
+impl NodeToGraphviz for TestNode {}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct TestEdge(pub Option<f64>);

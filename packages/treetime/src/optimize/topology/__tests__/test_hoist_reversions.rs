@@ -12,11 +12,12 @@ mod tests {
   use eyre::Report;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::value_maps::edge_branch_lengths;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   use helpers::{Hoisted, c, edge_indels, edge_subs, make_partition, no_dense, sub};
 
@@ -28,12 +29,14 @@ mod tests {
     // M_v has three substitutions; the child reverts only one. The two untouched
     // substitutions (T) must land on u->N once and NOT be duplicated onto N->c
     // (which distinguishes the move from re-attaching the child to the parent).
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
-    let uv = find_edge_key(&graph, "U", "V").unwrap();
-    let va = find_edge_key(&graph, "V", "A").unwrap();
+    let NwkParse { graph, names, .. } = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = graph;
+    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
+    let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
     let partition = make_partition(
       &graph,
+      &names,
       0,
       100,
       &[
@@ -50,7 +53,7 @@ mod tests {
     let mut branch_lengths = edge_branch_lengths(&graph);
     hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
-    let h = Hoisted::locate(&graph, "V", "A");
+    let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = sparse[0].read_arc();
     assert_eq!(edge_subs(&p, h.un), vec![sub(b'C', 5, b'G'), sub(b'G', 10, b'A')]);
     assert_eq!(edge_subs(&p, h.nv), vec![sub(b'A', 0, b'T')]);
@@ -65,12 +68,14 @@ mod tests {
   fn test_hoist_reversions_chain_composed() -> Result<(), Report> {
     // Chain: parent A0T at pos 0, child T0G at pos 0 -> net A0G. The original A0T stays
     // on N->v; the composed A0G moves to N->c.
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
-    let uv = find_edge_key(&graph, "U", "V").unwrap();
-    let va = find_edge_key(&graph, "V", "A").unwrap();
+    let NwkParse { graph, names, .. } = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = graph;
+    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
+    let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
     let partition = make_partition(
       &graph,
+      &names,
       0,
       100,
       &[
@@ -83,7 +88,7 @@ mod tests {
     let mut branch_lengths = edge_branch_lengths(&graph);
     hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
-    let h = Hoisted::locate(&graph, "V", "A");
+    let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = sparse[0].read_arc();
     assert_eq!(edge_subs(&p, h.un), Vec::<Sub>::new());
     assert_eq!(edge_subs(&p, h.nv), vec![sub(b'A', 0, b'T')]);
@@ -94,12 +99,14 @@ mod tests {
   #[test]
   fn test_hoist_reversions_reversion_removed_reduces_count() -> Result<(), Report> {
     // Pure reversion: A0T then T0A. Two mutations before, one after (delta = -1).
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
-    let uv = find_edge_key(&graph, "U", "V").unwrap();
-    let va = find_edge_key(&graph, "V", "A").unwrap();
+    let NwkParse { graph, names, .. } = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = graph;
+    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
+    let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
     let partition = make_partition(
       &graph,
+      &names,
       0,
       100,
       &[
@@ -117,7 +124,7 @@ mod tests {
     assert_eq!(before, 2);
     assert_eq!(after, 1);
 
-    let h = Hoisted::locate(&graph, "V", "A");
+    let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = sparse[0].read_arc();
     assert_eq!(edge_subs(&p, h.nv), vec![sub(b'A', 0, b'T')]);
     assert_eq!(edge_subs(&p, h.nc), Vec::<Sub>::new());
@@ -128,13 +135,15 @@ mod tests {
   fn test_hoist_reversions_branch_length_distance_preserved() -> Result<(), Report> {
     // Distances root->V and root->A are unchanged by the move; the parent edge is split
     // proportionally to substitution count (|T|/|M_v| = 2/3).
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
-    let uv = find_edge_key(&graph, "U", "V").unwrap();
-    let va = find_edge_key(&graph, "V", "A").unwrap();
-    let ru = find_edge_key(&graph, "root", "U").unwrap();
+    let NwkParse { graph, names, .. } = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = graph;
+    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
+    let va = find_edge_key(&graph, &names, "V", "A").unwrap();
+    let ru = find_edge_key(&graph, &names, "root", "U").unwrap();
 
     let partition = make_partition(
       &graph,
+      &names,
       0,
       100,
       &[
@@ -151,7 +160,7 @@ mod tests {
     let mut branch_lengths = edge_branch_lengths(&graph);
     hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
-    let h = Hoisted::locate(&graph, "V", "A");
+    let h = Hoisted::locate(&graph, &names, "V", "A");
     let bl = |ek: GraphEdgeKey| branch_lengths[&ek].unwrap_or(0.0);
     let root_to_v = bl(ru) + bl(h.un) + bl(h.nv);
     let root_to_a = bl(ru) + bl(h.un) + bl(h.nc);
@@ -165,12 +174,14 @@ mod tests {
   fn test_hoist_reversions_multi_partition() -> Result<(), Report> {
     // Two partitions revert independent positions. Each partition's edges are split on
     // its own positions; T is per-partition (present in p0, empty in p1).
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
-    let uv = find_edge_key(&graph, "U", "V").unwrap();
-    let va = find_edge_key(&graph, "V", "A").unwrap();
+    let NwkParse { graph, names, .. } = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = graph;
+    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
+    let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
     let p0 = make_partition(
       &graph,
+      &names,
       0,
       100,
       &[
@@ -180,6 +191,7 @@ mod tests {
     );
     let p1 = make_partition(
       &graph,
+      &names,
       1,
       100,
       &[
@@ -192,7 +204,7 @@ mod tests {
     let mut branch_lengths = edge_branch_lengths(&graph);
     hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
-    let h = Hoisted::locate(&graph, "V", "A");
+    let h = Hoisted::locate(&graph, &names, "V", "A");
     let g0 = sparse[0].read_arc();
     assert_eq!(edge_subs(&g0, h.un), vec![sub(b'G', 10, b'C')]);
     assert_eq!(edge_subs(&g0, h.nv), vec![sub(b'A', 0, b'T')]);
@@ -209,12 +221,14 @@ mod tests {
   fn test_hoist_reversions_indel_cancellation() -> Result<(), Report> {
     // A deletion on the parent edge and its inverse insertion on the child edge interact,
     // so the parent indel stays on N->v and the composition cancels on N->c.
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
-    let uv = find_edge_key(&graph, "U", "V").unwrap();
-    let va = find_edge_key(&graph, "V", "A").unwrap();
+    let NwkParse { graph, names, .. } = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = graph;
+    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
+    let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
     let partition = make_partition(
       &graph,
+      &names,
       0,
       100,
       &[
@@ -234,7 +248,7 @@ mod tests {
     let mut branch_lengths = edge_branch_lengths(&graph);
     hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
-    let h = Hoisted::locate(&graph, "V", "A");
+    let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = sparse[0].read_arc();
     assert_eq!(edge_indels(&p, h.un), Vec::<InDel>::new());
     assert_eq!(edge_indels(&p, h.nv), vec![del]);
@@ -246,12 +260,14 @@ mod tests {
   fn test_hoist_reversions_indel_overlap_fallback() -> Result<(), Report> {
     // Overlapping deletions cannot be cleanly hoisted: the parent deletion stays on N->v
     // and the merged deletion lands on N->c.
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
-    let uv = find_edge_key(&graph, "U", "V").unwrap();
-    let va = find_edge_key(&graph, "V", "A").unwrap();
+    let NwkParse { graph, names, .. } = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = graph;
+    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
+    let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
     let partition = make_partition(
       &graph,
+      &names,
       0,
       100,
       &[
@@ -271,7 +287,7 @@ mod tests {
     let mut branch_lengths = edge_branch_lengths(&graph);
     hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
-    let h = Hoisted::locate(&graph, "V", "A");
+    let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = sparse[0].read_arc();
     assert_eq!(edge_indels(&p, h.un), Vec::<InDel>::new());
     assert_eq!(edge_indels(&p, h.nv), vec![parent_del]);
@@ -287,12 +303,14 @@ mod tests {
   fn test_hoist_reversions_indel_no_interaction_hoisted() -> Result<(), Report> {
     // A parent indel disjoint from the child's indels is hoisted cleanly to u->N, leaving
     // N->v free of indels and N->c carrying only the child's own indel.
-    let mut graph: GraphAncestral = nwk_read_str(NWK)?.graph;
-    let uv = find_edge_key(&graph, "U", "V").unwrap();
-    let va = find_edge_key(&graph, "V", "A").unwrap();
+    let NwkParse { graph, names, .. } = nwk_read_str(NWK)?;
+    let mut graph: GraphAncestral = graph;
+    let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
+    let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
     let partition = make_partition(
       &graph,
+      &names,
       0,
       100,
       &[
@@ -312,7 +330,7 @@ mod tests {
     let mut branch_lengths = edge_branch_lengths(&graph);
     hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
 
-    let h = Hoisted::locate(&graph, "V", "A");
+    let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = sparse[0].read_arc();
     assert_eq!(edge_indels(&p, h.un), vec![parent_del]);
     assert_eq!(edge_indels(&p, h.nv), Vec::<InDel>::new());
@@ -331,14 +349,16 @@ mod tests {
     // child V->C1 carries A3G (the same change). The slide re-roots the site onto the
     // sibling's state: root becomes G, the sibling edge empties, and the parent edge gains the
     // inverse G3A. The root's clamped MAP sequence moves with root_sequence.
-    let graph: GraphAncestral = nwk_read_str(NWK_BIFURCATING)?.graph;
-    let root_key = find_node_key_by_name(&graph, "root").unwrap();
-    let root_v = find_edge_key(&graph, "root", "V").unwrap();
-    let root_s = find_edge_key(&graph, "root", "S").unwrap();
-    let v_c1 = find_edge_key(&graph, "V", "C1").unwrap();
+    let NwkParse { graph, names, .. } = nwk_read_str(NWK_BIFURCATING)?;
+    let graph: GraphAncestral = graph;
+    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
+    let root_v = find_edge_key(&graph, &names, "root", "V").unwrap();
+    let root_s = find_edge_key(&graph, &names, "root", "S").unwrap();
+    let v_c1 = find_edge_key(&graph, &names, "V", "C1").unwrap();
 
     let partition = make_partition(
       &graph,
+      &names,
       0,
       100,
       &[
@@ -364,14 +384,16 @@ mod tests {
     // Two mutations before (sibling A3G plus the child's A3G), one after (delta = -1): a single
     // G3A on the branch to the A-state V, exactly the reroot-invariant parsimony cost of the
     // site. The slide alone is count-neutral, so the reduction comes from the hoist it enables.
-    let mut graph: GraphAncestral = nwk_read_str(NWK_BIFURCATING)?.graph;
-    let root_key = find_node_key_by_name(&graph, "root").unwrap();
-    let root_v = find_edge_key(&graph, "root", "V").unwrap();
-    let root_s = find_edge_key(&graph, "root", "S").unwrap();
-    let v_c1 = find_edge_key(&graph, "V", "C1").unwrap();
+    let NwkParse { graph, names, .. } = nwk_read_str(NWK_BIFURCATING)?;
+    let mut graph: GraphAncestral = graph;
+    let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
+    let root_v = find_edge_key(&graph, &names, "root", "V").unwrap();
+    let root_s = find_edge_key(&graph, &names, "root", "S").unwrap();
+    let v_c1 = find_edge_key(&graph, &names, "V", "C1").unwrap();
 
     let partition = make_partition(
       &graph,
+      &names,
       0,
       100,
       &[
@@ -423,9 +445,14 @@ mod tests {
     }
 
     impl Hoisted {
-      pub fn locate(graph: &GraphAncestral, v_name: &str, c_name: &str) -> Self {
-        let v = find_node_key_by_name(graph, v_name).unwrap();
-        let c = find_node_key_by_name(graph, c_name).unwrap();
+      pub fn locate(
+        graph: &GraphAncestral,
+        names: &BTreeMap<GraphNodeKey, Option<String>>,
+        v_name: &str,
+        c_name: &str,
+      ) -> Self {
+        let v = find_node_key_by_name(graph, names, v_name).unwrap();
+        let c = find_node_key_by_name(graph, names, c_name).unwrap();
         let nv = single_inbound(graph, v);
         let n = graph.get_source_node_key(nv).unwrap();
         let un = single_inbound(graph, n);
@@ -462,6 +489,7 @@ mod tests {
 
     pub fn make_partition(
       graph: &GraphAncestral,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
       index: usize,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
@@ -495,7 +523,7 @@ mod tests {
 
       for (source, target, subs) in edge_mutations {
         let edge_key =
-          find_edge_key(graph, source, target).unwrap_or_else(|| panic!("edge {source}->{target} missing"));
+          find_edge_key(graph, names, source, target).unwrap_or_else(|| panic!("edge {source}->{target} missing"));
         partition
           .edges
           .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));

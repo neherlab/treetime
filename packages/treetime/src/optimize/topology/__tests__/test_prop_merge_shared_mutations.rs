@@ -15,11 +15,12 @@ mod tests {
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
+  use std::collections::BTreeMap;
   use std::collections::BTreeSet;
   use std::sync::Arc;
-  use treetime_graph::node::Named;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_graph::value_maps::edge_branch_lengths;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::seq;
   use treetime_primitives::{AsciiChar, Seq};
 
@@ -44,11 +45,11 @@ mod tests {
       let n_children = unique_counts.len();
       if n_children < 3 { return Ok(()); }
 
-      let (mut graph, edge_mutations, length) =
+      let (mut graph, names, edge_mutations, length) =
         helpers::build_polytomy(n_children, n_shared, unique_counts, length);
 
       let original_total: usize = edge_mutations.iter().map(|(_, _, subs)| subs.len()).sum();
-      let partition = helpers::make_partition(&graph, length, &edge_mutations);
+      let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
       let partitions = vec![partition];
 
       let mut branch_lengths = edge_branch_lengths(&graph);
@@ -80,9 +81,9 @@ mod tests {
       let n_children = unique_counts.len();
       if n_children < 3 { return Ok(()); }
 
-      let (mut graph, edge_mutations, length) =
+      let (mut graph, names, edge_mutations, length) =
         helpers::build_polytomy(n_children, n_shared, unique_counts, length);
-      let partition = helpers::make_partition(&graph, length, &edge_mutations);
+      let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
       let partitions = vec![partition];
 
       let mut branch_lengths = edge_branch_lengths(&graph);
@@ -107,9 +108,9 @@ mod tests {
       let n_children = unique_counts.len();
       if n_children < 3 { return Ok(()); }
 
-      let (mut graph, edge_mutations, length) =
+      let (mut graph, names, edge_mutations, length) =
         helpers::build_polytomy(n_children, n_shared, unique_counts, length);
-      let partition = helpers::make_partition(&graph, length, &edge_mutations);
+      let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
       let partitions = vec![partition];
 
       let mut branch_lengths = edge_branch_lengths(&graph);
@@ -123,8 +124,7 @@ mod tests {
     }
 
     #[test]
-    fn test_prop_merge_preserves_leaves(
-      n_children in 3_usize..8,
+    fn test_prop_merge_preserves_leaves(n_children in 3_usize..8,
       n_shared in 1_usize..6,
       unique_counts in prop::collection::vec(0_usize..6, 3..8),
       length in 100_usize..500,
@@ -133,16 +133,16 @@ mod tests {
       let n_children = unique_counts.len();
       if n_children < 3 { return Ok(()); }
 
-      let (mut graph, edge_mutations, length) =
+      let (mut graph, names, edge_mutations, length) =
         helpers::build_polytomy(n_children, n_shared, unique_counts, length);
 
       let leaves_before: BTreeSet<String> = graph
         .get_leaves()
         .iter()
-        .filter_map(|n| n.read_arc().payload().read_arc().name().map(|n| n.as_ref().to_owned()))
+        .filter_map(|n| names.get(&n.read_arc().key()).cloned().flatten())
         .collect();
 
-      let partition = helpers::make_partition(&graph, length, &edge_mutations);
+      let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
       let partitions = vec![partition];
 
       let mut branch_lengths = edge_branch_lengths(&graph);
@@ -152,7 +152,7 @@ mod tests {
       let leaves_after: BTreeSet<String> = graph
         .get_leaves()
         .iter()
-        .filter_map(|n| n.read_arc().payload().read_arc().name().map(|n| n.as_ref().to_owned()))
+        .filter_map(|n| names.get(&n.read_arc().key()).cloned().flatten())
         .collect();
 
       prop_assert_eq!(leaves_before, leaves_after);
@@ -169,9 +169,9 @@ mod tests {
       let n_children = unique_counts.len();
       if n_children < 3 { return Ok(()); }
 
-      let (mut graph, edge_mutations, length) =
+      let (mut graph, names, edge_mutations, length) =
         helpers::build_polytomy(n_children, n_shared, unique_counts, length);
-      let partition = helpers::make_partition(&graph, length, &edge_mutations);
+      let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
       let partitions = vec![partition];
 
       let mut branch_lengths = edge_branch_lengths(&graph);
@@ -210,9 +210,11 @@ mod tests {
   #[test]
   fn test_merge_all_children_share_same_mutation() -> Result<(), Report> {
     // Every child shares the same mutation. One group = all children.
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
+    let mut graph: GraphAncestral = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
+      &names,
       100,
       &[
         ("root", "A", vec![sub_at(0)]),
@@ -245,9 +247,11 @@ mod tests {
   fn test_merge_overlapping_groups_greedy_selection() -> Result<(), Report> {
     // A,B share {sub0}. B,C share {sub1}. B in both groups.
     // Greedy picks one, second group excluded for this round.
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
+    let mut graph: GraphAncestral = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
+      &names,
       100,
       &[
         ("root", "A", vec![sub_at(0)]),
@@ -268,9 +272,11 @@ mod tests {
   #[test]
   fn test_merge_polytomy_reduced_to_binary_stops() -> Result<(), Report> {
     // 3 children, 2 share. After merge: binary tree, loop stops.
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+    let mut graph: GraphAncestral = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
+      &names,
       100,
       &[
         ("root", "A", vec![sub_at(0)]),
@@ -295,9 +301,11 @@ mod tests {
   fn test_merge_multiple_polytomies_in_one_tree() -> Result<(), Report> {
     // Two independent polytomies: root has {I, D, E, F}, I has {A, B, C}.
     // A,B share sub0 under I. D,E share sub1 under root.
-    let mut graph: GraphAncestral = nwk_read_str("((A:0.1,B:0.1,C:0.1)I:0.1,D:0.1,E:0.1,F:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1,C:0.1)I:0.1,D:0.1,E:0.1,F:0.1)root;")?;
+    let mut graph: GraphAncestral = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
+      &names,
       100,
       &[
         ("root", "I", vec![]),
@@ -322,9 +330,11 @@ mod tests {
   fn test_merge_disjoint_sub_and_indel_groups_same_round() -> Result<(), Report> {
     // A,B share a sub. C,D share an indel. No overlap between groups.
     // Both groups should merge (possibly in one round).
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
+    let mut graph: GraphAncestral = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
+      &names,
       100,
       &[
         ("root", "A", vec![sub_at(0)]),
@@ -338,8 +348,8 @@ mod tests {
     let shared_indel = InDel::del((10, 13), Seq::try_from_str("GTA").unwrap()).unwrap();
     {
       let mut p = partition.write_arc();
-      let edge_c = find_edge_key(&graph, "root", "C").expect("edge root->C");
-      let edge_d = find_edge_key(&graph, "root", "D").expect("edge root->D");
+      let edge_c = find_edge_key(&graph, &names, "root", "C").expect("edge root->C");
+      let edge_d = find_edge_key(&graph, &names, "root", "D").expect("edge root->D");
       p.edges.get_mut(&edge_c).expect("partition edge C").indels = vec![shared_indel.clone()];
       p.edges.get_mut(&edge_d).expect("partition edge D").indels = vec![shared_indel];
     }
@@ -357,10 +367,12 @@ mod tests {
     // Partition 1: A,B share sub at pos 0. Partition 2: A,C share sub at pos 50.
     // Total shared(A,B) = 1 (from p1). Total shared(A,C) = 1 (from p2).
     // Both groups have equal score. Greedy picks one.
-    let mut graph: GraphAncestral = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
+    let mut graph: GraphAncestral = graph;
 
     let p1 = helpers::make_partition_from_static(
       &graph,
+      &names,
       100,
       &[
         ("root", "A", vec![sub_at(0)]),
@@ -372,6 +384,7 @@ mod tests {
 
     let p2 = helpers::make_partition_from_static_indexed(
       &graph,
+      &names,
       1,
       200,
       &[
@@ -392,7 +405,7 @@ mod tests {
     let leaf_count = graph
       .get_leaves()
       .iter()
-      .filter(|n| n.read_arc().payload().read_arc().name().is_some())
+      .filter(|n| names.get(&n.read_arc().key()).and_then(|x| x.as_ref()).is_some())
       .count();
     assert_eq!(leaf_count, 4);
 
@@ -407,11 +420,21 @@ mod tests {
       n_shared: usize,
       unique_counts: &[usize],
       min_length: usize,
-    ) -> (GraphAncestral, Vec<(String, String, Vec<Sub>)>, usize) {
+    ) -> (
+      GraphAncestral,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      Vec<(String, String, Vec<Sub>)>,
+      usize,
+    ) {
       let names: Vec<String> = (0..n_children).map(|i| format!("N{i}")).collect();
       let newick_children = names.iter().map(|n| format!("{n}:0.1")).join(",");
       let newick = format!("({newick_children})root;");
-      let graph: GraphAncestral = nwk_read_str(&newick).unwrap().graph;
+      let NwkParse {
+        graph,
+        names: node_names,
+        ..
+      } = nwk_read_str(&newick).unwrap();
+      let graph: GraphAncestral = graph;
 
       let mut pos_counter = 0_usize;
       let shared: Vec<Sub> = (pos_counter..pos_counter + n_shared).map(sub_at).collect();
@@ -430,11 +453,12 @@ mod tests {
       }
 
       let length = min_length.max(pos_counter + 1);
-      (graph, edge_mutations, length)
+      (graph, node_names, edge_mutations, length)
     }
 
     pub fn make_partition(
       graph: &GraphAncestral,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
       edge_mutations: &[(String, String, Vec<Sub>)],
     ) -> Arc<RwLock<PartitionMarginalSparse>> {
@@ -442,19 +466,21 @@ mod tests {
         .iter()
         .map(|(src, tgt, subs)| (src.as_str(), tgt.as_str(), subs.clone()))
         .collect();
-      make_partition_from_static(graph, length, &refs).unwrap()
+      make_partition_from_static(graph, names, length, &refs).unwrap()
     }
 
     pub fn make_partition_from_static(
       graph: &GraphAncestral,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
     ) -> Result<Arc<RwLock<PartitionMarginalSparse>>, Report> {
-      make_partition_from_static_indexed(graph, 0, length, edge_mutations)
+      make_partition_from_static_indexed(graph, names, 0, length, edge_mutations)
     }
 
     pub fn make_partition_from_static_indexed(
       graph: &GraphAncestral,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
       index: usize,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
@@ -488,7 +514,7 @@ mod tests {
 
       for (source, target, subs) in edge_mutations {
         let edge_key =
-          find_edge_key(graph, source, target).unwrap_or_else(|| panic!("edge {source}->{target} not found"));
+          find_edge_key(graph, names, source, target).unwrap_or_else(|| panic!("edge {source}->{target} not found"));
         partition
           .edges
           .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));

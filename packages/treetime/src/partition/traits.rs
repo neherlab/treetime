@@ -18,7 +18,7 @@ use std::sync::Arc;
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_graph::reroot::RerootChanges;
 use treetime_io::fasta::FastaRecord;
 use treetime_io::nwk::NodeCommentProvider;
@@ -200,7 +200,7 @@ impl NodeCommentProvider for MutationCommentProvider<'_> {
 /// representations' code paths separate rather than merged into one conditional-laden function.
 pub enum MarginalPass<'a, N, E>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   Indexed(&'a mut dyn IndexedMarginalPartition<N, E>),
@@ -209,7 +209,7 @@ where
 
 pub trait PartitionMarginalPasses<N, E>: HasLogLh + Send + Sync
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   /// Borrow this partition as one of the two marginal representations, so the boundary can run the
@@ -221,7 +221,7 @@ where
 
 pub trait PartitionMarginalOps<N, E>: PartitionMarginalPasses<N, E>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   fn attach_sequences(
@@ -302,7 +302,7 @@ pub trait PartitionRerootOps: Send + Sync {
 /// Separate from PartitionMarginalOps to avoid polluting the ancestral command.
 pub trait PartitionTimetreeOps<N, E>: PartitionOptimizeOps + Send + Sync
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
   /// Ensure partition has entries for all nodes and edges in the graph.
@@ -319,7 +319,7 @@ where
 pub trait PartitionTimetreeAll<N, E>:
   PartitionBranchOps + PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
 }
@@ -328,7 +328,7 @@ where
 impl<T, N, E> PartitionTimetreeAll<N, E> for T
 where
   T: PartitionBranchOps + PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh,
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
 {
 }

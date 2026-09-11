@@ -19,7 +19,6 @@ mod tests {
   use eyre::Report;
   use lazy_static::lazy_static;
   use treetime_graph::value_maps::edge_branch_lengths;
-  use treetime_graph::value_maps::node_names;
 
   use parking_lot::RwLock;
   use rstest::rstest;
@@ -30,7 +29,7 @@ mod tests {
   use std::slice::from_ref;
   use std::sync::Arc;
   use treetime_io::fasta::{FastaRecord, read_many_fasta, read_many_fasta_str};
-  use treetime_io::nwk::{nwk_read_file, nwk_read_str};
+  use treetime_io::nwk::{NwkParse, nwk_read_file, nwk_read_str};
 
   #[rstest]
   #[case::simple_4taxa("simple_4taxa")]
@@ -137,7 +136,8 @@ mod tests {
     tree_nwk: &str,
     aln: &[FastaRecord],
   ) -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
-    let graph: GraphAncestral = nwk_read_str(tree_nwk)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(tree_nwk)?;
+    let graph: GraphAncestral = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -156,7 +156,7 @@ mod tests {
       &profile_branch_lengths(&graph),
       from_ref(&partition),
       aln,
-      &node_names(&graph),
+      &names,
     )?
     .value();
     Ok((graph, partition))
@@ -169,7 +169,9 @@ mod tests {
     let tree_path = PROJECT_ROOT.join(tree_path);
     let alignment_path = PROJECT_ROOT.join(alignment_path);
 
-    let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_file(&tree_path)?;
+
+    let graph: GraphAncestral = graph;
     let aln = read_many_fasta(&[&alignment_path], &*NUC_ALPHABET)?;
 
     let gtr = jc69(JC69Params {
@@ -189,7 +191,7 @@ mod tests {
       &profile_branch_lengths(&graph),
       from_ref(&partition),
       &aln,
-      &node_names(&graph),
+      &names,
     )?
     .value();
     Ok((graph, partition))

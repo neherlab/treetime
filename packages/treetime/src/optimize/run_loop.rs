@@ -444,7 +444,7 @@ pub fn prune_and_merge_in_loop(
 
   if topology_changed {
     graph.build()?;
-    *names = assign_node_names(graph)?;
+    *names = assign_node_names(std::mem::take(names), graph)?;
   }
 
   Ok(topology_changed)

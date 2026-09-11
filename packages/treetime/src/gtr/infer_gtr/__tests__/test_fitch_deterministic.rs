@@ -10,9 +10,8 @@ mod tests {
   use rstest::rstest;
   use std::path::PathBuf;
   use treetime_graph::value_maps::edge_branch_lengths;
-  use treetime_graph::value_maps::node_names;
   use treetime_io::fasta::read_many_fasta;
-  use treetime_io::nwk::nwk_read_file;
+  use treetime_io::nwk::{NwkParse, nwk_read_file};
 
   lazy_static! {
     static ref NUC_ALPHABET: Alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
@@ -31,8 +30,7 @@ mod tests {
   #[case::dengue_20(         "data/dengue/20/tree.nwk",         "data/dengue/20/aln.fasta.xz")]
   #[case::tb_20(             "data/tb/20/tree.nwk",             "data/tb/20/aln.fasta.xz")]
   #[trace]
-  fn test_fitch_gtr_deterministic(
-    #[case] tree_path: &str,
+  fn test_fitch_gtr_deterministic(#[case] tree_path: &str,
     #[case] alignment_path: &str,
   ) -> Result<(), Report> {
     let tree_path = PROJECT_ROOT.join(tree_path);
@@ -40,14 +38,16 @@ mod tests {
     let aln = read_many_fasta(&[&alignment_path], &*NUC_ALPHABET)?;
 
     let gtr_a = {
-      let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
-      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &node_names(&graph))?;
+      let NwkParse { graph, names, .. } = nwk_read_file(&tree_path)?;
+      let graph: GraphAncestral = graph;
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &names)?;
       infer_gtr_fitch(&fitch, &graph, &edge_branch_lengths(&graph))?
     };
 
     let gtr_b = {
-      let graph: GraphAncestral = nwk_read_file(&tree_path)?.graph;
-      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &node_names(&graph))?;
+      let NwkParse { graph, names, .. } = nwk_read_file(&tree_path)?;
+      let graph: GraphAncestral = graph;
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &names)?;
       infer_gtr_fitch(&fitch, &graph, &edge_branch_lengths(&graph))?
     };
 

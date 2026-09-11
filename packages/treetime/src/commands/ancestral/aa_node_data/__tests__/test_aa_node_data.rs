@@ -6,7 +6,6 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::value_maps::node_names;
   use treetime_utils::o;
 
   #[test]
@@ -126,10 +125,11 @@ mod tests {
 
   #[test]
   fn test_collect_aa_cds_node_data_keeps_inferred_root_sequence() {
-    let graph = helpers::named_tree();
-    let name_to_key = helpers::node_name_to_key(&graph);
+    let (graph, names) = helpers::named_tree();
+    let name_to_key = helpers::node_name_to_key(&names, &graph);
     let partition = helpers::StubAugurPartition::new(
       &graph,
+      &names,
       &btreemap! {
         o!("A") => o!("AD"),
         o!("B") => o!("AC"),
@@ -138,7 +138,7 @@ mod tests {
     );
     let reference = Seq::try_from_str("AA").unwrap();
 
-    let actual = collect_aa_cds_node_data(&graph, &partition, "S", &node_names(&graph), Some(&reference)).unwrap();
+    let actual = collect_aa_cds_node_data(&graph, &partition, "S", &names, Some(&reference)).unwrap();
 
     let expected = AaCdsNodeData {
       reference: o!("AA"),
@@ -161,24 +161,28 @@ mod tests {
 
   mod helpers {
     use super::*;
-    use treetime_graph::node::{GraphNodeKey, Named};
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_graph::node::GraphNodeKey;
+    use treetime_io::nwk::{NwkParse, nwk_read_str};
 
-    pub fn node_name_to_key(graph: &GraphAncestral) -> BTreeMap<String, GraphNodeKey> {
+    pub fn node_name_to_key(
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      graph: &GraphAncestral,
+    ) -> BTreeMap<String, GraphNodeKey> {
       graph
         .get_nodes()
         .into_iter()
         .map(|node| {
           let node = node.read_arc();
           let key = node.key();
-          let name = node.payload().read_arc().name().unwrap().as_ref().to_owned();
+          let name = names[&node.key()].clone().unwrap();
           (name, key)
         })
         .collect()
     }
 
-    pub fn named_tree() -> GraphAncestral {
-      nwk_read_str("(A:0.1,B:0.1)root;").unwrap().graph
+    pub fn named_tree() -> (GraphAncestral, BTreeMap<GraphNodeKey, Option<String>>) {
+      let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+      (graph, names)
     }
 
     pub struct StubAugurPartition {
@@ -187,18 +191,18 @@ mod tests {
     }
 
     impl StubAugurPartition {
-      pub fn new(graph: &GraphAncestral, sequences_by_name: &BTreeMap<String, String>) -> Self {
+      pub fn new(
+        graph: &GraphAncestral,
+        names: &BTreeMap<GraphNodeKey, Option<String>>,
+        sequences_by_name: &BTreeMap<String, String>,
+      ) -> Self {
         let sequences = graph
           .get_nodes()
           .into_iter()
           .map(|node| {
             let node = node.read_arc();
-            let payload = node.payload().read_arc();
-            let name = payload.name().unwrap();
-            (
-              node.key(),
-              Seq::try_from_str(&sequences_by_name[name.as_ref()]).unwrap(),
-            )
+            let name = names[&node.key()].clone().unwrap();
+            (node.key(), Seq::try_from_str(&sequences_by_name[&name]).unwrap())
           })
           .collect();
         Self {

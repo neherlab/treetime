@@ -10,9 +10,8 @@ use treetime::ancestral::fitch::create_fitch_partition;
 use treetime::ancestral::marginal::{marginal_update, profile_branch_lengths};
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime::payload::ancestral::GraphAncestral;
-use treetime_graph::value_maps::node_names;
 use treetime_io::fasta::read_many_fasta;
-use treetime_io::nwk::nwk_read_file;
+use treetime_io::nwk::{NwkParse, nwk_read_file};
 use treetime_utils::init::global::global_init;
 
 #[ctor]
@@ -62,11 +61,9 @@ fn setup_inner() -> (
 ) {
   let alphabet = Alphabet::default();
   let project_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-  let graph = nwk_read_file(project_root.join("data/flu/h3n2/200/tree.nwk"))
-    .unwrap()
-    .graph;
+  let NwkParse { graph, names, .. } = nwk_read_file(project_root.join("data/flu/h3n2/200/tree.nwk")).unwrap();
   let alignment = read_many_fasta(&[project_root.join("data/flu/h3n2/200/aln.fasta.xz")], &alphabet).unwrap();
-  let fitch = create_fitch_partition(&graph, 0, alphabet, &alignment, &node_names(&graph)).unwrap();
+  let fitch = create_fitch_partition(&graph, 0, alphabet, &alignment, &names).unwrap();
   let gtr = jc69(JC69Params::default()).unwrap();
   let partition = fitch.into_marginal_sparse(gtr, &graph).unwrap();
   let partitions = [Arc::new(RwLock::new(partition))];

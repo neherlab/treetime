@@ -185,5 +185,12 @@ pub fn execute_mugration(
     .ok_or_else(|| make_internal_report!("partition Arc has unexpected additional owners"))?
     .into_inner();
 
-  Ok(MugrationResult::new(graph, confidences, partition, attribute, log_lh))
+  Ok(MugrationResult::new(
+    graph,
+    confidences,
+    names,
+    partition,
+    attribute,
+    log_lh,
+  ))
 }

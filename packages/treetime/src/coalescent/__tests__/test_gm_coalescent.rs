@@ -11,13 +11,13 @@ mod tests {
   use ndarray::Array1;
   use rstest::rstest;
   use serde::Deserialize;
+  use std::collections::BTreeMap;
   use std::path::Path;
   use treetime_distribution::Distribution;
-  use treetime_graph::node::Named;
-  use treetime_graph::value_maps::node_names;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_grid::grid::Grid;
   use treetime_io::dates_csv::read_dates;
-  use treetime_io::nwk::nwk_read_file;
+  use treetime_io::nwk::{NwkParse, nwk_read_file};
   use treetime_utils::array::serde::{array1_from_vec, indexmap_array1_from_map};
   use treetime_utils::io::json::json_read_file;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
@@ -43,7 +43,7 @@ mod tests {
   fn test_gm_coalescent_model_matches_v0_node_contributions(#[case] snapshot_file: &str) -> Result<(), Report> {
     let snapshot: Snapshot = json_read_file(Path::new(FIXTURES_DIR).join(snapshot_file))
       .wrap_err_with(|| format!("When reading snapshot {snapshot_file}"))?;
-    let (graph, constraints) = load_graph(&snapshot)?;
+    let (graph, names, constraints) = load_graph(&snapshot)?;
     let model = CoalescentModel::new(
       &compute_lineage_counts(&graph, &coalescent_node_times(&graph, &constraints))?,
       &Distribution::constant(snapshot.inputs.tc),
@@ -62,7 +62,7 @@ mod tests {
       .iter()
       .filter_map(|node| {
         let node = node.read_arc();
-        let name = node.payload().read_arc().name()?.as_ref().to_owned();
+        let name = names.get(&node.key()).cloned().flatten()?;
         let n_children = node.outbound().len();
         Some((name, n_children))
       })
@@ -127,9 +127,11 @@ mod tests {
     n_points: usize,
   }
 
-  fn load_graph(snapshot: &Snapshot) -> Result<(GraphTimetree, DateConstraints), Report> {
+  fn load_graph(
+    snapshot: &Snapshot,
+  ) -> Result<(GraphTimetree, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
     let fixtures_dir = Path::new(FIXTURES_DIR);
-    let graph = nwk_read_file(fixtures_dir.join(&snapshot.inputs.tree_path))?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_file(fixtures_dir.join(&snapshot.inputs.tree_path))?;
     let dates = read_dates(
       fixtures_dir.join(&snapshot.inputs.metadata_path),
       &[',', '\t', ';'],
@@ -137,7 +139,7 @@ mod tests {
       &Some(o!("name")),
       &Some(o!("date")),
     )?;
-    let constraints = load_date_constraints(&dates, &graph, &node_names(&graph))?;
-    Ok((graph, constraints))
+    let constraints = load_date_constraints(&dates, &graph, &names)?;
+    Ok((graph, names, constraints))
   }
 }

@@ -45,10 +45,6 @@ mod tests {
   }
 
   impl NodeToNwk for AnnotNode {
-    fn nwk_name(&self) -> Option<impl AsRef<str>> {
-      self.name.as_deref()
-    }
-
     fn nwk_comments(&self) -> BTreeMap<String, String> {
       self.comments.clone()
     }

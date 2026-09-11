@@ -10,7 +10,7 @@ mod tests {
   use serde::Deserialize;
   use std::collections::BTreeMap;
   use treetime_graph::value_maps::edge_branch_lengths;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::io::json::json_read_str;
   use treetime_utils::pretty_assert_map_ulps_eq;
 
@@ -32,11 +32,12 @@ mod tests {
       .iter()
       .find(|output| output.name == case_name)
       .ok_or_else(|| eyre::eyre!("Golden-master output case {case_name} not found"))?;
-    let graph: GraphTimetree = nwk_read_str(&input.newick)?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str(&input.newick)?;
+    let graph: GraphTimetree = graph;
 
     let mut state = TimetreeState::new(&graph);
     for (name, branch) in &input.branches {
-      let node_key = find_node_key_by_name(&graph, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
+      let node_key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
       let node = graph.get_node(node_key).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
       let (_, edge) = graph
         .parents_of(&node.read_arc())
@@ -59,7 +60,7 @@ mod tests {
       .branches
       .keys()
       .map(|name| {
-        let node_key = find_node_key_by_name(&graph, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
+        let node_key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
         let node = graph.get_node(node_key).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
         let (_, edge) = graph
           .parents_of(&node.read_arc())
@@ -128,7 +129,8 @@ mod tests {
   #[test]
   fn test_relaxed_clock_uniform_branches_produce_similar_gamma() -> Result<(), Report> {
     // Tree with uniform branch lengths
-    let graph: GraphTimetree = nwk_read_str("(A:0.1,B:0.1,C:0.1)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root:0.0;")?;
+    let graph: GraphTimetree = graph;
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
@@ -319,7 +321,8 @@ mod tests {
   fn test_relaxed_clock_one_mutation_affects_gamma() -> Result<(), Report> {
     // Use a tree with branch lengths that differ from time_length
     // This creates rate variation that the algorithm must account for
-    let graph: GraphTimetree = nwk_read_str("((A:0.01,B:0.02)AB:0.015,(C:0.005,D:0.01)CD:0.008)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("((A:0.01,B:0.02)AB:0.015,(C:0.005,D:0.01)CD:0.008)root:0.0;")?;
+    let graph: GraphTimetree = graph;
 
     let params = [1.0, 1.0];
 
@@ -412,7 +415,8 @@ mod tests {
   #[test]
   fn test_relaxed_clock_root_has_branch_penalty() -> Result<(), Report> {
     // Tree with a single child to isolate root penalty behavior
-    let graph: GraphTimetree = nwk_read_str("(A:0.1)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1)root:0.0;")?;
+    let graph: GraphTimetree = graph;
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
@@ -458,7 +462,8 @@ mod tests {
     #[values(0.1, 1.0, 10.0, 100.0)] slack: f64,
     #[values(1e-6, 0.001, 0.01, 0.1, 1.0)] one_mutation: f64,
   ) -> Result<(), Report> {
-    let graph: GraphTimetree = nwk_read_str("root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("root:0.0;")?;
+    let graph: GraphTimetree = graph;
     let params = [slack, 1.0];
     let mut state = TimetreeState::new(&graph);
     apply_relaxed_clock(
@@ -482,7 +487,8 @@ mod tests {
   /// the system has no rate variation to correct, so gamma = 1.0.
   #[test]
   fn test_relaxed_clock_childless_root_gamma_stored() -> Result<(), Report> {
-    let graph: GraphTimetree = nwk_read_str("(A:0.01)root:0.0;")?.graph;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:0.01)root:0.0;")?;
+    let graph: GraphTimetree = graph;
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];

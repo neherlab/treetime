@@ -9,7 +9,7 @@ use std::sync::Arc;
 use treetime_distribution::{Distribution, DistributionFunction, NegLog};
 use treetime_graph::edge::{EdgeOptimizeOps, GraphEdge, GraphEdgeKey, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Named};
+use treetime_graph::node::{GraphNode, GraphNodeKey};
 use treetime_graph::value_maps::edge_branch_lengths;
 
 /// Grid floor as a fraction of one mutation's worth of time. Keeps the first grid point strictly
@@ -28,7 +28,7 @@ pub fn initialize_node_divergences<N, E, D>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: EdgeOptimizeOps,
   D: Send + Sync,
 {
@@ -52,7 +52,7 @@ pub fn extract_node_times<N, E, D>(
   state: &TimetreeState,
 ) -> BTreeMap<String, f64>
 where
-  N: GraphNode + Named,
+  N: GraphNode,
   E: GraphEdge,
   D: Send + Sync,
 {

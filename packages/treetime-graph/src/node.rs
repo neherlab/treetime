@@ -34,12 +34,12 @@ pub trait TimeConstraint<T> {
 pub trait GraphNode: Debug + Sync + Send {}
 
 /// Composite trait for nodes that support ancestral reconstruction
-pub trait NodeAncestralOps: GraphNode + Named {}
-impl<T: GraphNode + Named> NodeAncestralOps for T {}
+pub trait NodeAncestralOps: GraphNode {}
+impl<T: GraphNode> NodeAncestralOps for T {}
 
 /// Composite trait for nodes that support tree optimization
-pub trait NodeOptimizeOps: GraphNode + Named {}
-impl<T: GraphNode + Named> NodeOptimizeOps for T {}
+pub trait NodeOptimizeOps: GraphNode {}
+impl<T: GraphNode> NodeOptimizeOps for T {}
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphNodeKey(pub usize);

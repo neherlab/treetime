@@ -165,13 +165,14 @@ mod tests {
     use std::collections::BTreeMap;
     use std::path::Path;
     use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
-    use treetime_graph::node::{GraphNodeKey, Named};
+    use treetime_graph::node::GraphNodeKey;
     use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
     pub struct SampleCase {
       pub graph: GraphTimetree,
+      pub names: BTreeMap<GraphNodeKey, Option<String>>,
       pub clock_model: ClockModel,
       pub dates: DatesMap,
       pub intervals: Vec<NodeConfidenceInterval>,
@@ -181,7 +182,7 @@ mod tests {
       pub fn write_json(&self) -> String {
         let data = build_augur_node_data_json(
           &self.graph,
-          &timetree_nodes(&self.graph),
+          &timetree_nodes(&self.graph, &self.names),
           &timetree_edges(&self.graph),
           &self.clock_model,
           Some(&self.intervals),
@@ -206,7 +207,7 @@ mod tests {
           .collect();
         let data = build_augur_node_data_json(
           &self.graph,
-          &timetree_nodes(&self.graph),
+          &timetree_nodes(&self.graph, &self.names),
           &timetree_edges(&self.graph),
           &self.clock_model,
           Some(&self.intervals),
@@ -226,9 +227,13 @@ mod tests {
     /// and leaf_a.
     pub fn sample_case() -> SampleCase {
       let mut graph = GraphTimetree::new();
-      let root_key = graph.add_node(make_node("root", 2000.0));
-      let leaf_a_key = graph.add_node(make_node("leaf_a", 2005.0));
-      let leaf_b_key = graph.add_node(make_node("leaf_b", 2010.0));
+      let mut names = BTreeMap::new();
+      let root_key = graph.add_node(make_node(2000.0));
+      names.insert(root_key, Some("root".to_owned()));
+      let leaf_a_key = graph.add_node(make_node(2005.0));
+      names.insert(leaf_a_key, Some("leaf_a".to_owned()));
+      let leaf_b_key = graph.add_node(make_node(2010.0));
+      names.insert(leaf_b_key, Some("leaf_b".to_owned()));
       graph.add_edge(root_key, leaf_a_key, make_edge(0.005)).unwrap();
       graph.add_edge(root_key, leaf_b_key, make_edge(0.010)).unwrap();
       graph.build().unwrap();
@@ -269,13 +274,17 @@ mod tests {
 
       SampleCase {
         graph,
+        names,
         clock_model,
         dates,
         intervals,
       }
     }
 
-    fn timetree_nodes<D: Send + Sync>(graph: &GraphTimetree<D>) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
+    fn timetree_nodes<D: Send + Sync>(
+      graph: &GraphTimetree<D>,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+    ) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
       graph
         .get_nodes()
         .iter()
@@ -286,7 +295,7 @@ mod tests {
           (
             key,
             TimetreeNodeOut {
-              name: payload.base.name.clone(),
+              name: names.get(&key).cloned().flatten(),
               desc: None,
               // This fixture builds its graph node by node with no input-tree branch support, so
               // production's parse-time confidence map would surface None for every node here too.
@@ -327,9 +336,8 @@ mod tests {
         .collect()
     }
 
-    fn make_node(name: &str, time: f64) -> NodeTimetree {
+    fn make_node(time: f64) -> NodeTimetree {
       let mut node = NodeTimetree::default();
-      node.base.set_name(Some(name));
       node.time = Some(time);
       node
     }
