@@ -556,7 +556,7 @@ fn run_aa_reconstructions(
 
     let cds_data = collect_aa_cds_node_data(
       graph,
-      &*guard,
+      guard,
       &reconstructed.name,
       names,
       reconstructed.reference_override.as_ref(),
@@ -564,7 +564,7 @@ fn run_aa_reconstructions(
     aa_node_data.add_cds(&reconstructed.name, cds_data, reconstructed.annotation.clone());
 
     if let Some(aa_seq_template) = aa_fasta_template {
-      write_aa_partition_sequences(graph, &*guard, names, &reconstructed.name, aa_seq_template)?;
+      write_aa_partition_sequences(graph, guard, names, &reconstructed.name, aa_seq_template)?;
     }
   }
 

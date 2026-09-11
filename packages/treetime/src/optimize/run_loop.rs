@@ -287,10 +287,10 @@ pub fn optimize_partition_view<'a>(
   chain!(
     dense_partitions
       .iter()
-      .map(|partition| partition as &dyn PartitionOptimizeOps),
+      .map(|partition| -> &dyn PartitionOptimizeOps { partition }),
     sparse_partitions
       .iter()
-      .map(|partition| partition as &dyn PartitionOptimizeOps),
+      .map(|partition| -> &dyn PartitionOptimizeOps { partition }),
   )
   .collect_vec()
 }

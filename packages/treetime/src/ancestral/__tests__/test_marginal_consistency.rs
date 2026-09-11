@@ -22,7 +22,7 @@ mod tests {
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::slice::{from_mut, from_ref};
+  use std::slice::from_mut;
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;

@@ -36,7 +36,7 @@ fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
   };
 
   let mut rng = get_random_number_generator(params.seed);
-  let name_map = names.clone();
+  let name_map = names;
   let reconstructed = plans
     .into_iter()
     .enumerate()

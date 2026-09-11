@@ -206,17 +206,16 @@ mod tests {
     Ok(())
   }
 
-  fn create_polytomy_state() -> Result<
-    (
-      GraphTimetree,
-      BTreeMap<GraphNodeKey, Option<String>>,
-      Vec<PartitionTimetree>,
-      ClockModel,
-      TimetreeState,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
+  type PolytomyStateSetup = (
+    GraphTimetree,
+    BTreeMap<GraphNodeKey, Option<String>>,
+    Vec<PartitionTimetree>,
+    ClockModel,
+    TimetreeState,
+    BTreeMap<GraphEdgeKey, Option<f64>>,
+  );
+
+  fn create_polytomy_state() -> Result<PolytomyStateSetup, Report> {
     let NwkParse {
       graph,
       names,
@@ -280,7 +279,7 @@ mod tests {
     let run_names = names.clone();
     run_timetree(
       &mut graph,
-      &mut partitions,
+      &partitions,
       &run_branch_lengths,
       &run_names,
       &clock_model,

@@ -100,7 +100,6 @@ mod tests {
     use super::*;
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
     use crate::gtr::get_gtr::{JC69Params, jc69};
-    use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
     use crate::test_utils::find_edge_key;
     use itertools::Itertools;
@@ -111,10 +110,6 @@ mod tests {
 
     fn c(b: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(b)
-    }
-
-    pub fn no_dense() -> Vec<PartitionMarginalDense> {
-      vec![]
     }
 
     pub fn leaf_names(names: &BTreeMap<GraphNodeKey, Option<String>>, graph: &GraphAncestral) -> BTreeSet<String> {

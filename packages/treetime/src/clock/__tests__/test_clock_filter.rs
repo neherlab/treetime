@@ -15,18 +15,17 @@ mod tests {
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::assert_error;
 
+  type OutlierGraphSetup = (
+    GraphClock,
+    BTreeMap<GraphNodeKey, Option<String>>,
+    BTreeMap<GraphNodeKey, Option<f64>>,
+    BTreeMap<GraphEdgeKey, Option<f64>>,
+  );
+
   /// Build an 8-leaf balanced tree where 6 leaves follow a positive clock and 2 are extreme
   /// outliers (high divergence, mid-range dates). Outlier branches G=2.0 and H=3.0 produce
   /// root-to-tip distances ~2.02 and ~3.02, far above the clock-expected ~0.15.
-  fn setup_outlier_graph() -> Result<
-    (
-      GraphClock,
-      BTreeMap<GraphNodeKey, Option<String>>,
-      BTreeMap<GraphNodeKey, Option<f64>>,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
+  fn setup_outlier_graph() -> Result<OutlierGraphSetup, Report> {
     let tree = "(((A:0.1,B:0.2):0.01,(C:0.15,D:0.25):0.01):0.01,((E:0.12,F:0.18):0.01,(G:2.0,H:3.0):0.01):0.01)root;";
     let NwkParse {
       graph,

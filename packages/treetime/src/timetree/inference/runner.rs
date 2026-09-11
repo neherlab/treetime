@@ -196,7 +196,7 @@ where
   let indel_rate = if no_indels {
     0.0
   } else {
-    let mixed: Vec<&dyn PartitionOptimizeOps> = partitions.iter().map(|p| p as &dyn PartitionOptimizeOps).collect();
+    let mixed: Vec<&dyn PartitionOptimizeOps> = partitions.iter().map(|p| -> &dyn PartitionOptimizeOps { p }).collect();
     estimate_indel_rate(graph, &mixed, branch_lengths)
   };
 

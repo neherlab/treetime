@@ -142,7 +142,7 @@ mod tests {
     let mut sparse: Vec<PartitionMarginalSparse> = vec![];
     let mut dense: Vec<PartitionMarginalDense> = vec![];
 
-    let mut names_tt_13 = names.clone();
+    let mut names_tt_13 = names;
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &mut sparse,
@@ -489,7 +489,7 @@ mod tests {
     let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     // Empty zero-optimal list: the old loop was a no-op here. The hoist must still fire.
-    let mut names_tt_9 = names.clone();
+    let mut names_tt_9 = names;
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &mut sparse,
@@ -692,7 +692,7 @@ mod tests {
 
     branch_lengths.insert(ri_key, Some(0.0));
 
-    let mut names_tt_6 = names.clone();
+    let mut names_tt_6 = names;
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &mut sparse,
@@ -839,7 +839,7 @@ mod tests {
       flip_parent_child: false,
       ..TopologyOps::default()
     };
-    let mut names_tt_4 = names.clone();
+    let mut names_tt_4 = names;
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &mut sparse,
@@ -913,7 +913,7 @@ mod tests {
       merge_siblings: false,
       flip_parent_child: false,
     };
-    let mut names_tt_3 = names.clone();
+    let mut names_tt_3 = names;
     let changed = prune_and_merge_in_loop(
       &mut graph,
       &mut sparse,
@@ -980,7 +980,7 @@ mod tests {
       collapse_short_branches: false,
       ..TopologyOps::default()
     };
-    let names_tt_2 = names.clone();
+    let names_tt_2 = names;
     run_optimize_loop(
       &mut graph,
       &mut sparse_partitions,
@@ -1051,7 +1051,7 @@ mod tests {
 
     let initial_node_count = graph.get_nodes().len();
 
-    let names_tt_1 = names.clone();
+    let names_tt_1 = names;
     let result = run_optimize_loop(
       &mut graph,
       &mut sparse_partitions,

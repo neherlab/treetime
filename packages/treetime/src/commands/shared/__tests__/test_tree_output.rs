@@ -541,17 +541,14 @@ mod tests {
       gather_mugration_output_maps(graph, partition)
     }
 
-    pub fn ancestral_graph(
-      mutations: Mutations,
-    ) -> Result<
-      (
-        GraphAncestral<AncestralGraphData>,
-        BTreeMap<GraphNodeKey, Option<String>>,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-        Option<AncestralPartition>,
-      ),
-      Report,
-    > {
+    type AncestralGraphSetup = (
+      GraphAncestral<AncestralGraphData>,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
+      Option<AncestralPartition>,
+    );
+
+    pub fn ancestral_graph(mutations: Mutations) -> Result<AncestralGraphSetup, Report> {
       let NwkParse {
         graph,
         names,

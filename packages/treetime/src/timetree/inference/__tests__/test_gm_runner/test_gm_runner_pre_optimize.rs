@@ -145,7 +145,7 @@ mod tests {
     let run_names = names.clone();
     run_timetree(
       &mut graph,
-      &mut partitions,      &run_branch_lengths,
+      &partitions,      &run_branch_lengths,
       &run_names,
       &clock_model,
       None,

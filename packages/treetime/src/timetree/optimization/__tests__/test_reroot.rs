@@ -118,7 +118,7 @@ mod tests {
     let initial_node_count = graph.get_nodes().len();
 
     // Should complete without error - edge split and trivial root removal are now always enabled
-    let names_tt_3 = names.clone();
+    let names_tt_3 = names;
     let clock_model = reroot_tree(
       &mut graph,
       &mut clock_state,
@@ -541,7 +541,7 @@ mod tests {
     // their stable keys in place, so the same date constraints seed the post-reroot date state; the
     // split node the reroot introduced gets no constraint entry, matching a fresh seed.
     let timetree_state_2 = TimetreeState::seed_from_values(&graph, &constraints);
-    let names_tt_1 = names.clone();
+    let names_tt_1 = names;
     let clock_model_2 = reroot_tree(
       &mut graph,
       &mut clock_state,

@@ -57,9 +57,9 @@ mod tests {
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0];
-    assert_eq!(edge_subs(&p, h.un), vec![sub(b'C', 5, b'G'), sub(b'G', 10, b'A')]);
-    assert_eq!(edge_subs(&p, h.nv), vec![sub(b'A', 0, b'T')]);
-    assert_eq!(edge_subs(&p, h.nc), Vec::<Sub>::new());
+    assert_eq!(edge_subs(p, h.un), vec![sub(b'C', 5, b'G'), sub(b'G', 10, b'A')]);
+    assert_eq!(edge_subs(p, h.nv), vec![sub(b'A', 0, b'T')]);
+    assert_eq!(edge_subs(p, h.nc), Vec::<Sub>::new());
 
     // V keeps its other children B and Z.
     assert_eq!(graph.get_node(h.v).unwrap().read_arc().degree_out(), 2);
@@ -97,9 +97,9 @@ mod tests {
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0];
-    assert_eq!(edge_subs(&p, h.un), Vec::<Sub>::new());
-    assert_eq!(edge_subs(&p, h.nv), vec![sub(b'A', 0, b'T')]);
-    assert_eq!(edge_subs(&p, h.nc), vec![sub(b'A', 0, b'G')]);
+    assert_eq!(edge_subs(p, h.un), Vec::<Sub>::new());
+    assert_eq!(edge_subs(p, h.nv), vec![sub(b'A', 0, b'T')]);
+    assert_eq!(edge_subs(p, h.nc), vec![sub(b'A', 0, b'G')]);
     Ok(())
   }
 
@@ -138,8 +138,8 @@ mod tests {
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0];
-    assert_eq!(edge_subs(&p, h.nv), vec![sub(b'A', 0, b'T')]);
-    assert_eq!(edge_subs(&p, h.nc), Vec::<Sub>::new());
+    assert_eq!(edge_subs(p, h.nv), vec![sub(b'A', 0, b'T')]);
+    assert_eq!(edge_subs(p, h.nc), Vec::<Sub>::new());
     Ok(())
   }
 
@@ -228,14 +228,14 @@ mod tests {
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let g0 = &sparse[0];
-    assert_eq!(edge_subs(&g0, h.un), vec![sub(b'G', 10, b'C')]);
-    assert_eq!(edge_subs(&g0, h.nv), vec![sub(b'A', 0, b'T')]);
-    assert_eq!(edge_subs(&g0, h.nc), Vec::<Sub>::new());
+    assert_eq!(edge_subs(g0, h.un), vec![sub(b'G', 10, b'C')]);
+    assert_eq!(edge_subs(g0, h.nv), vec![sub(b'A', 0, b'T')]);
+    assert_eq!(edge_subs(g0, h.nc), Vec::<Sub>::new());
 
     let g1 = &sparse[1];
-    assert_eq!(edge_subs(&g1, h.un), Vec::<Sub>::new());
-    assert_eq!(edge_subs(&g1, h.nv), vec![sub(b'C', 5, b'G')]);
-    assert_eq!(edge_subs(&g1, h.nc), Vec::<Sub>::new());
+    assert_eq!(edge_subs(g1, h.un), Vec::<Sub>::new());
+    assert_eq!(edge_subs(g1, h.nv), vec![sub(b'C', 5, b'G')]);
+    assert_eq!(edge_subs(g1, h.nc), Vec::<Sub>::new());
     Ok(())
   }
 
@@ -277,9 +277,9 @@ mod tests {
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0];
-    assert_eq!(edge_indels(&p, h.un), Vec::<InDel>::new());
-    assert_eq!(edge_indels(&p, h.nv), vec![del]);
-    assert_eq!(edge_indels(&p, h.nc), Vec::<InDel>::new());
+    assert_eq!(edge_indels(p, h.un), Vec::<InDel>::new());
+    assert_eq!(edge_indels(p, h.nv), vec![del]);
+    assert_eq!(edge_indels(p, h.nc), Vec::<InDel>::new());
     Ok(())
   }
 
@@ -321,10 +321,10 @@ mod tests {
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0];
-    assert_eq!(edge_indels(&p, h.un), Vec::<InDel>::new());
-    assert_eq!(edge_indels(&p, h.nv), vec![parent_del]);
+    assert_eq!(edge_indels(p, h.un), Vec::<InDel>::new());
+    assert_eq!(edge_indels(p, h.nv), vec![parent_del]);
 
-    let nc = edge_indels(&p, h.nc);
+    let nc = edge_indels(p, h.nc);
     assert_eq!(nc.len(), 1);
     assert_eq!(nc[0].range, (20, 28));
     assert_eq!(nc[0].kind, InDelKind::Deletion);
@@ -369,9 +369,9 @@ mod tests {
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0];
-    assert_eq!(edge_indels(&p, h.un), vec![parent_del]);
-    assert_eq!(edge_indels(&p, h.nv), Vec::<InDel>::new());
-    assert_eq!(edge_indels(&p, h.nc), vec![child_del]);
+    assert_eq!(edge_indels(p, h.un), vec![parent_del]);
+    assert_eq!(edge_indels(p, h.nv), Vec::<InDel>::new());
+    assert_eq!(edge_indels(p, h.nc), vec![child_del]);
     Ok(())
   }
 
@@ -415,8 +415,8 @@ mod tests {
     let p = &sparse[0];
     assert_eq!(p.root_sequence[3], c(b'G'));
     assert_eq!(p.nodes[&root_key].seq.sequence[3], c(b'G'));
-    assert_eq!(edge_subs(&p, root_s), Vec::<Sub>::new());
-    assert_eq!(edge_subs(&p, root_v), vec![sub(b'G', 3, b'A')]);
+    assert_eq!(edge_subs(p, root_s), Vec::<Sub>::new());
+    assert_eq!(edge_subs(p, root_v), vec![sub(b'G', 3, b'A')]);
     Ok(())
   }
 

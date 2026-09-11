@@ -233,7 +233,7 @@ mod tests {
     );
 
     let NwkParse { graph: graph_without_indel, names: graph_without_indel_names, branch_lengths: mut branch_lengths_without_indel, .. } = nwk_read_str(TREE_NEWICK)?;
-    let (mut dense_without_indel, mut sparse_without_indel) = setup_identical_partitions(&graph_without_indel, &graph_without_indel_names, &mut branch_lengths_without_indel)?;
+    let (dense_without_indel, sparse_without_indel) = setup_identical_partitions(&graph_without_indel, &graph_without_indel_names, &mut branch_lengths_without_indel)?;
 
     apply_initial_guess_mode(&graph_with_indel, &optimize_partition_view(&dense_with_indel, &sparse_with_indel), mode, true, &mut branch_lengths_with_indel, &graph_with_indel_names)?;
     apply_initial_guess_mode(&graph_without_indel, &optimize_partition_view(&dense_without_indel, &sparse_without_indel), mode, true, &mut branch_lengths_without_indel, &graph_without_indel_names)?;

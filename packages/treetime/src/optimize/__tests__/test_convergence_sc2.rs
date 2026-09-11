@@ -49,7 +49,7 @@ mod tests {
     initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let max_iter = 50;
-    let names_tt_2 = names.clone();
+    let names_tt_2 = names;
     let result = run_optimize_loop(
       &mut graph,
       &mut sparse_partitions,
@@ -103,7 +103,7 @@ mod tests {
     let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
     initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
-    let names_tt_1 = names.clone();
+    let names_tt_1 = names;
     let result = run_optimize_loop(
       &mut graph,
       &mut sparse_partitions,

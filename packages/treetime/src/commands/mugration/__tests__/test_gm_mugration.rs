@@ -236,7 +236,7 @@ mod tests {
         None => None,
       };
 
-      let names_tt_1 = names.clone();
+      let names_tt_1 = names;
       execute_mugration(
         graph,
         &confidences,

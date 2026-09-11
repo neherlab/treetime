@@ -597,7 +597,7 @@ mod tests {
     )?;
 
     let partition = &partitions[0];
-    let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &names, &partition, &seqs_by_name)?;
+    let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &names, partition, &seqs_by_name)?;
 
     assert_eq!(expected_by_edge, actual_by_edge);
     Ok(())

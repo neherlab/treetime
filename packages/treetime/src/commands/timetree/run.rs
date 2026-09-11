@@ -230,8 +230,7 @@ pub fn run_timetree_estimation(
     clock_branch_lengths,
     clock_state,
     timetree_state,
-    names: _,
-    branch_lengths: _,
+    ..
   } = output;
   // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partitions into
   // plain value maps the tree writers consume, taking the partition read out of the serialization

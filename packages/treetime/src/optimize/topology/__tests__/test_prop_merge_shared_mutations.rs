@@ -437,18 +437,20 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub fn build_polytomy(
-      n_children: usize,
-      n_shared: usize,
-      unique_counts: &[usize],
-      min_length: usize,
-    ) -> (
+    type PolytomySetup = (
       GraphAncestral,
       BTreeMap<GraphNodeKey, Option<String>>,
       Vec<(String, String, Vec<Sub>)>,
       usize,
       BTreeMap<GraphEdgeKey, Option<f64>>,
-    ) {
+    );
+
+    pub fn build_polytomy(
+      n_children: usize,
+      n_shared: usize,
+      unique_counts: &[usize],
+      min_length: usize,
+    ) -> PolytomySetup {
       let names: Vec<String> = (0..n_children).map(|i| format!("N{i}")).collect();
       let newick_children = names.iter().map(|n| format!("{n}:0.1")).join(",");
       let newick = format!("({newick_children})root;");

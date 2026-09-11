@@ -499,7 +499,6 @@ mod tests {
         "partition 0: each child inherits A0T"
       );
     }
-    drop(p0);
 
     let p1 = &sparse[1];
     for edge in graph.get_edges() {

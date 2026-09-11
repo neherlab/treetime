@@ -55,8 +55,8 @@ mod tests {
     assert!(changed > 0);
 
     let p = &sparse[0];
-    assert_eq!(total_subs(&graph, &p), 2);
-    assert!(!reversion_present(&graph, &p, &sub(b'T', 0, b'A')));
+    assert_eq!(total_subs(&graph, p), 2);
+    assert!(!reversion_present(&graph, p, &sub(b'T', 0, b'A')));
 
     for leaf in ["C1", "C2", "C3"] {
       assert!(
@@ -218,8 +218,8 @@ mod tests {
       );
     }
     let p = &sparse[0];
-    assert_eq!(total_subs(&graph, &p), 1);
-    assert!(!reversion_present(&graph, &p, &sub(b'T', 0, b'A')));
+    assert_eq!(total_subs(&graph, p), 1);
+    assert!(!reversion_present(&graph, p, &sub(b'T', 0, b'A')));
     Ok(())
   }
 

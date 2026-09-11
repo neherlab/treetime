@@ -42,7 +42,7 @@ mod tests {
     let dataset = "flu_h3n2_20";
     let case = &OUTPUTS[dataset];
 
-let (graph, names, mut partitions, clock_model, constraints, branch_lengths) = build_timetree_setup(dataset, case)?;
+let (graph, names, partitions, clock_model, constraints, branch_lengths) = build_timetree_setup(dataset, case)?;
     let mut graph = graph;
     let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
     let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph, &node_times)?, &Distribution::constant(tc))?;
@@ -52,7 +52,7 @@ let (graph, names, mut partitions, clock_model, constraints, branch_lengths) = b
     let run_names = names.clone();
     run_timetree(
       &mut graph,
-      &mut partitions,      &run_branch_lengths,
+      &partitions,      &run_branch_lengths,
       &run_names,
       &clock_model,
       Some(&coalescent),
@@ -78,20 +78,19 @@ let (graph, names, mut partitions, clock_model, constraints, branch_lengths) = b
     Ok(())
   }
 
+  type TimetreeSetup = (
+    GraphTimetree,
+    BTreeMap<GraphNodeKey, Option<String>>,
+    Vec<PartitionTimetree>,
+    ClockModel,
+    DateConstraints,
+    BTreeMap<GraphEdgeKey, Option<f64>>,
+  );
+
   fn build_timetree_setup(
     dataset: &str,
     case: &super::super::test_gm_runner_support::support::DatasetOutputs,
-  ) -> Result<
-    (
-      GraphTimetree,
-      BTreeMap<GraphNodeKey, Option<String>>,
-      Vec<PartitionTimetree>,
-      ClockModel,
-      DateConstraints,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
+  ) -> Result<TimetreeSetup, Report> {
     let NwkParse {
       graph,
       names,

@@ -51,8 +51,6 @@ mod tests {
     {
       let partition = &mut partitions[0];
       let edge_data = partition.data.edges[&edge_key].clone();
-      drop(partition);
-      let partition = &mut partitions[0];
       let edge_entry = partition.data.edges.entry(edge_key).or_insert(edge_data);
       edge_entry.indels.push(InDel {
         range: (4, 7),

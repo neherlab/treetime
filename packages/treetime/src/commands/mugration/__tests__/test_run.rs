@@ -163,7 +163,7 @@ mod tests {
       o!("B") => o!("germany"),
     };
 
-    let names_tt_14 = names.clone();
+    let names_tt_14 = names;
     let (result, maps) = execute_mugration(
       graph,
       &confidences,
@@ -228,7 +228,7 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let names_tt_13 = names.clone();
+    let names_tt_13 = names;
     let (_result, maps) = execute_mugration(
       graph,
       &confidences,
@@ -279,7 +279,7 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let names_tt_12 = names.clone();
+    let names_tt_12 = names;
     let (_result, maps) = execute_mugration(
       graph,
       &confidences,
@@ -331,7 +331,7 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let names_tt_11 = names.clone();
+    let names_tt_11 = names;
     let (_result, maps) = execute_mugration(
       graph,
       &confidences,
@@ -379,7 +379,7 @@ mod tests {
       o!("france") => 1.0,
     };
 
-    let names_tt_10 = names.clone();
+    let names_tt_10 = names;
     let (_result, maps) = execute_mugration(
       graph,
       &confidences,
@@ -424,7 +424,7 @@ mod tests {
       names,
       branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.1)root;")?;
-    let names_tt_9 = names.clone();
+    let names_tt_9 = names;
     let (_v0, v0_maps) = execute_mugration(
       graph,
       &confidences,
@@ -447,7 +447,7 @@ mod tests {
       names,
       branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.1)root;")?;
-    let names_tt_8 = names.clone();
+    let names_tt_8 = names;
     let (_filtered, filtered_maps) = execute_mugration(
       graph,
       &confidences,
@@ -488,7 +488,7 @@ mod tests {
       names,
       branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let names_tt_7 = names.clone();
+    let names_tt_7 = names;
     let (_base_result, base_maps) = execute_mugration(
       graph,
       &confidences,
@@ -513,7 +513,7 @@ mod tests {
       names,
       branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let names_tt_6 = names.clone();
+    let names_tt_6 = names;
     let (_corrected_result, corrected_maps) = execute_mugration(
       graph,
       &confidences,
@@ -549,7 +549,7 @@ mod tests {
       o!("B") => o!("usa"),
     };
 
-    let names_tt_5 = names.clone();
+    let names_tt_5 = names;
     let result = execute_mugration(
       graph,
       &confidences,
@@ -587,7 +587,7 @@ mod tests {
       names,
       branch_lengths,
     } = nwk_read_str(tree)?;
-    let names_tt_4 = names.clone();
+    let names_tt_4 = names;
     let (_result_no_iter, no_iter_maps) = execute_mugration(
       graph,
       &confidences,
@@ -611,7 +611,7 @@ mod tests {
       names,
       branch_lengths,
     } = nwk_read_str(tree)?;
-    let names_tt_3 = names.clone();
+    let names_tt_3 = names;
     let (_result_with_iter, with_iter_maps) = execute_mugration(
       graph,
       &confidences,
@@ -668,7 +668,7 @@ mod tests {
       names,
       branch_lengths,
     } = nwk_read_str(tree)?;
-    let names_tt_2 = names.clone();
+    let names_tt_2 = names;
     let (_result, maps) = execute_mugration(
       graph,
       &confidences,
@@ -704,7 +704,7 @@ mod tests {
       names,
       branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let names_tt_1 = names.clone();
+    let names_tt_1 = names;
     let (_result, maps) = execute_mugration(
       graph,
       &confidences,

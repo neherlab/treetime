@@ -69,7 +69,7 @@ mod tests {
       spec: RerootSpec::Method(RerootMethod::MinDev),
       ..RerootParams::default()
     };
-    let names_tt_9 = names.clone();
+    let names_tt_9 = names;
     let actual = reroot_in_place(
       &mut graph,
       &mut state,
@@ -147,13 +147,13 @@ mod tests {
 
     let expected = nwk_write_str(
       &graph_ascending,
-      &graph_ascending_names.clone(),
+      &graph_ascending_names,
       &branch_lengths_ascending,
       &NwkWriteOptions::default(),
     )?;
     let actual = nwk_write_str(
       &graph_descending,
-      &graph_descending_names.clone(),
+      &graph_descending_names,
       &branch_lengths_descending,
       &NwkWriteOptions::default(),
     )?;
@@ -175,7 +175,7 @@ mod tests {
       ..RerootParams::default()
     };
 
-    let names_tt_6 = names.clone();
+    let names_tt_6 = names;
     reroot_in_place(
       &mut graph,
       &mut state,
@@ -206,7 +206,7 @@ mod tests {
       ..RerootParams::default()
     };
 
-    let names_tt_5 = names.clone();
+    let names_tt_5 = names;
     let reroot_result = reroot_in_place(
       &mut graph,
       &mut state,
@@ -234,7 +234,7 @@ mod tests {
 
     let reroot_params = RerootParams::default();
 
-    let names_tt_4 = names.clone();
+    let names_tt_4 = names;
     reroot_in_place(
       &mut graph,
       &mut state,
@@ -306,7 +306,7 @@ mod tests {
       ..RerootParams::default()
     };
 
-    let names_tt_2 = names.clone();
+    let names_tt_2 = names;
     let result = reroot_in_place(
       &mut graph,
       &mut state,

@@ -136,7 +136,7 @@ mod tests {
     );
 
     let partition = &partition;
-    let inner_profile = helpers::get_node_profile(&graph, &names, &partition, "inner");
+    let inner_profile = helpers::get_node_profile(&graph, &names, partition, "inner");
     helpers::assert_profile_normalized(&inner_profile);
 
     let inner_key = helpers::get_node_key(&graph, &names, "inner");

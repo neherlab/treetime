@@ -961,7 +961,7 @@ fn optimize_branch_lengths_pre_step(
   let old_branch_lengths = branch_lengths.clone();
 
   {
-    let mixed: Vec<&dyn PartitionOptimizeOps> = partitions.iter().map(|p| p as &dyn PartitionOptimizeOps).collect();
+    let mixed: Vec<&dyn PartitionOptimizeOps> = partitions.iter().map(|p| -> &dyn PartitionOptimizeOps { p }).collect();
     if no_indels {
       run_optimize_mixed_inner(graph, &mixed, BranchOptMethod::BrentSqrt, 0.0, true, branch_lengths)
         .wrap_err("ML branch-length optimization pre-step failed")?;
