@@ -860,12 +860,6 @@ mod tests {
 
     fn clock_graph() -> Result<GraphClock<ClockGraphData>, Report> {
       let graph: GraphClock = nwk_read_str(MODEL_TREE)?;
-      for (index, node) in graph.get_nodes().into_iter().enumerate() {
-        let node = node.write_arc();
-        let mut payload = node.payload().write_arc();
-        payload.div = index as f64 / 2.0;
-        payload.time = Some(2020.0 + index as f64);
-      }
       Ok(graph.map_data(ClockGraphData::new(fixed_clock_model()?, vec![])))
     }
 
@@ -884,7 +878,8 @@ mod tests {
       graph
         .get_nodes()
         .iter()
-        .map(|node| {
+        .enumerate()
+        .map(|(index, node)| {
           let node = node.read_arc();
           let key = node.key();
           let payload = node.payload().read_arc();
@@ -892,10 +887,10 @@ mod tests {
             key,
             ClockNodeOut {
               name: payload.name.clone(),
-              div: payload.div,
-              time: payload.time,
-              is_outlier: payload.is_outlier,
-              bad_branch: payload.bad_branch,
+              div: index as f64 / 2.0,
+              time: Some(2020.0 + index as f64),
+              is_outlier: false,
+              bad_branch: false,
             },
           )
         })
@@ -958,7 +953,6 @@ mod tests {
       for (index, node) in graph.get_nodes().into_iter().enumerate() {
         let node = node.write_arc();
         let mut payload = node.payload().write_arc();
-        payload.div = index as f64 / 2.0;
         payload.time = Some(2020.0 + index as f64);
       }
       Ok(graph.map_data(TimetreeGraphData::new(
@@ -976,7 +970,8 @@ mod tests {
       graph
         .get_nodes()
         .iter()
-        .map(|node| {
+        .enumerate()
+        .map(|(index, node)| {
           let node = node.read_arc();
           let key = node.key();
           let payload = node.payload().read_arc();
@@ -987,8 +982,8 @@ mod tests {
               desc: payload.base.desc.clone(),
               confidence: payload.base.confidence,
               time: payload.time,
-              div: payload.div,
-              is_outlier: payload.is_outlier,
+              div: index as f64 / 2.0,
+              is_outlier: false,
               bad_branch: payload.bad_branch,
               // Rate-susceptibility dates are produced only by the confidence pass and threaded as a
               // value map; this fixture graph runs no such pass, so production surfaces None here too.

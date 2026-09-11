@@ -1,11 +1,11 @@
 use crate::payload::clock_set::ClockSet;
-use crate::payload::traits::{ClockEdge, ClockNode};
+use crate::payload::traits::ClockEdge;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use treetime_graph::edge::{ClockMessages, GraphEdge, HasBranchLength, TimeLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, Named, Outlier};
+use treetime_graph::node::{GraphNode, Named};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
@@ -14,11 +14,6 @@ pub type GraphClock<D = ()> = Graph<NodeClock, EdgeClock, D>;
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct NodeClock {
   pub name: Option<String>,
-  pub time: Option<f64>,
-  pub bad_branch: bool,
-  pub div: f64,
-  pub is_outlier: bool,
-  pub clock_set: ClockSet,
 }
 
 impl GraphNode for NodeClock {}
@@ -31,7 +26,6 @@ impl NodeFromNwk for NodeClock {
   ) -> Result<Self, Report> {
     Ok(Self {
       name: name.map(|s| s.as_ref().to_owned()),
-      ..NodeClock::default()
     })
   }
 }
@@ -53,16 +47,6 @@ impl Named for NodeClock {
 
   fn set_name(&mut self, name: Option<impl AsRef<str>>) {
     self.name = name.map(|n| n.as_ref().to_owned());
-  }
-}
-
-impl Outlier for NodeClock {
-  fn is_outlier(&self) -> bool {
-    self.is_outlier
-  }
-
-  fn set_is_outlier(&mut self, is_outlier: bool) {
-    self.is_outlier = is_outlier;
   }
 }
 
@@ -108,28 +92,6 @@ impl EdgeToNwk for EdgeClock {
 }
 
 impl EdgeToGraphviz for EdgeClock {}
-
-impl ClockNode for NodeClock {
-  fn likely_time(&self) -> Option<f64> {
-    self.time
-  }
-
-  fn div(&self) -> f64 {
-    self.div
-  }
-
-  fn set_div(&mut self, div: f64) {
-    self.div = div;
-  }
-
-  fn clock_set(&self) -> &ClockSet {
-    &self.clock_set
-  }
-
-  fn clock_set_mut(&mut self) -> &mut ClockSet {
-    &mut self.clock_set
-  }
-}
 
 impl ClockMessages<ClockSet> for EdgeClock {
   fn to_parent(&self) -> &ClockSet {

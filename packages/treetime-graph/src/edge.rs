@@ -38,12 +38,7 @@ pub trait ClockMessages<T> {
 }
 
 /// Defines access to branch length distribution and message to parent
-pub trait BranchDistribution<T> {
-  fn branch_length_distribution(&self) -> &Option<T>;
-  fn set_branch_length_distribution(&mut self, dist: Option<T>);
-  fn msg_to_parent(&self) -> &Option<T>;
-  fn set_msg_to_parent(&mut self, msg: Option<T>);
-}
+pub trait BranchDistribution<T> {}
 
 /// Defines access to time-scaled branch length
 pub trait TimeLength {

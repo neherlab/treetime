@@ -290,8 +290,8 @@ mod tests {
               desc: payload.base.desc.clone(),
               confidence: payload.base.confidence,
               time: payload.time,
-              div: payload.div,
-              is_outlier: payload.is_outlier,
+              div: 0.0,
+              is_outlier: false,
               bad_branch: payload.bad_branch,
               // Rate-susceptibility dates are produced only by the confidence pass and threaded as a
               // value map; this fixture graph runs no such pass, so production surfaces None here too.

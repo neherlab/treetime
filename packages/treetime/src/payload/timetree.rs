@@ -26,9 +26,6 @@ pub struct NodeTimetree {
   pub date_constraint: Option<Arc<Distribution<NegLog>>>,
   pub time_distribution: Option<Arc<Distribution<NegLog>>>,
   pub bad_branch: bool,
-  pub div: f64,
-  pub is_outlier: bool,
-  pub clock_set: ClockSet,
 }
 
 impl GraphNode for NodeTimetree {}
@@ -53,15 +50,7 @@ impl Described for NodeTimetree {
   }
 }
 
-impl Outlier for NodeTimetree {
-  fn is_outlier(&self) -> bool {
-    self.is_outlier
-  }
-
-  fn set_is_outlier(&mut self, is_outlier: bool) {
-    self.is_outlier = is_outlier;
-  }
-}
+impl Outlier for NodeTimetree {}
 
 impl ClockNode for NodeTimetree {
   /// The observed date where there is one, the current estimate otherwise.
@@ -75,22 +64,6 @@ impl ClockNode for NodeTimetree {
       .as_ref()
       .or(self.time_distribution.as_ref())
       .and_then(|dist| dist.likely_time())
-  }
-
-  fn div(&self) -> f64 {
-    self.div
-  }
-
-  fn set_div(&mut self, div: f64) {
-    self.div = div;
-  }
-
-  fn clock_set(&self) -> &ClockSet {
-    &self.clock_set
-  }
-
-  fn clock_set_mut(&mut self) -> &mut ClockSet {
-    &mut self.clock_set
   }
 }
 
@@ -171,8 +144,6 @@ pub struct EdgeTimetree {
   /// is what sequence profiles propagate along. v0 keeps the same two-length split as
   /// `branch_length` and `mutation_length`.
   pub clock_branch_length: Option<f64>,
-  pub branch_length_distribution: Option<Arc<Distribution<NegLog>>>,
-  pub msg_to_parent: Option<Arc<Distribution<NegLog>>>,
   #[serde(skip)]
   pub clock_to_parent: ClockSet,
   #[serde(skip)]
@@ -227,23 +198,7 @@ impl ClockMessages<ClockSet> for EdgeTimetree {
   }
 }
 
-impl BranchDistribution<Arc<Distribution<NegLog>>> for EdgeTimetree {
-  fn branch_length_distribution(&self) -> &Option<Arc<Distribution<NegLog>>> {
-    &self.branch_length_distribution
-  }
-
-  fn set_branch_length_distribution(&mut self, dist: Option<Arc<Distribution<NegLog>>>) {
-    self.branch_length_distribution = dist;
-  }
-
-  fn msg_to_parent(&self) -> &Option<Arc<Distribution<NegLog>>> {
-    &self.msg_to_parent
-  }
-
-  fn set_msg_to_parent(&mut self, msg: Option<Arc<Distribution<NegLog>>>) {
-    self.msg_to_parent = msg;
-  }
-}
+impl BranchDistribution<Arc<Distribution<NegLog>>> for EdgeTimetree {}
 
 impl TimeLength for EdgeTimetree {
   fn time_length(&self) -> Option<f64> {

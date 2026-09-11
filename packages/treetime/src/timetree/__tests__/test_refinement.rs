@@ -27,13 +27,13 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
-  use ndarray::{Array1, array};
+  use ndarray::array;
   use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
-  use treetime_graph::edge::{BranchDistribution, GraphEdgeKey, HasBranchLength};
+  use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
   use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
@@ -230,13 +230,9 @@ mod tests {
       &mut clock_state,
     )?;
 
-    let times = Array1::linspace(0.0, 30.0, 301);
-    let values = times.mapv(|time: f64| (-0.5 * time).exp());
-    let branch_distribution = Arc::new(Distribution::function(times, values)?);
     for edge in graph.get_edges() {
       let mut payload = edge.read_arc().payload().write_arc();
       payload.set_branch_length(Some(0.0));
-      payload.set_branch_length_distribution(Some(Arc::clone(&branch_distribution)));
     }
 
     Ok((graph, partitions, clock_model, state))

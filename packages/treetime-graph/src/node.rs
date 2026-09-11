@@ -19,10 +19,7 @@ pub trait Described {
 }
 
 /// Defines whether a node is marked as an outlier
-pub trait Outlier {
-  fn is_outlier(&self) -> bool;
-  fn set_is_outlier(&mut self, is_outlier: bool);
-}
+pub trait Outlier {}
 
 /// Provides access to time distribution and bad branch flag for date constraints.
 pub trait TimeConstraint<T> {
