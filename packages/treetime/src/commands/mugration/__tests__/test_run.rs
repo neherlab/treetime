@@ -164,7 +164,7 @@ mod tests {
     };
 
     let names_tt_14 = names.clone();
-    let result = execute_mugration(
+    let (result, maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_14,
@@ -182,17 +182,17 @@ mod tests {
     )?;
 
     assert_eq!(o!("country"), result.traits.attribute);
-    assert_eq!(2, result.partition.n_states());
+    assert_eq!(2, maps.n_states);
     assert_eq!(
       vec_of_owned!["germany", "usa"],
-      result.partition.states.iter().map(|s| s.to_owned()).collect_vec()
+      maps.states.iter().map(|s| s.to_owned()).collect_vec()
     );
-    assert_eq!(2, result.partition.data.gtr.pi.len());
-    assert_abs_diff_eq!(1.0, result.partition.data.gtr.pi.sum(), epsilon = 1e-10);
+    assert_eq!(2, maps.gtr.pi.len());
+    assert_abs_diff_eq!(1.0, maps.gtr.pi.sum(), epsilon = 1e-10);
     assert!(
-      result.partition.data.gtr.mu > 0.1 && result.partition.data.gtr.mu < 100.0,
+      maps.gtr.mu > 0.1 && maps.gtr.mu < 100.0,
       "mu should be in reasonable range for 2-state model: {}",
-      result.partition.data.gtr.mu
+      maps.gtr.mu
     );
 
     assert_eq!(3, result.traits.assignments.len());
@@ -229,7 +229,7 @@ mod tests {
     };
 
     let names_tt_13 = names.clone();
-    let result = execute_mugration(
+    let (_result, maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_13,
@@ -246,17 +246,17 @@ mod tests {
       false,
     )?;
 
-    assert_eq!(3, result.partition.n_states());
+    assert_eq!(3, maps.n_states);
     assert_eq!(
       vec_of_owned!["france", "germany", "usa"],
-      result.partition.states.iter().map(|s| s.to_owned()).collect_vec()
+      maps.states.iter().map(|s| s.to_owned()).collect_vec()
     );
-    assert_abs_diff_eq!(1.0, result.partition.data.gtr.pi.sum(), epsilon = 1e-12);
+    assert_abs_diff_eq!(1.0, maps.gtr.pi.sum(), epsilon = 1e-12);
 
     let total = 7.0;
-    assert_abs_diff_eq!(1.0 / total, result.partition.data.gtr.pi[0], epsilon = 1e-12); // france
-    assert_abs_diff_eq!(4.0 / total, result.partition.data.gtr.pi[1], epsilon = 1e-12); // germany
-    assert_abs_diff_eq!(2.0 / total, result.partition.data.gtr.pi[2], epsilon = 1e-12); // usa
+    assert_abs_diff_eq!(1.0 / total, maps.gtr.pi[0], epsilon = 1e-12); // france
+    assert_abs_diff_eq!(4.0 / total, maps.gtr.pi[1], epsilon = 1e-12); // germany
+    assert_abs_diff_eq!(2.0 / total, maps.gtr.pi[2], epsilon = 1e-12); // usa
 
     Ok(())
   }
@@ -280,7 +280,7 @@ mod tests {
     };
 
     let names_tt_12 = names.clone();
-    let result = execute_mugration(
+    let (_result, maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_12,
@@ -297,17 +297,17 @@ mod tests {
       false,
     )?;
 
-    assert_eq!(3, result.partition.n_states());
+    assert_eq!(3, maps.n_states);
     assert_eq!(
       vec_of_owned!["france", "germany", "usa"],
-      result.partition.states.iter().map(|s| s.to_owned()).collect_vec()
+      maps.states.iter().map(|s| s.to_owned()).collect_vec()
     );
-    assert_abs_diff_eq!(1.0, result.partition.data.gtr.pi.sum(), epsilon = 1e-12);
+    assert_abs_diff_eq!(1.0, maps.gtr.pi.sum(), epsilon = 1e-12);
 
     let total = 7.0;
-    assert_abs_diff_eq!(1.0 / total, result.partition.data.gtr.pi[0], epsilon = 1e-12); // france
-    assert_abs_diff_eq!(4.0 / total, result.partition.data.gtr.pi[1], epsilon = 1e-12); // germany
-    assert_abs_diff_eq!(2.0 / total, result.partition.data.gtr.pi[2], epsilon = 1e-12); // usa
+    assert_abs_diff_eq!(1.0 / total, maps.gtr.pi[0], epsilon = 1e-12); // france
+    assert_abs_diff_eq!(4.0 / total, maps.gtr.pi[1], epsilon = 1e-12); // germany
+    assert_abs_diff_eq!(2.0 / total, maps.gtr.pi[2], epsilon = 1e-12); // usa
 
     Ok(())
   }
@@ -332,7 +332,7 @@ mod tests {
     };
 
     let names_tt_11 = names.clone();
-    let result = execute_mugration(
+    let (_result, maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_11,
@@ -349,10 +349,10 @@ mod tests {
       false,
     )?;
 
-    assert_abs_diff_eq!(1.0, result.partition.data.gtr.pi.sum(), epsilon = 1e-10);
-    assert_abs_diff_eq!(0.2, result.partition.data.gtr.pi[0], epsilon = 1e-10); // france
-    assert_abs_diff_eq!(0.2, result.partition.data.gtr.pi[1], epsilon = 1e-10); // germany
-    assert_abs_diff_eq!(0.6, result.partition.data.gtr.pi[2], epsilon = 1e-10); // usa
+    assert_abs_diff_eq!(1.0, maps.gtr.pi.sum(), epsilon = 1e-10);
+    assert_abs_diff_eq!(0.2, maps.gtr.pi[0], epsilon = 1e-10); // france
+    assert_abs_diff_eq!(0.2, maps.gtr.pi[1], epsilon = 1e-10); // germany
+    assert_abs_diff_eq!(0.6, maps.gtr.pi[2], epsilon = 1e-10); // usa
 
     Ok(())
   }
@@ -380,7 +380,7 @@ mod tests {
     };
 
     let names_tt_10 = names.clone();
-    let result = execute_mugration(
+    let (_result, maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_10,
@@ -398,10 +398,10 @@ mod tests {
     )?;
 
     let total = 5.0;
-    assert_abs_diff_eq!(1.0, result.partition.data.gtr.pi.sum(), epsilon = 1e-10);
-    assert_abs_diff_eq!(1.0 / total, result.partition.data.gtr.pi[0], epsilon = 1e-10); // france
-    assert_abs_diff_eq!(1.0 / total, result.partition.data.gtr.pi[1], epsilon = 1e-10); // germany
-    assert_abs_diff_eq!(3.0 / total, result.partition.data.gtr.pi[2], epsilon = 1e-10); // usa
+    assert_abs_diff_eq!(1.0, maps.gtr.pi.sum(), epsilon = 1e-10);
+    assert_abs_diff_eq!(1.0 / total, maps.gtr.pi[0], epsilon = 1e-10); // france
+    assert_abs_diff_eq!(1.0 / total, maps.gtr.pi[1], epsilon = 1e-10); // germany
+    assert_abs_diff_eq!(3.0 / total, maps.gtr.pi[2], epsilon = 1e-10); // usa
 
     Ok(())
   }
@@ -425,7 +425,7 @@ mod tests {
       branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.1)root;")?;
     let names_tt_9 = names.clone();
-    let v0 = execute_mugration(
+    let (_v0, v0_maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_9,
@@ -448,7 +448,7 @@ mod tests {
       branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.1)root;")?;
     let names_tt_8 = names.clone();
-    let filtered = execute_mugration(
+    let (_filtered, filtered_maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_8,
@@ -465,8 +465,8 @@ mod tests {
       true,
     )?;
 
-    let pi_v0 = &v0.partition.data.gtr.pi;
-    let pi_filtered = &filtered.partition.data.gtr.pi;
+    let pi_v0 = &v0_maps.gtr.pi;
+    let pi_filtered = &filtered_maps.gtr.pi;
     assert!(
       (pi_v0[0] - pi_filtered[0]).abs() > 1e-9,
       "uninformative-root filtering must change the inferred equilibrium: v0 pi={pi_v0:?}, filtered pi={pi_filtered:?}"
@@ -489,7 +489,7 @@ mod tests {
       branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names_tt_7 = names.clone();
-    let base_result = execute_mugration(
+    let (_base_result, base_maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_7,
@@ -505,7 +505,7 @@ mod tests {
       false,
       false,
     )?;
-    let base_mu = base_result.partition.data.gtr.mu;
+    let base_mu = base_maps.gtr.mu;
 
     let NwkParse {
       graph,
@@ -514,7 +514,7 @@ mod tests {
       branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names_tt_6 = names.clone();
-    let corrected_result = execute_mugration(
+    let (_corrected_result, corrected_maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_6,
@@ -531,7 +531,7 @@ mod tests {
       false,
     )?;
 
-    assert_abs_diff_eq!(corrected_result.partition.data.gtr.mu, base_mu * 2.0, epsilon = 1e-6);
+    assert_abs_diff_eq!(corrected_maps.gtr.mu, base_mu * 2.0, epsilon = 1e-6);
 
     Ok(())
   }
@@ -588,7 +588,7 @@ mod tests {
       branch_lengths,
     } = nwk_read_str(tree)?;
     let names_tt_4 = names.clone();
-    let result_no_iter = execute_mugration(
+    let (_result_no_iter, no_iter_maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_4,
@@ -612,7 +612,7 @@ mod tests {
       branch_lengths,
     } = nwk_read_str(tree)?;
     let names_tt_3 = names.clone();
-    let result_with_iter = execute_mugration(
+    let (_result_with_iter, with_iter_maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_3,
@@ -629,27 +629,25 @@ mod tests {
       false,
     )?;
 
-    let mu_changed = (result_no_iter.partition.data.gtr.mu - result_with_iter.partition.data.gtr.mu).abs() > 1e-6;
-    let pi_changed = result_no_iter
-      .partition
-      .data
+    let mu_changed = (no_iter_maps.gtr.mu - with_iter_maps.gtr.mu).abs() > 1e-6;
+    let pi_changed = no_iter_maps
       .gtr
       .pi
       .iter()
-      .zip(result_with_iter.partition.data.gtr.pi.iter())
+      .zip(with_iter_maps.gtr.pi.iter())
       .any(|(a, b)| (a - b).abs() > 1e-6);
     assert!(
       mu_changed || pi_changed,
       "iterative refinement must change the model: mu_0={}, mu_5={}, pi_0={:?}, pi_5={:?}",
-      result_no_iter.partition.data.gtr.mu,
-      result_with_iter.partition.data.gtr.mu,
-      result_no_iter.partition.data.gtr.pi,
-      result_with_iter.partition.data.gtr.pi
+      no_iter_maps.gtr.mu,
+      with_iter_maps.gtr.mu,
+      no_iter_maps.gtr.pi,
+      with_iter_maps.gtr.pi
     );
 
-    assert!(result_with_iter.partition.data.gtr.mu > 0.0);
-    assert_abs_diff_eq!(result_with_iter.partition.data.gtr.pi.sum(), 1.0, epsilon = 1e-10);
-    assert!(result_with_iter.partition.data.gtr.pi.iter().all(|&p| p > 0.0));
+    assert!(with_iter_maps.gtr.mu > 0.0);
+    assert_abs_diff_eq!(with_iter_maps.gtr.pi.sum(), 1.0, epsilon = 1e-10);
+    assert!(with_iter_maps.gtr.pi.iter().all(|&p| p > 0.0));
 
     Ok(())
   }
@@ -671,7 +669,7 @@ mod tests {
       branch_lengths,
     } = nwk_read_str(tree)?;
     let names_tt_2 = names.clone();
-    let result = execute_mugration(
+    let (_result, maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_2,
@@ -688,7 +686,7 @@ mod tests {
       false,
     )?;
 
-    let pi_usa = result.partition.data.gtr.pi[1];
+    let pi_usa = maps.gtr.pi[1];
     assert!(
       pi_usa > 0.5,
       "pi[usa] should reflect 3/4 observed frequency, got {pi_usa:.4}"
@@ -707,7 +705,7 @@ mod tests {
       branch_lengths,
     } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names_tt_1 = names.clone();
-    let result = execute_mugration(
+    let (_result, maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_1,
@@ -724,8 +722,8 @@ mod tests {
       false,
     )?;
 
-    assert_abs_diff_eq!(result.partition.data.gtr.pi.sum(), 1.0, epsilon = 1e-10);
-    assert!(result.partition.data.gtr.mu > 0.0);
+    assert_abs_diff_eq!(maps.gtr.pi.sum(), 1.0, epsilon = 1e-10);
+    assert!(maps.gtr.mu > 0.0);
 
     Ok(())
   }

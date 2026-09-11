@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::mugration::mugration::execute_mugration;
-  use crate::partition::marginal::discrete::comment::DiscreteCommentProvider;
+  use crate::partition::marginal::discrete::comment::DiscreteTraitCommentProvider;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
@@ -23,7 +23,7 @@ mod tests {
       o!("B") => o!("germany"),
     };
     let names_tt_1 = names.clone();
-    let result = execute_mugration(
+    let (result, maps) = execute_mugration(
       graph,
       &confidences,
       &names_tt_1,
@@ -39,7 +39,7 @@ mod tests {
       false,
       false,
     )?;
-    let provider = DiscreteCommentProvider::new(&result.partition, &result.traits.attribute);
+    let provider = DiscreteTraitCommentProvider::new(&maps.reconstructed_traits, &result.traits.attribute);
     let providers = CommentProviders::new().with(&provider);
 
     let options = NexWriteOptions {

@@ -2,7 +2,7 @@ use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::refinement::refine_gtr_iterative;
-use crate::mugration::result::MugrationResult;
+use crate::mugration::result::{MugrationOutputMaps, MugrationResult, gather_mugration_output_maps};
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::storage::discrete::DiscreteStates;
 use crate::payload::ancestral::GraphAncestral;
@@ -94,7 +94,7 @@ pub fn execute_mugration(
   sampling_bias_correction: Option<f64>,
   smooth_initial_pi: bool,
   filter_uninformative_root: bool,
-) -> Result<MugrationResult, Report> {
+) -> Result<(MugrationResult, MugrationOutputMaps), Report> {
   let observed_values: IndexSet<String> = traits.values().sorted().cloned().collect();
 
   let model_values: IndexSet<String> = match weights {
@@ -188,13 +188,10 @@ pub fn execute_mugration(
     .ok_or_else(|| make_internal_report!("partition Arc has unexpected additional owners"))?
     .into_inner();
 
-  Ok(MugrationResult::new(
-    graph,
-    confidences,
-    names,
-    branch_lengths,
-    partition,
-    attribute,
-    log_lh,
-  ))
+  // Gather the output value maps off the pipeline-local partition before it enters the graph data
+  // slot, taking the partition read out of the serialization path. The maps stay a local the command
+  // threads to the writers; the partition is dropped at the end of this function.
+  let maps = gather_mugration_output_maps(&graph, &partition);
+  let result = MugrationResult::new(graph, confidences, names, branch_lengths, &partition, attribute, log_lh);
+  Ok((result, maps))
 }

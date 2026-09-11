@@ -10,14 +10,18 @@ use crate::commands::shared::tree_output::write_optimize_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
+use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::traits::{EdgeMutationCommentProvider, PartitionBranchOps};
 use crate::payload::ancestral::GraphAncestral;
 use crate::seq::gap_fill::apply_gap_fill;
 use crate::seq::mutation::MutationTrack;
 use eyre::Report;
 use log::info;
+use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta;
@@ -76,12 +80,17 @@ pub fn run_optimize(
     branch_lengths,
     names,
   } = output;
-  let mut graph = graph.map_data(OptimizeGraphData::new(
-    gtr,
-    model_name,
-    sparse_partitions,
-    dense_partitions,
-  ));
+
+  // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partitions into
+  // plain value maps the output writers consume. Gather here, before `map_data`, so the graph data
+  // slot never carries a partition. This is the only place that reads sequences and mutations from the
+  // partition; the tree, node-data, and Newick-comment writers read the maps instead. Node and edge
+  // keys stay stable through `map_data` and topology ordering, so gathering before them is
+  // bit-identical.
+  let maps = gather_optimize_output_maps(&graph, &sparse_partitions, &dense_partitions)?;
+  let has_partitions = !sparse_partitions.is_empty() || !dense_partitions.is_empty();
+
+  let mut graph = graph.map_data(OptimizeGraphData::new(gtr, model_name));
   let topology_order = args.topology_order.resolve_topology_order(&graph, &names, None)?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.9, "");
@@ -110,11 +119,6 @@ pub fn run_optimize(
     .iter()
     .map(|(&key, &branch_length)| (key, EdgeOut { branch_length }))
     .collect();
-
-  // Gather the per-node/per-edge sequence and mutation values off the partition into plain value maps
-  // the output writers consume. This is the only place that reads sequences and mutations from the
-  // partition; the tree, node-data, and Newick-comment writers read the maps instead.
-  let maps = gather_optimize_output_maps(&graph)?;
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     let gtr_output = GtrOutput::new(&graph.data().gtr, graph.data().model_name);
@@ -151,7 +155,7 @@ pub fn run_optimize(
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     let mutation_counts = match args.divergence_units {
       DivergenceUnits::Mutations => {
-        if graph.data().dense_partitions.is_empty() && graph.data().sparse_partitions.is_empty() {
+        if !has_partitions {
           return make_error!(
             "--divergence-units=mutations requires ancestral reconstruction but no partitions are available"
           );
@@ -184,8 +188,6 @@ pub fn run_optimize(
 
   let gtr = graph.data().gtr.clone();
   let model_name = graph.data().model_name;
-  let sparse_partitions = graph.data().sparse_partitions.clone();
-  let dense_partitions = graph.data().dense_partitions.clone();
 
   Ok(OptimizeResult {
     graph,
@@ -193,27 +195,27 @@ pub fn run_optimize(
     edges,
     gtr,
     model_name,
-    sparse_partitions,
-    dense_partitions,
   })
 }
 
 /// Gather the per-node nucleotide sequences, root sequence, per-edge nucleotide mutations, and per-edge
 /// substitutions the output writers read off the optimize partition.
-pub(crate) fn gather_optimize_output_maps(
-  graph: &GraphAncestral<OptimizeGraphData>,
+pub(crate) fn gather_optimize_output_maps<D: Send + Sync>(
+  graph: &GraphAncestral<D>,
+  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
 ) -> Result<OptimizeOutputMaps, Report> {
-  if let Some(partition) = graph.data().dense_partitions.first() {
+  if let Some(partition) = dense_partitions.first() {
     gather_optimize_partition_maps(graph, &*partition.read_arc())
-  } else if let Some(partition) = graph.data().sparse_partitions.first() {
+  } else if let Some(partition) = sparse_partitions.first() {
     gather_optimize_partition_maps(graph, &*partition.read_arc())
   } else {
     Ok(OptimizeOutputMaps::default())
   }
 }
 
-fn gather_optimize_partition_maps(
-  graph: &GraphAncestral<OptimizeGraphData>,
+fn gather_optimize_partition_maps<D: Send + Sync>(
+  graph: &GraphAncestral<D>,
   partition: &dyn PartitionBranchOps,
 ) -> Result<OptimizeOutputMaps, Report> {
   let root_sequence = Some(partition.root_sequence(graph)?);

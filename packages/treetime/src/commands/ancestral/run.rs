@@ -177,12 +177,23 @@ pub fn run_ancestral_reconstruction(
     mask,
     node_sequences,
   } = output;
-  // The tree and node-data writers still read the partition and model metadata from the graph's
-  // data slot, so build that alongside the value-shaped result. The partition is shared by cloning
-  // its `Arc` (no sequence data is copied); the model metadata is small and cloned once. Both copies
-  // leave the graph once the writers read the result value directly.
+
+  // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partition into
+  // plain value maps the output writers consume. Gather here, before `map_data`, so the graph data
+  // slot never carries the partition. This is the only place that reads sequences and mutations from
+  // the partition; the tree, node-data, and Newick-comment writers read the maps instead. Node and
+  // edge keys stay stable through `map_data` and topology ordering, so gathering before them is
+  // bit-identical.
+  let tree_maps = gather_ancestral_output_maps(&graph, partition.as_ref())?;
+  let augur_maps = if resolved.non_tree_outputs.contains_key(&OutputSelection::AugurNodeData) {
+    gather_augur_output_maps_opt(&graph, partition.as_ref())?
+  } else {
+    None
+  };
+
+  // The tree and node-data writers still read the model metadata from the graph's data slot, so build
+  // that alongside the value-shaped result.
   let mut graph = graph.map_data(AncestralGraphData::new(
-    partition.clone(),
     gtr.clone(),
     model_name,
     mask.clone(),
@@ -229,16 +240,11 @@ pub fn run_ancestral_reconstruction(
   let node_names: BTreeMap<GraphNodeKey, Option<String>> =
     nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
 
-  // Gather the per-node/per-edge sequence and mutation values off the partition into plain value maps
-  // the output writers consume. This is the only place that reads sequences and mutations from the
-  // partition; the tree, node-data, and Newick-comment writers read the maps instead.
-  let tree_maps = gather_ancestral_output_maps(&graph)?;
-
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
-    if let Some(augur_maps) = gather_augur_output_maps_opt(&graph)? {
+    if let Some(augur_maps) = &augur_maps {
       write_augur_node_data_json_with_aa(
         &graph,
-        &augur_maps,
+        augur_maps,
         &graph.data().mask,
         &node_names,
         graph.data().aa_node_data.as_ref(),
@@ -262,7 +268,14 @@ pub fn run_ancestral_reconstruction(
   }
 
   if !resolved.tree_outputs.is_empty() {
-    write_tree_for_partition(&graph, &nodes, &branch_lengths, &tree_maps, &resolved)?;
+    write_tree_for_partition(
+      &graph,
+      &nodes,
+      &branch_lengths,
+      &tree_maps,
+      &resolved,
+      partition.as_ref(),
+    )?;
   }
 
   progress.report("Done", 1.0, "");
@@ -270,7 +283,6 @@ pub fn run_ancestral_reconstruction(
     graph,
     nodes,
     edges,
-    seq: partition,
     node_sequences,
     gtr,
     model_name,
@@ -285,11 +297,12 @@ fn write_tree_for_partition(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &AncestralOutputMaps,
   resolved: &crate::commands::shared::output::ResolvedOutputs,
+  partition: Option<&AncestralPartition>,
 ) -> Result<(), Report> {
   // Sparse and dense reconstructions annotate Newick/Nexus nodes with their inbound mutations; Fitch
-  // parsimony and the partition-less case emit no such comments. The comment provider now reads the
-  // gathered per-edge mutation map rather than the partition.
-  match &graph.data().partition {
+  // parsimony and the partition-less case emit no such comments. The comment provider reads the
+  // gathered per-edge mutation map; the partition selects only which provider to use.
+  match partition {
     Some(AncestralPartition::Sparse(_) | AncestralPartition::Dense(_)) => {
       let provider = AncestralMutationComments {
         edge_mutations: &maps.edge_mutations,
@@ -314,10 +327,11 @@ fn write_tree_for_partition(
 
 /// Gather the per-node nucleotide sequences, root sequence, and per-edge nucleotide mutations the tree
 /// writers read off the ancestral partition.
-pub(crate) fn gather_ancestral_output_maps(
-  graph: &GraphAncestral<AncestralGraphData>,
+pub(crate) fn gather_ancestral_output_maps<D: Send + Sync>(
+  graph: &GraphAncestral<D>,
+  partition: Option<&AncestralPartition>,
 ) -> Result<AncestralOutputMaps, Report> {
-  let Some(partition) = graph.data().partition.as_ref() else {
+  let Some(partition) = partition else {
     return Ok(AncestralOutputMaps::default());
   };
   match partition {
@@ -357,8 +371,11 @@ fn gather_tree_output_maps<D: Send + Sync>(
 
 /// Gather the augur node-data sequences and substitutions for the partition in the graph data slot, or
 /// `None` when no partition exists.
-fn gather_augur_output_maps_opt(graph: &GraphAncestral<AncestralGraphData>) -> Result<Option<AugurOutputMaps>, Report> {
-  let Some(partition) = graph.data().partition.as_ref() else {
+fn gather_augur_output_maps_opt<D: Send + Sync>(
+  graph: &GraphAncestral<D>,
+  partition: Option<&AncestralPartition>,
+) -> Result<Option<AugurOutputMaps>, Report> {
+  let Some(partition) = partition else {
     return Ok(None);
   };
   let maps = match partition {

@@ -2,7 +2,6 @@ use crate::clock::clock_model::ClockModel;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::partition::timetree::partition::GraphTimetree;
-use crate::partition::timetree::partition::PartitionTimetreeAllVec;
 use crate::seq::mutation::Mutation;
 use crate::timetree::confidence::NodeConfidenceInterval;
 use serde::Serialize;
@@ -16,7 +15,6 @@ use treetime_primitives::Seq;
 pub struct TimetreeGraphData {
   pub clock_model: ClockModel,
   pub confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
-  pub partitions: PartitionTimetreeAllVec,
   pub dates: Option<DatesMap>,
   pub gtr: Option<GTR>,
   pub model_name: Option<GtrModelName>,
@@ -27,7 +25,6 @@ impl TimetreeGraphData {
   pub fn new(
     clock_model: ClockModel,
     confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
-    partitions: PartitionTimetreeAllVec,
     dates: Option<DatesMap>,
     gtr: Option<GTR>,
     model_name: Option<GtrModelName>,
@@ -36,7 +33,6 @@ impl TimetreeGraphData {
     Self {
       clock_model,
       confidence_intervals,
-      partitions,
       dates,
       gtr,
       model_name,

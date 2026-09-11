@@ -1,6 +1,7 @@
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::storage::discrete::DiscreteStates;
+use crate::partition::traits::HasGtr;
 use crate::payload::ancestral::GraphAncestral;
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -8,7 +9,6 @@ use ndarray::Array1;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Write;
-use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
@@ -116,7 +116,6 @@ pub struct MugrationGraphData {
   pub traits: MugrationTraitsOutput,
   pub confidence: MugrationConfidenceOutput,
   pub log_lh: LogLh,
-  pub partition: Arc<PartitionMarginalDiscrete>,
 }
 
 /// Discrete traits and confidence profiles gathered from the mugration partition for the output writers.
@@ -155,11 +154,10 @@ pub struct EdgeOut {
 
 /// Mugration result as a value.
 ///
-/// The discrete inference result (`discrete`), the reconstructed attribute name, and the marginal
-/// log likelihood are reachable directly off the result. `discrete` shares its inference partition
-/// with the copy the output writers still read from the graph, so no per-node profile data is
-/// duplicated. `graph` carries the tree and the metadata the writers read; the writers move onto the
-/// result value in a later step, after which `graph` and the partition-in-graph go away.
+/// The reconstructed attribute name and the marginal log likelihood are reachable directly off the
+/// result; the reconstructed traits and confidence profiles are gathered into value maps and the
+/// `traits`/`confidence` value structs on the graph data. `graph` carries the tree and the metadata
+/// the writers read.
 #[derive(Debug, serde::Serialize)]
 pub struct MugrationResult {
   #[serde(skip)]
@@ -168,8 +166,6 @@ pub struct MugrationResult {
   pub nodes: BTreeMap<GraphNodeKey, MugrationNodeOut>,
   #[serde(skip)]
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
-  #[serde(skip)]
-  pub discrete: Arc<PartitionMarginalDiscrete>,
   #[serde(skip)]
   pub attribute: String,
   #[serde(skip)]
@@ -190,7 +186,7 @@ impl MugrationResult {
     confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    partition: PartitionMarginalDiscrete,
+    partition: &PartitionMarginalDiscrete,
     attribute: &str,
     log_lh: LogLh,
   ) -> Self {
@@ -213,9 +209,9 @@ impl MugrationResult {
         )
       })
       .collect();
-    let assignments = extract_trait_assignments(&graph, &partition, names);
+    let assignments = extract_trait_assignments(&graph, partition, names);
     let traits = MugrationTraitsOutput::new(attribute, assignments);
-    let confidence = MugrationConfidenceOutput::new(&graph, &partition, names);
+    let confidence = MugrationConfidenceOutput::new(&graph, partition, names);
 
     let edges: BTreeMap<GraphEdgeKey, EdgeOut> = graph
       .get_edges()
@@ -227,18 +223,15 @@ impl MugrationResult {
       })
       .collect();
 
-    let partition = Arc::new(partition);
     let data = MugrationGraphData {
       traits,
       confidence,
       log_lh,
-      partition: Arc::clone(&partition),
     };
     Self {
       graph: graph.map_data(data),
       nodes,
       edges,
-      discrete: partition,
       attribute: attribute.to_owned(),
       log_lh,
     }
@@ -246,6 +239,42 @@ impl MugrationResult {
 
   pub fn trait_assignments(&self) -> &IndexMap<String, String> {
     &self.graph.data().traits.assignments
+  }
+}
+
+/// Gather the per-node reconstructed traits and confidence profiles, the states, the GTR model, and the
+/// state count the output writers read off the mugration discrete partition. The maps are keyed over
+/// every node and carry the raw confidence profile so the writers reproduce the current output exactly.
+///
+/// Gathered from the pipeline-local partition, so the graph data slot never carries it. The reads are
+/// keyed by node key and independent of node ordering, so gathering before `map_data` and topology
+/// ordering is bit-identical.
+pub(crate) fn gather_mugration_output_maps<D: Send + Sync>(
+  graph: &GraphAncestral<D>,
+  partition: &PartitionMarginalDiscrete,
+) -> MugrationOutputMaps {
+  let reconstructed_traits = graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let key = node.read_arc().key();
+      (key, partition.get_reconstructed_trait(key))
+    })
+    .collect();
+  let confidences = graph
+    .get_nodes()
+    .iter()
+    .map(|node| {
+      let key = node.read_arc().key();
+      (key, partition.get_confidence(key))
+    })
+    .collect();
+  MugrationOutputMaps {
+    reconstructed_traits,
+    confidences,
+    states: partition.states.clone(),
+    gtr: partition.gtr().clone(),
+    n_states: partition.n_states(),
   }
 }
 

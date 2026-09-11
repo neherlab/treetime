@@ -32,14 +32,14 @@ mod tests {
     let outputs = load_gm_mugration_outputs();
     let input = &inputs[case];
     let expected = &outputs[case];
-    let actual = run_gm_mugration_case(input)?;
+    let (actual, maps) = run_gm_mugration_case(input)?;
 
     let expected_states = expected.states.clone();
-    let actual_states: Vec<String> = actual.partition.states.iter().map(|s| s.to_owned()).collect();
+    let actual_states: Vec<String> = maps.states.iter().map(|s| s.to_owned()).collect();
     assert_eq!(expected_states, actual_states);
 
     let expected_n_states = expected.states.len();
-    let actual_n_states = actual.partition.n_states();
+    let actual_n_states = maps.n_states;
     assert_eq!(expected_n_states, actual_n_states);
 
     let expected_trait_assignments = expected.trait_assignments.clone();
@@ -82,7 +82,7 @@ mod tests {
     let outputs = load_gm_mugration_outputs();
     let input = &inputs["zika_20_country"];
     let expected = &outputs["zika_20_country"];
-    let actual = run_gm_mugration_case(input)?;
+    let (actual, _maps) = run_gm_mugration_case(input)?;
 
     assert_eq!(expected.states, actual.confidence.states);
 
@@ -118,7 +118,7 @@ mod tests {
     let outputs = load_gm_mugration_outputs();
     let input = &inputs[case];
     let expected = &outputs[case];
-    let actual = run_gm_mugration_case(input)?;
+    let (actual, _maps) = run_gm_mugration_case(input)?;
 
     assert_eq!(expected.states, actual.confidence.states);
 
@@ -138,7 +138,7 @@ mod tests {
 
   mod helpers {
     use crate::mugration::mugration::execute_mugration;
-    use crate::mugration::result::MugrationResult;
+    use crate::mugration::result::{MugrationOutputMaps, MugrationResult};
     use eyre::Report;
     use indexmap::IndexMap;
     use serde::Deserialize;
@@ -195,7 +195,7 @@ mod tests {
       json_read_file(&path).unwrap()
     }
 
-    pub fn run_gm_mugration_case(fixture: &GmMugrationInput) -> Result<MugrationResult, Report> {
+    pub fn run_gm_mugration_case(fixture: &GmMugrationInput) -> Result<(MugrationResult, MugrationOutputMaps), Report> {
       let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
 
       // Read tree directly

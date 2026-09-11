@@ -17,7 +17,7 @@ use crate::commands::timetree::result::{
 };
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
-use crate::partition::timetree::partition::GraphTimetree;
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::{EdgeMutationCommentProvider, PartitionBranchOps};
 use crate::seq::div::compute_edge_mutation_counts;
 use crate::seq::mutation::MutationTrack;
@@ -234,10 +234,16 @@ pub fn run_timetree_estimation(
     names: _,
     branch_lengths: _,
   } = output;
+  // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partitions into
+  // plain value maps the tree writers consume, taking the partition read out of the serialization
+  // path. Gather here, before `map_data`, so the graph data slot never carries the partition. Node and
+  // edge keys stay stable through `map_data` and topology ordering, so gathering before them is
+  // bit-identical.
+  let maps = gather_timetree_output_maps(&graph, &partitions)?;
+
   let mut graph = graph.map_data(TimetreeGraphData::new(
     clock_model,
     confidence_intervals,
-    partitions,
     dates,
     gtr,
     model_name,
@@ -263,10 +269,6 @@ pub fn run_timetree_estimation(
     &branch_lengths_opt,
     &confidences,
   );
-
-  // Gather the per-node/per-edge sequence and mutation values off the partition into plain value maps
-  // the tree writers consume, taking the partition read out of the serialization path.
-  let maps = gather_timetree_output_maps(&graph)?;
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
     match graph.data().confidence_intervals.as_ref() {
@@ -453,10 +455,11 @@ fn gather_timetree_outputs(
 
 /// Gather the per-node nucleotide sequences, root sequence, and per-edge nucleotide mutations the tree
 /// writers read off the timetree partition.
-pub(crate) fn gather_timetree_output_maps(
-  graph: &GraphTimetree<TimetreeGraphData>,
+pub(crate) fn gather_timetree_output_maps<D: Send + Sync>(
+  graph: &GraphTimetree<D>,
+  partitions: &[PartitionTimetreeRef],
 ) -> Result<TimetreeOutputMaps, Report> {
-  let Some(partition) = graph.data().partitions.first() else {
+  let Some(partition) = partitions.first() else {
     return Ok(TimetreeOutputMaps::default());
   };
   let partition = partition.read_arc();

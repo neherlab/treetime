@@ -6,6 +6,7 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_prune_tree_outputs;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_error;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::traits::PartitionBranchOps;
 use crate::prune::pipeline::{self, PruneInput, PruneParams};
 use crate::seq::mutation::MutationTrack;
@@ -13,6 +14,7 @@ use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::warn;
 use maplit::btreeset;
+use parking_lot::RwLock;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -84,11 +86,24 @@ pub fn run_prune(
     names,
     branch_lengths: branch_lengths_opt,
   } = output;
-  // Share the sparse sequence partition Arc (no sequence data copied) and the fitted GTR into the
-  // value-shaped result. The tree writers still read the partition and model from the graph data
-  // slot until that read moves onto the result value; both copies leave the graph then.
-  let seq = partitions.first().map(Arc::clone);
-  let mut graph = graph.map_data(PruneGraphData::new(gtr.clone(), partitions));
+
+  // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partition into
+  // plain value maps the output writers consume, taking the partition read out of the serialization
+  // path. Gather here, before `map_data`, so the graph data slot never carries the partition. Only
+  // the auspice, phyloxml, and MAT writers read these maps; prune's default Newick/Nexus outputs
+  // carry no mutation comments (empty comment provider), so they never read a mutation. Prune also
+  // applies its final `--prune-empty` and `--merge-shared-mutations` topology edits without a
+  // following marginal pass, leaving output-tree edges whose `subs_ml` was never populated. Gathering
+  // unconditionally would read those unpopulated edges for outputs that never serialize them, so
+  // gather only when a map-consuming tree output is requested. Node and edge keys stay stable through
+  // `map_data` and topology ordering, so gathering before them is bit-identical.
+  let maps = if resolved.tree_outputs.keys().any(prune_output_consumes_maps) {
+    gather_prune_output_maps(&graph, &partitions)?
+  } else {
+    PruneOutputMaps::default()
+  };
+
+  let mut graph = graph.map_data(PruneGraphData::new(gtr.clone()));
   let topology_order = args
     .topology_order
     .resolve_topology_order(&graph, &names, Some(input_order))?;
@@ -147,20 +162,6 @@ pub fn run_prune(
     }
   }
 
-  // Gather the per-node/per-edge sequence and mutation values off the partition into plain value maps
-  // the output writers consume, taking the partition read out of the serialization path. Only the
-  // auspice, phyloxml, and MAT writers read these maps; prune's default Newick/Nexus outputs carry no
-  // mutation comments (empty comment provider), so they never read a mutation. Prune also applies its
-  // final `--prune-empty` and `--merge-shared-mutations` topology edits without a following marginal
-  // pass, leaving output-tree edges whose `subs_ml` was never populated. Gathering unconditionally
-  // would read those unpopulated edges for outputs that never serialize them, so gather only when a
-  // map-consuming tree output is requested.
-  let maps = if resolved.tree_outputs.keys().any(prune_output_consumes_maps) {
-    gather_prune_output_maps(&graph)?
-  } else {
-    PruneOutputMaps::default()
-  };
-
   if !resolved.tree_outputs.is_empty() {
     write_prune_tree_outputs(
       &graph,
@@ -177,7 +178,6 @@ pub fn run_prune(
     graph,
     nodes,
     edges,
-    seq,
     gtr,
   })
 }
@@ -206,8 +206,11 @@ fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
 /// following marginal pass, so the node and edge stores can still hold detached nodes and orphan edges
 /// whose `subs_ml` was never populated. Those never appear on the tree walk, so reading
 /// `edge_mutations` only for reached edges avoids touching an unpopulated edge.
-pub(crate) fn gather_prune_output_maps(graph: &GraphAncestral<PruneGraphData>) -> Result<PruneOutputMaps, Report> {
-  let Some(partition) = graph.data().partitions.first() else {
+pub(crate) fn gather_prune_output_maps<D: Sync + Send>(
+  graph: &GraphAncestral<D>,
+  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+) -> Result<PruneOutputMaps, Report> {
+  let Some(partition) = partitions.first() else {
     return Ok(PruneOutputMaps::default());
   };
   let partition = partition.read_arc();

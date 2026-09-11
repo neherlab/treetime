@@ -6,9 +6,8 @@ use crate::commands::shared::tree_output::write_mugration_tree_outputs;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_report;
 use crate::mugration::mugration::execute_mugration;
-use crate::mugration::result::{MugrationGraphData, MugrationOutputMaps, MugrationResult};
+use crate::mugration::result::MugrationResult;
 use crate::partition::marginal::discrete::comment::DiscreteTraitCommentProvider;
-use crate::partition::traits::HasGtr;
 use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use log::info;
@@ -65,7 +64,10 @@ pub fn run_mugration(
 
   progress.check_cancelled()?;
   progress.report("Mugration inference", 0.3, "");
-  let mut result = execute_mugration(
+  // The output value maps are gathered off the pipeline-local partition inside `execute_mugration`,
+  // before the partition-less graph data slot is built; the tree, Newick-comment, augur, and GTR
+  // writers read the maps here.
+  let (mut result, maps) = execute_mugration(
     graph,
     &confidences,
     &names,
@@ -87,11 +89,6 @@ pub fn run_mugration(
     .resolve_topology_order(&result.graph, &names, None)?;
   topology_order.apply(&mut result.graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.8, "");
-
-  // Gather the per-node reconstructed traits and confidence profiles, the states, and the GTR model off
-  // the discrete partition into plain value maps the output writers consume. This is the only place that
-  // reads those from the partition; the tree, Newick-comment, augur, and GTR writers read the maps.
-  let maps = gather_mugration_output_maps(&result.graph);
 
   if !resolved.tree_outputs.is_empty() {
     let provider = DiscreteTraitCommentProvider::new(&maps.reconstructed_traits, &result.graph.data().traits.attribute);
@@ -129,34 +126,4 @@ pub fn run_mugration(
 
   progress.report("Done", 1.0, "");
   Ok(result)
-}
-
-/// Gather the per-node reconstructed traits and confidence profiles, the states, the GTR model, and the
-/// state count the output writers read off the mugration discrete partition. The maps are keyed over
-/// every node and carry the raw confidence profile so the writers reproduce the current output exactly.
-pub(crate) fn gather_mugration_output_maps(graph: &GraphAncestral<MugrationGraphData>) -> MugrationOutputMaps {
-  let partition = &graph.data().partition;
-  let reconstructed_traits = graph
-    .get_nodes()
-    .iter()
-    .map(|node| {
-      let key = node.read_arc().key();
-      (key, partition.get_reconstructed_trait(key))
-    })
-    .collect();
-  let confidences = graph
-    .get_nodes()
-    .iter()
-    .map(|node| {
-      let key = node.read_arc().key();
-      (key, partition.get_confidence(key))
-    })
-    .collect();
-  MugrationOutputMaps {
-    reconstructed_traits,
-    confidences,
-    states: partition.states.clone(),
-    gtr: partition.gtr().clone(),
-    n_states: partition.n_states(),
-  }
 }

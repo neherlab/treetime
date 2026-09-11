@@ -1,4 +1,3 @@
-use crate::ancestral::pipeline::AncestralPartition;
 use crate::commands::ancestral::aa_node_data::AaNodeData;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
@@ -12,7 +11,6 @@ use treetime_primitives::{AsciiChar, Seq};
 
 #[derive(Serialize)]
 pub struct AncestralGraphData {
-  pub partition: Option<AncestralPartition>,
   pub gtr: Option<GTR>,
   pub model_name: GtrModelName,
   pub mask: Vec<bool>,
@@ -20,15 +18,8 @@ pub struct AncestralGraphData {
 }
 
 impl AncestralGraphData {
-  pub fn new(
-    partition: Option<AncestralPartition>,
-    gtr: Option<GTR>,
-    model_name: GtrModelName,
-    mask: Vec<bool>,
-    aa_node_data: Option<AaNodeData>,
-  ) -> Self {
+  pub fn new(gtr: Option<GTR>, model_name: GtrModelName, mask: Vec<bool>, aa_node_data: Option<AaNodeData>) -> Self {
     Self {
-      partition,
       gtr,
       model_name,
       mask,
@@ -87,12 +78,9 @@ pub struct EdgeOut {
 
 /// Ancestral reconstruction result as a value.
 ///
-/// The durable per-node and per-edge outputs are reachable directly off the result: `seq` holds the
-/// sequence store (dense, sparse, and parsimony kept as separate representations), `node_sequences`
+/// The durable per-node and per-edge outputs are reachable directly off the result: `node_sequences`
 /// holds the reconstructed sequences captured from the serial reconstruction walk, and the model
-/// metadata sits alongside. `graph` carries the tree the output writers still read from; the writers
-/// move onto the result value in a later step, after which `graph` and the partition-in-graph go
-/// away.
+/// metadata sits alongside. `graph` carries the tree the output writers still read from.
 #[derive(Serialize)]
 pub struct AncestralResult {
   #[serde(skip)]
@@ -101,8 +89,6 @@ pub struct AncestralResult {
   pub nodes: BTreeMap<GraphNodeKey, AncestralNodeOut>,
   #[serde(skip)]
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
-  #[serde(skip)]
-  pub seq: Option<AncestralPartition>,
   #[serde(skip)]
   pub node_sequences: BTreeMap<GraphNodeKey, Seq>,
   #[serde(skip)]
