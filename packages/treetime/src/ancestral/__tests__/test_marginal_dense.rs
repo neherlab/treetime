@@ -16,10 +16,9 @@ mod tests {
   use indoc::indoc;
 
   use ndarray::prelude::*;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::sync::{Arc, LazyLock};
+  use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -86,16 +85,18 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     gtr: GTR,
-  ) -> Result<(f64, [Arc<RwLock<PartitionMarginalDense>>; 1]), Report> {
+  ) -> Result<(f64, [PartitionMarginalDense; 1]), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr,
-      alphabet,
-      get_common_length(aln)?,
-    )))];
+    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?)];
 
-    let log_lh = initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?.value();
+    let log_lh = initialize_marginal(
+      graph,
+      &profile_branch_lengths(branch_lengths),
+      &mut partitions,
+      aln,
+      names,
+    )?
+    .value();
     Ok((log_lh, partitions))
   }
 
@@ -188,14 +189,14 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (_, partitions) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
+    let (_, mut partitions) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_marginal(
       &graph,
       false,
       false,
-      &partitions,
+      &mut partitions,
       SampleMode::Argmax,
       &mut rand::thread_rng(),
       |key, seq| {
@@ -244,7 +245,7 @@ mod tests {
     // Regression check: known-good log-likelihood for this tree/alignment/model
     pretty_assert_ulps_eq!(-57.712498930787206, log_lh, epsilon = 1e-6);
 
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     let max_ulps = 4;
 
     // Node profiles: marginal posterior P(s|data) at each position
@@ -292,10 +293,10 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (log_lh_init, partitions) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
+    let (log_lh_init, mut partitions) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
-    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
-    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
 
     // Repeated updates must produce identical log-likelihood to initialization
     pretty_assert_ulps_eq!(log_lh_init, log_lh_first, epsilon = 1e-10);

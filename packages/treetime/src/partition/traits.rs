@@ -11,10 +11,8 @@ use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub, mutation
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
-use parking_lot::RwLock;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
@@ -320,8 +318,6 @@ pub trait PartitionOptimizeOps: PartitionBranchOps {
   fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize;
 }
 
-pub type PartitionOptimizeVec = Vec<Arc<RwLock<dyn PartitionOptimizeOps>>>;
-
 /// Trait for partition updates during reroot operations.
 ///
 /// Default implementation is a no-op, suitable for dense partitions that don't track mutations.
@@ -375,9 +371,9 @@ where
 }
 
 /// Calculate the total log likelihood of the graph given the partitions
-pub fn graph_log_lh<P, N, E, D>(graph: &Graph<N, E, D>, partitions: &[Arc<RwLock<P>>]) -> Result<LogLh, Report>
+pub fn graph_log_lh<P, N, E, D>(graph: &Graph<N, E, D>, partitions: &[P]) -> Result<LogLh, Report>
 where
-  P: HasLogLh + Send + Sync + ?Sized,
+  P: HasLogLh + Sync,
   N: GraphNode,
   E: GraphEdge,
   D: Sync + Send + Default,
@@ -387,7 +383,7 @@ where
 
   let log_lh = partitions
     .par_iter()
-    .map(|partition| partition.read_arc().get_log_lh(root_key))
+    .map(|partition| partition.get_log_lh(root_key))
     .collect::<Vec<_>>()
     .into_iter()
     .sum();

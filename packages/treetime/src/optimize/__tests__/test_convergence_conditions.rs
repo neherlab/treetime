@@ -6,9 +6,7 @@ mod tests {
   };
   use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping};
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{
-    ConvergenceReason, collect_optimize_partitions, marginal_branch_lengths, run_optimize_loop,
-  };
+  use crate::optimize::run_loop::{ConvergenceReason, marginal_branch_lengths, run_optimize_loop};
   use crate::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -86,15 +84,13 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) =
-      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_6 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &sparse_partitions,
-      &dense_partitions,
-      &mixed_partitions,
+      &mut sparse_partitions,
+      &mut dense_partitions,
       20,
       0.1,
       0.75,
@@ -125,17 +121,15 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) =
-      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     // Undamped with dp=0 (convergence/oscillation checks never fire) forces the
     // worsened condition to be the only active stopping criterion.
     let names_tt_5 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &sparse_partitions,
-      &dense_partitions,
-      &mixed_partitions,
+      &mut sparse_partitions,
+      &mut dense_partitions,
       50,
       0.0,
       0.0,
@@ -184,15 +178,13 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) =
-      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_4 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &sparse_partitions,
-      &dense_partitions,
-      &mixed_partitions,
+      &mut sparse_partitions,
+      &mut dense_partitions,
       50,
       0.0,
       0.0,
@@ -214,8 +206,8 @@ mod tests {
 
     // Recompute the marginal likelihood from the returned (rolled-back) branch-length map.
     let marginal_bl = marginal_branch_lengths(&result.branch_lengths);
-    let sparse_lh = marginal_update(&graph, &marginal_bl, &sparse_partitions)?.value();
-    let dense_lh = marginal_update(&graph, &marginal_bl, &dense_partitions)?.value();
+    let sparse_lh = marginal_update(&graph, &marginal_bl, &mut sparse_partitions)?.value();
+    let dense_lh = marginal_update(&graph, &marginal_bl, &mut dense_partitions)?.value();
     assert_abs_diff_eq!(sparse_lh + dense_lh, best_lh, epsilon = 1e-9);
     Ok(())
   }
@@ -232,17 +224,15 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) =
-      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     // Use damping to prevent the worsened condition from firing, but set dp
     // large enough that the oscillation check catches the 2-cycle.
     let names_tt_3 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &sparse_partitions,
-      &dense_partitions,
-      &mixed_partitions,
+      &mut sparse_partitions,
+      &mut dense_partitions,
       50,
       1.0,
       0.75,
@@ -275,17 +265,15 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: GraphAncestral = graph;
-    let (dense_partitions, sparse_partitions, mixed_partitions) =
-      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     // Only 2 iterations with dp=0 and damping. The worsened condition requires
     // i >= 2, so with max_iter=2 (iterations 0 and 1) it cannot fire.
     let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &sparse_partitions,
-      &dense_partitions,
-      &mixed_partitions,
+      &mut sparse_partitions,
+      &mut dense_partitions,
       2,
       0.0,
       0.75,
@@ -317,18 +305,15 @@ mod tests {
     let mut graph: GraphAncestral = graph;
 
     // Use the setup but only dense partitions (sparse empty)
-    let (dense_partitions, _sparse_partitions, _mixed_partitions) =
-      setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (mut dense_partitions, _sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let empty_sparse = vec![];
-    let mixed = collect_optimize_partitions(&dense_partitions, &empty_sparse);
+    let mut empty_sparse = vec![];
 
     let names_tt_1 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &empty_sparse,
-      &dense_partitions,
-      &mixed,
+      &mut empty_sparse,
+      &mut dense_partitions,
       10,
       0.1,
       0.75,

@@ -2,20 +2,19 @@ use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::refinement::refine_gtr_iterative;
+use crate::make_error;
 use crate::mugration::result::{MugrationOutputMaps, MugrationResult, gather_mugration_output_maps};
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::storage::discrete::DiscreteStates;
 use crate::payload::ancestral::GraphAncestral;
-use crate::{make_error, make_internal_report};
 use eyre::Report;
 use indexmap::IndexSet;
 use itertools::Itertools;
 use log::{info, warn};
 use ndarray::Array1;
-use parking_lot::RwLock;
 use statrs::statistics::Statistics;
+use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 
@@ -164,12 +163,12 @@ pub fn execute_mugration(
   );
   partition.attach_traits(&graph, traits, names)?;
 
-  let partition = Arc::new(RwLock::new(partition));
+  let mut partition = RefCell::new(partition);
 
   let log_lh = marginal_update(
     &graph,
     &profile_branch_lengths(branch_lengths),
-    std::slice::from_ref(&partition),
+    std::slice::from_mut(partition.get_mut()),
   )?;
   info!("Mugration: initial log likelihood = {:.4}", log_lh.value());
 
@@ -184,9 +183,7 @@ pub fn execute_mugration(
     true,
   )?;
 
-  let partition = Arc::into_inner(partition)
-    .ok_or_else(|| make_internal_report!("partition Arc has unexpected additional owners"))?
-    .into_inner();
+  let partition = partition.into_inner();
 
   // Gather the output value maps off the pipeline-local partition before it enters the graph data
   // slot, taking the partition read out of the serialization path. The maps stay a local the command

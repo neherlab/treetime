@@ -5,16 +5,14 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::run_optimize_mixed_inner;
   use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::run_loop::optimize_partition_view;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::traits::PartitionOptimizeOps;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
-  use parking_lot::RwLock;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -25,7 +23,7 @@ mod tests {
   ) -> Result<
     (
       GraphAncestral,
-      Vec<Arc<RwLock<dyn PartitionOptimizeOps>>>,
+      Vec<PartitionMarginalDense>,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
@@ -41,21 +39,17 @@ mod tests {
     let graph: GraphAncestral = graph;
     let gtr = jc69(JC69Params::default())?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
-    let partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![Arc::new(RwLock::new(partition))];
+    let mut partitions: Vec<PartitionMarginalDense> = vec![partition];
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?
     .value();
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
-    let mixed: Vec<Arc<RwLock<dyn PartitionOptimizeOps>>> = partitions
-      .into_iter()
-      .map(|p| -> Arc<RwLock<dyn PartitionOptimizeOps>> { p })
-      .collect();
-    Ok((graph, mixed, branch_lengths))
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    Ok((graph, partitions, branch_lengths))
   }
 
   fn root_edge_branch_lengths(
@@ -96,7 +90,7 @@ mod tests {
 
     run_optimize_mixed_inner(
       &graph,
-      &partitions,
+      &optimize_partition_view(&partitions, &[]),
       BranchOptMethod::BrentSqrt,
       0.0,
       true,
@@ -119,7 +113,7 @@ mod tests {
 
     run_optimize_mixed_inner(
       &graph,
-      &partitions,
+      &optimize_partition_view(&partitions, &[]),
       BranchOptMethod::BrentSqrt,
       0.0,
       true,
@@ -166,7 +160,7 @@ mod tests {
     // The function should complete without error.
     run_optimize_mixed_inner(
       &graph,
-      &partitions,
+      &optimize_partition_view(&partitions, &[]),
       BranchOptMethod::BrentSqrt,
       0.0,
       true,
@@ -188,7 +182,7 @@ mod tests {
 
     run_optimize_mixed_inner(
       &graph,
-      &partitions,
+      &optimize_partition_view(&partitions, &[]),
       BranchOptMethod::BrentSqrt,
       0.0,
       true,

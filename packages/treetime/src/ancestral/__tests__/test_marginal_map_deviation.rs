@@ -13,10 +13,8 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -144,7 +142,7 @@ mod tests {
   fn reconstruct_named<P>(
     graph: &GraphAncestral,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    partitions: &[Arc<RwLock<P>>],
+    partitions: &mut [P],
   ) -> Result<BTreeMap<String, String>, Report>
   where
     P: PartitionMarginalOps<NodeAncestral, EdgeAncestral> + crate::partition::traits::HasLogLh,
@@ -172,11 +170,9 @@ mod tests {
     aln: &[FastaRecord],
   ) -> Result<BTreeMap<String, String>, Report> {
     let fitch = create_fitch_partition(graph, 0, Alphabet::default(), aln, names)?;
-    let partitions = [Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
-    ))];
-    marginal_update(graph, &profile_branch_lengths(branch_lengths), &partitions)?;
-    reconstruct_named(graph, names, &partitions)
+    let mut partitions = [fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?];
+    marginal_update(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?;
+    reconstruct_named(graph, names, &mut partitions)
   }
 
   fn reconstruct_dense(
@@ -186,13 +182,19 @@ mod tests {
     aln: &[FastaRecord],
   ) -> Result<BTreeMap<String, String>, Report> {
     let length = get_common_length(aln)?;
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
+    let mut partitions = [PartitionMarginalDense::new(
       0,
       jc69(JC69Params::default())?,
       Alphabet::default(),
       length,
-    )))];
-    initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?;
-    reconstruct_named(graph, names, &partitions)
+    )];
+    initialize_marginal(
+      graph,
+      &profile_branch_lengths(branch_lengths),
+      &mut partitions,
+      aln,
+      names,
+    )?;
+    reconstruct_named(graph, names, &mut partitions)
   }
 }

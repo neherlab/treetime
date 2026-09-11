@@ -94,7 +94,7 @@ ACGTACGC
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     for node_data in partition.data.nodes.values() {
       if node_data.profile.dis.is_empty() {
         continue;
@@ -148,7 +148,7 @@ ACGTACGC
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     for node_data in partition.nodes.values() {
       let profile = &node_data.profile;
       assert!(

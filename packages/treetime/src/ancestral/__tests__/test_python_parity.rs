@@ -17,11 +17,9 @@ mod tests {
   use eyre::Report;
 
   use ndarray::array;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::path::PathBuf;
-  use std::slice::from_ref;
-  use std::sync::{Arc, LazyLock};
+  use std::sync::LazyLock;
   use treetime_io::fasta::{read_many_fasta, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_file, nwk_read_str};
 
@@ -80,17 +78,12 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr,
-      alphabet,
-      get_common_length(&aln)?,
-    )))];
+    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)];
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?
@@ -101,7 +94,7 @@ mod tests {
       &graph,
       false,
       false,
-      &partitions,
+      &mut partitions,
       SampleMode::Argmax,
       &mut rand::thread_rng(),
       |key, seq| {
@@ -206,17 +199,12 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr,
-      alphabet,
-      get_common_length(&aln)?,
-    )))];
+    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)];
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?
@@ -224,7 +212,7 @@ mod tests {
 
     // Find node AB and check profile at position 0
     let ab_key = find_node_key_by_name(&graph, &names, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     let ab_profile = &partition.data.nodes[&ab_key].profile.dis;
 
     // Position 0 is variable in Python (first variable position)
@@ -265,17 +253,12 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr,
-      alphabet,
-      get_common_length(&aln)?,
-    )))];
+    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)];
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?
@@ -283,7 +266,7 @@ mod tests {
 
     // Find root node
     let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("Node root not found"))?;
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     let root_profile = &partition.data.nodes[&root_key].profile.dis;
 
     // Position 0 profile
@@ -320,24 +303,19 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr,
-      alphabet,
-      get_common_length(&aln)?,
-    )))];
+    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)];
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?
     .value();
 
     let cd_key = find_node_key_by_name(&graph, &names, "CD").ok_or_else(|| make_report!("Node CD not found"))?;
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     let cd_profile = &partition.data.nodes[&cd_key].profile.dis;
 
     // Verify all positions are normalized and valid
@@ -376,23 +354,18 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr,
-      alphabet,
-      get_common_length(&aln)?,
-    )))];
+    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)];
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?
     .value();
 
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
 
     for (key, node_data) in &partition.data.nodes {
       let profile = &node_data.profile.dis;
@@ -436,29 +409,24 @@ mod tests {
     let length = get_common_length(&aln)?;
 
     // Create two partitions with different F81 models
-    let partition1 = Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr1,
-      alphabet.clone(),
-      length,
-    )));
+    let partition1 = PartitionMarginalDense::new(0, gtr1, alphabet.clone(), length);
 
-    let partition2 = Arc::new(RwLock::new(PartitionMarginalDense::new(1, gtr2, alphabet, length)));
+    let partition2 = PartitionMarginalDense::new(1, gtr2, alphabet, length);
 
-    let partitions = [Arc::clone(&partition1), Arc::clone(&partition2)];
+    let mut partitions = [partition1, partition2];
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?
     .value();
     let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("Node root not found"))?;
 
-    let p1 = partition1.read_arc();
-    let p2 = partition2.read_arc();
+    let p1 = &partitions[0];
+    let p2 = &partitions[1];
 
     let root1 = &p1.data.nodes[&root_key].profile.dis;
     let root2 = &p2.data.nodes[&root_key].profile.dis;
@@ -511,21 +479,16 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&aln)?;
 
-    let partition1 = Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr1,
-      alphabet.clone(),
-      length,
-    )));
+    let partition1 = PartitionMarginalDense::new(0, gtr1, alphabet.clone(), length);
 
-    let partition2 = Arc::new(RwLock::new(PartitionMarginalDense::new(1, gtr2, alphabet, length)));
+    let partition2 = PartitionMarginalDense::new(1, gtr2, alphabet, length);
 
-    let partitions = [Arc::clone(&partition1), Arc::clone(&partition2)];
+    let mut partitions = [partition1, partition2];
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?
@@ -533,7 +496,7 @@ mod tests {
 
     let ab_key = find_node_key_by_name(&graph, &names, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
 
-    let p1 = partition1.read_arc();
+    let p1 = &partitions[0];
     let ab1 = &p1.data.nodes[&ab_key].profile.dis;
     let pos0_ab1 = ab1.row(0);
 
@@ -543,7 +506,7 @@ mod tests {
     pretty_assert_ulps_eq!(pos0_ab1[3], 0.14949031, epsilon = 1e-6);
 
     // Partition 2: [0.52331521, 0.08336271, 0.24488808, 0.148434]
-    let p2 = partition2.read_arc();
+    let p2 = &partitions[1];
     let ab2 = &p2.data.nodes[&ab_key].profile.dis;
     let pos0_ab2 = ab2.row(0);
 
@@ -585,17 +548,12 @@ mod tests {
     let length = get_common_length(&aln)?;
 
     // Dense partition
-    let dense_partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr.clone(),
-      alphabet.clone(),
-      length,
-    )));
+    let mut dense_partition = PartitionMarginalDense::new(0, gtr.clone(), alphabet.clone(), length);
 
     let dense_log_lh = initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      from_ref(&dense_partition),
+      std::slice::from_mut(&mut dense_partition),
       &aln,
       &names,
     )?
@@ -603,11 +561,11 @@ mod tests {
 
     // Sparse partition
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let sparse_partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
+    let mut sparse_partition = fitch.into_marginal_sparse(gtr, &graph)?;
     let sparse_log_lh = marginal_update(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      from_ref(&sparse_partition),
+      std::slice::from_mut(&mut sparse_partition),
     )?
     .value();
 

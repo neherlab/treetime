@@ -28,8 +28,7 @@ pub mod tests {
   use eyre::Report;
   use indoc::indoc;
 
-  use parking_lot::RwLock;
-  use std::sync::{Arc, LazyLock};
+  use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
 
@@ -58,16 +57,23 @@ pub mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<Vec<Arc<RwLock<PartitionMarginalDense>>>, Report> {
+  ) -> Result<Vec<PartitionMarginalDense>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+    let mut partitions = vec![PartitionMarginalDense::new(
       0,
       jc69(JC69Params::default())?,
       alphabet,
       get_common_length(aln)?,
-    )))];
+    )];
 
-    initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?.value();
+    initialize_marginal(
+      graph,
+      &profile_branch_lengths(branch_lengths),
+      &mut partitions,
+      aln,
+      names,
+    )?
+    .value();
 
     Ok(partitions)
   }
@@ -77,13 +83,11 @@ pub mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<Vec<Arc<RwLock<PartitionMarginalSparse>>>, Report> {
+  ) -> Result<Vec<PartitionMarginalSparse>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
-    let partitions = vec![Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
-    ))];
-    marginal_update(graph, &profile_branch_lengths(branch_lengths), &partitions)?.value();
+    let mut partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?];
+    marginal_update(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?.value();
 
     Ok(partitions)
   }

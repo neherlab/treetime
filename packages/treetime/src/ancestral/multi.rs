@@ -8,9 +8,7 @@ use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::traits::PartitionMarginalOps;
 use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use eyre::Report;
-use parking_lot::RwLock;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
@@ -86,27 +84,27 @@ pub fn reconstruct_marginal_partition(
     branch_lengths,
     names,
   )?;
-  let partition: Arc<RwLock<dyn MarginalAugurPartition>> = match created.partition {
-    MarginalPartition::Sparse(partition) => Arc::new(RwLock::new(partition)),
-    MarginalPartition::Dense(partition) => Arc::new(RwLock::new(partition)),
-  };
-
-  // Dense partitions attach their leaf sequences here; sparse partitions already carry them from
-  // construction (`attach_sequences` is a no-op for sparse), so the call is uniform and safe.
-  partition.write_arc().attach_sequences(graph, &sequences, names)?;
-
-  let single = std::slice::from_ref(&partition);
   let profile_lengths = profile_branch_lengths(branch_lengths);
-  marginal_update(graph, &profile_lengths, single)?;
-  ancestral_reconstruction_marginal(
-    graph,
-    params.include_leaves,
-    params.impute_missing_data,
-    single,
-    params.sample_from_profile,
-    rng,
-    |_key: GraphNodeKey, _seq: &Seq| Ok(()),
-  )?;
+  let partition: Box<dyn MarginalAugurPartition> = match created.partition {
+    MarginalPartition::Sparse(partition) => Box::new(run_marginal_passes(
+      graph,
+      partition,
+      &sequences,
+      names,
+      &profile_lengths,
+      params,
+      rng,
+    )?),
+    MarginalPartition::Dense(partition) => Box::new(run_marginal_passes(
+      graph,
+      partition,
+      &sequences,
+      names,
+      &profile_lengths,
+      params,
+      rng,
+    )?),
+  };
 
   Ok(ReconstructedPartition {
     name,
@@ -118,10 +116,41 @@ pub fn reconstruct_marginal_partition(
   })
 }
 
+/// Attach this partition's leaf sequences, run the marginal passes, and reconstruct every node,
+/// returning the owned partition ready to be read back into augur node data.
+///
+/// Dense partitions attach their leaf sequences here; sparse partitions already carry them from
+/// construction (`attach_sequences` is a no-op for sparse), so the call is uniform and safe.
+fn run_marginal_passes<P>(
+  graph: &GraphAncestral,
+  mut partition: P,
+  sequences: &[FastaRecord],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  profile_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  params: &MarginalPartitionParams,
+  rng: &mut dyn rand::RngCore,
+) -> Result<P, Report>
+where
+  P: PartitionMarginalOps<NodeAncestral, EdgeAncestral>,
+{
+  partition.attach_sequences(graph, sequences, names)?;
+  marginal_update(graph, profile_lengths, std::slice::from_mut(&mut partition))?;
+  ancestral_reconstruction_marginal(
+    graph,
+    params.include_leaves,
+    params.impute_missing_data,
+    std::slice::from_mut(&mut partition),
+    params.sample_from_profile,
+    rng,
+    |_key: GraphNodeKey, _seq: &Seq| Ok(()),
+  )?;
+  Ok(partition)
+}
+
 /// A reconstructed partition and the metadata needed to serialize it into augur node data.
 pub struct ReconstructedPartition {
   pub name: String,
-  pub partition: Arc<RwLock<dyn MarginalAugurPartition>>,
+  pub partition: Box<dyn MarginalAugurPartition>,
   pub alphabet: Alphabet,
   pub model_name: GtrModelName,
   pub annotation: Option<AugurNodeDataJsonAnnotationEntry>,

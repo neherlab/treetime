@@ -6,10 +6,8 @@ use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
 use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::Sub;
 use eyre::Report;
-use parking_lot::RwLock;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::AsciiChar;
@@ -28,7 +26,7 @@ use treetime_primitives::AsciiChar;
 /// the root is counted. The augmentation is scoring only; [`slide_bifurcating_root_for_child`]
 /// materializes it before the hoist.
 pub(crate) fn count_child_reversions(
-  sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
+  sparse: &[PartitionMarginalSparse],
   parent_edge_key: GraphEdgeKey,
   sibling_edge_key: Option<GraphEdgeKey>,
   child_edge_key: GraphEdgeKey,
@@ -36,7 +34,6 @@ pub(crate) fn count_child_reversions(
   sparse
     .iter()
     .map(|partition| {
-      let partition = partition.read_arc();
       let parent_subs: &[Sub] = partition.edges.get(&parent_edge_key).map_or(&[], |e| e.fitch_subs());
       let child_subs: &[Sub] = partition.edges.get(&child_edge_key).map_or(&[], |e| e.fitch_subs());
       match sibling_edge_key {
@@ -100,15 +97,13 @@ fn augment_parent_with_sibling(parent_subs: &[Sub], sibling_subs: &[Sub]) -> (Ve
 /// lock-step, so the marginal pass that reads it on the next optimizer iteration stays consistent
 /// with the rewritten edges.
 pub(crate) fn slide_bifurcating_root_for_child(
-  sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
+  sparse: &mut [PartitionMarginalSparse],
   root_key: GraphNodeKey,
   parent_edge_key: GraphEdgeKey,
   sibling_edge_key: GraphEdgeKey,
   child_edge_key: GraphEdgeKey,
 ) -> Result<(), Report> {
-  for partition in sparse {
-    let mut partition = partition.write_arc();
-
+  for partition in sparse.iter_mut() {
     let parent_subs = partition
       .edges
       .get(&parent_edge_key)
@@ -208,8 +203,8 @@ pub(crate) fn slide_bifurcating_root_for_child(
 /// Returns the key of the new node $N$.
 pub(crate) fn hoist_reverting_child(
   graph: &mut GraphAncestral,
-  sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
-  dense: &[Arc<RwLock<PartitionMarginalDense>>],
+  sparse: &mut [PartitionMarginalSparse],
+  dense: &mut [PartitionMarginalDense],
   parent_edge_key: GraphEdgeKey,
   child_edge_key: GraphEdgeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -221,8 +216,7 @@ pub(crate) fn hoist_reverting_child(
   let mut splits = Vec::with_capacity(sparse.len());
   let mut total_parent_subs = 0_usize;
   let mut total_hoisted_subs = 0_usize;
-  for partition in sparse {
-    let partition = partition.read_arc();
+  for partition in sparse.iter() {
     let parent_subs = partition
       .edges
       .get(&parent_edge_key)
@@ -279,9 +273,7 @@ pub(crate) fn hoist_reverting_child(
 
   // Sparse partition bookkeeping. The relocated edges keep their keys, so only their content
   // is rewritten; the u -> N edge and node N are inserted fresh.
-  for (partition, split) in sparse.iter().zip(splits) {
-    let mut partition = partition.write_arc();
-
+  for (partition, split) in sparse.iter_mut().zip(splits) {
     let mut node_n = SparseNodePartition::empty(&partition.alphabet);
     node_n.seq.composition = partition.nodes[&u_key].seq.composition.clone();
     partition.nodes.entry(n_key).or_insert(node_n);
@@ -302,8 +294,7 @@ pub(crate) fn hoist_reverting_child(
   // Dense partitions carry no mutation lists, but they key node and edge state by graph key
   // and must learn about the new node and edge. `apply_reroot` registers reroot-created keys
   // the same way; mirroring it keeps dense state consistent when both families coexist.
-  for partition in dense {
-    let mut partition = partition.write_arc();
+  for partition in dense.iter_mut() {
     partition.data.nodes.entry(n_key).or_insert_with(|| DenseNodePartition {
       seq: DenseSeqInfo::default(),
       profile: DenseSeqDistribution::default(),

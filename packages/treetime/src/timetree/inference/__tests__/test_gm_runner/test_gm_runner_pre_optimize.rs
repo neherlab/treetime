@@ -22,14 +22,12 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
 
-  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
+  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
   use eyre::Report;
   use itertools::Itertools;
 
-  use parking_lot::RwLock;
   use rstest::rstest;
 
-  use std::sync::Arc;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   fn extract_branch_lengths(graph: &GraphTimetree, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
@@ -57,21 +55,18 @@ mod tests {
     let graph: GraphTimetree = graph;
     let aln = load_alignment_for_dataset(dataset)?;
     let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln, &names)?;
-    let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
+    let sparse_partition = PartitionTimetree::Sparse(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-    )));
+    );
 
-    let partitions: PartitionTimetreeAllVec = vec![sparse_partition];
-    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &partitions, &aln, &names)?.value();
+    let mut partitions: Vec<PartitionTimetree> = vec![sparse_partition];
+    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions, &aln, &names)?.value();
 
     let before = extract_branch_lengths(&graph, &branch_lengths);
 
     // Run one pass of ML optimization (matching v0's optimize_tree(max_iter=1))
     #[allow(trivial_casts)]
-    let opt_partitions: Vec<Arc<RwLock<dyn PartitionOptimizeOps>>> = partitions
-      .iter()
-      .map(|p| Arc::clone(p) as Arc<RwLock<dyn PartitionOptimizeOps>>)
-      .collect();
+    let opt_partitions: Vec<&dyn PartitionOptimizeOps> = partitions.iter().map(|p| p as &dyn PartitionOptimizeOps).collect();
     run_optimize_mixed(&graph, &opt_partitions, BranchOptMethod::BrentSqrt, &mut branch_lengths)?;
 
     let after = extract_branch_lengths(&graph, &branch_lengths);
@@ -111,27 +106,23 @@ mod tests {
 
     let aln = load_alignment_for_dataset(dataset)?;
     let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln, &names)?;
-    let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
+    let sparse_partition = PartitionTimetree::Sparse(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-    )));
+    );
 
-    let partitions: PartitionTimetreeAllVec = vec![sparse_partition];
-    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &partitions, &aln, &names)?.value();
+    let mut partitions: Vec<PartitionTimetree> = vec![sparse_partition];
+    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions, &aln, &names)?.value();
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
     // Pre-optimization step (matching v0 flow)
     #[allow(trivial_casts)]
-    let opt_partitions: Vec<Arc<RwLock<dyn PartitionOptimizeOps>>> = partitions
-      .iter()
-      .map(|p| Arc::clone(p) as Arc<RwLock<dyn PartitionOptimizeOps>>)
-      .collect();
+    let opt_partitions: Vec<&dyn PartitionOptimizeOps> = partitions.iter().map(|p| p as &dyn PartitionOptimizeOps).collect();
     run_optimize_mixed(&graph, &opt_partitions, BranchOptMethod::BrentSqrt, &mut branch_lengths)?;
     crate::ancestral::marginal::marginal_update(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
-    )?;
+      &mut partitions,    )?;
 
     let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times();
     let mut clock_estimate_state = ClockState::seed_from_values(&graph, &times);
@@ -154,8 +145,7 @@ mod tests {
     let run_names = names.clone();
     run_timetree(
       &mut graph,
-      &partitions,
-      &run_branch_lengths,
+      &mut partitions,      &run_branch_lengths,
       &run_names,
       &clock_model,
       None,

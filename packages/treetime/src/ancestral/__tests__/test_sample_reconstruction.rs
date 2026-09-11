@@ -64,11 +64,9 @@ mod tests {
     use crate::payload::ancestral::GraphAncestral;
     use eyre::Report;
     use indoc::indoc;
-    use parking_lot::RwLock;
     use rand::SeedableRng;
     use rand::rngs::StdRng;
     use std::collections::BTreeMap;
-    use std::sync::Arc;
     use treetime_io::fasta::read_many_fasta_str;
     use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -105,15 +103,13 @@ mod tests {
 
       let graph: GraphAncestral = graph;
       let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
-      let partitions = [Arc::new(RwLock::new(
-        fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-      ))];
+      let mut partitions = [fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
 
-      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
 
       let mut rng = StdRng::seed_from_u64(seed);
       let mut out = BTreeMap::new();
-      ancestral_reconstruction_marginal(&graph, false, false, &partitions, mode, &mut rng, |key, seq| {
+      ancestral_reconstruction_marginal(&graph, false, false, &mut partitions, mode, &mut rng, |key, seq| {
         out.insert(names[&key].clone().unwrap_or_default(), seq.to_string());
         Ok(())
       })?;

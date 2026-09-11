@@ -8,10 +8,8 @@ mod tests {
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
   use treetime_graph::node::GraphNodeKey;
 
   use helpers::{no_dense, reversion_present, sub, total_subs};
@@ -44,19 +42,19 @@ mod tests {
         ("V", "C3", vec![]),
       ],
     );
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
     let changed = resolve_polytomies(
       &mut graph,
-      &sparse,
-      &no_dense(),
+      &mut sparse,
+      &mut no_dense(),
       TopologyOps::default(),
       &mut branch_lengths,
     )?;
     assert!(changed > 0);
 
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     assert_eq!(total_subs(&graph, &p), 2);
     assert!(!reversion_present(&graph, &p, &sub(b'T', 0, b'A')));
 
@@ -97,18 +95,18 @@ mod tests {
         ("V", "C3", vec![]),
       ],
     );
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
 
-    let before = total_subs(&graph, &sparse[0].read_arc());
+    let before = total_subs(&graph, &sparse[0]);
     let mut branch_lengths = branch_lengths;
     resolve_polytomies(
       &mut graph,
-      &sparse,
-      &no_dense(),
+      &mut sparse,
+      &mut no_dense(),
       TopologyOps::default(),
       &mut branch_lengths,
     )?;
-    let after = total_subs(&graph, &sparse[0].read_arc());
+    let after = total_subs(&graph, &sparse[0]);
 
     assert_eq!(before, 5);
     assert_eq!(after, 4);
@@ -148,23 +146,23 @@ mod tests {
         ("V", "A2", vec![]),
       ],
     );
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
 
-    let before = total_subs(&graph, &sparse[0].read_arc());
+    let before = total_subs(&graph, &sparse[0]);
     let mut branch_lengths = branch_lengths;
     let changed = resolve_polytomies(
       &mut graph,
-      &sparse,
-      &no_dense(),
+      &mut sparse,
+      &mut no_dense(),
       TopologyOps::default(),
       &mut branch_lengths,
     )?;
-    let after = total_subs(&graph, &sparse[0].read_arc());
+    let after = total_subs(&graph, &sparse[0]);
 
     assert_eq!(before, 3);
     assert!(changed > 0);
     assert_eq!(after, 1);
-    assert!(!reversion_present(&graph, &sparse[0].read_arc(), &sub(b'A', 0, b'G')));
+    assert!(!reversion_present(&graph, &sparse[0], &sub(b'A', 0, b'G')));
 
     for leaf in ["G1", "G2", "A1", "A2", "S"] {
       assert!(
@@ -198,13 +196,13 @@ mod tests {
         ("V", "W", vec![]),
       ],
     );
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
     resolve_polytomies(
       &mut graph,
-      &sparse,
-      &no_dense(),
+      &mut sparse,
+      &mut no_dense(),
       TopologyOps::default(),
       &mut branch_lengths,
     )?;
@@ -219,7 +217,7 @@ mod tests {
         "leaf {leaf} must survive"
       );
     }
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     assert_eq!(total_subs(&graph, &p), 1);
     assert!(!reversion_present(&graph, &p, &sub(b'T', 0, b'A')));
     Ok(())
@@ -247,21 +245,21 @@ mod tests {
         ("root", "C", vec![sub(b'G', 10, b'A')]),
       ],
     );
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
     let nodes_before = graph.get_nodes().len();
 
     let mut branch_lengths = branch_lengths;
     let changed = resolve_polytomies(
       &mut graph,
-      &sparse,
-      &no_dense(),
+      &mut sparse,
+      &mut no_dense(),
       TopologyOps::default(),
       &mut branch_lengths,
     )?;
 
     assert_eq!(changed, 0);
     assert_eq!(graph.get_nodes().len(), nodes_before);
-    assert_eq!(total_subs(&graph, &sparse[0].read_arc()), 3);
+    assert_eq!(total_subs(&graph, &sparse[0]), 3);
     Ok(())
   }
 
@@ -287,21 +285,21 @@ mod tests {
         ("V", "C3", vec![sub(b'T', 15, b'A')]),
       ],
     );
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
     let nodes_before = graph.get_nodes().len();
 
     let mut branch_lengths = branch_lengths;
     let changed = resolve_polytomies(
       &mut graph,
-      &sparse,
-      &no_dense(),
+      &mut sparse,
+      &mut no_dense(),
       TopologyOps::default(),
       &mut branch_lengths,
     )?;
 
     assert_eq!(changed, 0);
     assert_eq!(graph.get_nodes().len(), nodes_before);
-    assert_eq!(total_subs(&graph, &sparse[0].read_arc()), 4);
+    assert_eq!(total_subs(&graph, &sparse[0]), 4);
     Ok(())
   }
 
@@ -322,7 +320,7 @@ mod tests {
       Sub::new(c(reff), pos, c(qry)).unwrap()
     }
 
-    pub fn no_dense() -> Vec<Arc<RwLock<PartitionMarginalDense>>> {
+    pub fn no_dense() -> Vec<PartitionMarginalDense> {
       vec![]
     }
 
@@ -349,7 +347,7 @@ mod tests {
       index: usize,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
-    ) -> Arc<RwLock<PartitionMarginalSparse>> {
+    ) -> PartitionMarginalSparse {
       let mut partition = PartitionMarginalSparse {
         index,
         gtr: jc69(JC69Params::default()).unwrap(),
@@ -385,7 +383,7 @@ mod tests {
           .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
       }
 
-      Arc::new(RwLock::new(partition))
+      partition
     }
   }
 }

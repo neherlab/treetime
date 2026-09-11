@@ -15,10 +15,8 @@ mod tests {
   use indoc::indoc;
   use maplit::btreemap;
   use ndarray::array;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::LogLh;
@@ -171,24 +169,24 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let graph: GraphAncestral = graph;
-    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+    let mut partitions = vec![PartitionMarginalDense::new(
       0,
       jc69(JC69Params::default())?,
       Alphabet::new(AlphabetName::Nuc)?,
       get_common_length(&aln)?,
-    )))];
+    )];
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?
     .value();
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
 
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
 
     // Collect edge_subs() results from all edges.
     let actual_by_edge: BTreeMap<_, _> = graph
@@ -309,24 +307,24 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let graph: GraphAncestral = graph;
-    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+    let mut partitions = vec![PartitionMarginalDense::new(
       0,
       jc69(JC69Params::default())?,
       Alphabet::new(AlphabetName::Nuc)?,
       get_common_length(&aln)?,
-    )))];
+    )];
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?
     .value();
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
 
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
       let subs = partition.edge_subs(&graph, edge_key)?;

@@ -5,15 +5,13 @@ use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
-use parking_lot::RwLock;
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 
 pub fn prune_nodes(
   graph: &mut GraphAncestral,
-  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  partitions: &mut [PartitionMarginalSparse],
   prune_short: Option<f64>,
   prune_empty: bool,
   node_names: &BTreeSet<String>,
@@ -41,14 +39,13 @@ pub fn prune_nodes(
 
 /// Count current nucleotide mutations on one edge across all partitions.
 pub fn get_edge_num_muts(
-  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  partitions: &[PartitionMarginalSparse],
   edge_key: GraphEdgeKey,
 ) -> Result<Option<usize>, Report> {
   let mut total_muts = 0;
   let mut found_any = false;
 
   for partition in partitions {
-    let partition = partition.read_arc();
     if let Some(edge) = partition.edges.get(&edge_key) {
       total_muts += edge.fitch_subs().len();
       found_any = true;
@@ -60,12 +57,12 @@ pub fn get_edge_num_muts(
 
 pub fn collapse_sparse_edges_from_leaf_recursive(
   graph: &mut GraphAncestral,
-  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  partitions: &mut [PartitionMarginalSparse],
   edge_key: GraphEdgeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   let mut current_edge_key = edge_key;
-  let no_dense: &[Arc<RwLock<PartitionMarginalDense>>] = &[];
+  let no_dense: &mut [PartitionMarginalDense] = &mut [];
 
   loop {
     let parent_node_key = graph.get_source_node_key(current_edge_key)?;
@@ -89,7 +86,7 @@ pub fn collapse_sparse_edges_from_leaf_recursive(
 
 fn prune_internal_nodes(
   graph: &mut GraphAncestral,
-  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  partitions: &mut [PartitionMarginalSparse],
   prune_short: Option<f64>,
   prune_empty: bool,
   node_names: &BTreeSet<String>,
@@ -125,7 +122,7 @@ fn prune_internal_nodes(
     .flatten()
     .collect();
 
-  let no_dense: &[Arc<RwLock<PartitionMarginalDense>>] = &[];
+  let no_dense: &mut [PartitionMarginalDense] = &mut [];
   edges_to_collapse.into_iter().try_for_each(|edge_key| {
     debug!("Collapsing internal edge: {edge_key}");
     collapse_edge(graph, partitions, no_dense, edge_key, branch_lengths)
@@ -134,7 +131,7 @@ fn prune_internal_nodes(
 
 fn prune_leaves(
   graph: &mut GraphAncestral,
-  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  partitions: &mut [PartitionMarginalSparse],
   node_names: &BTreeSet<String>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,

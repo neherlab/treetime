@@ -45,12 +45,12 @@ mod tests {
     fn test_prop_marginal_idempotency_dense(input in arb_marginal_input_small()) {
       let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
       let graph: GraphAncestral = graph;
-      let (_, partitions) = run_dense_marginal(&input).unwrap();
+      let (_, mut partitions) = run_dense_marginal(&input).unwrap();
 
-      let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)
+      let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)
         .unwrap()
         .value();
-      let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)
+      let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)
         .unwrap()
         .value();
 
@@ -80,12 +80,12 @@ mod tests {
     fn test_prop_marginal_idempotency_sparse(input in arb_marginal_input_small()) {
       let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
       let graph: GraphAncestral = graph;
-      let (_, partitions) = run_sparse_marginal(&input).unwrap();
+      let (_, mut partitions) = run_sparse_marginal(&input).unwrap();
 
-      let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)
+      let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)
         .unwrap()
         .value();
-      let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)
+      let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)
         .unwrap()
         .value();
 
@@ -99,21 +99,21 @@ mod tests {
     fn test_prop_marginal_sparse_map_composition_matches_sequence(input in arb_marginal_input_small()) {
       let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
       let graph: GraphAncestral = graph;
-      let (_, partitions) = run_sparse_marginal(&input).unwrap();
+      let (_, mut partitions) = run_sparse_marginal(&input).unwrap();
       let mut rng = rand::rngs::StdRng::seed_from_u64(0);
 
       ancestral_reconstruction_marginal(
         &graph,
         true,
         false,
-        &partitions,
+        &mut partitions,
         SampleMode::Argmax,
         &mut rng,
         |_, _| Ok(()),
       )
       .unwrap();
 
-      let partition = partitions[0].read_arc();
+      let partition = &partitions[0];
       let compositions_match = partition.nodes.values().all(|node| {
         let expected = Composition::with_seq(
           &node.seq.sequence,

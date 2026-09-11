@@ -10,9 +10,7 @@ use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use log::debug;
-use parking_lot::RwLock;
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 
@@ -33,8 +31,8 @@ use treetime_graph::node::GraphNodeKey;
 /// [`merge_shared_mutation_branches`]: crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches
 pub fn resolve_polytomies(
   graph: &mut GraphAncestral,
-  sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
-  dense: &[Arc<RwLock<PartitionMarginalDense>>],
+  sparse: &mut [PartitionMarginalSparse],
+  dense: &mut [PartitionMarginalDense],
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
@@ -83,8 +81,8 @@ pub fn resolve_polytomies(
 /// Returns whether anything changed.
 fn resolve_one(
   graph: &mut GraphAncestral,
-  sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
-  dense: &[Arc<RwLock<PartitionMarginalDense>>],
+  sparse: &mut [PartitionMarginalSparse],
+  dense: &mut [PartitionMarginalDense],
   node_key: GraphNodeKey,
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -120,8 +118,8 @@ fn resolve_one(
 /// knowledge base), rather than removing the pre-existing node the input asserted.
 fn try_hoist_reverting_child(
   graph: &mut GraphAncestral,
-  sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
-  dense: &[Arc<RwLock<PartitionMarginalDense>>],
+  sparse: &mut [PartitionMarginalSparse],
+  dense: &mut [PartitionMarginalDense],
   node_key: GraphNodeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<bool, Report> {
@@ -181,7 +179,7 @@ fn bifurcating_root_sibling_edge(
 /// reversions are counted across a bifurcating root (see [`count_child_reversions`]).
 fn best_reverting_child(
   graph: &GraphAncestral,
-  sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
+  sparse: &[PartitionMarginalSparse],
   node_key: GraphNodeKey,
   parent_edge_key: GraphEdgeKey,
   sibling_edge_key: Option<GraphEdgeKey>,
@@ -223,8 +221,8 @@ fn best_reverting_child(
 /// Returns whether any edge was retired.
 fn retire_created_helpers(
   graph: &mut GraphAncestral,
-  sparse: &[Arc<RwLock<PartitionMarginalSparse>>],
-  dense: &[Arc<RwLock<PartitionMarginalDense>>],
+  sparse: &mut [PartitionMarginalSparse],
+  dense: &mut [PartitionMarginalDense],
   preexisting: &BTreeSet<GraphNodeKey>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<bool, Report> {
@@ -241,12 +239,9 @@ fn retire_created_helpers(
         return None;
       }
       let edge_key = edge.key();
-      let mutation_free = sparse.iter().all(|partition| {
-        let partition = partition.read_arc();
-        match partition.edges.get(&edge_key) {
-          Some(edge_data) => edge_data.fitch_subs().is_empty() && edge_data.indels.is_empty(),
-          None => true,
-        }
+      let mutation_free = sparse.iter().all(|partition| match partition.edges.get(&edge_key) {
+        Some(edge_data) => edge_data.fitch_subs().is_empty() && edge_data.indels.is_empty(),
+        None => true,
       });
       mutation_free.then_some(edge_key)
     });

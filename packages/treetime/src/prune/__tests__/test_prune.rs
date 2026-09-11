@@ -17,11 +17,9 @@ mod tests {
   use eyre::Report;
   use itertools::Itertools;
   use maplit::{btreemap, btreeset};
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::collections::BTreeSet;
-  use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
@@ -58,7 +56,7 @@ mod tests {
     (
       GraphAncestral,
       BTreeMap<GraphNodeKey, Option<String>>,
-      Vec<Arc<RwLock<PartitionMarginalSparse>>>,
+      Vec<PartitionMarginalSparse>,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
@@ -102,7 +100,7 @@ mod tests {
         }
       }
 
-      vec![Arc::new(RwLock::new(partition))]
+      vec![partition]
     };
 
     Ok((graph, names, partitions, branch_lengths))
@@ -117,7 +115,7 @@ mod tests {
     (
       GraphAncestral,
       BTreeMap<GraphNodeKey, Option<String>>,
-      Vec<Arc<RwLock<PartitionMarginalSparse>>>,
+      Vec<PartitionMarginalSparse>,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
@@ -163,7 +161,7 @@ mod tests {
         }
       }
 
-      vec![Arc::new(RwLock::new(partition))]
+      vec![partition]
     };
 
     Ok((graph, names, partitions, branch_lengths))
@@ -171,11 +169,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_basic() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.0,B:0.1)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       Some(0.0),
       false,
       &btreeset! {},
@@ -189,11 +187,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_with_threshold() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.01,B:0.02,C:0.1)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       Some(0.05),
       false,
       &btreeset! {},
@@ -207,11 +205,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_preserves_large_edges() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.1,B:0.2)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       Some(0.01),
       false,
       &btreeset! {},
@@ -227,11 +225,11 @@ mod tests {
   fn test_prune_nodes_empty_graph() -> Result<(), Report> {
     let mut graph: GraphAncestral = Graph::new();
     let names: BTreeMap<GraphNodeKey, Option<String>> = btreemap! {};
-    let partitions = vec![];
+    let mut partitions = vec![];
     let mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = btreemap! {};
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       Some(0.0),
       false,
       &btreeset! {},
@@ -244,11 +242,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_handles_none_weights() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.0,B:0.1)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       Some(0.0),
       false,
       &btreeset! {},
@@ -262,11 +260,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_preserves_terminal_nodes() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.00001,B:0.1)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       Some(0.001),
       false,
       &btreeset! {},
@@ -280,13 +278,13 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_complex_tree() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) = create_test_graph_with_partitions(
+    let (mut graph, names, mut partitions, mut branch_lengths) = create_test_graph_with_partitions(
       "(((A:0,B:0.1)internal1:0.00002,(C:0.00003,D:0.1)internal2:0.1)internal3:0.00004,E:0.00005)root;",
       &[],
     )?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       Some(0.01),
       false,
       &btreeset! {},
@@ -304,13 +302,13 @@ mod tests {
   #[test]
   fn test_prune_nodes_prune_empty_preserves_leaves() -> Result<(), Report> {
     // Edge to A has no mutations, edge to B has 2 mutations
-    let (mut graph, names, partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
+    let (mut graph, names, mut partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
       "(A:0.1,B:0.1)root;",
       &[("root", "A", None), ("root", "B", Some(2))],
     )?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       true,
       &btreeset! {},
@@ -331,7 +329,7 @@ mod tests {
     // root->internal edge: no mutations (empty)
     // internal->A edge: 1 mutation
     // internal->B edge: 2 mutations
-    let (mut graph, names, partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
+    let (mut graph, names, mut partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
       "((A:0.1,B:0.1)internal:0.1)root;",
       &[
         ("root", "internal", None),
@@ -341,7 +339,7 @@ mod tests {
     )?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       true,
       &btreeset! {},
@@ -359,13 +357,13 @@ mod tests {
   #[test]
   fn test_prune_nodes_prune_empty_none_mutations() -> Result<(), Report> {
     // Only add edge data for internal->A edge, leaving root->internal edge unknown (None mutations)
-    let (mut graph, names, partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
+    let (mut graph, names, mut partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
       "((A:0.1)internal:0.1)root;",
       &[("internal", "A", Some(1))], // root->internal has no entry (unknown mutations)
     )?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       true,
       &btreeset! {},
@@ -383,11 +381,11 @@ mod tests {
   #[test]
   fn test_prune_nodes_prune_empty_simple_leaf_case() -> Result<(), Report> {
     // Single leaf edge with no mutations should be preserved
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_named_edge_mutations("(A:0.1)root;", &[("root", "A", None)])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       true,
       &btreeset! {},
@@ -407,7 +405,7 @@ mod tests {
     // Tree: root -> internal1 (short edge 0.001, has muts) -> A (leaf)
     //            -> internal2 (normal edge 0.1, no muts)   -> B (leaf)
     // Topology-only test: mutation counts trigger pruning but content is not verified
-    let (mut graph, names, partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
+    let (mut graph, names, mut partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
       "((A:0.1)internal1:0.001,(B:0.1)internal2:0.1)root;",
       &[
         ("root", "internal1", Some(1)), // short edge with mutations
@@ -418,7 +416,7 @@ mod tests {
     )?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       Some(0.01),
       true,
       &btreeset! {},
@@ -435,11 +433,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_short_threshold_exact() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.05,B:0.05,C:0.051)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       Some(0.05),
       false,
       &btreeset! {},
@@ -453,11 +451,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_prune_short_threshold_below() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.049,B:0.05,C:0.051)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       Some(0.05),
       false,
       &btreeset! {},
@@ -475,7 +473,7 @@ mod tests {
     // Complex tree structure: root -> internal1 (with muts) -> A (leaf)
     //                              -> internal1 -> internal3 (no muts) -> C,D (leaves)
     //                         root -> internal2 (no muts) -> B (leaf)
-    let (mut graph, names, partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
+    let (mut graph, names, mut partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
       "(((C:0.1,D:0.1)internal3:0.1,A:0.1)internal1:0.1,(B:0.1)internal2:0.1)root;",
       &[
         ("root", "internal1", Some(2)),      // has muts
@@ -489,7 +487,7 @@ mod tests {
     )?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       true,
       &btreeset! {},
@@ -508,13 +506,13 @@ mod tests {
   #[test]
   fn test_prune_nodes_prune_both_disabled() -> Result<(), Report> {
     // Very short edge (root->internal) with no mutations - should be preserved when both pruning options disabled
-    let (mut graph, names, partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
+    let (mut graph, names, mut partitions, mut branch_lengths) = create_test_graph_with_named_edge_mutations(
       "((A:0.1)internal:0.0001)root;",
       &[("root", "internal", Some(0)), ("internal", "A", Some(1))],
     )?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! {},
@@ -542,14 +540,14 @@ mod tests {
     } = nwk_read_str("(((A:0.1)internal2:0.1)internal1:0.1,B:0.2,C:0.3)root;")?;
     let mut graph: GraphAncestral = graph;
 
-    let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
+    let mut partitions: Vec<PartitionMarginalSparse> = vec![];
 
     // Find the edge leading to leaf A
     let a_inbound_edge =
       find_edge_key(&graph, &names, "internal2", "A").ok_or_else(|| make_report!("Edge internal2->A not found"))?;
 
     // Recursively prune leaf A and its childless ancestors
-    collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge, &mut branch_lengths)?;
+    collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
 
     // The result should be: root -> B, root -> C (internal1 and internal2 should be removed)
     assert_eq!(graph.get_nodes().len(), 3); // root, B, C
@@ -580,14 +578,14 @@ mod tests {
     } = nwk_read_str("((A:0.1,B:0.1)internal1:0.1)root;")?;
     let mut graph: GraphAncestral = graph;
 
-    let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
+    let mut partitions: Vec<PartitionMarginalSparse> = vec![];
 
     // Find the edge leading to leaf A
     let a_inbound_edge =
       find_edge_key(&graph, &names, "internal1", "A").ok_or_else(|| make_report!("Edge internal1->A not found"))?;
 
     // Recursively prune leaf A; internal1 becomes unary and should be collapsed upward
-    collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge, &mut branch_lengths)?;
+    collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
 
     // The result should be: root -> B (internal1 collapsed)
     assert_eq!(graph.get_nodes().len(), 2); // root, B
@@ -614,11 +612,11 @@ mod tests {
       ..
     } = nwk_read_str("(A:0.1)root;")?;
     let mut graph: GraphAncestral = graph;
-    let partitions = vec![];
+    let mut partitions = vec![];
 
     // Collapse the path starting at leaf A; should stop at root
     let a_inbound_edge = find_edge_key(&graph, &names, "root", "A").unwrap();
-    collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, a_inbound_edge, &mut branch_lengths)?;
+    collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
 
     // Only root should remain
     assert_eq!(graph.get_nodes().len(), 1);
@@ -639,12 +637,12 @@ mod tests {
     let e_root_a = graph.add_edge(root, a, EdgeAncestral {})?;
     graph.build()?;
 
-    let partitions = vec![];
+    let mut partitions = vec![];
 
     // Use a non-existent edge key to ensure we surface an error
     let bogus = GraphEdgeKey(usize::MAX);
     let mut branch_lengths = btreemap! { e_root_a => Some(0.1) };
-    let res = collapse_sparse_edges_from_leaf_recursive(&mut graph, &partitions, bogus, &mut branch_lengths);
+    let res = collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, bogus, &mut branch_lengths);
     assert!(res.is_err());
 
     Ok(())
@@ -668,11 +666,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_single_named_leaf() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.1,B:0.2,C:0.3)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "B".to_owned() },
@@ -686,11 +684,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_multiple_named_leaves() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.1,B:0.2,C:0.3,D:0.4)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "A".to_owned(), "C".to_owned() },
@@ -704,11 +702,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_nonexistent_name_is_noop() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.1,B:0.2)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "nonexistent".to_owned() },
@@ -722,11 +720,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_named_internal_node() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("((A:0.1,B:0.2)internal:0.3,C:0.4)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
@@ -741,11 +739,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_mixed_internal_and_leaf_names() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("((A:0.1,B:0.2)internal:0.3,C:0.4,D:0.5)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "internal".to_owned(), "D".to_owned() },
@@ -760,11 +758,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_empty_names_set_is_noop() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.1,B:0.2,C:0.3)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! {},
@@ -778,11 +776,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_all_leaves_preserves_root() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.1,B:0.2)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "A".to_owned(), "B".to_owned() },
@@ -796,11 +794,11 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_deep_nested_leaf_removal() -> Result<(), Report> {
-    let (mut graph, names, partitions, mut branch_lengths) =
+    let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(((A:0.1,B:0.2)i1:0.3,C:0.4)i2:0.5,D:0.6)root;", &[])?;
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "A".to_owned() },
@@ -871,12 +869,12 @@ mod tests {
       .edges
       .insert(internal_b_edge_key, SparseEdgePartition::default());
 
-    let partitions = vec![Arc::new(RwLock::new(partition))];
+    let mut partitions = vec![partition];
 
     // Collapse internal node by name
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
@@ -889,7 +887,7 @@ mod tests {
     assert_eq!(graph.get_edges().len(), 2);
 
     // Find new edge keys after collapse
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     let mut a_muts_count = 0;
     let mut b_muts_count = 0;
     for edge in graph.get_edges() {
@@ -954,10 +952,10 @@ mod tests {
       .edges
       .insert(internal_b_edge_key, SparseEdgePartition::default());
 
-    let partitions = vec![Arc::new(RwLock::new(partition))];
+    let mut partitions = vec![partition];
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
@@ -966,7 +964,7 @@ mod tests {
     )?;
 
     // After collapse: net A->T at pos 0 (1 composed sub)
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     for edge in graph.get_edges() {
       let edge_key = edge.read_arc().key();
       let target_key = edge.read_arc().target();
@@ -1025,10 +1023,10 @@ mod tests {
       .edges
       .insert(internal_b_edge_key, SparseEdgePartition::default());
 
-    let partitions = vec![Arc::new(RwLock::new(partition))];
+    let mut partitions = vec![partition];
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
@@ -1037,7 +1035,7 @@ mod tests {
     )?;
 
     // After collapse: mutations cancel, edge to A has 0 subs
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     for edge in graph.get_edges() {
       let edge_key = edge.read_arc().key();
       let target_key = edge.read_arc().target();
@@ -1116,12 +1114,12 @@ mod tests {
       .edges
       .insert(internal_b_edge_key, SparseEdgePartition::default());
 
-    let partitions = vec![Arc::new(RwLock::new(partition1)), Arc::new(RwLock::new(partition2))];
+    let mut partitions = vec![partition1, partition2];
 
     // Collapse internal node by name
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
@@ -1130,8 +1128,8 @@ mod tests {
     )?;
 
     // Check partition 1: edge to A should have 2 mutations
-    let p1 = partitions[0].read_arc();
-    let p2 = partitions[1].read_arc();
+    let p1 = &partitions[0];
+    let p2 = &partitions[1];
 
     for edge in graph.get_edges() {
       let edge_key = edge.read_arc().key();
@@ -1161,12 +1159,12 @@ mod tests {
     } = nwk_read_str("((A:0.2,B:0.1)internal:0.3)root;")?;
     let mut graph: GraphAncestral = graph;
 
-    let partitions = vec![];
+    let mut partitions = vec![];
 
     // Mark internal node for pruning by name
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
@@ -1207,10 +1205,10 @@ mod tests {
     } = nwk_read_str("((A:2e-10,B:3e-10)internal:1e-10)root;")?;
     let mut graph: GraphAncestral = graph;
 
-    let partitions = vec![];
+    let mut partitions = vec![];
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
@@ -1258,7 +1256,7 @@ mod tests {
 
     graph.build()?;
 
-    let partitions = vec![];
+    let mut partitions = vec![];
     let mut branch_lengths = btreemap! {
       e_root_internal => Some(0.5),
       e_internal_a => None,
@@ -1266,7 +1264,7 @@ mod tests {
     };
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
@@ -1314,7 +1312,7 @@ mod tests {
 
     graph.build()?;
 
-    let partitions = vec![];
+    let mut partitions = vec![];
     let mut branch_lengths = btreemap! {
       e_root_internal => None,
       e_internal_a => Some(0.3),
@@ -1322,7 +1320,7 @@ mod tests {
     };
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
@@ -1368,7 +1366,7 @@ mod tests {
 
     graph.build()?;
 
-    let partitions = vec![];
+    let mut partitions = vec![];
     let mut branch_lengths = btreemap! {
       e_root_internal => None,
       e_internal_a => None,
@@ -1376,7 +1374,7 @@ mod tests {
     };
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
@@ -1461,12 +1459,12 @@ mod tests {
       SparseEdgePartition::with_fitch_subs(vec![Sub::new(c(b'A'), 5_usize, c(b'T'))?]),
     );
 
-    let partitions = vec![Arc::new(RwLock::new(partition))];
+    let mut partitions = vec![partition];
 
     // Step 1: Prune short branch I (bl=1e-8 < threshold 1e-6)
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       Some(1e-6),
       false,
       &btreeset! {},
@@ -1479,7 +1477,7 @@ mod tests {
     );
 
     // Step 2: Merge shared mutations on the now-exposed polytomy
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     // Group merge: A, B, C all share A0T and form one group.
@@ -1536,10 +1534,10 @@ mod tests {
       .edges
       .insert(internal_b_edge_key, SparseEdgePartition::default());
 
-    let partitions = vec![Arc::new(RwLock::new(partition))];
+    let mut partitions = vec![partition];
     prune_nodes(
       &mut graph,
-      &partitions,
+      &mut partitions,
       None,
       false,
       &btreeset! { "internal".to_owned() },
@@ -1547,7 +1545,7 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     for edge in graph.get_edges() {
       let edge_key = edge.read_arc().key();
       let target_key = edge.read_arc().target();

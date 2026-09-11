@@ -21,7 +21,7 @@ pub mod sweep;
 mod __tests__;
 
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
 use crate::partition::traits::PartitionBranchOps;
 use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
 use crate::timetree::optimization::polytomy::sweep::{Lineage, simulate_subtree};
@@ -79,7 +79,7 @@ pub fn validate_tree_before_topology_change(graph: &GraphTimetree, state: &Timet
 /// the same generator state produce the same topology, and different states do not.
 pub fn resolve_polytomies(
   graph: &mut GraphTimetree,
-  partitions: &[PartitionTimetreeRef],
+  partitions: &[PartitionTimetree],
   mutation_rate: f64,
   total_length: usize,
   merger_rate: &PiecewiseConstantFn,
@@ -134,7 +134,7 @@ pub fn resolve_polytomies(
 )]
 fn resolve_single_polytomy(
   graph: &mut GraphTimetree,
-  partitions: &[PartitionTimetreeRef],
+  partitions: &[PartitionTimetree],
   node_key: GraphNodeKey,
   mutation_rate: f64,
   total_length: usize,
@@ -203,7 +203,7 @@ struct ChildInfo {
 
 fn collect_children(
   graph: &GraphTimetree,
-  partitions: &[PartitionTimetreeRef],
+  partitions: &[PartitionTimetree],
   node_key: GraphNodeKey,
   total_length: usize,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -243,20 +243,14 @@ fn collect_children(
 /// cannot be read.
 fn edge_mutation_count(
   graph: &GraphTimetree,
-  partitions: &[PartitionTimetreeRef],
+  partitions: &[PartitionTimetree],
   edge_key: GraphEdgeKey,
   mutation_length: Option<f64>,
   total_length: usize,
 ) -> u32 {
   let exact: Option<usize> = partitions
     .iter()
-    .map(|partition| {
-      partition
-        .read_arc()
-        .edge_subs(graph, edge_key)
-        .ok()
-        .map(|subs| subs.len())
-    })
+    .map(|partition| partition.edge_subs(graph, edge_key).ok().map(|subs| subs.len()))
     .sum();
 
   let count = exact.unwrap_or_else(|| {

@@ -3,6 +3,7 @@ mod tests {
   use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::run_loop::optimize_partition_view;
   use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
@@ -27,14 +28,14 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
 
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let mut lh_history = Vec::with_capacity(20);
 
     // Run optimization iterations
     for i in 0..20 {
-      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
-      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions)?.value() + marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+      run_optimize_mixed(&graph, &optimize_partition_view(&dense_partitions, &sparse_partitions), method, &mut branch_lengths)?;
+      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?.value() + marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
       lh_history.push(lh);
 
@@ -79,27 +80,27 @@ mod tests {
 
     // Run optimization on first graph
     let NwkParse { graph: graph1, names: graph1_names, branch_lengths: mut branch_lengths1, .. } = nwk_read_str(TREE_NEWICK)?;
-    let (dense_partitions1, sparse_partitions1, mixed_partitions1) = setup_partitions(&graph1, &graph1_names, &aln, &mut branch_lengths1)?;
+    let (mut dense_partitions1, mut sparse_partitions1) = setup_partitions(&graph1, &graph1_names, &aln, &mut branch_lengths1)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph1, &mixed_partitions1, method, &mut branch_lengths1)?;
-      marginal_update(&graph1, &profile_branch_lengths(&branch_lengths1), &dense_partitions1)?.value();
-      marginal_update(&graph1, &profile_branch_lengths(&branch_lengths1), &sparse_partitions1)?.value();
+      run_optimize_mixed(&graph1, &optimize_partition_view(&dense_partitions1, &sparse_partitions1), method, &mut branch_lengths1)?;
+      marginal_update(&graph1, &profile_branch_lengths(&branch_lengths1), &mut dense_partitions1)?.value();
+      marginal_update(&graph1, &profile_branch_lengths(&branch_lengths1), &mut sparse_partitions1)?.value();
     }
 
-    let lh1 = compute_total_lh(&graph1, &dense_partitions1, &sparse_partitions1, &branch_lengths1)?;
+    let lh1 = compute_total_lh(&graph1, &mut dense_partitions1, &mut sparse_partitions1, &branch_lengths1)?;
 
     // Run optimization on second independent graph
     let NwkParse { graph: graph2, names: graph2_names, branch_lengths: mut branch_lengths2, .. } = nwk_read_str(TREE_NEWICK)?;
-    let (dense_partitions2, sparse_partitions2, mixed_partitions2) = setup_partitions(&graph2, &graph2_names, &aln, &mut branch_lengths2)?;
+    let (mut dense_partitions2, mut sparse_partitions2) = setup_partitions(&graph2, &graph2_names, &aln, &mut branch_lengths2)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph2, &mixed_partitions2, method, &mut branch_lengths2)?;
-      marginal_update(&graph2, &profile_branch_lengths(&branch_lengths2), &dense_partitions2)?.value();
-      marginal_update(&graph2, &profile_branch_lengths(&branch_lengths2), &sparse_partitions2)?.value();
+      run_optimize_mixed(&graph2, &optimize_partition_view(&dense_partitions2, &sparse_partitions2), method, &mut branch_lengths2)?;
+      marginal_update(&graph2, &profile_branch_lengths(&branch_lengths2), &mut dense_partitions2)?.value();
+      marginal_update(&graph2, &profile_branch_lengths(&branch_lengths2), &mut sparse_partitions2)?.value();
     }
 
-    let lh2 = compute_total_lh(&graph2, &dense_partitions2, &sparse_partitions2, &branch_lengths2)?;
+    let lh2 = compute_total_lh(&graph2, &mut dense_partitions2, &mut sparse_partitions2, &branch_lengths2)?;
 
     // Both runs should converge to same likelihood
     pretty_assert_ulps_eq!(lh1, lh2, max_ulps = 100);

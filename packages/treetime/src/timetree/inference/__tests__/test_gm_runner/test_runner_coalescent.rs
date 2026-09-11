@@ -15,16 +15,14 @@ mod tests {
   use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
+  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
   use eyre::Report;
 
-  use parking_lot::RwLock;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
@@ -44,7 +42,7 @@ mod tests {
     let dataset = "flu_h3n2_20";
     let case = &OUTPUTS[dataset];
 
-let (graph, names, partitions, clock_model, constraints, branch_lengths) = build_timetree_setup(dataset, case)?;
+let (graph, names, mut partitions, clock_model, constraints, branch_lengths) = build_timetree_setup(dataset, case)?;
     let mut graph = graph;
     let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
     let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph, &node_times)?, &Distribution::constant(tc))?;
@@ -54,8 +52,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
     let run_names = names.clone();
     run_timetree(
       &mut graph,
-      &partitions,
-      &run_branch_lengths,
+      &mut partitions,      &run_branch_lengths,
       &run_names,
       &clock_model,
       Some(&coalescent),
@@ -88,7 +85,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
     (
       GraphTimetree,
       BTreeMap<GraphNodeKey, Option<String>>,
-      PartitionTimetreeAllVec,
+      Vec<PartitionTimetree>,
       ClockModel,
       DateConstraints,
       BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -106,18 +103,18 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
     let constraints = load_date_constraints(&dates, &graph, &names)?;
 
     let aln = load_alignment_for_dataset(dataset)?;
-    let dense_partition = Arc::new(RwLock::new(PartitionTimetree::Dense(PartitionMarginalDense::new(
+    let dense_partition = PartitionTimetree::Dense(PartitionMarginalDense::new(
       0,
       jc69(JC69Params::default())?,
       ALPHABET.clone(),
       case.sequence_length(),
-    ))));
+    ));
 
-    let partitions: PartitionTimetreeAllVec = vec![dense_partition];
+    let mut partitions: Vec<PartitionTimetree> = vec![dense_partition];
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?

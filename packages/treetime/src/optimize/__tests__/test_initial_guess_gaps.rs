@@ -5,6 +5,7 @@ mod tests {
   use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
+  use crate::optimize::run_loop::optimize_partition_view;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
@@ -16,9 +17,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::node::GraphNodeKey;
 
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
-  use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -84,13 +83,11 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<Vec<Arc<RwLock<PartitionMarginalSparse>>>, Report> {
+  ) -> Result<Vec<PartitionMarginalSparse>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
-    let partitions = vec![Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
-    ))];
-    marginal_update(graph, &profile_branch_lengths(branch_lengths), &partitions)?.value();
+    let mut partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?];
+    marginal_update(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?.value();
 
     Ok(partitions)
   }
@@ -100,16 +97,23 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<Vec<Arc<RwLock<PartitionMarginalDense>>>, Report> {
+  ) -> Result<Vec<PartitionMarginalDense>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+    let mut partitions = vec![PartitionMarginalDense::new(
       0,
       jc69(JC69Params::default())?,
       alphabet,
       get_common_length(aln)?,
-    )))];
+    )];
 
-    initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?.value();
+    initialize_marginal(
+      graph,
+      &profile_branch_lengths(branch_lengths),
+      &mut partitions,
+      aln,
+      names,
+    )?
+    .value();
 
     Ok(partitions)
   }
@@ -136,7 +140,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
-      let p = partitions[0].read_arc();
+      let p = &partitions[0];
       let effective = p.edge_effective_length(&graph, edge_key)?;
       assert_eq!(16, effective);
     }
@@ -158,7 +162,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
-      let p = partitions[0].read_arc();
+      let p = &partitions[0];
       let effective = p.edge_effective_length(&graph, edge_key)?;
       assert_eq!(16, effective);
     }
@@ -180,7 +184,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
-      let p = partitions[0].read_arc();
+      let p = &partitions[0];
       let effective = p.edge_effective_length(&graph, edge_key)?;
       // All nodes share gaps at positions 4-7, so effective = 16 - 4 = 12
       assert_eq!(12, effective);
@@ -203,7 +207,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
-      let p = partitions[0].read_arc();
+      let p = &partitions[0];
       let effective = p.edge_effective_length(&graph, edge_key)?;
       // All nodes share gaps at positions 4-7, so effective = 16 - 4 = 12
       assert_eq!(12, effective);
@@ -227,7 +231,7 @@ mod tests {
     let mut found_reduced = false;
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
-      let p = partitions[0].read_arc();
+      let p = &partitions[0];
       let effective = p.edge_effective_length(&graph, edge_key)?;
       // At least one edge (B→AB) should have reduced effective length
       if effective < 16 {
@@ -251,7 +255,7 @@ mod tests {
     let graph: GraphAncestral = graph;
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
-    let p = partitions[0].read_arc();
+    let p = &partitions[0];
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
       let subs = p.edge_subs(&graph, edge_key)?;
@@ -278,7 +282,13 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let partitions_clean = setup_sparse(&graph_clean, &graph_clean_names, &aln_clean, &branch_lengths_clean)?;
-    initial_guess_mixed(&graph_clean, &partitions_clean, true, false, &mut branch_lengths_clean)?;
+    initial_guess_mixed(
+      &graph_clean,
+      &optimize_partition_view(&[], &partitions_clean),
+      true,
+      false,
+      &mut branch_lengths_clean,
+    )?;
     let bl_clean = get_branch_lengths(&graph_clean, &branch_lengths_clean);
 
     let aln_gappy = gappy_alignment_shared()?;
@@ -289,7 +299,13 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let partitions_gappy = setup_sparse(&graph_gappy, &graph_gappy_names, &aln_gappy, &branch_lengths_gappy)?;
-    initial_guess_mixed(&graph_gappy, &partitions_gappy, true, false, &mut branch_lengths_gappy)?;
+    initial_guess_mixed(
+      &graph_gappy,
+      &optimize_partition_view(&[], &partitions_gappy),
+      true,
+      false,
+      &mut branch_lengths_gappy,
+    )?;
     let bl_gappy = get_branch_lengths(&graph_gappy, &branch_lengths_gappy);
 
     // With 4 shared gap positions out of 16, the effective length is 12.

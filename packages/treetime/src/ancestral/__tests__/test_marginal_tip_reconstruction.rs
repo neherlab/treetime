@@ -13,10 +13,8 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -77,14 +75,12 @@ mod tests {
 
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let partitions = [Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-    ))];
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?;
+    let mut partitions = [fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
 
-    let seqs = reconstruct_named(&graph, &names, &partitions, false)?;
+    let seqs = reconstruct_named(&graph, &names, &mut partitions, false)?;
 
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let parent = node_name(&names, edge.source());
@@ -179,7 +175,7 @@ mod tests {
   fn reconstruct_named<P>(
     graph: &GraphAncestral,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    partitions: &[Arc<RwLock<P>>],
+    partitions: &mut [P],
     impute: bool,
   ) -> Result<BTreeMap<String, Seq>, Report>
   where
@@ -209,11 +205,9 @@ mod tests {
     impute: bool,
   ) -> Result<BTreeMap<String, String>, Report> {
     let fitch = create_fitch_partition(graph, 0, Alphabet::default(), aln, names)?;
-    let partitions = [Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
-    ))];
-    marginal_update(graph, &profile_branch_lengths(branch_lengths), &partitions)?;
-    Ok(to_strings(reconstruct_named(graph, names, &partitions, impute)?))
+    let mut partitions = [fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?];
+    marginal_update(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?;
+    Ok(to_strings(reconstruct_named(graph, names, &mut partitions, impute)?))
   }
 
   fn reconstruct_dense(
@@ -223,15 +217,21 @@ mod tests {
     aln: &[FastaRecord],
     impute: bool,
   ) -> Result<BTreeMap<String, String>, Report> {
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
+    let partition = PartitionMarginalDense::new(
       0,
       jc69(JC69Params::default())?,
       Alphabet::default(),
       get_common_length(aln)?,
-    )));
-    let partitions = [partition];
-    initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?;
-    Ok(to_strings(reconstruct_named(graph, names, &partitions, impute)?))
+    );
+    let mut partitions = [partition];
+    initialize_marginal(
+      graph,
+      &profile_branch_lengths(branch_lengths),
+      &mut partitions,
+      aln,
+      names,
+    )?;
+    Ok(to_strings(reconstruct_named(graph, names, &mut partitions, impute)?))
   }
 
   fn to_strings(seqs: BTreeMap<String, Seq>) -> BTreeMap<String, String> {

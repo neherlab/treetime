@@ -1,6 +1,6 @@
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::total_lh::compute_coalescent_total_lh;
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
 use crate::partition::traits::graph_log_lh;
 use crate::timetree::timetree_state::TimetreeState;
 use log::{debug, warn};
@@ -8,7 +8,7 @@ use treetime_distribution::Distribution;
 use treetime_primitives::LogLh;
 
 /// Sum of per-partition root log-likelihoods from marginal reconstruction.
-pub fn compute_sequence_log_lh(graph: &GraphTimetree, partitions: &[PartitionTimetreeRef]) -> Option<LogLh> {
+pub fn compute_sequence_log_lh(graph: &GraphTimetree, partitions: &[PartitionTimetree]) -> Option<LogLh> {
   if partitions.is_empty() {
     return None;
   }

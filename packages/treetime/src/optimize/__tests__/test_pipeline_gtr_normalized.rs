@@ -67,7 +67,7 @@ mod tests {
 
     // Single source of truth: the serialized GTR is the partition's live model,
     // not an independent snapshot.
-    let partition_mu = output.sparse_partitions[0].read_arc().gtr().mu;
+    let partition_mu = output.sparse_partitions[0].gtr().mu;
     assert_ulps_eq!(output.gtr.mu, partition_mu, max_ulps = 4);
 
     Ok(())

@@ -5,11 +5,9 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::mutation::Sub;
-  use parking_lot::RwLock;
   use proptest::prelude::*;
   use std::collections::BTreeMap;
   use std::collections::BTreeSet;
-  use std::sync::Arc;
   use treetime_graph::node::GraphNodeKey;
 
   proptest! {
@@ -25,10 +23,10 @@ mod tests {
       own_counts in prop::collection::vec(0_usize..3, 3..7),
     ) {
       let (mut graph, names, partition, before, mut branch_lengths) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
-      let sparse = vec![partition];
+      let mut sparse = vec![partition];
 
-      let changed = resolve_polytomies(&mut graph, &sparse, &helpers::no_dense(), TopologyOps::default(), &mut branch_lengths).unwrap();
-      let after = helpers::total_subs(&graph, &sparse[0].read_arc());
+      let changed = resolve_polytomies(&mut graph, &mut sparse, &mut [], TopologyOps::default(), &mut branch_lengths).unwrap();
+      let after = helpers::total_subs(&graph, &sparse[0]);
 
       prop_assert!(after <= before, "mutation count increased: before={before} after={after}");
       if changed > 0 {
@@ -48,9 +46,9 @@ mod tests {
     ) {
       let (mut graph, names, partition, _before, mut branch_lengths) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
       let leaves_before = helpers::leaf_names(&names, &graph);
-      let sparse = vec![partition];
+      let mut sparse = vec![partition];
 
-      resolve_polytomies(&mut graph, &sparse, &helpers::no_dense(), TopologyOps::default(), &mut branch_lengths).unwrap();
+      resolve_polytomies(&mut graph, &mut sparse, &mut [], TopologyOps::default(), &mut branch_lengths).unwrap();
 
       prop_assert_eq!(helpers::leaf_names(&names, &graph), leaves_before);
 
@@ -85,10 +83,10 @@ mod tests {
     ) {
       let (mut graph, partition, before, expected_after, mut branch_lengths) =
         helpers::build_bifurcating_case(g, a, &own_counts);
-      let sparse = vec![partition];
+      let mut sparse = vec![partition];
 
-      let changed = resolve_polytomies(&mut graph, &sparse, &helpers::no_dense(), TopologyOps::default(), &mut branch_lengths).unwrap();
-      let after = helpers::total_subs(&graph, &sparse[0].read_arc());
+      let changed = resolve_polytomies(&mut graph, &mut sparse, &mut [], TopologyOps::default(), &mut branch_lengths).unwrap();
+      let after = helpers::total_subs(&graph, &sparse[0]);
 
       prop_assert_eq!(after, expected_after, "did not reach the bipartition cost");
       prop_assert!(after <= before);
@@ -115,7 +113,7 @@ mod tests {
       AsciiChar::from_byte_unchecked(b)
     }
 
-    pub fn no_dense() -> Vec<Arc<RwLock<PartitionMarginalDense>>> {
+    pub fn no_dense() -> Vec<PartitionMarginalDense> {
       vec![]
     }
 
@@ -149,7 +147,7 @@ mod tests {
     ) -> (
       GraphAncestral,
       BTreeMap<GraphNodeKey, Option<String>>,
-      Arc<RwLock<PartitionMarginalSparse>>,
+      PartitionMarginalSparse,
       usize,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ) {
@@ -207,7 +205,7 @@ mod tests {
       own_counts: &[usize],
     ) -> (
       GraphAncestral,
-      Arc<RwLock<PartitionMarginalSparse>>,
+      PartitionMarginalSparse,
       usize,
       usize,
       BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -262,7 +260,7 @@ mod tests {
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
       edge_mutations: &[(String, String, Vec<Sub>)],
-    ) -> Arc<RwLock<PartitionMarginalSparse>> {
+    ) -> PartitionMarginalSparse {
       let mut partition = PartitionMarginalSparse {
         index: 0,
         gtr: jc69(JC69Params::default()).unwrap(),
@@ -291,7 +289,7 @@ mod tests {
           .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
       }
 
-      Arc::new(RwLock::new(partition))
+      partition
     }
   }
 }

@@ -5,6 +5,7 @@ mod tests {
   use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
+  use crate::optimize::run_loop::optimize_partition_view;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
@@ -15,10 +16,8 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
 
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -41,9 +40,15 @@ mod tests {
     let graph: GraphAncestral = graph;
     let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
-    initial_guess_mixed(&graph, &partitions, true, false, &mut branch_lengths)?;
+    initial_guess_mixed(
+      &graph,
+      &optimize_partition_view(&[], &partitions),
+      true,
+      false,
+      &mut branch_lengths,
+    )?;
 
-    let p = partitions[0].read_arc();
+    let p = &partitions[0];
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
       let sub_count = p.edge_subs(&graph, edge_key)?.len();
@@ -75,9 +80,15 @@ mod tests {
     let graph: GraphAncestral = graph;
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
-    initial_guess_mixed(&graph, &partitions, true, false, &mut branch_lengths)?;
+    initial_guess_mixed(
+      &graph,
+      &optimize_partition_view(&partitions, &[]),
+      true,
+      false,
+      &mut branch_lengths,
+    )?;
 
-    let p = partitions[0].read_arc();
+    let p = &partitions[0];
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
       let sub_count = p.edge_subs(&graph, edge_key)?.len();
@@ -115,10 +126,16 @@ mod tests {
     let partitions_dense = setup_dense(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
     let partitions_sparse = setup_sparse(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
 
-    initial_guess_mixed(&graph_dense, &partitions_dense, true, false, &mut branch_lengths_dense)?;
+    initial_guess_mixed(
+      &graph_dense,
+      &optimize_partition_view(&partitions_dense, &[]),
+      true,
+      false,
+      &mut branch_lengths_dense,
+    )?;
     initial_guess_mixed(
       &graph_sparse,
-      &partitions_sparse,
+      &optimize_partition_view(&[], &partitions_sparse),
       true,
       false,
       &mut branch_lengths_sparse,
@@ -153,13 +170,9 @@ mod tests {
     let partitions_sparse = setup_sparse(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
 
     let dense_metrics =
-      optimization_metrics_by_child_name(&graph_dense, &graph_dense_names, &*partitions_dense[0].read_arc(), 0.1)?;
-    let sparse_metrics = optimization_metrics_by_child_name(
-      &graph_sparse,
-      &graph_sparse_names,
-      &*partitions_sparse[0].read_arc(),
-      0.1,
-    )?;
+      optimization_metrics_by_child_name(&graph_dense, &graph_dense_names, &partitions_dense[0], 0.1)?;
+    let sparse_metrics =
+      optimization_metrics_by_child_name(&graph_sparse, &graph_sparse_names, &partitions_sparse[0], 0.1)?;
 
     assert_eq!(
       dense_metrics.keys().cloned().collect::<Vec<_>>(),
@@ -212,13 +225,11 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<Vec<Arc<RwLock<PartitionMarginalSparse>>>, Report> {
+  ) -> Result<Vec<PartitionMarginalSparse>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
-    let partitions = vec![Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?,
-    ))];
-    marginal_update(graph, &profile_branch_lengths(branch_lengths), &partitions)?.value();
+    let mut partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?];
+    marginal_update(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?.value();
 
     Ok(partitions)
   }
@@ -228,16 +239,23 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<Vec<Arc<RwLock<PartitionMarginalDense>>>, Report> {
+  ) -> Result<Vec<PartitionMarginalDense>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+    let mut partitions = vec![PartitionMarginalDense::new(
       0,
       jc69(JC69Params::default())?,
       alphabet,
       get_common_length(aln)?,
-    )))];
+    )];
 
-    initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?.value();
+    initialize_marginal(
+      graph,
+      &profile_branch_lengths(branch_lengths),
+      &mut partitions,
+      aln,
+      names,
+    )?
+    .value();
 
     Ok(partitions)
   }

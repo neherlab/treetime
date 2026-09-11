@@ -1,11 +1,9 @@
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use ctor::ctor;
-use parking_lot::RwLock;
 use rayon::ThreadPoolBuilder;
 use std::collections::BTreeMap;
 use std::hint::black_box;
 use std::path::Path;
-use std::sync::Arc;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::fitch::create_fitch_partition;
 use treetime::ancestral::marginal::{marginal_update, profile_branch_lengths};
@@ -27,7 +25,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
   group.throughput(Throughput::Elements(200));
 
   for threads in [1, 2, 4, 8] {
-    let (graph, partitions, branch_lengths) = setup();
+    let (graph, mut partitions, branch_lengths) = setup();
     let pool = ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
     group.bench_with_input(BenchmarkId::new("sparse", threads), &threads, |bencher, _| {
       bencher.iter(|| {
@@ -36,7 +34,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
             marginal_update(
               black_box(&graph),
               &profile_branch_lengths(black_box(&branch_lengths)),
-              black_box(&partitions),
+              black_box(&mut partitions),
             )
           })
           .unwrap();
@@ -48,7 +46,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
 
 fn setup() -> (
   GraphAncestral,
-  [Arc<RwLock<treetime::partition::marginal::sparse::partition::PartitionMarginalSparse>>; 1],
+  [treetime::partition::marginal::sparse::partition::PartitionMarginalSparse; 1],
   BTreeMap<GraphEdgeKey, Option<f64>>,
 ) {
   ThreadPoolBuilder::new()
@@ -60,7 +58,7 @@ fn setup() -> (
 
 fn setup_inner() -> (
   GraphAncestral,
-  [Arc<RwLock<treetime::partition::marginal::sparse::partition::PartitionMarginalSparse>>; 1],
+  [treetime::partition::marginal::sparse::partition::PartitionMarginalSparse; 1],
   BTreeMap<GraphEdgeKey, Option<f64>>,
 ) {
   let alphabet = Alphabet::default();
@@ -75,8 +73,8 @@ fn setup_inner() -> (
   let fitch = create_fitch_partition(&graph, 0, alphabet, &alignment, &names).unwrap();
   let gtr = jc69(JC69Params::default()).unwrap();
   let partition = fitch.into_marginal_sparse(gtr, &graph).unwrap();
-  let partitions = [Arc::new(RwLock::new(partition))];
-  marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions).unwrap();
+  let mut partitions = [partition];
+  marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions).unwrap();
   (graph, partitions, branch_lengths)
 }
 

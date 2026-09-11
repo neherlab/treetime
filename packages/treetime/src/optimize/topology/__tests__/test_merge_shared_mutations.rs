@@ -14,11 +14,9 @@ mod tests {
   use approx::assert_relative_eq;
   use eyre::Report;
   use maplit::btreemap;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -38,7 +36,7 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     length: usize,
     edge_mutations: &[(&str, &str, Vec<Sub>)],
-  ) -> Result<Arc<RwLock<PartitionMarginalSparse>>, Report> {
+  ) -> Result<PartitionMarginalSparse, Report> {
     let mut partition = PartitionMarginalSparse {
       index: 0,
       gtr: jc69(JC69Params::default())?,
@@ -79,7 +77,7 @@ mod tests {
         .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
     }
 
-    Ok(Arc::new(RwLock::new(partition)))
+    Ok(partition)
   }
 
   /// Find the new internal node (unnamed, non-root, non-leaf).
@@ -119,10 +117,10 @@ mod tests {
         ("internal", "B", vec![sub(b'A', 0, b'T')]),
       ],
     )?;
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 0);
     assert_eq!(graph.get_nodes().len(), 4); // root, internal, A, B
     Ok(())
@@ -148,10 +146,10 @@ mod tests {
         ("root", "C", vec![sub(b'T', 10, b'A')]),
       ],
     )?;
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 0);
     assert_eq!(graph.get_nodes().len(), 4); // root, A, B, C
     Ok(())
@@ -182,10 +180,10 @@ mod tests {
         ("root", "C", vec![sub(b'T', 10, b'A')]),
       ],
     )?;
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
 
     graph.build()?;
@@ -198,7 +196,7 @@ mod tests {
     assert_eq!(unnamed.len(), 1);
 
     // Check partition data: new edge to N has shared mutations
-    let p = partitions[0].read_arc();
+    let p = &partitions[0];
     // A and B should have no remaining mutations
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
@@ -251,14 +249,14 @@ mod tests {
         ("root", "C", vec![sub(b'C', 20, b'G')]),
       ],
     )?;
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
 
     graph.build()?;
-    let p = partitions[0].read_arc();
+    let p = &partitions[0];
 
     // Check that B retains only its unique mutation
     for edge in graph.get_edges() {
@@ -317,17 +315,17 @@ mod tests {
         ("root", "D", vec![sub(b'T', 30, b'A')]),
       ],
     )?;
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
 
     graph.build()?;
     // Topology: root -> N -> {A, B}, root -> C, root -> D
     assert_eq!(graph.get_nodes().len(), 6); // root, N, A, B, C, D
 
-    let p = partitions[0].read_arc();
+    let p = &partitions[0];
     // The new internal edge carries all 3 shared mutations
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
@@ -366,10 +364,10 @@ mod tests {
         ("root", "C", vec![sub(b'T', 10, b'A')]),
       ],
     )?;
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     let d = -0.75 * f64::ln(1.0 - 4.0 * 0.02 / 3.0);
@@ -413,10 +411,10 @@ mod tests {
         ("root", "C", vec![sub(b'T', 50, b'A')]),
       ],
     )?;
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     for edge in graph.get_edges() {
@@ -485,12 +483,12 @@ mod tests {
       .edges
       .insert(edge_b, SparseEdgePartition::with_fitch_subs(vec![sub(b'C', 50, b'G')]));
     p2_inner.edges.insert(edge_c, SparseEdgePartition::default());
-    let p2 = Arc::new(RwLock::new(p2_inner));
+    let p2 = p2_inner;
 
-    let partitions = vec![p1, p2];
+    let mut partitions = vec![p1, p2];
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
     graph.build()?;
 
@@ -511,8 +509,8 @@ mod tests {
     }
 
     // Verify partition 1: internal edge has 1 shared sub, B has 1 remaining
-    let p1 = partitions[0].read_arc();
-    let p2 = partitions[1].read_arc();
+    let p1 = &partitions[0];
+    let p2 = &partitions[1];
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
@@ -554,10 +552,10 @@ mod tests {
         ("root", "E", vec![sub(b'T', 10, b'A')]),
       ],
     )?;
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     // Two merge rounds: A+B, then C+D
     assert_eq!(merged, 2);
 
@@ -579,10 +577,10 @@ mod tests {
       ..
     } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let mut graph: GraphAncestral = graph;
-    let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
+    let mut partitions: Vec<PartitionMarginalSparse> = vec![];
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 0);
     Ok(())
   }
@@ -611,10 +609,10 @@ mod tests {
         ("root", "D", vec![sub(b'T', 10, b'A')]),
       ],
     )?;
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
 
     graph.build()?;
@@ -648,10 +646,10 @@ mod tests {
         ("root", "C", vec![]),
       ],
     )?;
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
     graph.build()?;
 
@@ -696,10 +694,10 @@ mod tests {
         ("root", "C", vec![sub(b'T', 50, b'A')]),
       ],
     )?;
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     let p = 0.10;
@@ -741,10 +739,10 @@ mod tests {
 
     let edge_subs = helpers::build_shared_unique_subs(n_shared, n_unique_a, n_unique_b);
     let partition = make_partition(&graph, &names, length, &edge_subs)?;
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     let bls = helpers::extract_branch_lengths(&names, &graph, &branch_lengths);
@@ -768,7 +766,7 @@ mod tests {
     } = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
     let mut graph: GraphAncestral = graph;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
-    let partition = make_partition(
+    let mut partition = make_partition(
       &graph,
       &names,
       100,
@@ -780,15 +778,15 @@ mod tests {
     )?;
 
     {
-      let mut p = partition.write_arc();
+      let p = &mut partition;
       let edge_a = find_edge_key(&graph, &names, "root", "A").expect("edge root->A");
       p.edges.get_mut(&edge_a).expect("partition edge A").indels =
         vec![InDel::del((10, 13), Seq::try_from_str("GTA").unwrap()).unwrap()];
     }
 
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     let bls = helpers::extract_branch_lengths(&names, &graph, &branch_lengths);
@@ -839,9 +837,9 @@ mod tests {
       ],
     )?;
 
-    let partitions = vec![p1, p2];
+    let mut partitions = vec![p1, p2];
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     let bls = helpers::extract_branch_lengths(&names, &graph, &branch_lengths);
@@ -874,10 +872,10 @@ mod tests {
         ("root", "D", vec![sub(b'G', 5, b'C')]),
       ],
     )?;
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
     graph.build()?;
 
@@ -900,7 +898,7 @@ mod tests {
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
     let mut graph: GraphAncestral = graph;
-    let partition = make_partition(
+    let mut partition = make_partition(
       &graph,
       &names,
       100,
@@ -913,16 +911,16 @@ mod tests {
 
     let shared_indel = InDel::del((5, 8), Seq::try_from_str("GTA").unwrap()).unwrap();
     {
-      let mut p = partition.write_arc();
+      let p = &mut partition;
       let edge_a = find_edge_key(&graph, &names, "root", "A").expect("edge root->A");
       let edge_b = find_edge_key(&graph, &names, "root", "B").expect("edge root->B");
       p.edges.get_mut(&edge_a).expect("partition edge A").indels = vec![shared_indel.clone()];
       p.edges.get_mut(&edge_b).expect("partition edge B").indels = vec![shared_indel];
     }
 
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
 
     Ok(())
@@ -938,7 +936,7 @@ mod tests {
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
     let mut graph: GraphAncestral = graph;
-    let partition = make_partition(
+    let mut partition = make_partition(
       &graph,
       &names,
       100,
@@ -951,16 +949,16 @@ mod tests {
 
     let shared_indel = InDel::del((5, 8), Seq::try_from_str("GTA").unwrap()).unwrap();
     {
-      let mut p = partition.write_arc();
+      let p = &mut partition;
       let edge_a = find_edge_key(&graph, &names, "root", "A").expect("edge root->A");
       let edge_b = find_edge_key(&graph, &names, "root", "B").expect("edge root->B");
       p.edges.get_mut(&edge_a).expect("partition edge A").indels = vec![shared_indel.clone()];
       p.edges.get_mut(&edge_b).expect("partition edge B").indels = vec![shared_indel];
     }
 
-    let partitions = vec![partition];
+    let mut partitions = vec![partition];
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     let edge_data = helpers::extract_edge_mutation_counts(&names, &graph, &partitions[0]);
@@ -1002,9 +1000,9 @@ mod tests {
     pub fn extract_edge_mutation_counts<'a>(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &GraphAncestral,
-      partition: &Arc<RwLock<PartitionMarginalSparse>>,
+      partition: &PartitionMarginalSparse,
     ) -> BTreeMap<Option<&'a str>, (usize, usize)> {
-      let p = partition.read_arc();
+      let p = &partition;
       let mut result = BTreeMap::new();
       for edge in graph.get_edges() {
         let edge = edge.read_arc();
@@ -1060,7 +1058,7 @@ mod tests {
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
       edge_subs: &[((&str, &str), Vec<Sub>)],
-    ) -> Result<Arc<RwLock<PartitionMarginalSparse>>, Report> {
+    ) -> Result<PartitionMarginalSparse, Report> {
       let mut partition = PartitionMarginalSparse {
         index: 1,
         gtr: jc69(JC69Params::default())?,
@@ -1096,7 +1094,7 @@ mod tests {
           .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
       }
 
-      Ok(Arc::new(RwLock::new(partition)))
+      Ok(partition)
     }
   }
 }

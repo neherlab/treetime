@@ -7,7 +7,7 @@ mod tests {
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::collect_optimize_partitions;
+  use crate::optimize::run_loop::optimize_partition_view;
   use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop, run_optimize_loop};
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -20,11 +20,9 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::AsciiChar;
@@ -56,7 +54,7 @@ mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_empty_graph() -> Result<(), Report> {
     let graph = GraphAncestral::new();
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
+    let sparse: Vec<PartitionMarginalSparse> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &BTreeMap::new());
     assert_eq!(edges.len(), 0);
     Ok(())
@@ -71,7 +69,7 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let graph: GraphAncestral = graph;
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
+    let sparse: Vec<PartitionMarginalSparse> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
     assert_eq!(edges.len(), 0);
     Ok(())
@@ -87,7 +85,7 @@ mod tests {
       ..
     } = nwk_read_str("(A:0.0,B:0.2)root;")?;
     let graph: GraphAncestral = graph;
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
+    let sparse: Vec<PartitionMarginalSparse> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
     assert_eq!(edges.len(), 0);
     Ok(())
@@ -103,7 +101,7 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)I:0.0,C:0.3)root;")?;
     let graph: GraphAncestral = graph;
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
+    let sparse: Vec<PartitionMarginalSparse> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
     assert_eq!(edges.len(), 1);
     let edge_key = edges[0];
@@ -126,7 +124,7 @@ mod tests {
       ..
     } = nwk_read_str("(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;")?;
     let graph: GraphAncestral = graph;
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
+    let sparse: Vec<PartitionMarginalSparse> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
     assert_eq!(edges.len(), 2);
     Ok(())
@@ -141,14 +139,14 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let mut graph: GraphAncestral = graph;
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     let mut names_tt_13 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
-      &sparse,
-      &dense,
+      &mut sparse,
+      &mut dense,
       &[],
       TopologyOps::default(),
       &mut branch_lengths,
@@ -209,8 +207,8 @@ mod tests {
       .edges
       .insert(rd_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
 
-    let sparse = vec![Arc::new(RwLock::new(partition))];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse = vec![partition];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     // Set bl to 0.0 and pass damped value (simulating damping override in prune_and_merge_in_loop)
     branch_lengths.insert(ri_key, Some(0.0));
@@ -218,8 +216,8 @@ mod tests {
     let mut names_tt_12 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
-      &sparse,
-      &dense,
+      &mut sparse,
+      &mut dense,
       &[ri_key],
       TopologyOps::default(),
       &mut branch_lengths,
@@ -274,20 +272,19 @@ mod tests {
     let mut graph: GraphAncestral = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
-    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+    let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
-    let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
-    let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
+    let mut dense_partitions: Vec<PartitionMarginalDense> = vec![];
 
-    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
+    initial_guess_mixed(&graph, &optimize_partition_view(&dense_partitions, &sparse_partitions), true, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().len();
 
     // Run optimize loop with topology cleanup
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
-      let sparse_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+      let sparse_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
       let total_lh = sparse_lh;
 
       if (total_lh - lh_prev).abs() < 1e-2 {
@@ -295,11 +292,11 @@ mod tests {
       }
 
       let old_branch_lengths = branch_lengths.clone();
-      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+      run_optimize_mixed(&graph, &optimize_partition_view(&dense_partitions, &sparse_partitions), method, &mut branch_lengths)?;
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_11 = names.clone();
-      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_11)?;
+      prune_and_merge_in_loop(&mut graph, &mut sparse_partitions, &mut dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_11)?;
 
       lh_prev = total_lh;
     }
@@ -352,29 +349,28 @@ mod tests {
     let mut graph: GraphAncestral = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
-    let sparse_partitions = vec![Arc::new(RwLock::new(fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?))];
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+    let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
-    let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
-    let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
+    let mut dense_partitions: Vec<PartitionMarginalDense> = vec![];
 
-    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
+    initial_guess_mixed(&graph, &optimize_partition_view(&dense_partitions, &sparse_partitions), true, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().len();
 
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
-      let total_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+      let total_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
       if (total_lh - lh_prev).abs() < 1e-2 {
         break;
       }
 
       let old_branch_lengths = branch_lengths.clone();
-      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+      run_optimize_mixed(&graph, &optimize_partition_view(&dense_partitions, &sparse_partitions), method, &mut branch_lengths)?;
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_10 = names.clone();
-      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_10)?;
+      prune_and_merge_in_loop(&mut graph, &mut sparse_partitions, &mut dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_10)?;
 
       lh_prev = total_lh;
     }
@@ -423,15 +419,13 @@ mod tests {
     let mut graph: GraphAncestral = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
-    let sparse_partitions = vec![Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-    ))];
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+    let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
     let initial_node_count = graph.get_nodes().len();
 
     // A and B share mutation A->T at pos 0 (root MAP = A due to 3-vs-2 majority)
-    let merged = merge_shared_mutation_branches(&mut graph, &sparse_partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut sparse_partitions, &mut branch_lengths)?;
     assert!(merged > 0, "A and B should share mutation A->T, triggering merge");
     graph.build()?;
 
@@ -443,7 +437,7 @@ mod tests {
     // The critical test: marginal_update after merge must produce finite log-likelihood.
     // Before the composition fix, the merge-created node had zero composition,
     // causing the backward pass to produce incorrect values.
-    let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+    let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
     assert!(lh.is_finite(), "log-likelihood must be finite after merge: {lh}");
     assert!(lh < 0.0, "log-likelihood must be negative: {lh}");
 
@@ -491,15 +485,15 @@ mod tests {
       .insert(vc2, SparseEdgePartition::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
     partition.edges.insert(vc3, SparseEdgePartition::default());
 
-    let sparse = vec![Arc::new(RwLock::new(partition))];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse = vec![partition];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     // Empty zero-optimal list: the old loop was a no-op here. The hoist must still fire.
     let mut names_tt_9 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
-      &sparse,
-      &dense,
+      &mut sparse,
+      &mut dense,
       &[],
       TopologyOps::default(),
       &mut branch_lengths,
@@ -507,7 +501,7 @@ mod tests {
     )?;
     assert!(changed, "reversion polytomy must be resolved even without a collapse");
 
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     let total_subs: usize = graph
       .get_edges()
       .iter()
@@ -545,14 +539,14 @@ mod tests {
     let ri1_key = find_edge_key(&graph, &names, "root", "I1").unwrap();
     let i1i2_key = find_edge_key(&graph, &names, "I1", "I2").unwrap();
 
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     let mut names_tt_8 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
-      &sparse,
-      &dense,
+      &mut sparse,
+      &mut dense,
       &[ri1_key, i1i2_key],
       TopologyOps::default(),
       &mut branch_lengths,
@@ -603,31 +597,30 @@ mod tests {
 
     let mut graph: GraphAncestral = graph;
 
-    let dense_partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(0, jc69(JC69Params::default())?, nuc, get_common_length(&aln)?)))];
+    let mut dense_partitions = vec![PartitionMarginalDense::new(0, jc69(JC69Params::default())?, nuc, get_common_length(&aln)?)];
 
-    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions, &aln, &names)?.value();
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions)?.value();
+    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions, &aln, &names)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?.value();
 
-    let sparse_partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
+    let mut sparse_partitions: Vec<PartitionMarginalSparse> = vec![];
 
-    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
+    initial_guess_mixed(&graph, &optimize_partition_view(&dense_partitions, &sparse_partitions), true, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().len();
 
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
-      let dense_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &dense_partitions)?.value();
+      let dense_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?.value();
       if (dense_lh - lh_prev).abs() < 1e-2 {
         break;
       }
 
       let old_branch_lengths = branch_lengths.clone();
-      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+      run_optimize_mixed(&graph, &optimize_partition_view(&dense_partitions, &sparse_partitions), method, &mut branch_lengths)?;
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_7 = names.clone();
-      prune_and_merge_in_loop(&mut graph, &sparse_partitions, &dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_7)?;
+      prune_and_merge_in_loop(&mut graph, &mut sparse_partitions, &mut dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_7)?;
 
       lh_prev = dense_lh;
     }
@@ -694,16 +687,16 @@ mod tests {
       .edges
       .insert(rd_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
 
-    let sparse = vec![Arc::new(RwLock::new(partition))];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse = vec![partition];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     branch_lengths.insert(ri_key, Some(0.0));
 
     let mut names_tt_6 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
-      &sparse,
-      &dense,
+      &mut sparse,
+      &mut dense,
       &[ri_key],
       TopologyOps::default(),
       &mut branch_lengths,
@@ -768,8 +761,8 @@ mod tests {
       .edges
       .insert(rd_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
 
-    let sparse = vec![Arc::new(RwLock::new(partition))];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse = vec![partition];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     branch_lengths.insert(ri_key, Some(0.0));
 
@@ -780,8 +773,8 @@ mod tests {
     let mut names_tt_5 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
-      &sparse,
-      &dense,
+      &mut sparse,
+      &mut dense,
       &[ri_key],
       ops,
       &mut branch_lengths,
@@ -839,8 +832,8 @@ mod tests {
       .insert(vc2, SparseEdgePartition::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
     partition.edges.insert(vc3, SparseEdgePartition::default());
 
-    let sparse = vec![Arc::new(RwLock::new(partition))];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse = vec![partition];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     let ops = TopologyOps {
       flip_parent_child: false,
@@ -849,8 +842,8 @@ mod tests {
     let mut names_tt_4 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
-      &sparse,
-      &dense,
+      &mut sparse,
+      &mut dense,
       &[],
       ops,
       &mut branch_lengths,
@@ -858,7 +851,7 @@ mod tests {
     )?;
     assert!(changed, "merge still groups the reverting siblings");
 
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     let reversion_remains = graph
       .get_edges()
       .iter()
@@ -911,8 +904,8 @@ mod tests {
       .insert(vc2, SparseEdgePartition::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
     partition.edges.insert(vc3, SparseEdgePartition::default());
 
-    let sparse = vec![Arc::new(RwLock::new(partition))];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse = vec![partition];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     let node_count_before = graph.get_nodes().len();
     let ops = TopologyOps {
@@ -923,8 +916,8 @@ mod tests {
     let mut names_tt_3 = names.clone();
     let changed = prune_and_merge_in_loop(
       &mut graph,
-      &sparse,
-      &dense,
+      &mut sparse,
+      &mut dense,
       &[],
       ops,
       &mut branch_lengths,
@@ -933,7 +926,7 @@ mod tests {
     assert!(!changed, "no topology step runs when all are disabled");
     assert_eq!(graph.get_nodes().len(), node_count_before);
 
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     let total_subs: usize = graph
       .get_edges()
       .iter()
@@ -973,14 +966,13 @@ mod tests {
     let mut graph: GraphAncestral = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
-    let sparse_partitions = vec![Arc::new(RwLock::new(
+    let mut sparse_partitions = vec![
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-    ))];
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+    ];
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
-    let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
-    let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
+    let mut dense_partitions: Vec<PartitionMarginalDense> = vec![];
+    initial_guess_mixed(&graph, &optimize_partition_view(&dense_partitions, &sparse_partitions), true, false, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().len();
 
@@ -991,9 +983,8 @@ mod tests {
     let names_tt_2 = names.clone();
     run_optimize_loop(
       &mut graph,
-      &sparse_partitions,
-      &dense_partitions,
-      &mixed_partitions,
+      &mut sparse_partitions,
+      &mut dense_partitions,
       10,
       1e-2,
       0.75,
@@ -1046,23 +1037,25 @@ mod tests {
     let mut graph: GraphAncestral = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
-    let sparse_partitions = vec![Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-    ))];
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+    let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
-    let dense_partitions: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
-    let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
-    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
+    let mut dense_partitions: Vec<PartitionMarginalDense> = vec![];
+    initial_guess_mixed(
+      &graph,
+      &optimize_partition_view(&dense_partitions, &sparse_partitions),
+      true,
+      false,
+      &mut branch_lengths,
+    )?;
 
     let initial_node_count = graph.get_nodes().len();
 
     let names_tt_1 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &sparse_partitions,
-      &dense_partitions,
-      &mixed_partitions,
+      &mut sparse_partitions,
+      &mut dense_partitions,
       10,
       1e-2,
       0.75,

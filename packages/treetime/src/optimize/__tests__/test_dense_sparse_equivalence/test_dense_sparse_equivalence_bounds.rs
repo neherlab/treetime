@@ -3,6 +3,7 @@ mod tests {
   use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::run_loop::optimize_partition_view;
   use eyre::Report;
   use rstest::rstest;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -25,25 +26,25 @@ mod tests {
 
     // Run dense-only optimization
     let NwkParse { graph: graph_dense, names: graph_dense_names, branch_lengths: mut bl_dense, .. } = nwk_read_str(TREE_NEWICK)?;
-    let dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &bl_dense)?;
+    let mut dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &bl_dense)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_dense, &dense_partitions, method, &mut bl_dense)?;
-      marginal_update(&graph_dense, &profile_branch_lengths(&bl_dense), &dense_partitions)?.value();
+      run_optimize_mixed(&graph_dense, &optimize_partition_view(&dense_partitions, &[]), method, &mut bl_dense)?;
+      marginal_update(&graph_dense, &profile_branch_lengths(&bl_dense), &mut dense_partitions)?.value();
     }
 
-    let log_lh_dense = marginal_update(&graph_dense, &profile_branch_lengths(&bl_dense), &dense_partitions)?.value();
+    let log_lh_dense = marginal_update(&graph_dense, &profile_branch_lengths(&bl_dense), &mut dense_partitions)?.value();
 
     // Run sparse-only optimization
     let NwkParse { graph: graph_sparse, names: graph_sparse_names, branch_lengths: mut bl_sparse, .. } = nwk_read_str(TREE_NEWICK)?;
-    let sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &bl_sparse)?;
+    let mut sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &bl_sparse)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_sparse, &sparse_partitions, method, &mut bl_sparse)?;
-      marginal_update(&graph_sparse, &profile_branch_lengths(&bl_sparse), &sparse_partitions)?.value();
+      run_optimize_mixed(&graph_sparse, &optimize_partition_view(&[], &sparse_partitions), method, &mut bl_sparse)?;
+      marginal_update(&graph_sparse, &profile_branch_lengths(&bl_sparse), &mut sparse_partitions)?.value();
     }
 
-    let log_lh_sparse = marginal_update(&graph_sparse, &profile_branch_lengths(&bl_sparse), &sparse_partitions)?.value();
+    let log_lh_sparse = marginal_update(&graph_sparse, &profile_branch_lengths(&bl_sparse), &mut sparse_partitions)?.value();
 
     // Both modes should produce finite log-LH in expected range
     assert!(
@@ -81,22 +82,22 @@ mod tests {
 
     // Run dense-only optimization
     let NwkParse { graph: graph_dense, names: graph_dense_names, branch_lengths: mut bl_dense, .. } = nwk_read_str(TREE_NEWICK)?;
-    let dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &bl_dense)?;
+    let mut dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &bl_dense)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_dense, &dense_partitions, method, &mut bl_dense)?;
-      marginal_update(&graph_dense, &profile_branch_lengths(&bl_dense), &dense_partitions)?.value();
+      run_optimize_mixed(&graph_dense, &optimize_partition_view(&dense_partitions, &[]), method, &mut bl_dense)?;
+      marginal_update(&graph_dense, &profile_branch_lengths(&bl_dense), &mut dense_partitions)?.value();
     }
 
     let branch_lengths_dense = get_branch_lengths(&graph_dense, &bl_dense);
 
     // Run sparse-only optimization
     let NwkParse { graph: graph_sparse, names: graph_sparse_names, branch_lengths: mut bl_sparse, .. } = nwk_read_str(TREE_NEWICK)?;
-    let sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &bl_sparse)?;
+    let mut sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &bl_sparse)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_sparse, &sparse_partitions, method, &mut bl_sparse)?;
-      marginal_update(&graph_sparse, &profile_branch_lengths(&bl_sparse), &sparse_partitions)?.value();
+      run_optimize_mixed(&graph_sparse, &optimize_partition_view(&[], &sparse_partitions), method, &mut bl_sparse)?;
+      marginal_update(&graph_sparse, &profile_branch_lengths(&bl_sparse), &mut sparse_partitions)?.value();
     }
 
     let branch_lengths_sparse = get_branch_lengths(&graph_sparse, &bl_sparse);

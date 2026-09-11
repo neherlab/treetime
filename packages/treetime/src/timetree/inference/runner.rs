@@ -3,7 +3,7 @@ use crate::clock::clock_state::ClockState;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::optimize::indel::estimate_indel_rate;
 use crate::partition::optimize::contribution::OptimizationContribution;
-use crate::partition::traits::PartitionTimetreeAll;
+use crate::partition::traits::{PartitionOptimizeOps, PartitionTimetreeAll};
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::timetree::inference::forward_pass::propagate_distributions_forward;
@@ -11,7 +11,6 @@ use crate::timetree::timetree_state::TimetreeState;
 use crate::timetree::utils::initialize_node_divergences;
 use eyre::Report;
 use log::{debug, info, warn};
-use parking_lot::RwLock;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -51,7 +50,7 @@ pub const EPS: f64 = 5e-4;
 /// topology change so each pass sees the current tree.
 pub fn run_timetree<N, E, P>(
   graph: &mut Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &[P],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   clock_model: &ClockModel,
@@ -63,7 +62,7 @@ pub fn run_timetree<N, E, P>(
 where
   N: GraphNode + Default,
   E: GraphEdge + Default,
-  P: PartitionTimetreeAll<N, E> + ?Sized,
+  P: PartitionTimetreeAll<N, E>,
 {
   info!("# Running timetree inference");
 
@@ -180,7 +179,7 @@ pub fn commit_clock_branch_lengths<N, E, D>(
 
 fn compute_branch_distributions_marginal_mode<N, E, P>(
   graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &[P],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   clock_rate: f64,
   no_indels: bool,
@@ -189,15 +188,16 @@ fn compute_branch_distributions_marginal_mode<N, E, P>(
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionTimetreeAll<N, E> + ?Sized,
+  P: PartitionTimetreeAll<N, E>,
 {
   let one_mutation = calculate_one_mutation(partitions);
-  let total_sites: usize = partitions.iter().map(|p| p.read_arc().get_sequence_length()).sum();
+  let total_sites: usize = partitions.iter().map(|p| p.get_sequence_length()).sum();
 
   let indel_rate = if no_indels {
     0.0
   } else {
-    estimate_indel_rate(graph, partitions, branch_lengths)
+    let mixed: Vec<&dyn PartitionOptimizeOps> = partitions.iter().map(|p| p as &dyn PartitionOptimizeOps).collect();
+    estimate_indel_rate(graph, &mixed, branch_lengths)
   };
 
   info!(
@@ -230,7 +230,7 @@ where
         } else {
           partitions
             .iter()
-            .map(|partition| partition.read_arc().edge_indel_count(edge_key))
+            .map(|partition| partition.edge_indel_count(edge_key))
             .sum()
         };
         let distribution = compute_branch_length_distribution(
@@ -262,31 +262,28 @@ where
   Ok(())
 }
 
-fn calculate_one_mutation<N, E, P>(partitions: &[Arc<RwLock<P>>]) -> f64
+fn calculate_one_mutation<N, E, P>(partitions: &[P]) -> f64
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionTimetreeAll<N, E> + ?Sized,
+  P: PartitionTimetreeAll<N, E>,
 {
-  let total_length: usize = partitions
-    .iter()
-    .map(|part| part.read_arc().get_sequence_length())
-    .sum();
+  let total_length: usize = partitions.iter().map(|part| part.get_sequence_length()).sum();
   1.0 / total_length as f64
 }
 
 fn collect_contributions<N, E, P>(
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &[P],
   edge_key: GraphEdgeKey,
 ) -> Result<Vec<OptimizationContribution>, Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionTimetreeAll<N, E> + ?Sized,
+  P: PartitionTimetreeAll<N, E>,
 {
   partitions
     .iter()
-    .map(|partition| partition.read_arc().create_edge_contribution(edge_key))
+    .map(|partition| partition.create_edge_contribution(edge_key))
     .collect()
 }
 

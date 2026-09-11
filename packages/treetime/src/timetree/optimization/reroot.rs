@@ -4,7 +4,7 @@ use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_rero
 use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
 use crate::partition::traits::PartitionRerootOps;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
@@ -22,7 +22,7 @@ pub fn reroot_tree(
   graph: &mut GraphTimetree,
   clock_state: &mut ClockState,
   timetree_state: &TimetreeState,
-  partitions: &[PartitionTimetreeRef],
+  partitions: &mut [PartitionTimetree],
   clock_params: &ClockParams,
   clock_rate: Option<f64>,
   branch_params: &BranchPointOptimizationParams,
@@ -70,9 +70,8 @@ pub fn reroot_tree(
       };
 
       info!("Applying reroot changes to {} partitions", partitions.len());
-      for partition in partitions {
+      for partition in partitions.iter_mut() {
         partition
-          .write_arc()
           .apply_reroot(&changes)
           .wrap_err("Failed to apply reroot changes to partition")?;
       }

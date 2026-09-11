@@ -19,10 +19,9 @@ mod tests {
   use indoc::indoc;
 
   use ndarray::prelude::*;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::sync::{Arc, LazyLock};
+  use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -121,11 +120,11 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     gtr: GTR,
-  ) -> Result<(f64, [Arc<RwLock<PartitionMarginalSparse>>; 1]), Report> {
+  ) -> Result<(f64, [PartitionMarginalSparse; 1]), Report> {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
-    let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, graph)?))];
-    let log_lh = marginal_update(graph, &profile_branch_lengths(branch_lengths), &partitions)?.value();
+    let mut partitions = [fitch.into_marginal_sparse(gtr, graph)?];
+    let log_lh = marginal_update(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?.value();
     Ok((log_lh, partitions))
   }
 
@@ -200,14 +199,12 @@ mod tests {
     let alphabet = Alphabet::default();
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let partitions_marginal_sparse = [Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-    ))];
+    let mut partitions_marginal_sparse = [fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
 
     let log_lh = marginal_update(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions_marginal_sparse,
+      &mut partitions_marginal_sparse,
     )?
     .value();
 
@@ -217,7 +214,7 @@ mod tests {
       &graph,
       false,
       false,
-      &partitions_marginal_sparse,
+      &mut partitions_marginal_sparse,
       SampleMode::Argmax,
       &mut rand::thread_rng(),
       |key, seq| {
@@ -235,7 +232,7 @@ mod tests {
     // the accounting `combine_messages` and `infer_gtr` both assume: the former subtracts one count
     // per variable position keyed by that position's parsimony state, the latter pairs the counts with
     // the edges' Fitch substitutions. Reconstruction must leave both untouched.
-    let partition = partitions_marginal_sparse[0].read_arc();
+    let partition = &partitions_marginal_sparse[0];
     for name in expected.keys() {
       let node_key = find_node_key_by_name(&graph, &names, name).expect("expected internal node must exist");
       let node = &partition.nodes[&node_key];
@@ -289,7 +286,7 @@ mod tests {
     // Matches test_ancestral_reconstruction_marginal_sparse value
     pretty_assert_ulps_eq!(-55.33813399214274, log_lh, epsilon = 1e-6);
 
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
 
     for node_data in partition.nodes.values() {
       assert_sparse_profile_normalized(&node_data.profile, 4);
@@ -337,10 +334,10 @@ mod tests {
 
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?))];
+    let mut partitions = [fitch.into_marginal_sparse(gtr, &graph)?];
 
-    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
-    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
 
     // Verify log-likelihood value matches expected (same tree/alignment as normalization test)
     pretty_assert_ulps_eq!(-55.33813399214274, log_lh_first, epsilon = 1e-6);
@@ -442,7 +439,7 @@ mod tests {
     // different handling of ambiguous characters (value from test_scripts/ancestral_sparse.py)
     pretty_assert_ulps_eq!(-56.76471324493305, log_lh, epsilon = 1e-6);
 
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
 
     // test variable position distribution at the root (pos 0)
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
@@ -513,12 +510,12 @@ mod tests {
           let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?;
 
           let fitch = create_fitch_partition(&graph, 0, alphabet.clone(), &aln, &names)?;
-          let partitions_marginal_sparse = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr.clone(), &graph)?))];
+          let mut partitions_marginal_sparse = [fitch.into_marginal_sparse(gtr.clone(), &graph)?];
 
           let log_lh = marginal_update(
             &graph,
             &profile_branch_lengths(&branch_lengths),
-            &partitions_marginal_sparse,
+            &mut partitions_marginal_sparse,
           )?
           .value();
           total_lh += log_lh.exp();
@@ -564,13 +561,11 @@ mod tests {
 
     let graph: GraphAncestral = graph;
     let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
-    let partitions = [Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?,
-    ))];
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    let mut partitions = [fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?];
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
 
     let actual_by_edge = {
-      let partition = partitions[0].read_arc();
+      let partition = &partitions[0];
       graph
         .get_edges()
         .iter()
@@ -589,7 +584,7 @@ mod tests {
       &graph,
       true,
       false,
-      &partitions,
+      &mut partitions,
       SampleMode::Argmax,
       &mut rand::thread_rng(),
       |key, seq| {
@@ -601,7 +596,7 @@ mod tests {
       },
     )?;
 
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &names, &partition, &seqs_by_name)?;
 
     assert_eq!(expected_by_edge, actual_by_edge);
@@ -651,7 +646,7 @@ mod tests {
           &alignment,
           jc69(JC69Params::default())?,
         )?;
-        let partition = partitions[0].read_arc();
+        let partition = &partitions[0];
         Ok((
           partition.nodes[&graph.get_exactly_one_root()?.read_arc().key()]
             .profile

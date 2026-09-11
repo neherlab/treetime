@@ -23,7 +23,6 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::Arc;
@@ -104,9 +103,7 @@ mod tests {
     })?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
-      fitch.into_marginal_sparse(gtr, &graph)?,
-    )));
+    let sparse_partition = PartitionTimetree::Sparse(fitch.into_marginal_sparse(gtr, &graph)?);
 
     let clock_params = ClockParams::default();
     let timetree_state = TimetreeState::seed_from_values(&graph, &constraints);
@@ -114,7 +111,7 @@ mod tests {
     clock_regression_backward(&graph, &mut clock_state, &clock_params, &branch_lengths, None)?;
     clock_regression_forward(&graph, &mut clock_state, &clock_params, &branch_lengths, None)?;
 
-    let partitions = vec![sparse_partition];
+    let mut partitions = vec![sparse_partition];
 
     // Record initial state
     let initial_leaf_count = graph.get_leaves().len();
@@ -126,7 +123,7 @@ mod tests {
       &mut graph,
       &mut clock_state,
       &timetree_state,
-      &partitions,
+      &mut partitions,
       &clock_params,
       None,
       &BranchPointOptimizationParams::default(),
@@ -498,9 +495,7 @@ mod tests {
     })?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
-      fitch.into_marginal_sparse(gtr, &graph)?,
-    )));
+    let sparse_partition = PartitionTimetree::Sparse(fitch.into_marginal_sparse(gtr, &graph)?);
 
     let clock_params = ClockParams::default();
     let timetree_state_1 = TimetreeState::seed_from_values(&graph, &constraints);
@@ -508,13 +503,13 @@ mod tests {
     clock_regression_backward(&graph, &mut clock_state, &clock_params, &branch_lengths, None)?;
     clock_regression_forward(&graph, &mut clock_state, &clock_params, &branch_lengths, None)?;
 
-    let partitions = vec![sparse_partition];
+    let mut partitions = vec![sparse_partition];
 
     // Record initial state
     let initial_leaf_count = graph.get_leaves().len();
 
     // Initialize marginal for the sparse partition
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
 
     // First reroot call (simulating keep_root=false flow)
     let names_tt_2 = names.clone();
@@ -522,7 +517,7 @@ mod tests {
       &mut graph,
       &mut clock_state,
       &timetree_state_1,
-      &partitions,
+      &mut partitions,
       &clock_params,
       None,
       &BranchPointOptimizationParams::default(),
@@ -551,7 +546,7 @@ mod tests {
       &mut graph,
       &mut clock_state,
       &timetree_state_2,
-      &partitions,
+      &mut partitions,
       &clock_params,
       Some(clock_model_1.clock_rate()),
       &BranchPointOptimizationParams::default(),

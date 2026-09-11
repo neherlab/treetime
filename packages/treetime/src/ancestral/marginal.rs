@@ -4,9 +4,7 @@ use crate::partition::marginal::sparse::{backward, forward};
 use crate::partition::traits::{MarginalPass, PartitionMarginalOps, PartitionMarginalPasses, graph_log_lh};
 use eyre::Report;
 use log::trace;
-use parking_lot::RwLock;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNode, GraphNodeKey};
@@ -40,17 +38,17 @@ pub fn profile_branch_lengths(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64
 pub fn initialize_marginal<N, E, P>(
   graph: &Graph<N, E, ()>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &mut [P],
   aln: &[FastaRecord],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<LogLh, Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionMarginalOps<N, E> + ?Sized,
+  P: PartitionMarginalOps<N, E>,
 {
-  for partition in partitions {
-    partition.write_arc().attach_sequences(graph, aln, names)?;
+  for partition in partitions.iter_mut() {
+    partition.attach_sequences(graph, aln, names)?;
   }
   marginal_update(graph, branch_lengths, partitions)
 }
@@ -65,12 +63,12 @@ where
 pub fn marginal_update<N, E, P>(
   graph: &Graph<N, E, ()>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &mut [P],
 ) -> Result<LogLh, Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionMarginalPasses<N, E> + ?Sized,
+  P: PartitionMarginalPasses<N, E>,
 {
   marginal_backward(graph, branch_lengths, partitions)?;
   let log_lh = graph_log_lh(graph, partitions)?;
@@ -82,15 +80,14 @@ where
 pub fn marginal_backward<N, E, P>(
   graph: &Graph<N, E, ()>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &mut [P],
 ) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionMarginalPasses<N, E> + ?Sized,
+  P: PartitionMarginalPasses<N, E>,
 {
-  for partition in partitions {
-    let mut partition = partition.write_arc();
+  for partition in partitions.iter_mut() {
     match partition.as_marginal_pass() {
       MarginalPass::Indexed(partition) => marginal_process_backward_indexed(partition, graph, branch_lengths)?,
       MarginalPass::Sparse(partition) => backward::process_backward_indexed(partition, graph, branch_lengths)?,
@@ -102,15 +99,14 @@ where
 fn marginal_forward<N, E, P>(
   graph: &Graph<N, E, ()>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &mut [P],
 ) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionMarginalPasses<N, E> + ?Sized,
+  P: PartitionMarginalPasses<N, E>,
 {
-  for partition in partitions {
-    let mut partition = partition.write_arc();
+  for partition in partitions.iter_mut() {
     match partition.as_marginal_pass() {
       MarginalPass::Indexed(partition) => marginal_process_forward_indexed(partition, graph, branch_lengths)?,
       MarginalPass::Sparse(partition) => forward::process_forward_indexed(partition, graph, branch_lengths)?,
@@ -131,7 +127,7 @@ pub fn ancestral_reconstruction_marginal<N, E, P>(
   graph: &Graph<N, E, ()>,
   include_leaves: bool,
   impute: bool,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &mut [P],
   sample_mode: SampleMode,
   rng: &mut dyn rand::RngCore,
   mut visitor: impl FnMut(GraphNodeKey, &Seq) -> Result<(), Report>,
@@ -139,7 +135,7 @@ pub fn ancestral_reconstruction_marginal<N, E, P>(
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionMarginalOps<N, E> + ?Sized,
+  P: PartitionMarginalOps<N, E>,
 {
   // Preorder traversal is sequential, so a single threaded RNG yields deterministic output under a
   // fixed seed: every node draws from the profile in a fixed traversal order.
@@ -159,10 +155,7 @@ where
       return Ok(());
     }
 
-    let reconstructed = {
-      let mut partition = partitions[0].write_arc();
-      partition.reconstruct_node_sequence(&node, include_leaves, impute, sample_mode, rng)
-    };
+    let reconstructed = partitions[0].reconstruct_node_sequence(&node, include_leaves, impute, sample_mode, rng);
 
     match reconstructed {
       Some(seq) => {

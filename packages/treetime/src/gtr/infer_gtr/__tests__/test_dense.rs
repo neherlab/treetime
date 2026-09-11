@@ -24,9 +24,6 @@ mod tests {
   };
 
   use ndarray::{Array1, Array2, array};
-  use parking_lot::RwLock;
-  use std::slice::from_ref;
-  use std::sync::Arc;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -41,7 +38,7 @@ mod tests {
   ) -> Result<
     (
       GraphAncestral,
-      Arc<RwLock<PartitionMarginalDense>>,
+      PartitionMarginalDense,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
@@ -59,17 +56,12 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr,
-      alphabet,
-      get_common_length(aln)?,
-    )));
+    let mut partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      from_ref(&partition),
+      std::slice::from_mut(&mut partition),
       aln,
       &names,
     )?
@@ -102,7 +94,7 @@ mod tests {
     let (graph, partition, branch_lengths) =
       setup_dense_partition("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
 
-    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.count_transitions(&graph, &branch_lengths)?;
 
     // With fractional counts, identical sequences still have small probability
     // mass on off-diagonal states from the joint distribution
@@ -132,7 +124,7 @@ mod tests {
 
     let (graph, partition, branch_lengths) = setup_dense_partition("(A:0.1,B:0.1)root:0.0;", &aln)?;
 
-    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.count_transitions(&graph, &branch_lengths)?;
 
     // The root should be reconstructed with some state at position 0.
     // With marginal reconstruction on a symmetric tree, the root gets
@@ -197,7 +189,7 @@ mod tests {
     let (graph, partition, branch_lengths) =
       setup_dense_partition("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;", &aln)?;
 
-    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.count_transitions(&graph, &branch_lengths)?;
 
     // Ti proportional to clamped BL (~2.5e-4), bounded well below 1e-2
     let ti_max = counts.Ti.iter().copied().fold(f64::NEG_INFINITY, f64::max);
@@ -278,7 +270,7 @@ mod tests {
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let (graph, partition, branch_lengths) = setup_dense_partition(tree_nwk, &aln)?;
 
-    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.count_transitions(&graph, &branch_lengths)?;
     let result = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     pretty_assert_abs_diff_eq!(result.W, result.W.t().to_owned(), epsilon = 1e-9);

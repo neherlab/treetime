@@ -9,9 +9,7 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
-  use parking_lot::RwLock;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -27,7 +25,7 @@ mod tests {
   ) -> Result<
     (
       GraphAncestral,
-      Arc<RwLock<crate::partition::marginal::sparse::partition::PartitionMarginalSparse>>,
+      crate::partition::marginal::sparse::partition::PartitionMarginalSparse,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
@@ -46,11 +44,11 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    let partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?));
+    let mut partition = fitch.into_marginal_sparse(gtr, &graph)?;
     marginal_update(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      std::slice::from_ref(&partition),
+      std::slice::from_mut(&mut partition),
     )?
     .value();
     Ok((graph, partition, branch_lengths))
@@ -72,7 +70,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.count_transitions(&graph, &branch_lengths)?;
 
     pretty_assert_array_nonneg!(counts.nij);
     pretty_assert_array_nonneg!(counts.Ti);
@@ -96,7 +94,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.count_transitions(&graph, &branch_lengths)?;
 
     pretty_assert_array_positive!(counts.Ti);
 
@@ -119,7 +117,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.count_transitions(&graph, &branch_lengths)?;
 
     for i in 0..counts.nij.nrows() {
       #[allow(clippy::float_cmp, reason = "diagonal is zero by construction, no arithmetic")]
@@ -147,7 +145,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.count_transitions(&graph, &branch_lengths)?;
 
     assert!(counts.root_state.sum() > 0.0, "root_state should be populated");
 

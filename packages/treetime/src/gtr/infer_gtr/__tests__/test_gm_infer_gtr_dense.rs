@@ -19,14 +19,11 @@ mod tests {
   use eyre::Report;
   use lazy_static::lazy_static;
 
-  use parking_lot::RwLock;
   use rstest::rstest;
   use serde::Deserialize;
   use std::collections::BTreeMap;
   use std::fs;
   use std::path::{Path, PathBuf};
-  use std::slice::from_ref;
-  use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_file, nwk_read_str};
@@ -46,7 +43,7 @@ mod tests {
     let aln = read_many_fasta_str(&fasta_str, &*NUC_ALPHABET)?;
     let (graph, partition, branch_lengths) = setup_dense_partition(&case.tree, &aln)?;
 
-    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.count_transitions(&graph, &branch_lengths)?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     // Short synthetic sequences: limited floating-point accumulation, tight tolerance
@@ -70,7 +67,7 @@ mod tests {
     let expected = &OUTPUTS.real[case_name];
 
     let (graph, partition, branch_lengths) = setup_dense_partition_from_files(&case.tree_path, &case.alignment_path)?;
-    let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.count_transitions(&graph, &branch_lengths)?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     // BLAS drift between NumPy and ndarray scales with sequence length. mpox_clade_ii_20
@@ -134,7 +131,7 @@ mod tests {
   ) -> Result<
     (
       GraphAncestral,
-      Arc<RwLock<PartitionMarginalDense>>,
+      PartitionMarginalDense,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
@@ -152,17 +149,12 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr,
-      alphabet,
-      get_common_length(aln)?,
-    )));
+    let mut partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      from_ref(&partition),
+      std::slice::from_mut(&mut partition),
       aln,
       &names,
     )?
@@ -176,7 +168,7 @@ mod tests {
   ) -> Result<
     (
       GraphAncestral,
-      Arc<RwLock<PartitionMarginalDense>>,
+      PartitionMarginalDense,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
@@ -199,17 +191,12 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr,
-      NUC_ALPHABET.clone(),
-      get_common_length(&aln)?,
-    )));
+    let mut partition = PartitionMarginalDense::new(0, gtr, NUC_ALPHABET.clone(), get_common_length(&aln)?);
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      from_ref(&partition),
+      std::slice::from_mut(&mut partition),
       &aln,
       &names,
     )?

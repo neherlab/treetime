@@ -22,10 +22,8 @@ use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchLengthMode, BranchOptMethod};
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
-use crate::partition::timetree::partition::{
-  GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec, PartitionTimetreeRef,
-};
-use crate::partition::traits::HasGtr;
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+use crate::partition::traits::{HasGtr, PartitionOptimizeOps};
 use crate::progress::ProgressSink;
 use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
@@ -41,11 +39,9 @@ use crate::timetree::utils::initialize_node_divergences;
 use eyre::{Report, WrapErr};
 use log::{debug, info};
 use ndarray::{Array1, array};
-use parking_lot::RwLock;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::io::Write;
-use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
@@ -120,7 +116,7 @@ pub struct TimetreeOutput {
   #[serde(skip)]
   pub confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
   #[serde(skip)]
-  pub partitions: PartitionTimetreeAllVec,
+  pub partitions: Vec<PartitionTimetree>,
   #[serde(skip)]
   pub dates: Option<DatesMap>,
   #[serde(skip)]
@@ -247,25 +243,28 @@ pub fn run(
   .wrap_err("Failed to infer clock model")?
   .into_clock_model()?;
 
-  let (partitions, partition_gtr, partition_model_name): (PartitionTimetreeAllVec, Option<GTR>, Option<GtrModelName>) =
-    match params.branch_length_mode {
-      BranchLengthMode::Input => {
-        info!("Branch length mode: Input - using tree branch lengths");
-        (vec![], None, None)
-      },
-      BranchLengthMode::Marginal => {
-        info!("Branch length mode: Marginal - initializing partitions from alignment");
-        let init = initialize_partitions_from_params(
-          params,
-          &input.graph,
-          input.alphabet.clone(),
-          input.sequences.as_deref(),
-          &branch_lengths,
-          names,
-        )?;
-        (init.partitions, Some(init.gtr), Some(init.model_name))
-      },
-    };
+  let (mut partitions, partition_gtr, partition_model_name): (
+    Vec<PartitionTimetree>,
+    Option<GTR>,
+    Option<GtrModelName>,
+  ) = match params.branch_length_mode {
+    BranchLengthMode::Input => {
+      info!("Branch length mode: Input - using tree branch lengths");
+      (vec![], None, None)
+    },
+    BranchLengthMode::Marginal => {
+      info!("Branch length mode: Marginal - initializing partitions from alignment");
+      let init = initialize_partitions_from_params(
+        params,
+        &input.graph,
+        input.alphabet.clone(),
+        input.sequences.as_deref(),
+        &branch_lengths,
+        names,
+      )?;
+      (init.partitions, Some(init.gtr), Some(init.model_name))
+    },
+  };
 
   if let Some(aln) = input.sequences.as_deref() {
     if params.branch_length_mode == BranchLengthMode::Marginal && !partitions.is_empty() {
@@ -273,11 +272,11 @@ pub fn run(
       initialize_marginal(
         &input.graph,
         &profile_branch_lengths(&branch_lengths),
-        &partitions,
+        &mut partitions,
         aln,
         names,
       )?;
-      optimize_branch_lengths_pre_step(&input.graph, &partitions, params.no_indels, &mut branch_lengths)
+      optimize_branch_lengths_pre_step(&input.graph, &mut partitions, params.no_indels, &mut branch_lengths)
         .wrap_err("ML branch-length optimization (pre-reroot) failed")?;
     }
   }
@@ -288,7 +287,7 @@ pub fn run(
       &mut input.graph,
       &mut clock_state,
       &timetree_state,
-      &partitions,
+      &mut partitions,
       &ClockParams::default(),
       params.clock_rate,
       &branch_params,
@@ -338,8 +337,8 @@ pub fn run(
       },
       BranchLengthMode::Marginal => {
         info!("### ML branch-length optimization (post-reroot)");
-        marginal_update(&input.graph, &profile_branch_lengths(&branch_lengths), &partitions)?;
-        optimize_branch_lengths_pre_step(&input.graph, &partitions, params.no_indels, &mut branch_lengths)
+        marginal_update(&input.graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
+        optimize_branch_lengths_pre_step(&input.graph, &mut partitions, params.no_indels, &mut branch_lengths)
           .wrap_err("ML branch-length optimization (post-reroot) failed")?;
       },
     }
@@ -358,7 +357,7 @@ pub fn run(
       &mut input.graph,
       &mut clock_state,
       &timetree_state,
-      &partitions,
+      &mut partitions,
       reroot_clock_params,
       params.clock_rate,
       &branch_params,
@@ -519,7 +518,7 @@ pub fn run(
 
     let outcome = Refinement {
       graph: &mut input.graph,
-      partitions: &partitions,
+      partitions: &mut partitions,
       clock_model: &mut clock_model,
       clock_params: reroot_clock_params,
       branch_params: &branch_params,
@@ -634,7 +633,7 @@ pub fn run(
       marginal_update(
         &input.graph,
         &timetree_branch_lengths(&input.graph, &branch_lengths, &clock_branch_lengths),
-        &partitions,
+        &mut partitions,
       )?;
     }
   }
@@ -905,7 +904,7 @@ fn build_coalescent_output(
 }
 
 struct PartitionInitResult {
-  partitions: PartitionTimetreeAllVec,
+  partitions: Vec<PartitionTimetree>,
   gtr: GTR,
   model_name: GtrModelName,
 }
@@ -942,8 +941,8 @@ fn initialize_partitions_from_params(
   };
 
   let partition = match created.partition {
-    MarginalPartition::Sparse(p) => Arc::new(RwLock::new(PartitionTimetree::Sparse(p))),
-    MarginalPartition::Dense(p) => Arc::new(RwLock::new(PartitionTimetree::Dense(p))),
+    MarginalPartition::Sparse(p) => PartitionTimetree::Sparse(p),
+    MarginalPartition::Dense(p) => PartitionTimetree::Dense(p),
   };
 
   Ok(PartitionInitResult {
@@ -955,18 +954,21 @@ fn initialize_partitions_from_params(
 
 fn optimize_branch_lengths_pre_step(
   graph: &GraphTimetree,
-  partitions: &[PartitionTimetreeRef],
+  partitions: &mut [PartitionTimetree],
   no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   let old_branch_lengths = branch_lengths.clone();
 
-  if no_indels {
-    run_optimize_mixed_inner(graph, partitions, BranchOptMethod::BrentSqrt, 0.0, true, branch_lengths)
-      .wrap_err("ML branch-length optimization pre-step failed")?;
-  } else {
-    run_optimize_mixed(graph, partitions, BranchOptMethod::BrentSqrt, branch_lengths)
-      .wrap_err("ML branch-length optimization pre-step failed")?;
+  {
+    let mixed: Vec<&dyn PartitionOptimizeOps> = partitions.iter().map(|p| p as &dyn PartitionOptimizeOps).collect();
+    if no_indels {
+      run_optimize_mixed_inner(graph, &mixed, BranchOptMethod::BrentSqrt, 0.0, true, branch_lengths)
+        .wrap_err("ML branch-length optimization pre-step failed")?;
+    } else {
+      run_optimize_mixed(graph, &mixed, BranchOptMethod::BrentSqrt, branch_lengths)
+        .wrap_err("ML branch-length optimization pre-step failed")?;
+    }
   }
 
   apply_damping(branch_lengths, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);

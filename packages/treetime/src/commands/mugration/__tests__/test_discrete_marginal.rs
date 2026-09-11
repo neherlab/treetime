@@ -7,9 +7,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
-  use std::sync::Arc;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::assert_error;
 
@@ -123,11 +121,11 @@ mod tests {
 
     partition.attach_traits(&graph, &traits, &names)?;
 
-    let partition = Arc::new(RwLock::new(partition));
+    let mut partition = partition;
     let actual_log_lh = marginal_update(
       &graph,
       &profile_branch_lengths(&raw_branch_lengths),
-      std::slice::from_ref(&partition),
+      std::slice::from_mut(&mut partition),
     )?
     .value();
 
@@ -137,7 +135,7 @@ mod tests {
       "Log-likelihood must be non-positive: {actual_log_lh}"
     );
 
-    let partition = partition.read_arc();
+    let partition = &partition;
     let inner_profile = helpers::get_node_profile(&graph, &names, &partition, "inner");
     helpers::assert_profile_normalized(&inner_profile);
 

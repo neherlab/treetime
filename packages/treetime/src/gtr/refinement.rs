@@ -8,9 +8,8 @@ use argmin::core::{CostFunction, Error, Executor};
 use eyre::Report;
 use log::{debug, info, warn};
 use ndarray::Array1;
-use parking_lot::RwLock;
+use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
@@ -18,7 +17,7 @@ use treetime_primitives::LogLh;
 
 pub fn refine_gtr_iterative<N, E, P>(
   graph: &Graph<N, E, ()>,
-  partition: &Arc<RwLock<P>>,
+  partition: &RefCell<P>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   iterations: usize,
   fixed_pi: Option<&Array1<f64>>,
@@ -31,55 +30,55 @@ where
   E: GraphEdge,
   P: TransitionCounting<N, E> + PartitionMarginalPasses<N, E> + HasGtr,
 {
-  let n_states = partition.read_arc().gtr().pi.len();
+  let n_states = partition.borrow().gtr().pi.len();
   let options = InferGtrOptions {
     fixed_pi: fixed_pi.cloned(),
     pc,
     ..InferGtrOptions::default()
   };
 
-  let counts = partition.read_arc().count_transitions(graph, branch_lengths)?;
+  let counts = partition.borrow().count_transitions(graph, branch_lengths)?;
   let result = infer_gtr_impl(&counts, &options)?;
-  *partition.write_arc().gtr_mut() = build_gtr_from_inference(n_states, &result)?;
+  *partition.borrow_mut().gtr_mut() = build_gtr_from_inference(n_states, &result)?;
   debug!(
     "GTR refinement: initial inference, mu = {:.6}",
-    partition.read_arc().gtr().mu
+    partition.borrow().gtr().mu
   );
 
   if optimize_rate {
     optimize_gtr_rate(graph, partition, branch_lengths)?;
     debug!(
       "GTR refinement: initial rate optimization, mu = {:.6}",
-      partition.read_arc().gtr().mu
+      partition.borrow().gtr().mu
     );
   }
 
   for i in 0..iterations {
-    let counts = partition.read_arc().count_transitions(graph, branch_lengths)?;
+    let counts = partition.borrow().count_transitions(graph, branch_lengths)?;
     let result = infer_gtr_impl(&counts, &options)?;
-    *partition.write_arc().gtr_mut() = build_gtr_from_inference(n_states, &result)?;
+    *partition.borrow_mut().gtr_mut() = build_gtr_from_inference(n_states, &result)?;
 
     if optimize_rate {
       optimize_gtr_rate(graph, partition, branch_lengths)?;
     }
-    debug!(
-      "GTR refinement: iteration {i}, mu = {:.6}",
-      partition.read_arc().gtr().mu
-    );
+    debug!("GTR refinement: iteration {i}, mu = {:.6}", partition.borrow().gtr().mu);
   }
 
   if let Some(correction) = sampling_bias_correction {
-    partition.write_arc().gtr_mut().mu *= correction;
+    partition.borrow_mut().gtr_mut().mu *= correction;
     info!(
       "Applied sampling bias correction {correction:.4}, mu = {:.6}",
-      partition.read_arc().gtr().mu
+      partition.borrow().gtr().mu
     );
   }
 
-  let partitions = std::slice::from_ref(partition);
-  let log_lh = marginal_update(graph, &profile_branch_lengths(branch_lengths), partitions)?;
+  let log_lh = marginal_update(
+    graph,
+    &profile_branch_lengths(branch_lengths),
+    std::slice::from_mut(&mut *partition.borrow_mut()),
+  )?;
 
-  let guard = partition.read_arc();
+  let guard = partition.borrow();
   let gtr = guard.gtr();
   info!(
     "GTR refinement: final log likelihood = {:.4}, mu = {:.6}, pi = {:?}",
@@ -102,7 +101,7 @@ fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<
 
 fn optimize_gtr_rate<N, E, P>(
   graph: &Graph<N, E, ()>,
-  partition: &Arc<RwLock<P>>,
+  partition: &RefCell<P>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report>
 where
@@ -110,14 +109,12 @@ where
   E: GraphEdge,
   P: PartitionMarginalPasses<N, E> + HasGtr,
 {
-  let old_mu = partition.read_arc().gtr().mu;
+  let old_mu = partition.borrow().gtr().mu;
   let sqrt_old_mu = old_mu.sqrt();
   let root_key = graph.get_exactly_one_root()?.read_arc().key();
 
   let lo = 0.01 * sqrt_old_mu;
   let hi = 100.0 * sqrt_old_mu;
-
-  let partitions = std::slice::from_ref(partition);
 
   // Branch lengths stay fixed while only the substitution rate is optimized, so derive the profile
   // map once and route the same map into every backward pass the Brent search evaluates.
@@ -126,7 +123,6 @@ where
   let cost_fn = GtrRateCostFn {
     graph,
     partition,
-    partitions,
     branch_lengths,
     root_key,
   };
@@ -155,11 +151,11 @@ where
     cost_fn.neg_log_lh(optimal_sqrt_mu);
     debug!(
       "GTR rate optimization: optimized mu = {:.6} (from {:.6})",
-      partition.read_arc().gtr().mu,
+      partition.borrow().gtr().mu,
       old_mu
     );
   } else {
-    partition.write_arc().gtr_mut().mu = old_mu;
+    partition.borrow_mut().gtr_mut().mu = old_mu;
     debug!("GTR rate optimization: skipped (no bracket), keeping mu = {old_mu:.6}");
   }
 
@@ -168,8 +164,7 @@ where
 
 struct GtrRateCostFn<'a, N: GraphNode, E: GraphEdge, P> {
   graph: &'a Graph<N, E, ()>,
-  partition: &'a Arc<RwLock<P>>,
-  partitions: &'a [Arc<RwLock<P>>],
+  partition: &'a RefCell<P>,
   branch_lengths: BTreeMap<GraphEdgeKey, f64>,
   root_key: treetime_graph::node::GraphNodeKey,
 }
@@ -182,20 +177,18 @@ where
 {
   fn neg_log_lh(&self, sqrt_mu: f64) -> f64 {
     {
-      let mut guard = self.partition.write_arc();
-      guard.gtr_mut().mu = sqrt_mu * sqrt_mu;
-      guard.reset_node_log_likelihoods();
-    }
-    match marginal_backward(self.graph, &self.branch_lengths, self.partitions) {
-      Ok(()) => -self.partition.read_arc().get_log_lh(self.root_key),
-      Err(e) => {
+      let mut p = self.partition.borrow_mut();
+      p.gtr_mut().mu = sqrt_mu * sqrt_mu;
+      p.reset_node_log_likelihoods();
+      if let Err(e) = marginal_backward(self.graph, &self.branch_lengths, std::slice::from_mut(&mut *p)) {
         warn!(
           "GTR rate optimization: backward pass failed at mu={:.6}: {e}",
           sqrt_mu * sqrt_mu
         );
-        f64::INFINITY
-      },
+        return f64::INFINITY;
+      }
     }
+    -self.partition.borrow().get_log_lh(self.root_key)
   }
 }
 

@@ -1,4 +1,4 @@
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
 use crate::timetree::convergence::likelihood::{
   compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
 };
@@ -53,7 +53,7 @@ impl TimetreeOptimizer {
     n_resolved: usize,
     time_change: NodeTimeChange,
     graph: &GraphTimetree,
-    partitions: &[PartitionTimetreeRef],
+    partitions: &[PartitionTimetree],
     state: &TimetreeState,
     coalescent_tc: Option<&Distribution>,
   ) -> Result<(), Report> {

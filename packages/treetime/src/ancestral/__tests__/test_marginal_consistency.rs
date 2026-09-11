@@ -20,11 +20,10 @@ mod tests {
   use indoc::indoc;
 
   use ndarray::{Array1, array};
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::slice::from_ref;
-  use std::sync::{Arc, LazyLock};
+  use std::slice::{from_mut, from_ref};
+  use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -95,17 +94,20 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     gtr: GTR,
-  ) -> Result<(f64, Arc<RwLock<PartitionMarginalDense>>), Report> {
+  ) -> Result<(f64, PartitionMarginalDense), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr,
-      alphabet,
-      get_common_length(aln)?,
-    )));
-    let partitions = [Arc::clone(&partition)];
+    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
+    let mut partitions = [partition];
 
-    let log_lh = initialize_marginal(graph, &profile_branch_lengths(branch_lengths), &partitions, aln, names)?.value();
+    let log_lh = initialize_marginal(
+      graph,
+      &profile_branch_lengths(branch_lengths),
+      &mut partitions,
+      aln,
+      names,
+    )?
+    .value();
+    let [partition] = partitions;
     Ok((log_lh, partition))
   }
 
@@ -128,13 +130,14 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     gtr: GTR,
-  ) -> Result<(f64, Arc<RwLock<PartitionMarginalSparse>>), Report> {
+  ) -> Result<(f64, PartitionMarginalSparse), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
-    let partition = Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, graph)?));
-    let partitions = [Arc::clone(&partition)];
+    let partition = fitch.into_marginal_sparse(gtr, graph)?;
+    let mut partitions = [partition];
 
-    let log_lh = marginal_update(graph, &profile_branch_lengths(branch_lengths), &partitions)?.value();
+    let log_lh = marginal_update(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?.value();
+    let [partition] = partitions;
     Ok((log_lh, partition))
   }
 
@@ -212,8 +215,8 @@ mod tests {
     let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("Root node not found"))?;
     let ab_key = find_node_key_by_name(&graph, &names, "AB").ok_or_else(|| make_report!("AB node not found"))?;
 
-    let dense = dense_partition.read_arc();
-    let sparse = sparse_partition.read_arc();
+    let dense = &dense_partition;
+    let sparse = &sparse_partition;
 
     for node_key in [root_key, ab_key] {
       let dense_node = &dense.data.nodes[&node_key];
@@ -283,8 +286,8 @@ mod tests {
 
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
-    let dense = dense_partition.read_arc();
-    let sparse = sparse_partition.read_arc();
+    let dense = &dense_partition;
+    let sparse = &sparse_partition;
 
     for node_data in dense.data.nodes.values() {
       if !node_data.profile.dis.is_empty() {
@@ -345,17 +348,17 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (log_lh_dense, dense_partition) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
-    let (log_lh_sparse, sparse_partition) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
+    let (log_lh_dense, mut dense_partition) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
+    let (log_lh_sparse, mut sparse_partition) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
 
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
-    let dense_sequences = reconstruct_named_sequences(&graph, &names, from_ref(&dense_partition))?;
-    let sparse_sequences = reconstruct_named_sequences(&graph, &names, from_ref(&sparse_partition))?;
+    let dense_sequences = reconstruct_named_sequences(&graph, &names, from_mut(&mut dense_partition))?;
+    let sparse_sequences = reconstruct_named_sequences(&graph, &names, from_mut(&mut sparse_partition))?;
     assert_eq!(dense_sequences, sparse_sequences);
 
-    let dense_branch_subs = edge_subs_by_edge_name(&graph, &names, &*dense_partition.read_arc())?;
-    let sparse_branch_subs = edge_subs_by_edge_name(&graph, &names, &*sparse_partition.read_arc())?;
+    let dense_branch_subs = edge_subs_by_edge_name(&graph, &names, &dense_partition)?;
+    let sparse_branch_subs = edge_subs_by_edge_name(&graph, &names, &sparse_partition)?;
     assert_eq!(dense_branch_subs, sparse_branch_subs);
 
     Ok(())
@@ -364,7 +367,7 @@ mod tests {
   fn reconstruct_named_sequences<P>(
     graph: &GraphAncestral,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    partitions: &[Arc<RwLock<P>>],
+    partitions: &mut [P],
   ) -> Result<BTreeMap<String, String>, Report>
   where
     P: crate::partition::traits::PartitionMarginalOps<
@@ -470,25 +473,20 @@ mod tests {
       &alphabet,
     )?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr,
-      alphabet,
-      get_common_length(&aln)?,
-    )));
-    let partitions = [Arc::clone(&partition)];
+    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
+    let mut partitions = [partition];
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?
     .value();
 
     // Verify all marginal posterior rows sum to 1.0
-    let partition = partition.read_arc();
+    let partition = &partitions[0];
     for (node_key, node_data) in &partition.data.nodes {
       if node_data.profile.dis.is_empty() {
         continue;

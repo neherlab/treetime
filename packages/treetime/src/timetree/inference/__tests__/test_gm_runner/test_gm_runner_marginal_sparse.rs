@@ -17,13 +17,11 @@ mod tests {
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
 
-  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
+  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
   use eyre::Report;
 
-  use parking_lot::RwLock;
   use rstest::rstest;
 
-  use std::sync::Arc;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   use treetime_utils::pretty_assert_map_abs_diff_eq;
@@ -59,12 +57,12 @@ mod tests {
 
     let aln = load_alignment_for_dataset(dataset)?;
     let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln, &names)?;
-    let sparse_partition = Arc::new(RwLock::new(PartitionTimetree::Sparse(
+    let sparse_partition = PartitionTimetree::Sparse(
       fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-    )));
+    );
 
-    let partitions: PartitionTimetreeAllVec = vec![sparse_partition];
-    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &partitions, &aln, &names)?.value();
+    let mut partitions: Vec<PartitionTimetree> = vec![sparse_partition];
+    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions, &aln, &names)?.value();
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
@@ -89,8 +87,7 @@ mod tests {
     let run_names = names.clone();
     run_timetree(
       &mut graph,
-      &partitions,
-      &run_branch_lengths,
+      &mut partitions,      &run_branch_lengths,
       &run_names,
       &clock_model,
       None,

@@ -20,11 +20,9 @@ mod tests {
   use approx::assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::Value;
-  use std::sync::Arc;
   use tempfile::TempDir;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::graph::TreeWriteKind;
@@ -625,7 +623,7 @@ mod tests {
         );
         aa
       });
-      let ancestral_partition = AncestralPartition::Fitch(Arc::new(RwLock::new(partition)));
+      let ancestral_partition = AncestralPartition::Fitch(partition);
       let data = AncestralGraphData::new(None, GtrModelName::JC69, vec![false; 3], aa_node_data);
       Ok((graph.map_data(data), names, branch_lengths, Some(ancestral_partition)))
     }

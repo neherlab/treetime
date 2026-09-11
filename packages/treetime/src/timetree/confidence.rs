@@ -2,7 +2,7 @@ use crate::clock::clock_model::{ClockModel, ClockModelStats};
 use crate::clock::clock_state::ClockState;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::make_error;
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
 use crate::timetree::inference::runner::run_timetree;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
@@ -57,7 +57,7 @@ const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5; // 0.95
 /// onto the graph.
 pub fn compute_rate_susceptibility(
   graph: &mut GraphTimetree,
-  partitions: &[PartitionTimetreeRef],
+  partitions: &[PartitionTimetree],
   clock_model: &ClockModel,
   coalescent: Option<&CoalescentModel>,
   rate_std: f64,

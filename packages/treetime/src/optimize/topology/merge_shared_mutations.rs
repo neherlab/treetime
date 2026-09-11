@@ -8,9 +8,7 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
-use parking_lot::RwLock;
 use std::collections::{BTreeMap, HashSet};
-use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::iterator::difference::iterator_difference;
@@ -30,7 +28,7 @@ use treetime_utils::iterator::difference::iterator_difference;
 /// of new internal nodes created.
 pub fn merge_shared_mutation_branches(
   graph: &mut GraphAncestral,
-  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  partitions: &mut [PartitionMarginalSparse],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
   let mut total_merged = 0;
@@ -64,7 +62,7 @@ pub fn merge_shared_mutation_branches(
 /// Returns number of new internal nodes created.
 pub(crate) fn merge_single_polytomy(
   graph: &mut GraphAncestral,
-  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  partitions: &mut [PartitionMarginalSparse],
   node_key: GraphNodeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
@@ -139,14 +137,10 @@ type MutationIndex = BTreeMap<(usize, MutationKey), Vec<GraphEdgeKey>>;
 /// Each substitution and each indel on each edge is entered under its (partition, key) bucket.
 /// Buckets with a single entry contribute no pair scores; buckets with >= 2 entries contribute
 /// +1 to all pairwise scores within the bucket.
-fn build_mutation_index(
-  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-  child_edges: &[GraphEdgeKey],
-) -> MutationIndex {
+fn build_mutation_index(partitions: &[PartitionMarginalSparse], child_edges: &[GraphEdgeKey]) -> MutationIndex {
   let mut index: MutationIndex = BTreeMap::new();
   for &edge_key in child_edges {
     for (pi, partition) in partitions.iter().enumerate() {
-      let partition = partition.read_arc();
       let empty_subs: &[Sub] = &[];
       let edge = partition.edges.get(&edge_key);
       for sub in edge.map_or(empty_subs, |e| e.fitch_subs()) {
@@ -272,7 +266,7 @@ struct ChildEdgeData {
 /// same mechanism (back-mutations and parallel substitutions).
 fn merge_sibling_group(
   graph: &mut GraphAncestral,
-  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  partitions: &mut [PartitionMarginalSparse],
   parent_key: GraphNodeKey,
   group: &MergeGroup,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -287,7 +281,6 @@ fn merge_sibling_group(
     .iter()
     .enumerate()
     .map(|(pi, partition)| {
-      let partition = partition.read_arc();
       let empty_subs: &[Sub] = &[];
       let empty_indels: &[InDel] = &[];
       group
@@ -312,8 +305,8 @@ fn merge_sibling_group(
     })
     .collect();
 
-  let total_alignment_length: usize = partitions.iter().map(|p| p.read_arc().length).sum();
-  let n_states = partitions[0].read_arc().alphabet.n_canonical();
+  let total_alignment_length: usize = partitions.iter().map(|p| p.length).sum();
+  let n_states = partitions[0].alphabet.n_canonical();
   let jc_bl = |count: usize| -> f64 {
     if total_alignment_length > 0 {
       jukes_cantor_distance(count as f64 / total_alignment_length as f64, n_states)
@@ -351,9 +344,7 @@ fn merge_sibling_group(
     new_child_edge_keys.push(new_ek);
   }
 
-  for (pi, partition_arc) in partitions.iter().enumerate() {
-    let mut partition = partition_arc.write_arc();
-
+  for (pi, partition) in partitions.iter_mut().enumerate() {
     let mut new_node = SparseNodePartition::empty(&partition.alphabet);
     new_node.seq.composition = partition.nodes[&parent_key].seq.composition.clone();
     partition.nodes.entry(new_node_key).or_insert(new_node);

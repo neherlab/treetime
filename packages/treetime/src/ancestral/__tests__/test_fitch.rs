@@ -18,10 +18,9 @@ mod tests {
   use indoc::indoc;
   use itertools::Itertools;
   use maplit::btreemap;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::sync::{Arc, LazyLock};
+  use std::sync::LazyLock;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::reroot::{
     RerootChanges, apply_reroot_topology, record_split, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
@@ -246,10 +245,10 @@ mod tests {
       edges: btreemap! {},
     };
     compress_sequences(&graph, &mut partition, &aln, &names)?;
-    let partitions_parsimony = [Arc::new(RwLock::new(partition))];
+    let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_fitch(&graph, false, &partitions_parsimony, |node, seq| {
+    ancestral_reconstruction_fitch(&graph, false, &mut partitions_parsimony, |node, seq| {
       actual.insert(names[&node.key].clone(), seq.to_string());
       Ok(())
     })?;
@@ -324,10 +323,10 @@ mod tests {
       edges: btreemap! {},
     };
     compress_sequences(&graph, &mut partition, &aln, &names)?;
-    let partitions_parsimony = [Arc::new(RwLock::new(partition))];
+    let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_fitch(&graph, true, &partitions_parsimony, |node, seq| {
+    ancestral_reconstruction_fitch(&graph, true, &mut partitions_parsimony, |node, seq| {
       actual.insert(names[&node.key].clone(), seq.to_string());
       Ok(())
     })?;
@@ -1193,8 +1192,8 @@ mod tests {
     let sparse = fitch.into_marginal_sparse(gtr, &graph)?;
 
     // Run initial marginal pass before reroot
-    let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![Arc::new(RwLock::new(sparse))];
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    let mut partitions: Vec<PartitionMarginalSparse> = vec![sparse];
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
 
     // Reroot on AB->A
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
@@ -1223,12 +1222,12 @@ mod tests {
       inverted_edge_keys,
     };
 
-    partitions[0].write_arc().apply_reroot(&changes)?;
+    partitions[0].apply_reroot(&changes)?;
 
     // Run marginal pass after reroot
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
 
-    let partition = partitions[0].read_arc();
+    let partition = &partitions[0];
     let root_edge_totals: Vec<(_, usize)> = graph
       .get_edges()
       .iter()

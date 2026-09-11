@@ -2,9 +2,7 @@ use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
-use parking_lot::RwLock;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 
 /// Collapse a single edge, updating graph topology and partition state.
@@ -34,8 +32,8 @@ use treetime_graph::edge::GraphEdgeKey;
 /// [`compose_substitutions`] for the exact composition semantics.
 pub fn collapse_edge(
   graph: &mut GraphAncestral,
-  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+  sparse_partitions: &mut [PartitionMarginalSparse],
+  dense_partitions: &mut [PartitionMarginalDense],
   edge_key: GraphEdgeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
@@ -56,8 +54,7 @@ pub fn collapse_edge(
     // Compose substitutions and merge indels on each sparse partition.
     // Each graph edge is expected to have a corresponding partition entry (populated
     // by `compress_sequences`); strict indexing surfaces any invariant violation.
-    for partition in sparse_partitions {
-      let mut partition = partition.write_arc();
+    for partition in sparse_partitions.iter_mut() {
       let removed_edge_data = partition.edges[&edge_key].clone();
       let child_edge = partition.edges.entry(new_edge_key).or_default();
       let merged_subs = removed_edge_data.chain_fitch_subs(child_edge.fitch_subs())?;
@@ -69,13 +66,11 @@ pub fn collapse_edge(
   // Drop stale entries for the removed node and removed edge in every partition.
   // Downstream passes (e.g. `marginal_update`) recompute any state they need from
   // the remaining entries.
-  for partition in sparse_partitions {
-    let mut partition = partition.write_arc();
+  for partition in sparse_partitions.iter_mut() {
     partition.nodes.remove(&target_node_key);
     partition.edges.remove(&edge_key);
   }
-  for partition in dense_partitions {
-    let mut partition = partition.write_arc();
+  for partition in dense_partitions.iter_mut() {
     partition.data.nodes.remove(&target_node_key);
     partition.data.edges.remove(&edge_key);
   }

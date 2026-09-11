@@ -6,8 +6,7 @@ use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::payload::ancestral::GraphAncestral;
 use crate::seq::alignment::get_common_length;
 use eyre::Report;
-use parking_lot::RwLock;
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 use treetime_io::fasta::read_many_fasta_str;
 use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -25,12 +24,12 @@ pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> 
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
   let length = get_common_length(&aln)?;
   let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
-  let partitions = [Arc::new(RwLock::new(partition))];
+  let mut partitions = [partition];
 
   initialize_marginal(
     &graph,
     &profile_branch_lengths(&branch_lengths),
-    &partitions,
+    &mut partitions,
     &aln,
     &names,
   )
@@ -50,7 +49,7 @@ pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) ->
 
   let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
   let partition = fitch.into_marginal_sparse(gtr, &graph)?;
-  let partitions = [Arc::new(RwLock::new(partition))];
+  let mut partitions = [partition];
 
-  marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions).map(|log_lh| log_lh.value())
+  marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions).map(|log_lh| log_lh.value())
 }

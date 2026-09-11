@@ -14,8 +14,7 @@ pub mod tests {
   use eyre::Report;
   use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
-  use parking_lot::RwLock;
-  use std::sync::{Arc, LazyLock};
+  use std::sync::LazyLock;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -61,7 +60,7 @@ pub mod tests {
     newick: &str,
     aln_str: &str,
     gtr: GTR,
-  ) -> Result<(f64, [Arc<RwLock<PartitionMarginalDense>>; 1]), Report> {
+  ) -> Result<(f64, [PartitionMarginalDense; 1]), Report> {
     let NwkParse {
       graph,
       names,
@@ -72,17 +71,12 @@ pub mod tests {
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr,
-      alphabet,
-      get_common_length(&aln)?,
-    )))];
+    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)];
 
     let log_lh = initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?
@@ -95,7 +89,7 @@ pub mod tests {
     newick: &str,
     aln_str: &str,
     gtr: GTR,
-  ) -> Result<(f64, [Arc<RwLock<PartitionMarginalSparse>>; 1]), Report> {
+  ) -> Result<(f64, [PartitionMarginalSparse; 1]), Report> {
     let NwkParse {
       graph,
       names,
@@ -107,8 +101,8 @@ pub mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let partitions = [Arc::new(RwLock::new(fitch.into_marginal_sparse(gtr, &graph)?))];
-    let log_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    let mut partitions = [fitch.into_marginal_sparse(gtr, &graph)?];
+    let log_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
     Ok((log_lh, partitions))
   }
 }

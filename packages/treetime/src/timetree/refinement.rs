@@ -5,7 +5,7 @@ use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
 use crate::partition::traits::{PartitionMarginalPasses, PartitionTimetreeOps};
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
@@ -26,7 +26,7 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
 pub(crate) struct Refinement<'a> {
   pub graph: &'a mut GraphTimetree,
-  pub partitions: &'a [PartitionTimetreeRef],
+  pub partitions: &'a mut [PartitionTimetree],
   pub clock_model: &'a mut ClockModel,
   pub clock_params: &'a ClockParams,
   pub branch_params: &'a BranchPointOptimizationParams,
@@ -98,7 +98,7 @@ impl Refinement<'_> {
     self
       .partitions
       .iter()
-      .map(|partition| partition.read_arc().get_sequence_length())
+      .map(|partition| partition.get_sequence_length())
       .sum()
   }
 
@@ -157,8 +157,8 @@ impl Refinement<'_> {
     // Reset the value-resident edge fields for the new topology, the counterpart of the payload reset
     // `prepare_tree_after_topology_change` performs on the transitional fields.
     self.state.reset_date_edges_for_topology_change(self.graph);
-    for partition in self.partitions {
-      partition.write_arc().reconcile_topology(self.graph);
+    for partition in self.partitions.iter_mut() {
+      partition.reconcile_topology(self.graph);
     }
 
     // Re-parenting invalidates the committed lengths, which describe a parent-child pair that no

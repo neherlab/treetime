@@ -2,6 +2,7 @@
 mod tests {
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::run_loop::optimize_partition_view;
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use rstest::rstest;
@@ -25,14 +26,15 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(tree_newick)?;
     let graph: GraphAncestral = graph;
 
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
 
     // Run multiple optimization iterations
     for _ in 0..10 {
       run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
     }
 
-    let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions, &branch_lengths)?;
+    let final_lh = compute_total_lh(&graph, &mut dense_partitions, &mut sparse_partitions, &branch_lengths)?;
 
     // Final log-lh should be in reasonable range
     assert!(final_lh < 0.0, "Log-LH should be negative: {final_lh}");
@@ -66,14 +68,15 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(tree_newick)?;
     let graph: GraphAncestral = graph;
 
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
 
     // Run optimization iterations
     for _ in 0..10 {
       run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
     }
 
-    let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions, &branch_lengths)?;
+    let final_lh = compute_total_lh(&graph, &mut dense_partitions, &mut sparse_partitions, &branch_lengths)?;
 
     // Final log-lh should be negative and reasonable
     assert!(final_lh < 0.0, "Log-LH should be negative: {final_lh}");
@@ -107,14 +110,15 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(tree_newick)?;
     let graph: GraphAncestral = graph;
 
-    let (dense_partitions, sparse_partitions, mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
 
     // Run optimization iterations
     for _ in 0..10 {
       run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
     }
 
-    let final_lh = compute_total_lh(&graph, &dense_partitions, &sparse_partitions, &branch_lengths)?;
+    let final_lh = compute_total_lh(&graph, &mut dense_partitions, &mut sparse_partitions, &branch_lengths)?;
 
     // Final log-lh should be negative and reasonable
     assert!(final_lh < 0.0, "Log-LH should be negative: {final_lh}");

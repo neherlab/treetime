@@ -1,4 +1,4 @@
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
 use crate::partition::traits::PartitionMarginalOps;
 use log::debug;
 use std::collections::BTreeMap;
@@ -43,7 +43,7 @@ pub fn count_sequence_changes(previous: &AncestralStateSnapshot, current: &Ances
 }
 
 /// Snapshot current ancestral sequences for all internal nodes across partitions.
-pub fn capture_ancestral_states(graph: &GraphTimetree, partitions: &[PartitionTimetreeRef]) -> AncestralStateSnapshot {
+pub fn capture_ancestral_states(graph: &GraphTimetree, partitions: &[PartitionTimetree]) -> AncestralStateSnapshot {
   if partitions.is_empty() {
     return vec![];
   }
@@ -53,7 +53,6 @@ pub fn capture_ancestral_states(graph: &GraphTimetree, partitions: &[PartitionTi
   partitions
     .iter()
     .map(|partition| {
-      let partition = partition.read_arc();
       internal_keys
         .iter()
         .map(|&key| (key, partition.extract_ancestral_sequence(key)))

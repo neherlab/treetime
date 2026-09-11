@@ -7,7 +7,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
-  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeRef};
+  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
   use crate::payload::timetree::NodeTimetree;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::convergence::likelihood::{
@@ -19,7 +19,6 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use ndarray::array;
-  use parking_lot::RwLock;
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
@@ -144,7 +143,7 @@ mod tests {
       Ok((graph, root_key))
     }
 
-    pub fn partition_with_root_log_lh(root_key: GraphNodeKey, log_lh: f64) -> Result<PartitionTimetreeRef, Report> {
+    pub fn partition_with_root_log_lh(root_key: GraphNodeKey, log_lh: f64) -> Result<PartitionTimetree, Report> {
       let mut partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::default(), 1);
       partition.data.nodes.insert(
         root_key,
@@ -153,7 +152,7 @@ mod tests {
           profile: DenseSeqDistribution::new(array![[1.0, 0.0, 0.0, 0.0]], LogLh::new(log_lh)),
         },
       );
-      Ok(Arc::new(RwLock::new(PartitionTimetree::Dense(partition))))
+      Ok(PartitionTimetree::Dense(partition))
     }
 
     pub fn positional_graph() -> Result<(GraphTimetree, BTreeMap<GraphNodeKey, Option<String>>), Report> {

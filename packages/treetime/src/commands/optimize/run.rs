@@ -18,10 +18,8 @@ use crate::seq::gap_fill::apply_gap_fill;
 use crate::seq::mutation::MutationTrack;
 use eyre::Report;
 use log::info;
-use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta;
@@ -202,13 +200,13 @@ pub fn run_optimize(
 /// substitutions the output writers read off the optimize partition.
 pub(crate) fn gather_optimize_output_maps<D: Send + Sync>(
   graph: &GraphAncestral<D>,
-  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+  sparse_partitions: &[PartitionMarginalSparse],
+  dense_partitions: &[PartitionMarginalDense],
 ) -> Result<OptimizeOutputMaps, Report> {
   if let Some(partition) = dense_partitions.first() {
-    gather_optimize_partition_maps(graph, &*partition.read_arc())
+    gather_optimize_partition_maps(graph, partition)
   } else if let Some(partition) = sparse_partitions.first() {
-    gather_optimize_partition_maps(graph, &*partition.read_arc())
+    gather_optimize_partition_maps(graph, partition)
   } else {
     Ok(OptimizeOutputMaps::default())
   }

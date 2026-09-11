@@ -48,11 +48,8 @@ mod tests {
   use lazy_static::lazy_static;
 
   use ndarray::{Array1, Array2};
-  use parking_lot::RwLock;
   use rstest::rstest;
   use std::path::PathBuf;
-  use std::slice::from_ref;
-  use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
 
@@ -129,7 +126,7 @@ mod tests {
         ..
       } = nwk_read_file(&tree_path)?;
       let graph: GraphAncestral = graph;
-      let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
+      let mut partition = PartitionMarginalDense::new(
         0,
         jc69(JC69Params {
           alphabet: AlphabetName::Nuc,
@@ -137,18 +134,18 @@ mod tests {
         })?,
         DENSE_NUC_ALPHABET.clone(),
         get_common_length(&aln)?,
-      )));
+      );
       initialize_marginal(
         &graph,
         &profile_branch_lengths(&branch_lengths),
-        from_ref(&partition),
+        std::slice::from_mut(&mut partition),
         &aln,
         &names,
       )?
       .value();
-      let counts = partition.read_arc().count_transitions(&graph, &branch_lengths)?;
+      let counts = partition.count_transitions(&graph, &branch_lengths)?;
       let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
-      let n_states = partition.read_arc().alphabet.n_canonical();
+      let n_states = partition.alphabet.n_canonical();
       GTR::new(GTRParams {
         n_states,
         mu,

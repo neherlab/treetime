@@ -17,7 +17,7 @@ use crate::commands::timetree::result::{
 };
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
+use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
 use crate::partition::traits::{EdgeMutationCommentProvider, PartitionBranchOps};
 use crate::seq::div::compute_edge_mutation_counts;
 use crate::seq::mutation::MutationTrack;
@@ -119,7 +119,7 @@ pub fn run_timetree_estimation(
     branch_lengths: input_data.branch_lengths,
   };
 
-  let output = pipeline::run(&params, input, &parse_names, tracelog, progress)?;
+  let mut output = pipeline::run(&params, input, &parse_names, tracelog, progress)?;
 
   // Name any unnamed internal node before serialization, and capture the resulting node-name map.
   // Rerooting introduces a fresh root node that the load-time naming pass never saw, and polytomy
@@ -180,14 +180,14 @@ pub fn run_timetree_estimation(
       marginal_update(
         &output.graph,
         &timetree_branch_lengths(&output.graph, &branch_lengths_opt, &output.clock_branch_lengths),
-        &output.partitions,
+        &mut output.partitions,
       )?;
       let mut rng = get_random_number_generator(params.seed);
       ancestral_reconstruction_marginal(
         &output.graph,
         params.include_leaves,
         params.impute_missing_data,
-        &output.partitions,
+        &mut output.partitions,
         SampleMode::Argmax,
         &mut rng,
         |key, seq| match writer.as_mut() {
@@ -212,8 +212,7 @@ pub fn run_timetree_estimation(
            incompatible with --branch-length-mode=input"
         );
       }
-      let guard = output.partitions[0].read_arc();
-      Some(compute_edge_mutation_counts(&output.graph, &*guard)?)
+      Some(compute_edge_mutation_counts(&output.graph, &output.partitions[0])?)
     },
     DivergenceUnits::MutationsPerSite => None,
   };
@@ -457,12 +456,11 @@ fn gather_timetree_outputs(
 /// writers read off the timetree partition.
 pub(crate) fn gather_timetree_output_maps<D: Send + Sync>(
   graph: &GraphTimetree<D>,
-  partitions: &[PartitionTimetreeRef],
+  partitions: &[PartitionTimetree],
 ) -> Result<TimetreeOutputMaps, Report> {
   let Some(partition) = partitions.first() else {
     return Ok(TimetreeOutputMaps::default());
   };
-  let partition = partition.read_arc();
   let root_sequence = Some(partition.root_sequence(graph)?);
   let node_sequences = graph
     .get_nodes()

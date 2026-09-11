@@ -10,8 +10,6 @@ pub mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
 
-  use parking_lot::RwLock;
-  use std::sync::Arc;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   /// Run marginal ancestral reconstruction using dense representation.
@@ -36,9 +34,7 @@ pub mod tests {
   /// log-likelihood along with the populated partition for further inspection.
   ///
   /// Used by property tests to verify invariants of marginal ancestral reconstruction.
-  pub fn run_dense_marginal(
-    input: &MarginalTestInput,
-  ) -> Result<(f64, [Arc<RwLock<PartitionMarginalDense>>; 1]), Report> {
+  pub fn run_dense_marginal(input: &MarginalTestInput) -> Result<(f64, [PartitionMarginalDense; 1]), Report> {
     let NwkParse {
       graph,
       names,
@@ -49,17 +45,12 @@ pub mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&input.alignment)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      input.gtr.clone(),
-      alphabet,
-      length,
-    )))];
+    let mut partitions = [PartitionMarginalDense::new(0, input.gtr.clone(), alphabet, length)];
 
     let log_lh = initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &input.alignment,
       &names,
     )?
@@ -85,9 +76,7 @@ pub mod tests {
   ///
   /// Returns the log-likelihood and the populated partition. Used by property tests
   /// to verify that the sparse path produces results consistent with the dense path.
-  pub fn run_sparse_marginal(
-    input: &MarginalTestInput,
-  ) -> Result<(f64, [Arc<RwLock<PartitionMarginalSparse>>; 1]), Report> {
+  pub fn run_sparse_marginal(input: &MarginalTestInput) -> Result<(f64, [PartitionMarginalSparse; 1]), Report> {
     let NwkParse {
       graph,
       names,
@@ -99,10 +88,8 @@ pub mod tests {
     let length = get_common_length(&input.alignment)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &input.alignment, &names)?;
-    let partitions = [Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(input.gtr.clone(), &graph)?,
-    ))];
-    let log_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    let mut partitions = [fitch.into_marginal_sparse(input.gtr.clone(), &graph)?];
+    let log_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
     Ok((log_lh, partitions))
   }
 }

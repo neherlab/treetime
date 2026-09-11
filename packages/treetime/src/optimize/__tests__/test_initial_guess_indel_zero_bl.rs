@@ -4,6 +4,7 @@ mod tests {
   use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
+  use crate::optimize::run_loop::optimize_partition_view;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
@@ -11,9 +12,7 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
 
-  use parking_lot::RwLock;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -27,7 +26,13 @@ mod tests {
   fn test_initial_guess_auto_preserves_zero_bl_without_indels() -> Result<(), Report> {
     let (graph, partitions, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
 
-    initial_guess_mixed(&graph, &partitions, false, false, &mut branch_lengths)?;
+    initial_guess_mixed(
+      &graph,
+      &optimize_partition_view(&partitions, &[]),
+      false,
+      false,
+      &mut branch_lengths,
+    )?;
 
     // All edges should remain zero: no indels, zero is valid
     for edge_ref in graph.get_edges() {
@@ -39,15 +44,15 @@ mod tests {
 
   #[test]
   fn test_initial_guess_auto_overrides_zero_bl_with_indels() -> Result<(), Report> {
-    let (graph, partitions, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
+    let (graph, mut partitions, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
 
     // Inject an indel on the first edge
     let edge_key = graph.get_edges()[0].read_arc().key();
     {
-      let partition = partitions[0].write_arc();
+      let partition = &mut partitions[0];
       let edge_data = partition.data.edges[&edge_key].clone();
       drop(partition);
-      let mut partition = partitions[0].write_arc();
+      let partition = &mut partitions[0];
       let edge_entry = partition.data.edges.entry(edge_key).or_insert(edge_data);
       edge_entry.indels.push(InDel {
         range: (4, 7),
@@ -56,7 +61,13 @@ mod tests {
       });
     }
 
-    initial_guess_mixed(&graph, &partitions, false, false, &mut branch_lengths)?;
+    initial_guess_mixed(
+      &graph,
+      &optimize_partition_view(&partitions, &[]),
+      false,
+      false,
+      &mut branch_lengths,
+    )?;
 
     // The indel-bearing edge should now have a positive BL
     let bl = branch_lengths[&graph.get_edges()[0].read_arc().key()].unwrap_or(0.0);
@@ -81,7 +92,7 @@ mod tests {
     ) -> Result<
       (
         GraphAncestral,
-        Vec<Arc<RwLock<PartitionMarginalDense>>>,
+        Vec<PartitionMarginalDense>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
       Report,
@@ -106,22 +117,22 @@ mod tests {
       } = nwk_read_str(newick)?;
       let graph: GraphAncestral = graph;
 
-      let partitions = vec![Arc::new(RwLock::new(PartitionMarginalDense::new(
+      let mut partitions = vec![PartitionMarginalDense::new(
         0,
         jc69(JC69Params::default())?,
         alphabet,
         get_common_length(&aln)?,
-      )))];
+      )];
 
       initialize_marginal(
         &graph,
         &profile_branch_lengths(&branch_lengths),
-        &partitions,
+        &mut partitions,
         &aln,
         &names,
       )?
       .value();
-      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
 
       Ok((graph, partitions, branch_lengths))
     }

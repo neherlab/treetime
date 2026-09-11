@@ -15,10 +15,8 @@ use crate::seq::composition::Composition;
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
-use parking_lot::RwLock;
 use rayon::prelude::*;
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
 use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
@@ -374,7 +372,7 @@ where
 pub fn ancestral_reconstruction_fitch(
   graph: &GraphAncestral,
   include_leaves: bool,
-  partitions: &[Arc<RwLock<PartitionFitch>>],
+  partitions: &mut [PartitionFitch],
   mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral>, &Seq) -> Result<(), Report>,
 ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
   let mut node_sequences = BTreeMap::new();
@@ -386,7 +384,7 @@ pub fn ancestral_reconstruction_fitch(
 
 fn run_fitch_reconstruction(
   include_leaves: bool,
-  partitions: &[Arc<RwLock<PartitionFitch>>],
+  partitions: &mut [PartitionFitch],
   mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral>, &Seq) -> Result<(), Report>,
   node_sequences: &mut BTreeMap<GraphNodeKey, Seq>,
   node: &GraphNodeForward<NodeAncestral, EdgeAncestral>,
@@ -395,11 +393,10 @@ fn run_fitch_reconstruction(
     return Ok(());
   }
 
-  for partition in partitions {
-    let alphabet = &partition.read_arc().alphabet.clone(); // TODO: avoid clone
+  for partition in partitions.iter_mut() {
+    let alphabet = partition.alphabet.clone(); // TODO: avoid clone
 
     let mut sequence = if !node.is_root {
-      let partition = partition.read_arc();
       let (parent, edge) = get_exactly_one(&node.parent_keys).unwrap();
       let mut sequence = partition.nodes[parent].seq.sequence.clone();
       let edge_part = &partition.edges[edge];
@@ -417,11 +414,9 @@ fn run_fitch_reconstruction(
       }
       sequence
     } else {
-      let partition = partition.read_arc();
       partition.nodes[&node.key].seq.sequence.clone()
     };
 
-    let mut partition = partition.write_arc();
     let node_data = partition.nodes.get_mut(&node.key).unwrap();
     let seq = &mut node_data.seq;
 

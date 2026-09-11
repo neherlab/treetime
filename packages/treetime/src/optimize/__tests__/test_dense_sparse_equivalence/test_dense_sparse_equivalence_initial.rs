@@ -22,11 +22,11 @@ mod tests {
       branch_lengths: branch_lengths_dense,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
+    let mut dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
     let log_lh_dense = marginal_update(
       &graph_dense,
       &profile_branch_lengths(&branch_lengths_dense),
-      &dense_partitions,
+      &mut dense_partitions,
     )?
     .value();
 
@@ -37,11 +37,11 @@ mod tests {
       branch_lengths: branch_lengths_sparse,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
+    let mut sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
     let log_lh_sparse = marginal_update(
       &graph_sparse,
       &profile_branch_lengths(&branch_lengths_sparse),
-      &sparse_partitions,
+      &mut sparse_partitions,
     )?
     .value();
 
@@ -75,11 +75,11 @@ mod tests {
       branch_lengths: branch_lengths_dense,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
+    let mut dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
     let log_lh_dense = marginal_update(
       &graph_dense,
       &profile_branch_lengths(&branch_lengths_dense),
-      &dense_partitions,
+      &mut dense_partitions,
     )?
     .value();
 
@@ -90,11 +90,11 @@ mod tests {
       branch_lengths: branch_lengths_sparse,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
+    let mut sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
     let log_lh_sparse = marginal_update(
       &graph_sparse,
       &profile_branch_lengths(&branch_lengths_sparse),
-      &sparse_partitions,
+      &mut sparse_partitions,
     )?
     .value();
 

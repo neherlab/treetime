@@ -10,10 +10,8 @@ mod tests {
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -52,13 +50,13 @@ mod tests {
         ("V", "A", vec![sub(b'T', 0, b'A')]),
       ],
     );
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     assert_eq!(edge_subs(&p, h.un), vec![sub(b'C', 5, b'G'), sub(b'G', 10, b'A')]);
     assert_eq!(edge_subs(&p, h.nv), vec![sub(b'A', 0, b'T')]);
     assert_eq!(edge_subs(&p, h.nc), Vec::<Sub>::new());
@@ -92,13 +90,13 @@ mod tests {
         ("V", "A", vec![sub(b'T', 0, b'G')]),
       ],
     );
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     assert_eq!(edge_subs(&p, h.un), Vec::<Sub>::new());
     assert_eq!(edge_subs(&p, h.nv), vec![sub(b'A', 0, b'T')]);
     assert_eq!(edge_subs(&p, h.nc), vec![sub(b'A', 0, b'G')]);
@@ -128,18 +126,18 @@ mod tests {
         ("V", "A", vec![sub(b'T', 0, b'A')]),
       ],
     );
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
 
-    let before = helpers::total_subs(&graph, &sparse[0].read_arc());
+    let before = helpers::total_subs(&graph, &sparse[0]);
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
-    let after = helpers::total_subs(&graph, &sparse[0].read_arc());
+    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
+    let after = helpers::total_subs(&graph, &sparse[0]);
 
     assert_eq!(before, 2);
     assert_eq!(after, 1);
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     assert_eq!(edge_subs(&p, h.nv), vec![sub(b'A', 0, b'T')]);
     assert_eq!(edge_subs(&p, h.nc), Vec::<Sub>::new());
     Ok(())
@@ -174,10 +172,10 @@ mod tests {
         ("V", "A", vec![sub(b'T', 0, b'A')]),
       ],
     );
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let bl = |ek: GraphEdgeKey| branch_lengths[&ek].unwrap_or(0.0);
@@ -223,18 +221,18 @@ mod tests {
         ("V", "A", vec![sub(b'G', 5, b'C')]),
       ],
     );
-    let sparse = vec![p0, p1];
+    let mut sparse = vec![p0, p1];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let g0 = sparse[0].read_arc();
+    let g0 = &sparse[0];
     assert_eq!(edge_subs(&g0, h.un), vec![sub(b'G', 10, b'C')]);
     assert_eq!(edge_subs(&g0, h.nv), vec![sub(b'A', 0, b'T')]);
     assert_eq!(edge_subs(&g0, h.nc), Vec::<Sub>::new());
 
-    let g1 = sparse[1].read_arc();
+    let g1 = &sparse[1];
     assert_eq!(edge_subs(&g1, h.un), Vec::<Sub>::new());
     assert_eq!(edge_subs(&g1, h.nv), vec![sub(b'C', 5, b'G')]);
     assert_eq!(edge_subs(&g1, h.nc), Vec::<Sub>::new());
@@ -255,7 +253,7 @@ mod tests {
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
-    let partition = make_partition(
+    let mut partition = make_partition(
       &graph,
       &names,
       0,
@@ -268,17 +266,17 @@ mod tests {
     let del = InDel::del((20, 23), [c(b'A'), c(b'A'), c(b'A')].as_slice())?;
     let ins = InDel::ins((20, 23), [c(b'A'), c(b'A'), c(b'A')].as_slice())?;
     {
-      let mut p = partition.write_arc();
+      let p = &mut partition;
       p.edges.get_mut(&uv).unwrap().indels = vec![del.clone()];
       p.edges.get_mut(&va).unwrap().indels = vec![ins];
     }
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     assert_eq!(edge_indels(&p, h.un), Vec::<InDel>::new());
     assert_eq!(edge_indels(&p, h.nv), vec![del]);
     assert_eq!(edge_indels(&p, h.nc), Vec::<InDel>::new());
@@ -299,7 +297,7 @@ mod tests {
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
-    let partition = make_partition(
+    let mut partition = make_partition(
       &graph,
       &names,
       0,
@@ -312,17 +310,17 @@ mod tests {
     let parent_del = InDel::del((20, 25), [c(b'A'); 5].as_slice())?;
     let child_del = InDel::del((22, 28), [c(b'A'); 6].as_slice())?;
     {
-      let mut p = partition.write_arc();
+      let p = &mut partition;
       p.edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
       p.edges.get_mut(&va).unwrap().indels = vec![child_del];
     }
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     assert_eq!(edge_indels(&p, h.un), Vec::<InDel>::new());
     assert_eq!(edge_indels(&p, h.nv), vec![parent_del]);
 
@@ -347,7 +345,7 @@ mod tests {
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
-    let partition = make_partition(
+    let mut partition = make_partition(
       &graph,
       &names,
       0,
@@ -360,17 +358,17 @@ mod tests {
     let parent_del = InDel::del((20, 23), [c(b'A'); 3].as_slice())?;
     let child_del = InDel::del((50, 53), [c(b'A'); 3].as_slice())?;
     {
-      let mut p = partition.write_arc();
+      let p = &mut partition;
       p.edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
       p.edges.get_mut(&va).unwrap().indels = vec![child_del.clone()];
     }
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     assert_eq!(edge_indels(&p, h.un), vec![parent_del]);
     assert_eq!(edge_indels(&p, h.nv), Vec::<InDel>::new());
     assert_eq!(edge_indels(&p, h.nc), vec![child_del]);
@@ -410,11 +408,11 @@ mod tests {
         ("V", "C1", vec![sub(b'A', 3, b'G')]),
       ],
     );
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
 
-    slide_bifurcating_root_for_child(&sparse, root_key, root_v, root_s, v_c1)?;
+    slide_bifurcating_root_for_child(&mut sparse, root_key, root_v, root_s, v_c1)?;
 
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     assert_eq!(p.root_sequence[3], c(b'G'));
     assert_eq!(p.nodes[&root_key].seq.sequence[3], c(b'G'));
     assert_eq!(edge_subs(&p, root_s), Vec::<Sub>::new());
@@ -450,14 +448,21 @@ mod tests {
         ("V", "C1", vec![sub(b'A', 3, b'G')]),
       ],
     );
-    let sparse = vec![partition];
+    let mut sparse = vec![partition];
 
-    let before = helpers::total_subs(&graph, &sparse[0].read_arc());
-    slide_bifurcating_root_for_child(&sparse, root_key, root_v, root_s, v_c1)?;
-    let after_slide = helpers::total_subs(&graph, &sparse[0].read_arc());
+    let before = helpers::total_subs(&graph, &sparse[0]);
+    slide_bifurcating_root_for_child(&mut sparse, root_key, root_v, root_s, v_c1)?;
+    let after_slide = helpers::total_subs(&graph, &sparse[0]);
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &sparse, &no_dense(), root_v, v_c1, &mut branch_lengths)?;
-    let after_hoist = helpers::total_subs(&graph, &sparse[0].read_arc());
+    hoist_reverting_child(
+      &mut graph,
+      &mut sparse,
+      &mut no_dense(),
+      root_v,
+      v_c1,
+      &mut branch_lengths,
+    )?;
+    let after_hoist = helpers::total_subs(&graph, &sparse[0]);
 
     assert_eq!(before, 2);
     assert_eq!(after_slide, 2); // the slide moves a substitution, it does not remove one
@@ -481,7 +486,7 @@ mod tests {
       Sub::new(c(reff), pos, c(qry)).unwrap()
     }
 
-    pub fn no_dense() -> Vec<Arc<RwLock<PartitionMarginalDense>>> {
+    pub fn no_dense() -> Vec<PartitionMarginalDense> {
       vec![]
     }
 
@@ -542,7 +547,7 @@ mod tests {
       index: usize,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
-    ) -> Arc<RwLock<PartitionMarginalSparse>> {
+    ) -> PartitionMarginalSparse {
       let mut partition = PartitionMarginalSparse {
         index,
         gtr: jc69(JC69Params::default()).unwrap(),
@@ -578,7 +583,7 @@ mod tests {
           .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
       }
 
-      Arc::new(RwLock::new(partition))
+      partition
     }
   }
 }

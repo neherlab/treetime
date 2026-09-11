@@ -3,6 +3,7 @@ mod tests {
   use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::run_loop::optimize_partition_view;
   use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use rstest::rstest;
@@ -25,14 +26,14 @@ mod tests {
     let aln = gap_free_alignment()?;
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let partitions = setup_dense_only(&graph, &names, &aln, &branch_lengths)?;
+    let mut partitions = setup_dense_only(&graph, &names, &aln, &branch_lengths)?;
 
-    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
-      run_optimize_mixed(&graph, &partitions, method, &mut branch_lengths)?;
-      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+      run_optimize_mixed(&graph, &optimize_partition_view(&partitions, &[]), method, &mut branch_lengths)?;
+      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
       lh_history.push(lh);
     }
 
@@ -78,14 +79,14 @@ mod tests {
     let aln = gap_free_alignment()?;
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: GraphAncestral = graph;
-    let partitions = setup_sparse_only(&graph, &names, &aln, &branch_lengths)?;
+    let mut partitions = setup_sparse_only(&graph, &names, &aln, &branch_lengths)?;
 
-    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
-      run_optimize_mixed(&graph, &partitions, method, &mut branch_lengths)?;
-      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &partitions)?.value();
+      run_optimize_mixed(&graph, &optimize_partition_view(&[], &partitions), method, &mut branch_lengths)?;
+      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
       lh_history.push(lh);
     }
 

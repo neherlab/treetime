@@ -14,7 +14,6 @@ use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::warn;
 use maplit::btreeset;
-use parking_lot::RwLock;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -208,12 +207,11 @@ fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
 /// `edge_mutations` only for reached edges avoids touching an unpopulated edge.
 pub(crate) fn gather_prune_output_maps<D: Sync + Send>(
   graph: &GraphAncestral<D>,
-  partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  partitions: &[PartitionMarginalSparse],
 ) -> Result<PruneOutputMaps, Report> {
   let Some(partition) = partitions.first() else {
     return Ok(PruneOutputMaps::default());
   };
-  let partition = partition.read_arc();
   let root_sequence = Some(partition.root_sequence(graph)?);
   let node_sequences = graph
     .get_nodes()

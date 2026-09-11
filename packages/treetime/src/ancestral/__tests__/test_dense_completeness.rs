@@ -13,13 +13,11 @@ mod tests {
   use crate::seq::indel::InDel;
   use eyre::Report;
 
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
-  use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
-  fn setup_dense_with_unknowns() -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
+  fn setup_dense_with_unknowns() -> Result<(GraphAncestral, PartitionMarginalDense), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let fasta = "
 >A
@@ -42,17 +40,12 @@ NNGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      jc69(JC69Params::default())?,
-      alphabet,
-      length,
-    )));
+    let mut partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length);
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      std::slice::from_ref(&partition),
+      std::slice::from_mut(&mut partition),
       &aln,
       &names,
     )?
@@ -60,7 +53,7 @@ NNGTACGTAC
     Ok((graph, partition))
   }
 
-  fn setup_sparse_with_unknowns() -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalSparse>>), Report> {
+  fn setup_sparse_with_unknowns() -> Result<(GraphAncestral, PartitionMarginalSparse), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let fasta = "
 >A
@@ -84,13 +77,11 @@ NNGTACGTAC
     let length = get_common_length(&aln)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let partition = Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-    ));
+    let mut partition = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
     marginal_update(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      std::slice::from_ref(&partition),
+      std::slice::from_mut(&mut partition),
     )?
     .value();
     Ok((graph, partition))
@@ -99,7 +90,7 @@ NNGTACGTAC
   #[test]
   fn test_dense_completeness_non_char_tracked_on_leaves() -> Result<(), Report> {
     let (_, partition) = setup_dense_with_unknowns()?;
-    let p = partition.read_arc();
+    let p = &partition;
 
     // Find leaf A's node (has "NN" at positions 4-5)
     let leaf_a = p.data.nodes.values().find(|n| n.seq.unknown.contains(&(4, 6)));
@@ -117,7 +108,7 @@ NNGTACGTAC
   #[test]
   fn test_dense_completeness_effective_length_subtracts_unknowns() -> Result<(), Report> {
     let (graph, partition) = setup_dense_with_unknowns()?;
-    let p = partition.read_arc();
+    let p = &partition;
 
     // Every leaf has 2 N positions. Leaf edges have the leaf's unknowns in
     // their non_char, reducing effective length below 10. Internal edges may
@@ -146,8 +137,8 @@ NNGTACGTAC
     let (graph_d, partition_d) = setup_dense_with_unknowns()?;
     let (graph_s, partition_s) = setup_sparse_with_unknowns()?;
 
-    let pd = partition_d.read_arc();
-    let ps = partition_s.read_arc();
+    let pd = &partition_d;
+    let ps = &partition_s;
 
     // Both graphs have same topology, edges in same order
     let dense_edges = graph_d.get_edges();
@@ -170,7 +161,7 @@ NNGTACGTAC
     Ok(())
   }
 
-  fn setup_dense_with_gaps() -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalDense>>), Report> {
+  fn setup_dense_with_gaps() -> Result<(GraphAncestral, PartitionMarginalDense), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let fasta = "
 >A
@@ -193,17 +184,12 @@ ACGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let partition = Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      jc69(JC69Params::default())?,
-      alphabet,
-      length,
-    )));
+    let mut partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length);
 
     initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      std::slice::from_ref(&partition),
+      std::slice::from_mut(&mut partition),
       &aln,
       &names,
     )?
@@ -214,7 +200,7 @@ ACGTACGTAC
   #[test]
   fn test_dense_completeness_indels_populated() -> Result<(), Report> {
     let (graph, partition) = setup_dense_with_gaps()?;
-    let p = partition.read_arc();
+    let p = &partition;
 
     // Alignment: A=ACGT--ACGT, B=ACGTACACGT, C=AC--ACGTAC, D=ACGTACGTAC
     // A has gap at (4,6), C has gap at (2,4). B and D have no gaps.
@@ -237,7 +223,7 @@ ACGTACGTAC
   #[test]
   fn test_dense_completeness_edge_indel_count_nonzero() -> Result<(), Report> {
     let (graph, partition) = setup_dense_with_gaps()?;
-    let p = partition.read_arc();
+    let p = &partition;
 
     let total: usize = graph
       .get_edges()
@@ -252,7 +238,7 @@ ACGTACGTAC
     Ok(())
   }
 
-  fn setup_sparse_with_gaps() -> Result<(GraphAncestral, Arc<RwLock<PartitionMarginalSparse>>), Report> {
+  fn setup_sparse_with_gaps() -> Result<(GraphAncestral, PartitionMarginalSparse), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let fasta = "
 >A
@@ -276,13 +262,11 @@ ACGTACGTAC
     let length = get_common_length(&aln)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let partition = Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-    ));
+    let mut partition = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
     marginal_update(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      std::slice::from_ref(&partition),
+      std::slice::from_mut(&mut partition),
     )?
     .value();
     Ok((graph, partition))
@@ -293,8 +277,8 @@ ACGTACGTAC
     let (graph_d, partition_d) = setup_dense_with_gaps()?;
     let (graph_s, partition_s) = setup_sparse_with_gaps()?;
 
-    let pd = partition_d.read_arc();
-    let ps = partition_s.read_arc();
+    let pd = &partition_d;
+    let ps = &partition_s;
 
     let dense_total: usize = graph_d
       .get_edges()

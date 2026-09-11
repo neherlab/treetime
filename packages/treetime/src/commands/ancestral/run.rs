@@ -335,9 +335,9 @@ pub(crate) fn gather_ancestral_output_maps<D: Send + Sync>(
     return Ok(AncestralOutputMaps::default());
   };
   match partition {
-    AncestralPartition::Fitch(partition) => gather_tree_output_maps(graph, &*partition.read_arc()),
-    AncestralPartition::Sparse(partition) => gather_tree_output_maps(graph, &*partition.read_arc()),
-    AncestralPartition::Dense(partition) => gather_tree_output_maps(graph, &*partition.read_arc()),
+    AncestralPartition::Fitch(partition) => gather_tree_output_maps(graph, partition),
+    AncestralPartition::Sparse(partition) => gather_tree_output_maps(graph, partition),
+    AncestralPartition::Dense(partition) => gather_tree_output_maps(graph, partition),
   }
 }
 
@@ -379,9 +379,9 @@ fn gather_augur_output_maps_opt<D: Send + Sync>(
     return Ok(None);
   };
   let maps = match partition {
-    AncestralPartition::Fitch(partition) => gather_augur_output_maps(graph, &*partition.read_arc())?,
-    AncestralPartition::Sparse(partition) => gather_augur_output_maps(graph, &*partition.read_arc())?,
-    AncestralPartition::Dense(partition) => gather_augur_output_maps(graph, &*partition.read_arc())?,
+    AncestralPartition::Fitch(partition) => gather_augur_output_maps(graph, partition)?,
+    AncestralPartition::Sparse(partition) => gather_augur_output_maps(graph, partition)?,
+    AncestralPartition::Dense(partition) => gather_augur_output_maps(graph, partition)?,
   };
   Ok(Some(maps))
 }
@@ -538,7 +538,7 @@ fn run_aa_reconstructions(
     };
 
     let reconstructed = reconstruct_marginal_partition(graph, index, plan, &params, names, branch_lengths, &mut rng)?;
-    let guard = reconstructed.partition.read_arc();
+    let guard = reconstructed.partition.as_ref();
 
     if let Some(annotation) = &reconstructed.annotation
       && let Some(cds_len) = annotation_cds_nuc_length(annotation)

@@ -7,13 +7,11 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{collect_optimize_partitions, run_optimize_loop};
+  use crate::optimize::run_loop::{optimize_partition_view, run_optimize_loop};
 
   use eyre::Report;
 
-  use parking_lot::RwLock;
   use std::path::Path;
-  use std::sync::Arc;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
 
@@ -43,22 +41,19 @@ mod tests {
     } = nwk_read_file(&tree_path)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let sparse_partitions = vec![Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-    ))];
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+    let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
-    let dense_partitions = vec![];
-    let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
+    let mut dense_partitions = vec![];
+    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
     initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let max_iter = 50;
     let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &sparse_partitions,
-      &dense_partitions,
-      &mixed_partitions,
+      &mut sparse_partitions,
+      &mut dense_partitions,
       max_iter,
       0.1,
       0.75,
@@ -101,21 +96,18 @@ mod tests {
     } = nwk_read_file(&tree_path)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let sparse_partitions = vec![Arc::new(RwLock::new(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-    ))];
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &sparse_partitions)?.value();
+    let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
+    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
-    let dense_partitions = vec![];
-    let mixed_partitions = collect_optimize_partitions(&dense_partitions, &sparse_partitions);
+    let mut dense_partitions = vec![];
+    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
     initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let names_tt_1 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &sparse_partitions,
-      &dense_partitions,
-      &mixed_partitions,
+      &mut sparse_partitions,
+      &mut dense_partitions,
       10,
       0.1,
       0.75,

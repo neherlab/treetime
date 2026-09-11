@@ -9,14 +9,12 @@ use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::traits::{HasGtr, PartitionOptimizeOps, PartitionOptimizeVec};
+use crate::partition::traits::{HasGtr, PartitionOptimizeOps};
 use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use itertools::{Itertools, chain};
 use log::{debug, warn};
-use parking_lot::RwLock;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
@@ -70,9 +68,8 @@ use treetime_utils::make_error;
 /// production `run_optimize` wrapper.
 pub fn run_optimize_loop(
   graph: &mut GraphAncestral,
-  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
-  mixed_partitions: &PartitionOptimizeVec,
+  sparse_partitions: &mut [PartitionMarginalSparse],
+  dense_partitions: &mut [PartitionMarginalDense],
   max_iter: usize,
   dp: f64,
   damping: f64,
@@ -95,7 +92,8 @@ pub fn run_optimize_loop(
   let indel_rate = if no_indels {
     0.0
   } else {
-    estimate_indel_rate(graph, mixed_partitions, &branch_lengths)
+    let mixed_partitions = optimize_partition_view(dense_partitions, sparse_partitions);
+    estimate_indel_rate(graph, &mixed_partitions, &branch_lengths)
   };
 
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter);
@@ -116,7 +114,6 @@ pub fn run_optimize_loop(
       &branch_lengths,
       sparse_partitions,
       dense_partitions,
-      mixed_partitions,
       indel_rate,
       no_indels,
     )?;
@@ -173,14 +170,17 @@ pub fn run_optimize_loop(
     // branch-length map in place; the map is the loop's source of truth and no longer round-trips
     // through the edge payload.
     let old_branch_lengths = branch_lengths.clone();
-    run_optimize_mixed_inner(
-      graph,
-      mixed_partitions,
-      opt_method,
-      indel_rate,
-      no_indels,
-      &mut branch_lengths,
-    )?;
+    {
+      let mixed_partitions = optimize_partition_view(dense_partitions, sparse_partitions);
+      run_optimize_mixed_inner(
+        graph,
+        &mixed_partitions,
+        opt_method,
+        indel_rate,
+        no_indels,
+        &mut branch_lengths,
+      )?;
+    }
 
     let zero_optimal_edges = if topology_ops.collapse_short_branches {
       find_zero_optimal_internal_edges(graph, sparse_partitions, &branch_lengths)
@@ -273,19 +273,24 @@ pub struct OptimizeLoopResult {
   pub stopped_at: Option<(usize, ConvergenceReason)>,
 }
 
-pub fn collect_optimize_partitions(
-  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
-  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-) -> PartitionOptimizeVec {
+/// Build the transient dyn optimize view over the concrete partition slices, dense entries first
+/// then sparse, matching the order the optimize passes sum partition contributions.
+///
+/// The returned borrows keep the two slices immutably borrowed for the view's lifetime, so the
+/// caller scopes it to a block that ends before the next mutable partition pass. The optimize
+/// consumers (`estimate_indel_rate`, `total_indel_log_lh`, `run_optimize_mixed_inner`,
+/// `initial_guess_mixed`) read partitions only, so a shared dyn view is sufficient.
+pub fn optimize_partition_view<'a>(
+  dense_partitions: &'a [PartitionMarginalDense],
+  sparse_partitions: &'a [PartitionMarginalSparse],
+) -> Vec<&'a dyn PartitionOptimizeOps> {
   chain!(
     dense_partitions
       .iter()
-      .cloned()
-      .map(|partition| -> Arc<RwLock<dyn PartitionOptimizeOps>> { partition }),
+      .map(|partition| partition as &dyn PartitionOptimizeOps),
     sparse_partitions
       .iter()
-      .cloned()
-      .map(|partition| -> Arc<RwLock<dyn PartitionOptimizeOps>> { partition })
+      .map(|partition| partition as &dyn PartitionOptimizeOps),
   )
   .collect_vec()
 }
@@ -302,9 +307,8 @@ struct OptimizeIterationLikelihood {
 fn compute_iteration_likelihood(
   graph: &GraphAncestral,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
-  mixed_partitions: &PartitionOptimizeVec,
+  sparse_partitions: &mut [PartitionMarginalSparse],
+  dense_partitions: &mut [PartitionMarginalDense],
   indel_rate: f64,
   no_indels: bool,
 ) -> Result<OptimizeIterationLikelihood, Report> {
@@ -314,7 +318,8 @@ fn compute_iteration_likelihood(
   let indel_lh = if no_indels {
     LogLh::ZERO
   } else {
-    total_indel_log_lh(graph, mixed_partitions, branch_lengths, indel_rate)?
+    let mixed_partitions = optimize_partition_view(dense_partitions, sparse_partitions);
+    total_indel_log_lh(graph, &mixed_partitions, branch_lengths, indel_rate)?
   };
   let total_lh = sparse_lh + dense_lh + indel_lh;
 
@@ -355,7 +360,7 @@ fn compute_iteration_likelihood(
 /// re-creates the node, which then optimizes to zero again.
 pub fn find_zero_optimal_internal_edges(
   graph: &GraphAncestral,
-  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
+  sparse_partitions: &[PartitionMarginalSparse],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Vec<GraphEdgeKey> {
   graph
@@ -370,7 +375,6 @@ pub fn find_zero_optimal_internal_edges(
       }
       let edge_key = edge.key();
       let has_mutations = sparse_partitions.iter().any(|partition| {
-        let partition = partition.read_arc();
         partition
           .edges
           .get(&edge_key)
@@ -402,8 +406,8 @@ pub fn find_zero_optimal_internal_edges(
 /// Returns true if any topology change occurred.
 pub fn prune_and_merge_in_loop(
   graph: &mut GraphAncestral,
-  sparse_partitions: &[Arc<RwLock<PartitionMarginalSparse>>],
-  dense_partitions: &[Arc<RwLock<PartitionMarginalDense>>],
+  sparse_partitions: &mut [PartitionMarginalSparse],
+  dense_partitions: &mut [PartitionMarginalDense],
   zero_optimal_edges: &[GraphEdgeKey],
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -466,14 +470,11 @@ pub fn prune_and_merge_in_loop(
 /// lengths in `initial_guess_mixed()` before entering `run_optimize_mixed()`.
 /// The `Never` path skips `initial_guess_mixed()` entirely, so it must reject
 /// this configuration at validation time instead.
-pub fn any_indel_edge_has_zero_branch_length<P>(
+pub fn any_indel_edge_has_zero_branch_length(
   graph: &GraphAncestral,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &[&dyn PartitionOptimizeOps],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> bool
-where
-  P: PartitionOptimizeOps + ?Sized,
-{
+) -> bool {
   graph.get_edges().iter().any(|edge_ref| {
     let edge = edge_ref.read_arc();
     let edge_key = edge.key();
@@ -483,7 +484,7 @@ where
     }
     partitions
       .iter()
-      .any(|partition| partition.read_arc().edge_indel_count(edge_key) > 0)
+      .any(|partition| partition.edge_indel_count(edge_key) > 0)
   })
 }
 
@@ -494,17 +495,14 @@ where
 /// - `Never`: keep input branch lengths; error if any edge lacks a usable
 ///   value (None/NaN) or has zero branch length while carrying indels (the
 ///   Poisson indel log-likelihood diverges at $t = 0$ when $k > 0$).
-pub fn apply_initial_guess_mode<P>(
+pub fn apply_initial_guess_mode(
   graph: &GraphAncestral,
-  mixed_partitions: &[Arc<RwLock<P>>],
+  mixed_partitions: &[&dyn PartitionOptimizeOps],
   mode: InitialGuessMode,
   no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<(), Report>
-where
-  P: PartitionOptimizeOps + ?Sized,
-{
+) -> Result<(), Report> {
   let invalid_branch_lengths = invalid_branch_length_descriptions(graph, branch_lengths, names)?;
   if let Some(message) = invalid_branch_length_warning(&invalid_branch_lengths) {
     warn!("{message}");
@@ -559,16 +557,16 @@ pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -
 /// but now the average rate across all partitions equals 1, making branch lengths directly
 /// interpretable as substitutions per site.
 pub fn normalize_partition_rates<P: HasGtr>(
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &mut [P],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) {
-  let total_length: usize = partitions.iter().map(|p| p.read_arc().sequence_length()).sum();
+  let total_length: usize = partitions.iter().map(|p| p.sequence_length()).sum();
 
   if total_length == 0 {
     return;
   }
 
-  let weighted_rate: f64 = partitions.iter().map(|p| p.read_arc().weighted_rate()).sum();
+  let weighted_rate: f64 = partitions.iter().map(|p| p.weighted_rate()).sum();
 
   let total_average = weighted_rate / total_length as f64;
 
@@ -576,8 +574,8 @@ pub fn normalize_partition_rates<P: HasGtr>(
     return;
   }
 
-  for partition in partitions {
-    partition.write_arc().normalize_rate(total_average);
+  for partition in partitions.iter_mut() {
+    partition.normalize_rate(total_average);
   }
 
   for value in branch_lengths.values_mut().flatten() {

@@ -7,10 +7,8 @@ use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::payload::ancestral::GraphAncestral;
 use crate::prune::prune::prune_nodes;
 use eyre::Report;
-use parking_lot::RwLock;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
@@ -40,7 +38,7 @@ pub struct PruneOutput {
   #[serde(skip)]
   pub gtr: Option<GTR>,
   #[serde(skip)]
-  pub partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>>,
+  pub partitions: Vec<PartitionMarginalSparse>,
   #[serde(skip)]
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
   #[serde(skip)]
@@ -61,7 +59,7 @@ pub fn run(
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
 
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
-  let partitions: Vec<Arc<RwLock<PartitionMarginalSparse>>> = if needs_sequences {
+  let mut partitions: Vec<PartitionMarginalSparse> = if needs_sequences {
     let sequences = input
       .sequences
       .as_ref()
@@ -77,14 +75,14 @@ pub fn run(
       &names,
     )?;
     match created.partition {
-      MarginalPartition::Sparse(p) => vec![Arc::new(RwLock::new(p))],
+      MarginalPartition::Sparse(p) => vec![p],
       MarginalPartition::Dense(_) => {
         let gtr = get_gtr_by_name(GtrModelName::JC69)?;
         log_gtr(&gtr, GtrModelName::JC69);
         let fitch =
           crate::ancestral::fitch::create_fitch_partition(&input.graph, 0, input.alphabet.clone(), sequences, &names)?;
         let partition = fitch.into_marginal_sparse(gtr, &input.graph)?;
-        vec![Arc::new(RwLock::new(partition))]
+        vec![partition]
       },
     }
   } else {
@@ -93,7 +91,7 @@ pub fn run(
 
   prune_nodes(
     &mut input.graph,
-    &partitions,
+    &mut partitions,
     params.prune_short,
     params.prune_empty,
     &params.node_names,
@@ -104,12 +102,12 @@ pub fn run(
   if params.merge_shared_mutations {
     // The merge producer updates the branch-length map in place; refresh `names` from the post-merge
     // topology so downstream name readers get the reassigned labels.
-    merge_shared_mutation_branches(&mut input.graph, &partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut input.graph, &mut partitions, &mut branch_lengths)?;
     input.graph.build()?;
     names = assign_node_names(names, &input.graph)?;
   }
 
-  let gtr = (!partitions.is_empty()).then(|| partitions[0].read_arc().gtr.clone());
+  let gtr = (!partitions.is_empty()).then(|| partitions[0].gtr.clone());
 
   Ok(PruneOutput {
     graph: input.graph,

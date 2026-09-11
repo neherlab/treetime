@@ -18,10 +18,9 @@ use crate::payload::ancestral::GraphAncestral;
 use crate::progress::ProgressSink;
 use crate::seq::alignment::get_common_length;
 use eyre::Report;
-use parking_lot::RwLock;
 use serde::Serialize;
+use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use strum::VariantNames;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
@@ -55,9 +54,9 @@ pub struct AncestralInput {
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum AncestralPartition {
-  Fitch(Arc<RwLock<PartitionFitch>>),
-  Sparse(Arc<RwLock<crate::partition::marginal::sparse::partition::PartitionMarginalSparse>>),
-  Dense(Arc<RwLock<PartitionMarginalDense>>),
+  Fitch(PartitionFitch),
+  Sparse(crate::partition::marginal::sparse::partition::PartitionMarginalSparse),
+  Dense(PartitionMarginalDense),
 }
 
 #[derive(Debug, Serialize)]
@@ -127,8 +126,7 @@ where
       progress.check_cancelled()?;
       progress.report("Fitch parsimony", 0.3, "");
       let partition = create_fitch_partition(&graph, 0, alphabet, &sequences, names)?;
-      let partition = Arc::new(RwLock::new(partition));
-      let partitions_parsimony = vec![Arc::clone(&partition)];
+      let mut partitions_parsimony = vec![partition];
 
       if params.impute_missing_data {
         log::warn!(
@@ -138,10 +136,14 @@ where
       }
 
       let node_sequences =
-        ancestral_reconstruction_fitch(&graph, params.include_leaves, &partitions_parsimony, |node, seq| {
+        ancestral_reconstruction_fitch(&graph, params.include_leaves, &mut partitions_parsimony, |node, seq| {
           on_sequence(node.key, seq)
         })?;
 
+      let partition = partitions_parsimony
+        .into_iter()
+        .next()
+        .expect("partition vec not empty");
       progress.report("Done", 1.0, "");
       Ok(AncestralOutputFull {
         output: AncestralOutput {
@@ -171,16 +173,16 @@ where
 
       match created.partition {
         MarginalPartition::Sparse(partition) => {
-          let partitions = vec![Arc::new(RwLock::new(partition))];
+          let mut partition = RefCell::new(partition);
 
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          marginal_update(&graph, &profile_lengths, &partitions)?;
+          marginal_update(&graph, &profile_lengths, std::slice::from_mut(partition.get_mut()))?;
 
           if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
             refine_gtr_iterative(
               &graph,
-              &partitions[0],
+              &partition,
               branch_lengths,
               params.gtr_iterations,
               None,
@@ -196,13 +198,14 @@ where
             &graph,
             params.include_leaves,
             params.impute_missing_data,
-            &partitions,
+            std::slice::from_mut(partition.get_mut()),
             params.sample_from_profile,
             &mut rng,
             |key, seq| on_sequence(key, seq),
           )?;
 
-          let gtr = partitions[0].read_arc().gtr().clone();
+          let partition = partition.into_inner();
+          let gtr = partition.gtr().clone();
           progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
             output: AncestralOutput {
@@ -212,23 +215,27 @@ where
               mask,
               node_sequences,
             },
-            partition: Some(AncestralPartition::Sparse(
-              partitions.into_iter().next().expect("partition vec not empty"),
-            )),
+            partition: Some(AncestralPartition::Sparse(partition)),
           })
         },
         MarginalPartition::Dense(partition) => {
-          let partitions = vec![Arc::new(RwLock::new(partition))];
+          let mut partition = RefCell::new(partition);
 
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          initialize_marginal(&graph, &profile_lengths, &partitions, &sequences, names)?;
-          marginal_update(&graph, &profile_lengths, &partitions)?;
+          initialize_marginal(
+            &graph,
+            &profile_lengths,
+            std::slice::from_mut(partition.get_mut()),
+            &sequences,
+            names,
+          )?;
+          marginal_update(&graph, &profile_lengths, std::slice::from_mut(partition.get_mut()))?;
 
           if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
             refine_gtr_iterative(
               &graph,
-              &partitions[0],
+              &partition,
               branch_lengths,
               params.gtr_iterations,
               None,
@@ -244,13 +251,14 @@ where
             &graph,
             params.include_leaves,
             params.impute_missing_data,
-            &partitions,
+            std::slice::from_mut(partition.get_mut()),
             params.sample_from_profile,
             &mut rng,
             |key, seq| on_sequence(key, seq),
           )?;
 
-          let gtr = partitions[0].read_arc().gtr().clone();
+          let partition = partition.into_inner();
+          let gtr = partition.gtr().clone();
           progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
             output: AncestralOutput {
@@ -260,9 +268,7 @@ where
               mask,
               node_sequences,
             },
-            partition: Some(AncestralPartition::Dense(
-              partitions.into_iter().next().expect("partition vec not empty"),
-            )),
+            partition: Some(AncestralPartition::Dense(partition)),
           })
         },
       }

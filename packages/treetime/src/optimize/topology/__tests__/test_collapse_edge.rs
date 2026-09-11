@@ -14,9 +14,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
-  use parking_lot::RwLock;
   use pretty_assertions::assert_eq;
-  use std::sync::Arc;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
@@ -84,19 +82,19 @@ mod tests {
       .insert(ia_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
     partition.edges.insert(ib_key, SparseEdgePartition::default());
 
-    let sparse = vec![Arc::new(RwLock::new(partition))];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse = vec![partition];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     let i_node_key = find_node_key_by_name(&graph, &names, "I").unwrap();
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &sparse, &dense, ri_key, &mut branch_lengths)?;
+    collapse_edge(&mut graph, &mut sparse, &mut dense, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     assert_eq!(graph.get_nodes().len(), 3); // root, A, B
     assert_eq!(graph.get_edges().len(), 2);
 
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
@@ -152,14 +150,14 @@ mod tests {
       dense_partition.data.edges.insert(key, DenseEdgePartition::default());
     }
 
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let dense = vec![Arc::new(RwLock::new(dense_partition))];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
+    let mut dense = vec![dense_partition];
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &sparse, &dense, ri_key, &mut branch_lengths)?;
+    collapse_edge(&mut graph, &mut sparse, &mut dense, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
-    let d = dense[0].read_arc();
+    let d = &dense[0];
     assert!(!d.data.nodes.contains_key(&i_key), "removed node should be cleaned up");
     assert!(!d.data.edges.contains_key(&ri_key), "removed edge should be cleaned up");
 
@@ -180,11 +178,11 @@ mod tests {
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &sparse, &dense, ri_key, &mut branch_lengths)?;
+    collapse_edge(&mut graph, &mut sparse, &mut dense, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     for edge in graph.get_edges() {
@@ -216,11 +214,11 @@ mod tests {
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &sparse, &dense, ri_key, &mut branch_lengths)?;
+    collapse_edge(&mut graph, &mut sparse, &mut dense, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     for edge in graph.get_edges() {
@@ -254,12 +252,12 @@ mod tests {
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
 
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     let mut branch_lengths = branch_lengths;
     branch_lengths.insert(ia_key, None);
-    collapse_edge(&mut graph, &sparse, &dense, ri_key, &mut branch_lengths)?;
+    collapse_edge(&mut graph, &mut sparse, &mut dense, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     for edge in graph.get_edges() {
@@ -289,12 +287,12 @@ mod tests {
     let mut graph: GraphAncestral = graph;
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     let mut branch_lengths = branch_lengths;
     branch_lengths.insert(ri_key, None);
-    collapse_edge(&mut graph, &sparse, &dense, ri_key, &mut branch_lengths)?;
+    collapse_edge(&mut graph, &mut sparse, &mut dense, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     for edge in graph.get_edges() {
@@ -346,14 +344,14 @@ mod tests {
     );
     partition.edges.insert(ib_key, SparseEdgePartition::default());
 
-    let sparse = vec![Arc::new(RwLock::new(partition))];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse = vec![partition];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &sparse, &dense, ri_key, &mut branch_lengths)?;
+    collapse_edge(&mut graph, &mut sparse, &mut dense, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
@@ -397,14 +395,14 @@ mod tests {
       .edges
       .insert(ia_key, SparseEdgePartition::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
 
-    let sparse = vec![Arc::new(RwLock::new(partition))];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse = vec![partition];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &sparse, &dense, ri_key, &mut branch_lengths)?;
+    collapse_edge(&mut graph, &mut sparse, &mut dense, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
-    let p = sparse[0].read_arc();
+    let p = &sparse[0];
     let root_to_a_edge = graph
       .get_edges()
       .iter()
@@ -438,11 +436,11 @@ mod tests {
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let i_node_key = find_node_key_by_name(&graph, &names, "I").unwrap();
 
-    let sparse: Vec<Arc<RwLock<PartitionMarginalSparse>>> = vec![];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &sparse, &dense, ri_key, &mut branch_lengths)?;
+    collapse_edge(&mut graph, &mut sparse, &mut dense, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     assert!(graph.get_node(i_node_key).is_none());
@@ -484,14 +482,14 @@ mod tests {
     partition_b.edges.insert(ia_key, SparseEdgePartition::default());
     partition_b.edges.insert(ib_key, SparseEdgePartition::default());
 
-    let sparse = vec![Arc::new(RwLock::new(partition_a)), Arc::new(RwLock::new(partition_b))];
-    let dense: Vec<Arc<RwLock<PartitionMarginalDense>>> = vec![];
+    let mut sparse = vec![partition_a, partition_b];
+    let mut dense: Vec<PartitionMarginalDense> = vec![];
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &sparse, &dense, ri_key, &mut branch_lengths)?;
+    collapse_edge(&mut graph, &mut sparse, &mut dense, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
-    let p0 = sparse[0].read_arc();
+    let p0 = &sparse[0];
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let data = &p0.edges[&edge.key()];
@@ -503,7 +501,7 @@ mod tests {
     }
     drop(p0);
 
-    let p1 = sparse[1].read_arc();
+    let p1 = &sparse[1];
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let data = &p1.edges[&edge.key()];

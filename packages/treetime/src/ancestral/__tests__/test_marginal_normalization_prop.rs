@@ -102,7 +102,7 @@ mod tests {
       prop_assert!(log_lh.is_finite(), "Log-likelihood non-finite: {log_lh}");
       prop_assert!(log_lh <= 0.0, "Log-likelihood should be <= 0: {log_lh}");
 
-      let partition = partitions[0].read_arc();
+      let partition = &partitions[0];
       for node_data in partition.data.nodes.values() {
         if !node_data.profile.dis.is_empty() {
           assert_dense_rows_normalized(&node_data.profile.dis)?;
@@ -134,7 +134,7 @@ mod tests {
       prop_assert!(log_lh.is_finite(), "Log-likelihood non-finite: {log_lh}");
       prop_assert!(log_lh <= 0.0, "Log-likelihood should be <= 0: {log_lh}");
 
-      let partition = partitions[0].read_arc();
+      let partition = &partitions[0];
       for node_data in partition.nodes.values() {
         assert_sparse_profile_normalized(&node_data.profile)?;
       }

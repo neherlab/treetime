@@ -9,10 +9,8 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::traits::PartitionOptimizeOps;
 use crate::{make_error, make_internal_report, make_report};
 use eyre::{Report, WrapErr};
-use parking_lot::RwLock;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
@@ -22,16 +20,15 @@ use treetime_graph::node::GraphNode;
 /// Main optimization loop that works with both sparse and dense partitions simultaneously.
 /// For each edge, it collects contributions from all partitions and optimizes the branch
 /// length using the selected method.
-pub fn run_optimize_mixed<N, E, P>(
+pub fn run_optimize_mixed<N, E>(
   graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &[&dyn PartitionOptimizeOps],
   method: BranchOptMethod,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionOptimizeOps + ?Sized,
 {
   let total_length = total_sequence_length(partitions);
   if total_length == 0 {
@@ -44,9 +41,9 @@ where
 }
 
 #[cfg(test)]
-pub fn run_optimize_mixed_with_indel_rate<N, E, P>(
+pub fn run_optimize_mixed_with_indel_rate<N, E>(
   graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &[&dyn PartitionOptimizeOps],
   method: BranchOptMethod,
   indel_rate: f64,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -54,15 +51,14 @@ pub fn run_optimize_mixed_with_indel_rate<N, E, P>(
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionOptimizeOps + ?Sized,
 {
   run_optimize_mixed_inner(graph, partitions, method, indel_rate, false, branch_lengths)?;
   Ok(())
 }
 
-pub fn run_optimize_mixed_inner<N, E, P>(
+pub fn run_optimize_mixed_inner<N, E>(
   graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &[&dyn PartitionOptimizeOps],
   method: BranchOptMethod,
   indel_rate: f64,
   no_indels: bool,
@@ -71,7 +67,6 @@ pub fn run_optimize_mixed_inner<N, E, P>(
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionOptimizeOps + ?Sized,
 {
   let total_length = total_sequence_length(partitions);
 
@@ -109,7 +104,7 @@ where
 
       let contributions: Vec<OptimizationContribution> = partitions
         .iter()
-        .map(|partition| partition.read_arc().create_edge_contribution(edge_key))
+        .map(|partition| partition.create_edge_contribution(edge_key))
         .collect::<Result<_, _>>()?;
 
       let indel_count: usize = if no_indels {
@@ -117,7 +112,7 @@ where
       } else {
         partitions
           .iter()
-          .map(|partition| partition.read_arc().edge_indel_count(edge_key))
+          .map(|partition| partition.edge_indel_count(edge_key))
           .sum()
       };
 
@@ -304,9 +299,9 @@ impl BifurcatingRootState {
 ///
 /// When `no_indels` is true, indel counts and rates do not affect either
 /// branch validity or the estimated branch length.
-pub fn initial_guess_mixed<N, E, P>(
+pub fn initial_guess_mixed<N, E>(
   graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &[&dyn PartitionOptimizeOps],
   overwrite_valid: bool,
   no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -314,12 +309,8 @@ pub fn initial_guess_mixed<N, E, P>(
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionOptimizeOps + ?Sized,
 {
-  let total_length: usize = partitions
-    .iter()
-    .map(|partition| partition.read_arc().sequence_length())
-    .sum();
+  let total_length: usize = partitions.iter().map(|partition| partition.sequence_length()).sum();
 
   if total_length == 0 {
     return make_error!("Total sequence length across all partitions is zero; cannot compute initial guess");
@@ -340,7 +331,7 @@ where
     } else {
       partitions
         .iter()
-        .map(|partition| partition.read_arc().edge_indel_count(edge_key))
+        .map(|partition| partition.edge_indel_count(edge_key))
         .sum()
     };
 
@@ -358,12 +349,12 @@ where
 
     let sub_count: usize = partitions
       .iter()
-      .map(|partition| partition.read_arc().edge_subs(graph, edge_key).map(|subs| subs.len()))
+      .map(|partition| partition.edge_subs(graph, edge_key).map(|subs| subs.len()))
       .sum::<Result<_, _>>()?;
 
     let effective_length: usize = partitions
       .iter()
-      .map(|partition| partition.read_arc().edge_effective_length(graph, edge_key))
+      .map(|partition| partition.edge_effective_length(graph, edge_key))
       .sum::<Result<_, _>>()?;
 
     let branch_length = if effective_length > 0 {
@@ -392,12 +383,6 @@ where
   Ok(())
 }
 
-fn total_sequence_length<P>(partitions: &[Arc<RwLock<P>>]) -> usize
-where
-  P: PartitionOptimizeOps + ?Sized,
-{
-  partitions
-    .iter()
-    .map(|partition| partition.read_arc().sequence_length())
-    .sum()
+fn total_sequence_length(partitions: &[&dyn PartitionOptimizeOps]) -> usize {
+  partitions.iter().map(|partition| partition.sequence_length()).sum()
 }

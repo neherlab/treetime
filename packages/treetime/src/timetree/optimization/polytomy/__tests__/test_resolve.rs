@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
+  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
   use crate::timetree::timetree_state::TimetreeState;
@@ -144,7 +144,7 @@ mod tests {
     Ok((graph, names, state, branch_lengths))
   }
 
-  fn no_partitions() -> Vec<PartitionTimetreeRef> {
+  fn no_partitions() -> Vec<PartitionTimetree> {
     vec![]
   }
 

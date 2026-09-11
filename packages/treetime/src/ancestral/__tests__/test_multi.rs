@@ -49,11 +49,11 @@ fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
   let names = reconstructed.iter().map(|p| p.name.clone()).collect::<Vec<_>>();
   assert_eq!(vec!["S".to_owned(), "N".to_owned()], names);
 
-  let s_root = reconstructed[0].partition.read_arc().root_sequence(&graph).unwrap();
+  let s_root = reconstructed[0].partition.root_sequence(&graph).unwrap();
   assert_eq!(3, s_root.len());
   assert_eq!(Some('*'), s_root.iter().last().map(|c| char::from(*c)));
 
-  let n_root = reconstructed[1].partition.read_arc().root_sequence(&graph).unwrap();
+  let n_root = reconstructed[1].partition.root_sequence(&graph).unwrap();
   assert_eq!(2, n_root.len());
   assert_eq!(Some('K'), n_root.iter().next().map(|c| char::from(*c)));
 }

@@ -9,8 +9,7 @@ pub mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
 
-  use parking_lot::RwLock;
-  use std::sync::{Arc, LazyLock};
+  use std::sync::LazyLock;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -108,17 +107,12 @@ pub mod tests {
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partitions = [Arc::new(RwLock::new(PartitionMarginalDense::new(
-      0,
-      gtr,
-      alphabet,
-      get_common_length(&aln)?,
-    )))];
+    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)];
 
     let log_lh = initialize_marginal(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &partitions,
+      &mut partitions,
       &aln,
       &names,
     )?

@@ -5,11 +5,9 @@ use crate::optimize::branch_length::validate_branch_length_value;
 use crate::optimize::likelihood::OptimizationMetrics;
 use crate::partition::traits::PartitionOptimizeOps;
 use eyre::Report;
-use parking_lot::RwLock;
 use rayon::prelude::*;
 use statrs::function::factorial::ln_factorial;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNode;
@@ -69,15 +67,14 @@ pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMet
 ///
 /// Generic over the graph's node and edge payload types: the branch length of
 /// each edge is supplied by the `branch_lengths` value map (ancestral, timetree, ...).
-pub fn estimate_indel_rate<N, E, P>(
+pub fn estimate_indel_rate<N, E>(
   graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &[&dyn PartitionOptimizeOps],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> f64
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionOptimizeOps + ?Sized,
 {
   let per_edge = graph
     .get_edges()
@@ -85,10 +82,7 @@ where
     .map(|edge_ref| {
       let edge_key = edge_ref.read_arc().key();
       let branch_length = branch_lengths[&edge_key].unwrap_or(0.0);
-      let edge_indels = partitions
-        .iter()
-        .map(|p| p.read_arc().edge_indel_count(edge_key))
-        .sum::<usize>();
+      let edge_indels = partitions.iter().map(|p| p.edge_indel_count(edge_key)).sum::<usize>();
       (edge_indels, branch_length)
     })
     .collect::<Vec<_>>();
@@ -108,16 +102,15 @@ where
 /// evaluator as the per-edge branch-length optimizer, but evaluated at the
 /// tree's current branch lengths. For an indel-bearing edge at zero branch
 /// length, the Poisson log-likelihood is $-\infty$.
-pub fn total_indel_log_lh<N, E, P>(
+pub fn total_indel_log_lh<N, E>(
   graph: &Graph<N, E, ()>,
-  partitions: &[Arc<RwLock<P>>],
+  partitions: &[&dyn PartitionOptimizeOps],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   indel_rate: f64,
 ) -> Result<LogLh, Report>
 where
   N: GraphNode,
   E: GraphEdge,
-  P: PartitionOptimizeOps + ?Sized,
 {
   graph
     .get_edges()
@@ -128,7 +121,7 @@ where
         make_report!("Cannot evaluate indel likelihood for edge {edge_key} with a missing branch length")
       })?;
       validate_branch_length_value(branch_length)?;
-      let indel_count: usize = partitions.iter().map(|p| p.read_arc().edge_indel_count(edge_key)).sum();
+      let indel_count: usize = partitions.iter().map(|p| p.edge_indel_count(edge_key)).sum();
       if indel_count > 0 && branch_length <= 0.0 {
         Ok(LogLh::IMPOSSIBLE)
       } else {
