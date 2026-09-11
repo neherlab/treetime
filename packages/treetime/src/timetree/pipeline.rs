@@ -580,7 +580,14 @@ pub fn run(
   let confidence_names = node_names(&input.graph);
   let confidence_intervals = (matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always)
     || rate_std.is_some())
-  .then(|| extract_confidence_intervals(&input.graph, &timetree_state, &rate_susceptibility_dates, &confidence_names));
+  .then(|| {
+    extract_confidence_intervals(
+      &input.graph,
+      &timetree_state,
+      &rate_susceptibility_dates,
+      &confidence_names,
+    )
+  });
 
   let coalescent_output = build_coalescent_output(coalescent, &coalescent_tc, params.gen_per_year, &skyline_params)?;
 
@@ -985,7 +992,7 @@ mod tests {
     };
     let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
     let timescale = estimate_coalescent_tc(CoalescentMode::Fixed(2.5), &graph, &params, &node_times)?
-    .expect("a fixed Tc yields a coalescent timescale");
+      .expect("a fixed Tc yields a coalescent timescale");
 
     let actual = build_coalescent_output(CoalescentMode::Fixed(2.5), &timescale, GEN_PER_YEAR, &params)?
       .expect("a fixed Tc writes a coalescent output");
@@ -1126,7 +1133,7 @@ mod tests {
     let node_times = TimetreeState::seed_from_values(&graph, &constraints).coalescent_node_times();
     let solve = optimize_skyline(&graph, &params, &node_times)?;
     let timescale = estimate_coalescent_tc(CoalescentMode::Skyline, &graph, &params, &node_times)?
-    .expect("skyline mode yields a coalescent timescale");
+      .expect("skyline mode yields a coalescent timescale");
     let report = timescale
       .report
       .expect("an inferred skyline carries a per-segment report");

@@ -80,7 +80,16 @@ pub fn apply_plan(
   }
 
   for &lineage in &plan.roots {
-    attach(graph, children, &merger_nodes, &times, lineage, parent_key, parent_time, state)?;
+    attach(
+      graph,
+      children,
+      &merger_nodes,
+      &times,
+      lineage,
+      parent_key,
+      parent_time,
+      state,
+    )?;
   }
 
   Ok(plan.mergers.len())

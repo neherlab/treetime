@@ -142,13 +142,16 @@ impl TimetreeState {
       .iter()
       .map(|node| {
         let key = node.read_arc().key();
-        let state = self.nodes.get(&key).map_or_else(DateNodeState::default, |node| DateNodeState {
-          time_distribution: node.time_distribution.clone(),
-          time: node.time,
-          bad_branch: node.bad_branch,
-          date_constraint: node.date_constraint.clone(),
-          contradicted: false,
-        });
+        let state = self
+          .nodes
+          .get(&key)
+          .map_or_else(DateNodeState::default, |node| DateNodeState {
+            time_distribution: node.time_distribution.clone(),
+            time: node.time,
+            bad_branch: node.bad_branch,
+            date_constraint: node.date_constraint.clone(),
+            contradicted: false,
+          });
         (key, state)
       })
       .collect();
@@ -157,12 +160,15 @@ impl TimetreeState {
       .iter()
       .map(|edge| {
         let key = edge.read_arc().key();
-        let state = self.edges.get(&key).map_or_else(DateEdgeState::default, |edge| DateEdgeState {
-          branch_length_distribution: edge.branch_length_distribution.clone(),
-          msg_to_parent: edge.msg_to_parent.clone(),
-          time_length: edge.time_length,
-          gamma: edge.gamma,
-        });
+        let state = self
+          .edges
+          .get(&key)
+          .map_or_else(DateEdgeState::default, |edge| DateEdgeState {
+            branch_length_distribution: edge.branch_length_distribution.clone(),
+            msg_to_parent: edge.msg_to_parent.clone(),
+            time_length: edge.time_length,
+            gamma: edge.gamma,
+          });
         (key, state)
       })
       .collect();

@@ -119,15 +119,7 @@ mod tests {
     let merger_rate = PiecewiseConstantFn::new(array![], array![TEST_MERGER_RATE]);
     // `state` carries the node times `resolve_polytomies` reads, seeded as a value by the fixtures
     // instead of read off the graph payload.
-    resolve_polytomies(
-      graph,
-      &no_partitions(),
-      TEST_MUTATION_RATE,
-      0,
-      &merger_rate,
-      rng,
-      state,
-    )
+    resolve_polytomies(graph, &no_partitions(), TEST_MUTATION_RATE, 0, &merger_rate, rng, state)
   }
 
   /// Names of the leaves reachable from `node_key`.

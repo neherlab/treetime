@@ -6,11 +6,11 @@ mod tests {
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::forward_pass::propagate_distributions_forward;
   use crate::timetree::inference::runner::GRID_POINTS;
-  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{create_poisson_branch_distributions, extract_node_times};
   use eyre::Report;
   use rstest::rstest;
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 

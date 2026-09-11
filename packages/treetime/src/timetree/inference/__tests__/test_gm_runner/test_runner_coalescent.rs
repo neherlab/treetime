@@ -17,10 +17,10 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree, PartitionTimetreeAllVec};
   use crate::timetree::inference::runner::run_timetree;
-  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
   use eyre::Report;
+  use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 
   use parking_lot::RwLock;
   use rstest::rstest;

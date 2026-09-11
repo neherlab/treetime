@@ -105,7 +105,11 @@ mod tests {
     let (base_graph, base_constraints) = tree3(2000.0, 2005.0, 2010.0)?;
     let base = optimize_tc(&base_graph, &coalescent_node_times(&base_graph, &base_constraints))?.tc;
     let (scaled_graph, scaled_constraints) = tree3(2000.0, 2010.0, 2020.0)?; // s = 2
-    let scaled = optimize_tc(&scaled_graph, &coalescent_node_times(&scaled_graph, &scaled_constraints))?.tc;
+    let scaled = optimize_tc(
+      &scaled_graph,
+      &coalescent_node_times(&scaled_graph, &scaled_constraints),
+    )?
+    .tc;
 
     pretty_assert_ulps_eq!(2.0 * base, scaled, max_ulps = 8);
 

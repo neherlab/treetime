@@ -20,7 +20,10 @@ mod tests {
     let named_key = graph.add_node(make_node(Some("named")));
     graph.build().unwrap();
 
-    let state = helpers::state(&graph, &[(unnamed_key, Some(2020.0), None), (named_key, Some(2021.0), None)]);
+    let state = helpers::state(
+      &graph,
+      &[(unnamed_key, Some(2020.0), None), (named_key, Some(2021.0), None)],
+    );
     let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &node_names(&graph));
     assert_eq!(intervals.len(), 2);
     // Unnamed node has empty name but valid key

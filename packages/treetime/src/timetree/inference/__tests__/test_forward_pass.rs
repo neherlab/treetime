@@ -286,7 +286,8 @@ mod tests {
       for edge in graph.get_edges() {
         let edge = edge.read_arc();
         if edge.target() == target_key {
-          state.edge_mut(edge.key()).branch_length_distribution = Some(Arc::new(Distribution::point(branch_length, 0.0)));
+          state.edge_mut(edge.key()).branch_length_distribution =
+            Some(Arc::new(Distribution::point(branch_length, 0.0)));
         }
       }
     }
