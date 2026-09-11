@@ -1,7 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::augur_node_data::write_augur_node_data_json;
-use crate::commands::optimize::result::{EdgeOut, OptimizeGraphData, OptimizeNodeOut, OptimizeOutputMaps, OptimizeResult};
+use crate::commands::optimize::result::{
+  EdgeOut, OptimizeGraphData, OptimizeNodeOut, OptimizeOutputMaps, OptimizeResult,
+};
 use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_optimize_tree_outputs;
@@ -126,7 +128,14 @@ pub fn run_optimize(
     if maps.root_sequence.is_some() {
       let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph);
       let providers = CommentProviders::new().with(&provider);
-      write_optimize_tree_outputs(&graph, &nodes, &branch_lengths, &maps, &resolved.tree_outputs, &providers)?;
+      write_optimize_tree_outputs(
+        &graph,
+        &nodes,
+        &branch_lengths,
+        &maps,
+        &resolved.tree_outputs,
+        &providers,
+      )?;
     } else {
       write_optimize_tree_outputs(
         &graph,
@@ -191,7 +200,9 @@ pub fn run_optimize(
 
 /// Gather the per-node nucleotide sequences, root sequence, per-edge nucleotide mutations, and per-edge
 /// substitutions the output writers read off the optimize partition.
-pub(crate) fn gather_optimize_output_maps(graph: &GraphAncestral<OptimizeGraphData>) -> Result<OptimizeOutputMaps, Report> {
+pub(crate) fn gather_optimize_output_maps(
+  graph: &GraphAncestral<OptimizeGraphData>,
+) -> Result<OptimizeOutputMaps, Report> {
   if let Some(partition) = graph.data().dense_partitions.first() {
     gather_optimize_partition_maps(graph, &*partition.read_arc())
   } else if let Some(partition) = graph.data().sparse_partitions.first() {

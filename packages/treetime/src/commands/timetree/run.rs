@@ -453,7 +453,9 @@ fn gather_timetree_outputs(
 
 /// Gather the per-node nucleotide sequences, root sequence, and per-edge nucleotide mutations the tree
 /// writers read off the timetree partition.
-pub(crate) fn gather_timetree_output_maps(graph: &GraphTimetree<TimetreeGraphData>) -> Result<TimetreeOutputMaps, Report> {
+pub(crate) fn gather_timetree_output_maps(
+  graph: &GraphTimetree<TimetreeGraphData>,
+) -> Result<TimetreeOutputMaps, Report> {
   let Some(partition) = graph.data().partitions.first() else {
     return Ok(TimetreeOutputMaps::default());
   };

@@ -357,9 +357,7 @@ fn gather_tree_output_maps<D: Send + Sync>(
 
 /// Gather the augur node-data sequences and substitutions for the partition in the graph data slot, or
 /// `None` when no partition exists.
-fn gather_augur_output_maps_opt(
-  graph: &GraphAncestral<AncestralGraphData>,
-) -> Result<Option<AugurOutputMaps>, Report> {
+fn gather_augur_output_maps_opt(graph: &GraphAncestral<AncestralGraphData>) -> Result<Option<AugurOutputMaps>, Report> {
   let Some(partition) = graph.data().partition.as_ref() else {
     return Ok(None);
   };

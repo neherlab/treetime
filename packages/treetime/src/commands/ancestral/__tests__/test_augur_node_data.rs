@@ -397,7 +397,14 @@ mod tests {
       );
 
       let maps = gather_augur_output_maps(&graph, &partition).unwrap();
-      build_augur_node_data_json(&graph, &maps, &[false, false, false, false], &names, Some(&aa_node_data)).unwrap()
+      build_augur_node_data_json(
+        &graph,
+        &maps,
+        &[false, false, false, false],
+        &names,
+        Some(&aa_node_data),
+      )
+      .unwrap()
     }
 
     pub fn expected_json_with_aa() -> AugurNodeDataJsonAncestral {
