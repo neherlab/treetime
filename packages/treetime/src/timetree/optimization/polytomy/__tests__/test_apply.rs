@@ -13,27 +13,10 @@ mod tests {
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::{assert_error, make_report, pretty_assert_abs_diff_eq};
 
-  /// `((A,B,C)P)root` with times set and each child edge carrying a distinct mutation length.
+  /// `((A,B,C)P)root` with each child edge carrying a distinct mutation length. The node times
+  /// `apply_plan` acts on are passed to it directly (`parent_time` and each [`ChildRef::time`]).
   fn polytomy_graph() -> Result<(GraphTimetree, GraphNodeKey, Vec<ChildRef>), Report> {
     let graph: GraphTimetree = nwk_read_str("((A:0.1,B:0.2,C:0.15)P:0.05)root;")?;
-
-    let times = [
-      ("A", 2020.0),
-      ("B", 2018.0),
-      ("C", 2016.0),
-      ("P", 2000.0),
-      ("root", 1990.0),
-    ];
-    for (name, time) in times {
-      let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
-      graph
-        .get_node(key)
-        .expect("Node must exist")
-        .write_arc()
-        .payload()
-        .write_arc()
-        .time = Some(time);
-    }
 
     let parent_key = find_node_key_by_name(&graph, "P").ok_or_else(|| make_report!("P not found"))?;
 
@@ -152,14 +135,7 @@ mod tests {
     );
 
     pretty_assert_abs_diff_eq!(
-      graph
-        .get_node(merger_key)
-        .expect("Node must exist")
-        .read_arc()
-        .payload()
-        .read_arc()
-        .time
-        .expect("new node must be dated"),
+      state.node(merger_key).time.expect("new node must be dated"),
       2010.0,
       epsilon = 1e-12
     );
@@ -182,16 +158,8 @@ mod tests {
     };
     apply_plan(&mut graph, parent_key, 2000.0, &children, &plan, &mut state)?;
 
-    let time_length_of = |edge_key: GraphEdgeKey| -> f64 {
-      graph
-        .get_edge(edge_key)
-        .expect("Edge must exist")
-        .read_arc()
-        .payload()
-        .read_arc()
-        .time_length
-        .expect("time_length must be set")
-    };
+    let time_length_of =
+      |edge_key: GraphEdgeKey| -> f64 { state.edge(edge_key).time_length.expect("time_length must be set") };
 
     // A and B now hang off the merger at 2010.
     pretty_assert_abs_diff_eq!(time_length_of(children[0].edge_key), 10.0, epsilon = 1e-12);

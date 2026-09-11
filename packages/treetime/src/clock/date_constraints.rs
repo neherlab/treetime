@@ -50,16 +50,14 @@ where
   let mut internal_constraint_count = 0;
   let mut used_names = BTreeSet::new();
 
-  // The value maps returned to the caller; every node gets an entry. The payload is written in
-  // parallel (transitional) so the payload-reading seed and tests stay valid until the payload
-  // round-trip is removed.
+  // The value maps returned to the caller; every node gets an entry. The timetree pipeline seeds
+  // [`TimetreeState`] straight from these maps (see [`TimetreeState::seed_from_values`]).
   let mut date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>> = BTreeMap::new();
   let mut time_distributions: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>> = BTreeMap::new();
   let mut bad_branches: BTreeMap<GraphNodeKey, bool> = BTreeMap::new();
 
   let names = node_names(graph);
   graph.iter_depth_first_postorder_forward(|node| {
-    let mut payload = node.payload;
     let key = node.key;
 
     let name = names[&key].clone();
@@ -77,9 +75,6 @@ where
 
       // The constraint is the input, kept as given for the whole run; the time distribution is the
       // current estimate, which starts out as the input and is refined by every inference pass.
-      payload.set_date_constraint(Some(Arc::clone(&dist)));
-      payload.set_time_distribution(Some(Arc::clone(&dist)));
-      payload.set_bad_branch(false);
       date_constraints.insert(key, Some(Arc::clone(&dist)));
       time_distributions.insert(key, Some(dist));
       bad_branches.insert(key, false);
@@ -91,7 +86,6 @@ where
         internal_constraint_count += 1;
       }
     } else if node.is_leaf {
-      payload.set_bad_branch(true);
       date_constraints.insert(key, None);
       time_distributions.insert(key, None);
       bad_branches.insert(key, true);
@@ -99,7 +93,6 @@ where
     } else {
       // Postorder guarantees every child is already recorded in the map.
       let all_children_bad = node.child_keys.iter().all(|(child_key, _)| bad_branches[child_key]);
-      payload.set_bad_branch(all_children_bad);
       date_constraints.insert(key, None);
       time_distributions.insert(key, None);
       bad_branches.insert(key, all_children_bad);

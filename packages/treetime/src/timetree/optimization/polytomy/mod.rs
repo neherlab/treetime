@@ -23,7 +23,6 @@ mod __tests__;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetreeRef};
 use crate::partition::traits::PartitionBranchOps;
-use crate::payload::clock_set::ClockSet;
 use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
 use crate::timetree::optimization::polytomy::sweep::{Lineage, simulate_subtree};
 use crate::timetree::timetree_state::TimetreeState;
@@ -325,23 +324,15 @@ pub fn prepare_tree_after_topology_change(graph: &GraphTimetree, state: &mut Tim
       );
     };
     // Negative-log ordinate `0` is the `NegLog` multiplicative identity (probability 1). The point
-    // distribution is written to both the value state (the new home the passes read) and the payload
-    // (still re-read by the transitional reseed until the payload round-trip is removed).
+    // distribution lives in the threaded date state, the home the passes read.
     let distribution = Arc::new(Distribution::point(time, 0.0));
-    node.payload().write_arc().time_distribution = Some(Arc::clone(&distribution));
     state.node_mut(key).time_distribution = Some(distribution);
   }
 
-  // Reset fields whose meaning depends on the previous edge topology. Keep the
-  // observed branch length and inferred time length: both seed the next pass. The branch-length
-  // distribution, backward message, and relaxed-clock rate multiplier now live in the threaded date
-  // state, reset there by `TimetreeState::reset_date_edges_for_topology_change`.
-  for edge in graph.get_edges() {
-    let mut payload = edge.read_arc().payload().write_arc();
-    payload.clock_to_parent = ClockSet::default();
-    payload.clock_to_child = ClockSet::default();
-    payload.clock_from_child = ClockSet::default();
-  }
+  // Fields whose meaning depends on the previous edge topology (branch-length distribution, backward
+  // message, relaxed-clock rate multiplier) live in the threaded date state and are reset there by
+  // `TimetreeState::reset_date_edges_for_topology_change`. The observed branch length and inferred
+  // time length are kept: both seed the next pass.
 
   Ok(())
 }

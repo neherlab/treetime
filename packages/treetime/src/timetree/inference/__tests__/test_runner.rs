@@ -12,7 +12,7 @@ mod tests {
   use petgraph::visit::EdgeRef;
   use std::collections::BTreeMap;
   use std::io::Cursor;
-  use treetime_graph::edge::{GraphEdgeKey, HasBranchLength, TimeLength};
+  use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
   use treetime_graph::node::Named;
   use treetime_graph::value_maps::{edge_branch_lengths, node_names};
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
@@ -27,9 +27,10 @@ mod tests {
 
     // Verify each edge has time_length = branch_length / clock_rate
     for edge_ref in graph.get_edges() {
-      let edge = edge_ref.read_arc().payload().read_arc();
-      let branch_length = edge.branch_length();
-      let time_length = edge.time_length();
+      let edge_read = edge_ref.read_arc();
+      let key = edge_read.key();
+      let branch_length = edge_read.payload().read_arc().branch_length();
+      let time_length = state.edge(key).time_length;
 
       if let Some(bl) = branch_length {
         let expected_time = bl / clock_rate;
@@ -49,13 +50,13 @@ mod tests {
     let mut state = TimetreeState::new(&graph);
     create_branch_distributions_input_mode(&graph, &edge_branch_lengths(&graph), clock_rate, &mut state)?;
 
-    // EdgeTimetree.nwk_weight() returns time_length, so Newick output should show time values
+    // Write each edge's value-state time length as its Newick weight, so the output shows time values.
     let time_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = graph
       .get_edges()
       .iter()
       .map(|edge| {
-        let edge = edge.read_arc();
-        (edge.key(), edge.payload().read_arc().time_length())
+        let key = edge.read_arc().key();
+        (key, state.edge(key).time_length)
       })
       .collect();
     let newick_output = nwk_write_str(&graph, &node_names(&graph), &time_lengths, &NwkWriteOptions::default())?;
@@ -119,24 +120,25 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_read = edge_ref.read_arc();
+      let key = edge_read.key();
       let target = edge_read.target();
       let target_name = graph
         .get_node(target)
         .and_then(|n| n.read_arc().payload().read_arc().name().map(|s| s.as_ref().to_owned()));
-      let payload = edge_read.payload().read_arc();
+      let time_length = state.edge(key).time_length;
 
       match target_name.as_deref() {
         Some("A") => {
           // branch_length=0.006, gamma=2.0: time = 0.006 / (0.001 * 2.0) = 3.0
           // Newick parsing introduces tiny float error in branch length, use abs_diff
           let expected = 3.0;
-          let actual = payload.time_length().expect("time_length should be set");
+          let actual = time_length.expect("time_length should be set");
           assert_abs_diff_eq!(actual, expected, epsilon = 1e-7);
         },
         Some("I") => {
           // branch_length=0.003, gamma=1.0 (default): time = 0.003 / 0.001 = 3.0
           let expected = 3.0;
-          let actual = payload.time_length().expect("time_length should be set");
+          let actual = time_length.expect("time_length should be set");
           assert_abs_diff_eq!(actual, expected, epsilon = 1e-7);
         },
         _ => {},
@@ -158,11 +160,12 @@ mod tests {
     create_branch_distributions_input_mode(&graph, &edge_branch_lengths(&graph), clock_rate, &mut state)?;
 
     for edge_ref in graph.get_edges() {
-      let edge = edge_ref.read_arc().payload().read_arc();
-      if let Some(bl) = edge.branch_length() {
+      let edge_read = edge_ref.read_arc();
+      let key = edge_read.key();
+      if let Some(bl) = edge_read.payload().read_arc().branch_length() {
         // With gamma=1.0, time = bl / clock_rate (same as without gamma)
         let expected = bl / clock_rate;
-        let actual = edge.time_length().expect("time_length should be set");
+        let actual = state.edge(key).time_length.expect("time_length should be set");
         pretty_assert_ulps_eq!(actual, expected, max_ulps = 4);
       }
     }
@@ -182,8 +185,7 @@ mod tests {
     state.edge_mut(edge_key).time_length = Some(7.5);
     create_branch_distributions_input_mode(&graph, &edge_branch_lengths(&graph), 0.001, &mut state)?;
 
-    let payload = edge.read_arc().payload().read_arc();
-    assert_eq!(Some(7.5), payload.time_length());
+    assert_eq!(Some(7.5), state.edge(edge_key).time_length);
     // The branch-length distribution lives in the value now, not on the payload.
     assert_eq!(
       Some(7.5),

@@ -10,7 +10,7 @@ use crate::timetree::timetree_state::{DateNodeState, TimetreeState};
 use eyre::Report;
 use treetime_graph::edge::{GraphEdgeKey, HasBranchLength};
 use treetime_graph::node::GraphNodeKey;
-use treetime_utils::{make_internal_error, make_internal_report};
+use treetime_utils::make_internal_error;
 
 /// One child of the polytomy, paired with the graph objects the plan refers to by index.
 #[derive(Clone, Copy, Debug)]
@@ -48,13 +48,9 @@ pub fn apply_plan(
   let mut merger_nodes: Vec<GraphNodeKey> = Vec::with_capacity(plan.mergers.len());
 
   for merger in &plan.mergers {
-    let new_node_key = graph.add_node(NodeTimetree {
-      time: Some(merger.time),
-      ..NodeTimetree::default()
-    });
-    // The new merger node's committed time lives on the value state (its new home) as well as the
-    // payload; `prepare_tree_after_topology_change` reads it back to seed the node's point time
-    // distribution.
+    let new_node_key = graph.add_node(NodeTimetree::default());
+    // The new merger node's committed time lives on the value state, its home;
+    // `prepare_tree_after_topology_change` reads it back to seed the node's point time distribution.
     state.nodes.insert(
       new_node_key,
       DateNodeState {
@@ -187,10 +183,6 @@ fn attach(
   if let Some(child) = children.get(lineage) {
     // An original child: relocate its existing edge, keeping key and payload.
     graph.reparent_edge(child.edge_key, new_parent_key)?;
-    let edge = graph
-      .get_edge(child.edge_key)
-      .ok_or_else(|| make_internal_report!("Edge {} vanished while applying polytomy plan", child.edge_key))?;
-    edge.write_arc().payload().write_arc().time_length = Some(time_length);
     state.edges.entry(child.edge_key).or_default().time_length = Some(time_length);
   } else {
     // A node the sweep created: it has no parent edge yet.
@@ -199,10 +191,7 @@ fn attach(
         "Polytomy plan referenced merger node {lineage} before it was created; mergers must only reference earlier mergers"
       );
     };
-    let mut payload = EdgeTimetree {
-      time_length: Some(time_length),
-      ..EdgeTimetree::default()
-    };
+    let mut payload = EdgeTimetree::default();
     // The sweep only merges lineages that have placed every substitution, so the branch
     // above a merger node carries none.
     payload.set_branch_length(Some(0.0));

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::date_constraints::load_date_constraints;
+  use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::o;
   use crate::payload::traits::DateConstraintNode;
   use eyre::Report;
@@ -87,23 +87,33 @@ mod tests {
 
   type TestGraph = Graph<TestNode, TestEdge, ()>;
 
-  /// Node payloads sorted by name, with the fixed date constraint checked against the time
-  /// distribution and then cleared: loading writes the input to both, so spelling it out a second
-  /// time in every expected payload below would say nothing new.
+  /// The returned date constraints projected per node and sorted by name, with the fixed date
+  /// constraint checked against the time distribution and then cleared: loading records the input in
+  /// both maps, so spelling it out a second time in every expected payload below would say nothing
+  /// new.
   ///
   /// A certain date carries probability one, whose stored ordinate under `NegLog` is `-ln(1) = 0`,
   /// so every expected `ampl` below is `0.0` rather than `1.0` (see `date_constraint_to_distribution`).
-  fn get_node_payloads(graph: &TestGraph) -> Vec<TestNode> {
+  fn node_constraints(graph: &TestGraph, constraints: &DateConstraints) -> Vec<TestNode> {
     graph
-      .get_node_payloads()
+      .get_nodes()
+      .iter()
       .map(|node| {
-        let mut node = node.read_arc().clone();
+        let node = node.read_arc();
+        let key = node.key();
+        let name = node.payload().read_arc().name().map(|n| o!(n.as_ref()));
+        let date_constraint = constraints.date_constraints[&key].clone();
+        let time_distribution = constraints.time_distributions[&key].clone();
         assert_eq!(
-          node.date_constraint, node.time_distribution,
+          date_constraint, time_distribution,
           "the loaded date constraint must be kept as the fixed input alongside the time distribution"
         );
-        node.date_constraint = None;
-        node
+        TestNode {
+          name,
+          date_constraint: None,
+          time_distribution,
+          bad_branch: constraints.bad_branches[&key],
+        }
       })
       .sorted_by_key(|n| n.name().map(|n| o!(n.as_ref())).unwrap_or_default())
       .collect_vec()
@@ -129,9 +139,9 @@ mod tests {
       o!("C") => exact(2020.75),
     };
 
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
-    let actual = get_node_payloads(&graph);
+    let actual = node_constraints(&graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
         {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
@@ -153,9 +163,9 @@ mod tests {
       o!("C") => exact(2020.75),
     };
 
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
-    let actual = get_node_payloads(&graph);
+    let actual = node_constraints(&graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
         {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
@@ -178,9 +188,9 @@ mod tests {
       o!("C") => exact(2020.75),
     };
 
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
-    let actual = get_node_payloads(&graph);
+    let actual = node_constraints(&graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
         {"name": "A", "time_distribution": {"range": {"range": [2020.0, 2020.25], "ampl": 0.0}}, "bad_branch": false},
@@ -203,9 +213,9 @@ mod tests {
       o!("AB") => exact(2019.5),
     };
 
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
-    let actual = get_node_payloads(&graph);
+    let actual = node_constraints(&graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
         {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
@@ -228,9 +238,9 @@ mod tests {
       o!("C") => exact(2020.75),
     };
 
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
-    let actual = get_node_payloads(&graph);
+    let actual = node_constraints(&graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
         {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
@@ -255,9 +265,9 @@ mod tests {
       o!("E") => exact(2020.75),
     };
 
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
-    let actual = get_node_payloads(&graph);
+    let actual = node_constraints(&graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
         {"name": "A", "time_distribution": null, "bad_branch": true},
@@ -284,9 +294,9 @@ mod tests {
       o!("C") => exact(2020.75),
     };
 
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
-    let actual = get_node_payloads(&graph);
+    let actual = node_constraints(&graph, &constraints);
     assert_eq!(actual.iter().filter(|n| n.time_distribution.is_some()).count(), 3);
     Ok(())
   }
@@ -301,9 +311,9 @@ mod tests {
       o!("D") => exact(2020.75),
     };
 
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
-    let actual = get_node_payloads(&graph);
+    let actual = node_constraints(&graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
         {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
@@ -329,9 +339,9 @@ mod tests {
       o!("G") => exact(2021.0),
     };
 
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
-    let actual = get_node_payloads(&graph);
+    let actual = node_constraints(&graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
         {"name": "A", "time_distribution": null, "bad_branch": true},
@@ -366,9 +376,9 @@ mod tests {
       o!("K") => exact(2021.0),
     };
 
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
-    let actual = get_node_payloads(&graph);
+    let actual = node_constraints(&graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
         {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
@@ -400,9 +410,9 @@ mod tests {
       o!("D") => exact(2021.0),
     };
 
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
-    let actual = get_node_payloads(&graph);
+    let actual = node_constraints(&graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
         {"name": "A", "time_distribution": {"range": {"range": [2020.0, 2020.25], "ampl": 0.0}}, "bad_branch": false},
@@ -425,11 +435,8 @@ mod tests {
       o!("C") => exact(2020.75),
     };
 
-    load_date_constraints(&dates, &graph)?;
-    let first_run = get_node_payloads(&graph);
-
-    load_date_constraints(&dates, &graph)?;
-    let second_run = get_node_payloads(&graph);
+    let first_run = node_constraints(&graph, &load_date_constraints(&dates, &graph)?);
+    let second_run = node_constraints(&graph, &load_date_constraints(&dates, &graph)?);
 
     assert_eq!(first_run, second_run);
     Ok(())
@@ -445,9 +452,9 @@ mod tests {
       o!("AB") => range(2019.0, 2019.75),
     };
 
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
-    let actual = get_node_payloads(&graph);
+    let actual = node_constraints(&graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
         {"name": "A", "time_distribution": {"point": {"t": 2020.0, "ampl": 0.0}}, "bad_branch": false},
@@ -470,9 +477,9 @@ mod tests {
       o!("C") => exact(0.0),
     };
 
-    load_date_constraints(&dates, &graph)?;
+    let constraints = load_date_constraints(&dates, &graph)?;
 
-    let actual = get_node_payloads(&graph);
+    let actual = node_constraints(&graph, &constraints);
     let expected: Vec<TestNode> = json_read_str(
       r#"[
         {"name": "A", "time_distribution": {"point": {"t": -500.0, "ampl": 0.0}}, "bad_branch": false},

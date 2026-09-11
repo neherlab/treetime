@@ -60,7 +60,7 @@ mod tests {
       graph
         .get_nodes()
         .iter()
-        .all(|node| { node.read_arc().payload().read_arc().time_distribution.is_some() })
+        .all(|node| { state.node(node.read_arc().key()).time_distribution.is_some() })
     );
 
     let edge_lh = compute_coalescent_total_lh(&graph, &tc, &state.coalescent_node_times())?;
@@ -70,9 +70,8 @@ mod tests {
       .iter()
       .map(|node| {
         let node = node.read_arc();
-        let time = node
-          .payload()
-          .read_arc()
+        let time = state
+          .node(node.key())
           .time_distribution
           .as_ref()
           .and_then(|distribution| distribution.likely_time())

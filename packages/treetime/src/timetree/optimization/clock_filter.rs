@@ -95,8 +95,7 @@ pub fn report_bad_branches(
 /// is bad only when all its children are bad.
 ///
 /// The outlier flag is read from the threaded [`ClockState`] value; the bad-branch flag is written
-/// into the threaded [`TimetreeState`] value (the home the coalescent and date passes read), and
-/// still mirrored onto the payload transitionally.
+/// into the threaded [`TimetreeState`] value, the home the coalescent and date passes read.
 pub fn apply_outlier_bad_branches(
   graph: &GraphTimetree,
   clock_state: &ClockState,
@@ -105,7 +104,6 @@ pub fn apply_outlier_bad_branches(
   for leaf in graph.get_leaves() {
     let node = leaf.read_arc();
     if clock_state.node(node.key()).is_outlier {
-      node.payload().write_arc().bad_branch = true;
       state.node_mut(node.key()).bad_branch = true;
     }
   }
@@ -116,9 +114,9 @@ pub fn apply_outlier_bad_branches(
 /// Recompute internal bad-branch state from the current topology.
 ///
 /// Each internal node's flag is the conjunction of its children's flags, read from the threaded
-/// [`TimetreeState`] value and written back into it (and mirrored onto the payload transitionally).
+/// [`TimetreeState`] value and written back into it.
 pub fn propagate_bad_branches(graph: &GraphTimetree, state: &mut TimetreeState) -> Result<(), Report> {
-  graph.iter_depth_first_postorder_forward(|mut node| {
+  graph.iter_depth_first_postorder_forward(|node| {
     if node.is_leaf {
       return Ok(());
     }
@@ -128,7 +126,6 @@ pub fn propagate_bad_branches(graph: &GraphTimetree, state: &mut TimetreeState) 
       .iter()
       .all(|(child_key, _)| state.node(*child_key).bad_branch);
 
-    node.payload.bad_branch = all_children_bad;
     state.node_mut(node.key).bad_branch = all_children_bad;
     Ok(())
   })

@@ -28,18 +28,9 @@ mod tests {
   /// admit the mergers a full resolution needs, without making them a foregone conclusion.
   const TEST_MERGER_RATE: f64 = 0.15;
 
-  /// Set a node's committed time on the date state (the value `resolve_polytomies` reads), and mirror
-  /// it onto the payload, which the output assertions in `test_resolve_polytomies_dates_new_nodes`
-  /// still read for the original nodes.
+  /// Set a node's committed time on the date state, the value `resolve_polytomies` reads.
   fn set_time(graph: &GraphTimetree, state: &mut TimetreeState, name: &str, time: f64) -> Result<GraphNodeKey, Report> {
     let key = find_node_key_by_name(graph, name).ok_or_else(|| make_report!("{name} not found"))?;
-    graph
-      .get_node(key)
-      .expect("Node must exist")
-      .write_arc()
-      .payload()
-      .write_arc()
-      .time = Some(time);
     state.node_mut(key).time = Some(time);
     Ok(key)
   }
@@ -297,7 +288,7 @@ mod tests {
       if node.is_leaf() || node.payload().read_arc().name().is_some() {
         continue;
       }
-      let time = node.payload().read_arc().time.expect("new nodes must be dated");
+      let time = state.node(node.key()).time.expect("new nodes must be dated");
       assert!(
         time > parent_time,
         "new node at {time} must be more recent than the polytomy at {parent_time}"
@@ -309,19 +300,12 @@ mod tests {
     while let Some(key) = stack.pop() {
       let node = graph.get_node(key).expect("Node must exist");
       let node = node.read_arc();
-      let time = node.payload().read_arc().time.expect("node must be dated");
+      let time = state.node(key).time.expect("node must be dated");
       for &edge_key in node.outbound() {
         let edge = graph.get_edge(edge_key).expect("Edge must exist");
         let target = edge.read_arc().target();
-        let time_length = edge.read_arc().payload().read_arc().time_length;
-        let child_time = graph
-          .get_node(target)
-          .expect("Node must exist")
-          .read_arc()
-          .payload()
-          .read_arc()
-          .time
-          .expect("node must be dated");
+        let time_length = state.edge(edge_key).time_length;
+        let child_time = state.node(target).time.expect("node must be dated");
         assert!(child_time > time, "edge must run forward in time");
         pretty_assert_abs_diff_eq!(
           time_length.expect("time_length must be set"),
@@ -368,93 +352,80 @@ mod tests {
     let (graph, mut state) = polytomy_tree()?;
 
     for edge in graph.get_edges() {
-      let mut payload = edge.read_arc().payload().write_arc();
+      let edge = edge.read_arc();
+      let key = edge.key();
+      let mut payload = edge.payload().write_arc();
       payload.clock_to_parent = ClockSet::leaf_contribution(Some(2020.0));
       payload.clock_to_child = ClockSet::leaf_contribution(Some(2021.0));
       payload.clock_from_child = ClockSet::leaf_contribution(Some(2022.0));
       payload.set_branch_length(Some(0.25));
-      payload.time_length = Some(3.0);
+      state.edge_mut(key).time_length = Some(3.0);
     }
 
     let date_dist = Arc::new(Distribution::point(2020.0, 1.0));
     for name in ["A", "B", "C"] {
       let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
-      graph
-        .get_node(key)
-        .expect("Node must exist")
-        .read_arc()
-        .payload()
-        .write_arc()
-        .time_distribution = Some(Arc::clone(&date_dist));
+      state.node_mut(key).time_distribution = Some(Arc::clone(&date_dist));
     }
 
     let leaf_b_key = find_node_key_by_name(&graph, "B").ok_or_else(|| make_report!("B not found"))?;
-    graph
-      .get_node(leaf_b_key)
-      .expect("Node must exist")
-      .read_arc()
-      .payload()
-      .write_arc()
-      .bad_branch = true;
+    state.node_mut(leaf_b_key).bad_branch = true;
 
     let abc_key = find_node_key_by_name(&graph, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
-    {
-      let node = graph.get_node(abc_key).expect("Node must exist");
-      let mut payload = node.read_arc().payload().write_arc();
-      payload.time_distribution = Some(Arc::new(Distribution::point(2010.0, 1.0)));
-      payload.bad_branch = true;
-    }
+    state.node_mut(abc_key).time_distribution = Some(Arc::new(Distribution::point(2010.0, 1.0)));
+    state.node_mut(abc_key).bad_branch = true;
 
-    // `state` from the fixture already carries the internal-node times `prepare` reads; the payload
-    // writes above set up the transitional payload fields the assertions below verify `prepare`
-    // preserves or rebuilds.
+    // `state` from the fixture already carries the internal-node times `prepare` reads; the value
+    // seeds above set up the date-state fields the assertions below verify `prepare` preserves or
+    // rebuilds.
     prepare_tree_after_topology_change(&graph, &mut state)?;
 
     for name in ["A", "B", "C"] {
       let key = find_node_key_by_name(&graph, name).ok_or_else(|| make_report!("{name} not found"))?;
-      let node = graph.get_node(key).expect("Node must exist");
-      let payload = node.read_arc().payload().read_arc();
       assert!(
-        payload.time_distribution.is_some(),
+        state.node(key).time_distribution.is_some(),
         "leaf time_distribution must survive topology change"
       );
     }
 
-    {
-      let node = graph.get_node(leaf_b_key).expect("Node must exist");
-      assert!(
-        node.read_arc().payload().read_arc().bad_branch,
-        "leaf bad_branch flag must survive topology change"
-      );
-    }
+    assert!(
+      state.node(leaf_b_key).bad_branch,
+      "leaf bad_branch flag must survive topology change"
+    );
 
-    {
-      let node = graph.get_node(abc_key).expect("Node must exist");
-      let payload = node.read_arc().payload().read_arc();
-      pretty_assert_abs_diff_eq!(
-        payload
-          .time_distribution
-          .as_ref()
-          .and_then(|distribution| distribution.likely_time())
-          .expect("internal node time distribution must be rebuilt"),
-        1990.0,
-        epsilon = 1e-10
-      );
-      assert!(payload.bad_branch, "internal node bad_branch must be preserved");
-    }
+    pretty_assert_abs_diff_eq!(
+      state
+        .node(abc_key)
+        .time_distribution
+        .as_ref()
+        .and_then(|distribution| distribution.likely_time())
+        .expect("internal node time distribution must be rebuilt"),
+      1990.0,
+      epsilon = 1e-10
+    );
+    assert!(
+      state.node(abc_key).bad_branch,
+      "internal node bad_branch must be preserved"
+    );
 
     for edge in graph.get_edges() {
-      let payload = edge.read_arc().payload().read_arc();
+      let edge = edge.read_arc();
+      let key = edge.key();
       // The branch-length distribution, backward message, and relaxed-clock rate multiplier live in the
       // date-state value now, reset by `TimetreeState::reset_date_edges_for_topology_change`;
-      // `prepare_tree_after_topology_change` preserves the payload-resident inputs.
+      // `prepare_tree_after_topology_change` preserves the branch length on the payload and the inferred
+      // time length on the date state.
       pretty_assert_abs_diff_eq!(
-        payload.branch_length().expect("branch length must be preserved"),
+        edge
+          .payload()
+          .read_arc()
+          .branch_length()
+          .expect("branch length must be preserved"),
         0.25,
         epsilon = 1e-10
       );
       pretty_assert_abs_diff_eq!(
-        payload.time_length.expect("time length must be preserved"),
+        state.edge(key).time_length.expect("time length must be preserved"),
         3.0,
         epsilon = 1e-10
       );
