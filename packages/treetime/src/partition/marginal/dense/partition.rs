@@ -237,7 +237,6 @@ where
     let names = node_names(graph);
     for leaf in graph.get_leaves() {
       let leaf_key = leaf.read_arc().key();
-      let mut leaf = leaf.read_arc().payload().write_arc();
 
       let leaf_name = names[&leaf_key].clone().ok_or_else(|| {
         make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
@@ -247,8 +246,6 @@ where
         .get(leaf_name.as_str())
         .copied()
         .ok_or_else(|| make_report!("Leaf sequence not found: '{leaf_name}'"))?;
-
-      leaf.set_desc(leaf_fasta.desc.clone());
 
       let alphabet = &self.alphabet;
       self

@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::{BranchDistribution, ClockMessages, GraphEdge, HasBranchLength, TimeLength};
-use treetime_graph::node::{Described, GraphNode, Named, Outlier, TimeConstraint};
+use treetime_graph::node::{GraphNode, Named, Outlier, TimeConstraint};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
@@ -37,16 +37,6 @@ impl Named for NodeTimetree {
 
   fn set_name(&mut self, name: Option<impl AsRef<str>>) {
     self.base.set_name(name);
-  }
-}
-
-impl Described for NodeTimetree {
-  fn desc(&self) -> &Option<String> {
-    self.base.desc()
-  }
-
-  fn set_desc(&mut self, desc: Option<String>) {
-    self.base.set_desc(desc);
   }
 }
 

@@ -25,7 +25,7 @@ use log::{info, warn};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::value_maps::{edge_branch_lengths, node_descs, node_names};
+use treetime_graph::value_maps::{edge_branch_lengths, node_names};
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
@@ -99,15 +99,14 @@ pub fn run_ancestral_reconstruction(
     ignore_missing_alns: ancestral_args.ignore_missing_alns,
   };
 
-  // Snapshot names, descriptions, and per-edge branch lengths before the graph moves into the
-  // pipeline. Every reconstruction consumer reads its node label and edge branch length from these
-  // keyed value maps threaded down from here instead of off the graph payload. Ancestral never
-  // renames or re-lengths after parse, so these snapshots mirror exactly what a consumer would have
-  // read off the payload at any later point. Two branch-length map shapes are kept distinct: the
-  // `f64` `profile_branch_lengths` map feeds the marginal passes, while the `Option<f64>`
+  // Snapshot names and per-edge branch lengths before the graph moves into the pipeline. Every
+  // reconstruction consumer reads its node label and edge branch length from these keyed value maps
+  // threaded down from here instead of off the graph payload. Ancestral never renames or re-lengths
+  // after parse, so these snapshots mirror exactly what a consumer would have read off the payload
+  // at any later point. Two branch-length map shapes are kept distinct: the `f64`
+  // `profile_branch_lengths` map feeds the marginal passes, while the `Option<f64>`
   // `edge_branch_lengths` map preserves a missing weight as `None` for the output writers and gather.
   let names = node_names(&graph);
-  let descs = node_descs(&graph);
   let profile_branch_lengths_input = profile_branch_lengths(&graph);
   let branch_lengths_opt = edge_branch_lengths(&graph);
 
@@ -125,8 +124,11 @@ pub fn run_ancestral_reconstruction(
     |key, seq| {
       if let Some(ref mut writer) = output_fasta {
         let name = names[&key].as_deref().unwrap_or("");
-        let desc = &descs[&key];
-        writer.write(name, desc, seq)
+        // Descriptions originate only on leaf FASTA records and are written during partition init,
+        // which runs inside `pipeline::run` below. This writer is the ancestral-reconstruction
+        // consumer whose snapshot of node labels is taken before that init; at that point no node
+        // carries a description, so every reconstructed record is emitted without one.
+        writer.write(name, &None, seq)
       } else {
         Ok(())
       }

@@ -12,12 +12,6 @@ pub trait Named {
   fn set_name(&mut self, name: Option<impl AsRef<str>>);
 }
 
-/// Defines how to read and write node description
-pub trait Described {
-  fn desc(&self) -> &Option<String>;
-  fn set_desc(&mut self, desc: Option<String>);
-}
-
 /// Defines whether a node is marked as an outlier
 pub trait Outlier {}
 
@@ -40,8 +34,8 @@ pub trait TimeConstraint<T> {
 pub trait GraphNode: Debug + Sync + Send {}
 
 /// Composite trait for nodes that support ancestral reconstruction
-pub trait NodeAncestralOps: GraphNode + Named + Described {}
-impl<T: GraphNode + Named + Described> NodeAncestralOps for T {}
+pub trait NodeAncestralOps: GraphNode + Named {}
+impl<T: GraphNode + Named> NodeAncestralOps for T {}
 
 /// Composite trait for nodes that support tree optimization
 pub trait NodeOptimizeOps: GraphNode + Named {}

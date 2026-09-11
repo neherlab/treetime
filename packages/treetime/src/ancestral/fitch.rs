@@ -72,7 +72,6 @@ where
     .map(|leaf| -> Result<_, Report> {
       let leaf = leaf.read_arc();
       let leaf_key = leaf.key();
-      let mut leaf_payload = leaf.payload().write_arc();
       let leaf_name = names[&leaf_key]
         .clone()
         .ok_or_else(|| {
@@ -83,7 +82,6 @@ where
         .copied()
         // Every leaf has a sequence record after alignment completion.
         .ok_or_else(|| make_report!("Leaf sequence not found after alignment completion: '{leaf_name}'"))?;
-      leaf_payload.set_desc(leaf_fasta.desc.clone());
       Ok((leaf_key, leaf_fasta))
     })
     .collect::<Result<Vec<_>, Report>>()?;

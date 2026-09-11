@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use treetime_graph::edge::{GraphEdge, HasBranchLength};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{Described, GraphNode, Named};
+use treetime_graph::node::{GraphNode, Named};
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
@@ -15,7 +15,6 @@ pub type GraphAncestral<D = ()> = Graph<NodeAncestral, EdgeAncestral, D>;
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct NodeAncestral {
   pub name: Option<String>,
-  pub desc: Option<String>,
   /// Input-tree branch support / bootstrap / posterior probability.
   pub confidence: Option<f64>,
 }
@@ -29,7 +28,6 @@ impl NodeFromNwk for NodeAncestral {
     Ok(Self {
       name: name.map(|s| s.as_ref().to_owned()),
       confidence,
-      ..NodeAncestral::default()
     })
   }
 }
@@ -53,16 +51,6 @@ impl Named for NodeAncestral {
 
   fn set_name(&mut self, name: Option<impl AsRef<str>>) {
     self.name = name.map(|n| n.as_ref().to_owned());
-  }
-}
-
-impl Described for NodeAncestral {
-  fn desc(&self) -> &Option<String> {
-    &self.desc
-  }
-
-  fn set_desc(&mut self, desc: Option<String>) {
-    self.desc = desc;
   }
 }
 

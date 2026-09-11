@@ -979,7 +979,7 @@ mod tests {
             key,
             TimetreeNodeOut {
               name: payload.base.name.clone(),
-              desc: payload.base.desc.clone(),
+              desc: None,
               confidence: payload.base.confidence,
               time: payload.time,
               div: index as f64 / 2.0,
