@@ -1,5 +1,5 @@
 use crate::clock::clock_model::ClockLine;
-use crate::clock::clock_state::ClockState;
+use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::make_error;
 use eyre::Report;
 use itertools::Itertools;
@@ -27,6 +27,7 @@ pub struct ClockFilterResult {
 #[allow(clippy::integer_division_remainder_used)]
 pub fn clock_filter_inplace(
   graph: &Graph,
+  inputs: &ClockInputs,
   state: &mut ClockState,
   clock_line: &(impl ClockLine + Sync),
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -58,9 +59,9 @@ pub fn clock_filter_inplace(
     .get_leaves()
     .par_iter()
     .filter_map(|leaf| {
-      let node = state.node(leaf.read_arc().key());
-      let div = node.div;
-      let time = node.likely_time();
+      let key = leaf.read_arc().key();
+      let div = state.node(key).div;
+      let time = inputs.likely_time(key);
       time.map(|time| clock_line.clock_deviation(time, div))
     })
     .collect::<Vec<_>>()
@@ -91,7 +92,7 @@ pub fn clock_filter_inplace(
       let node = state.node(key);
       let div = node.div;
       let was_outlier = node.is_outlier;
-      node.likely_time().map(|time| {
+      inputs.likely_time(key).map(|time| {
         let clock_deviation = clock_line.clock_deviation(time, div);
         let is_outlier = clock_deviation.abs() > iqd * threshold;
         (key, is_outlier, i32::from(was_outlier != is_outlier))

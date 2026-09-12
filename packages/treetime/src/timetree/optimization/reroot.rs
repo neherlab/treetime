@@ -1,7 +1,7 @@
 use crate::ancestral::marginal::profile_branch_lengths;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
-use crate::clock::clock_state::ClockState;
+use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
 use crate::partition::timetree::marginal::marginal_update_timetree;
@@ -44,13 +44,15 @@ pub fn reroot_tree(
   );
 
   // Perform clock-based rerooting on the threaded clock state. Re-read the node dates from the date
-  // state while preserving the value-resident divergence and outlier flag, so the regression excludes
-  // the leaves the clock filter marked. The reroot mutates the state's node and edge maps in place to
-  // match the new topology.
-  clock_state.reseed_transitional_from_times(graph, &timetree_state.likely_times(), &BTreeMap::new());
-  let clock_reroot_result = estimate_clock_model_with_reroot_policy(
+  // state into fresh clock inputs while preserving the value-resident divergence and outlier flag on
+  // the clock results, so the regression excludes the leaves the clock filter marked. The reroot
+  // rebuilds the returned results and remaps the inputs to match the new topology.
+  clock_state.reseed_transitional(graph);
+  let mut clock_inputs = ClockInputs::seed_from_times(graph, &timetree_state.likely_times());
+  let (new_clock_state, clock_reroot_result) = estimate_clock_model_with_reroot_policy(
     graph,
-    clock_state,
+    &mut clock_inputs,
+    std::mem::take(clock_state),
     clock_params,
     clock_rate,
     false,
@@ -61,6 +63,7 @@ pub fn reroot_tree(
     names,
   )
   .wrap_err("Failed to estimate clock model with reroot")?;
+  *clock_state = new_clock_state;
 
   if let Some(reroot_result) = clock_reroot_result.reroot_result() {
     if !partitions.is_empty() {

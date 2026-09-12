@@ -1,4 +1,4 @@
-use crate::clock::clock_state::ClockState;
+use crate::clock::clock_state::ClockInputs;
 use crate::make_error;
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -16,7 +16,7 @@ const MIN_GOOD_LEAVES: usize = 3;
 pub fn assign_dates(
   graph: &Graph,
   dates: &DatesMap,
-  state: &mut ClockState,
+  inputs: &mut ClockInputs,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report> {
   let n_dates = dates.iter().filter(|(_, d)| d.is_some()).count();
@@ -37,11 +37,11 @@ pub fn assign_dates(
         || node
           .child_keys
           .iter()
-          .all(|(child_key, _)| state.node(*child_key).bad_branch));
+          .all(|(child_key, _)| inputs.node(*child_key).bad_branch));
 
-    let node_state = state.node_mut(node.key);
-    node_state.time = time;
-    node_state.bad_branch = bad_branch;
+    let node_input = inputs.node_mut(node.key);
+    node_input.time = time;
+    node_input.bad_branch = bad_branch;
 
     if node.is_leaf && bad_branch {
       n_bad_leaves += 1;

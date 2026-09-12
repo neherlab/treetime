@@ -1,6 +1,6 @@
 use crate::clock::clock_regression::ClockParams;
 use crate::clock::clock_set::ClockSet;
-use crate::clock::clock_state::ClockState;
+use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::make_error;
@@ -19,6 +19,7 @@ use treetime_utils::collections::container::get_exactly_one;
 // when force_positive is true), then optimize position along surrounding branches.
 pub fn find_best_root(
   graph: &Graph,
+  inputs: &ClockInputs,
   state: &ClockState,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
@@ -90,7 +91,7 @@ pub fn find_best_root(
     debug!("Optimizing position on parent branch");
     let inbound = best_root_node.inbound();
     let edge = get_exactly_one(inbound).expect("Not implemented: multiple parent nodes");
-    let res = find_best_split(graph, state, *edge, branch_lengths, options, params, objective)?;
+    let res = find_best_split(graph, inputs, state, *edge, branch_lengths, options, params, objective)?;
     debug!(
       "Parent branch optimization result: chi-squared = {:.6e}, split = {:.6}",
       res.chisq, res.split
@@ -109,7 +110,7 @@ pub fn find_best_root(
   // Check if some place on a child branch is better
   for (child_branch_count, e) in best_root_node.outbound().iter().enumerate() {
     debug!("Optimizing position on child branch {child_branch_count}");
-    let res = find_best_split(graph, state, *e, branch_lengths, options, params, objective)?;
+    let res = find_best_split(graph, inputs, state, *e, branch_lengths, options, params, objective)?;
     debug!(
       "Child branch {} optimization result: chi-squared = {:.6e}, split = {:.6}",
       child_branch_count, res.chisq, res.split

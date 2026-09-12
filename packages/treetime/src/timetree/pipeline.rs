@@ -4,7 +4,7 @@ use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
-use crate::clock::clock_state::ClockState;
+use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
@@ -226,13 +226,15 @@ pub fn run(
     force_positive_rate: !params.allow_negative_rate,
     ..RerootParams::default()
   };
-  // Re-read the node dates from the date state into the clock state while keeping the value-resident
-  // divergence and outlier flag. The estimate's clock outputs are not read by timetree's own
-  // downstream, so no repopulation is needed after this call.
-  clock_state.reseed_transitional_from_times(&input.graph, &timetree_state.likely_times(), &BTreeMap::new());
-  let mut clock_model = estimate_clock_model_with_reroot_policy(
+  // Re-read the node dates from the date state into fresh clock inputs while keeping the
+  // value-resident divergence and outlier flag on the clock results. The estimate's clock outputs are
+  // not read by timetree's own downstream, so no repopulation is needed after this call.
+  clock_state.reseed_transitional(&input.graph);
+  let mut clock_inputs = ClockInputs::seed_from_times(&input.graph, &timetree_state.likely_times());
+  let (new_clock_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
     &mut input.graph,
-    &mut clock_state,
+    &mut clock_inputs,
+    clock_state,
     &ClockParams::default(),
     params.clock_rate,
     params.keep_root,
@@ -242,8 +244,9 @@ pub fn run(
     None,
     names,
   )
-  .wrap_err("Failed to infer clock model")?
-  .into_clock_model()?;
+  .wrap_err("Failed to infer clock model")?;
+  clock_state = new_clock_state;
+  let mut clock_model = clock_reroot.into_clock_model()?;
 
   let (mut partitions, partition_gtr, partition_model_name): (
     Vec<PartitionTimetree>,
@@ -313,9 +316,11 @@ pub fn run(
     // into the value. Timetree's own downstream (outlier bad-branch propagation, confidence intervals,
     // tree writers) reads the divergence and outlier flag from the threaded state.
     let given_dates = timetree_state.likely_times();
-    clock_state.reseed_transitional_from_times(&input.graph, &given_dates, &BTreeMap::new());
+    clock_state.reseed_transitional(&input.graph);
+    let clock_inputs = ClockInputs::seed_from_times(&input.graph, &given_dates);
     let result = clock_filter_inplace(
       &input.graph,
+      &clock_inputs,
       &mut clock_state,
       &clock_model,
       &branch_lengths,

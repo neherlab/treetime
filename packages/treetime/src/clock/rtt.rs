@@ -1,5 +1,5 @@
 use crate::clock::clock_model::{ClockLine, ClockModel};
-use crate::clock::clock_state::ClockState;
+use crate::clock::clock_state::{ClockInputs, ClockState};
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -27,6 +27,7 @@ pub struct ClockRegressionResult {
 /// Get results of the root-to-tip clock inference.
 pub fn gather_clock_regression_results(
   graph: &Graph,
+  inputs: &ClockInputs,
   state: &mut ClockState,
   clock_model: &ClockModel,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -58,7 +59,7 @@ pub fn gather_clock_regression_results(
       let name = names[&node.key()].clone();
       let node_state = state.node(node.key());
       let div = node_state.div;
-      let time = node_state.time;
+      let time = inputs.likely_time(node.key());
       let predicted_date = clock_model.date(div);
       let clock_deviation = time.map(|time| clock_model.clock_deviation(time, div));
       Ok(ClockRegressionResult {

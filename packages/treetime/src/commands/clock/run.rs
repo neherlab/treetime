@@ -1,7 +1,7 @@
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_output::write_clock_model;
 use crate::clock::clock_regression::ClockParams;
-use crate::clock::clock_state::ClockState;
+use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, OptimizationMethod};
 use crate::clock::pipeline::{self, ClockInput, ClockPipelineParams};
 use crate::clock::rtt::{ClockRegressionResult, write_clock_regression_result_csv};
@@ -64,6 +64,7 @@ pub struct ClockResult {
 /// (post-reroot) node and edge set.
 fn gather_clock_outputs(
   graph: &Graph,
+  inputs: &ClockInputs,
   state: &ClockState,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -73,16 +74,19 @@ fn gather_clock_outputs(
     .iter()
     .map(|node| {
       let key = node.read_arc().key();
-      // Name comes from the post-reroot name map the pipeline returns; the clock inference fields
-      // come from the clock state value the pipeline routed through estimation and rerooting.
+      // Name comes from the post-reroot name map the pipeline returns; the fitted clock results
+      // (divergence, outlier flag) come from the clock state value, while the observed date and
+      // bad-branch flag come from the clock inputs value the pipeline routed through estimation and
+      // rerooting.
       let name = names[&key].clone();
       let node_state = state.node(key);
+      let node_input = inputs.node(key);
       let out = ClockNodeOut {
         name,
         div: node_state.div,
-        time: node_state.time,
+        time: node_input.time,
         is_outlier: node_state.is_outlier,
-        bad_branch: node_state.bad_branch,
+        bad_branch: node_input.bad_branch,
       };
       (key, out)
     })
@@ -177,6 +181,7 @@ pub fn run_clock(
   let output = pipeline::run(&params, input, &names, progress)?;
   let pipeline::ClockOutput {
     mut graph,
+    inputs,
     state,
     clock_model,
     regression_results,
@@ -192,7 +197,7 @@ pub fn run_clock(
   // The pipeline's post-reroot name and branch-length maps carry the final tree's values; topology
   // ordering only permutes children, so the maps still match after `apply`. Both drive the gather
   // and the tree-output writers below.
-  let (nodes, edges) = gather_clock_outputs(&graph, &state, &names, &branch_lengths);
+  let (nodes, edges) = gather_clock_outputs(&graph, &inputs, &state, &names, &branch_lengths);
 
   if !resolved.tree_outputs.is_empty() {
     write_clock_tree_outputs(

@@ -1,6 +1,6 @@
 use crate::clock::clock_regression::ClockParams;
 use crate::clock::clock_set::ClockSet;
-use crate::clock::clock_state::ClockState;
+use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::params::RootObjective;
 use argmin::core::{CostFunction, Error};
 use eyre::Report;
@@ -24,6 +24,7 @@ pub struct BranchPointCostFunction<'a> {
 impl<'a> BranchPointCostFunction<'a> {
   pub fn new(
     graph: &Graph,
+    inputs: &ClockInputs,
     state: &ClockState,
     edge: GraphEdgeKey,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -38,7 +39,7 @@ impl<'a> BranchPointCostFunction<'a> {
       .get_node(target_key)
       .ok_or_else(|| make_report!("Target node not found for edge: {edge}"))?;
     let is_leaf = target_node.read_arc().is_leaf();
-    let node_time = state.node(target_key).likely_time();
+    let node_time = inputs.likely_time(target_key);
     let branch_length = branch_lengths[&edge].ok_or_else(|| make_report!("Edge {edge} has no weight"))?;
     let branch_variance = options.variance_factor * branch_length + options.variance_offset;
 

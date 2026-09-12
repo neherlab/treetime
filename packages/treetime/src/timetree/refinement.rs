@@ -1,6 +1,6 @@
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
-use crate::clock::clock_state::ClockState;
+use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
@@ -240,12 +240,13 @@ impl Refinement<'_> {
       .iter()
       .map(|(key, edge)| (*key, (edge.time_length, edge.gamma)))
       .collect();
-    self
-      .clock_state
-      .reseed_transitional_from_times(self.graph, &self.state.likely_times(), &edge_inputs);
-    *self.clock_model = estimate_clock_model_with_reroot_policy(
+    self.clock_state.reseed_transitional(self.graph);
+    let mut clock_inputs = ClockInputs::new(self.graph);
+    clock_inputs.reseed_from_times(self.graph, &self.state.likely_times(), &edge_inputs);
+    let (new_clock_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
       self.graph,
-      self.clock_state,
+      &mut clock_inputs,
+      std::mem::take(self.clock_state),
       self.clock_params,
       self.options.clock_rate,
       true,
@@ -255,8 +256,9 @@ impl Refinement<'_> {
       Some(self.clock_model.clock_rate()),
       self.names,
     )
-    .wrap_err("Failed to update clock model")?
-    .into_clock_model()?;
+    .wrap_err("Failed to update clock model")?;
+    *self.clock_state = new_clock_state;
+    *self.clock_model = clock_reroot.into_clock_model()?;
     Ok(())
   }
 }
