@@ -325,6 +325,12 @@ where
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
           let node_states = partition.attach_sequences(&graph, &sequences, names)?;
+          // Dense gap classification is non-idempotent, so the baseline ran two marginal passes
+          // after attachment (its `initialize_marginal` attached and updated once, then a separate
+          // `marginal_update` ran again) before GTR refinement. Pass the node states through both
+          // passes so internal-node gap states settle exactly as they did before.
+          let (node_states, _backward, _forward, _estimates, _log_lh) =
+            partition.marginal_update(&graph, &profile_lengths, node_states)?;
           let (node_states, backward, forward, estimates, _log_lh) =
             partition.marginal_update(&graph, &profile_lengths, node_states)?;
 
