@@ -80,7 +80,7 @@ pub struct GraphMapOutputs<NodeOut, EdgeOut> {
 
 impl<N, E> GraphPass<N, E> {
   pub fn new(
-    graph: &Graph<impl Send + Sync>,
+    graph: &Graph,
     nodes: &mut BTreeMap<GraphNodeKey, N>,
     edges: &mut BTreeMap<GraphEdgeKey, E>,
     missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
@@ -500,7 +500,7 @@ struct GraphPassTopology {
 }
 
 impl GraphPassTopology {
-  fn new(graph: &Graph<impl Send + Sync>) -> Result<Self, Report> {
+  fn new(graph: &Graph) -> Result<Self, Report> {
     let nodes = graph
       .get_nodes()
       .iter()

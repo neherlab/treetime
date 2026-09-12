@@ -246,8 +246,8 @@ mod tests {
 
     /// `((A,B)AB,C)root`. Returns the graph and the node-name value map, keyed by node key in
     /// creation order (`root`, `AB`, `A`, `B`, `C`).
-    pub fn fixture_tree() -> Result<(Graph<()>, Names), Report> {
-      let mut graph = Graph::<()>::new();
+    pub fn fixture_tree() -> Result<(Graph, Names), Report> {
+      let mut graph = Graph::new();
       let root = graph.add_node();
       let ab = graph.add_node();
       let tip_a = graph.add_node();
@@ -272,7 +272,7 @@ mod tests {
     }
 
     /// Zero-initialized pass inputs for every node and edge.
-    pub fn pass_values(graph: &Graph<()>) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<GraphEdgeKey, usize>) {
+    pub fn pass_values(graph: &Graph) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<GraphEdgeKey, usize>) {
       let nodes = graph
         .get_nodes()
         .iter()
@@ -288,7 +288,7 @@ mod tests {
 
     /// Pass inputs with a distinct own-value per node (by name) and zero edge inputs.
     pub fn own_value_pass_values(
-      graph: &Graph<()>,
+      graph: &Graph,
       names: &Names,
     ) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<GraphEdgeKey, usize>) {
       let by_name = btreemap! {
@@ -317,7 +317,7 @@ mod tests {
     /// Run the value-returning backward map on a pool of `threads` workers, computing each node's
     /// subtree sum and sending it up as the parent-edge message.
     pub fn run_backward_sum(
-      graph: &Graph<()>,
+      graph: &Graph,
       names: &Names,
       threads: usize,
     ) -> Result<GraphMapOutputs<usize, usize>, Report> {
@@ -337,7 +337,7 @@ mod tests {
     /// Run the value-returning forward map on a pool of `threads` workers, computing each node's
     /// root-to-leaf prefix sum and sending it down as the parent-edge message.
     pub fn run_forward_sum(
-      graph: &Graph<()>,
+      graph: &Graph,
       names: &Names,
       threads: usize,
     ) -> Result<GraphMapOutputs<usize, usize>, Report> {
@@ -356,7 +356,7 @@ mod tests {
 
     /// Map per-edge outputs to the name of the child node the edge points to.
     pub fn edge_values_by_child_name(
-      graph: &Graph<()>,
+      graph: &Graph,
       names: &Names,
       values: &BTreeMap<GraphEdgeKey, usize>,
     ) -> Result<BTreeMap<String, usize>, Report> {
@@ -370,7 +370,7 @@ mod tests {
     }
 
     /// Pass inputs keyed and valued by the underlying key index, for round-trip checks.
-    pub fn key_indices(graph: &Graph<()>) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<GraphEdgeKey, usize>) {
+    pub fn key_indices(graph: &Graph) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<GraphEdgeKey, usize>) {
       let nodes = graph
         .get_nodes()
         .iter()

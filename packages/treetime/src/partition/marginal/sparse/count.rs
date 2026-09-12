@@ -15,7 +15,7 @@ use treetime_utils::array::ndarray::argmax_first;
 impl PartitionMarginalSparse {
   fn count_transitions_impl(
     &self,
-    graph: &Graph<()>,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<MutationCounts, Report> {
     let n_states = self.gtr.pi.len();
@@ -165,7 +165,7 @@ impl PartitionMarginalSparse {
 impl TransitionCounting for PartitionMarginalSparse {
   fn count_transitions(
     &self,
-    graph: &Graph<()>,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<MutationCounts, Report> {
     self.count_transitions_impl(graph, branch_lengths)

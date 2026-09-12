@@ -49,8 +49,8 @@ use util_augur_node_data_json::{
 /// When `mutation_counts` is `Some`, `mutation_length` is set to the per-edge
 /// mutation count instead of the ML branch length (subs/site). `branch_length`
 /// and `clock_length` remain time-valued (years) regardless.
-pub fn build_augur_node_data_json<D: Send + Sync>(
-  graph: &Graph<D>,
+pub fn build_augur_node_data_json(
+  graph: &Graph,
   outputs: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
   clock_model: &ClockModel,
@@ -146,8 +146,8 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
   })
 }
 
-pub fn write_augur_node_data_json<D: Send + Sync>(
-  graph: &Graph<D>,
+pub fn write_augur_node_data_json(
+  graph: &Graph,
   outputs: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
   clock_model: &ClockModel,

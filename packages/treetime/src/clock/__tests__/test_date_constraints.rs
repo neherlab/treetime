@@ -27,7 +27,7 @@ mod tests {
     bad_branch: bool,
   }
 
-  type TestGraph = Graph<()>;
+  type TestGraph = Graph;
 
   /// The returned date constraints projected per node and sorted by name, with the fixed date
   /// constraint checked against the time distribution and then cleared: loading records the input in

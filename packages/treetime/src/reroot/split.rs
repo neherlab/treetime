@@ -28,8 +28,8 @@ pub struct FindRootResult<S> {
 }
 
 /// Optimize the root position along a single edge using Brent's method.
-pub fn find_best_split<D, S>(
-  graph: &Graph<D>,
+pub fn find_best_split<S>(
+  graph: &Graph,
   edge: GraphEdgeKey,
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -37,7 +37,6 @@ pub fn find_best_split<D, S>(
   params: &BrentParams,
 ) -> Result<FindRootResult<S>, Report>
 where
-  D: Send + Sync,
   S: RootStats,
 {
   let edge_obj = graph

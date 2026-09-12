@@ -20,10 +20,7 @@ pub struct GraphNodeForward {
 }
 
 impl GraphNodeForward {
-  pub fn new<D>(graph: &Graph<D>, node: &Node) -> Self
-  where
-    D: Sync + Send,
-  {
+  pub fn new(graph: &Graph, node: &Node) -> Self {
     let is_leaf = node.is_leaf();
     let is_root = node.is_root();
     let key = node.key();
@@ -62,10 +59,7 @@ pub struct GraphNodeBackward {
 }
 
 impl GraphNodeBackward {
-  pub fn new<D>(graph: &Graph<D>, node: &Node) -> Self
-  where
-    D: Sync + Send,
-  {
+  pub fn new(graph: &Graph, node: &Node) -> Self {
     let is_leaf = node.is_leaf();
     let is_root = node.is_root();
     let key = node.key();
@@ -114,10 +108,7 @@ impl GraphNodeSafe {
   clippy::multiple_inherent_impl,
   reason = "split across files by concern; see graph.rs for the primary impl"
 )]
-impl<D> Graph<D>
-where
-  D: Sync + Send,
-{
+impl Graph {
   /// Serial depth-first preorder forward traversal (roots to leaves, parents before children).
   pub fn iter_depth_first_preorder_forward<F>(&self, mut explorer: F) -> Result<(), Report>
   where

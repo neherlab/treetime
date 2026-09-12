@@ -1,16 +1,16 @@
 # treetime-graph
 
-Directed graph data structure for phylogenetic trees. Provides thread-safe node and edge structure with graph-level command data `D`, plus synchronous and parallel traversal algorithms. Per-node and per-edge data lives in external value maps keyed by `GraphNodeKey`/`GraphEdgeKey`.
+Directed graph data structure for phylogenetic trees. Provides a thread-safe node and edge structure plus synchronous and parallel traversal algorithms. The graph holds pure topology; per-node and per-edge data lives in external value maps keyed by `GraphNodeKey`/`GraphEdgeKey`.
 
 ## Key types
 
-| Type           | Description                                                         |
-| -------------- | ------------------------------------------------------------------- |
-| `Graph<D>`     | Directed graph carrying graph-level command data `D` (default `()`) |
-| `Node`         | Graph node with inbound/outbound edge tracking                      |
-| `Edge`         | Directed edge connecting a source to a target node                  |
-| `GraphNodeKey` | Newtype index into the node storage (`usize`)                       |
-| `GraphEdgeKey` | Newtype index into the edge storage (`usize`)                       |
+| Type           | Description                                        |
+| -------------- | -------------------------------------------------- |
+| `Graph`        | Directed graph of nodes and edges (pure topology)  |
+| `Node`         | Graph node with inbound/outbound edge tracking     |
+| `Edge`         | Directed edge connecting a source to a target node |
+| `GraphNodeKey` | Newtype index into the node storage (`usize`)      |
+| `GraphEdgeKey` | Newtype index into the edge storage (`usize`)      |
 
 All nodes and edges are stored as `Arc<RwLock<_>>` (using `parking_lot`) for concurrent traversal. Type aliases `SafeNode`, `SafeEdge`, `SafeNodeRef`, etc. wrap the lock guard types.
 
@@ -19,10 +19,10 @@ All nodes and edges are stored as `Arc<RwLock<_>>` (using `parking_lot`) for con
 Build a graph by adding nodes and edges, then call `build()` to compute root and leaf sets:
 
 ```rust
-let mut graph = Graph::<MyNode, MyEdge>::new();
-let a = graph.add_node(MyNode::new("A"));
-let b = graph.add_node(MyNode::new("B"));
-graph.add_edge(a, b, MyEdge::default())?;
+let mut graph = Graph::new();
+let a = graph.add_node();
+let b = graph.add_node();
+graph.add_edge(a, b)?;
 graph.build()?;
 ```
 

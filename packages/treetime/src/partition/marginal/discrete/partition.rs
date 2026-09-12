@@ -42,7 +42,7 @@ impl PartitionMarginalDiscrete {
 
   pub fn attach_traits(
     &mut self,
-    graph: &Graph<()>,
+    graph: &Graph,
     traits: &BTreeMap<String, String>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
   ) -> Result<(), Report> {
@@ -126,7 +126,7 @@ impl HasLogLh for PartitionMarginalDiscrete {
 impl TransitionCounting for PartitionMarginalDiscrete {
   fn count_transitions(
     &self,
-    graph: &Graph<()>,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<MutationCounts, Report> {
     self.data.count_transitions(graph, branch_lengths)

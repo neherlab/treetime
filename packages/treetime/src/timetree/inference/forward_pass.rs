@@ -19,14 +19,11 @@ use treetime_grid::Side;
 /// Runs on the persistent [`TimetreeState`] value the caller routes through the whole pipeline,
 /// refining the posteriors and committing point-estimate times in place. The count of nodes
 /// whose given date the rest of the tree contradicted is folded out of the per-node outputs.
-pub fn propagate_distributions_forward<D>(
-  graph: &Graph<D>,
+pub fn propagate_distributions_forward(
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   state: &mut TimetreeState,
-) -> Result<(), Report>
-where
-  D: Send + Sync,
-{
+) -> Result<(), Report> {
   state.map_forward(graph, |context| propagate_distributions_forward_node(names, context))?;
 
   // Once per pass, not per node: a broken clock or topology makes a whole subtree disagree at once.

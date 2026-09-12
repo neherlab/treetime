@@ -44,7 +44,7 @@ impl Edge {
 }
 
 /// Invert direction of an edge.
-pub fn invert_edge<D: Send + Sync>(graph: &mut Graph<D>, edge: &Arc<RwLock<Edge>>) {
+pub fn invert_edge(graph: &mut Graph, edge: &Arc<RwLock<Edge>>) {
   let (this_edge_key, source, target) = {
     let edge = edge.read();
 

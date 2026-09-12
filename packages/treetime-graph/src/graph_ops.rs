@@ -14,10 +14,7 @@ use treetime_utils::{make_error, make_internal_report, make_report};
   clippy::multiple_inherent_impl,
   reason = "split across files by concern; see graph.rs for the primary impl"
 )]
-impl<D> Graph<D>
-where
-  D: Sync + Send,
-{
+impl Graph {
   pub fn add_node(&mut self) -> GraphNodeKey {
     let node_key = GraphNodeKey(self.nodes.len());
     let node = Arc::new(RwLock::new(Node::new(node_key)));

@@ -293,8 +293,8 @@ mod tests {
       }
     }
 
-    fn timetree_nodes<D: Send + Sync>(
-      graph: &Graph<D>,
+    fn timetree_nodes(
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       times: &BTreeMap<GraphNodeKey, Option<f64>>,
     ) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
@@ -324,8 +324,8 @@ mod tests {
         .collect()
     }
 
-    fn timetree_edges<D: Send + Sync>(
-      graph: &Graph<D>,
+    fn timetree_edges(
+      graph: &Graph,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     ) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
       graph

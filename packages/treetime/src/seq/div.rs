@@ -12,8 +12,8 @@ pub struct OnlyLeaves(pub bool);
 
 /// Calculate mapping of node name to node divergence (accumulated by summing branch lengths).
 /// Only nodes with names are included in the result.
-pub fn compute_divs<D: Send + Sync>(
-  graph: &Graph<D>,
+pub fn compute_divs(
+  graph: &Graph,
   only_leaves: OnlyLeaves,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -49,8 +49,8 @@ pub fn compute_divs<D: Send + Sync>(
 ///
 /// Returns a map from edge key to the number of canonical (non-gap, non-ambiguous)
 /// substitutions on that edge, as determined by `PartitionBranchOps::edge_subs()`.
-pub fn compute_edge_mutation_counts<D: Send + Sync>(
-  graph: &Graph<D>,
+pub fn compute_edge_mutation_counts(
+  graph: &Graph,
   partition: &dyn PartitionBranchOps,
 ) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {
   let mut counts = BTreeMap::new();

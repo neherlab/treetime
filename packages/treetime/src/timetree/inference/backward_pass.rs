@@ -23,14 +23,11 @@ use treetime_grid::Side;
 ///
 /// Runs on the persistent [`TimetreeState`] value the caller routes through the whole pipeline,
 /// refining the node posteriors and backward messages in place.
-pub fn propagate_distributions_backward<D>(
-  graph: &Graph<D>,
+pub fn propagate_distributions_backward(
+  graph: &Graph,
   coalescent_model: Option<&CoalescentModel>,
   state: &mut TimetreeState,
-) -> Result<(), Report>
-where
-  D: Send + Sync,
-{
+) -> Result<(), Report> {
   state.map_backward(graph, |context| {
     propagate_distributions_backward_node(graph, coalescent_model, context)
   })
@@ -42,14 +39,11 @@ where
 /// coalescent prior and the input date constraint into the node's time distribution, which is stored
 /// peak-normalized. Second, the distribution is convolved across the branch into the backward message
 /// the parent folds in.
-fn propagate_distributions_backward_node<D>(
-  graph: &Graph<D>,
+fn propagate_distributions_backward_node(
+  graph: &Graph,
   coalescent_model: Option<&CoalescentModel>,
   context: GraphPassBackwardContext<'_, DateNodeState, DateEdgeState, DateNodeState, DateEdgeState>,
-) -> Result<GraphPassNodeOutput<DateNodeState, DateEdgeState>, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<GraphPassNodeOutput<DateNodeState, DateEdgeState>, Report> {
   // take child messages and date constraint --> determine xmin, xmax, and grid
   // evaluate coalescent on that grid (different for root, internal, child)
   // multiply messages, date constraint, and coalescent --> node distribution
@@ -78,14 +72,11 @@ where
 /// `children_of`. Index the child outputs by node key so the messages are gathered in the fixed,
 /// canonical `children_of` order as before, keeping the floating-point result byte-for-byte
 /// identical. A bad-branch child carries no usable message and is skipped.
-fn gather_child_messages<D>(
-  graph: &Graph<D>,
+fn gather_child_messages(
+  graph: &Graph,
   key: GraphNodeKey,
   children: &[GraphPassChildBackward<'_, DateNodeState, DateEdgeState>],
-) -> Vec<Arc<Distribution<NegLog>>>
-where
-  D: Send + Sync,
-{
+) -> Vec<Arc<Distribution<NegLog>>> {
   let child_outputs: BTreeMap<_, _> = children.iter().map(|child| (child.node_key, child)).collect();
   let mut messages = Vec::new();
   let node = graph.get_node(key).expect("Indexed node must exist");
@@ -130,15 +121,12 @@ fn combine_child_messages(messages: &[Arc<Distribution<NegLog>>]) -> Result<Dist
 /// the stored node distribution, so it is added later when the message is formed in
 /// [`send_backward_message`]. A node with no coalescent model, or an `Empty` distribution (no child
 /// left a message), is returned unchanged.
-fn apply_coalescent_prior<D>(
-  graph: &Graph<D>,
+fn apply_coalescent_prior(
+  graph: &Graph,
   coalescent_model: Option<&CoalescentModel>,
   key: GraphNodeKey,
   distribution: Distribution<NegLog>,
-) -> Result<Distribution<NegLog>, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<Distribution<NegLog>, Report> {
   let Some(model) = coalescent_model else {
     return Ok(distribution);
   };

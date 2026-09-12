@@ -1,6 +1,3 @@
-use crate::commands::ancestral::aa_node_data::AaNodeData;
-use crate::gtr::get_gtr::GtrModelName;
-use crate::gtr::gtr::GTR;
 use crate::seq::mutation::{Mutation, Sub};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -8,25 +5,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AsciiChar, Seq};
-
-#[derive(Serialize)]
-pub struct AncestralGraphData {
-  pub gtr: Option<GTR>,
-  pub model_name: GtrModelName,
-  pub mask: Vec<bool>,
-  pub aa_node_data: Option<AaNodeData>,
-}
-
-impl AncestralGraphData {
-  pub fn new(gtr: Option<GTR>, model_name: GtrModelName, mask: Vec<bool>, aa_node_data: Option<AaNodeData>) -> Self {
-    Self {
-      gtr,
-      model_name,
-      mask,
-      aa_node_data,
-    }
-  }
-}
 
 /// Nucleotide sequences and mutations gathered from the ancestral partition for the tree writers.
 ///
@@ -78,25 +56,14 @@ pub struct EdgeOut {
 
 /// Ancestral reconstruction result as a value.
 ///
-/// The durable per-node and per-edge outputs are reachable directly off the result: `node_sequences`
-/// holds the reconstructed sequences captured from the serial reconstruction walk, and the model
-/// metadata sits alongside. `graph` carries the tree the output writers still read from.
+/// `graph` carries the tree topology, and `nodes`/`edges` carry the per-node and per-edge metadata the
+/// output writers read.
 #[derive(Serialize)]
 pub struct AncestralResult {
   #[serde(skip)]
-  pub graph: Graph<AncestralGraphData>,
+  pub graph: Graph,
   #[serde(skip)]
   pub nodes: BTreeMap<GraphNodeKey, AncestralNodeOut>,
   #[serde(skip)]
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
-  #[serde(skip)]
-  pub node_sequences: BTreeMap<GraphNodeKey, Seq>,
-  #[serde(skip)]
-  pub gtr: Option<GTR>,
-  #[serde(skip)]
-  pub model_name: GtrModelName,
-  #[serde(skip)]
-  pub mask: Vec<bool>,
-  #[serde(skip)]
-  pub aa_node_data: Option<AaNodeData>,
 }

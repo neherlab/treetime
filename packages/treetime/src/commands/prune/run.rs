@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::commands::prune::result::{EdgeOut, PruneGraphData, PruneNodeOut, PruneOutputMaps, PruneResult};
+use crate::commands::prune::result::{EdgeOut, PruneNodeOut, PruneOutputMaps, PruneResult};
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_prune_tree_outputs;
@@ -77,7 +77,7 @@ pub fn run_prune(
   progress.report("Pruning", 0.4, "");
   let output = pipeline::run(&params, input, &names)?;
   let pipeline::PruneOutput {
-    graph,
+    mut graph,
     gtr,
     partitions,
     names,
@@ -86,21 +86,19 @@ pub fn run_prune(
 
   // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partition into
   // plain value maps the output writers consume, taking the partition read out of the serialization
-  // path. Gather here, before `map_data`, so the graph data slot never carries the partition. Only
-  // the auspice, phyloxml, and MAT writers read these maps; prune's default Newick/Nexus outputs
-  // carry no mutation comments (empty comment provider), so they never read a mutation. Prune also
-  // applies its final `--prune-empty` and `--merge-shared-mutations` topology edits without a
+  // path. Only the auspice, phyloxml, and MAT writers read these maps; prune's default Newick/Nexus
+  // outputs carry no mutation comments (empty comment provider), so they never read a mutation. Prune
+  // also applies its final `--prune-empty` and `--merge-shared-mutations` topology edits without a
   // following marginal pass, leaving output-tree edges whose `subs_ml` was never populated. Gathering
   // unconditionally would read those unpopulated edges for outputs that never serialize them, so
   // gather only when a map-consuming tree output is requested. Node and edge keys stay stable through
-  // `map_data` and topology ordering, so gathering before them is bit-identical.
+  // topology ordering, so gathering before it is bit-identical.
   let maps = if resolved.tree_outputs.keys().any(prune_output_consumes_maps) {
     gather_prune_output_maps(&graph, &partitions)?
   } else {
     PruneOutputMaps::default()
   };
 
-  let mut graph = graph.map_data(PruneGraphData::new(gtr.clone()));
   let topology_order = args
     .topology_order
     .resolve_topology_order(&graph, &names, Some(input_order))?;
@@ -171,12 +169,7 @@ pub fn run_prune(
   }
 
   progress.report("Done", 1.0, "");
-  Ok(PruneResult {
-    graph,
-    nodes,
-    edges,
-    gtr,
-  })
+  Ok(PruneResult { graph, nodes, edges })
 }
 
 /// Whether a tree-output kind reads the gathered prune value maps.
@@ -203,8 +196,8 @@ fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
 /// following marginal pass, so the node and edge stores can still hold detached nodes and orphan edges
 /// whose `subs_ml` was never populated. Those never appear on the tree walk, so reading
 /// `edge_mutations` only for reached edges avoids touching an unpopulated edge.
-pub(crate) fn gather_prune_output_maps<D: Sync + Send>(
-  graph: &Graph<D>,
+pub(crate) fn gather_prune_output_maps(
+  graph: &Graph,
   partitions: &[PartitionMarginalSparse],
 ) -> Result<PruneOutputMaps, Report> {
   let Some(partition) = partitions.first() else {
@@ -257,10 +250,7 @@ fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   Ok(())
 }
 
-fn leaf_order<D>(graph: &Graph<D>, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report>
-where
-  D: Sync + Send,
-{
+fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report> {
   graph
     .get_leaves()
     .into_iter()

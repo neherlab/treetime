@@ -31,10 +31,7 @@ pub struct OptimizeTcResult {
 /// See [`optimize_skyline`] for the shared machinery (per-edge `I`/`M` accumulation,
 /// self-consistent likelihood reporting) and the degenerate-tree error returned when
 /// the tree has no time span or no mergers.
-pub fn optimize_tc<D>(graph: &Graph<D>, node_times: &CoalescentNodeTimes) -> Result<OptimizeTcResult, Report>
-where
-  D: Sync + Send,
-{
+pub fn optimize_tc(graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<OptimizeTcResult, Report> {
   let result = optimize_skyline(
     graph,
     &SkylineParams {

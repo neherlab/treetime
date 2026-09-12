@@ -58,7 +58,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>(nwk)?;
+    } = nwk_read_str(nwk)?;
     let actual = nex_write_str(&graph, &names, &branch_lengths, &NexWriteOptions::default())?;
     assert_eq!(expected, actual);
     Ok(())

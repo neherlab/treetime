@@ -17,18 +17,15 @@ use treetime_utils::collections::container::get_exactly_one;
 ///
 // Loop over all nodes, pick the one with the lowest chisq (and positive clock rate
 // when force_positive is true), then optimize position along surrounding branches.
-pub fn find_best_root<D>(
-  graph: &Graph<D>,
+pub fn find_best_root(
+  graph: &Graph,
   state: &ClockState,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   force_positive: bool,
   objective: RootObjective,
-) -> Result<FindRootResult, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<FindRootResult, Report> {
   info!("Starting root optimization with method: {params:?}, force_positive={force_positive}");
 
   let root = graph.get_exactly_one_root()?;

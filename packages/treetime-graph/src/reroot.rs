@@ -78,15 +78,12 @@ pub struct RerootChanges {
 /// branch-length value map). The two new edges carry no branch length; their lengths are returned in
 /// [`EdgeSplitInfo`] for the caller to record in its map. A missing input length resolves to `0.0`
 /// for the split, matching the input-tree derivation.
-pub fn split_edge<D>(
-  graph: &mut Graph<D>,
+pub fn split_edge(
+  graph: &mut Graph,
   edge_key: GraphEdgeKey,
   split_position: f64,
   branch_length: Option<f64>,
-) -> Result<EdgeSplitInfo, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<EdgeSplitInfo, Report> {
   let new_node_key = graph.add_node();
 
   let (source_key, target_key) = {
@@ -121,14 +118,11 @@ where
 /// Returns the keys of all inverted edges (in old-root-to-new-root order).
 /// Only inverts graph topology (edge direction). Domain-specific edge data
 /// (clock messages, partition state) must be updated by the caller.
-pub fn apply_reroot_topology<D>(
-  graph: &mut Graph<D>,
+pub fn apply_reroot_topology(
+  graph: &mut Graph,
   old_root_key: GraphNodeKey,
   new_root_key: GraphNodeKey,
-) -> Result<Vec<GraphEdgeKey>, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<Vec<GraphEdgeKey>, Report> {
   let paths = graph.path_from_node_to_node(new_root_key, old_root_key)?;
 
   let mut inverted_edge_keys = Vec::new();
@@ -151,15 +145,12 @@ where
 /// value map). The merged edge carries no branch length; the merged length is returned in
 /// [`EdgeMergeInfo`] for the caller to record in its map. Merge semantics: the sum when both sides
 /// carry a length, otherwise whichever side has one (never coerce `None` to `0.0` and sum).
-pub fn remove_node_if_trivial<D>(
-  graph: &mut Graph<D>,
+pub fn remove_node_if_trivial(
+  graph: &mut Graph,
   node_key: GraphNodeKey,
   parent_branch: Option<f64>,
   child_branch: Option<f64>,
-) -> Result<Option<EdgeMergeInfo>, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<Option<EdgeMergeInfo>, Report> {
   let (parent_edge_key, child_edge_key) = {
     let node = graph.get_node(node_key).expect("Node not found");
     let node = node.read_arc();
@@ -204,14 +195,11 @@ where
 /// Returns `(None, None)` when the node is not trivial (not exactly one inbound and one outbound
 /// edge), matching the guard in [`remove_node_if_trivial`]. A caller can therefore compute the merge
 /// inputs unconditionally and leave the triviality decision to the removal.
-pub fn trivial_node_branch_lengths<D>(
-  graph: &Graph<D>,
+pub fn trivial_node_branch_lengths(
+  graph: &Graph,
   node_key: GraphNodeKey,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> (Option<f64>, Option<f64>)
-where
-  D: Send + Sync,
-{
+) -> (Option<f64>, Option<f64>) {
   let node = graph.get_node(node_key).expect("Node not found");
   let node = node.read_arc();
   if node.inbound().len() != 1 || node.outbound().len() != 1 {

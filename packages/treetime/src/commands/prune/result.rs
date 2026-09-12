@@ -1,4 +1,3 @@
-use crate::gtr::gtr::GTR;
 use crate::seq::mutation::Mutation;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -6,17 +5,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
-
-#[derive(Serialize)]
-pub struct PruneGraphData {
-  pub gtr: Option<GTR>,
-}
-
-impl PruneGraphData {
-  pub fn new(gtr: Option<GTR>) -> Self {
-    Self { gtr }
-  }
-}
 
 /// Nucleotide sequences and mutations gathered from the prune partition for the tree writers.
 ///
@@ -49,16 +37,14 @@ pub struct EdgeOut {
 /// Prune result as a value.
 ///
 /// The durable outputs are reachable directly off the result: `nodes` and `edges` hold the per-node
-/// name/support and per-edge branch length the writers consume, and `gtr` holds the fitted model.
-/// `graph` carries the tree the output writers still read from.
+/// name/support and per-edge branch length the writers consume. `graph` carries the tree topology the
+/// output writers read from.
 #[derive(Serialize)]
 pub struct PruneResult {
   #[serde(skip)]
-  pub graph: Graph<PruneGraphData>,
+  pub graph: Graph,
   #[serde(skip)]
   pub nodes: BTreeMap<GraphNodeKey, PruneNodeOut>,
   #[serde(skip)]
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
-  #[serde(skip)]
-  pub gtr: Option<GTR>,
 }

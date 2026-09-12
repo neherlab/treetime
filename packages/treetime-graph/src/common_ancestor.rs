@@ -8,10 +8,7 @@ use itertools::Itertools;
 /// Walks the root-to-node path of every input node and returns the
 /// last node shared by all of them. With a single input the node itself is its
 /// own ancestor. Errors on an empty input set.
-pub fn common_ancestor<D>(graph: &Graph<D>, node_keys: &[GraphNodeKey]) -> Result<GraphNodeKey, Report>
-where
-  D: Send + Sync,
-{
+pub fn common_ancestor(graph: &Graph, node_keys: &[GraphNodeKey]) -> Result<GraphNodeKey, Report> {
   let paths = node_keys
     .iter()
     .map(|key| {

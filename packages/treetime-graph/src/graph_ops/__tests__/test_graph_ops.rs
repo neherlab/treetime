@@ -6,7 +6,7 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
 
-  type TestGraph = Graph<()>;
+  type TestGraph = Graph;
 
   /// `root -> {a, b}`, `a -> c`. Returns the graph and the keys in that order.
   fn fixture() -> Result<(TestGraph, [GraphNodeKey; 4], GraphEdgeKey), Report> {

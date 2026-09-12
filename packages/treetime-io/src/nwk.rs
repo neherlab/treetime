@@ -31,11 +31,8 @@ use util_newick::{
 /// with `None` where a node has no name. It lets a consumer read each node's name as a value
 /// threaded from the parse rather than off the node payload.
 #[derive(Debug)]
-pub struct NwkParse<D = ()>
-where
-  D: Sync + Send,
-{
-  pub graph: Graph<D>,
+pub struct NwkParse {
+  pub graph: Graph,
   pub confidences: BTreeMap<GraphNodeKey, Option<f64>>,
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
   /// Each edge's raw input-tree branch length, keyed by the graph's own edge keys, with `None`
@@ -44,34 +41,22 @@ where
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-pub fn nwk_read_file<D>(filepath: impl AsRef<Path>) -> Result<NwkParse<D>, Report>
-where
-  D: Sync + Send + Default,
-{
+pub fn nwk_read_file(filepath: impl AsRef<Path>) -> Result<NwkParse, Report> {
   let filepath = filepath.as_ref();
   nwk_read(open_file_or_stdin(&Some(filepath))?).wrap_err_with(|| format!("When reading file '{}'", filepath.display()))
 }
 
-pub fn nwk_read_str<D>(nwk_string: impl AsRef<str>) -> Result<NwkParse<D>, Report>
-where
-  D: Sync + Send + Default,
-{
+pub fn nwk_read_str(nwk_string: impl AsRef<str>) -> Result<NwkParse, Report> {
   let nwk_graph = newick_from_string(nwk_string.as_ref()).wrap_err("When parsing Newick string")?;
   graph_from_newick(&nwk_graph)
 }
 
-pub fn nwk_read<D>(reader: impl Read) -> Result<NwkParse<D>, Report>
-where
-  D: Sync + Send + Default,
-{
+pub fn nwk_read(reader: impl Read) -> Result<NwkParse, Report> {
   let nwk_graph = newick_from_reader(reader)?;
   graph_from_newick(&nwk_graph)
 }
 
-fn graph_from_newick<D>(nwk_graph: &NewickGraph) -> Result<NwkParse<D>, Report>
-where
-  D: Sync + Send + Default,
-{
+fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Report> {
   for (idx, node) in nwk_graph.nodes.iter().enumerate() {
     if node.hybrid.is_some() {
       return make_error!(
@@ -81,7 +66,7 @@ where
     }
   }
 
-  let mut graph = Graph::<D>::new();
+  let mut graph = Graph::new();
 
   let mut node_keys: Vec<GraphNodeKey> = Vec::with_capacity(nwk_graph.nodes.len());
   let mut confidences: BTreeMap<GraphNodeKey, Option<f64>> = BTreeMap::new();
@@ -140,78 +125,63 @@ pub struct NwkWriteOptions {
   pub weight_decimal_digits: Option<i8>,
 }
 
-pub fn nwk_write_file<D>(
+pub fn nwk_write_file(
   filepath: impl AsRef<Path>,
-  graph: &Graph<D>,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
-) -> Result<(), Report>
-where
-  D: Sync + Send,
-{
+) -> Result<(), Report> {
   let mut f = create_file_or_stdout(filepath)?;
   nwk_write(&mut f, graph, names, weights, options)?;
   writeln!(f)?;
   Ok(())
 }
 
-pub fn nwk_write_file_with<D>(
+pub fn nwk_write_file_with(
   filepath: impl AsRef<Path>,
-  graph: &Graph<D>,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
   providers: &CommentProviders,
-) -> Result<(), Report>
-where
-  D: Sync + Send,
-{
+) -> Result<(), Report> {
   let mut f = create_file_or_stdout(filepath)?;
   nwk_write_with(&mut f, graph, names, weights, options, providers)?;
   writeln!(f)?;
   Ok(())
 }
 
-pub fn nwk_write_str<D>(
-  graph: &Graph<D>,
+pub fn nwk_write_str(
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
-) -> Result<String, Report>
-where
-  D: Sync + Send,
-{
+) -> Result<String, Report> {
   let providers = CommentProviders::new();
   nwk_write_str_with(graph, names, weights, options, &providers)
 }
 
 /// Return the Newick representation of a graph, augmented by external node comment providers.
-pub fn nwk_write_str_with<D>(
-  graph: &Graph<D>,
+pub fn nwk_write_str_with(
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
   providers: &CommentProviders,
-) -> Result<String, Report>
-where
-  D: Sync + Send,
-{
+) -> Result<String, Report> {
   let mut buf = Vec::new();
   nwk_write_with(&mut buf, graph, names, weights, options, providers)?;
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn nwk_write<D>(
+pub fn nwk_write(
   writer: &mut impl Write,
-  graph: &Graph<D>,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
-) -> Result<(), Report>
-where
-  D: Sync + Send,
-{
+) -> Result<(), Report> {
   let providers = CommentProviders::new();
   nwk_write_with(writer, graph, names, weights, options, &providers)
 }
@@ -222,17 +192,14 @@ where
 /// `names` supplies each node's display label and `weights` each edge's branch weight, both keyed by
 /// the graph's own keys and kept as `Option` so a missing label writes no name and a missing weight
 /// writes no `:weight`. Comments come solely from the providers.
-pub fn nwk_write_with<D>(
+pub fn nwk_write_with(
   writer: &mut impl Write,
-  graph: &Graph<D>,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
   providers: &CommentProviders,
-) -> Result<(), Report>
-where
-  D: Sync + Send,
-{
+) -> Result<(), Report> {
   let roots = graph.get_roots();
   if roots.is_empty() {
     return make_error!("When converting graph to Newick format: No roots found.");

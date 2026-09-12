@@ -14,9 +14,9 @@ use std::collections::{BTreeMap, BTreeSet};
 /// unnamed node takes the next free `NODE_xxxxx`, skipping any name already held by a current node, so
 /// the numbering is deterministic and stable across re-runs after a topology change. Names live in a
 /// value map keyed by node id.
-pub fn assign_node_names<D: Sync + Send>(
+pub fn assign_node_names(
   mut names: BTreeMap<GraphNodeKey, Option<String>>,
-  graph: &Graph<D>,
+  graph: &Graph,
 ) -> Result<BTreeMap<GraphNodeKey, Option<String>>, Report> {
   let mut result: BTreeMap<GraphNodeKey, Option<String>> = BTreeMap::new();
   let mut used: BTreeSet<String> = BTreeSet::new();

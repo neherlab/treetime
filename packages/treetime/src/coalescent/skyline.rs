@@ -94,14 +94,11 @@ pub struct SkylineResult {
 /// `Iᵢ` and `Mᵢ` are attributed to segments using the same interval-midpoint and
 /// node-time conventions as [`CoalescentModel`], so the analytic optimum coincides
 /// with the maximizer of the model-evaluated likelihood.
-pub fn optimize_skyline<D>(
-  graph: &Graph<D>,
+pub fn optimize_skyline(
+  graph: &Graph,
   params: &SkylineParams,
   node_times: &CoalescentNodeTimes,
-) -> Result<SkylineResult, Report>
-where
-  D: Sync + Send,
-{
+) -> Result<SkylineResult, Report> {
   if params.n_points < 1 {
     return make_error!(
       "Skyline optimization requires at least 1 segment, got {}",

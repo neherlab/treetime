@@ -12,9 +12,7 @@ use crate::commands::timetree::output::coalescent::{
   CoalescentOutput, write_coalescent_delimited, write_coalescent_json,
 };
 use crate::commands::timetree::output::date_comment::DateCommentProvider;
-use crate::commands::timetree::result::{
-  TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult,
-};
+use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::partition::timetree::partition::PartitionTimetree;
@@ -219,7 +217,7 @@ pub fn run_timetree_estimation(
   };
 
   let pipeline::TimetreeOutput {
-    graph,
+    mut graph,
     clock_model,
     confidence_intervals,
     partitions,
@@ -235,19 +233,9 @@ pub fn run_timetree_estimation(
   } = output;
   // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partitions into
   // plain value maps the tree writers consume, taking the partition read out of the serialization
-  // path. Gather here, before `map_data`, so the graph data slot never carries the partition. Node and
-  // edge keys stay stable through `map_data` and topology ordering, so gathering before them is
+  // path. Node and edge keys stay stable through topology ordering, so gathering before it is
   // bit-identical.
   let maps = gather_timetree_output_maps(&graph, &partitions)?;
-
-  let mut graph = graph.map_data(TimetreeGraphData::new(
-    clock_model.clone(),
-    confidence_intervals.clone(),
-    dates.clone(),
-    gtr.clone(),
-    model_name,
-    mutation_counts.clone(),
-  ));
 
   progress.report("Writing output", 0.95, "");
   info!("### TreeTime: writing outputs");
@@ -418,7 +406,7 @@ pub fn run_timetree_estimation(
 /// read from here, and a node the pipeline created after the parse is
 /// absent and reads as `None`.
 fn gather_timetree_outputs(
-  graph: &Graph<TimetreeGraphData>,
+  graph: &Graph,
   clock_state: &ClockState,
   timetree_state: &TimetreeState,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
@@ -473,8 +461,8 @@ fn gather_timetree_outputs(
 
 /// Gather the per-node nucleotide sequences, root sequence, and per-edge nucleotide mutations the tree
 /// writers read off the timetree partition.
-pub(crate) fn gather_timetree_output_maps<D: Send + Sync>(
-  graph: &Graph<D>,
+pub(crate) fn gather_timetree_output_maps(
+  graph: &Graph,
   partitions: &[PartitionTimetree],
 ) -> Result<TimetreeOutputMaps, Report> {
   let Some(partition) = partitions.first() else {

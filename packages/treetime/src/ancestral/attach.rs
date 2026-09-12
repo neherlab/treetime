@@ -25,7 +25,7 @@ use treetime_primitives::{AlphabetLike, Seq, seq};
 /// `failed_leaves > tree.count_terminals()/3` unless `ignore_missing_alns`, missing leaves later
 /// assigned a uniform (all-states-equal) profile at reconstruction time.
 pub fn complete_alignment_for_leaves(
-  graph: &Graph<()>,
+  graph: &Graph,
   mut sequences: Vec<FastaRecord>,
   alphabet: &Alphabet,
   ignore_missing_alns: bool,

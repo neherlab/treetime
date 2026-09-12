@@ -12,13 +12,7 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 /// $H(t)$, which is a compound of the two. Which tree it is read from matters: $k(t)$ has two
 /// roles, and only one of them may track the times being inferred. See
 /// [`CoalescentModel`](crate::coalescent::coalescent::CoalescentModel).
-pub fn compute_lineage_counts<D>(
-  graph: &Graph<D>,
-  node_times: &CoalescentNodeTimes,
-) -> Result<PiecewiseConstantFn, Report>
-where
-  D: Sync + Send,
-{
+pub fn compute_lineage_counts(graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<PiecewiseConstantFn, Report> {
   let (_, events, terminal_lineage_count) = collect_tree_events(graph, node_times)?;
   compute_lineage_count_distribution(&events, terminal_lineage_count)
 }

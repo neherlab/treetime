@@ -15,7 +15,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
-  type TestGraph = Graph<()>;
+  type TestGraph = Graph;
 
   #[test]
   fn test_forward_pass_set_likely_time_empty_distribution_returns_none() {
@@ -54,7 +54,7 @@ mod tests {
   /// observed dates.
   #[test]
   fn test_forward_pass_leaves_internal_node_with_empty_distribution_undated() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str::<()>("(A:2.5)root;")?;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:2.5)root;")?;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -81,7 +81,7 @@ mod tests {
   /// year, so the leaf lands at 2010 rather than at 2011.5, the midpoint of the range it was given.
   #[test]
   fn test_forward_pass_refines_uncertain_leaf_date_from_parent() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str::<()>("(A:1.0)root;")?;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:1.0)root;")?;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
@@ -108,7 +108,7 @@ mod tests {
   /// `commit_clock_branch_lengths` reports. Clamping it to the parent would hide the conflict.
   #[test]
   fn test_forward_pass_keeps_exact_leaf_date_earlier_than_its_parent() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str::<()>("(A:1.0)root;")?;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:1.0)root;")?;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
@@ -133,7 +133,7 @@ mod tests {
   /// peak of the range alone would put the leaf 3 years before its parent.
   #[test]
   fn test_forward_pass_clamps_uncertain_leaf_date_to_parent_time() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str::<()>("(A:1.0)root;")?;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:1.0)root;")?;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
@@ -155,7 +155,7 @@ mod tests {
   /// leave the leaf undated, which is worse than the date the input gave it.
   #[test]
   fn test_forward_pass_keeps_uncertain_leaf_date_the_tree_contradicts() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str::<()>("(A:1.0)root;")?;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:1.0)root;")?;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
@@ -192,7 +192,7 @@ mod tests {
     };
 
     let refine = |parent: Distribution<NegLog>| -> Result<f64, Report> {
-      let NwkParse { graph, names, .. } = nwk_read_str::<()>("(A:1.0)root;")?;
+      let NwkParse { graph, names, .. } = nwk_read_str("(A:1.0)root;")?;
       let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
       let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
       let mut state = TimetreeState::new(&graph);
@@ -220,7 +220,7 @@ mod tests {
   /// as is. The parent here resolves a year, the date range a single day.
   #[test]
   fn test_forward_pass_refines_a_date_range_narrower_than_the_parent_grid() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str::<()>("(A:1.0)root;")?;
+    let NwkParse { graph, names, .. } = nwk_read_str("(A:1.0)root;")?;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 

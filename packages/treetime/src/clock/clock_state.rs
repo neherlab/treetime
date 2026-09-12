@@ -55,10 +55,7 @@ pub struct ClockState {
 
 impl ClockState {
   /// Empty per-node/per-edge state for every node and edge of `graph`, all fields default.
-  pub fn new<D>(graph: &Graph<D>) -> Self
-  where
-    D: Send + Sync,
-  {
+  pub fn new(graph: &Graph) -> Self {
     let nodes = graph
       .get_nodes()
       .iter()
@@ -80,10 +77,7 @@ impl ClockState {
   /// start at their defaults (`0.0` and `false`), `bad_branch` starts false, the clock set
   /// starts default (the backward pass recomputes the root clock set before it is read), and every
   /// edge starts default.
-  pub fn seed_from_values<D>(graph: &Graph<D>, times: &BTreeMap<GraphNodeKey, Option<f64>>) -> Self
-  where
-    D: Send + Sync,
-  {
+  pub fn seed_from_values(graph: &Graph, times: &BTreeMap<GraphNodeKey, Option<f64>>) -> Self {
     let nodes = graph
       .get_nodes()
       .iter()
@@ -125,14 +119,12 @@ impl ClockState {
   /// (also from the date state); the re-estimation reads them to convert time back to divergence.
   /// Every other seed path leaves these at their defaults, where the regression reads input branch
   /// lengths instead.
-  pub fn reseed_transitional_from_times<D>(
+  pub fn reseed_transitional_from_times(
     &mut self,
-    graph: &Graph<D>,
+    graph: &Graph,
     times: &BTreeMap<GraphNodeKey, Option<f64>>,
     edge_inputs: &BTreeMap<GraphEdgeKey, (Option<f64>, f64)>,
-  ) where
-    D: Send + Sync,
-  {
+  ) {
     self.reseed_transitional(graph, |key| times.get(&key).copied().flatten());
     for (key, &(time_length, gamma)) in edge_inputs {
       if let Some(edge) = self.edges.get_mut(key) {
@@ -142,9 +134,8 @@ impl ClockState {
     }
   }
 
-  fn reseed_transitional<D, F>(&mut self, graph: &Graph<D>, time_of: F)
+  fn reseed_transitional<F>(&mut self, graph: &Graph, time_of: F)
   where
-    D: Send + Sync,
     F: Fn(GraphNodeKey) -> Option<f64>,
   {
     let nodes = graph
@@ -205,9 +196,8 @@ impl ClockState {
   ///
   /// The engine reads the node/edge inputs from the current state and uses a
   /// thread-independent, deterministic child fold order.
-  pub fn map_backward<D, F>(&mut self, graph: &Graph<D>, visit: F) -> Result<(), Report>
+  pub fn map_backward<F>(&mut self, graph: &Graph, visit: F) -> Result<(), Report>
   where
-    D: Send + Sync,
     F: Fn(
         GraphPassBackwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState, ClockEdgeState>,
       ) -> Result<GraphPassNodeOutput<ClockNodeState, ClockEdgeState>, Report>
@@ -226,9 +216,8 @@ impl ClockState {
   /// Run a value-returning forward pass over the clock state through the graph's dependency engine,
   /// replacing the per-node and per-edge maps with the visitor's outputs. Each node reads its single
   /// parent's already-published output.
-  pub fn map_forward<D, F>(&mut self, graph: &Graph<D>, visit: F) -> Result<(), Report>
+  pub fn map_forward<F>(&mut self, graph: &Graph, visit: F) -> Result<(), Report>
   where
-    D: Send + Sync,
     F: Fn(
         GraphPassForwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState>,
       ) -> Result<GraphPassNodeOutput<ClockNodeState, ClockEdgeState>, Report>

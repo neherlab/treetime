@@ -21,7 +21,7 @@ use treetime_utils::interval::range::range_contains;
 
 pub fn process_forward_indexed(
   partition: &mut PartitionMarginalSparse,
-  graph: &Graph<()>,
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<(), Report> {
   let alphabet = partition.alphabet.clone();
@@ -41,7 +41,7 @@ pub fn process_forward_indexed(
 }
 
 fn process_node_forward_indexed(
-  graph: &Graph<()>,
+  graph: &Graph,
   alphabet: &Alphabet,
   gtr: &GTR,
   length: usize,

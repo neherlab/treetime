@@ -172,7 +172,7 @@ pub fn execute_mugration(
   )?;
   info!("Mugration: initial log likelihood = {:.4}", log_lh.value());
 
-  let log_lh = refine_gtr_iterative(
+  refine_gtr_iterative(
     &graph,
     &partition,
     branch_lengths,
@@ -189,6 +189,6 @@ pub fn execute_mugration(
   // slot, taking the partition read out of the serialization path. The maps stay a local the command
   // threads to the writers; the partition is dropped at the end of this function.
   let maps = gather_mugration_output_maps(&graph, &partition);
-  let result = MugrationResult::new(graph, confidences, names, branch_lengths, &partition, attribute, log_lh);
+  let result = MugrationResult::new(graph, confidences, names, branch_lengths, &partition, attribute);
   Ok((result, maps))
 }

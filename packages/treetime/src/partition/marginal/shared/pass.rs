@@ -14,7 +14,7 @@ use treetime_primitives::LogLh;
 
 pub fn marginal_process_backward_indexed(
   partition: &mut dyn IndexedMarginalPartition,
-  graph: &Graph<()>,
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<(), Report> {
   let mut missing_nodes = BTreeMap::new();
@@ -39,7 +39,7 @@ pub fn marginal_process_backward_indexed(
 
 fn marginal_process_node_backward_indexed(
   partition: &dyn IndexedMarginalPartition,
-  graph: &Graph<()>,
+  graph: &Graph,
   gtr: &GTR,
   min_branch_length: f64,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -128,7 +128,7 @@ fn marginal_process_node_backward_indexed(
 
 pub fn marginal_process_forward_indexed(
   partition: &mut dyn IndexedMarginalPartition,
-  graph: &Graph<()>,
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<(), Report> {
   let gtr = partition.marginal_data().gtr.clone();
@@ -147,7 +147,7 @@ pub fn marginal_process_forward_indexed(
 
 fn marginal_process_node_forward_indexed(
   partition: &dyn IndexedMarginalPartition,
-  graph: &Graph<()>,
+  graph: &Graph,
   gtr: &GTR,
   min_branch_length: f64,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,

@@ -22,66 +22,20 @@ pub type NodeEdgePair = (Arc<RwLock<Node>>, Arc<RwLock<Edge>>);
 
 #[allow(clippy::field_scoped_visibility_modifiers)]
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Graph<D = ()>
-where
-  D: Sync + Send,
-{
+pub struct Graph {
   pub(crate) nodes: Vec<Option<Arc<RwLock<Node>>>>,
   pub(crate) edges: Vec<Option<Arc<RwLock<Edge>>>>,
   pub(crate) roots: Vec<GraphNodeKey>,
   pub(crate) leaves: Vec<GraphNodeKey>,
-  pub(crate) data: D,
 }
 
-impl<D> Graph<D>
-where
-  D: Sync + Send,
-{
-  pub fn new() -> Self
-  where
-    D: Default,
-  {
+impl Graph {
+  pub fn new() -> Self {
     Self {
       nodes: Vec::new(),
       edges: Vec::new(),
       roots: vec![],
       leaves: vec![],
-      data: D::default(),
-    }
-  }
-
-  pub fn with_data(data: D) -> Self {
-    Self {
-      nodes: Vec::new(),
-      edges: Vec::new(),
-      roots: vec![],
-      leaves: vec![],
-      data,
-    }
-  }
-
-  pub const fn data(&self) -> &D {
-    &self.data
-  }
-
-  pub fn data_mut(&mut self) -> &mut D {
-    &mut self.data
-  }
-
-  pub fn set_data(&mut self, data: D) {
-    self.data = data;
-  }
-
-  pub fn map_data<T>(self, data: T) -> Graph<T>
-  where
-    T: Sync + Send,
-  {
-    Graph {
-      nodes: self.nodes,
-      edges: self.edges,
-      roots: self.roots,
-      leaves: self.leaves,
-      data,
     }
   }
 
@@ -417,5 +371,11 @@ where
       .get_node(key)
       .ok_or_else(|| make_internal_report!("Node not found: {key}"))?;
     Ok(node.read_arc().inbound().first().copied())
+  }
+}
+
+impl Default for Graph {
+  fn default() -> Self {
+    Self::new()
   }
 }

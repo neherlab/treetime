@@ -25,18 +25,15 @@ pub struct FindRootResult {
 }
 
 /// Find the best split point along an edge using the specified optimization method
-pub fn find_best_split<D>(
-  graph: &Graph<D>,
+pub fn find_best_split(
+  graph: &Graph,
   state: &ClockState,
   edge: GraphEdgeKey,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   objective: RootObjective,
-) -> Result<FindRootResult, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<FindRootResult, Report> {
   // Create cost function once
   let cost_fn = BranchPointCostFunction::new(graph, state, edge, branch_lengths, options, objective)?;
 

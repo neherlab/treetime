@@ -10,43 +10,36 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::make_internal_report;
 
-pub fn graphviz_write_file<D>(
+pub fn graphviz_write_file(
   filepath: impl AsRef<Path>,
-  graph: &Graph<D>,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<(), Report>
-where
-  D: Send + Sync,
-{
+) -> Result<(), Report> {
   let mut f = create_file_or_stdout(filepath)?;
   graphviz_write(&mut f, graph, names, weights)?;
   writeln!(f)?;
   Ok(())
 }
 
-pub fn graphviz_write_str<D>(
-  graph: &Graph<D>,
+pub fn graphviz_write_str(
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<String, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<String, Report> {
   let mut buf = Vec::new();
   graphviz_write(&mut buf, graph, names, weights)?;
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn graphviz_write<W, D>(
+pub fn graphviz_write<W>(
   mut writer: W,
-  graph: &Graph<D>,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report>
 where
   W: Write,
-  D: Send + Sync,
 {
   write!(
     writer,
@@ -79,14 +72,9 @@ where
   Ok(())
 }
 
-fn print_nodes<W, D>(
-  graph: &Graph<D>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  mut writer: W,
-) -> Result<(), Report>
+fn print_nodes<W>(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>, mut writer: W) -> Result<(), Report>
 where
   W: Write,
-  D: Send + Sync,
 {
   writeln!(writer, "\n  subgraph roots {{")?;
   let roots = graph.get_roots();
@@ -112,14 +100,9 @@ where
   Ok(())
 }
 
-fn print_edges<W, D>(
-  graph: &Graph<D>,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  mut writer: W,
-) -> Result<(), Report>
+fn print_edges<W>(graph: &Graph, weights: &BTreeMap<GraphEdgeKey, Option<f64>>, mut writer: W) -> Result<(), Report>
 where
   W: Write,
-  D: Send + Sync,
 {
   for node in graph.get_nodes() {
     for edge_key in node.read().outbound() {

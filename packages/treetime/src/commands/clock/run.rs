@@ -20,21 +20,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::read_dates;
 use treetime_io::nwk::{NwkParse, nwk_read_file};
 
-#[derive(serde::Serialize)]
-pub struct ClockGraphData {
-  pub clock_model: ClockModel,
-  pub regression_results: Vec<ClockRegressionResult>,
-}
-
-impl ClockGraphData {
-  pub fn new(clock_model: ClockModel, regression_results: Vec<ClockRegressionResult>) -> Self {
-    Self {
-      clock_model,
-      regression_results,
-    }
-  }
-}
-
 /// Per-node clock output as a value.
 ///
 /// Holds the durable per-node results the clock output writers consume: the estimated `time`
@@ -59,7 +44,7 @@ pub struct EdgeOut {
 #[derive(serde::Serialize)]
 pub struct ClockResult {
   #[serde(skip)]
-  pub graph: Graph<ClockGraphData>,
+  pub graph: Graph,
   #[serde(skip)]
   pub nodes: BTreeMap<GraphNodeKey, ClockNodeOut>,
   #[serde(skip)]
@@ -78,7 +63,7 @@ pub struct ClockResult {
 /// `branch_lengths` map. The maps are keyed by the final
 /// (post-reroot) node and edge set.
 fn gather_clock_outputs(
-  graph: &Graph<ClockGraphData>,
+  graph: &Graph,
   state: &ClockState,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -141,7 +126,7 @@ pub fn run_clock(
     branch_lengths,
     ..
   } = if let Some(tree) = &clock_args.tree {
-    nwk_read_file::<()>(tree)
+    nwk_read_file(tree)
   } else {
     return make_error!("Tree inference is not implemented. Provide a tree file with --tree");
   }?;
@@ -191,14 +176,13 @@ pub fn run_clock(
 
   let output = pipeline::run(&params, input, &names, progress)?;
   let pipeline::ClockOutput {
-    graph,
+    mut graph,
     state,
     clock_model,
     regression_results,
     names,
     branch_lengths,
   } = output;
-  let mut graph = graph.map_data(ClockGraphData::new(clock_model.clone(), regression_results.clone()));
   let topology_order = clock_args
     .topology_order
     .resolve_topology_order(&graph, &names, Some(input_order))?;
@@ -238,10 +222,7 @@ pub fn run_clock(
   })
 }
 
-fn leaf_order<D>(graph: &Graph<D>, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report>
-where
-  D: Sync + Send,
-{
+fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report> {
   graph
     .get_leaves()
     .into_iter()

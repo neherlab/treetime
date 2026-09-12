@@ -19,7 +19,7 @@ pub(crate) fn uniform_profile(n_states: usize) -> Array2<f64> {
 }
 
 pub(crate) fn validate_trait_names(
-  graph: &Graph<()>,
+  graph: &Graph,
   traits: &BTreeMap<String, String>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report> {

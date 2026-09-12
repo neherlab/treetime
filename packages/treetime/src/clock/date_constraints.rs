@@ -36,14 +36,11 @@ pub fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribut
   }
 }
 
-pub fn load_date_constraints<D>(
+pub fn load_date_constraints(
   dates: &DatesMap,
-  graph: &Graph<D>,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<DateConstraints, Report>
-where
-  D: Sync + Send,
-{
+) -> Result<DateConstraints, Report> {
   let mut good_leaf_count = 0;
   let mut bad_leaf_count = 0;
   let mut internal_constraint_count = 0;

@@ -8,10 +8,7 @@ use std::sync::Arc;
 ///
 /// A node reaches itself, so `start == finish` is `true`. Serial depth-first walk over the outbound
 /// edges; the visited set makes it terminate on cycles.
-pub fn exists_forward_path_between<D>(graph: &Graph<D>, start: &Arc<RwLock<Node>>, finish: &Arc<RwLock<Node>>) -> bool
-where
-  D: Sync + Send,
-{
+pub fn exists_forward_path_between(graph: &Graph, start: &Arc<RwLock<Node>>, finish: &Arc<RwLock<Node>>) -> bool {
   let finish_key = finish.read().key();
   let mut visited = BTreeSet::new();
   let mut stack = vec![Arc::clone(start)];

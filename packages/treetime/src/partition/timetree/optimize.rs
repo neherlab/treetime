@@ -37,7 +37,7 @@ impl PartitionTimetree {
   /// After topology changes (polytomy resolution), new nodes/edges may lack partition entries.
   /// This adds empty/default entries for missing elements and removes stale entries for
   /// elements no longer in the graph. The subsequent marginal update pass recomputes values.
-  pub fn reconcile_topology(&mut self, graph: &Graph<()>) {
+  pub fn reconcile_topology(&mut self, graph: &Graph) {
     match self {
       Self::Dense(partition) => partition.reconcile_topology(graph),
       Self::Sparse(partition) => partition.reconcile_topology(graph),

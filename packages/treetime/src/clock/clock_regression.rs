@@ -89,31 +89,25 @@ impl ClockRerootResult {
 ///
 /// `prev_clock_rate`: when `Some(rate)`, uses solver-updated `time_length * rate * gamma`
 /// as divergence (re-estimation mode). When `None`, uses input `branch_length()` (initial estimation).
-pub fn clock_regression_backward<D>(
-  graph: &Graph<D>,
+pub fn clock_regression_backward(
+  graph: &Graph,
   state: &mut ClockState,
   options: &ClockParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
-) -> Result<(), Report>
-where
-  D: Send + Sync,
-{
+) -> Result<(), Report> {
   state.map_backward(graph, |context| {
     clock_regression_backward_node(graph, options, prev_clock_rate, branch_lengths, context)
   })
 }
 
-fn clock_regression_backward_node<D>(
-  graph: &Graph<D>,
+fn clock_regression_backward_node(
+  graph: &Graph,
   options: &ClockParams,
   prev_clock_rate: Option<f64>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   context: GraphPassBackwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState, ClockEdgeState>,
-) -> Result<GraphPassNodeOutput<ClockNodeState, ClockEdgeState>, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<GraphPassNodeOutput<ClockNodeState, ClockEdgeState>, Report> {
   let mut node = context.input;
   let is_leaf = context.is_leaf;
   let date = node.likely_time();
@@ -172,16 +166,13 @@ where
 ///
 /// `prev_clock_rate`: when `Some(rate)`, uses solver-updated `time_length * rate * gamma`
 /// as divergence (re-estimation mode). When `None`, uses input `branch_length()` (initial estimation).
-pub fn clock_regression_forward<D>(
-  graph: &Graph<D>,
+pub fn clock_regression_forward(
+  graph: &Graph,
   state: &mut ClockState,
   options: &ClockParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
-) -> Result<(), Report>
-where
-  D: Sync + Send,
-{
+) -> Result<(), Report> {
   state.map_forward(graph, |context| {
     let mut node = context.input;
     let parent_message = if let Some((edge_key, mut edge)) = context.parent_edge {
@@ -207,8 +198,8 @@ where
 ///
 /// `prev_clock_rate`: when `Some(rate)`, regression uses solver-updated time lengths
 /// converted to divergence (re-estimation mode). When `None`, uses input branch lengths.
-pub fn estimate_clock_model_with_reroot_policy<D>(
-  graph: &mut Graph<D>,
+pub fn estimate_clock_model_with_reroot_policy(
+  graph: &mut Graph,
   state: &mut ClockState,
   options: &ClockParams,
   clock_rate: Option<f64>,
@@ -218,10 +209,7 @@ pub fn estimate_clock_model_with_reroot_policy<D>(
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<ClockRerootResult, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<ClockRerootResult, Report> {
   if let Some(rate) = clock_rate {
     info!("## Estimating clock model with fixed rate {rate:.6e} (keep_root={keep_root})");
   } else {

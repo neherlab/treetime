@@ -49,7 +49,7 @@ mod tests {
 
   #[test]
   fn topology_order_dag_counts_shared_descendant_once_per_child() -> Result<(), Report> {
-    let mut graph = Graph::<()>::new();
+    let mut graph = Graph::new();
     let root = graph.add_node();
     let left = graph.add_node();
     let right = graph.add_node();
@@ -105,7 +105,7 @@ mod tests {
 
   #[test]
   fn topology_order_rejects_cycles() -> Result<(), Report> {
-    let mut graph = Graph::<()>::new();
+    let mut graph = Graph::new();
     let a = graph.add_node();
     let b = graph.add_node();
     let c = graph.add_node();
@@ -370,26 +370,23 @@ mod tests {
   }
 
   #[test]
-  fn topology_order_is_idempotent_and_preserves_graph_data_identity() -> Result<(), Report> {
-    let (graph, names) = fixture_tree()?;
-    let mut graph = graph.map_data(NonCloneData);
-    let data = std::ptr::from_ref(graph.data());
+  fn topology_order_is_idempotent() -> Result<(), Report> {
+    let (mut graph, names) = fixture_tree()?;
 
     let __bl = edge_branch_lengths(&graph);
     TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
-    let first = child_names_with_data(&graph, &names, "root")?;
+    let first = child_names(&graph, &names, "root")?;
     let __bl = edge_branch_lengths(&graph);
     TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
-    let second = child_names_with_data(&graph, &names, "root")?;
+    let second = child_names(&graph, &names, "root")?;
 
     assert_eq!(first, second);
-    assert!(std::ptr::eq(data, graph.data()));
     Ok(())
   }
 
   /// root -> [deep -> [D, mid -> [E, F]], shallow -> [B, C], A]
-  fn fixture_deep_tree() -> Result<(Graph<()>, BTreeMap<GraphNodeKey, Option<String>>), Report> {
-    let mut graph = Graph::<()>::new();
+  fn fixture_deep_tree() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    let mut graph = Graph::new();
     let root = graph.add_node();
     let deep = graph.add_node();
     let tip_a = graph.add_node();
@@ -431,13 +428,13 @@ mod tests {
   #[allow(clippy::type_complexity)]
   fn fixture_branch_length_tree() -> Result<
     (
-      Graph<()>,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
     Report,
   > {
-    let mut graph = Graph::<()>::new();
+    let mut graph = Graph::new();
     let root = graph.add_node();
     let short = graph.add_node();
     let long = graph.add_node();
@@ -468,8 +465,8 @@ mod tests {
     Ok((graph, names, branch_lengths))
   }
 
-  fn fixture_tree() -> Result<(Graph<()>, BTreeMap<GraphNodeKey, Option<String>>), Report> {
-    let mut graph = Graph::<()>::new();
+  fn fixture_tree() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    let mut graph = Graph::new();
     let root = graph.add_node();
     let def = graph.add_node();
     let tip_a = graph.add_node();
@@ -505,15 +502,7 @@ mod tests {
   }
 
   fn child_names(
-    graph: &Graph<()>,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-    parent_name: &str,
-  ) -> Result<Vec<String>, Report> {
-    child_names_with_data(graph, names, parent_name)
-  }
-
-  fn child_names_with_data<D: Send + Sync>(
-    graph: &Graph<D>,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     parent_name: &str,
   ) -> Result<Vec<String>, Report> {
@@ -555,14 +544,11 @@ mod tests {
   }
 
   /// The edge branch-length value map for a graph whose edges carry no length (all `None`).
-  fn edge_branch_lengths<D: Send + Sync>(graph: &Graph<D>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+  fn edge_branch_lengths(graph: &Graph) -> BTreeMap<GraphEdgeKey, Option<f64>> {
     graph
       .get_edges()
       .iter()
       .map(|edge| (edge.read_arc().key(), None))
       .collect()
   }
-
-  #[derive(Debug)]
-  struct NonCloneData;
 }

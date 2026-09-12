@@ -9,14 +9,11 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
 /// Infer GTR model from Fitch substitution counts on a compressed partition.
-pub fn infer_gtr_fitch<D>(
+pub fn infer_gtr_fitch(
   partition: &PartitionFitch,
-  graph: &Graph<D>,
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<GTR, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<GTR, Report> {
   let counts = get_mutation_counts_fitch(graph, partition, branch_lengths)?;
   let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
   let n_states = partition.alphabet.n_canonical();
@@ -29,14 +26,11 @@ where
 /// Reads `fitch_subs()` directly. GTR inference runs before marginal inference
 /// (the marginal pass needs the GTR model), so only Fitch-derived mutations
 /// are available at this point.
-pub fn get_mutation_counts_fitch<D>(
-  graph: &Graph<D>,
+pub fn get_mutation_counts_fitch(
+  graph: &Graph,
   partition: &PartitionFitch,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<MutationCounts, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<MutationCounts, Report> {
   let alphabet = &partition.alphabet;
 
   let root_state = {

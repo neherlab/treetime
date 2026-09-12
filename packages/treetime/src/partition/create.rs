@@ -28,7 +28,7 @@ pub struct PartitionCreated {
 ///
 /// No file I/O. GTR JSON writing is the caller's responsibility.
 pub fn create_marginal_partition(
-  graph: &Graph<()>,
+  graph: &Graph,
   index: usize,
   alphabet: Alphabet,
   sequences: &[FastaRecord],

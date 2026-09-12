@@ -28,7 +28,7 @@ mod tests {
     use eyre::Report;
     use treetime_graph::graph::{Graph, SafeNode};
 
-    pub fn graph_with_edges(node_count: usize, edges: &[(usize, usize)]) -> Result<(Graph<()>, Vec<SafeNode>), Report> {
+    pub fn graph_with_edges(node_count: usize, edges: &[(usize, usize)]) -> Result<(Graph, Vec<SafeNode>), Report> {
       let mut graph = Graph::new();
       let keys = std::iter::repeat_with(|| graph.add_node())
         .take(node_count)

@@ -222,7 +222,7 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_empty_graph() -> Result<(), Report> {
-    let mut graph: Graph = Graph::new();
+    let mut graph = Graph::new();
     let names: BTreeMap<GraphNodeKey, Option<String>> = btreemap! {};
     let mut partitions = vec![];
     let mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = btreemap! {};

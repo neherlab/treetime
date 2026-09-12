@@ -19,7 +19,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut actual = vec![];
     graph.iter_depth_first_preorder_forward(|node| {
@@ -39,7 +39,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut actual = vec![];
     graph.iter_depth_first_postorder_forward(|node| {
@@ -59,7 +59,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut actual = vec![];
     graph.iter_breadth_first_forward(|node| {
@@ -79,7 +79,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut actual = vec![];
     graph.iter_breadth_first_backward(|node| {
@@ -99,7 +99,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     // Serial traversal captures mutable outer state directly, with no Arc/Mutex.
     let mut visited = vec![];
@@ -120,7 +120,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     // "AB" and "CD" both error, but "AB" is visited first in breadth-first order. The traversal
     // must surface the "AB" error and stop before visiting "CD" or any deeper node.
@@ -147,7 +147,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("root:0.01;")?;
+    } = nwk_read_str("root:0.01;")?;
 
     let mut visited = vec![];
     graph.iter_breadth_first_forward(|node| {
@@ -167,7 +167,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.1,B:0.2)AB:0.1)root:0.01;")?;
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1)root:0.01;")?;
 
     let mut visited = vec![];
     let result = graph.iter_breadth_first_forward(|node| {
@@ -192,7 +192,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut visited = vec![];
     graph.iter_breadth_first_backward(|node| {
@@ -212,7 +212,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut visited = vec![];
     let result = graph.iter_breadth_first_backward(|node| {
@@ -237,7 +237,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut visited = vec![];
     graph.iter_depth_first_postorder_forward(|node| {
@@ -257,7 +257,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
     let mut visited = vec![];
     let result = graph.iter_depth_first_postorder_forward(|node| {
@@ -282,7 +282,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.2)internal:0.1)root;")?;
+    } = nwk_read_str("((A:0.2)internal:0.1)root;")?;
 
     let root_to_internal = find_edge_key(&graph, &names, "root", "internal").unwrap();
     graph.collapse_edge(root_to_internal)?;
@@ -300,7 +300,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.2)internal:0.1,B:0.3)root;")?;
+    } = nwk_read_str("((A:0.2)internal:0.1,B:0.3)root;")?;
 
     let root_to_internal = find_edge_key(&graph, &names, "root", "internal").unwrap();
     graph.collapse_edge(root_to_internal)?;
@@ -318,7 +318,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.3,B:0.4)left:0.1,(C:0.5,D:0.6)right:0.2)root;")?;
+    } = nwk_read_str("((A:0.3,B:0.4)left:0.1,(C:0.5,D:0.6)right:0.2)root;")?;
 
     let root_to_left = find_edge_key(&graph, &names, "root", "left").unwrap();
     graph.collapse_edge(root_to_left)?;
@@ -332,7 +332,7 @@ mod tests {
   #[allow(clippy::assertions_on_result_states)]
   #[test]
   fn test_graph_collapse_edge_invalid_edge() -> Result<(), Report> {
-    let mut graph = Graph::<()>::new();
+    let mut graph = Graph::new();
 
     let root_node = graph.add_node();
     let leaf_node = graph.add_node();
@@ -354,7 +354,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("(A:0.1,B:0.2)root;")?;
+    } = nwk_read_str("(A:0.1,B:0.2)root;")?;
 
     let root_to_a = find_edge_key(&graph, &names, "root", "A").unwrap();
     graph.collapse_edge(root_to_a)?;
@@ -372,7 +372,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.2)internal:0.1)root;")?;
+    } = nwk_read_str("((A:0.2)internal:0.1)root;")?;
 
     let root_to_internal = find_edge_key(&graph, &names, "root", "internal").unwrap();
     graph.collapse_edge(root_to_internal)?;
@@ -409,7 +409,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((A:0.3,B:0.4)left:0.1,right:0.2)root;")?;
+    } = nwk_read_str("((A:0.3,B:0.4)left:0.1,right:0.2)root;")?;
 
     let root_to_left = find_edge_key(&graph, &names, "root", "left").unwrap();
     graph.collapse_edge(root_to_left)?;
@@ -422,7 +422,7 @@ mod tests {
 
   #[test]
   fn test_graph_collapse_edge_multiple_inbound_edges() -> Result<(), Report> {
-    let mut graph = Graph::<()>::new();
+    let mut graph = Graph::new();
 
     let source1_node = graph.add_node();
     let source2_node = graph.add_node();
@@ -469,7 +469,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("((leaf1:0.2,leaf2:0.3)internal:0.1)root;")?;
+    } = nwk_read_str("((leaf1:0.2,leaf2:0.3)internal:0.1)root;")?;
 
     let root_to_internal = find_edge_key(&graph, &names, "root", "internal").unwrap();
     graph.collapse_edge(root_to_internal)?;

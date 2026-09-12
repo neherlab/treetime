@@ -24,14 +24,11 @@ pub struct DivStatsField {
 /// branch (`from_child`); a root-to-leaves pass derives the complementary
 /// rest-of-tree message (`to_child`) by subtracting a child's contribution from
 /// the node aggregate. Statistics are returned in maps.
-pub fn compute_div_stats<D>(
-  graph: &Graph<D>,
+pub fn compute_div_stats(
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   variance: &VarianceModel,
-) -> Result<DivStatsField, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<DivStatsField, Report> {
   // Leaves-to-root order (children precede parents).
   let mut backward_order: Vec<GraphNodeKey> = Vec::new();
   graph.iter_breadth_first_backward(|n| {
@@ -147,10 +144,7 @@ struct NodeTopology {
   parent_edge: Option<GraphEdgeKey>,
 }
 
-fn node_topology<D>(graph: &Graph<D>, node_key: GraphNodeKey) -> Result<NodeTopology, Report>
-where
-  D: Send + Sync,
-{
+fn node_topology(graph: &Graph, node_key: GraphNodeKey) -> Result<NodeTopology, Report> {
   let node = graph
     .get_node(node_key)
     .ok_or_else(|| make_report!("Node not found: {node_key}"))?;

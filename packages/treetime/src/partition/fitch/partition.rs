@@ -22,7 +22,7 @@ pub struct PartitionFitch {
 }
 
 impl PartitionFitch {
-  pub fn into_marginal_sparse(self, gtr: GTR, graph: &Graph<()>) -> Result<PartitionMarginalSparse, Report> {
+  pub fn into_marginal_sparse(self, gtr: GTR, graph: &Graph) -> Result<PartitionMarginalSparse, Report> {
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     let root_sequence = self.nodes[&root_key].seq.sequence.clone();
     let mut nodes = self.nodes;

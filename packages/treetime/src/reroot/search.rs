@@ -14,8 +14,8 @@ use treetime_graph::graph::Graph;
 /// left unchanged (`edge = None`). Optimizing each edge over `[0, 1]` covers
 /// rooting at any existing node as a split endpoint, so no separate per-node
 /// scan is needed.
-pub fn find_best_root<D, S>(
-  graph: &Graph<D>,
+pub fn find_best_root<S>(
+  graph: &Graph,
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
   root_stats: &S,
   variance: &VarianceModel,
@@ -23,7 +23,6 @@ pub fn find_best_root<D, S>(
   params: &BrentParams,
 ) -> Result<FindRootResult<S>, Report>
 where
-  D: Send + Sync,
   S: RootStats,
 {
   let mut best = FindRootResult {

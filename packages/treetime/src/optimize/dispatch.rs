@@ -20,7 +20,7 @@ use treetime_graph::graph::Graph;
 /// For each edge, it collects contributions from all partitions and optimizes the branch
 /// length using the selected method.
 pub fn run_optimize_mixed(
-  graph: &Graph<()>,
+  graph: &Graph,
   partitions: &[&dyn PartitionOptimizeOps],
   method: BranchOptMethod,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -37,7 +37,7 @@ pub fn run_optimize_mixed(
 
 #[cfg(test)]
 pub fn run_optimize_mixed_with_indel_rate(
-  graph: &Graph<()>,
+  graph: &Graph,
   partitions: &[&dyn PartitionOptimizeOps],
   method: BranchOptMethod,
   indel_rate: f64,
@@ -48,7 +48,7 @@ pub fn run_optimize_mixed_with_indel_rate(
 }
 
 pub fn run_optimize_mixed_inner(
-  graph: &Graph<()>,
+  graph: &Graph,
   partitions: &[&dyn PartitionOptimizeOps],
   method: BranchOptMethod,
   indel_rate: f64,
@@ -236,7 +236,7 @@ struct BifurcatingRootState {
 }
 
 impl BifurcatingRootState {
-  fn capture(graph: &Graph<()>, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Result<Option<Self>, Report> {
+  fn capture(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Result<Option<Self>, Report> {
     let root = graph.get_exactly_one_root()?;
     let children = graph.children_of(&root.read_arc());
     if children.len() == 2 {
@@ -280,7 +280,7 @@ impl BifurcatingRootState {
 /// When `no_indels` is true, indel counts and rates do not affect either
 /// branch validity or the estimated branch length.
 pub fn initial_guess_mixed(
-  graph: &Graph<()>,
+  graph: &Graph,
   partitions: &[&dyn PartitionOptimizeOps],
   overwrite_valid: bool,
   no_indels: bool,

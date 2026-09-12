@@ -790,15 +790,12 @@ pub struct TopologyOrderArgs {
 }
 
 impl TopologyOrderArgs {
-  pub fn resolve_topology_order<D>(
+  pub fn resolve_topology_order(
     &self,
-    graph: &Graph<D>,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     input_order: Option<Vec<String>>,
-  ) -> Result<TopologyOrderSpec, Report>
-  where
-    D: Sync + Send,
-  {
+  ) -> Result<TopologyOrderSpec, Report> {
     self.validate()?;
 
     let preset = match (self.ladderize, self.topology_order) {
@@ -861,15 +858,12 @@ impl TopologyOrderArgs {
     Ok(())
   }
 
-  fn target_order<D>(
+  fn target_order(
     &self,
-    graph: &Graph<D>,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     input_order: Option<Vec<String>>,
-  ) -> Result<Vec<String>, Report>
-  where
-    D: Sync + Send,
-  {
+  ) -> Result<Vec<String>, Report> {
     match self
       .topology_order_target_source
       .unwrap_or(TopologyOrderTargetSourceArg::Input)
@@ -884,7 +878,7 @@ impl TopologyOrderArgs {
           graph: ref_graph,
           names: ref_names,
           ..
-        } = nwk_read_file::<()>(path).wrap_err("When reading target reference topology")?;
+        } = nwk_read_file(path).wrap_err("When reading target reference topology")?;
         leaf_order(&ref_graph, &ref_names)
       },
       TopologyOrderTargetSourceArg::List => {
@@ -1006,10 +1000,7 @@ impl From<TopologyOrderTargetAggregateArg> for TopologyOrderTargetAggregate {
   }
 }
 
-fn leaf_order<D>(graph: &Graph<D>, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report>
-where
-  D: Sync + Send,
-{
+fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report> {
   graph
     .get_leaves()
     .into_iter()

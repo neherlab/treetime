@@ -209,7 +209,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<()>("('node (1)':0.1,B:0.2)root;")?;
+    } = nwk_read_str("('node (1)':0.1,B:0.2)root;")?;
 
     let actual = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
     assert_eq!("('node (1)':0.1,B:0.2)root;", actual);
@@ -240,7 +240,7 @@ mod tests {
     #[allow(clippy::type_complexity)]
     pub(super) fn make_graph() -> Result<
       (
-        Graph<()>,
+        Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
@@ -251,7 +251,7 @@ mod tests {
         names,
         branch_lengths,
         ..
-      } = nwk_read_str::<()>("((A:0.1,B:0.2)inner:0.3,C:0.4)root;")?;
+      } = nwk_read_str("((A:0.1,B:0.2)inner:0.3,C:0.4)root;")?;
       Ok((graph, names, branch_lengths))
     }
 

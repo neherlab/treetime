@@ -22,17 +22,14 @@ pub struct BranchPointCostFunction<'a> {
 }
 
 impl<'a> BranchPointCostFunction<'a> {
-  pub fn new<D>(
-    graph: &Graph<D>,
+  pub fn new(
+    graph: &Graph,
     state: &ClockState,
     edge: GraphEdgeKey,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     options: &'a ClockParams,
     objective: RootObjective,
-  ) -> Result<BranchPointCostFunction<'a>, Report>
-  where
-    D: Send + Sync,
-  {
+  ) -> Result<BranchPointCostFunction<'a>, Report> {
     let edge_obj = graph
       .get_edge(edge)
       .ok_or_else(|| make_report!("Edge not found: {edge}"))?;

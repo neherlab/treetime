@@ -36,7 +36,7 @@ pub fn profile_branch_lengths(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64
 }
 
 pub fn initialize_marginal<P>(
-  graph: &Graph<()>,
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   partitions: &mut [P],
   aln: &[FastaRecord],
@@ -59,7 +59,7 @@ where
 /// substitution model; the boundary dispatches dense and sparse representations to their separate
 /// tails via [`MarginalPass`].
 pub fn marginal_update<P>(
-  graph: &Graph<()>,
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   partitions: &mut [P],
 ) -> Result<LogLh, Report>
@@ -74,7 +74,7 @@ where
 }
 
 pub fn marginal_backward<P>(
-  graph: &Graph<()>,
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   partitions: &mut [P],
 ) -> Result<(), Report>
@@ -91,7 +91,7 @@ where
 }
 
 fn marginal_forward<P>(
-  graph: &Graph<()>,
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   partitions: &mut [P],
 ) -> Result<(), Report>
@@ -116,7 +116,7 @@ where
 /// writers read the map directly, the partition still stores each `seq.sequence` (written inside
 /// `reconstruct_node_sequence`) for the node-data serializer.
 pub fn ancestral_reconstruction_marginal<P>(
-  graph: &Graph<()>,
+  graph: &Graph,
   include_leaves: bool,
   impute: bool,
   partitions: &mut [P],

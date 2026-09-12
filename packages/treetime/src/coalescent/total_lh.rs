@@ -20,14 +20,11 @@ use treetime_primitives::LogLh;
 ///
 /// Accepts any `Distribution` for Tc (constant, skyline, or formula-based).
 /// Nonconstant distributions are evaluated in decimal calendar years.
-pub fn compute_coalescent_total_lh<D>(
-  graph: &Graph<D>,
+pub fn compute_coalescent_total_lh(
+  graph: &Graph,
   tc_dist: &Distribution,
   node_times: &CoalescentNodeTimes,
-) -> Result<LogLh, Report>
-where
-  D: Sync + Send,
-{
+) -> Result<LogLh, Report> {
   let model = CoalescentModel::new(&compute_lineage_counts(graph, node_times)?, tc_dist)?;
   let edges = collect_coalescent_edges(graph, node_times)?;
 

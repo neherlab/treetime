@@ -8,7 +8,7 @@ mod tests {
 
   #[test]
   fn test_edge_inverts() -> Result<(), Report> {
-    let mut graph = nwk_read_str::<()>("((((h:0.7)e:0.6)d:0.4)b:0.,((g:0.5)c:0.2,(i:0.8)f:0.3)a:0.1)r1;")?.graph;
+    let mut graph = nwk_read_str("((((h:0.7)e:0.6)d:0.4)b:0.,((g:0.5)c:0.2,(i:0.8)f:0.3)a:0.1)r1;")?.graph;
 
     let edge = graph.get_edge(GraphEdgeKey(3)).unwrap();
     let input_source = edge.read().source();

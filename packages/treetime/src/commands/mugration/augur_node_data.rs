@@ -86,9 +86,9 @@ fn build_models(attribute: &str, maps: &MugrationOutputMaps) -> BTreeMap<String,
   models
 }
 
-fn build_nodes<D: Send + Sync>(
+fn build_nodes(
   attribute: &str,
-  graph: &Graph<D>,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   maps: &MugrationOutputMaps,
 ) -> BTreeMap<String, AugurNodeDataJsonTraitsNode> {
@@ -143,9 +143,9 @@ pub(crate) fn compute_entropy(profile: &ndarray::Array1<f64>) -> f64 {
   -profile.iter().map(|&p| p * (p + TINY).ln()).sum::<f64>()
 }
 
-fn build_branches<D: Send + Sync>(
+fn build_branches(
   attribute: &str,
-  graph: &Graph<D>,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   maps: &MugrationOutputMaps,
 ) -> BTreeMap<String, AugurNodeDataJsonTraitsBranches> {
@@ -190,10 +190,7 @@ fn build_branches<D: Send + Sync>(
   branches
 }
 
-fn build_parent_trait_map<D: Send + Sync>(
-  graph: &Graph<D>,
-  maps: &MugrationOutputMaps,
-) -> BTreeMap<GraphNodeKey, Option<String>> {
+fn build_parent_trait_map(graph: &Graph, maps: &MugrationOutputMaps) -> BTreeMap<GraphNodeKey, Option<String>> {
   let mut map = BTreeMap::new();
   for node in graph.get_nodes() {
     let node_guard = node.read_arc();

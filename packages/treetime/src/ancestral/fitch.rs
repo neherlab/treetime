@@ -26,7 +26,7 @@ use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
 
 pub fn create_fitch_partition(
-  graph: &Graph<()>,
+  graph: &Graph,
   index: usize,
   alphabet: Alphabet,
   aln: &[FastaRecord],
@@ -45,7 +45,7 @@ pub fn create_fitch_partition(
 }
 
 pub(crate) fn attach_seqs_to_graph(
-  graph: &Graph<()>,
+  graph: &Graph,
   partition: &mut PartitionFitch,
   aln: &[FastaRecord],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -89,7 +89,7 @@ pub(crate) fn attach_seqs_to_graph(
   Ok(())
 }
 
-pub(crate) fn fitch_backward(graph: &Graph<()>, partition: &mut PartitionFitch) -> Result<(), Report> {
+pub(crate) fn fitch_backward(graph: &Graph, partition: &mut PartitionFitch) -> Result<(), Report> {
   let alphabet = partition.alphabet.clone();
   let length = partition.length;
   let pass = GraphPass::new(graph, &mut partition.nodes, &mut partition.edges, |_| {
@@ -102,7 +102,7 @@ pub(crate) fn fitch_backward(graph: &Graph<()>, partition: &mut PartitionFitch) 
 }
 
 fn run_fitch_backward_indexed(
-  graph: &Graph<()>,
+  graph: &Graph,
   alphabet: &Alphabet,
   length: usize,
   context: GraphPassBackwardContext<
@@ -218,7 +218,7 @@ fn run_fitch_backward_indexed(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-pub(crate) fn fitch_forward(graph: &Graph<()>, partition: &mut PartitionFitch) -> Result<(), Report> {
+pub(crate) fn fitch_forward(graph: &Graph, partition: &mut PartitionFitch) -> Result<(), Report> {
   let alphabet = partition.alphabet.clone();
   let pass = GraphPass::new(graph, &mut partition.nodes, &mut partition.edges, |key| {
     Err(make_report!(
@@ -311,7 +311,7 @@ fn run_fitch_forward_indexed(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-fn fitch_cleanup(graph: &Graph<()>, partition: &mut PartitionFitch) -> Result<(), Report> {
+fn fitch_cleanup(graph: &Graph, partition: &mut PartitionFitch) -> Result<(), Report> {
   for (key, node) in &mut partition.nodes {
     if !graph.is_leaf(*key) {
       node.seq.fitch.variable = btreemap! {};
@@ -321,7 +321,7 @@ fn fitch_cleanup(graph: &Graph<()>, partition: &mut PartitionFitch) -> Result<()
 }
 
 pub fn compress_sequences(
-  graph: &Graph<()>,
+  graph: &Graph,
   partition: &mut PartitionFitch,
   aln: &[FastaRecord],
   names: &BTreeMap<GraphNodeKey, Option<String>>,

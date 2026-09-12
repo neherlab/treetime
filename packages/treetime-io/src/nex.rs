@@ -24,95 +24,77 @@ pub struct NexWriteOptions {
   pub weight_decimal_digits: Option<i8>,
 }
 
-pub fn nex_write_file<D>(
+pub fn nex_write_file(
   filepath: impl AsRef<Path>,
-  graph: &Graph<D>,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NexWriteOptions,
-) -> Result<(), Report>
-where
-  D: Sync + Send,
-{
+) -> Result<(), Report> {
   let mut f = create_file_or_stdout(filepath)?;
   nex_write(&mut f, graph, names, weights, options)?;
   writeln!(f)?;
   Ok(())
 }
 
-pub fn nex_write_file_with<D>(
+pub fn nex_write_file_with(
   filepath: impl AsRef<Path>,
-  graph: &Graph<D>,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NexWriteOptions,
   providers: &CommentProviders,
-) -> Result<(), Report>
-where
-  D: Sync + Send,
-{
+) -> Result<(), Report> {
   let mut f = create_file_or_stdout(filepath)?;
   nex_write_with(&mut f, graph, names, weights, options, providers)?;
   writeln!(f)?;
   Ok(())
 }
 
-pub fn nex_write_str<D>(
-  graph: &Graph<D>,
+pub fn nex_write_str(
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NexWriteOptions,
-) -> Result<String, Report>
-where
-  D: Sync + Send,
-{
+) -> Result<String, Report> {
   let providers = CommentProviders::new();
   nex_write_str_with(graph, names, weights, options, &providers)
 }
 
 /// Return the Nexus representation of a graph, augmented by external node comment providers.
-pub fn nex_write_str_with<D>(
-  graph: &Graph<D>,
+pub fn nex_write_str_with(
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NexWriteOptions,
   providers: &CommentProviders,
-) -> Result<String, Report>
-where
-  D: Sync + Send,
-{
+) -> Result<String, Report> {
   let mut buf = Vec::new();
   nex_write_with(&mut buf, graph, names, weights, options, providers)?;
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn nex_write<D>(
+pub fn nex_write(
   w: &mut impl Write,
-  graph: &Graph<D>,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NexWriteOptions,
-) -> Result<(), Report>
-where
-  D: Sync + Send,
-{
+) -> Result<(), Report> {
   let providers = CommentProviders::new();
   nex_write_with(w, graph, names, weights, options, &providers)
 }
 
 /// Write a graph in Nexus format, passing node names, edge weights, and comment providers through to
 /// the embedded Newick tree.
-pub fn nex_write_with<D>(
+pub fn nex_write_with(
   w: &mut impl Write,
-  graph: &Graph<D>,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NexWriteOptions,
   providers: &CommentProviders,
-) -> Result<(), Report>
-where
-  D: Sync + Send,
-{
+) -> Result<(), Report> {
   let n_leaves = graph.num_leaves();
   let leaf_names = graph
     .get_leaves()

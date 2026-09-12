@@ -129,7 +129,7 @@ impl PartitionOptimizeOps for PartitionMarginalSparse {
 )]
 impl PartitionMarginalSparse {
   /// Ensure the partition has entries for all nodes and edges in the graph, dropping stale entries.
-  pub fn reconcile_topology(&mut self, graph: &Graph<()>) {
+  pub fn reconcile_topology(&mut self, graph: &Graph) {
     let graph_node_keys: BTreeSet<GraphNodeKey> = graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();
     let graph_edge_keys: BTreeSet<GraphEdgeKey> = graph.get_edges().into_iter().map(|e| e.read_arc().key()).collect();
 
@@ -165,7 +165,7 @@ impl PartitionMarginalPasses for PartitionMarginalSparse {
 impl PartitionMarginalOps for PartitionMarginalSparse {
   fn attach_sequences(
     &mut self,
-    _graph: &Graph<()>,
+    _graph: &Graph,
     _aln: &[FastaRecord],
     _names: &BTreeMap<GraphNodeKey, Option<String>>,
   ) -> Result<(), Report> {

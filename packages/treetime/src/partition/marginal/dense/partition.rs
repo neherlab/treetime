@@ -118,7 +118,7 @@ impl PartitionRerootOps for PartitionMarginalDense {
 impl TransitionCounting for PartitionMarginalDense {
   fn count_transitions(
     &self,
-    graph: &Graph<()>,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<MutationCounts, Report> {
     self.data.count_transitions(graph, branch_lengths)
@@ -200,7 +200,7 @@ impl PartitionOptimizeOps for PartitionMarginalDense {
 )]
 impl PartitionMarginalDense {
   /// Ensure the partition has entries for all nodes and edges in the graph, dropping stale entries.
-  pub fn reconcile_topology(&mut self, graph: &Graph<()>) {
+  pub fn reconcile_topology(&mut self, graph: &Graph) {
     let graph_node_keys: BTreeSet<GraphNodeKey> = graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();
     let graph_edge_keys: BTreeSet<GraphEdgeKey> = graph.get_edges().into_iter().map(|e| e.read_arc().key()).collect();
 
@@ -223,7 +223,7 @@ impl PartitionMarginalDense {
 impl PartitionMarginalOps for PartitionMarginalDense {
   fn attach_sequences(
     &mut self,
-    graph: &Graph<()>,
+    graph: &Graph,
     aln: &[FastaRecord],
     names: &BTreeMap<GraphNodeKey, Option<String>>,
   ) -> Result<(), Report> {

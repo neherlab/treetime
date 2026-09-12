@@ -11,7 +11,6 @@ use std::fmt::Write;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::LogLh;
 #[derive(Clone, Debug, Serialize)]
 pub struct ConfidenceRow {
   /// Node name.
@@ -111,13 +110,6 @@ impl MugrationTraitsOutput {
   }
 }
 
-#[derive(Debug, Serialize)]
-pub struct MugrationGraphData {
-  pub traits: MugrationTraitsOutput,
-  pub confidence: MugrationConfidenceOutput,
-  pub log_lh: LogLh,
-}
-
 /// Discrete traits and confidence profiles gathered from the mugration partition for the output writers.
 ///
 /// Gathered once, serially, from the discrete partition while it is in scope in the command, so the
@@ -154,22 +146,17 @@ pub struct EdgeOut {
 
 /// Mugration result as a value.
 ///
-/// The reconstructed attribute name and the marginal log likelihood are reachable directly off the
-/// result; the reconstructed traits and confidence profiles are gathered into value maps and the
-/// `traits`/`confidence` value structs on the graph data. `graph` carries the tree and the metadata
-/// the writers read.
+/// The reconstructed traits and confidence profiles are gathered into value maps and the
+/// `traits`/`confidence` value structs. `graph` carries the tree topology, and `nodes`/`edges` carry
+/// the per-node and per-edge metadata the writers read.
 #[derive(Debug, serde::Serialize)]
 pub struct MugrationResult {
   #[serde(skip)]
-  pub graph: Graph<MugrationGraphData>,
+  pub graph: Graph,
   #[serde(skip)]
   pub nodes: BTreeMap<GraphNodeKey, MugrationNodeOut>,
   #[serde(skip)]
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
-  #[serde(skip)]
-  pub attribute: String,
-  #[serde(skip)]
-  pub log_lh: LogLh,
   #[serde(skip)]
   pub traits: MugrationTraitsOutput,
   #[serde(skip)]
@@ -184,7 +171,6 @@ impl MugrationResult {
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     partition: &PartitionMarginalDiscrete,
     attribute: &str,
-    log_lh: LogLh,
   ) -> Self {
     // Gather the per-node name/confidence and per-edge branch length off the tree into keyed value
     // maps the output writers consume. Trait assignments and entropy stay sourced from the discrete
@@ -219,17 +205,10 @@ impl MugrationResult {
       })
       .collect();
 
-    let data = MugrationGraphData {
-      traits: traits.clone(),
-      confidence: confidence.clone(),
-      log_lh,
-    };
     Self {
-      graph: graph.map_data(data),
+      graph,
       nodes,
       edges,
-      attribute: attribute.to_owned(),
-      log_lh,
       traits,
       confidence,
     }
@@ -244,11 +223,11 @@ impl MugrationResult {
 /// state count the output writers read off the mugration discrete partition. The maps are keyed over
 /// every node and carry the raw confidence profile so the writers reproduce the current output exactly.
 ///
-/// Gathered from the pipeline-local partition, so the graph data slot never carries it. The reads are
-/// keyed by node key and independent of node ordering, so gathering before `map_data` and topology
-/// ordering is bit-identical.
-pub(crate) fn gather_mugration_output_maps<D: Send + Sync>(
-  graph: &Graph<D>,
+/// Gathered from the pipeline-local partition, so the partition stays out of the result. The reads are
+/// keyed by node key and independent of node ordering, so gathering before topology ordering is
+/// bit-identical.
+pub(crate) fn gather_mugration_output_maps(
+  graph: &Graph,
   partition: &PartitionMarginalDiscrete,
 ) -> MugrationOutputMaps {
   let reconstructed_traits = graph

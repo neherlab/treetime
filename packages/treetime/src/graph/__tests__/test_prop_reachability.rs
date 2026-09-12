@@ -31,7 +31,7 @@ mod tests {
     use itertools::Itertools;
     use treetime_graph::graph::{Graph, SafeNode};
 
-    pub fn graph_chain(node_count: usize) -> Result<(Graph<()>, Vec<SafeNode>), Report> {
+    pub fn graph_chain(node_count: usize) -> Result<(Graph, Vec<SafeNode>), Report> {
       let mut graph = Graph::new();
       let keys = std::iter::repeat_with(|| graph.add_node())
         .take(node_count)

@@ -15,7 +15,7 @@ use treetime_graph::graph::Graph;
 use treetime_primitives::LogLh;
 
 pub fn refine_gtr_iterative<P>(
-  graph: &Graph<()>,
+  graph: &Graph,
   partition: &RefCell<P>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   iterations: usize,
@@ -97,7 +97,7 @@ fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<
 }
 
 fn optimize_gtr_rate<P>(
-  graph: &Graph<()>,
+  graph: &Graph,
   partition: &RefCell<P>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report>
@@ -158,7 +158,7 @@ where
 }
 
 struct GtrRateCostFn<'a, P> {
-  graph: &'a Graph<()>,
+  graph: &'a Graph,
   partition: &'a RefCell<P>,
   branch_lengths: BTreeMap<GraphEdgeKey, f64>,
   root_key: treetime_graph::node::GraphNodeKey,

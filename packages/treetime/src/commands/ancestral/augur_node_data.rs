@@ -22,8 +22,8 @@ use util_augur_node_data_json::{
 /// the per-position `mask` string, and per-node `muts` (mask-filtered) and
 /// `sequence` (masked positions set to the ambiguous character, matching augur's
 /// `collect_sequences`).
-pub fn write_augur_node_data_json<D: Send + Sync>(
-  graph: &Graph<D>,
+pub fn write_augur_node_data_json(
+  graph: &Graph,
   maps: &AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -32,8 +32,8 @@ pub fn write_augur_node_data_json<D: Send + Sync>(
   write_augur_node_data_json_with_aa(graph, maps, mask, names, None, path)
 }
 
-pub fn build_augur_node_data_json<D: Send + Sync>(
-  graph: &Graph<D>,
+pub fn build_augur_node_data_json(
+  graph: &Graph,
   maps: &AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -126,8 +126,8 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
   })
 }
 
-pub fn write_augur_node_data_json_with_aa<D: Send + Sync>(
-  graph: &Graph<D>,
+pub fn write_augur_node_data_json_with_aa(
+  graph: &Graph,
   maps: &AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,

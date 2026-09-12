@@ -1,9 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::augur_node_data::write_augur_node_data_json;
-use crate::commands::optimize::result::{
-  EdgeOut, OptimizeGraphData, OptimizeNodeOut, OptimizeOutputMaps, OptimizeResult,
-};
+use crate::commands::optimize::result::{EdgeOut, OptimizeNodeOut, OptimizeOutputMaps, OptimizeResult};
 use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_optimize_tree_outputs;
@@ -70,7 +68,7 @@ pub fn run_optimize(
 
   let output = pipeline::run(&params, input, &names, progress)?;
   let pipeline::OptimizeOutput {
-    graph,
+    mut graph,
     gtr,
     model_name,
     sparse_partitions,
@@ -80,15 +78,13 @@ pub fn run_optimize(
   } = output;
 
   // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partitions into
-  // plain value maps the output writers consume. Gather here, before `map_data`, so the graph data
-  // slot never carries a partition. This is the only place that reads sequences and mutations from the
-  // partition; the tree, node-data, and Newick-comment writers read the maps instead. Node and edge
-  // keys stay stable through `map_data` and topology ordering, so gathering before them is
+  // plain value maps the output writers consume. This is the only place that reads sequences and
+  // mutations from the partition; the tree, node-data, and Newick-comment writers read the maps
+  // instead. Node and edge keys stay stable through topology ordering, so gathering before it is
   // bit-identical.
   let maps = gather_optimize_output_maps(&graph, &sparse_partitions, &dense_partitions)?;
   let has_partitions = !sparse_partitions.is_empty() || !dense_partitions.is_empty();
 
-  let mut graph = graph.map_data(OptimizeGraphData::new(gtr.clone(), model_name));
   let topology_order = args.topology_order.resolve_topology_order(&graph, &names, None)?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.9, "");
@@ -96,8 +92,7 @@ pub fn run_optimize(
   // Gather the per-node name/confidence into a keyed value map the output writers consume. The name
   // comes from the pipeline's post-loop name map (`names`); topology ordering only permutes
   // children, so the map still matches the ordered tree. The optimized per-edge branch lengths come
-  // from the loop result (`branch_lengths`); the writers still read sequences
-  // and model metadata from the graph data slot.
+  // from the loop result (`branch_lengths`); the writers read sequences from the gathered maps.
   let nodes: BTreeMap<GraphNodeKey, OptimizeNodeOut> = graph
     .get_nodes()
     .iter()
@@ -184,19 +179,13 @@ pub fn run_optimize(
 
   progress.report("Done", 1.0, "");
 
-  Ok(OptimizeResult {
-    graph,
-    nodes,
-    edges,
-    gtr,
-    model_name,
-  })
+  Ok(OptimizeResult { graph, nodes, edges })
 }
 
 /// Gather the per-node nucleotide sequences, root sequence, per-edge nucleotide mutations, and per-edge
 /// substitutions the output writers read off the optimize partition.
-pub(crate) fn gather_optimize_output_maps<D: Send + Sync>(
-  graph: &Graph<D>,
+pub(crate) fn gather_optimize_output_maps(
+  graph: &Graph,
   sparse_partitions: &[PartitionMarginalSparse],
   dense_partitions: &[PartitionMarginalDense],
 ) -> Result<OptimizeOutputMaps, Report> {
@@ -209,8 +198,8 @@ pub(crate) fn gather_optimize_output_maps<D: Send + Sync>(
   }
 }
 
-fn gather_optimize_partition_maps<D: Send + Sync>(
-  graph: &Graph<D>,
+fn gather_optimize_partition_maps(
+  graph: &Graph,
   partition: &dyn PartitionBranchOps,
 ) -> Result<OptimizeOutputMaps, Report> {
   let root_sequence = Some(partition.root_sequence(graph)?);

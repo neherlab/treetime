@@ -25,16 +25,13 @@ pub struct ClockFilterResult {
 /// Accepts any `ClockLine` implementor: both validated `ClockModel` (positive
 /// rate) and raw `ClockRegression` (any rate sign, used in pre-filter path).
 #[allow(clippy::integer_division_remainder_used)]
-pub fn clock_filter_inplace<D>(
-  graph: &Graph<D>,
+pub fn clock_filter_inplace(
+  graph: &Graph,
   state: &mut ClockState,
   clock_line: &(impl ClockLine + Sync),
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   threshold: f64,
-) -> Result<ClockFilterResult, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<ClockFilterResult, Report> {
   log::info!("### Filtering outliers (threshold={threshold})");
   log::debug!(
     "Clock model for filtering: rate={:.6e}, intercept={:.4}",

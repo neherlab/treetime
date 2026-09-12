@@ -3,14 +3,13 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::pipeline::AncestralPartition;
   use crate::commands::ancestral::aa_node_data::AaNodeData;
-  use crate::commands::ancestral::result::{AncestralGraphData, AncestralNodeOut};
+  use crate::commands::ancestral::result::AncestralNodeOut;
   use crate::commands::shared::tree_output::{
     ancestral_to_auspice, ancestral_to_mat, ancestral_to_phyloxml, clock_to_auspice, clock_to_mat, clock_to_phyloxml,
     format_number, group_mutations, mat_mutation, mugration_to_auspice, mugration_to_mat, mugration_to_phyloxml,
     optimize_to_auspice, optimize_to_mat, optimize_to_phyloxml, prune_to_auspice, prune_to_mat, prune_to_phyloxml,
     timetree_to_auspice, timetree_to_mat, timetree_to_phyloxml, write_ancestral_tree_outputs,
   };
-  use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::partition::traits::BranchTopology;
@@ -288,7 +287,7 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_output_graph_json_dumps_concrete_graph_data() -> Result<(), Report> {
+  fn test_tree_output_graph_json_dumps_topology() -> Result<(), Report> {
     let (graph, names, branch_lengths, partition, aa_node_data) = helpers::ancestral_graph(helpers::Mutations::None)?;
     let dir = TempDir::new()?;
     let path = dir.path().join("graph.json");
@@ -304,10 +303,11 @@ mod tests {
       &CommentProviders::new(),
     )?;
     let actual: Value = json_read_file(&path)?;
-    assert_eq!(Value::String("jc69".to_owned()), actual["data"]["model_name"]);
-    assert_eq!(Value::Array(vec![Value::Bool(false); 3]), actual["data"]["mask"]);
-    // GraphJson serializes the concrete graph struct as-is: the command data slot asserted above
-    // plus the node and edge topology. The data slot no longer carries a partition.
+    // GraphJson serializes pure topology: the node and edge sets, with no command data slot.
+    let nodes = actual["nodes"]
+      .as_array()
+      .expect("graph.json must carry the node topology");
+    assert!(!nodes.is_empty());
     let edges = actual["edges"]
       .as_array()
       .expect("graph.json must carry the edge topology");
@@ -487,21 +487,18 @@ mod tests {
 
   mod helpers {
     use super::*;
-    use crate::clock::clock_model::ClockModel;
-    use crate::clock::clock_set::ClockSet;
     use crate::commands::ancestral::result::AncestralOutputMaps;
     use crate::commands::ancestral::run::gather_ancestral_output_maps;
-    use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
-    use crate::commands::optimize::result::{OptimizeGraphData, OptimizeNodeOut, OptimizeOutputMaps};
+    use crate::commands::clock::run::ClockNodeOut;
+    use crate::commands::optimize::result::{OptimizeNodeOut, OptimizeOutputMaps};
     use crate::commands::optimize::run::gather_optimize_output_maps;
-    use crate::commands::prune::result::{PruneGraphData, PruneNodeOut, PruneOutputMaps};
+    use crate::commands::prune::result::{PruneNodeOut, PruneOutputMaps};
     use crate::commands::prune::run::gather_prune_output_maps;
-    use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut, TimetreeOutputMaps};
+    use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
     use crate::commands::timetree::run::gather_timetree_output_maps;
-    use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::gtr::gtr::{GTR, GTRParams};
     use crate::mugration::result::gather_mugration_output_maps;
-    use crate::mugration::result::{MugrationGraphData, MugrationNodeOut, MugrationOutputMaps, MugrationResult};
+    use crate::mugration::result::{MugrationNodeOut, MugrationOutputMaps, MugrationResult};
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
     use crate::partition::storage::discrete::DiscreteStates;
@@ -533,34 +530,28 @@ mod tests {
       IndelAndAminoAcid,
     }
 
-    pub fn ancestral_maps(
-      graph: &Graph<AncestralGraphData>,
-      partition: Option<&AncestralPartition>,
-    ) -> AncestralOutputMaps {
+    pub fn ancestral_maps(graph: &Graph, partition: Option<&AncestralPartition>) -> AncestralOutputMaps {
       gather_ancestral_output_maps(graph, partition).unwrap()
     }
 
-    pub fn optimize_maps(graph: &Graph<OptimizeGraphData>) -> OptimizeOutputMaps {
+    pub fn optimize_maps(graph: &Graph) -> OptimizeOutputMaps {
       gather_optimize_output_maps(graph, &[], &[]).unwrap()
     }
 
-    pub fn prune_maps(graph: &Graph<PruneGraphData>) -> PruneOutputMaps {
+    pub fn prune_maps(graph: &Graph) -> PruneOutputMaps {
       gather_prune_output_maps(graph, &[]).unwrap()
     }
 
-    pub fn timetree_maps(graph: &Graph<TimetreeGraphData>) -> TimetreeOutputMaps {
+    pub fn timetree_maps(graph: &Graph) -> TimetreeOutputMaps {
       gather_timetree_output_maps(graph, &[]).unwrap()
     }
 
-    pub fn mugration_maps(
-      graph: &Graph<MugrationGraphData>,
-      partition: &PartitionMarginalDiscrete,
-    ) -> MugrationOutputMaps {
+    pub fn mugration_maps(graph: &Graph, partition: &PartitionMarginalDiscrete) -> MugrationOutputMaps {
       gather_mugration_output_maps(graph, partition)
     }
 
     type AncestralGraphSetup = (
-      Graph<AncestralGraphData>,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       BTreeMap<GraphEdgeKey, Option<f64>>,
       Option<AncestralPartition>,
@@ -640,19 +631,12 @@ mod tests {
         aa
       });
       let ancestral_partition = AncestralPartition::Fitch(partition);
-      let data = AncestralGraphData::new(None, GtrModelName::JC69, vec![false; 3], aa_node_data.clone());
-      Ok((
-        graph.map_data(data),
-        names,
-        branch_lengths,
-        Some(ancestral_partition),
-        aa_node_data,
-      ))
+      Ok((graph, names, branch_lengths, Some(ancestral_partition), aa_node_data))
     }
 
-    pub fn ancestral_nodes<D: Send + Sync>(
+    pub fn ancestral_nodes(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph<D>,
+      graph: &Graph,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
     ) -> BTreeMap<GraphNodeKey, AncestralNodeOut> {
       graph
@@ -675,9 +659,9 @@ mod tests {
     /// Input-tree branch support for the ancestral fixture: node `A` carries 0.9, every other node
     /// none. Mirrors a Newick parse that annotated only `A`, so the output writers surface 0.9 on
     /// `A` and nothing elsewhere.
-    pub fn ancestral_confidences<D: Send + Sync>(
+    pub fn ancestral_confidences(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph<D>,
+      graph: &Graph,
     ) -> BTreeMap<GraphNodeKey, Option<f64>> {
       graph
         .get_nodes()
@@ -691,7 +675,7 @@ mod tests {
 
     pub fn ancestral_graph_without_partition() -> Result<
       (
-        Graph<AncestralGraphData>,
+        Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
@@ -703,12 +687,7 @@ mod tests {
         branch_lengths,
         ..
       } = nwk_read_str(MODEL_TREE)?;
-      let graph: Graph = graph;
-      Ok((
-        graph.map_data(AncestralGraphData::new(None, GtrModelName::JC69, vec![], None)),
-        names,
-        branch_lengths,
-      ))
+      Ok((graph, names, branch_lengths))
     }
 
     pub fn all_auspice_documents() -> Result<Vec<Value>, Report> {
@@ -922,13 +901,9 @@ mod tests {
       AsciiChar::from_byte_unchecked(value)
     }
 
-    fn fixed_clock_model() -> Result<ClockModel, Report> {
-      ClockModel::with_fixed_rate(&ClockSet::leaf_contribution(Some(2020.0)), 1.0)
-    }
-
-    pub fn optimize_nodes<D: Send + Sync>(
+    pub fn optimize_nodes(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph<D>,
+      graph: &Graph,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
     ) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
       graph
@@ -950,7 +925,7 @@ mod tests {
 
     fn optimize_graph() -> Result<
       (
-        Graph<OptimizeGraphData>,
+        Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
@@ -962,17 +937,12 @@ mod tests {
         branch_lengths,
         ..
       } = nwk_read_str(MODEL_TREE)?;
-      let graph: Graph = graph;
-      Ok((
-        graph.map_data(OptimizeGraphData::new(jc69(JC69Params::default())?, GtrModelName::JC69)),
-        names,
-        branch_lengths,
-      ))
+      Ok((graph, names, branch_lengths))
     }
 
-    pub fn prune_nodes<D: Send + Sync>(
+    pub fn prune_nodes(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph<D>,
+      graph: &Graph,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
     ) -> BTreeMap<GraphNodeKey, PruneNodeOut> {
       graph
@@ -994,7 +964,7 @@ mod tests {
 
     fn prune_graph() -> Result<
       (
-        Graph<PruneGraphData>,
+        Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
@@ -1006,17 +976,12 @@ mod tests {
         branch_lengths,
         ..
       } = nwk_read_str(MODEL_TREE)?;
-      let graph: Graph = graph;
-      Ok((
-        graph.map_data(PruneGraphData::new(Some(jc69(JC69Params::default())?))),
-        names,
-        branch_lengths,
-      ))
+      Ok((graph, names, branch_lengths))
     }
 
     fn clock_graph() -> Result<
       (
-        Graph<ClockGraphData>,
+        Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
@@ -1028,17 +993,12 @@ mod tests {
         branch_lengths,
         ..
       } = nwk_read_str(MODEL_TREE)?;
-      let graph: Graph = graph;
-      Ok((
-        graph.map_data(ClockGraphData::new(fixed_clock_model()?, vec![])),
-        names,
-        branch_lengths,
-      ))
+      Ok((graph, names, branch_lengths))
     }
 
     pub fn clock_nodes(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph<ClockGraphData>,
+      graph: &Graph,
     ) -> BTreeMap<GraphNodeKey, ClockNodeOut> {
       graph
         .get_nodes()
@@ -1061,9 +1021,9 @@ mod tests {
         .collect()
     }
 
-    pub fn mugration_nodes<D: Send + Sync>(
+    pub fn mugration_nodes(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph<D>,
+      graph: &Graph,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
     ) -> BTreeMap<GraphNodeKey, MugrationNodeOut> {
       graph
@@ -1085,7 +1045,7 @@ mod tests {
 
     fn mugration_graph() -> Result<
       (
-        Graph<MugrationGraphData>,
+        Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
         PartitionMarginalDiscrete,
@@ -1127,21 +1087,13 @@ mod tests {
           )
         })
         .collect();
-      let result = MugrationResult::new(
-        graph,
-        &btreemap! {},
-        &names,
-        &branch_lengths,
-        &partition,
-        "country",
-        LogLh::ZERO,
-      );
+      let result = MugrationResult::new(graph, &btreemap! {}, &names, &branch_lengths, &partition, "country");
       Ok((result.graph, names, branch_lengths, partition))
     }
 
     fn timetree_graph() -> Result<
       (
-        Graph<TimetreeGraphData>,
+        Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
@@ -1153,24 +1105,12 @@ mod tests {
         branch_lengths,
         ..
       } = nwk_read_str(MODEL_TREE)?;
-      let graph: Graph = graph;
-      Ok((
-        graph.map_data(TimetreeGraphData::new(
-          fixed_clock_model()?,
-          None,
-          None,
-          None,
-          None,
-          None,
-        )),
-        names,
-        branch_lengths,
-      ))
+      Ok((graph, names, branch_lengths))
     }
 
     pub fn timetree_nodes(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph<TimetreeGraphData>,
+      graph: &Graph,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
     ) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
       graph
@@ -1200,7 +1140,7 @@ mod tests {
     }
 
     pub fn timetree_edges(
-      graph: &Graph<TimetreeGraphData>,
+      graph: &Graph,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     ) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
       graph
@@ -1223,29 +1163,23 @@ mod tests {
         .collect()
     }
 
-    fn set_mat_branch_lengths<D>(
-      graph: &Graph<D>,
+    fn set_mat_branch_lengths(
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-    ) -> Result<(), Report>
-    where
-      D: Send + Sync,
-    {
+    ) -> Result<(), Report> {
       set_branch_length(graph, names, branch_lengths, "A", None)?;
       set_branch_length(graph, names, branch_lengths, "B", Some(0.0))?;
       set_branch_length(graph, names, branch_lengths, "C", Some(0.5))
     }
 
-    fn set_branch_length<D>(
-      graph: &Graph<D>,
+    fn set_branch_length(
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
       name: &str,
       length: Option<f64>,
-    ) -> Result<(), Report>
-    where
-      D: Send + Sync,
-    {
+    ) -> Result<(), Report> {
       let key = graph
         .get_nodes()
         .into_iter()
@@ -1260,7 +1194,7 @@ mod tests {
     }
 
     fn timetree_mat_nwk_weights(
-      graph: &Graph<TimetreeGraphData>,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
     ) -> Result<BTreeMap<GraphEdgeKey, Option<f64>>, Report> {
       let mut weights: BTreeMap<GraphEdgeKey, Option<f64>> = graph

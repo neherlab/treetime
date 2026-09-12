@@ -1,45 +1,10 @@
-use crate::clock::clock_model::ClockModel;
-use crate::gtr::get_gtr::GtrModelName;
-use crate::gtr::gtr::GTR;
 use crate::seq::mutation::Mutation;
-use crate::timetree::confidence::NodeConfidenceInterval;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::dates_csv::DatesMap;
 use treetime_primitives::Seq;
-
-#[derive(Serialize)]
-pub struct TimetreeGraphData {
-  pub clock_model: ClockModel,
-  pub confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
-  pub dates: Option<DatesMap>,
-  pub gtr: Option<GTR>,
-  pub model_name: Option<GtrModelName>,
-  pub mutation_counts: Option<BTreeMap<GraphEdgeKey, usize>>,
-}
-
-impl TimetreeGraphData {
-  pub fn new(
-    clock_model: ClockModel,
-    confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
-    dates: Option<DatesMap>,
-    gtr: Option<GTR>,
-    model_name: Option<GtrModelName>,
-    mutation_counts: Option<BTreeMap<GraphEdgeKey, usize>>,
-  ) -> Self {
-    Self {
-      clock_model,
-      confidence_intervals,
-      dates,
-      gtr,
-      model_name,
-      mutation_counts,
-    }
-  }
-}
 
 /// Nucleotide sequences and mutations gathered from the timetree partition for the tree writers.
 ///
@@ -96,7 +61,7 @@ impl TimetreeEdgeOut {
 #[derive(Serialize)]
 pub struct TimetreeResult {
   #[serde(skip)]
-  pub graph: Graph<TimetreeGraphData>,
+  pub graph: Graph,
   #[serde(skip)]
   pub nodes: BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   #[serde(skip)]

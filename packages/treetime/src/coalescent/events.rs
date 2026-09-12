@@ -12,13 +12,10 @@ use treetime_utils::make_error;
 /// bad-branch subtree contributes one remaining lineage because all of its node
 /// events are excluded.
 /// delta_branches: +1 for leaf nodes, -(k-1) for internal nodes with k children.
-pub fn collect_tree_events<D>(
-  graph: &Graph<D>,
+pub fn collect_tree_events(
+  graph: &Graph,
   node_times: &CoalescentNodeTimes,
-) -> Result<(CalendarTime, Vec<(CalendarTime, i32)>, i32), Report>
-where
-  D: Sync + Send,
-{
+) -> Result<(CalendarTime, Vec<(CalendarTime, i32)>, i32), Report> {
   if graph.num_roots() != 1 {
     return make_error!("Graph must have exactly one root, found {}", graph.num_roots());
   }

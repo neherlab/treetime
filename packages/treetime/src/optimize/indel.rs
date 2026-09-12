@@ -67,7 +67,7 @@ pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMet
 /// The branch length of
 /// each edge is supplied by the `branch_lengths` value map (ancestral, timetree, ...).
 pub fn estimate_indel_rate(
-  graph: &Graph<()>,
+  graph: &Graph,
   partitions: &[&dyn PartitionOptimizeOps],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> f64 {
@@ -98,7 +98,7 @@ pub fn estimate_indel_rate(
 /// tree's current branch lengths. For an indel-bearing edge at zero branch
 /// length, the Poisson log-likelihood is $-\infty$.
 pub fn total_indel_log_lh(
-  graph: &Graph<()>,
+  graph: &Graph,
   partitions: &[&dyn PartitionOptimizeOps],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   indel_rate: f64,

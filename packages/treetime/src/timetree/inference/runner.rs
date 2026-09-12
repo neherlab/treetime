@@ -51,7 +51,7 @@ pub const EPS: f64 = 5e-4;
 /// `names`. The caller re-snapshots them after any length or
 /// topology change so each pass sees the current tree.
 pub fn run_timetree<P>(
-  graph: &mut Graph<()>,
+  graph: &mut Graph,
   partitions: &[P],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -123,15 +123,13 @@ pub const CLOCK_BRANCH_LENGTH_DAMPING: f64 = 0.5;
 /// their parent but leaves observed leaf dates alone, so a leaf dated before its parent reaches
 /// here; that is a real inconsistency in the input or the fit, and it is reported rather than
 /// silently floored. Edges whose endpoints are not both dated are left untouched.
-pub fn commit_clock_branch_lengths<D>(
-  graph: &Graph<D>,
+pub fn commit_clock_branch_lengths(
+  graph: &Graph,
   clock_rate: f64,
   damping: f64,
   clock_branch_lengths: &mut BTreeMap<GraphEdgeKey, f64>,
   state: &TimetreeState,
-) where
-  D: Sync + Send,
-{
+) {
   let node_time = |key| state.nodes.get(&key).and_then(|node| node.time);
 
   // The committed value blends against the previous one held in the routed map, so the fold builds
@@ -176,7 +174,7 @@ pub fn commit_clock_branch_lengths<D>(
 }
 
 fn compute_branch_distributions_marginal_mode<P>(
-  graph: &Graph<()>,
+  graph: &Graph,
   partitions: &[P],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   clock_rate: f64,
@@ -277,7 +275,7 @@ where
 }
 
 pub(super) fn create_branch_distributions_input_mode(
-  graph: &Graph<()>,
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   clock_rate: f64,
   state: &mut TimetreeState,
@@ -328,14 +326,11 @@ pub(super) fn create_branch_distributions_input_mode(
 /// the value is the committed clock length held in `clock_branch_lengths` when the edge has one, and
 /// the edge's own branch length otherwise. Used only after a commit, where the clock length has been
 /// established; before the first commit the two collectors agree, because no clock length exists yet.
-pub fn timetree_branch_lengths<D>(
-  graph: &Graph<D>,
+pub fn timetree_branch_lengths(
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   clock_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-) -> BTreeMap<GraphEdgeKey, f64>
-where
-  D: Send + Sync,
-{
+) -> BTreeMap<GraphEdgeKey, f64> {
   graph
     .get_edges()
     .iter()

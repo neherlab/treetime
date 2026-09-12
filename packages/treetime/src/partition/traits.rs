@@ -39,11 +39,11 @@ pub trait HasGtr {
 /// Minimal graph-structure abstraction used by per-branch partition operations.
 ///
 /// Exists so that `PartitionBranchOps` can serve any phylogenetic graph payload
-/// (ancestral, timetree, etc.) without binding to a concrete `Graph<D>`.
+/// (ancestral, timetree, etc.) without binding to a concrete `Graph`.
 /// Only the operations actually needed by branch-level computations are exposed:
 /// resolving an edge to its endpoints and walking one step toward the root.
 /// Trait-object safe so `&dyn BranchTopology` can flow through dynamic dispatch
-/// while callers keep their concrete `&Graph<D>` thanks to unsized
+/// while callers keep their concrete `&Graph` thanks to unsized
 /// coercion.
 pub trait BranchTopology: Send + Sync {
   /// Return `(parent_node_key, child_node_key)` for one edge.
@@ -59,10 +59,7 @@ pub trait BranchTopology: Send + Sync {
   fn root_key(&self) -> Result<GraphNodeKey, Report>;
 }
 
-impl<D> BranchTopology for Graph<D>
-where
-  D: Send + Sync,
-{
+impl BranchTopology for Graph {
   fn edge_endpoints(&self, edge_key: GraphEdgeKey) -> Result<(GraphNodeKey, GraphNodeKey), Report> {
     let edge = self
       .get_edge(edge_key)
@@ -317,10 +314,9 @@ pub trait PartitionRerootOps: Send + Sync {
 }
 
 /// Calculate the total log likelihood of the graph given the partitions
-pub fn graph_log_lh<P, D>(graph: &Graph<D>, partitions: &[P]) -> Result<LogLh, Report>
+pub fn graph_log_lh<P>(graph: &Graph, partitions: &[P]) -> Result<LogLh, Report>
 where
   P: HasLogLh + Sync,
-  D: Sync + Send + Default,
 {
   let root = graph.get_exactly_one_root()?;
   let root_key = root.read_arc().key();

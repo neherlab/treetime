@@ -1,5 +1,3 @@
-use crate::gtr::get_gtr::GtrModelName;
-use crate::gtr::gtr::GTR;
 use crate::seq::mutation::{Mutation, Sub};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -7,18 +5,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
-
-#[derive(Serialize)]
-pub struct OptimizeGraphData {
-  pub gtr: GTR,
-  pub model_name: GtrModelName,
-}
-
-impl OptimizeGraphData {
-  pub fn new(gtr: GTR, model_name: GtrModelName) -> Self {
-    Self { gtr, model_name }
-  }
-}
 
 /// Nucleotide sequences and mutations gathered from the optimize partition for the output writers.
 ///
@@ -52,18 +38,14 @@ pub struct EdgeOut {
 
 /// Branch-length optimization result as a value.
 ///
-/// `edges` holds the optimized per-edge branch lengths keyed by edge id, and the substitution model
-/// sits alongside. `graph` carries the tree the output writers still read from.
+/// `edges` holds the optimized per-edge branch lengths keyed by edge id. `graph` carries the tree
+/// topology the output writers read from.
 #[derive(Serialize)]
 pub struct OptimizeResult {
   #[serde(skip)]
-  pub graph: Graph<OptimizeGraphData>,
+  pub graph: Graph,
   #[serde(skip)]
   pub nodes: BTreeMap<GraphNodeKey, OptimizeNodeOut>,
   #[serde(skip)]
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
-  #[serde(skip)]
-  pub gtr: GTR,
-  #[serde(skip)]
-  pub model_name: GtrModelName,
 }

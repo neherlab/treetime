@@ -52,15 +52,12 @@ impl TopologyOrderSpec {
   ///
   /// All fallible computation and validation completes before the graph is
   /// mutated. Node and edge keys and their slot storage remain unchanged.
-  pub fn apply<D>(
+  pub fn apply(
     &self,
-    graph: &mut Graph<D>,
+    graph: &mut Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<(), Report>
-  where
-    D: Sync + Send,
-  {
+  ) -> Result<(), Report> {
     let order = if self.preset == TopologyOrderPreset::Keep {
       build_order_unmodified(graph)
     } else {
@@ -160,10 +157,7 @@ struct TopologyOrder {
   outbound_edges: BTreeMap<GraphNodeKey, Vec<GraphEdgeKey>>,
 }
 
-fn build_order_unmodified<D>(graph: &Graph<D>) -> Result<TopologyOrder, Report>
-where
-  D: Sync + Send,
-{
+fn build_order_unmodified(graph: &Graph) -> Result<TopologyOrder, Report> {
   Ok(TopologyOrder {
     roots: graph.roots.clone(),
     leaves: graph.leaves.clone(),
@@ -179,14 +173,11 @@ where
   })
 }
 
-fn build_order<D, K: Ord>(
-  graph: &Graph<D>,
+fn build_order<K: Ord>(
+  graph: &Graph,
   keys: &BTreeMap<GraphNodeKey, K>,
   reverse: bool,
-) -> Result<TopologyOrder, Report>
-where
-  D: Sync + Send,
-{
+) -> Result<TopologyOrder, Report> {
   let compare = |a: &GraphNodeKey, b: &GraphNodeKey| -> Ordering {
     let ord = keys[a].cmp(&keys[b]);
     if reverse { ord.reverse() } else { ord }
@@ -253,10 +244,7 @@ impl PartialOrd for TargetScore {
   }
 }
 
-fn compute_descendant_counts<D>(graph: &Graph<D>, postorder: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize>
-where
-  D: Sync + Send,
-{
+fn compute_descendant_counts(graph: &Graph, postorder: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize> {
   let mut counts = BTreeMap::new();
   for &node_key in postorder {
     let node = graph.get_node(node_key).unwrap();
@@ -271,10 +259,7 @@ where
   counts
 }
 
-fn compute_heights<D>(graph: &Graph<D>, postorder: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize>
-where
-  D: Sync + Send,
-{
+fn compute_heights(graph: &Graph, postorder: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize> {
   let mut heights = BTreeMap::new();
   for &node_key in postorder {
     let node = graph.get_node(node_key).unwrap();
@@ -285,14 +270,11 @@ where
   heights
 }
 
-fn compute_divergences<D>(
-  graph: &Graph<D>,
+fn compute_divergences(
+  graph: &Graph,
   postorder: &[GraphNodeKey],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> BTreeMap<GraphNodeKey, OrderedFloat<f64>>
-where
-  D: Sync + Send,
-{
+) -> BTreeMap<GraphNodeKey, OrderedFloat<f64>> {
   let mut divergences: BTreeMap<GraphNodeKey, OrderedFloat<f64>> = BTreeMap::new();
   for &node_key in postorder {
     let node = graph.get_node(node_key).unwrap();
@@ -312,14 +294,11 @@ where
   divergences
 }
 
-fn compute_labels<D>(
-  graph: &Graph<D>,
+fn compute_labels(
+  graph: &Graph,
   postorder: &[GraphNodeKey],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<BTreeMap<GraphNodeKey, String>, Report>
-where
-  D: Sync + Send,
-{
+) -> Result<BTreeMap<GraphNodeKey, String>, Report> {
   let mut labels: BTreeMap<GraphNodeKey, String> = BTreeMap::new();
   for &node_key in postorder {
     let node = graph.get_node(node_key).unwrap();
@@ -337,16 +316,13 @@ where
   Ok(labels)
 }
 
-fn compute_target_scores<D>(
-  graph: &Graph<D>,
+fn compute_target_scores(
+  graph: &Graph,
   postorder: &[GraphNodeKey],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   target_order: &[String],
   aggregate: TopologyOrderTargetAggregate,
-) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report>
-where
-  D: Sync + Send,
-{
+) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report> {
   if target_order.is_empty() {
     return make_error!("When ordering topology: target-order mode requires a non-empty target order");
   }
@@ -374,15 +350,12 @@ where
   }
 }
 
-fn compute_target_scores_mean<D>(
-  graph: &Graph<D>,
+fn compute_target_scores_mean(
+  graph: &Graph,
   postorder: &[GraphNodeKey],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   position_of: &BTreeMap<&str, usize>,
-) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report>
-where
-  D: Sync + Send,
-{
+) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report> {
   let mut scores: BTreeMap<GraphNodeKey, TargetScore> = BTreeMap::new();
   for &node_key in postorder {
     let node = graph.get_node(node_key).unwrap();
@@ -410,15 +383,12 @@ where
   Ok(scores)
 }
 
-fn compute_target_scores_median<D>(
-  graph: &Graph<D>,
+fn compute_target_scores_median(
+  graph: &Graph,
   postorder: &[GraphNodeKey],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   position_of: &BTreeMap<&str, usize>,
-) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report>
-where
-  D: Sync + Send,
-{
+) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report> {
   let mut positions: BTreeMap<GraphNodeKey, Vec<usize>> = BTreeMap::new();
   let mut scores = BTreeMap::new();
   for &node_key in postorder {
@@ -463,14 +433,11 @@ fn median_score(sorted_positions: &[usize]) -> TargetScore {
   }
 }
 
-fn validate_target_order<D>(
-  graph: &Graph<D>,
+fn validate_target_order(
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   position_of: &BTreeMap<&str, usize>,
-) -> Result<(), Report>
-where
-  D: Sync + Send,
-{
+) -> Result<(), Report> {
   let mut final_labels = BTreeMap::new();
   for leaf in graph.get_leaves() {
     let leaf = leaf.read_arc();
@@ -490,10 +457,7 @@ where
   Ok(())
 }
 
-fn postorder_keys<D>(graph: &Graph<D>) -> Result<Vec<GraphNodeKey>, Report>
-where
-  D: Sync + Send,
-{
+fn postorder_keys(graph: &Graph) -> Result<Vec<GraphNodeKey>, Report> {
   let node_keys = graph
     .nodes
     .iter()

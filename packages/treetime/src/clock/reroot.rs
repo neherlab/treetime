@@ -58,18 +58,15 @@ impl RerootParams {
   }
 }
 
-pub fn reroot_in_place<D>(
-  graph: &mut Graph<D>,
+pub fn reroot_in_place(
+  graph: &mut Graph,
   state: &mut ClockState,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<RerootResult, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<RerootResult, Report> {
   let FindRootResult {
     edge, split, clock_set, ..
   } = select_root(graph, state, options, params, reroot_params, branch_lengths, names)?;
@@ -143,17 +140,14 @@ where
 
 /// Create new root node by splitting the edge into two, then recording clock data for the new node
 /// in the clock state.
-fn create_new_root_node<D>(
-  graph: &mut Graph<D>,
+fn create_new_root_node(
+  graph: &mut Graph,
   state: &mut ClockState,
   edge_key: GraphEdgeKey,
   split: f64,
   branch_length: Option<f64>,
   clock_set: ClockSet,
-) -> Result<EdgeSplitInfo, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<EdgeSplitInfo, Report> {
   let split_info = split_edge(graph, edge_key, split, branch_length)?;
 
   // Keep the clock state consistent with the mutated node/edge set: the split replaces one edge with
@@ -177,18 +171,15 @@ where
   Ok(split_info)
 }
 
-fn select_root<D>(
-  graph: &Graph<D>,
+fn select_root(
+  graph: &Graph,
   state: &ClockState,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<FindRootResult, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<FindRootResult, Report> {
   match &reroot_params.spec {
     RerootSpec::Method(RerootMethod::LeastSquares | RerootMethod::ClockFilter) => find_best_root(
       graph,
@@ -223,16 +214,13 @@ where
   }
 }
 
-fn find_oldest_root<D>(
-  graph: &Graph<D>,
+fn find_oldest_root(
+  graph: &Graph,
   state: &ClockState,
   options: &ClockParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   objective: RootObjective,
-) -> Result<FindRootResult, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<FindRootResult, Report> {
   let Some(oldest_key) = graph
     .get_leaves()
     .into_iter()
@@ -250,18 +238,15 @@ where
   find_named_root_point(graph, state, options, oldest_key, branch_lengths, objective)
 }
 
-fn find_tip_group_root<D>(
-  graph: &Graph<D>,
+fn find_tip_group_root(
+  graph: &Graph,
   state: &ClockState,
   options: &ClockParams,
   tips: &[String],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   objective: RootObjective,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<FindRootResult, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<FindRootResult, Report> {
   if tips.is_empty() {
     return make_error!("--reroot-tips requires at least one tip name");
   }
@@ -280,17 +265,14 @@ where
   find_named_root_point(graph, state, options, mrca_key, branch_lengths, objective)
 }
 
-fn find_named_root_point<D>(
-  graph: &Graph<D>,
+fn find_named_root_point(
+  graph: &Graph,
   state: &ClockState,
   options: &ClockParams,
   node_key: GraphNodeKey,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   objective: RootObjective,
-) -> Result<FindRootResult, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<FindRootResult, Report> {
   let Some(edge) = graph.parent_inbound_edge(node_key)? else {
     let root = graph.get_exactly_one_root()?;
     let clock_set = state.node(root.read_arc().key()).clock_set.clone();
@@ -315,17 +297,14 @@ where
 
 /// Modify graph topology to make the newly identified root the actual root,
 /// then update clock-specific edge messages in the clock state.
-fn apply_reroot<D>(
-  graph: &mut Graph<D>,
+fn apply_reroot(
+  graph: &mut Graph,
   state: &mut ClockState,
   old_root_key: GraphNodeKey,
   new_root_key: GraphNodeKey,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &ClockParams,
-) -> Result<Vec<GraphEdgeKey>, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<Vec<GraphEdgeKey>, Report> {
   let inverted_edge_keys = topology_reroot::apply_reroot_topology(graph, old_root_key, new_root_key)?;
 
   for edge_key in &inverted_edge_keys {

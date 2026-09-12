@@ -21,15 +21,12 @@ const MIN_TIME_MUTATION_FRACTION: f64 = 0.01;
 /// [`ClockState`]; a node absent from the state (introduced by a topology
 /// change since the last rebuild) is inserted with default fields before its divergence is written,
 /// so a fresh polytomy or reroot node gets its divergence here rather than a stale zero.
-pub fn initialize_node_divergences<D>(
-  graph: &Graph<D>,
+pub fn initialize_node_divergences(
+  graph: &Graph,
   clock_state: &mut ClockState,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<(), Report>
-where
-  D: Send + Sync,
-{
+) -> Result<(), Report> {
   let divs = compute_divs(graph, OnlyLeaves(false), branch_lengths, names)?;
   for node_ref in graph.get_nodes() {
     let node = node_ref.read_arc();
@@ -43,14 +40,11 @@ where
   Ok(())
 }
 
-pub fn extract_node_times<D>(
-  graph: &Graph<D>,
+pub fn extract_node_times(
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   state: &TimetreeState,
-) -> BTreeMap<String, f64>
-where
-  D: Send + Sync,
-{
+) -> BTreeMap<String, f64> {
   graph
     .get_nodes()
     .into_iter()
@@ -72,16 +66,13 @@ where
 /// - `b` = branch length (substitutions/site)
 ///
 /// An edge with no branch length is absent from the returned map.
-pub fn create_poisson_branch_distributions<D>(
-  graph: &Graph<D>,
+pub fn create_poisson_branch_distributions(
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   mu: f64,
   seq_len: usize,
   n_points: usize,
-) -> Result<BTreeMap<GraphEdgeKey, Arc<Distribution<NegLog>>>, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<BTreeMap<GraphEdgeKey, Arc<Distribution<NegLog>>>, Report> {
   let seq_len_f64 = seq_len as f64;
 
   let mut distributions = BTreeMap::new();

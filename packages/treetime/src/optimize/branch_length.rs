@@ -16,14 +16,11 @@ pub fn is_valid_branch_length(branch_length: Option<f64>) -> bool {
 }
 
 /// Return user-facing descriptions of all invalid branch lengths in graph order.
-pub fn invalid_branch_length_descriptions<D>(
-  graph: &Graph<D>,
+pub fn invalid_branch_length_descriptions(
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<Vec<String>, Report>
-where
-  D: Send + Sync,
-{
+) -> Result<Vec<String>, Report> {
   graph
     .get_edges()
     .iter()
