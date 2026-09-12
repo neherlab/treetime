@@ -103,14 +103,6 @@ pub struct TimetreeResult {
   pub edges: BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
 }
 
-impl std::ops::Deref for TimetreeResult {
-  type Target = TimetreeGraphData;
-
-  fn deref(&self) -> &Self::Target {
-    self.graph.data()
-  }
-}
-
 #[cfg(test)]
 mod tests {
   use super::*;

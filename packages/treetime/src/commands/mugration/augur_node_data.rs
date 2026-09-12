@@ -15,7 +15,7 @@ pub fn build_augur_node_data_json(
   result: &MugrationResult,
   maps: &MugrationOutputMaps,
 ) -> Result<AugurNodeDataJsonTraits, Report> {
-  let attribute = &result.graph.data().traits.attribute;
+  let attribute = &result.traits.attribute;
   let graph = &result.graph;
   let names: BTreeMap<GraphNodeKey, Option<String>> = result
     .nodes

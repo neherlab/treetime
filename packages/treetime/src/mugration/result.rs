@@ -170,14 +170,10 @@ pub struct MugrationResult {
   pub attribute: String,
   #[serde(skip)]
   pub log_lh: LogLh,
-}
-
-impl std::ops::Deref for MugrationResult {
-  type Target = MugrationGraphData;
-
-  fn deref(&self) -> &Self::Target {
-    self.graph.data()
-  }
+  #[serde(skip)]
+  pub traits: MugrationTraitsOutput,
+  #[serde(skip)]
+  pub confidence: MugrationConfidenceOutput,
 }
 
 impl MugrationResult {
@@ -224,8 +220,8 @@ impl MugrationResult {
       .collect();
 
     let data = MugrationGraphData {
-      traits,
-      confidence,
+      traits: traits.clone(),
+      confidence: confidence.clone(),
       log_lh,
     };
     Self {
@@ -234,11 +230,13 @@ impl MugrationResult {
       edges,
       attribute: attribute.to_owned(),
       log_lh,
+      traits,
+      confidence,
     }
   }
 
   pub fn trait_assignments(&self) -> &IndexMap<String, String> {
-    &self.graph.data().traits.assignments
+    &self.traits.assignments
   }
 }
 

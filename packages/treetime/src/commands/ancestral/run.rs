@@ -241,22 +241,15 @@ pub fn run_ancestral_reconstruction(
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     if let Some(augur_maps) = &augur_maps {
-      write_augur_node_data_json_with_aa(
-        &graph,
-        augur_maps,
-        &graph.data().mask,
-        &node_names,
-        graph.data().aa_node_data.as_ref(),
-        path,
-      )?;
+      write_augur_node_data_json_with_aa(&graph, augur_maps, &mask, &node_names, aa_node_data.as_ref(), path)?;
     }
     info!("Wrote augur node data JSON to {}", path.display());
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    match graph.data().gtr.as_ref() {
+    match gtr.as_ref() {
       Some(gtr) => {
-        let gtr_output = GtrOutput::new(gtr, graph.data().model_name);
+        let gtr_output = GtrOutput::new(gtr, model_name);
         write_gtr_json(&gtr_output, path)?;
       },
       None if ancestral_args.output_gtr.is_some() => {
@@ -272,6 +265,7 @@ pub fn run_ancestral_reconstruction(
       &nodes,
       &branch_lengths,
       &tree_maps,
+      aa_node_data.as_ref(),
       &resolved,
       partition.as_ref(),
     )?;
@@ -295,6 +289,7 @@ fn write_tree_for_partition(
   nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &AncestralOutputMaps,
+  aa_node_data: Option<&AaNodeData>,
   resolved: &crate::commands::shared::output::ResolvedOutputs,
   partition: Option<&AncestralPartition>,
 ) -> Result<(), Report> {
@@ -308,7 +303,15 @@ fn write_tree_for_partition(
         graph,
       };
       let providers = CommentProviders::new().with(&provider);
-      write_ancestral_tree_outputs(graph, nodes, branch_lengths, maps, &resolved.tree_outputs, &providers)?;
+      write_ancestral_tree_outputs(
+        graph,
+        nodes,
+        branch_lengths,
+        maps,
+        aa_node_data,
+        &resolved.tree_outputs,
+        &providers,
+      )?;
     },
     Some(AncestralPartition::Fitch(_)) | None => {
       write_ancestral_tree_outputs(
@@ -316,6 +319,7 @@ fn write_tree_for_partition(
         nodes,
         branch_lengths,
         maps,
+        aa_node_data,
         &resolved.tree_outputs,
         &CommentProviders::new(),
       )?;

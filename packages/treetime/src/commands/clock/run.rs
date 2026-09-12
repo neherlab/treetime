@@ -64,14 +64,10 @@ pub struct ClockResult {
   pub nodes: BTreeMap<GraphNodeKey, ClockNodeOut>,
   #[serde(skip)]
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
-}
-
-impl std::ops::Deref for ClockResult {
-  type Target = ClockGraphData;
-
-  fn deref(&self) -> &Self::Target {
-    self.graph.data()
-  }
+  #[serde(skip)]
+  pub clock_model: ClockModel,
+  #[serde(skip)]
+  pub regression_results: Vec<ClockRegressionResult>,
 }
 
 /// Gather the per-node and per-edge clock outputs into keyed value maps the output writers consume.
@@ -202,7 +198,7 @@ pub fn run_clock(
     names,
     branch_lengths,
   } = output;
-  let mut graph = graph.map_data(ClockGraphData::new(clock_model, regression_results));
+  let mut graph = graph.map_data(ClockGraphData::new(clock_model.clone(), regression_results.clone()));
   let topology_order = clock_args
     .topology_order
     .resolve_topology_order(&graph, &names, Some(input_order))?;
@@ -225,15 +221,21 @@ pub fn run_clock(
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
-    write_clock_model(&graph.data().clock_model, path)?;
+    write_clock_model(&clock_model, path)?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockCsv) {
-    write_clock_regression_result_csv(&graph.data().regression_results, path, b',')?;
+    write_clock_regression_result_csv(&regression_results, path, b',')?;
   }
 
   progress.report("Done", 1.0, "");
-  Ok(ClockResult { graph, nodes, edges })
+  Ok(ClockResult {
+    graph,
+    nodes,
+    edges,
+    clock_model,
+    regression_results,
+  })
 }
 
 fn leaf_order<D>(graph: &Graph<D>, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report>

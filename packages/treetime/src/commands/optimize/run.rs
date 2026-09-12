@@ -88,7 +88,7 @@ pub fn run_optimize(
   let maps = gather_optimize_output_maps(&graph, &sparse_partitions, &dense_partitions)?;
   let has_partitions = !sparse_partitions.is_empty() || !dense_partitions.is_empty();
 
-  let mut graph = graph.map_data(OptimizeGraphData::new(gtr, model_name));
+  let mut graph = graph.map_data(OptimizeGraphData::new(gtr.clone(), model_name));
   let topology_order = args.topology_order.resolve_topology_order(&graph, &names, None)?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.9, "");
@@ -119,7 +119,7 @@ pub fn run_optimize(
     .collect();
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    let gtr_output = GtrOutput::new(&graph.data().gtr, graph.data().model_name);
+    let gtr_output = GtrOutput::new(&gtr, model_name);
     write_gtr_json(&gtr_output, path)?;
   }
 
@@ -183,9 +183,6 @@ pub fn run_optimize(
   }
 
   progress.report("Done", 1.0, "");
-
-  let gtr = graph.data().gtr.clone();
-  let model_name = graph.data().model_name;
 
   Ok(OptimizeResult {
     graph,

@@ -145,7 +145,7 @@ pub fn run_prune(
     edges.iter().map(|(key, edge)| (*key, edge.branch_length)).collect();
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    match graph.data().gtr.as_ref() {
+    match gtr.as_ref() {
       Some(gtr) => {
         let gtr_output = GtrOutput::new(gtr, GtrModelName::JC69);
         write_gtr_json(&gtr_output, path)?;

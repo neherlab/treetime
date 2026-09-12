@@ -91,32 +91,33 @@ pub fn run_mugration(
   progress.report("Writing output", 0.8, "");
 
   if !resolved.tree_outputs.is_empty() {
-    let provider = DiscreteTraitCommentProvider::new(&maps.reconstructed_traits, &result.graph.data().traits.attribute);
+    let provider = DiscreteTraitCommentProvider::new(&maps.reconstructed_traits, &result.traits.attribute);
     let providers = CommentProviders::new().with(&provider);
     write_mugration_tree_outputs(
       &result.graph,
       &result.nodes,
       &branch_lengths,
       &maps,
+      &result.traits.attribute,
       &resolved.tree_outputs,
       &providers,
     )?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    let gtr_output = GtrOutput::new(&maps.gtr, GtrModelName::Infer)
-      .with_discrete_states(&result.graph.data().traits.attribute, maps.states.iter());
+    let gtr_output =
+      GtrOutput::new(&maps.gtr, GtrModelName::Infer).with_discrete_states(&result.traits.attribute, maps.states.iter());
     write_gtr_json(&gtr_output, path)?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::TraitsCsv) {
     let mut f = create_file_or_stdout(path)?;
-    std::io::Write::write_all(&mut f, result.graph.data().traits.render_csv().as_bytes())?;
+    std::io::Write::write_all(&mut f, result.traits.render_csv().as_bytes())?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceCsv) {
     let mut f = create_file_or_stdout(path)?;
-    std::io::Write::write_all(&mut f, result.graph.data().confidence.render_csv().as_bytes())?;
+    std::io::Write::write_all(&mut f, result.confidence.render_csv().as_bytes())?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {

@@ -32,7 +32,7 @@ mod tests {
 
   #[test]
   fn test_tree_output_ancestral_models_preserve_semantics() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition) =
+    let (graph, names, branch_lengths, partition, aa_node_data) =
       helpers::ancestral_graph(helpers::Mutations::NucleotideSubstitution)?;
 
     let nodes = helpers::ancestral_nodes(&names, &graph, &helpers::ancestral_confidences(&names, &graph));
@@ -41,6 +41,7 @@ mod tests {
       &nodes,
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
+      aa_node_data.as_ref(),
       "2026-07-19",
     )?;
     let child = helpers::auspice_child(&auspice, "A");
@@ -54,6 +55,7 @@ mod tests {
       &nodes,
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
+      aa_node_data.as_ref(),
     )?;
     let child = helpers::phyloxml_child(&phyloxml, "A");
     assert_eq!(Some(0.5), child.branch_length_elem);
@@ -79,6 +81,7 @@ mod tests {
       &names,
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
+      aa_node_data.as_ref(),
     )?;
     let mutation = mat
       .node_mutations
@@ -96,13 +99,15 @@ mod tests {
 
   #[test]
   fn test_tree_output_phyloxml_encodes_aa_track_and_grouped_indel() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition) = helpers::ancestral_graph(helpers::Mutations::IndelAndAminoAcid)?;
+    let (graph, names, branch_lengths, partition, aa_node_data) =
+      helpers::ancestral_graph(helpers::Mutations::IndelAndAminoAcid)?;
 
     let phyloxml = ancestral_to_phyloxml(
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
+      aa_node_data.as_ref(),
     )?;
     let child = helpers::phyloxml_child(&phyloxml, "A");
     let properties = child
@@ -116,23 +121,26 @@ mod tests {
     // Nucleotide indels are dropped from the Auspice nuc mutation list, which mirrors the
     // substitution-only augur node-data muts. A branch whose only nucleotide change is a
     // deletion therefore has no `nuc` entry (phyloxml above still encodes it as `nuc:del:2-3:CG`).
-    let (graph, names, branch_lengths, partition) = helpers::ancestral_graph(helpers::Mutations::Indel)?;
+    let (graph, names, branch_lengths, partition, aa_node_data) = helpers::ancestral_graph(helpers::Mutations::Indel)?;
     let auspice = ancestral_to_auspice(
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
+      aa_node_data.as_ref(),
       "2026-07-19",
     )?;
     let child = helpers::auspice_child(&auspice, "A");
     assert!(!child.branch_attrs.mutations.contains_key("nuc"));
 
-    let (graph, names, branch_lengths, partition) = helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
+    let (graph, names, branch_lengths, partition, aa_node_data) =
+      helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
     let auspice = ancestral_to_auspice(
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
+      aa_node_data.as_ref(),
       "2026-07-19",
     )?;
     let child = helpers::auspice_child(&auspice, "A");
@@ -151,22 +159,25 @@ mod tests {
 
   #[test]
   fn test_tree_output_mat_rejects_unsupported_events() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition) = helpers::ancestral_graph(helpers::Mutations::Indel)?;
+    let (graph, names, branch_lengths, partition, aa_node_data) = helpers::ancestral_graph(helpers::Mutations::Indel)?;
     let error = ancestral_to_mat(
       &graph,
       &names,
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
+      aa_node_data.as_ref(),
     )
     .expect_err("MAT must reject indels");
     assert!(error.to_string().contains("insertion or deletion"));
 
-    let (graph, names, branch_lengths, partition) = helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
+    let (graph, names, branch_lengths, partition, aa_node_data) =
+      helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
     let error = ancestral_to_mat(
       &graph,
       &names,
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
+      aa_node_data.as_ref(),
     )
     .expect_err("MAT must reject amino-acid mutations");
     assert!(error.to_string().contains("amino-acid mutation"));
@@ -250,7 +261,7 @@ mod tests {
 
   #[test]
   fn test_tree_output_conversion_failure_does_not_create_target_and_keeps_prior_file() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition) = helpers::ancestral_graph(helpers::Mutations::Indel)?;
+    let (graph, names, branch_lengths, partition, aa_node_data) = helpers::ancestral_graph(helpers::Mutations::Indel)?;
     let dir = TempDir::new()?;
     let nwk_path = dir.path().join("tree.nwk");
     let mat_path = dir.path().join("tree.mat.json");
@@ -264,6 +275,7 @@ mod tests {
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
+      aa_node_data.as_ref(),
       &outputs,
       &CommentProviders::new(),
     )
@@ -277,7 +289,7 @@ mod tests {
 
   #[test]
   fn test_tree_output_graph_json_dumps_concrete_graph_data() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition) = helpers::ancestral_graph(helpers::Mutations::None)?;
+    let (graph, names, branch_lengths, partition, aa_node_data) = helpers::ancestral_graph(helpers::Mutations::None)?;
     let dir = TempDir::new()?;
     let path = dir.path().join("graph.json");
     let outputs = btreemap! { TreeWriteKind::GraphJson => path.clone() };
@@ -287,6 +299,7 @@ mod tests {
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
+      aa_node_data.as_ref(),
       &outputs,
       &CommentProviders::new(),
     )?;
@@ -306,7 +319,13 @@ mod tests {
   #[test]
   fn test_tree_output_mutation_free_mat_needs_no_reference() -> Result<(), Report> {
     let (graph, names, branch_lengths) = helpers::ancestral_graph_without_partition()?;
-    let mat = ancestral_to_mat(&graph, &names, &branch_lengths, &helpers::ancestral_maps(&graph, None))?;
+    let mat = ancestral_to_mat(
+      &graph,
+      &names,
+      &branch_lengths,
+      &helpers::ancestral_maps(&graph, None),
+      None,
+    )?;
     assert!(mat.node_mutations.iter().all(|mutations| mutations.mutation.is_empty()));
     Ok(())
   }
@@ -350,12 +369,14 @@ mod tests {
 
   #[test]
   fn test_tree_output_auspice_rejects_invalid_amino_acid_track_name() -> Result<(), Report> {
-    let (graph, names, branch_lengths, partition) = helpers::ancestral_graph(helpers::Mutations::IndelAndAminoAcid)?;
+    let (graph, names, branch_lengths, partition, aa_node_data) =
+      helpers::ancestral_graph(helpers::Mutations::IndelAndAminoAcid)?;
     let error = ancestral_to_auspice(
       &graph,
       &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
       &branch_lengths,
       &helpers::ancestral_maps(&graph, partition.as_ref()),
+      aa_node_data.as_ref(),
       "2026-07-19",
     )
     .expect_err("Auspice must reject an amino-acid track outside its schema grammar");
@@ -543,6 +564,7 @@ mod tests {
       BTreeMap<GraphNodeKey, Option<String>>,
       BTreeMap<GraphEdgeKey, Option<f64>>,
       Option<AncestralPartition>,
+      Option<AaNodeData>,
     );
 
     pub fn ancestral_graph(mutations: Mutations) -> Result<AncestralGraphSetup, Report> {
@@ -618,8 +640,14 @@ mod tests {
         aa
       });
       let ancestral_partition = AncestralPartition::Fitch(partition);
-      let data = AncestralGraphData::new(None, GtrModelName::JC69, vec![false; 3], aa_node_data);
-      Ok((graph.map_data(data), names, branch_lengths, Some(ancestral_partition)))
+      let data = AncestralGraphData::new(None, GtrModelName::JC69, vec![false; 3], aa_node_data.clone());
+      Ok((
+        graph.map_data(data),
+        names,
+        branch_lengths,
+        Some(ancestral_partition),
+        aa_node_data,
+      ))
     }
 
     pub fn ancestral_nodes<D: Send + Sync>(
@@ -684,13 +712,14 @@ mod tests {
     }
 
     pub fn all_auspice_documents() -> Result<Vec<Value>, Report> {
-      let (ancestral_graph, ancestral_names, ancestral_bl, ancestral_partition) =
+      let (ancestral_graph, ancestral_names, ancestral_bl, ancestral_partition, ancestral_aa) =
         ancestral_graph(Mutations::NucleotideSubstitution)?;
       let ancestral = ancestral_to_auspice(
         &ancestral_graph,
         &ancestral_nodes(&ancestral_names, &ancestral_graph, &btreemap! {}),
         &ancestral_bl,
         &ancestral_maps(&ancestral_graph, ancestral_partition.as_ref()),
+        ancestral_aa.as_ref(),
         "2026-07-19",
       )?;
       let (optimize_graph, optimize_names, optimize_bl) = optimize_graph()?;
@@ -717,6 +746,7 @@ mod tests {
         &mugration_nodes(&mugration_names, &mugration_graph, &btreemap! {}),
         &mugration_bl,
         &mugration_maps(&mugration_graph, &mugration_partition),
+        "country",
         "2026-07-19",
       )?;
       let (timetree_graph, timetree_names, _timetree_bl) = timetree_graph()?;
@@ -724,6 +754,8 @@ mod tests {
         &timetree_graph,
         &timetree_nodes(&timetree_names, &timetree_graph, &btreemap! {}),
         &timetree_maps(&timetree_graph),
+        None,
+        None,
         "2026-07-19",
       )?;
 
@@ -741,6 +773,7 @@ mod tests {
           &ancestral_nodes(&ancestral_names, &ancestral_graph, &btreemap! {}),
           &ancestral_bl,
           &ancestral_maps(&ancestral_graph, None),
+          None,
         )?,
         {
           let (optimize_graph, optimize_names, optimize_bl) = optimize_graph()?;
@@ -771,6 +804,7 @@ mod tests {
             &mugration_nodes(&mugration_names, &mugration_graph, &btreemap! {}),
             &mugration_bl,
             &mugration_maps(&mugration_graph, &mugration_partition),
+            "country",
           )?
         },
         {
@@ -780,6 +814,9 @@ mod tests {
             &timetree_nodes(&timetree_names, &timetree_graph, &btreemap! {}),
             &timetree_edges(&timetree_graph, &timetree_bl),
             &timetree_maps(&timetree_graph),
+            None,
+            None,
+            None,
           )?
         },
       ])
@@ -805,6 +842,7 @@ mod tests {
           &ancestral_names,
           &ancestral_bl,
           &ancestral_maps(&ancestral, None),
+          None,
         )?,
         optimize_to_mat(&optimize, &optimize_names, &optimize_bl, &optimize_maps(&optimize))?,
         prune_to_mat(&prune, &prune_names, &prune_bl, &prune_maps(&prune))?,

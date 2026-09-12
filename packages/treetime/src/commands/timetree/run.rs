@@ -241,12 +241,12 @@ pub fn run_timetree_estimation(
   let maps = gather_timetree_output_maps(&graph, &partitions)?;
 
   let mut graph = graph.map_data(TimetreeGraphData::new(
-    clock_model,
-    confidence_intervals,
-    dates,
-    gtr,
+    clock_model.clone(),
+    confidence_intervals.clone(),
+    dates.clone(),
+    gtr.clone(),
     model_name,
-    mutation_counts,
+    mutation_counts.clone(),
   ));
 
   progress.report("Writing output", 0.95, "");
@@ -270,7 +270,7 @@ pub fn run_timetree_estimation(
   );
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
-    match graph.data().confidence_intervals.as_ref() {
+    match confidence_intervals.as_ref() {
       Some(intervals) => {
         write_confidence_intervals_file(intervals, path).wrap_err("Failed to write confidence intervals")?;
         info!("Wrote confidence intervals to {path}", path = path.display());
@@ -313,11 +313,11 @@ pub fn run_timetree_estimation(
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
-    write_clock_model(&graph.data().clock_model, path)?;
+    write_clock_model(&clock_model, path)?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    match (graph.data().gtr.as_ref(), graph.data().model_name) {
+    match (gtr.as_ref(), model_name) {
       (Some(gtr), Some(model_name)) => {
         let gtr_output = GtrOutput::new(gtr, model_name);
         write_gtr_json(&gtr_output, path)?;
@@ -341,10 +341,30 @@ pub fn run_timetree_estimation(
     if maps.root_sequence.is_some() {
       let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph);
       let providers = CommentProviders::new().with(&provider).with(&date_provider);
-      write_timetree_tree_outputs(&graph, &nodes, &edges, &maps, &resolved.tree_outputs, &providers)?;
+      write_timetree_tree_outputs(
+        &graph,
+        &nodes,
+        &edges,
+        &maps,
+        confidence_intervals.as_deref(),
+        mutation_counts.as_ref(),
+        dates.as_ref(),
+        &resolved.tree_outputs,
+        &providers,
+      )?;
     } else {
       let providers = CommentProviders::new().with(&date_provider);
-      write_timetree_tree_outputs(&graph, &nodes, &edges, &maps, &resolved.tree_outputs, &providers)?;
+      write_timetree_tree_outputs(
+        &graph,
+        &nodes,
+        &edges,
+        &maps,
+        confidence_intervals.as_deref(),
+        mutation_counts.as_ref(),
+        dates.as_ref(),
+        &resolved.tree_outputs,
+        &providers,
+      )?;
     }
   }
 
@@ -354,12 +374,12 @@ pub fn run_timetree_estimation(
       &graph,
       &nodes,
       &edges,
-      &graph.data().clock_model,
-      graph.data().confidence_intervals.as_deref(),
-      graph.data().dates.as_ref(),
+      &clock_model,
+      confidence_intervals.as_deref(),
+      dates.as_ref(),
       alignment,
       args.tree.as_deref(),
-      graph.data().mutation_counts.as_ref(),
+      mutation_counts.as_ref(),
       path,
     )?;
     info!("Wrote augur node data JSON to {path}", path = path.display());
