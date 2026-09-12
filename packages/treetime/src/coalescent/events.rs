@@ -37,8 +37,8 @@ where
   let mut delta_sum = 0;
 
   graph.iter_breadth_first_forward(|node| {
-    let num_children = node.child_edges.len();
-    if node.is_leaf != node.child_edges.is_empty() {
+    let num_children = node.child_edge_keys.len();
+    if node.is_leaf != node.child_edge_keys.is_empty() {
       return make_error!(
         "Coalescent event role mismatch for node {:?}: leaf flag is {}, child count is {}",
         node.key,

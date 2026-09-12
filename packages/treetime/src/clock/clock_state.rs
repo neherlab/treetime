@@ -144,7 +144,7 @@ impl ClockState {
     E: GraphEdge,
     D: Send + Sync,
   {
-    self.reseed_transitional(graph, |key, _payload| times.get(&key).copied().flatten());
+    self.reseed_transitional(graph, |key| times.get(&key).copied().flatten());
     for (key, &(time_length, gamma)) in edge_inputs {
       if let Some(edge) = self.edges.get_mut(key) {
         edge.time_length = time_length;
@@ -158,7 +158,7 @@ impl ClockState {
     N: GraphNode,
     E: GraphEdge,
     D: Send + Sync,
-    F: Fn(GraphNodeKey, &N) -> Option<f64>,
+    F: Fn(GraphNodeKey) -> Option<f64>,
   {
     let nodes = graph
       .get_nodes()
@@ -166,7 +166,6 @@ impl ClockState {
       .map(|node| {
         let node = node.read_arc();
         let key = node.key();
-        let payload = node.payload().read_arc();
         let (div, is_outlier) = self
           .nodes
           .get(&key)
@@ -174,7 +173,7 @@ impl ClockState {
         let state = ClockNodeState {
           clock_set: ClockSet::default(),
           div,
-          time: time_of(key, &payload),
+          time: time_of(key),
           bad_branch: false,
           is_outlier,
         };
