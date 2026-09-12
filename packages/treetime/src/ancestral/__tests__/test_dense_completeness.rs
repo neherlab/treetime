@@ -2,22 +2,21 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::partition::traits::PartitionBranchOps;
-  use crate::partition::traits::PartitionOptimizeOps;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
   use eyre::Report;
   use treetime_graph::graph::Graph;
 
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
-  fn setup_dense_with_unknowns() -> Result<(Graph, PartitionMarginalDense), Report> {
+  fn setup_dense_with_unknowns() -> Result<(Graph, DenseReconstruction), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let fasta = "
 >A
@@ -40,20 +39,20 @@ NNGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let mut partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length);
-
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      std::slice::from_mut(&mut partition),
-      &aln,
-      &names,
-    )?
-    .value();
-    Ok((graph, partition))
+    let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length);
+    let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    Ok((graph, recon))
   }
 
-  fn setup_sparse_with_unknowns() -> Result<(Graph, PartitionMarginalSparse), Report> {
+  fn setup_sparse_with_unknowns() -> Result<(Graph, SparseReconstruction), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let fasta = "
 >A
@@ -77,23 +76,24 @@ NNGTACGTAC
     let length = get_common_length(&aln)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let mut partition = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    marginal_update(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      std::slice::from_mut(&mut partition),
-    )?
-    .value();
-    Ok((graph, partition))
+    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
+    let mut recon = SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    Ok((graph, recon))
   }
 
   #[test]
   fn test_dense_completeness_non_char_tracked_on_leaves() -> Result<(), Report> {
-    let (_, partition) = setup_dense_with_unknowns()?;
-    let p = &partition;
+    let (_, recon) = setup_dense_with_unknowns()?;
 
     // Find leaf A's node (has "NN" at positions 4-5)
-    let leaf_a = p.data.nodes.values().find(|n| n.seq.unknown.contains(&(4, 6)));
+    let leaf_a = recon.node_states.values().find(|n| n.seq.unknown.contains(&(4, 6)));
     assert!(leaf_a.is_some(), "Leaf A should have unknown range (4,6)");
 
     let leaf_a = leaf_a.unwrap();
@@ -107,8 +107,7 @@ NNGTACGTAC
 
   #[test]
   fn test_dense_completeness_effective_length_subtracts_unknowns() -> Result<(), Report> {
-    let (graph, partition) = setup_dense_with_unknowns()?;
-    let p = &partition;
+    let (graph, recon) = setup_dense_with_unknowns()?;
 
     // Every leaf has 2 N positions. Leaf edges have the leaf's unknowns in
     // their non_char, reducing effective length below 10. Internal edges may
@@ -116,7 +115,9 @@ NNGTACGTAC
     let mut any_reduced = false;
     for edge in graph.get_edges() {
       let edge_key = edge.read_arc().key();
-      let eff_len = p.edge_effective_length(&graph, edge_key)?;
+      let eff_len = recon
+        .partition
+        .edge_effective_length(&recon.node_states, &graph, edge_key)?;
       assert!(
         eff_len <= 10,
         "Effective length {eff_len} should not exceed total length 10"
@@ -134,11 +135,8 @@ NNGTACGTAC
 
   #[test]
   fn test_dense_sparse_effective_length_agreement() -> Result<(), Report> {
-    let (graph_d, partition_d) = setup_dense_with_unknowns()?;
-    let (graph_s, partition_s) = setup_sparse_with_unknowns()?;
-
-    let pd = &partition_d;
-    let ps = &partition_s;
+    let (graph_d, recon_d) = setup_dense_with_unknowns()?;
+    let (graph_s, recon_s) = setup_sparse_with_unknowns()?;
 
     // Both graphs have same topology, edges in same order
     let dense_edges = graph_d.get_edges();
@@ -149,8 +147,10 @@ NNGTACGTAC
       let dk = de.read_arc().key();
       let sk = se.read_arc().key();
 
-      let dense_eff = pd.edge_effective_length(&graph_d, dk)?;
-      let sparse_eff = ps.edge_effective_length(&graph_s, sk)?;
+      let dense_eff = recon_d
+        .partition
+        .edge_effective_length(&recon_d.node_states, &graph_d, dk)?;
+      let sparse_eff = recon_s.partition.edge_effective_length(&graph_s, sk)?;
 
       assert_eq!(
         dense_eff, sparse_eff,
@@ -161,7 +161,7 @@ NNGTACGTAC
     Ok(())
   }
 
-  fn setup_dense_with_gaps() -> Result<(Graph, PartitionMarginalDense), Report> {
+  fn setup_dense_with_gaps() -> Result<(Graph, DenseReconstruction), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let fasta = "
 >A
@@ -184,35 +184,37 @@ ACGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let mut partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length);
-
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      std::slice::from_mut(&mut partition),
-      &aln,
-      &names,
-    )?
-    .value();
-    Ok((graph, partition))
+    let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length);
+    let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    Ok((graph, recon))
   }
 
   #[test]
   fn test_dense_completeness_indels_populated() -> Result<(), Report> {
-    let (graph, partition) = setup_dense_with_gaps()?;
-    let p = &partition;
+    let (_graph, recon) = setup_dense_with_gaps()?;
 
     // Alignment: A=ACGT--ACGT, B=ACGTACACGT, C=AC--ACGTAC, D=ACGTACGTAC
     // A has gap at (4,6), C has gap at (2,4). B and D have no gaps.
     // Indels should appear on edges connecting to A and C.
-    let total_indels: usize = p.data.edges.values().map(|e| e.indels.len()).sum();
+    let total_indels: usize = recon.estimates.values().map(|e| e.indels.len()).sum();
     assert!(
       total_indels >= 2,
       "Expected at least 2 indels (one for A's gap, one for C's gap), got {total_indels}"
     );
 
     // Verify indel directions exist (at least one deletion)
-    let has_deletion = p.data.edges.values().any(|e| e.indels.iter().any(InDel::is_deletion));
+    let has_deletion = recon
+      .estimates
+      .values()
+      .any(|e| e.indels.iter().any(InDel::is_deletion));
     assert!(
       has_deletion,
       "At least one deletion should be detected from gap-bearing leaves"
@@ -222,13 +224,12 @@ ACGTACGTAC
 
   #[test]
   fn test_dense_completeness_edge_indel_count_nonzero() -> Result<(), Report> {
-    let (graph, partition) = setup_dense_with_gaps()?;
-    let p = &partition;
+    let (graph, recon) = setup_dense_with_gaps()?;
 
     let total: usize = graph
       .get_edges()
       .iter()
-      .map(|e| p.edge_indel_count(e.read_arc().key()))
+      .map(|e| recon.partition.edge_indel_count(&recon.estimates, e.read_arc().key()))
       .sum();
 
     assert!(
@@ -238,7 +239,7 @@ ACGTACGTAC
     Ok(())
   }
 
-  fn setup_sparse_with_gaps() -> Result<(Graph, PartitionMarginalSparse), Report> {
+  fn setup_sparse_with_gaps() -> Result<(Graph, SparseReconstruction), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let fasta = "
 >A
@@ -262,34 +263,33 @@ ACGTACGTAC
     let length = get_common_length(&aln)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let mut partition = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    marginal_update(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      std::slice::from_mut(&mut partition),
-    )?
-    .value();
-    Ok((graph, partition))
+    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
+    let mut recon = SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    Ok((graph, recon))
   }
 
   #[test]
   fn test_dense_sparse_indel_count_agreement() -> Result<(), Report> {
-    let (graph_d, partition_d) = setup_dense_with_gaps()?;
-    let (graph_s, partition_s) = setup_sparse_with_gaps()?;
-
-    let pd = &partition_d;
-    let ps = &partition_s;
+    let (graph_d, recon_d) = setup_dense_with_gaps()?;
+    let (graph_s, recon_s) = setup_sparse_with_gaps()?;
 
     let dense_total: usize = graph_d
       .get_edges()
       .iter()
-      .map(|e| pd.edge_indel_count(e.read_arc().key()))
+      .map(|e| recon_d.partition.edge_indel_count(&recon_d.estimates, e.read_arc().key()))
       .sum();
 
     let sparse_total: usize = graph_s
       .get_edges()
       .iter()
-      .map(|e| ps.edge_indel_count(e.read_arc().key()))
+      .map(|e| recon_s.partition.edge_indel_count(e.read_arc().key()))
       .sum();
 
     assert_eq!(

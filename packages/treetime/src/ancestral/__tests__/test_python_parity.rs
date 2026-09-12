@@ -2,9 +2,8 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{
-    ancestral_reconstruction_marginal, initialize_marginal, marginal_update, profile_branch_lengths,
-  };
+  use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
@@ -14,16 +13,43 @@ mod tests {
 
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
+  use treetime_graph::node::GraphNodeKey;
 
   use ndarray::array;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use std::path::PathBuf;
   use std::sync::LazyLock;
-  use treetime_io::fasta::{read_many_fasta, read_many_fasta_str};
+  use treetime_io::fasta::{FastaRecord, read_many_fasta, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_file, nwk_read_str};
 
   use treetime_utils::make_report;
+
+  /// Build a dense reconstruction bundle and run one full marginal update, returning the completed
+  /// bundle for posterior inspection.
+  fn build_dense_recon(
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    aln: &[FastaRecord],
+    alphabet: Alphabet,
+    index: usize,
+    gtr: GTR,
+  ) -> Result<DenseReconstruction, Report> {
+    let partition = PartitionMarginalDense::new(index, gtr, alphabet, get_common_length(aln)?);
+    let node_states = partition.attach_sequences(graph, aln, names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    Ok(recon)
+  }
 
   /// Resolve the workspace root directory by walking up from the crate's manifest directory.
   ///
@@ -78,32 +104,25 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)];
-
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
-      &aln,
-      &names,
-    )?
-    .value();
+    let mut recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 0, gtr)?;
 
     let mut root_seq = String::new();
-    ancestral_reconstruction_marginal(
-      &graph,
-      false,
-      false,
-      &mut partitions,
-      SampleMode::Argmax,
-      &mut rand::thread_rng(),
-      |key, seq| {
-        if names[&key].as_deref() == Some("NODE_0000000") {
-          root_seq = seq.to_string();
-        }
-        Ok(())
-      },
-    )?;
+    {
+      let DenseReconstruction {
+        partition, node_states, ..
+      } = &mut recon;
+      let mut rng = rand::thread_rng();
+      ancestral_reconstruction(
+        &graph,
+        |node| partition.reconstruct_node_sequence(node_states, node, false, false, SampleMode::Argmax, &mut rng),
+        |key, seq| {
+          if names[&key].as_deref() == Some("NODE_0000000") {
+            root_seq = seq.to_string();
+          }
+          Ok(())
+        },
+      )?;
+    }
 
     // Expected root sequence from Python v0 (packages/legacy/treetime/test/test_treetime.py:134)
     let expected = "ATGAATCCAAATCAAAAGATAATAACGATTGGCTCTGTTTCTCTCACCATTTCCACAATATGCTTCTTCATGCAAATTGCCATCTTGATAACTACTGTAACATTGCATTTCAAGCAATATGAATTCAACTCCCCCCCAAACAACCAAGTGATGCTGTGTGAACCAACAATAATAGAAAGAAACATAACAGAGATAGTGTATCTGACCAACACCACCATAGAGAAGGAAATATGCCCCAAACCAGCAGAATACAGAAATTGGTCAAAACCGCAATGTGGCATTACAGGATTTGCACCTTTCTCTAAGGACAATTCGATTAGGCTTTCCGCTGGTGGGGACATCTGGGTGACAAGAGAACCTTATGTGTCATGCGATCCTGACAAGTGTTATCAATTTGCCCTTGGACAGGGAACAACACTAAACAACGTGCATTCAAATAACACAGTACGTGATAGGACCCCTTATCGGACTCTATTGATGAATGAGTTGGGTGTTCCTTTTCATCTGGGGACCAAGCAAGTGTGCATAGCATGGTCCAGCTCAAGTTGTCACGATGGAAAAGCATGGCTGCATGTTTGTATAACGGGGGATGATAAAAATGCAACTGCTAGCTTCATTTACAATGGGAGGCTTGTAGATAGTGTTGTTTCATGGTCCAAAGAAATTCTCAGGACCCAGGAGTCAGAATGCGTTTGTATCAATGGAACTTGTACAGTAGTAATGACTGATGGAAGTGCTTCAGGAAAAGCTGATACTAAAATACTATTCATTGAGGAGGGGAAAATCGTTCATACTAGCACATTGTCAGGAAGTGCTCAGCATGTCGAAGAGTGCTCTTGCTATCCTCGATATCCTGGTGTCAGATGTGTCTGCAGAGACAACTGGAAAGGCTCCAATCGGCCCATCGTAGATATAAACATAAAGGATCATAGCATTGTTTCCAGTTATGTGTGTTCAGGACTTGTTGGAGACACACCCAGAAAAAACGACAGCTCCAGCAGTAGCCATTGTTTGGATCCTAACAATGAAGAAGGTGGTCATGGAGTGAAAGGCTGGGCCTTTGATGATGGAAATGACGTGTGGATGGGAAGAACAATCAACGAGACGTCACGCTTAGGGTATGAAACCTTCAAAGTCATTGAAGGCTGGTCCAACCCTAAGTCCAAATTGCAGATAAATAGGCAAGTCATAGTTGACAGAGGTGATAGGTCCGGTTATTCTGGTATTTTCTCTGTTGAAGGCAAAAGCTGCATCAATCGGTGCTTTTATGTGGAGTTGATTAGGGGAAGAAAAGAGGAAACTGAAGTCTTGTGGACCTCAAACAGTATTGTTGTGTTTTGTGGCACCTCAGGTACATATGGAACAGGCTCATGGCCTGATGGGGCGGACCTCAATCTCATGCCTATA";
@@ -199,21 +218,11 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)];
-
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
-      &aln,
-      &names,
-    )?
-    .value();
+    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 0, gtr)?;
 
     // Find node AB and check profile at position 0
     let ab_key = find_node_key_by_name(&graph, &names, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
-    let partition = &partitions[0];
-    let ab_profile = &partition.data.nodes[&ab_key].profile.dis;
+    let ab_profile = &recon.node_states[&ab_key].profile.dis;
 
     // Position 0 is variable in Python (first variable position)
     // Python: [0.51275208, 0.09128506, 0.24647255, 0.14949031]
@@ -253,21 +262,11 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)];
-
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
-      &aln,
-      &names,
-    )?
-    .value();
+    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 0, gtr)?;
 
     // Find root node
     let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("Node root not found"))?;
-    let partition = &partitions[0];
-    let root_profile = &partition.data.nodes[&root_key].profile.dis;
+    let root_profile = &recon.node_states[&root_key].profile.dis;
 
     // Position 0 profile
     // Python: [0.28212327, 0.21643546, 0.13800802, 0.36343326]
@@ -303,20 +302,10 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)];
-
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
-      &aln,
-      &names,
-    )?
-    .value();
+    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 0, gtr)?;
 
     let cd_key = find_node_key_by_name(&graph, &names, "CD").ok_or_else(|| make_report!("Node CD not found"))?;
-    let partition = &partitions[0];
-    let cd_profile = &partition.data.nodes[&cd_key].profile.dis;
+    let cd_profile = &recon.node_states[&cd_key].profile.dis;
 
     // Verify all positions are normalized and valid
     for (pos, row) in cd_profile.rows().into_iter().enumerate() {
@@ -354,20 +343,9 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)];
+    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 0, gtr)?;
 
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
-      &aln,
-      &names,
-    )?
-    .value();
-
-    let partition = &partitions[0];
-
-    for (key, node_data) in &partition.data.nodes {
+    for (key, node_data) in &recon.node_states {
       let profile = &node_data.profile.dis;
       for (pos, row) in profile.rows().into_iter().enumerate() {
         let sum: f64 = row.sum();
@@ -406,30 +384,15 @@ mod tests {
     let gtr1 = make_python_reference_gtr()?;
     let gtr2 = make_python_reference_gtr2()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let length = get_common_length(&aln)?;
 
-    // Create two partitions with different F81 models
-    let partition1 = PartitionMarginalDense::new(0, gtr1, alphabet.clone(), length);
+    // Two partitions with different F81 models compute independently
+    let recon1 = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet.clone(), 0, gtr1)?;
+    let recon2 = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 1, gtr2)?;
 
-    let partition2 = PartitionMarginalDense::new(1, gtr2, alphabet, length);
-
-    let mut partitions = [partition1, partition2];
-
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
-      &aln,
-      &names,
-    )?
-    .value();
     let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("Node root not found"))?;
 
-    let p1 = &partitions[0];
-    let p2 = &partitions[1];
-
-    let root1 = &p1.data.nodes[&root_key].profile.dis;
-    let root2 = &p2.data.nodes[&root_key].profile.dis;
+    let root1 = &recon1.node_states[&root_key].profile.dis;
+    let root2 = &recon2.node_states[&root_key].profile.dis;
 
     // Position 0 profiles should differ due to different pi values
     // Python F81 (pi1): [0.28212327, 0.21643546, 0.13800802, 0.36343326]
@@ -477,27 +440,13 @@ mod tests {
     let gtr1 = make_python_reference_gtr()?;
     let gtr2 = make_python_reference_gtr2()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let length = get_common_length(&aln)?;
 
-    let partition1 = PartitionMarginalDense::new(0, gtr1, alphabet.clone(), length);
-
-    let partition2 = PartitionMarginalDense::new(1, gtr2, alphabet, length);
-
-    let mut partitions = [partition1, partition2];
-
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
-      &aln,
-      &names,
-    )?
-    .value();
+    let recon1 = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet.clone(), 0, gtr1)?;
+    let recon2 = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 1, gtr2)?;
 
     let ab_key = find_node_key_by_name(&graph, &names, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
 
-    let p1 = &partitions[0];
-    let ab1 = &p1.data.nodes[&ab_key].profile.dis;
+    let ab1 = &recon1.node_states[&ab_key].profile.dis;
     let pos0_ab1 = ab1.row(0);
 
     pretty_assert_ulps_eq!(pos0_ab1[0], 0.51275208, epsilon = 1e-6);
@@ -506,8 +455,7 @@ mod tests {
     pretty_assert_ulps_eq!(pos0_ab1[3], 0.14949031, epsilon = 1e-6);
 
     // Partition 2: [0.52331521, 0.08336271, 0.24488808, 0.148434]
-    let p2 = &partitions[1];
-    let ab2 = &p2.data.nodes[&ab_key].profile.dis;
+    let ab2 = &recon2.node_states[&ab_key].profile.dis;
     let pos0_ab2 = ab2.row(0);
 
     pretty_assert_ulps_eq!(pos0_ab2[0], 0.52331521, epsilon = 1e-6);
@@ -548,26 +496,32 @@ mod tests {
     let length = get_common_length(&aln)?;
 
     // Dense partition
-    let mut dense_partition = PartitionMarginalDense::new(0, gtr.clone(), alphabet.clone(), length);
-
-    let dense_log_lh = initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      std::slice::from_mut(&mut dense_partition),
-      &aln,
-      &names,
-    )?
-    .value();
+    let dense_partition = PartitionMarginalDense::new(0, gtr.clone(), alphabet.clone(), length);
+    let dense_node_states = dense_partition.attach_sequences(&graph, &aln, &names)?;
+    let mut dense_recon = DenseReconstruction {
+      partition: dense_partition,
+      node_states: dense_node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    let dense_log_lh = dense_recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
 
     // Sparse partition
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let mut sparse_partition = fitch.into_marginal_sparse(gtr, &graph)?;
-    let sparse_log_lh = marginal_update(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      std::slice::from_mut(&mut sparse_partition),
-    )?
-    .value();
+    let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
+    let mut sparse_recon = SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    let sparse_log_lh = sparse_recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
 
     // Log-likelihoods should match for clean sequences
     pretty_assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);

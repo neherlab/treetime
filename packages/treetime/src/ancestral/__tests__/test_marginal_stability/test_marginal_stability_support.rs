@@ -2,10 +2,10 @@
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::gtr::GTR;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::dense::DenseSeqDistribution;
   use crate::partition::storage::sparse::SparseSeqDistribution;
   use crate::pretty_assert_ulps_eq;
@@ -14,6 +14,7 @@ pub mod tests {
   use treetime_graph::graph::Graph;
   use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
+  use std::collections::BTreeMap;
   use std::sync::LazyLock;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -60,7 +61,7 @@ pub mod tests {
     newick: &str,
     aln_str: &str,
     gtr: GTR,
-  ) -> Result<(f64, [PartitionMarginalDense; 1]), Report> {
+  ) -> Result<(f64, DenseReconstruction), Report> {
     let NwkParse {
       graph,
       names,
@@ -71,25 +72,25 @@ pub mod tests {
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?)];
-
-    let log_lh = initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
-      &aln,
-      &names,
-    )?
-    .value();
-    Ok((log_lh, partitions))
+    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
+    let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    let log_lh = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    Ok((log_lh, recon))
   }
 
-  /// Run sparse marginal reconstruction with a custom GTR model and return the log-likelihood and partition array.
+  /// Run sparse marginal reconstruction with a custom GTR model and return the log-likelihood and reconstruction bundle.
   pub fn run_sparse_marginal_with_partitions(
     newick: &str,
     aln_str: &str,
     gtr: GTR,
-  ) -> Result<(f64, [PartitionMarginalSparse; 1]), Report> {
+  ) -> Result<(f64, SparseReconstruction), Report> {
     let NwkParse {
       graph,
       names,
@@ -101,8 +102,15 @@ pub mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let mut partitions = [fitch.into_marginal_sparse(gtr, &graph)?];
-    let log_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
-    Ok((log_lh, partitions))
+    let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
+    let mut recon = SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    let log_lh = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    Ok((log_lh, recon))
   }
 }

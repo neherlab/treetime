@@ -31,8 +31,7 @@ mod tests {
       "Log-likelihood should be strongly negative for rare states: {log_lh}"
     );
 
-    let partition = &partitions[0];
-    for node_data in partition.data.nodes.values() {
+    for node_data in partitions.node_states.values() {
       assert_dense_profile_stable(&node_data.profile, 8);
     }
 
@@ -61,8 +60,7 @@ mod tests {
       "Log-likelihood should be strongly negative for rare states: {log_lh}"
     );
 
-    let partition = &partitions[0];
-    for node_data in partition.nodes.values() {
+    for node_data in partitions.node_states.values() {
       assert_sparse_profile_stable(&node_data.profile, 8);
     }
 
@@ -87,8 +85,7 @@ mod tests {
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 
-    let partition = &partitions[0];
-    for node_data in partition.data.nodes.values() {
+    for node_data in partitions.node_states.values() {
       assert_dense_profile_stable(&node_data.profile, 8);
     }
 
@@ -113,8 +110,7 @@ mod tests {
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 
-    let partition = &partitions[0];
-    for node_data in partition.data.nodes.values() {
+    for node_data in partitions.node_states.values() {
       assert_dense_profile_stable(&node_data.profile, 8);
     }
 
