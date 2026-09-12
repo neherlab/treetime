@@ -1,12 +1,11 @@
-use crate::ancestral::marginal::marginal_update;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
+use crate::partition::timetree::marginal::marginal_update_timetree;
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::partition::traits::PartitionMarginalPasses;
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
 use crate::timetree::inference::runner::{
@@ -187,7 +186,7 @@ impl Refinement<'_> {
 
     if !self.partitions.is_empty() {
       info!("Updating ancestral sequences via marginal reconstruction");
-      marginal_update(
+      marginal_update_timetree(
         self.graph,
         &timetree_branch_lengths(self.graph, run_branch_lengths, self.clock_branch_lengths),
         self.partitions,

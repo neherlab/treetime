@@ -1,7 +1,7 @@
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::total_lh::compute_coalescent_total_lh;
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::partition::traits::graph_log_lh;
+use crate::partition::timetree::marginal::graph_log_lh;
 use crate::timetree::timetree_state::TimetreeState;
 use log::{debug, warn};
 use treetime_distribution::Distribution;

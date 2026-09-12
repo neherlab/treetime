@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update};
+use crate::partition::timetree::marginal::{ancestral_reconstruction_timetree, marginal_update_timetree};
 use crate::ancestral::sample::SampleMode;
 use crate::clock::clock_output::write_clock_model;
 use crate::clock::clock_state::ClockState;
@@ -176,13 +176,13 @@ pub fn run_timetree_estimation(
         Some(path) => Some(FastaWriter::new(create_file_or_stdout(path)?)),
         None => None,
       };
-      marginal_update(
+      marginal_update_timetree(
         &output.graph,
         &timetree_branch_lengths(&output.graph, &branch_lengths_opt, &output.clock_branch_lengths),
         &mut output.partitions,
       )?;
       let mut rng = get_random_number_generator(params.seed);
-      ancestral_reconstruction_marginal(
+      ancestral_reconstruction_timetree(
         &output.graph,
         params.include_leaves,
         params.impute_missing_data,

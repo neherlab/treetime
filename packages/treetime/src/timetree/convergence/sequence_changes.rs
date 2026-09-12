@@ -1,5 +1,4 @@
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::partition::traits::PartitionMarginalOps;
 use log::debug;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;

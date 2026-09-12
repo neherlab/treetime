@@ -1,11 +1,11 @@
-use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
+use crate::ancestral::marginal::profile_branch_lengths;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
+use crate::partition::timetree::marginal::marginal_update_timetree;
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::partition::traits::PartitionRerootOps;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
 use log::info;
@@ -77,7 +77,7 @@ pub fn reroot_tree(
           .wrap_err("Failed to apply reroot changes to partition")?;
       }
 
-      marginal_update(graph, &profile_branch_lengths(branch_lengths), partitions)
+      marginal_update_timetree(graph, &profile_branch_lengths(branch_lengths), partitions)
         .wrap_err("Failed to update marginal after reroot")?;
     }
   }

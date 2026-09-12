@@ -3,9 +3,7 @@ use crate::clock::clock_state::ClockState;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::optimize::indel::estimate_indel_rate;
 use crate::partition::optimize::contribution::OptimizationContribution;
-use crate::partition::traits::{
-  HasLogLh, PartitionBranchOps, PartitionMarginalOps, PartitionOptimizeOps, PartitionRerootOps,
-};
+use crate::partition::traits::PartitionOptimizeOps;
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::timetree::inference::forward_pass::propagate_distributions_forward;
@@ -62,7 +60,7 @@ pub fn run_timetree<P>(
   clock_state: &mut ClockState,
 ) -> Result<(), Report>
 where
-  P: PartitionBranchOps + PartitionMarginalOps + PartitionOptimizeOps + PartitionRerootOps + HasLogLh,
+  P: PartitionOptimizeOps,
 {
   info!("# Running timetree inference");
 
@@ -182,10 +180,10 @@ fn compute_branch_distributions_marginal_mode<P>(
   state: &mut TimetreeState,
 ) -> Result<(), Report>
 where
-  P: PartitionBranchOps + PartitionMarginalOps + PartitionOptimizeOps + PartitionRerootOps + HasLogLh,
+  P: PartitionOptimizeOps,
 {
   let one_mutation = calculate_one_mutation(partitions);
-  let total_sites: usize = partitions.iter().map(|p| p.get_sequence_length()).sum();
+  let total_sites: usize = partitions.iter().map(|p| p.sequence_length()).sum();
 
   let indel_rate = if no_indels {
     0.0
@@ -258,15 +256,15 @@ where
 
 fn calculate_one_mutation<P>(partitions: &[P]) -> f64
 where
-  P: PartitionBranchOps + PartitionMarginalOps + PartitionOptimizeOps + PartitionRerootOps + HasLogLh,
+  P: PartitionOptimizeOps,
 {
-  let total_length: usize = partitions.iter().map(|part| part.get_sequence_length()).sum();
+  let total_length: usize = partitions.iter().map(|part| part.sequence_length()).sum();
   1.0 / total_length as f64
 }
 
 fn collect_contributions<P>(partitions: &[P], edge_key: GraphEdgeKey) -> Result<Vec<OptimizationContribution>, Report>
 where
-  P: PartitionBranchOps + PartitionMarginalOps + PartitionOptimizeOps + PartitionRerootOps + HasLogLh,
+  P: PartitionOptimizeOps,
 {
   partitions
     .iter()

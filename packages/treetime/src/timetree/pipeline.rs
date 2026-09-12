@@ -1,5 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
+use crate::ancestral::marginal::profile_branch_lengths;
+use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
+use crate::partition::timetree::marginal::{initialize_marginal_timetree, marginal_update_timetree};
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
@@ -269,7 +271,7 @@ pub fn run(
   if let Some(aln) = input.sequences.as_deref() {
     if params.branch_length_mode == BranchLengthMode::Marginal && !partitions.is_empty() {
       info!("### ML branch-length optimization (pre-reroot)");
-      initialize_marginal(
+      initialize_marginal_timetree(
         &input.graph,
         &profile_branch_lengths(&branch_lengths),
         &mut partitions,
@@ -337,7 +339,7 @@ pub fn run(
       },
       BranchLengthMode::Marginal => {
         info!("### ML branch-length optimization (post-reroot)");
-        marginal_update(&input.graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
+        marginal_update_timetree(&input.graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
         optimize_branch_lengths_pre_step(&input.graph, &mut partitions, params.no_indels, &mut branch_lengths)
           .wrap_err("ML branch-length optimization (post-reroot) failed")?;
       },
@@ -630,7 +632,7 @@ pub fn run(
     );
 
     if !partitions.is_empty() {
-      marginal_update(
+      marginal_update_timetree(
         &input.graph,
         &timetree_branch_lengths(&input.graph, &branch_lengths, &clock_branch_lengths),
         &mut partitions,
@@ -932,13 +934,26 @@ fn initialize_partitions_from_params(
   // is behavior-preserving; it keeps the contract consistent with the other
   // pipelines and lets the duplicate `PartitionCreated.gtr` field go away.
   let gtr = match &created.partition {
-    MarginalPartition::Sparse(p) => p.gtr().clone(),
+    MarginalPartition::Sparse(p, _) => p.gtr().clone(),
     MarginalPartition::Dense(p) => p.gtr().clone(),
   };
 
   let partition = match created.partition {
-    MarginalPartition::Sparse(p) => PartitionTimetree::Sparse(p),
-    MarginalPartition::Dense(p) => PartitionTimetree::Dense(p),
+    MarginalPartition::Sparse(partition, node_states) => PartitionTimetree::Sparse(SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }),
+    // Dense leaf states are attached later by `initialize_marginal_timetree`.
+    MarginalPartition::Dense(partition) => PartitionTimetree::Dense(DenseReconstruction {
+      partition,
+      node_states: BTreeMap::new(),
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }),
   };
 
   Ok(PartitionInitResult {
@@ -968,7 +983,7 @@ fn optimize_branch_lengths_pre_step(
   }
 
   apply_damping(branch_lengths, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
-  marginal_update(graph, &profile_branch_lengths(branch_lengths), partitions)?;
+  marginal_update_timetree(graph, &profile_branch_lengths(branch_lengths), partitions)?;
 
   Ok(())
 }

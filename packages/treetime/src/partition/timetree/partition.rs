@@ -1,10 +1,12 @@
-use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use serde::Serialize;
 
-#[derive(Debug, Serialize)]
+/// A timetree partition as a completed reconstruction bundle: the durable partition inputs together
+/// with the node states and per-edge messages/estimates its marginal passes returned. The timetree
+/// pipeline threads this and reads branch/optimize data through a transient read view.
+#[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum PartitionTimetree {
-  Dense(PartitionMarginalDense),
-  Sparse(PartitionMarginalSparse),
+  Dense(DenseReconstruction),
+  Sparse(SparseReconstruction),
 }
