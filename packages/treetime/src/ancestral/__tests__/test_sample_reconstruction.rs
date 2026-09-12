@@ -58,7 +58,8 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::fitch::create_fitch_partition;
-    use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update, profile_branch_lengths};
+    use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+    use crate::ancestral::pipeline::SparseReconstruction;
     use crate::ancestral::sample::SampleMode;
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use eyre::Report;
@@ -103,16 +104,35 @@ mod tests {
 
       let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
-      let mut partitions = [fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
+      let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
+      let mut recon = SparseReconstruction {
+        partition,
+        node_states,
+        backward: BTreeMap::new(),
+        forward: BTreeMap::new(),
+        estimates: BTreeMap::new(),
+      };
 
-      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+      recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
       let mut rng = StdRng::seed_from_u64(seed);
       let mut out = BTreeMap::new();
-      ancestral_reconstruction_marginal(&graph, false, false, &mut partitions, mode, &mut rng, |key, seq| {
-        out.insert(names[&key].clone().unwrap_or_default(), seq.to_string());
-        Ok(())
-      })?;
+      {
+        let SparseReconstruction {
+          partition,
+          node_states,
+          forward,
+          ..
+        } = &mut recon;
+        ancestral_reconstruction(
+          &graph,
+          |node| partition.reconstruct_node_sequence(node_states, forward, node, false, false, mode, &mut rng),
+          |key, seq| {
+            out.insert(names[&key].clone().unwrap_or_default(), seq.to_string());
+            Ok(())
+          },
+        )?;
+      }
       Ok(out)
     }
   }

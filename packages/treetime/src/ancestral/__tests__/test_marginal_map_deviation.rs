@@ -2,13 +2,11 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{
-    ancestral_reconstruction_marginal, initialize_marginal, marginal_update, profile_branch_lengths,
-  };
+  use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::traits::PartitionMarginalOps;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
@@ -139,30 +137,6 @@ mod tests {
     read_many_fasta_str(fasta, &Alphabet::default())
   }
 
-  fn reconstruct_named<P>(
-    graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-    partitions: &mut [P],
-  ) -> Result<BTreeMap<String, String>, Report>
-  where
-    P: PartitionMarginalOps + crate::partition::traits::HasLogLh,
-  {
-    let mut out = BTreeMap::new();
-    ancestral_reconstruction_marginal(
-      graph,
-      true,
-      false,
-      partitions,
-      SampleMode::Argmax,
-      &mut rand::thread_rng(),
-      |key, seq| {
-        out.insert(names[&key].clone().expect("named node"), seq.as_str().to_owned());
-        Ok(())
-      },
-    )?;
-    Ok(out)
-  }
-
   fn reconstruct_sparse(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -170,9 +144,33 @@ mod tests {
     aln: &[FastaRecord],
   ) -> Result<BTreeMap<String, String>, Report> {
     let fitch = create_fitch_partition(graph, 0, Alphabet::default(), aln, names)?;
-    let mut partitions = [fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?];
-    marginal_update(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?;
-    reconstruct_named(graph, names, &mut partitions)
+    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
+    let mut recon = SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+
+    let mut out = BTreeMap::new();
+    let SparseReconstruction {
+      partition,
+      node_states,
+      forward,
+      ..
+    } = &mut recon;
+    let mut rng = rand::thread_rng();
+    ancestral_reconstruction(
+      graph,
+      |node| partition.reconstruct_node_sequence(node_states, forward, node, true, false, SampleMode::Argmax, &mut rng),
+      |key, seq| {
+        out.insert(names[&key].clone().expect("named node"), seq.as_str().to_owned());
+        Ok(())
+      },
+    )?;
+    Ok(out)
   }
 
   fn reconstruct_dense(
@@ -182,19 +180,30 @@ mod tests {
     aln: &[FastaRecord],
   ) -> Result<BTreeMap<String, String>, Report> {
     let length = get_common_length(aln)?;
-    let mut partitions = [PartitionMarginalDense::new(
-      0,
-      jc69(JC69Params::default())?,
-      Alphabet::default(),
-      length,
-    )];
-    initialize_marginal(
+    let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::default(), length);
+    let node_states = partition.attach_sequences(graph, aln, names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+
+    let mut out = BTreeMap::new();
+    let DenseReconstruction {
+      partition, node_states, ..
+    } = &mut recon;
+    let mut rng = rand::thread_rng();
+    ancestral_reconstruction(
       graph,
-      &profile_branch_lengths(branch_lengths),
-      &mut partitions,
-      aln,
-      names,
+      |node| partition.reconstruct_node_sequence(node_states, node, true, false, SampleMode::Argmax, &mut rng),
+      |key, seq| {
+        out.insert(names[&key].clone().expect("named node"), seq.as_str().to_owned());
+        Ok(())
+      },
     )?;
-    reconstruct_named(graph, names, &mut partitions)
+    Ok(out)
   }
 }
