@@ -8,8 +8,7 @@ use crate::commands::shared::tree_output::write_optimize_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
-use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::partition::traits::{EdgeMutationCommentProvider, PartitionBranchOps};
 use crate::seq::gap_fill::apply_gap_fill;
 use crate::seq::mutation::MutationTrack;
@@ -186,13 +185,13 @@ pub fn run_optimize(
 /// substitutions the output writers read off the optimize partition.
 pub(crate) fn gather_optimize_output_maps(
   graph: &Graph,
-  sparse_partitions: &[PartitionMarginalSparse],
-  dense_partitions: &[PartitionMarginalDense],
+  sparse_partitions: &[SparseReconstruction],
+  dense_partitions: &[DenseReconstruction],
 ) -> Result<OptimizeOutputMaps, Report> {
-  if let Some(partition) = dense_partitions.first() {
-    gather_optimize_partition_maps(graph, partition)
-  } else if let Some(partition) = sparse_partitions.first() {
-    gather_optimize_partition_maps(graph, partition)
+  if let Some(family) = dense_partitions.first() {
+    gather_optimize_partition_maps(graph, &family.readout())
+  } else if let Some(family) = sparse_partitions.first() {
+    gather_optimize_partition_maps(graph, &family.readout())
   } else {
     Ok(OptimizeOutputMaps::default())
   }

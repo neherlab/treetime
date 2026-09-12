@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
+use crate::ancestral::marginal::profile_branch_lengths;
+use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
@@ -7,13 +8,13 @@ use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::run_loop::{
-  apply_initial_guess_mode, marginal_branch_lengths, normalize_partition_rates, optimize_partition_view,
-  run_optimize_loop,
+  OptimizeReadouts, apply_initial_guess_mode, marginal_branch_lengths, marginal_update_dense, marginal_update_sparse,
+  normalize_partition_rates, run_optimize_loop,
 };
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
-use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::traits::{HasGtr, PartitionRerootOps};
+use crate::partition::marginal::dense::reroot::reroot_dense;
+use crate::partition::marginal::sparse::reroot::reroot_sparse;
+use crate::partition::traits::HasGtr;
 use crate::progress::ProgressSink;
 use crate::reroot::div_stats::DivStats;
 use crate::reroot::div_stats_traversal::compute_div_stats;
@@ -70,9 +71,9 @@ pub struct OptimizeOutput {
   pub gtr: GTR,
   pub model_name: GtrModelName,
   #[serde(skip)]
-  pub sparse_partitions: Vec<PartitionMarginalSparse>,
+  pub sparse_partitions: Vec<SparseReconstruction>,
   #[serde(skip)]
-  pub dense_partitions: Vec<PartitionMarginalDense>,
+  pub dense_partitions: Vec<DenseReconstruction>,
   /// Final optimized branch lengths, keyed by edge id. The optimize loop is the source of truth;
   /// the command gather reads these.
   #[serde(skip)]
@@ -107,17 +108,31 @@ pub fn run(
   )?;
   let model_name = created.model_name;
 
-  let mut sparse_partitions: Vec<PartitionMarginalSparse>;
-  let mut dense_partitions: Vec<PartitionMarginalDense>;
+  let mut sparse_partitions: Vec<SparseReconstruction>;
+  let mut dense_partitions: Vec<DenseReconstruction>;
 
   match created.partition {
-    MarginalPartition::Sparse(p) => {
-      sparse_partitions = vec![p];
+    MarginalPartition::Sparse(partition, node_states) => {
+      sparse_partitions = vec![SparseReconstruction {
+        partition,
+        node_states,
+        backward: BTreeMap::new(),
+        forward: BTreeMap::new(),
+        estimates: BTreeMap::new(),
+      }];
       dense_partitions = vec![];
     },
-    MarginalPartition::Dense(p) => {
+    MarginalPartition::Dense(partition) => {
+      // Dense leaf states are attached up front; the marginal passes then populate internal states.
+      let node_states = partition.attach_sequences(&input.graph, &input.sequences, names)?;
+      dense_partitions = vec![DenseReconstruction {
+        partition,
+        node_states,
+        backward: BTreeMap::new(),
+        forward: BTreeMap::new(),
+        estimates: BTreeMap::new(),
+      }];
       sparse_partitions = vec![];
-      dense_partitions = vec![p];
     },
   }
 
@@ -137,36 +152,28 @@ pub fn run(
     }
   }
 
-  marginal_update(
-    &input.graph,
-    &profile_branch_lengths(&branch_lengths),
-    &mut sparse_partitions,
-  )?;
-  if !dense_partitions.is_empty() {
-    initialize_marginal(
-      &input.graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut dense_partitions,
-      &input.sequences,
-      names,
-    )?;
-    marginal_update(
-      &input.graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut dense_partitions,
-    )?;
-  }
+  let profile_lengths = profile_branch_lengths(&branch_lengths);
+  marginal_update_sparse(&input.graph, &profile_lengths, &mut sparse_partitions)?;
+  marginal_update_dense(&input.graph, &profile_lengths, &mut dense_partitions)?;
 
   if model_name == GtrModelName::Infer {
-    normalize_partition_rates(&mut sparse_partitions, &mut branch_lengths);
-    normalize_partition_rates(&mut dense_partitions, &mut branch_lengths);
+    let mut sparse_models: Vec<&mut dyn HasGtr> = sparse_partitions
+      .iter_mut()
+      .map(|family| &mut family.partition as &mut dyn HasGtr)
+      .collect();
+    normalize_partition_rates(&mut sparse_models, &mut branch_lengths);
+    let mut dense_models: Vec<&mut dyn HasGtr> = dense_partitions
+      .iter_mut()
+      .map(|family| &mut family.partition as &mut dyn HasGtr)
+      .collect();
+    normalize_partition_rates(&mut dense_models, &mut branch_lengths);
   }
 
   {
-    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
+    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
     apply_initial_guess_mode(
       &input.graph,
-      &mixed_partitions,
+      &readouts.view(),
       params.initial_guess,
       params.no_indels,
       &mut branch_lengths,
@@ -231,18 +238,18 @@ pub fn run(
 
   info!("Re-running marginal to populate subs_ml after optimization loop");
   let marginal_bl = marginal_branch_lengths(&branch_lengths);
-  marginal_update(&input.graph, &marginal_bl, &mut sparse_partitions)?;
-  marginal_update(&input.graph, &marginal_bl, &mut dense_partitions)?;
+  marginal_update_sparse(&input.graph, &marginal_bl, &mut sparse_partitions)?;
+  marginal_update_dense(&input.graph, &marginal_bl, &mut dense_partitions)?;
 
   // Read the GTR back from the owning partition, not from a snapshot taken at
   // creation time. For `--gtr=infer` the partition's `mu` is normalized to 1.0
   // by `normalize_partition_rates` above (rate absorbed into branch lengths);
   // a creation-time clone would still carry the raw inferred `mu` and disagree
   // with the rate-scaled branch lengths shipped alongside it.
-  let gtr = if let Some(p) = sparse_partitions.first() {
-    p.gtr().clone()
-  } else if let Some(p) = dense_partitions.first() {
-    p.gtr().clone()
+  let gtr = if let Some(family) = sparse_partitions.first() {
+    family.partition.gtr().clone()
+  } else if let Some(family) = dense_partitions.first() {
+    family.partition.gtr().clone()
   } else {
     return make_error!("optimize produced no partition to read the GTR from");
   };
@@ -267,8 +274,8 @@ pub fn run(
 /// Single damped branch-length pass run before rerooting.
 fn pre_reroot_optimize(
   graph: &Graph,
-  sparse_partitions: &mut [PartitionMarginalSparse],
-  dense_partitions: &mut [PartitionMarginalDense],
+  sparse_partitions: &mut [SparseReconstruction],
+  dense_partitions: &mut [DenseReconstruction],
   opt_method: BranchOptMethod,
   no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -276,17 +283,18 @@ fn pre_reroot_optimize(
   let old_branch_lengths = branch_lengths.clone();
 
   {
-    let mixed_partitions = optimize_partition_view(dense_partitions, sparse_partitions);
+    let readouts = OptimizeReadouts::new(dense_partitions, sparse_partitions);
     if no_indels {
-      run_optimize_mixed_inner(graph, &mixed_partitions, opt_method, 0.0, true, branch_lengths)?;
+      run_optimize_mixed_inner(graph, &readouts.view(), opt_method, 0.0, true, branch_lengths)?;
     } else {
-      run_optimize_mixed(graph, &mixed_partitions, opt_method, branch_lengths)?;
+      run_optimize_mixed(graph, &readouts.view(), opt_method, branch_lengths)?;
     }
   }
 
   apply_damping(branch_lengths, &old_branch_lengths, PRE_REROOT_DAMPING, 0);
-  marginal_update(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?;
-  marginal_update(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;
+  let profile_lengths = profile_branch_lengths(branch_lengths);
+  marginal_update_sparse(graph, &profile_lengths, sparse_partitions)?;
+  marginal_update_dense(graph, &profile_lengths, dense_partitions)?;
   Ok(())
 }
 
@@ -294,8 +302,8 @@ fn pre_reroot_optimize(
 fn reroot_optimize(
   graph: &mut Graph,
   spec: &RerootSpec,
-  sparse_partitions: &mut [PartitionMarginalSparse],
-  dense_partitions: &mut [PartitionMarginalDense],
+  sparse_partitions: &mut [SparseReconstruction],
+  dense_partitions: &mut [DenseReconstruction],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report> {
@@ -333,15 +341,16 @@ fn reroot_optimize(
     inverted_edge_keys: reroot_result.inverted_edge_keys,
   };
 
-  for partition in sparse_partitions.iter_mut() {
-    partition.apply_reroot(&changes)?;
+  for family in sparse_partitions.iter_mut() {
+    reroot_sparse(family, &changes)?;
   }
-  for partition in dense_partitions.iter_mut() {
-    partition.apply_reroot(&changes)?;
+  for family in dense_partitions.iter_mut() {
+    reroot_dense(family, &changes)?;
   }
 
-  marginal_update(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?;
-  marginal_update(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;
+  let profile_lengths = profile_branch_lengths(branch_lengths);
+  marginal_update_sparse(graph, &profile_lengths, sparse_partitions)?;
+  marginal_update_dense(graph, &profile_lengths, dense_partitions)?;
   Ok(())
 }
 

@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::marginal_update;
+use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;
 use crate::optimize::dispatch::run_optimize_mixed_inner;
@@ -7,8 +7,10 @@ use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
-use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::partition::marginal::dense::partition::DenseReadout;
+use crate::partition::marginal::sparse::partition::SparseReadout;
+use crate::partition::storage::dense::DenseNodeState;
+use crate::partition::storage::sparse::SparseNodeState;
 use crate::partition::traits::{HasGtr, PartitionOptimizeOps};
 use eyre::Report;
 use itertools::{Itertools, chain};
@@ -21,6 +23,60 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
+
+/// Run a marginal update over each sparse reconstruction in place and return the summed substitution
+/// log likelihood.
+pub fn marginal_update_sparse(
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  sparse: &mut [SparseReconstruction],
+) -> Result<LogLh, Report> {
+  let mut total = LogLh::ZERO;
+  for family in sparse.iter_mut() {
+    total += family.run_marginal_update(graph, branch_lengths)?;
+  }
+  Ok(total)
+}
+
+/// Run a marginal update over each dense reconstruction in place and return the summed substitution
+/// log likelihood.
+pub fn marginal_update_dense(
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  dense: &mut [DenseReconstruction],
+) -> Result<LogLh, Report> {
+  let mut total = LogLh::ZERO;
+  for family in dense.iter_mut() {
+    total += family.run_marginal_update(graph, branch_lengths)?;
+  }
+  Ok(total)
+}
+
+/// Owned per-representation read views over the optimize working state, dense first then sparse, from
+/// which a transient `&dyn PartitionOptimizeOps` view is built for the optimize consumers.
+pub struct OptimizeReadouts<'a> {
+  dense: Vec<DenseReadout<'a>>,
+  sparse: Vec<SparseReadout<'a>>,
+}
+
+impl<'a> OptimizeReadouts<'a> {
+  pub fn new(dense: &'a [DenseReconstruction], sparse: &'a [SparseReconstruction]) -> Self {
+    Self {
+      dense: dense.iter().map(DenseReconstruction::readout).collect(),
+      sparse: sparse.iter().map(SparseReconstruction::readout).collect(),
+    }
+  }
+
+  /// Borrow the readouts as a dyn optimize view, dense entries first then sparse, matching the order
+  /// the optimize passes sum partition contributions.
+  pub fn view(&self) -> Vec<&dyn PartitionOptimizeOps> {
+    chain!(
+      self.dense.iter().map(|readout| -> &dyn PartitionOptimizeOps { readout }),
+      self.sparse.iter().map(|readout| -> &dyn PartitionOptimizeOps { readout }),
+    )
+    .collect_vec()
+  }
+}
 
 /// Iterative branch-length optimization with marginal reconstruction and topology cleanup.
 ///
@@ -68,8 +124,8 @@ use treetime_utils::make_error;
 /// production `run_optimize` wrapper.
 pub fn run_optimize_loop(
   graph: &mut Graph,
-  sparse_partitions: &mut [PartitionMarginalSparse],
-  dense_partitions: &mut [PartitionMarginalDense],
+  sparse_partitions: &mut [SparseReconstruction],
+  dense_partitions: &mut [DenseReconstruction],
   max_iter: usize,
   dp: f64,
   damping: f64,
@@ -92,8 +148,8 @@ pub fn run_optimize_loop(
   let indel_rate = if no_indels {
     0.0
   } else {
-    let mixed_partitions = optimize_partition_view(dense_partitions, sparse_partitions);
-    estimate_indel_rate(graph, &mixed_partitions, &branch_lengths)
+    let readouts = OptimizeReadouts::new(dense_partitions, sparse_partitions);
+    estimate_indel_rate(graph, &readouts.view(), &branch_lengths)
   };
 
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter);
@@ -133,8 +189,8 @@ pub fn run_optimize_loop(
       if let Some(best) = &best_branch_lengths {
         branch_lengths = best.clone();
         let marginal_bl = marginal_branch_lengths(&branch_lengths);
-        marginal_update(graph, &marginal_bl, sparse_partitions)?;
-        marginal_update(graph, &marginal_bl, dense_partitions)?;
+        marginal_update_sparse(graph, &marginal_bl, sparse_partitions)?;
+        marginal_update_dense(graph, &marginal_bl, dense_partitions)?;
       }
       stopped_at = Some((i, ConvergenceReason::NumericalFailure));
       break;
@@ -159,8 +215,8 @@ pub fn run_optimize_loop(
       if let Some(best) = &best_branch_lengths {
         branch_lengths = best.clone();
         let marginal_bl = marginal_branch_lengths(&branch_lengths);
-        marginal_update(graph, &marginal_bl, sparse_partitions)?;
-        marginal_update(graph, &marginal_bl, dense_partitions)?;
+        marginal_update_sparse(graph, &marginal_bl, sparse_partitions)?;
+        marginal_update_dense(graph, &marginal_bl, dense_partitions)?;
       }
       stopped_at = Some((i, ConvergenceReason::Worsened));
       break;
@@ -170,10 +226,10 @@ pub fn run_optimize_loop(
     // branch-length map in place; the map is the loop's source of truth.
     let old_branch_lengths = branch_lengths.clone();
     {
-      let mixed_partitions = optimize_partition_view(dense_partitions, sparse_partitions);
+      let readouts = OptimizeReadouts::new(dense_partitions, sparse_partitions);
       run_optimize_mixed_inner(
         graph,
-        &mixed_partitions,
+        &readouts.view(),
         opt_method,
         indel_rate,
         no_indels,
@@ -271,28 +327,6 @@ pub struct OptimizeLoopResult {
   pub stopped_at: Option<(usize, ConvergenceReason)>,
 }
 
-/// Build the transient dyn optimize view over the concrete partition slices, dense entries first
-/// then sparse, matching the order the optimize passes sum partition contributions.
-///
-/// The returned borrows keep the two slices immutably borrowed for the view's lifetime, so the
-/// caller scopes it to a block that ends before the next mutable partition pass. The optimize
-/// consumers (`estimate_indel_rate`, `total_indel_log_lh`, `run_optimize_mixed_inner`,
-/// `initial_guess_mixed`) read partitions only, so a shared dyn view is sufficient.
-pub fn optimize_partition_view<'a>(
-  dense_partitions: &'a [PartitionMarginalDense],
-  sparse_partitions: &'a [PartitionMarginalSparse],
-) -> Vec<&'a dyn PartitionOptimizeOps> {
-  chain!(
-    dense_partitions
-      .iter()
-      .map(|partition| -> &dyn PartitionOptimizeOps { partition }),
-    sparse_partitions
-      .iter()
-      .map(|partition| -> &dyn PartitionOptimizeOps { partition }),
-  )
-  .collect_vec()
-}
-
 #[derive(Clone, Copy, Debug, Default)]
 struct OptimizeIterationLikelihood {
   sparse_lh: LogLh,
@@ -305,19 +339,19 @@ struct OptimizeIterationLikelihood {
 fn compute_iteration_likelihood(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  sparse_partitions: &mut [PartitionMarginalSparse],
-  dense_partitions: &mut [PartitionMarginalDense],
+  sparse_partitions: &mut [SparseReconstruction],
+  dense_partitions: &mut [DenseReconstruction],
   indel_rate: f64,
   no_indels: bool,
 ) -> Result<OptimizeIterationLikelihood, Report> {
   let marginal_bl = marginal_branch_lengths(branch_lengths);
-  let sparse_lh = marginal_update(graph, &marginal_bl, sparse_partitions)?;
-  let dense_lh = marginal_update(graph, &marginal_bl, dense_partitions)?;
+  let sparse_lh = marginal_update_sparse(graph, &marginal_bl, sparse_partitions)?;
+  let dense_lh = marginal_update_dense(graph, &marginal_bl, dense_partitions)?;
   let indel_lh = if no_indels {
     LogLh::ZERO
   } else {
-    let mixed_partitions = optimize_partition_view(dense_partitions, sparse_partitions);
-    total_indel_log_lh(graph, &mixed_partitions, branch_lengths, indel_rate)?
+    let readouts = OptimizeReadouts::new(dense_partitions, sparse_partitions);
+    total_indel_log_lh(graph, &readouts.view(), branch_lengths, indel_rate)?
   };
   let total_lh = sparse_lh + dense_lh + indel_lh;
 
@@ -358,7 +392,7 @@ fn compute_iteration_likelihood(
 /// re-creates the node, which then optimizes to zero again.
 pub fn find_zero_optimal_internal_edges(
   graph: &Graph,
-  sparse_partitions: &[PartitionMarginalSparse],
+  sparse_partitions: &[SparseReconstruction],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Vec<GraphEdgeKey> {
   graph
@@ -372,9 +406,10 @@ pub fn find_zero_optimal_internal_edges(
         return None;
       }
       let edge_key = edge.key();
-      let has_mutations = sparse_partitions.iter().any(|partition| {
-        partition
-          .edges
+      let has_mutations = sparse_partitions.iter().any(|family| {
+        family
+          .partition
+          .obs_edges
           .get(&edge_key)
           .is_some_and(|e| !e.fitch_subs().is_empty() || !e.indels.is_empty())
       });
@@ -404,8 +439,8 @@ pub fn find_zero_optimal_internal_edges(
 /// Returns true if any topology change occurred.
 pub fn prune_and_merge_in_loop(
   graph: &mut Graph,
-  sparse_partitions: &mut [PartitionMarginalSparse],
-  dense_partitions: &mut [PartitionMarginalDense],
+  sparse_partitions: &mut [SparseReconstruction],
+  dense_partitions: &mut [DenseReconstruction],
   zero_optimal_edges: &[GraphEdgeKey],
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -430,7 +465,7 @@ pub fn prune_and_merge_in_loop(
       if graph.get_edge(edge_key).is_none() {
         continue;
       }
-      collapse_edge(graph, sparse_partitions, dense_partitions, edge_key, branch_lengths)?;
+      collapse_edge(graph, sparse_partitions, edge_key, branch_lengths)?;
       collapsed += 1;
     }
 
@@ -440,16 +475,57 @@ pub fn prune_and_merge_in_loop(
     }
   }
 
-  if resolve_polytomies(graph, sparse_partitions, dense_partitions, topology_ops, branch_lengths)? > 0 {
+  if resolve_polytomies(graph, sparse_partitions, topology_ops, branch_lengths)? > 0 {
     topology_changed = true;
   }
 
   if topology_changed {
     graph.build()?;
     *names = assign_node_names(std::mem::take(names), graph)?;
+    // One complete remap at the structural-operation boundary: the topology mutators kept the sparse
+    // observations precise, but the evolving node-state maps and message/estimate maps still key to
+    // the pre-change topology. Reconcile the node states to the current node set (dropping removed
+    // nodes, seeding placeholders for created ones) and drop the stale messages and estimates; the
+    // next marginal update rebuilds a complete set over the new topology.
+    for family in sparse_partitions.iter_mut() {
+      reconcile_sparse_family(graph, family);
+    }
+    for family in dense_partitions.iter_mut() {
+      reconcile_dense_family(graph, family);
+    }
   }
 
   Ok(topology_changed)
+}
+
+/// Reconcile a sparse family's evolving maps to the current graph after a topology change: seed a
+/// placeholder node state for every current node absent from the map, drop states for removed nodes,
+/// and drop the stale edge messages and estimates. Leaf seeds are preserved.
+fn reconcile_sparse_family(graph: &Graph, family: &mut SparseReconstruction) {
+  let node_keys: Vec<GraphNodeKey> = graph.get_nodes().iter().map(|node| node.read_arc().key()).collect();
+  for &key in &node_keys {
+    family.node_states.entry(key).or_insert_with(SparseNodeState::empty);
+  }
+  let live: std::collections::BTreeSet<GraphNodeKey> = node_keys.into_iter().collect();
+  family.node_states.retain(|key, _| live.contains(key));
+  family.backward.clear();
+  family.forward.clear();
+  family.estimates.clear();
+}
+
+/// Reconcile a dense family's evolving maps to the current graph after a topology change: seed a
+/// placeholder node state for every current node absent from the map, drop states for removed nodes,
+/// and drop the stale edge messages and estimates. Leaf seeds are preserved.
+fn reconcile_dense_family(graph: &Graph, family: &mut DenseReconstruction) {
+  let node_keys: Vec<GraphNodeKey> = graph.get_nodes().iter().map(|node| node.read_arc().key()).collect();
+  for &key in &node_keys {
+    family.node_states.entry(key).or_insert_with(DenseNodeState::empty);
+  }
+  let live: std::collections::BTreeSet<GraphNodeKey> = node_keys.into_iter().collect();
+  family.node_states.retain(|key, _| live.contains(key));
+  family.backward.clear();
+  family.forward.clear();
+  family.estimates.clear();
 }
 
 /// Whether any edge that carries indels has a zero branch length.
@@ -554,8 +630,8 @@ pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -
 /// is scaled by `total_average`. The value `mu * t` (expected substitutions) is preserved,
 /// but now the average rate across all partitions equals 1, making branch lengths directly
 /// interpretable as substitutions per site.
-pub fn normalize_partition_rates<P: HasGtr>(
-  partitions: &mut [P],
+pub fn normalize_partition_rates(
+  partitions: &mut [&mut dyn HasGtr],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) {
   let total_length: usize = partitions.iter().map(|p| p.sequence_length()).sum();
