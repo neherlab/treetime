@@ -3,7 +3,8 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+  use crate::ancestral::pipeline::SparseReconstruction;
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
@@ -120,12 +121,19 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     gtr: GTR,
-  ) -> Result<(f64, [PartitionMarginalSparse; 1]), Report> {
+  ) -> Result<(f64, SparseReconstruction), Report> {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
-    let mut partitions = [fitch.into_marginal_sparse(gtr, graph)?];
-    let log_lh = marginal_update(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?.value();
-    Ok((log_lh, partitions))
+    let (partition, node_states) = fitch.into_marginal_sparse(gtr, graph)?;
+    let mut recon = SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    let log_lh = recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?.value();
+    Ok((log_lh, recon))
   }
 
   /// Parse a Newick tree string and compute the sparse marginal log-likelihood.
@@ -199,29 +207,36 @@ mod tests {
     let alphabet = Alphabet::default();
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let mut partitions_marginal_sparse = [fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
+    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
+    let mut recon = SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
 
-    let log_lh = marginal_update(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions_marginal_sparse,
-    )?
-    .value();
+    let log_lh = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
 
     // generate ancestral reconstruction and test against expectation
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_marginal(
-      &graph,
-      false,
-      false,
-      &mut partitions_marginal_sparse,
-      SampleMode::Argmax,
-      &mut rand::thread_rng(),
-      |key, seq| {
-        actual.insert(names[&key].clone(), seq.to_string());
-        Ok(())
-      },
-    )?;
+    {
+      let SparseReconstruction {
+        partition,
+        node_states,
+        forward,
+        ..
+      } = &mut recon;
+      let mut rng = rand::thread_rng();
+      ancestral_reconstruction(
+        &graph,
+        |node| partition.reconstruct_node_sequence(node_states, forward, node, false, false, SampleMode::Argmax, &mut rng),
+        |key, seq| {
+          actual.insert(names[&key].clone(), seq.to_string());
+          Ok(())
+        },
+      )?;
+    }
 
     assert_eq!(
       json_write_str(&expected, JsonPretty(false))?,
@@ -232,13 +247,12 @@ mod tests {
     // the accounting `combine_messages` and `infer_gtr` both assume: the former subtracts one count
     // per variable position keyed by that position's parsimony state, the latter pairs the counts with
     // the edges' Fitch substitutions. Reconstruction must leave both untouched.
-    let partition = &partitions_marginal_sparse[0];
     for name in expected.keys() {
       let node_key = find_node_key_by_name(&graph, &names, name).expect("expected internal node must exist");
-      let node = &partition.nodes[&node_key];
+      let sequence = &recon.node_states[&node_key].sequence;
       let stored_composition =
-        Composition::with_seq(&node.seq.sequence, partition.alphabet.chars(), partition.alphabet.gap());
-      assert_eq!(stored_composition, node.seq.composition);
+        Composition::with_seq(sequence, recon.partition.alphabet.chars(), recon.partition.alphabet.gap());
+      assert_eq!(stored_composition, recon.partition.obs_nodes[&node_key].composition);
     }
 
     // test overall likelihood
@@ -280,19 +294,17 @@ mod tests {
     let graph: Graph = graph;
     let gtr = jc69(JC69Params::default())?;
 
-    let (log_lh, partitions) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
+    let (log_lh, recon) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
 
     // Verify log-likelihood is in expected range (tree with 4 leaves, 16 sites)
     // Matches test_ancestral_reconstruction_marginal_sparse value
     pretty_assert_ulps_eq!(-55.33813399214274, log_lh, epsilon = 1e-6);
 
-    let partition = &partitions[0];
-
-    for node_data in partition.nodes.values() {
+    for node_data in recon.node_states.values() {
       assert_sparse_profile_normalized(&node_data.profile, 4);
     }
 
-    for edge_data in partition.edges.values() {
+    for edge_data in recon.forward.values() {
       assert_sparse_profile_normalized(&edge_data.msg_to_child, 4);
     }
 
@@ -334,10 +346,17 @@ mod tests {
 
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let mut partitions = [fitch.into_marginal_sparse(gtr, &graph)?];
+    let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
+    let mut recon = SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
 
-    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
-    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let log_lh_first = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    let log_lh_second = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
 
     // Verify log-likelihood value matches expected (same tree/alignment as normalization test)
     pretty_assert_ulps_eq!(-55.33813399214274, log_lh_first, epsilon = 1e-6);
@@ -433,23 +452,21 @@ mod tests {
     let graph: Graph = graph;
     let gtr = make_nonuniform_gtr()?;
 
-    let (log_lh, partitions) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
+    let (log_lh, recon) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
 
     // note that this LH is slightly different from dense or python treetime due to
     // different handling of ambiguous characters (value from test_scripts/ancestral_sparse.py)
     pretty_assert_ulps_eq!(-56.76471324493305, log_lh, epsilon = 1e-6);
 
-    let partition = &partitions[0];
-
     // test variable position distribution at the root (pos 0)
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
-    let root_profile = &partition.nodes[&root_key].profile;
+    let root_profile = &recon.node_states[&root_key].profile;
     let pos_zero_root = array![0.28212327, 0.21643546, 0.13800802, 0.36343326];
     pretty_assert_ulps_eq!(&root_profile.variable[&0].dis, &pos_zero_root, epsilon = 1e-6);
 
     // test variable position distribution at internal node AB (pos 0)
     let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB node should exist");
-    let ab_profile = &partition.nodes[&ab_key].profile;
+    let ab_profile = &recon.node_states[&ab_key].profile;
     let pos_zero_ab = array![0.51275208, 0.09128506, 0.24647255, 0.14949031];
     pretty_assert_ulps_eq!(&ab_profile.variable[&0].dis, &pos_zero_ab, epsilon = 1e-6);
 
@@ -510,14 +527,16 @@ mod tests {
           let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?;
 
           let fitch = create_fitch_partition(&graph, 0, alphabet.clone(), &aln, &names)?;
-          let mut partitions_marginal_sparse = [fitch.into_marginal_sparse(gtr.clone(), &graph)?];
+          let (partition, node_states) = fitch.into_marginal_sparse(gtr.clone(), &graph)?;
+          let mut recon = SparseReconstruction {
+            partition,
+            node_states,
+            backward: BTreeMap::new(),
+            forward: BTreeMap::new(),
+            estimates: BTreeMap::new(),
+          };
 
-          let log_lh = marginal_update(
-            &graph,
-            &profile_branch_lengths(&branch_lengths),
-            &mut partitions_marginal_sparse,
-          )?
-          .value();
+          let log_lh = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
           total_lh += log_lh.exp();
         }
       }
@@ -561,17 +580,24 @@ mod tests {
 
     let graph: Graph = graph;
     let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
-    let mut partitions = [fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?];
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let (partition, node_states) = fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?;
+    let mut recon = SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
 
     let actual_by_edge = {
-      let partition = &partitions[0];
+      let readout = recon.readout();
       graph
         .get_edges()
         .iter()
         .map(|edge| {
           let edge_key = edge.read_arc().key();
-          let actual = partition.edge_subs(&graph, edge_key)?;
+          let actual = readout.edge_subs(&graph, edge_key)?;
           Ok((edge_key, actual))
         })
         .collect::<Result<BTreeMap<_, _>, Report>>()?
@@ -580,24 +606,28 @@ mod tests {
     // Reconstruct node sequences, then turn parent-child sequence differences
     // into the expected branch changes.
     let mut seqs_by_name = BTreeMap::new();
-    ancestral_reconstruction_marginal(
-      &graph,
-      true,
-      false,
-      &mut partitions,
-      SampleMode::Argmax,
-      &mut rand::thread_rng(),
-      |key, seq| {
-        seqs_by_name.insert(
-          names[&key].clone().expect("all test nodes should have names"),
-          seq.clone(),
-        );
-        Ok(())
-      },
-    )?;
+    {
+      let SparseReconstruction {
+        partition,
+        node_states,
+        forward,
+        ..
+      } = &mut recon;
+      let mut rng = rand::thread_rng();
+      ancestral_reconstruction(
+        &graph,
+        |node| partition.reconstruct_node_sequence(node_states, forward, node, true, false, SampleMode::Argmax, &mut rng),
+        |key, seq| {
+          seqs_by_name.insert(
+            names[&key].clone().expect("all test nodes should have names"),
+            seq.clone(),
+          );
+          Ok(())
+        },
+      )?;
+    }
 
-    let partition = &partitions[0];
-    let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &names, partition, &seqs_by_name)?;
+    let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &names, &recon.partition, &seqs_by_name)?;
 
     assert_eq!(expected_by_edge, actual_by_edge);
     Ok(())
@@ -639,22 +669,21 @@ mod tests {
           branch_lengths,
           ..
         } = nwk_read_str(newick)?;
-        let (_, partitions) = run_sparse_marginal(
+        let (_, recon) = run_sparse_marginal(
           &graph,
           &branch_lengths,
           &names,
           &alignment,
           jc69(JC69Params::default())?,
         )?;
-        let partition = &partitions[0];
         Ok((
-          partition.nodes[&graph.get_exactly_one_root()?.read_arc().key()]
+          recon.node_states[&graph.get_exactly_one_root()?.read_arc().key()]
             .profile
             .log_lh
             .value()
             .to_bits(),
-          json_write_str(&partition.nodes, JsonPretty(false))?,
-          json_write_str(&partition.edges, JsonPretty(false))?,
+          json_write_str(&recon.node_states, JsonPretty(false))?,
+          json_write_str(&(&recon.backward, &recon.forward, &recon.estimates), JsonPretty(false))?,
         ))
       })
     }
