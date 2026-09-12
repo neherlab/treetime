@@ -162,8 +162,7 @@ mod tests {
     }
 
     /// The date state the positional-likelihood tests exercise, built as values: committed times on
-    /// the two nodes and a branch-length distribution on the single edge, the same fields the
-    /// payload-reading seed used to lift off the graph.
+    /// the two nodes and a branch-length distribution on the single edge.
     pub fn positional_state(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> TimetreeState {
       let root_key = find_node_key_by_name(graph, names, "root").expect("root must exist");
       let child_key = find_node_key_by_name(graph, names, "child").expect("child must exist");
@@ -196,8 +195,7 @@ mod tests {
     }
 
     /// The coalescent node-time value the collectors consume, derived from the date constraints
-    /// [`load_date_constraints`] returns via the value seed, matching what the payload-reading seed
-    /// produced right after the constraints load.
+    /// [`load_date_constraints`] returns via the value seed.
     pub fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
       TimetreeState::seed_from_values(graph, constraints).coalescent_node_times()
     }

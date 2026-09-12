@@ -9,8 +9,7 @@ use treetime_graph::pass::{
   GraphMapOutputs, GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput,
 };
 
-/// Per-node clock inference fields, held as a value keyed by [`GraphNodeKey`] instead of on the
-/// graph node payload.
+/// Per-node clock inference fields, held as a value keyed by [`GraphNodeKey`].
 ///
 /// `time` is the observed or estimated date the regression reads for a leaf; `div` the cumulative
 /// divergence; `bad_branch` and `is_outlier` the two exclusion flags; `clock_set` the accumulated
@@ -26,8 +25,7 @@ pub struct ClockNodeState {
   pub is_outlier: bool,
 }
 
-/// Per-edge clock messages, held as a value keyed by [`GraphEdgeKey`] instead of on the graph edge
-/// payload. The three clock messages are recomputed by the regression passes and re-oriented on
+/// Per-edge clock messages, held as a value keyed by [`GraphEdgeKey`]. The three clock messages are recomputed by the regression passes and re-oriented on
 /// reroot. `time_length` and `gamma` are the branch's solver-updated duration and relaxed-clock rate
 /// multiplier the re-estimation reads to convert time back to divergence; they are seeded from the
 /// date state in the refinement loop and stay at their defaults elsewhere, where the regression reads
@@ -74,12 +72,12 @@ impl ClockState {
     Self { nodes, edges }
   }
 
-  /// Seed clock state from value inputs instead of the graph payload, for tests that drive the clock
-  /// passes without populating node payloads.
+  /// Seed clock state from value inputs, for tests that drive the clock
+  /// passes.
   ///
   /// Each node's date comes from `times` (`None` for a missing key, matching a leaf without a date),
   /// reproducing the timetree state's likely-time selection at the clock seed point. The divergence and outlier flag
-  /// start at their payload defaults (`0.0` and `false`), `bad_branch` starts false, the clock set
+  /// start at their defaults (`0.0` and `false`), `bad_branch` starts false, the clock set
   /// starts default (the backward pass recomputes the root clock set before it is read), and every
   /// edge starts default.
   pub fn seed_from_values<D>(graph: &Graph<D>, times: &BTreeMap<GraphNodeKey, Option<f64>>) -> Self
@@ -127,8 +125,6 @@ impl ClockState {
   /// (also from the date state); the re-estimation reads them to convert time back to divergence.
   /// Every other seed path leaves these at their defaults, where the regression reads input branch
   /// lengths instead.
-  ///
-  /// [`reseed_transitional_from_payloads`]: ClockState::reseed_transitional_from_payloads
   pub fn reseed_transitional_from_times<D>(
     &mut self,
     graph: &Graph<D>,
@@ -207,8 +203,8 @@ impl ClockState {
   /// Run a value-returning backward pass over the clock state through the graph's dependency
   /// engine, replacing the per-node and per-edge maps with the visitor's outputs.
   ///
-  /// The engine reads the node/edge inputs from the current state and reproduces the same
-  /// thread-independent, deterministic child fold order as the payload-based passes.
+  /// The engine reads the node/edge inputs from the current state and uses a
+  /// thread-independent, deterministic child fold order.
   pub fn map_backward<D, F>(&mut self, graph: &Graph<D>, visit: F) -> Result<(), Report>
   where
     D: Send + Sync,

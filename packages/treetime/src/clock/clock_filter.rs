@@ -85,7 +85,7 @@ where
   // Compute each leaf's outlier decision in parallel from the clock state (read-only), then apply
   // the results serially. A `BTreeMap` cannot be mutated concurrently, so the write phase is split
   // out; the decisions are per-leaf independent and the count is order-free, so this is bit-identical
-  // to the payload-based per-node locked write.
+  // to a serial per-node write.
   let outlier_updates: Vec<(GraphNodeKey, bool, i32)> = graph
     .get_leaves()
     .par_iter()

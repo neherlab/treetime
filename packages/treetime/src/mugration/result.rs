@@ -192,8 +192,8 @@ impl MugrationResult {
   ) -> Self {
     // Gather the per-node name/confidence and per-edge branch length off the tree into keyed value
     // maps the output writers consume. Trait assignments and entropy stay sourced from the discrete
-    // partition; the name comes from the passed name map, and input-branch-support and branch-length
-    // reads move off the payload. Topology ordering reorders children only, so these maps match what
+    // partition; the name comes from the passed name map, and input-branch-support and branch length
+    // come from the passed value maps. Topology ordering reorders children only, so these maps match what
     // the post-order writers read.
     let nodes: BTreeMap<GraphNodeKey, MugrationNodeOut> = graph
       .get_nodes()

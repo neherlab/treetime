@@ -129,31 +129,31 @@ pub struct TimetreeOutput {
   pub coalescent: Option<CoalescentOutput>,
   /// Per-node rate-susceptibility date triples from [`compute_rate_susceptibility`], keyed by node.
   /// Empty when the run computed no rate susceptibility. The output gather reads each node's triple
-  /// from here rather than from the graph payload.
+  /// from here.
   #[serde(skip)]
   pub rate_susceptibility_dates: BTreeMap<GraphNodeKey, [f64; 3]>,
-  /// Committed clock-constrained branch lengths keyed by edge, routed through the pipeline as a value
-  /// instead of on the graph payload. The output gather and the final reconstruction read each edge's
+  /// Committed clock-constrained branch lengths keyed by edge, routed through the pipeline as a value.
+  /// The output gather and the final reconstruction read each edge's
   /// clock length from here.
   #[serde(skip)]
   pub clock_branch_lengths: BTreeMap<GraphEdgeKey, f64>,
   /// Final raw per-edge branch lengths keyed by edge, maintained in place across the pipeline's ML
   /// pre-steps, reroots, and polytomy resolution. The output gather and the tree writers read each
-  /// edge's raw length from here rather than off the graph payload.
+  /// edge's raw length from here.
   #[serde(skip)]
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  /// Persistent per-node clock state carrying the node divergence and outlier flag as values instead
-  /// of on the graph payload. The output gather reads each node's divergence and outlier flag from
-  /// here rather than off the payload.
+  /// Persistent per-node clock state carrying the node divergence and outlier flag as values.
+  /// The output gather reads each node's divergence and outlier flag from
+  /// here.
   #[serde(skip)]
   pub clock_state: ClockState,
   /// Persistent per-node/per-edge date state carrying the committed node times and time distributions
-  /// as values instead of on the graph payload. The output gather reads each node's committed time
-  /// from here rather than off the payload.
+  /// as values. The output gather reads each node's committed time
+  /// from here.
   #[serde(skip)]
   pub timetree_state: TimetreeState,
-  /// Final node names keyed by node, routed through the pipeline as a value instead of on the graph
-  /// payload. Surviving nodes keep their parsed or previously assigned names; the caller completes it
+  /// Final node names keyed by node, routed through the pipeline as a value.
+  /// Surviving nodes keep their parsed or previously assigned names; the caller completes it
   /// with [`assign_node_names`](treetime_graph::assign_node_names::assign_node_names) to label any
   /// node a reroot introduced after the last topology pass.
   #[serde(skip)]
@@ -195,23 +195,22 @@ pub fn run(
 
   // The persistent date state the whole pipeline shares, created right after the date constraints are
   // loaded so it is the single home of the date inputs. Seeded directly from the value maps
-  // `load_date_constraints` returns rather than off the graph payload. Every clock call reads the node
+  // `load_date_constraints` returns. Every clock call reads the node
   // dates back from it through `likely_times()`: before any date pass runs the time distribution equals
   // the date constraint, so those dates match the input constraints. The date passes later refine the
-  // distributions and carry the branch-length distributions and backward messages here in place of the
-  // graph payloads.
+  // distributions and carry the branch-length distributions and backward messages here.
   let mut timetree_state = TimetreeState::seed_from_values(&input.graph, &date_constraints);
 
   // The persistent clock state shared across the whole pipeline. The node divergence and outlier flag
-  // live here as values rather than on the graph payloads; `initialize_node_divergences` fills the
+  // live here as values; `initialize_node_divergences` fills the
   // divergence, the clock filter marks outliers into it, and every later clock call reads both back.
   // The node dates come from the date state, and the clock set is recomputed by every backward
-  // regression, so neither is seeded from the payload.
+  // regression.
   let mut clock_state = ClockState::new(&input.graph);
 
   // The raw per-edge branch lengths, maintained in place for the whole pipeline: the parsed lengths,
   // updated by the ML pre-steps, the reroots, and polytomy resolution. Every consumer reads its edge
-  // length from here instead of off the graph payload.
+  // length from here.
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
 
   initialize_node_divergences(&input.graph, &mut clock_state, &branch_lengths, names)?;
@@ -390,7 +389,7 @@ pub fn run(
     .collect();
 
   // Initial time tree. Snapshot the current per-edge lengths for this pass; the branch-distribution
-  // construction and forward pass read them and the names map instead of the payload.
+  // construction and forward pass read them and the names map.
   run_timetree(
     &mut input.graph,
     &partitions,
@@ -416,7 +415,7 @@ pub fn run(
   }
   let coalescent = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
 
-  // The node times the coalescent reads, sourced from the value state instead of the graph payload.
+  // The node times the coalescent reads, sourced from the value state.
   // Built once here because nothing changes the times between the frozen lineage counts and the
   // initial Tc estimate.
   let coalescent_node_times = timetree_state.coalescent_node_times();
@@ -641,7 +640,7 @@ pub fn run(
 
   // Confidence-interval labels read from the threaded names map, current after the loop's last
   // `assign_node_names` (the last pass that could rename or re-parent a node), so each interval reads
-  // its label from the map instead of the payload.
+  // its label from the map.
   let confidence_intervals = (matches!(time_marginal, TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always)
     || rate_std.is_some())
   .then(|| extract_confidence_intervals(&input.graph, &timetree_state, &rate_susceptibility_dates, &names));

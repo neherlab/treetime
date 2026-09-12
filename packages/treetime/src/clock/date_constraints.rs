@@ -12,7 +12,7 @@ use treetime_io::dates_csv::{DateConstraint, DateValue, DatesMap};
 /// The per-node date inputs [`load_date_constraints`] derives from the dates metadata, keyed by node.
 ///
 /// Returned as values so the timetree pipeline can seed [`TimetreeState`] from them directly
-/// (see [`TimetreeState::seed_from_values`]) rather than reading them back off the graph payload.
+/// (see [`TimetreeState::seed_from_values`]).
 /// `date_constraints` is the fixed input date per node, `time_distributions` its initial posterior
 /// (equal to the constraint before any date pass refines it), and `bad_branches` the exclusion flag.
 /// Every node of the tree has an entry in each map.

@@ -207,7 +207,7 @@ mod tests {
     create_branch_distributions_input_mode(&graph, &branch_lengths, 0.001, &mut state)?;
 
     assert_eq!(Some(7.5), state.edge(edge_key).time_length);
-    // The branch-length distribution lives in the value now, not on the payload.
+    // The branch-length distribution lives in the value.
     assert_eq!(
       Some(7.5),
       state

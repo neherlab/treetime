@@ -51,8 +51,7 @@ fn node_time(entry: &CoalescentNodeTime) -> Option<f64> {
 
 /// Collects inferred child and parent dates for all non-root edges.
 ///
-/// Node times come from `node_times`, keyed by node, instead of the graph payload; `bad_branch`
-/// stays on the payload.
+/// Node times and the `bad_branch` flag come from `node_times`, keyed by node.
 pub fn collect_coalescent_edges<D>(
   graph: &Graph<D>,
   node_times: &CoalescentNodeTimes,

@@ -48,7 +48,7 @@ pub const EPS: f64 = 5e-4;
 /// `branch_lengths` and `names` are the per-edge branch-length and per-node name maps the caller
 /// snapshots from the current tree just before this pass. The branch-distribution construction reads
 /// each edge's length from `branch_lengths`, and the forward pass reads each node's label from
-/// `names`, rather than off the graph payload. The caller re-snapshots them after any length or
+/// `names`. The caller re-snapshots them after any length or
 /// topology change so each pass sees the current tree.
 pub fn run_timetree<P>(
   graph: &mut Graph<()>,
@@ -70,8 +70,8 @@ where
   initialize_node_divergences(graph, clock_state, branch_lengths, names)?;
 
   // Rebuild the state's maps for the current topology, carrying every value-resident date field
-  // forward. Times, distributions, bad-branch flags, and time lengths all live on the state now
-  // (their producers write them straight into it), so no payload re-read is needed.
+  // forward. Times, distributions, bad-branch flags, and time lengths all live on the state
+  // (their producers write them straight into it).
   state.reseed_from_values(graph);
 
   info!("## Using clock model");

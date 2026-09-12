@@ -41,22 +41,22 @@ pub(crate) struct Refinement<'a> {
   pub rng: &'a mut dyn rand::RngCore,
   pub options: &'a RefinementOptions,
   /// Persistent per-node/per-edge date state routed across the whole pipeline. The date passes
-  /// carry the branch-length distributions and backward messages here instead of on the payloads.
+  /// carry the branch-length distributions and backward messages here.
   pub state: &'a mut TimetreeState,
   /// Persistent per-node/per-edge clock state routed across the whole pipeline. The node divergence
-  /// and outlier flag live here instead of on the payloads; the clock re-estimation reads them back
+  /// and outlier flag live here; the clock re-estimation reads them back
   /// from it, and each `run_timetree` refreshes the divergence into it.
   pub clock_state: &'a mut ClockState,
   /// Committed clock-constrained branch lengths keyed by edge, routed so the M-step damps against
-  /// the previous round's value without reading it back off the payload.
+  /// the previous round's value.
   pub clock_branch_lengths: &'a mut BTreeMap<GraphEdgeKey, f64>,
-  /// Raw per-edge branch lengths routed across the loop instead of read off the payload. Polytomy
+  /// Raw per-edge branch lengths routed across the loop. Polytomy
   /// resolution adds and merges edges and updates this map in place.
   pub branch_lengths: &'a mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  /// Per-node names routed across the loop instead of read off the payload. Polytomy resolution adds
+  /// Per-node names routed across the loop. Polytomy resolution adds
   /// nodes and re-runs `assign_node_names`; this map is refreshed from that call's return so every
   /// later reader (this round's `run_timetree` and the pipeline's post-loop consumers) sees the
-  /// current labels without a payload read.
+  /// current labels.
   pub names: &'a mut BTreeMap<GraphNodeKey, Option<String>>,
 }
 
@@ -155,7 +155,7 @@ impl Refinement<'_> {
     propagate_bad_branches(self.graph, self.state)?;
     prepare_tree_after_topology_change(self.graph, self.state)
       .wrap_err("Failed to prepare tree after topology change")?;
-    // Reset the value-resident edge fields for the new topology, the counterpart of the payload reset
+    // Reset the value-resident edge fields for the new topology, the counterpart of the reset
     // `prepare_tree_after_topology_change` performs on the transitional fields.
     self.state.reset_date_edges_for_topology_change(self.graph);
     for partition in self.partitions.iter_mut() {
@@ -233,7 +233,7 @@ impl Refinement<'_> {
     // Re-read the clock inputs while preserving the value-resident divergence and outlier flag, then
     // re-estimate on the threaded state with the root kept (no reroot in the refinement loop). This
     // matches the standalone `estimate_clock_model_with_reroot` convenience, except the outlier flag
-    // and the node dates come from the threaded values rather than the payload: the date passes have
+    // and the node dates come from the threaded values: the date passes have
     // refined the times on the date state since the last clock call.
     let edge_inputs: BTreeMap<GraphEdgeKey, (Option<f64>, f64)> = self
       .state

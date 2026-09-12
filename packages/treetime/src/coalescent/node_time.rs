@@ -16,10 +16,9 @@ pub struct CoalescentNodeTime {
   /// Likely time of the node's time distribution, when one exists.
   pub time_dist_likely: Option<f64>,
   /// Whether the node is excluded as a bad branch. The collectors skip a node with this set, reading
-  /// it from here instead of off the graph payload.
+  /// it from here.
   pub bad_branch: bool,
 }
 
-/// Per-node inferred times keyed by node, threaded into the coalescent collectors instead of read
-/// off the graph payload.
+/// Per-node inferred times keyed by node, threaded into the coalescent collectors.
 pub type CoalescentNodeTimes = BTreeMap<GraphNodeKey, CoalescentNodeTime>;

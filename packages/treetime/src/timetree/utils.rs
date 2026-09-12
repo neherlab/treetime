@@ -18,7 +18,7 @@ const MIN_TIME_MUTATION_FRACTION: f64 = 0.01;
 /// Compute each node's cumulative root divergence and store it in the clock state value.
 ///
 /// The divergence is a durable clock input carried between passes. It lives only in the threaded
-/// [`ClockState`], not on the node payload; a node absent from the state (introduced by a topology
+/// [`ClockState`]; a node absent from the state (introduced by a topology
 /// change since the last rebuild) is inserted with default fields before its divergence is written,
 /// so a fresh polytomy or reroot node gets its divergence here rather than a stale zero.
 pub fn initialize_node_divergences<D>(

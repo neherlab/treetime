@@ -16,8 +16,8 @@ mod tests {
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::io::json::json_read_str;
 
-  /// Plain data holder for the per-node expected values compared against JSON. Node data now lives in
-  /// value maps rather than a graph payload, so this is a test-local record, not a graph node type.
+  /// Plain data holder for the per-node expected values compared against JSON. Node data lives in
+  /// value maps, so this is a test-local record, not a graph node type.
   #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
   struct TestNode {
     name: Option<String>,

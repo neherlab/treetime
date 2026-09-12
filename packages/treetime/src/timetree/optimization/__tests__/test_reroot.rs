@@ -41,8 +41,7 @@ mod tests {
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  /// Per-leaf date inputs as a value map, replacing the payload `time_distribution` the tests used to
-  /// write. Each dated leaf carries a point distribution at its date; internal nodes get no entry,
+  /// Per-leaf date inputs as a value map. Each dated leaf carries a point distribution at its date; internal nodes get no entry,
   /// which `seed_from_values` reads as no constraint.
   fn date_constraints(names: &BTreeMap<GraphNodeKey, Option<String>>, graph: &Graph) -> DateConstraints {
     let dates = btreemap! {

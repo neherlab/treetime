@@ -29,7 +29,7 @@ pub struct ChildRef {
 /// exists by the time it is referenced.
 ///
 /// Original children are relocated with [`treetime_graph::graph::Graph::reparent_edge`], which
-/// preserves the edge key and payload. That matters here: the child's `branch_length` is the
+/// preserves the edge key. That matters here: the child's `branch_length` is the
 /// observed mutation length, which `prepare_tree_after_topology_change` deliberately keeps to
 /// seed the next inference pass, and partition state is keyed by edge key, so a fresh key
 /// would have its entry rebuilt as empty. Only `time_length` is rewritten, since only the
@@ -166,8 +166,7 @@ fn validate_plan(parent_time: f64, children: &[ChildRef], plan: &SubtreePlan) ->
 
 /// Place one lineage under `new_parent_key`, setting the connecting edge's `time_length`.
 ///
-/// The time length is written into the threaded [`TimetreeState`] value (the home the reseed reads)
-/// and mirrored onto the edge payload transitionally.
+/// The time length is written into the threaded [`TimetreeState`] value (the home the reseed reads).
 fn attach(
   graph: &mut Graph,
   children: &[ChildRef],
@@ -185,7 +184,7 @@ fn attach(
   let time_length = lineage_time - new_parent_time;
 
   if let Some(child) = children.get(lineage) {
-    // An original child: relocate its existing edge, keeping key and payload.
+    // An original child: relocate its existing edge, keeping its key.
     graph.reparent_edge(child.edge_key, new_parent_key)?;
     state.edges.entry(child.edge_key).or_default().time_length = Some(time_length);
   } else {

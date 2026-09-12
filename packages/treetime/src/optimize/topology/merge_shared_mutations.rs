@@ -333,7 +333,7 @@ fn merge_sibling_group(
 
   let new_node_key = graph.add_node();
 
-  // New edges carry their length in the branch-length map, not the payload.
+  // New edges carry their length in the branch-length map.
   let new_parent_edge_key = graph.add_edge(parent_key, new_node_key)?;
   branch_lengths.insert(new_parent_edge_key, Some(new_edge_bl));
 

@@ -22,8 +22,7 @@ use treetime_grid::Side;
 /// after all child messages have been combined.
 ///
 /// Runs on the persistent [`TimetreeState`] value the caller routes through the whole pipeline,
-/// refining the node posteriors and backward messages in place. The caller owns re-reading the
-/// transitional payload fields into the state and writing the results back.
+/// refining the node posteriors and backward messages in place.
 pub fn propagate_distributions_backward<D>(
   graph: &Graph<D>,
   coalescent_model: Option<&CoalescentModel>,

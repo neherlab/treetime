@@ -17,8 +17,7 @@ use treetime_grid::Side;
 /// Refines node time distributions and commits point-estimate times forward from root to leaves.
 ///
 /// Runs on the persistent [`TimetreeState`] value the caller routes through the whole pipeline,
-/// refining the posteriors and committing point-estimate times in place. The caller owns re-reading
-/// the transitional payload fields into the state and writing the results back. The count of nodes
+/// refining the posteriors and committing point-estimate times in place. The count of nodes
 /// whose given date the rest of the tree contradicted is folded out of the per-node outputs.
 pub fn propagate_distributions_forward<D>(
   graph: &Graph<D>,

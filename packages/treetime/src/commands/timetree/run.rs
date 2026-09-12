@@ -100,7 +100,7 @@ pub fn run_timetree_estimation(
   // live only on the input leaf FASTA records; partition init keys them to leaves by matching each
   // leaf name to its record (first record wins on a duplicate name). Capture that same name-keyed
   // map here, before the alignment moves into the pipeline, so the consumers can rebuild a
-  // node-keyed description map from the final `names` map instead of reading it off the payload.
+  // node-keyed description map from the final `names` map.
   let aln_descs = input_data
     .aln
     .iter()
@@ -132,7 +132,7 @@ pub fn run_timetree_estimation(
   //
   // `assign_node_names` returns `node_names` taken after the write, so this is also the post-mutation
   // re-snapshot: every downstream reader -- the reconstructed FASTA writer, the gather, and the
-  // tree/augur output writers -- reads each node's name from this map instead of the payload. The
+  // tree/augur output writers -- reads each node's name from this map. The
   // later `marginal_update` and reconstruction touch neither names nor branch lengths, and topology
   // ordering only permutes keys, so the map still describes the final tree at every later point.
   let names = assign_node_names(output.names, &output.graph)?;
@@ -142,7 +142,7 @@ pub fn run_timetree_estimation(
   // from the name-keyed `aln_descs` captured from the input alignment. A leaf resolves to its FASTA
   // record's description; an internal node (including the fresh root named above, which matches no
   // record) resolves to `None`. This reproduces exactly what partition init wrote onto each leaf by
-  // the same name-to-record match, without routing the value through the payload.
+  // the same name-to-record match.
   let descs: BTreeMap<GraphNodeKey, Option<String>> = names
     .iter()
     .map(|(&key, name)| {
@@ -330,8 +330,7 @@ pub fn run_timetree_estimation(
   }
 
   if !resolved.tree_outputs.is_empty() {
-    // The `date` Newick/Nexus comment, supplied from the gathered node times as a value instead of
-    // read off the payload.
+    // The `date` Newick/Nexus comment, supplied from the gathered node times as a value.
     let date_times: BTreeMap<GraphNodeKey, f64> = nodes
       .iter()
       .filter_map(|(key, out)| out.time.map(|time| (*key, time)))
@@ -385,18 +384,18 @@ pub fn run_timetree_estimation(
 /// value states carry the durable results as values; this step surfaces them as a standalone value
 /// the output writers consume.
 ///
-/// `rate_susceptibility_dates` carries the per-node date triples the pipeline returns as a value
-/// rather than on the payload; each node's triple is read from here. `clock_branch_lengths` likewise
+/// `rate_susceptibility_dates` carries the per-node date triples the pipeline returns as a value;
+/// each node's triple is read from here. `clock_branch_lengths` likewise
 /// carries the committed clock branch length per edge as a value; each edge's clock length is read
-/// from here rather than off the payload. `clock_state` carries each node's divergence and outlier
-/// flag as values; both are read from here rather than off the payload. `timetree_state` carries each
-/// node's committed time as a value; the time is read from here rather than off the payload. `names`
+/// from here. `clock_state` carries each node's divergence and outlier
+/// flag as values; both are read from here. `timetree_state` carries each
+/// node's committed time as a value; the time is read from here. `names`
 /// and `branch_lengths` are the post-mutation node-name and per-edge branch-length maps captured
-/// after the final naming pass; each node's name and each edge's branch length is read from them
-/// rather than off the payload. `descs` is the node-keyed description map rebuilt from the input
-/// alignment; each node's description is read from here rather than off the payload. `confidences`
+/// after the final naming pass; each node's name and each edge's branch length is read from them.
+/// `descs` is the node-keyed description map rebuilt from the input
+/// alignment; each node's description is read from here. `confidences`
 /// carries the parse-time input-tree branch support per node; each node's input branch support is
-/// read from here rather than off the payload, and a node the pipeline created after the parse is
+/// read from here, and a node the pipeline created after the parse is
 /// absent and reads as `None`.
 fn gather_timetree_outputs(
   graph: &Graph<TimetreeGraphData>,

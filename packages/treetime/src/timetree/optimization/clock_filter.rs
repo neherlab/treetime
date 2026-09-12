@@ -22,7 +22,7 @@ pub struct OutlierRecord {
 ///
 /// The outlier flag and divergence come from the threaded [`ClockState`] value, and the given date
 /// from the date-state `given_dates` map (the same node dates the filter regressed on); the leaf name
-/// stays transitional on the payload.
+/// from the `names` map.
 pub fn collect_outliers(
   graph: &Graph,
   clock_state: &ClockState,

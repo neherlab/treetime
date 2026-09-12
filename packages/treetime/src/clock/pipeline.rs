@@ -29,8 +29,7 @@ pub struct ClockInput {
   pub graph: Graph,
   pub dates: DatesMap,
   /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. Routed through
-  /// estimation (the reroot search updates it in place) and read by the regression gather instead of
-  /// the edge payload.
+  /// estimation (the reroot search updates it in place) and read by the regression gather.
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 

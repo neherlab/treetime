@@ -27,8 +27,7 @@ pub fn setup_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, D
 }
 
 /// Build the coalescent node-time value the collectors consume, from the date constraints
-/// [`load_date_constraints`] returns, matching what the payload-reading seed produced right after the
-/// constraints load: each node's committed time starts `None`, its distribution peak comes from the
+/// [`load_date_constraints`] returns: each node's committed time starts `None`, its distribution peak comes from the
 /// constraint, and its bad-branch flag from the constraint pass.
 pub fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
   TimetreeState::seed_from_values(graph, constraints).coalescent_node_times()

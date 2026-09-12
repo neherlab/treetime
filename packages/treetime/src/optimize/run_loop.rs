@@ -80,7 +80,7 @@ pub fn run_optimize_loop(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<OptimizeLoopResult, Report> {
   // Owned working copy of the routed names, refreshed from each `assign_node_names` the topology
-  // cleanup runs and returned so `run_optimize` reads the final tree's names without a payload re-read.
+  // cleanup runs and returned so `run_optimize` reads the final tree's names.
   let mut names = names.clone();
   // The loop's source of truth for branch lengths, keyed by edge id, holding `Option<f64>` so a
   // missing weight stays `None` end to end. Supplied by the caller (the parsed lengths after any
@@ -167,8 +167,7 @@ pub fn run_optimize_loop(
     }
 
     // The per-edge optimizer, damping, and topology cleanup all read and update the
-    // branch-length map in place; the map is the loop's source of truth and no longer round-trips
-    // through the edge payload.
+    // branch-length map in place; the map is the loop's source of truth.
     let old_branch_lengths = branch_lengths.clone();
     {
       let mixed_partitions = optimize_partition_view(dense_partitions, sparse_partitions);
@@ -210,7 +209,7 @@ pub fn run_optimize_loop(
 
   // The final branch-length map is the loop's result. On a normal exit it holds the optimized
   // lengths; after a rollback it holds the recovered best lengths. Callers read it directly (the
-  // gather and the post-loop marginal pass) rather than off the edge payload.
+  // gather and the post-loop marginal pass).
   Ok(OptimizeLoopResult {
     branch_lengths,
     names,
@@ -253,12 +252,11 @@ pub enum ConvergenceReason {
 #[derive(Clone, Debug, Default)]
 pub struct OptimizeLoopResult {
   /// Final optimized (or rolled-back best) branch lengths, keyed by edge id. This is the loop's
-  /// source of truth; `run_optimize` feeds it to the post-loop marginal pass and the output gather
-  /// instead of reading the edge payload.
+  /// source of truth; `run_optimize` feeds it to the post-loop marginal pass and the output gather.
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 
   /// Final node names, keyed by node id, refreshed from each `assign_node_names` the loop's topology
-  /// cleanup runs. `run_optimize` returns these instead of re-reading the node payload after the loop.
+  /// cleanup runs. `run_optimize` returns these.
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
 
   /// Total log-likelihood recorded at the start of each iteration, before that iteration's

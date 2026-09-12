@@ -74,12 +74,11 @@ pub struct OptimizeOutput {
   #[serde(skip)]
   pub dense_partitions: Vec<PartitionMarginalDense>,
   /// Final optimized branch lengths, keyed by edge id. The optimize loop is the source of truth;
-  /// the command gather reads these instead of the edge payload.
+  /// the command gather reads these.
   #[serde(skip)]
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   /// Final node names, keyed by node id, captured after the optimize loop's topology cleanup
-  /// re-runs `assign_node_names`. The command gather and output writers read these instead of the
-  /// node payload.
+  /// re-runs `assign_node_names`. The command gather and output writers read these.
   #[serde(skip)]
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
 }
@@ -251,7 +250,7 @@ pub fn run(
   // The loop's topology cleanup collapses edges, resolves polytomies, and re-runs `assign_node_names`
   // (adding or removing node keys and naming new internal nodes); the loop refreshes and returns the
   // node-name map from each such call, so the command gather and output writers read the final tree's
-  // names, not the pre-loop payload.
+  // names.
   let names = loop_result.names;
 
   Ok(OptimizeOutput {

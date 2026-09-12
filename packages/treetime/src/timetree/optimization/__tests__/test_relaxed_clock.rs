@@ -479,7 +479,7 @@ mod tests {
     }
 
     /// Fresh date state whose edge time lengths come from the value path: each edge's time length is
-    /// `factor * branch_length`, replacing what the tests previously wrote onto the edge payload.
+    /// `factor * branch_length`.
     pub fn seed_state_scaled(
       graph: &Graph,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,

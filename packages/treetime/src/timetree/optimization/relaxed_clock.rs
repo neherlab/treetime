@@ -45,7 +45,7 @@ pub fn apply_relaxed_clock(
   let mut coeffs: BTreeMap<GraphNodeKey, RelaxedClockCoeffs> = BTreeMap::new();
 
   // `branch_lengths` is the per-edge length snapshot the caller took from the current tree; each
-  // node's parent-edge length is read from it rather than off the payload.
+  // node's parent-edge length is read from it.
 
   // Postorder pass: compute k1, k2 coefficients from leaves to root
   graph.iter_depth_first_postorder_forward(|node| {

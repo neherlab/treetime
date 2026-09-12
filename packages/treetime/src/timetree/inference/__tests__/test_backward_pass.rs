@@ -104,7 +104,7 @@ mod tests {
     let coalescent_model = coalescent_model(0.01)?;
 
     // Two passes on one threaded state, as the pipeline runs them: the second pass starts from the
-    // first pass's refined posteriors, the counterpart of the old payload round-trip between passes.
+    // first pass's refined posteriors.
     propagate_distributions_backward(&graph, Some(&coalescent_model), &mut state)?;
     propagate_distributions_backward(&graph, Some(&coalescent_model), &mut state)?;
 

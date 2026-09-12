@@ -96,7 +96,7 @@ pub fn run_optimize(
   // Gather the per-node name/confidence into a keyed value map the output writers consume. The name
   // comes from the pipeline's post-loop name map (`names`); topology ordering only permutes
   // children, so the map still matches the ordered tree. The optimized per-edge branch lengths come
-  // from the loop result (`branch_lengths`), not the edge payload; the writers still read sequences
+  // from the loop result (`branch_lengths`); the writers still read sequences
   // and model metadata from the graph data slot.
   let nodes: BTreeMap<GraphNodeKey, OptimizeNodeOut> = graph
     .get_nodes()

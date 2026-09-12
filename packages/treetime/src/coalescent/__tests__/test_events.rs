@@ -144,8 +144,7 @@ mod tests {
     let (mut graph, names, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
     let new_key = graph.add_node();
     let mut node_times = coalescent_node_times(&graph, &constraints);
-    // The disconnected node is active (has a time) but unreachable from the root, matching the payload
-    // seed that read the added node's time. Event collection is walked from the root, so this entry is
+    // The disconnected node is active (has a time) but unreachable from the root. Event collection is walked from the root, so this entry is
     // never consumed; the incompleteness is detected by the node count.
     node_times.insert(
       new_key,

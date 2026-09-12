@@ -110,9 +110,9 @@ pub fn run_ancestral_reconstruction(
   };
 
   // Every reconstruction consumer reads its node label from the `names` map from the parse and its
-  // edge branch length from the parsed `branch_lengths` value map instead of off the graph payload.
-  // Ancestral never renames or re-lengths after parse, so this map mirrors exactly what a consumer
-  // would have read off the payload at any later point. The pipeline and the amino-acid path derive
+  // edge branch length from the parsed `branch_lengths` value map.
+  // Ancestral never renames or re-lengths after parse, so this map stays accurate at any later point.
+  // The pipeline and the amino-acid path derive
   // the `f64` profile map (missing weight resolved to `0.0`) for the marginal passes from it, while
   // the `Option<f64>` map is read directly by the output writers and gather.
 
@@ -204,8 +204,7 @@ pub fn run_ancestral_reconstruction(
 
   // Gather the per-node name/confidence and per-edge branch length off the ordered tree into keyed
   // value maps the output writers consume. The writers still read sequences and model metadata from
-  // the graph data slot; these maps carry the name, input-branch-support, and branch-length reads
-  // that this step moves off the payload.
+  // the graph data slot; these maps carry the name, input-branch-support, and branch-length values.
   let nodes: BTreeMap<GraphNodeKey, AncestralNodeOut> = graph
     .get_nodes()
     .iter()

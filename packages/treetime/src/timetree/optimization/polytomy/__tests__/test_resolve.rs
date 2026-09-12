@@ -161,8 +161,7 @@ mod tests {
     rng: &mut dyn RngCore,
   ) -> Result<usize, Report> {
     let merger_rate = PiecewiseConstantFn::new(array![], array![TEST_MERGER_RATE]);
-    // `state` carries the node times `resolve_polytomies` reads, seeded as a value by the fixtures
-    // instead of read off the graph payload.
+    // `state` carries the node times `resolve_polytomies` reads, seeded as a value by the fixtures.
     resolve_polytomies(
       graph,
       &no_partitions(),

@@ -51,7 +51,7 @@ pub fn run(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<PruneOutput, Report> {
   // Entry maps propagated through the whole prune pipeline: every downstream name and branch length
-  // read comes from these maps, not the payload. `names` comes from the parse; `assign_node_names`
+  // read comes from these maps. `names` comes from the parse; `assign_node_names`
   // after a merge refreshes it to the post-topology labels; the collapse and merge producers maintain
   // `branch_lengths` in place across the topology edits, so both maps exit reflecting the final pruned
   // tree.

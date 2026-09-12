@@ -217,8 +217,7 @@ pub(crate) fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)
 /// `rate_susceptibility_dates` carries the per-node sorted date triples from
 /// [`compute_rate_susceptibility`], keyed by node; a node absent from the map contributes no rate
 /// term (empty map when the run computed no rate susceptibility). `names` is the node-name map the
-/// caller captures from the post-inference graph; each interval's label is read from it rather than
-/// off the payload.
+/// caller captures from the post-inference graph; each interval's label is read from it.
 pub fn extract_confidence_intervals(
   graph: &Graph,
   state: &TimetreeState,

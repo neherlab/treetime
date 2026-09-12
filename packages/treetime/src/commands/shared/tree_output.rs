@@ -1729,8 +1729,8 @@ fn build_trait_attrs(traits: BTreeMap<String, TraitValue>) -> Value {
   )
 }
 
-/// Sum of parent-edge branch lengths from `key` to the root, resolved from a snapshot value map
-/// rather than the payload. Matches `cumulative_branch_length` exactly: a missing (`None`) edge
+/// Sum of parent-edge branch lengths from `key` to the root, resolved from a snapshot value map.
+/// Matches `cumulative_branch_length` exactly: a missing (`None`) edge
 /// length short-circuits the whole sum to `None`.
 fn cumulative_branch_length_from<D>(
   graph: &Graph<D>,

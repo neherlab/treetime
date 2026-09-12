@@ -12,15 +12,13 @@ use treetime_graph::pass::{
   GraphMapOutputs, GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput,
 };
 
-/// Per-node date-inference fields, held as a value keyed by [`GraphNodeKey`] instead of on the graph
-/// node payload.
+/// Per-node date-inference fields, held as a value keyed by [`GraphNodeKey`].
 ///
 /// `time_distribution` is the node's posterior over its date, refined in place across the two date
 /// passes; `time` the committed point estimate; `bad_branch` the exclusion flag a parent reads when
 /// gathering child messages; `date_constraint` the fixed input date lifted back into the posterior on
 /// every backward pass, carried read-only; `contradicted` a per-pass flag the forward pass raises when
-/// the rest of the tree gives the given date no probability, folded into a diagnostic count and never
-/// stored on a payload.
+/// the rest of the tree gives the given date no probability, folded into a diagnostic count.
 #[derive(Debug, Clone, Default)]
 pub struct DateNodeState {
   pub time_distribution: Option<Arc<Distribution<NegLog>>>,
@@ -30,8 +28,7 @@ pub struct DateNodeState {
   pub contradicted: bool,
 }
 
-/// Per-edge date-inference fields, held as a value keyed by [`GraphEdgeKey`] instead of on the graph
-/// edge payload.
+/// Per-edge date-inference fields, held as a value keyed by [`GraphEdgeKey`].
 ///
 /// `branch_length_distribution` is the branch's time-duration law the passes convolve across;
 /// `msg_to_parent` the backward message the child sends up, divided back out as the cavity on the
@@ -112,7 +109,7 @@ impl TimetreeState {
   }
 
   /// Rebuild the per-node and per-edge maps to match the current graph, carrying every value-resident
-  /// field forward without touching the payload.
+  /// field forward.
   ///
   /// Stays valid across a reroot or polytomy resolution that added or dropped nodes and edges: each
   /// surviving node and edge keeps its date constraint, bad-branch flag, committed time, time
@@ -120,13 +117,12 @@ impl TimetreeState {
   /// relaxed-clock rate multiplier from the previous state, and a node or edge a topology change
   /// introduced starts default. `contradicted` is a per-pass flag and always resets to false.
   ///
-  /// The bad-branch flag and committed time length used to be re-read off the payload here; they are
-  /// now written straight into this state by their producers -- the clock filter
+  /// The bad-branch flag and committed time length are written straight into this state by their
+  /// producers -- the clock filter
   /// ([`apply_outlier_bad_branches`](crate::timetree::optimization::clock_filter::apply_outlier_bad_branches)),
   /// the topology rebuild
   /// ([`propagate_bad_branches`](crate::timetree::optimization::clock_filter::propagate_bad_branches)),
-  /// and the branch-distribution builders and polytomy application for the time length -- so preserving
-  /// them from the state reproduces exactly what the payload re-read produced.
+  /// and the branch-distribution builders and polytomy application for the time length.
   pub fn reseed_from_values<D>(&mut self, graph: &Graph<D>)
   where
     D: Send + Sync,
@@ -176,7 +172,7 @@ impl TimetreeState {
   /// rate multiplier: they describe a parent-child pair that no longer exists. This blanks the
   /// distribution and message and resets `gamma` to the strict-clock `1.0` on every current edge (and
   /// adds default entries for edges and nodes the topology change introduced), the counterpart of the
-  /// payload reset
+  /// reset
   /// [`prepare_tree_after_topology_change`](crate::timetree::optimization::polytomy::prepare_tree_after_topology_change)
   /// does for the transitional fields. The following [`reseed_from_values`](Self::reseed_from_values) preserves
   /// these blanked values, so the branch-distribution builders start each surviving edge from `None`.
@@ -218,8 +214,8 @@ impl TimetreeState {
   }
 
   /// Build the coalescent node-time map from this state, so the coalescent collectors read node
-  /// times as a value instead of off the graph payload. Each entry carries both the committed point
-  /// estimate and the distribution peak, matching the two payload reads the collectors replace.
+  /// times as a value. Each entry carries both the committed point
+  /// estimate and the distribution peak.
   #[must_use]
   pub fn coalescent_node_times(&self) -> CoalescentNodeTimes {
     self
@@ -269,8 +265,8 @@ impl TimetreeState {
   }
 
   /// Run a value-returning backward pass over the date state through the graph's dependency engine,
-  /// replacing the per-node and per-edge maps with the visitor's outputs. Reproduces the same
-  /// thread-independent, deterministic child fold order as the payload-based passes.
+  /// replacing the per-node and per-edge maps with the visitor's outputs. Uses a
+  /// thread-independent, deterministic child fold order.
   pub fn map_backward<D, F>(&mut self, graph: &Graph<D>, visit: F) -> Result<(), Report>
   where
     D: Send + Sync,
@@ -351,7 +347,7 @@ mod tests {
   }
 
   /// Rebuilding the maps keeps the value-resident branch-length distribution and backward message for
-  /// edges already in the state, so they carry across passes without a payload round-trip.
+  /// edges already in the state, so they carry across passes.
   #[test]
   fn test_timetree_state_reseed_preserves_distribution_and_message() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str::<()>("((A:1.0,B:1.0)I:1.0)root;")?;

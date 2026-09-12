@@ -18,8 +18,7 @@ mod tests {
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  /// Per-leaf date inputs as a value map, replacing the payload `time_distribution` the tests used to
-  /// write. Each named leaf with a date carries a point distribution at that date.
+  /// Per-leaf date inputs as a value map. Each named leaf with a date carries a point distribution at that date.
   fn date_constraints(
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     graph: &Graph,
@@ -41,7 +40,7 @@ mod tests {
     }
   }
 
-  /// Seed the clock state from date-constraint values, reproducing the payload-reading seed: the date
+  /// Seed the clock state from date-constraint values: the date
   /// state built from `constraints` supplies each node's date through `likely_times`, and the clock
   /// state starts from those dates with default divergence and outlier flags.
   fn seed_clock_state(graph: &Graph, constraints: &DateConstraints) -> ClockState {

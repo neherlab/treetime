@@ -79,7 +79,7 @@ impl std::ops::Deref for ClockResult {
 /// Runs after clock estimation, rerooting, and topology ordering. Each node's divergence, time, and
 /// exclusion flags come from the `ClockState` value the pipeline routed through estimation and
 /// rerooting; each node's name from the post-reroot `names` map; each edge's branch length from the
-/// `branch_lengths` map. The graph payloads are not read here. The maps are keyed by the final
+/// `branch_lengths` map. The maps are keyed by the final
 /// (post-reroot) node and edge set.
 fn gather_clock_outputs(
   graph: &Graph<ClockGraphData>,
@@ -211,7 +211,7 @@ pub fn run_clock(
 
   // The pipeline's post-reroot name and branch-length maps carry the final tree's values; topology
   // ordering only permutes children, so the maps still match after `apply`. Both drive the gather
-  // and the tree-output writers below instead of a payload read.
+  // and the tree-output writers below.
   let (nodes, edges) = gather_clock_outputs(&graph, &state, &names, &branch_lengths);
 
   if !resolved.tree_outputs.is_empty() {

@@ -23,8 +23,7 @@ pub struct DivStatsField {
 /// subtree message at its child node (`to_parent`) and propagates it across the
 /// branch (`from_child`); a root-to-leaves pass derives the complementary
 /// rest-of-tree message (`to_child`) by subtracting a child's contribution from
-/// the node aggregate. Statistics are returned in maps rather than stored on the
-/// graph, since the optimize payloads carry no message fields.
+/// the node aggregate. Statistics are returned in maps.
 pub fn compute_div_stats<D>(
   graph: &Graph<D>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,

@@ -277,8 +277,7 @@ mod tests {
       input_tree: Option<&Path>,
     ) -> AugurNodeDataJsonRefine {
       // Mirror `run_optimize`: the node name comes from the pipeline's post-loop name map, the branch
-      // length from the loop result, and the input branch support from the parse-time confidence map,
-      // none of them off the graph payload.
+      // length from the loop result, and the input branch support from the parse-time confidence map.
       let node_outputs: BTreeMap<GraphNodeKey, OptimizeNodeOut> = output
         .graph
         .get_nodes()

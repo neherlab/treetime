@@ -289,7 +289,7 @@ mod tests {
     pub type NodeTimeEntry = (GraphNodeKey, Option<f64>, Option<Arc<Distribution<NegLog>>>);
 
     /// Date state built from the test nodes' committed times and distributions as values, so
-    /// `extract_confidence_intervals` reads them from the state rather than the graph payload.
+    /// `extract_confidence_intervals` reads them from the state.
     pub fn state(graph: &Graph, entries: &[NodeTimeEntry]) -> TimetreeState {
       let mut state = TimetreeState::new(graph);
       for (key, time, dist) in entries {

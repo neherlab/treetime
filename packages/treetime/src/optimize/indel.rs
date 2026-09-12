@@ -64,7 +64,7 @@ pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMet
 /// where $k_e$ is the indel count on edge $e$ and $t_e$ is the branch length.
 /// Returns 0 when there are no indels or total branch length is zero.
 ///
-/// Generic over the graph's node and edge payload types: the branch length of
+/// The branch length of
 /// each edge is supplied by the `branch_lengths` value map (ancestral, timetree, ...).
 pub fn estimate_indel_rate(
   graph: &Graph<()>,
