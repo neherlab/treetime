@@ -4,7 +4,7 @@ mod tests {
   use crate::clock::clock_filter::clock_filter_inplace;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
-  use crate::clock::clock_state::ClockState;
+  use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
   use crate::clock::pipeline::{self, ClockInput, ClockPipelineParams};
   use crate::clock::reroot::RerootParams;
@@ -29,6 +29,7 @@ mod tests {
     (
       Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
+      ClockInputs,
       ClockState,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
@@ -49,9 +50,10 @@ mod tests {
       &Some(o!("genbank_accession")),
       &Some(o!("date")),
     )?;
-    let mut state = ClockState::new(&graph);
-    assign_dates(&graph, &dates, &mut state, &names)?;
-    Ok((graph, names, state, branch_lengths))
+    let mut inputs = ClockInputs::new(&graph);
+    assign_dates(&graph, &dates, &mut inputs, &names)?;
+    let state = ClockState::new(&graph);
+    Ok((graph, names, inputs, state, branch_lengths))
   }
 
   /// Run the full prefilter pipeline: pre-filter with force_positive=false,
@@ -59,6 +61,7 @@ mod tests {
   fn run_prefilter_pipeline(
     graph: &mut Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
+    inputs: &mut ClockInputs,
     state: &mut ClockState,
     clock_params: &ClockParams,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -71,9 +74,10 @@ mod tests {
       ..RerootParams::default()
     };
     let names_tt_2 = names.clone();
-    let prefilter_result = estimate_clock_model_with_reroot_policy(
+    let (new_state, prefilter_result) = estimate_clock_model_with_reroot_policy(
       graph,
-      state,
+      inputs,
+      std::mem::take(state),
       clock_params,
       None,
       false,
@@ -83,17 +87,19 @@ mod tests {
       None,
       &names_tt_2,
     )?;
+    *state = new_state;
     let pre_regression = prefilter_result.regression();
 
     // Filter outliers
-    let filter_result = clock_filter_inplace(graph, state, pre_regression, branch_lengths, 3.0)?;
+    let filter_result = clock_filter_inplace(graph, inputs, state, pre_regression, branch_lengths, 3.0)?;
 
     // Final regression: require positive rate
     let final_reroot_params = RerootParams::default();
     let names_tt_1 = names.clone();
-    let final_result = estimate_clock_model_with_reroot_policy(
+    let (new_state, final_result) = estimate_clock_model_with_reroot_policy(
       graph,
-      state,
+      inputs,
+      std::mem::take(state),
       clock_params,
       None,
       false,
@@ -103,6 +109,7 @@ mod tests {
       None,
       &names_tt_1,
     )?;
+    *state = new_state;
 
     Ok((final_result.into_clock_model()?, filter_result.new_outliers))
   }
@@ -135,11 +142,12 @@ mod tests {
   /// The pre-filter step must use force_positive_rate=false to proceed.
   #[test]
   fn test_dengue100_clock_pipeline_structural_properties() -> Result<(), Report> {
-    let (mut graph, names, mut state, mut branch_lengths) = load_dengue100()?;
+    let (mut graph, names, mut inputs, mut state, mut branch_lengths) = load_dengue100()?;
 
     let (clock_model, new_outliers) = run_prefilter_pipeline(
       &mut graph,
       &names,
+      &mut inputs,
       &mut state,
       &ClockParams::default(),
       &mut branch_lengths,
@@ -195,11 +203,12 @@ mod tests {
   /// these values should converge toward v0 and this test should be updated.
   #[test]
   fn test_dengue100_clock_pipeline_golden_master() -> Result<(), Report> {
-    let (mut graph, names, mut state, mut branch_lengths) = load_dengue100()?;
+    let (mut graph, names, mut inputs, mut state, mut branch_lengths) = load_dengue100()?;
 
     let (clock_model, _) = run_prefilter_pipeline(
       &mut graph,
       &names,
+      &mut inputs,
       &mut state,
       &ClockParams::default(),
       &mut branch_lengths,
@@ -235,20 +244,22 @@ mod tests {
       variance_offset_leaf: 1e-4,
     };
 
-    let (mut expected_graph, expected_names, mut expected_state, mut expected_branch_lengths) = load_dengue100()?;
+    let (mut expected_graph, expected_names, mut expected_inputs, mut expected_state, mut expected_branch_lengths) = load_dengue100()?;
     let (_expected_clock_model, _) = run_prefilter_pipeline(
       &mut expected_graph,
       &expected_names,
+      &mut expected_inputs,
       &mut expected_state,
       &custom_params,
       &mut expected_branch_lengths,
     )?;
     let expected_outliers = get_outlier_names(&expected_names, &expected_graph, &expected_state);
 
-    let (mut default_graph, default_names, mut default_state, mut default_branch_lengths) = load_dengue100()?;
+    let (mut default_graph, default_names, mut default_inputs, mut default_state, mut default_branch_lengths) = load_dengue100()?;
     let (_default_clock_model, _) = run_prefilter_pipeline(
       &mut default_graph,
       &default_names,
+      &mut default_inputs,
       &mut default_state,
       &ClockParams::default(),
       &mut default_branch_lengths,

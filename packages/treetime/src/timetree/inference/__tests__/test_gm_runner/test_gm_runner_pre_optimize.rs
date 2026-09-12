@@ -8,7 +8,7 @@ mod tests {
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
-  use crate::clock::clock_state::ClockState;
+  use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::RerootParams;
@@ -134,11 +134,13 @@ mod tests {
     marginal_update_timetree(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
 
     let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times();
-    let mut clock_estimate_state = ClockState::seed_from_values(&graph, &times);
+    let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);
     let names_tt_1 = names.clone();
-    let clock_model = estimate_clock_model_with_reroot_policy(
+    let clock_estimate_state = ClockState::new(&graph);
+    let (_clock_estimate_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
       &mut graph,
-      &mut clock_estimate_state,
+      &mut clock_estimate_inputs,
+      clock_estimate_state,
       &ClockParams::default(),
       Some(case.clock_rate()),
       true,
@@ -146,8 +148,8 @@ mod tests {
       &RerootParams::default(),
       &mut branch_lengths,
       None, &names_tt_1
-    )?
-    .into_clock_model()?;
+    )?;
+    let clock_model = clock_reroot.into_clock_model()?;
 
     let mut state = TimetreeState::seed_from_values(&graph, &constraints);
     let run_branch_lengths = branch_lengths;

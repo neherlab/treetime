@@ -6,7 +6,7 @@ mod tests {
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
-  use crate::clock::clock_state::ClockState;
+  use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::clock::date_constraints::DateConstraints;
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -117,9 +117,10 @@ mod tests {
 
     let clock_params = ClockParams::default();
     let timetree_state = TimetreeState::seed_from_values(&graph, &constraints);
-    let mut clock_state = ClockState::seed_from_values(&graph, &timetree_state.likely_times());
-    clock_regression_backward(&graph, &mut clock_state, &clock_params, &branch_lengths, None)?;
-    clock_regression_forward(&graph, &mut clock_state, &clock_params, &branch_lengths, None)?;
+    let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state.likely_times());
+    let mut clock_state = ClockState::new(&graph);
+    clock_regression_backward(&graph, &clock_inputs, &mut clock_state, &clock_params, &branch_lengths, None)?;
+    clock_regression_forward(&graph, &clock_inputs, &mut clock_state, &clock_params, &branch_lengths, None)?;
 
     let mut partitions = vec![sparse_partition];
 
@@ -557,9 +558,10 @@ mod tests {
 
     let clock_params = ClockParams::default();
     let timetree_state_1 = TimetreeState::seed_from_values(&graph, &constraints);
-    let mut clock_state = ClockState::seed_from_values(&graph, &timetree_state_1.likely_times());
-    clock_regression_backward(&graph, &mut clock_state, &clock_params, &branch_lengths, None)?;
-    clock_regression_forward(&graph, &mut clock_state, &clock_params, &branch_lengths, None)?;
+    let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state_1.likely_times());
+    let mut clock_state = ClockState::new(&graph);
+    clock_regression_backward(&graph, &clock_inputs, &mut clock_state, &clock_params, &branch_lengths, None)?;
+    clock_regression_forward(&graph, &clock_inputs, &mut clock_state, &clock_params, &branch_lengths, None)?;
 
     let mut partitions = vec![sparse_partition];
 

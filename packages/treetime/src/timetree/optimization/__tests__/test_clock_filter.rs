@@ -2,7 +2,7 @@
 mod tests {
   use crate::clock::clock_filter::{ClockFilterResult, clock_filter_inplace};
   use crate::clock::clock_model::ClockModel;
-  use crate::clock::clock_state::ClockState;
+  use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::clock::date_constraints::DateConstraints;
   use crate::timetree::optimization::clock_filter::propagate_bad_branches;
   use crate::timetree::timetree_state::TimetreeState;
@@ -43,9 +43,10 @@ mod tests {
   /// Seed the clock state from date-constraint values: the date
   /// state built from `constraints` supplies each node's date through `likely_times`, and the clock
   /// state starts from those dates with default divergence and outlier flags.
-  fn seed_clock_state(graph: &Graph, constraints: &DateConstraints) -> ClockState {
+  fn seed_clock_state(graph: &Graph, constraints: &DateConstraints) -> (ClockInputs, ClockState) {
     let date_state = TimetreeState::seed_from_values(graph, constraints);
-    ClockState::seed_from_values(graph, &date_state.likely_times())
+    let inputs = ClockInputs::seed_from_times(graph, &date_state.likely_times());
+    (inputs, ClockState::new(graph))
   }
 
   fn count_outliers(graph: &Graph, state: &ClockState) -> usize {
@@ -83,9 +84,9 @@ mod tests {
     // At date 2020, expected div = 0.01 * 2020 + (-20.0) = 0.2
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let mut state = seed_clock_state(&graph, &constraints);
+    let (inputs, mut state) = seed_clock_state(&graph, &constraints);
     let ClockFilterResult { new_outliers, iqd } =
-      clock_filter_inplace(&graph, &mut state, &clock_model, &branch_lengths, 3.0)?;
+      clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
 
     // With well-fitting data, no outliers should be detected
     assert_eq!(count_outliers(&graph, &state), 0, "No outliers expected for clean data");
@@ -121,9 +122,9 @@ mod tests {
     // rate=0.01, intercept=-20.0
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let mut state = seed_clock_state(&graph, &constraints);
+    let (inputs, mut state) = seed_clock_state(&graph, &constraints);
     let ClockFilterResult { new_outliers, iqd } =
-      clock_filter_inplace(&graph, &mut state, &clock_model, &branch_lengths, 3.0)?;
+      clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
 
     // A should be detected as outlier (date 1900 with div ~0.2 doesn't fit clock)
     // Expected div at 1900 = 0.01 * 1900 - 20.0 = -1.0, but actual div ~0.2
@@ -171,8 +172,8 @@ mod tests {
 
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let mut state = seed_clock_state(&graph, &constraints);
-    let ClockFilterResult { iqd, .. } = clock_filter_inplace(&graph, &mut state, &clock_model, &branch_lengths, 3.0)?;
+    let (inputs, mut state) = seed_clock_state(&graph, &constraints);
+    let ClockFilterResult { iqd, .. } = clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
 
     // IQD should be computed (may be zero or positive depending on data fit)
     assert!(iqd.is_finite(), "IQD should be a finite number");
@@ -202,14 +203,14 @@ mod tests {
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
     // With low threshold, A might be outlier
-    let mut state_low = seed_clock_state(&graph, &constraints);
-    clock_filter_inplace(&graph, &mut state_low, &clock_model, &branch_lengths, 1.0)?;
+    let (inputs_low, mut state_low) = seed_clock_state(&graph, &constraints);
+    clock_filter_inplace(&graph, &inputs_low, &mut state_low, &clock_model, &branch_lengths, 1.0)?;
     let outliers_low_threshold = count_outliers(&graph, &state_low);
 
     // With high threshold, A should not be outlier. Each filter runs on its own freshly seeded state,
     // so the low-threshold outlier flags do not carry over.
-    let mut state_high = seed_clock_state(&graph, &constraints);
-    clock_filter_inplace(&graph, &mut state_high, &clock_model, &branch_lengths, 100.0)?;
+    let (inputs_high, mut state_high) = seed_clock_state(&graph, &constraints);
+    clock_filter_inplace(&graph, &inputs_high, &mut state_high, &clock_model, &branch_lengths, 100.0)?;
     let outliers_high_threshold = count_outliers(&graph, &state_high);
 
     assert!(

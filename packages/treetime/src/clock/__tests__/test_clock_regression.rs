@@ -3,7 +3,7 @@ mod tests {
   use crate::clock::clock_model::{ClockModel, ClockRegression};
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward};
   use crate::clock::clock_set::ClockSet;
-  use crate::clock::clock_state::ClockState;
+  use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::o;
   use crate::seq::div::{OnlyLeaves, compute_divs};
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
@@ -44,10 +44,11 @@ mod tests {
     let naive_rate = compute_naive_rate(&dates, &divs);
 
     let times = helpers::leaf_times(&names, &graph, &dates);
-    let mut state = ClockState::seed_from_values(&graph, &times);
+    let inputs = ClockInputs::seed_from_times(&graph, &times);
+    let mut state = ClockState::new(&graph);
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
 
-    clock_regression_backward(&graph, &mut state, &ClockParams::default(), &branch_lengths, None)?;
+    clock_regression_backward(&graph, &inputs, &mut state, &ClockParams::default(), &branch_lengths, None)?;
     let clock = ClockModel::from_regression(&ClockRegression::from_clock_set(&state.node(root_key).clock_set)?)?;
     pretty_assert_abs_diff_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-10);
 
@@ -57,7 +58,7 @@ mod tests {
       variance_offset_leaf: 1.0,
     };
 
-    clock_regression_backward(&graph, &mut state, options, &branch_lengths, None)?;
+    clock_regression_backward(&graph, &inputs, &mut state, options, &branch_lengths, None)?;
     let clock = ClockModel::from_regression(&ClockRegression::from_clock_set(&state.node(root_key).clock_set)?)?;
     pretty_assert_ulps_eq!(0.007710610618916924, clock.clock_rate(), max_ulps = 4);
 
@@ -110,8 +111,9 @@ mod tests {
       } = nwk_read_str(tree)?;
       let graph: Graph = graph;
       let times = leaf_times(&names, &graph, dates);
-      let mut state = ClockState::seed_from_values(&graph, &times);
-      clock_regression_backward(&graph, &mut state, &ClockParams::default(), &branch_lengths, None)?;
+      let inputs = ClockInputs::seed_from_times(&graph, &times);
+      let mut state = ClockState::new(&graph);
+      clock_regression_backward(&graph, &inputs, &mut state, &ClockParams::default(), &branch_lengths, None)?;
       let root_key = graph.get_exactly_one_root()?.read_arc().key();
       let clock_set = state.node(root_key).clock_set.clone();
       Ok(clock_set)

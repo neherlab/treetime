@@ -7,7 +7,7 @@ mod tests {
   use crate::ancestral::pipeline::DenseReconstruction;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
-  use crate::clock::clock_state::ClockState;
+  use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::RerootParams;
@@ -130,11 +130,13 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
     let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times();
-    let mut clock_estimate_state = ClockState::seed_from_values(&graph, &times);
+    let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);
     let names_tt_1 = names.clone();
-    let clock_model = estimate_clock_model_with_reroot_policy(
+    let clock_estimate_state = ClockState::new(&graph);
+    let (_clock_estimate_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
       &mut graph,
-      &mut clock_estimate_state,
+      &mut clock_estimate_inputs,
+      clock_estimate_state,
       &ClockParams::default(),
       Some(case.clock_rate()),
       true,
@@ -143,8 +145,8 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
       &mut branch_lengths,
       None,
       &names_tt_1,
-    )?
-    .into_clock_model()?;
+    )?;
+    let clock_model = clock_reroot.into_clock_model()?;
 
     Ok((graph, names, partitions, clock_model, constraints, branch_lengths))
   }

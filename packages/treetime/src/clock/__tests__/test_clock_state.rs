@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::clock_set::ClockSet;
-  use crate::clock::clock_state::{ClockEdgeState, ClockNodeState, ClockState};
+  use crate::clock::clock_state::{ClockEdgeInput, ClockInputs, ClockNodeInput};
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -10,11 +9,11 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
-  // Oracle: the value inputs passed to `seed_from_values` plus its documented contract -- the seeded
-  // date comes from `times` (`None` for a missing key), and `div`/`is_outlier`/`bad_branch`/`clock_set`
-  // and every edge start at their defaults.
+  // Oracle: the value inputs passed to `seed_from_times` plus its documented contract -- the seeded
+  // date comes from `times` (`None` for a missing key), and `bad_branch` and every edge start at
+  // their defaults.
   #[test]
-  fn test_clock_state_seed_from_values_sources_times_and_defaults_the_rest() -> Result<(), Report> {
+  fn test_clock_state_seed_from_times_sources_times_and_defaults_the_rest() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let graph: Graph = graph;
     let key_of = helpers::key_by_name(&names, &graph);
@@ -26,21 +25,21 @@ mod tests {
       b => None,
     };
 
-    let state = ClockState::seed_from_values(&graph, &times);
+    let inputs = ClockInputs::seed_from_times(&graph, &times);
 
     let expected_nodes = btreemap! {
       a    => helpers::node_with_time(Some(2000.0)),
       b    => helpers::node_with_time(None),
       root => helpers::node_with_time(None),
     };
-    assert_eq!(expected_nodes, state.nodes);
+    assert_eq!(expected_nodes, inputs.nodes);
 
     let expected_edges: BTreeMap<_, _> = graph
       .get_edges()
       .iter()
-      .map(|edge| (edge.read_arc().key(), ClockEdgeState::default()))
+      .map(|edge| (edge.read_arc().key(), ClockEdgeInput::default()))
       .collect();
-    assert_eq!(expected_edges, state.edges);
+    assert_eq!(expected_edges, inputs.edges);
 
     Ok(())
   }
@@ -63,13 +62,10 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn node_with_time(time: Option<f64>) -> ClockNodeState {
-      ClockNodeState {
-        clock_set: ClockSet::default(),
-        div: 0.0,
+    pub(super) fn node_with_time(time: Option<f64>) -> ClockNodeInput {
+      ClockNodeInput {
         time,
         bad_branch: false,
-        is_outlier: false,
       }
     }
   }

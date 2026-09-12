@@ -52,10 +52,11 @@ mod tests {
 
   #[test]
   fn test_reroot_min_dev_matches_fixed_zero_rate_objective() -> Result<(), Report> {
-    let (mut graph, names, options, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
     let branch_params = BranchPointOptimizationParams::default();
     let expected = find_best_root(
       &graph,
+      &inputs,
       &state,
       &options,
       &branch_params,
@@ -70,9 +71,10 @@ mod tests {
       ..RerootParams::default()
     };
     let names_tt_9 = names;
-    let actual = reroot_in_place(
+    let (_state, actual) = reroot_in_place(
       &mut graph,
-      &mut state,
+      &mut inputs,
+      state,
       &options,
       &branch_params,
       &reroot_params,
@@ -105,6 +107,7 @@ mod tests {
       mut graph_ascending,
       graph_ascending_names,
       options_ascending,
+      mut inputs_ascending,
       mut state_ascending,
       mut branch_lengths_ascending,
     ) = setup_reroot_test_graph_with_dates(&dates_ascending)?;
@@ -112,6 +115,7 @@ mod tests {
       mut graph_descending,
       graph_descending_names,
       options_descending,
+      mut inputs_descending,
       mut state_descending,
       mut branch_lengths_descending,
     ) = setup_reroot_test_graph_with_dates(&dates_descending)?;
@@ -124,7 +128,8 @@ mod tests {
     let names_tt_8 = graph_ascending_names.clone();
     reroot_in_place(
       &mut graph_ascending,
-      &mut state_ascending,
+      &mut inputs_ascending,
+      state_ascending,
       &options_ascending,
       &branch_params,
       &reroot_params,
@@ -134,7 +139,8 @@ mod tests {
     let names_tt_7 = graph_descending_names.clone();
     reroot_in_place(
       &mut graph_descending,
-      &mut state_descending,
+      &mut inputs_descending,
+      state_descending,
       &options_descending,
       &branch_params,
       &reroot_params,
@@ -164,7 +170,7 @@ mod tests {
 
   #[test]
   fn test_reroot_policy_allow_edge_split_false_no_new_nodes() -> Result<(), Report> {
-    let (mut graph, names, options, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
     let node_count_before = graph.get_nodes().len();
 
     // Both flags false: don't split edges AND don't remove old root
@@ -178,7 +184,8 @@ mod tests {
     let names_tt_6 = names;
     reroot_in_place(
       &mut graph,
-      &mut state,
+      &mut inputs,
+      state,
       &options,
       &BranchPointOptimizationParams::default(),
       &reroot_params,
@@ -197,7 +204,7 @@ mod tests {
 
   #[test]
   fn test_reroot_policy_remove_old_root_if_trivial_false_preserves_old_root() -> Result<(), Report> {
-    let (mut graph, names, options, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
 
     let reroot_params = RerootParams {
@@ -207,9 +214,10 @@ mod tests {
     };
 
     let names_tt_5 = names;
-    let reroot_result = reroot_in_place(
+    let (_state, reroot_result) = reroot_in_place(
       &mut graph,
-      &mut state,
+      &mut inputs,
+      state,
       &options,
       &BranchPointOptimizationParams::default(),
       &reroot_params,
@@ -229,7 +237,7 @@ mod tests {
 
   #[test]
   fn test_reroot_policy_default_allows_edge_split() -> Result<(), Report> {
-    let (mut graph, names, options, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
     let node_count_before = graph.get_nodes().len();
 
     let reroot_params = RerootParams::default();
@@ -237,7 +245,8 @@ mod tests {
     let names_tt_4 = names;
     reroot_in_place(
       &mut graph,
-      &mut state,
+      &mut inputs,
+      state,
       &options,
       &BranchPointOptimizationParams::default(),
       &reroot_params,
@@ -259,16 +268,17 @@ mod tests {
 
   #[test]
   fn test_reroot_tips_uses_mrca_branch() -> Result<(), Report> {
-    let (mut graph, names, options, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
     let reroot_params = RerootParams {
       spec: RerootSpec::Tips(vec![o!("A"), o!("B")]),
       ..RerootParams::default()
     };
 
     let names_tt_3 = names.clone();
-    let reroot_result = reroot_in_place(
+    let (_state, reroot_result) = reroot_in_place(
       &mut graph,
-      &mut state,
+      &mut inputs,
+      state,
       &options,
       &BranchPointOptimizationParams::default(),
       &reroot_params,
@@ -300,7 +310,7 @@ mod tests {
 
   #[test]
   fn test_reroot_tips_reports_missing_tip() -> Result<(), Report> {
-    let (mut graph, names, options, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
     let reroot_params = RerootParams {
       spec: RerootSpec::Tips(vec![o!("missing")]),
       ..RerootParams::default()
@@ -309,7 +319,8 @@ mod tests {
     let names_tt_2 = names;
     let result = reroot_in_place(
       &mut graph,
-      &mut state,
+      &mut inputs,
+      state,
       &options,
       &BranchPointOptimizationParams::default(),
       &reroot_params,
@@ -323,16 +334,17 @@ mod tests {
 
   #[test]
   fn test_reroot_oldest_uses_oldest_dated_leaf() -> Result<(), Report> {
-    let (mut graph, names, options, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
     let reroot_params = RerootParams {
       spec: RerootSpec::Method(RerootMethod::Oldest),
       ..RerootParams::default()
     };
 
     let names_tt_1 = names.clone();
-    let reroot_result = reroot_in_place(
+    let (_state, reroot_result) = reroot_in_place(
       &mut graph,
-      &mut state,
+      &mut inputs,
+      state,
       &options,
       &BranchPointOptimizationParams::default(),
       &reroot_params,
@@ -364,7 +376,7 @@ mod tests {
 
   mod helpers {
     use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
-    use crate::clock::clock_state::ClockState;
+    use crate::clock::clock_state::{ClockInputs, ClockState};
     use crate::o;
     use eyre::Report;
     use maplit::btreemap;
@@ -397,6 +409,7 @@ mod tests {
         Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
         ClockParams,
+        ClockInputs,
         ClockState,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
@@ -412,11 +425,12 @@ mod tests {
       let times = leaf_times(&graph, &names, dates);
 
       let options = ClockParams::default();
-      let mut state = ClockState::seed_from_values(&graph, &times);
-      clock_regression_backward(&graph, &mut state, &options, &branch_lengths, None)?;
-      clock_regression_forward(&graph, &mut state, &options, &branch_lengths, None)?;
+      let inputs = ClockInputs::seed_from_times(&graph, &times);
+      let mut state = ClockState::new(&graph);
+      clock_regression_backward(&graph, &inputs, &mut state, &options, &branch_lengths, None)?;
+      clock_regression_forward(&graph, &inputs, &mut state, &options, &branch_lengths, None)?;
 
-      Ok((graph, names, options, state, branch_lengths))
+      Ok((graph, names, options, inputs, state, branch_lengths))
     }
 
     pub fn setup_reroot_test_graph() -> Result<
@@ -424,6 +438,7 @@ mod tests {
         Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
         ClockParams,
+        ClockInputs,
         ClockState,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),

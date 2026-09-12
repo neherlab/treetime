@@ -2,7 +2,7 @@
 mod tests {
   use crate::clock::clock_filter::clock_filter_inplace;
   use crate::clock::clock_model::ClockModel;
-  use crate::clock::clock_state::ClockState;
+  use crate::clock::clock_state::{ClockInputs, ClockState};
   use crate::o;
   use eyre::Report;
   use maplit::btreemap;
@@ -88,8 +88,9 @@ mod tests {
     let (graph, names, times, branch_lengths) = setup_outlier_graph()?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let mut state = ClockState::seed_from_values(&graph, &times);
-    let result = clock_filter_inplace(&graph, &mut state, &clock_model, &branch_lengths, 3.0)?;
+    let inputs = ClockInputs::seed_from_times(&graph, &times);
+    let mut state = ClockState::new(&graph);
+    let result = clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
 
     assert!(result.iqd > 0.0, "IQD should be positive");
     let outliers = get_outlier_names(&names, &graph, &state);
@@ -106,8 +107,9 @@ mod tests {
     // comparison makes outlier detection slope-sign-invariant for extreme outliers.
     let clock_model = ClockModel::for_testing(-0.005, 10.5);
 
-    let mut state = ClockState::seed_from_values(&graph, &times);
-    let result = clock_filter_inplace(&graph, &mut state, &clock_model, &branch_lengths, 3.0)?;
+    let inputs = ClockInputs::seed_from_times(&graph, &times);
+    let mut state = ClockState::new(&graph);
+    let result = clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
 
     assert!(result.iqd > 0.0, "IQD should be positive");
     let outliers = get_outlier_names(&names, &graph, &state);
@@ -121,8 +123,9 @@ mod tests {
     let (graph, times, branch_lengths) = helpers::setup_low_cardinality_graph(0)?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let mut state = ClockState::seed_from_values(&graph, &times);
-    let result = clock_filter_inplace(&graph, &mut state, &clock_model, &branch_lengths, 3.0);
+    let inputs = ClockInputs::seed_from_times(&graph, &times);
+    let mut state = ClockState::new(&graph);
+    let result = clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0);
 
     assert_error!(result, "Clock filtering requires at least one dated leaf");
     Ok(())
@@ -140,8 +143,9 @@ mod tests {
     let (graph, times, branch_lengths) = helpers::setup_low_cardinality_graph(dated_leaf_count)?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let mut state = ClockState::seed_from_values(&graph, &times);
-    let result = clock_filter_inplace(&graph, &mut state, &clock_model, &branch_lengths, 3.0)?;
+    let inputs = ClockInputs::seed_from_times(&graph, &times);
+    let mut state = ClockState::new(&graph);
+    let result = clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
 
     assert!(result.iqd.is_finite());
     Ok(())
