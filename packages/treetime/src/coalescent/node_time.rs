@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 use treetime_graph::node::GraphNodeKey;
 
-/// Per-node inferred times routed into the coalescent collectors as a value, in place of the
-/// `NodeTimetree` payload's `time`/`time_distribution` fields.
+/// Per-node inferred times routed into the coalescent collectors as a value, sourced from the
+/// timetree state's per-node `time`/`time_distribution` fields.
 ///
 /// Both sources are carried because the two collectors read the node's date differently:
 /// [`collect_coalescent_edges`](crate::coalescent::edge_data::collect_coalescent_edges) prefers the

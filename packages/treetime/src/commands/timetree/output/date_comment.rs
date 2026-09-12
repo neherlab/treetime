@@ -6,7 +6,7 @@ use treetime_io::nwk::NodeCommentProvider;
 use treetime_utils::o;
 
 /// Supplies the `date` Newick and Nexus comment for timetree output from the committed node times
-/// held as a value, in place of reading `NodeTimetree::time` off the payload.
+/// held in the `times` value map, keyed by node id.
 ///
 /// The date is formatted to two decimals to match v0's Newick output; see
 /// `kb/decisions/timetree-nwk-date-two-decimal-precision.md`. Only dated nodes carry a comment.

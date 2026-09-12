@@ -29,8 +29,8 @@ use util_augur_node_data_json::{
 /// Field semantics:
 ///
 /// - `branch_length` = the ML-optimized branch length in substitutions/site, read
-///   from the parent edge (`EdgeAncestral.branch_length` after the optimization
-///   loop). `augur export v2` `node_div()` (`export_v2.py:114`) consumes
+///   from the `branch_lengths` value map for the parent edge (after the
+///   optimization loop). `augur export v2` `node_div()` (`export_v2.py:114`) consumes
 ///   `branch_length` for cumulative divergence when `mutation_length` is absent.
 ///   The root has no incoming edge, so it carries `0.0` (the field is
 ///   non-optional; `export v2` sets the root divergence to 0 regardless).

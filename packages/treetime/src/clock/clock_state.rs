@@ -43,8 +43,8 @@ pub struct ClockEdgeState {
   pub gamma: f64,
 }
 
-/// The clock inference state for a whole tree, routed through the clock pipeline in place of the
-/// `NodeClock`/`EdgeClock` (and `NodeTimetree`/`EdgeTimetree`) payload fields.
+/// The clock inference state for a whole tree, routed through the clock pipeline as the per-node
+/// [`ClockNodeState`] and per-edge [`ClockEdgeState`] fields, seeded from the timetree state's dates.
 ///
 /// Keyed by stable node and edge ids, so the maps stay valid across a reroot, which adds a split
 /// node, drops a trivial node, and re-orients the inverted path while leaving ids stable (gaps,
@@ -78,7 +78,7 @@ impl ClockState {
   /// passes without populating node payloads.
   ///
   /// Each node's date comes from `times` (`None` for a missing key, matching a leaf without a date),
-  /// reproducing `NodeTimetree::likely_time` at the clock seed point. The divergence and outlier flag
+  /// reproducing the timetree state's likely-time selection at the clock seed point. The divergence and outlier flag
   /// start at their payload defaults (`0.0` and `false`), `bad_branch` starts false, the clock set
   /// starts default (the backward pass recomputes the root clock set before it is read), and every
   /// edge starts default.
@@ -250,7 +250,7 @@ impl ClockState {
 }
 
 impl ClockNodeState {
-  /// The date the regression reads for this node, matching `NodeClock::likely_time`.
+  /// The date the regression reads for this node, taken from the clock state's node time.
   #[must_use]
   pub fn likely_time(&self) -> Option<f64> {
     self.time

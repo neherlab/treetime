@@ -1,6 +1,6 @@
 # treetime-graph
 
-Directed graph data structure for phylogenetic trees. Provides thread-safe node and edge structure with graph-level command data `D`, plus synchronous and parallel traversal algorithms. Per-node and per-edge data flows through external value maps keyed by `GraphNodeKey`/`GraphEdgeKey`, not through node or edge payloads.
+Directed graph data structure for phylogenetic trees. Provides thread-safe node and edge structure with graph-level command data `D`, plus synchronous and parallel traversal algorithms. Per-node and per-edge data lives in external value maps keyed by `GraphNodeKey`/`GraphEdgeKey`.
 
 ## Key types
 

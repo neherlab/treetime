@@ -12,8 +12,8 @@ use std::collections::{BTreeMap, BTreeSet};
 /// keyed by exactly the graph's current nodes: entries for nodes that a topology change removed are
 /// dropped, and nodes a topology change introduced (absent from the input map) are named here. Each
 /// unnamed node takes the next free `NODE_xxxxx`, skipping any name already held by a current node, so
-/// the numbering is deterministic and stable across re-runs after a topology change. Names are a
-/// threaded value rather than node payload state.
+/// the numbering is deterministic and stable across re-runs after a topology change. Names live in a
+/// value map keyed by node id.
 pub fn assign_node_names<D: Sync + Send>(
   mut names: BTreeMap<GraphNodeKey, Option<String>>,
   graph: &Graph<D>,

@@ -35,7 +35,7 @@ Generic serialization helpers (JSON, YAML) live in `treetime-utils::io`.
 
 ## Tree I/O values
 
-Readers return the parsed graph alongside per-node and per-edge value maps (`NwkParse`: names, confidence, branch lengths). Writers take those value maps plus optional `NodeCommentProvider`s for node annotations, so serialization reads threaded values rather than graph payloads.
+Readers return the parsed graph alongside per-node and per-edge value maps (`NwkParse`: names, confidence, branch lengths). Writers take those value maps plus optional `NodeCommentProvider`s for node annotations, so serialization reads each node's and edge's data from the threaded value maps.
 
 ## API patterns
 

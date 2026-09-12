@@ -99,16 +99,16 @@ where
     Ok(edge_key)
   }
 
-  /// Move an edge to a new source node, keeping its key and payload.
+  /// Move an edge to a new source node, keeping its key and target endpoint.
   ///
   /// The edge is unlinked from its current source's outbound list, linked into the new
   /// source's, and its stored source key updated. The target is untouched, so the target
   /// node's inbound list stays valid.
   ///
   /// Preferred over `remove_edge` + `add_edge` when relocating a branch: those allocate a
-  /// fresh [`GraphEdgeKey`] and require the caller to reconstruct the payload, which silently
-  /// drops any edge state the caller forgets to carry over and invalidates external maps keyed
-  /// by edge key. `remove_edge` also scans every node, so reparenting in a loop is quadratic.
+  /// fresh [`GraphEdgeKey`], which invalidates external maps keyed by edge key that hold the
+  /// edge's state. Reparenting keeps the same key, so those maps stay valid. `remove_edge` also
+  /// scans every node, so reparenting in a loop is quadratic.
   ///
   /// Reparenting to the current source is a no-op. Reparenting onto the edge's own target, or
   /// onto a node already connected to the target, is an error: both would break the tree

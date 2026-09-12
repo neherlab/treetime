@@ -46,8 +46,8 @@ pub struct DateEdgeState {
   pub gamma: f64,
 }
 
-/// The date-inference state for a whole tree, routed through the timetree date passes in place of the
-/// `NodeTimetree`/`EdgeTimetree` payload fields.
+/// The date-inference state for a whole tree, routed through the timetree date passes as the
+/// per-node [`DateNodeState`] and per-edge [`DateEdgeState`] fields.
 ///
 /// Keyed by stable node and edge ids, so the maps stay valid across a reroot and polytomy resolution,
 /// which add and drop nodes and edges while leaving ids stable (gaps, never renumbered).

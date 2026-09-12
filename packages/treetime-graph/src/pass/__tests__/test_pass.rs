@@ -7,7 +7,7 @@ mod tests {
   use treetime_utils::{assert_error, make_report, o};
 
   use self::helpers::{
-    edge_values_by_child_name, fixture_tree, key_payloads, own_value_pass_values, pass_values, run_backward_sum,
+    edge_values_by_child_name, fixture_tree, key_indices, own_value_pass_values, pass_values, run_backward_sum,
     run_forward_sum, values_by_name,
   };
 
@@ -197,7 +197,7 @@ mod tests {
   #[test]
   fn test_pass_roundtrip_preserves_all_values() -> Result<(), Report> {
     let (graph, _names) = fixture_tree()?;
-    let (mut nodes, mut edges) = key_payloads(&graph);
+    let (mut nodes, mut edges) = key_indices(&graph);
     let expected_nodes = nodes.clone();
     let expected_edges = edges.clone();
 
@@ -214,7 +214,7 @@ mod tests {
   #[test]
   fn test_pass_error_restores_all_values() -> Result<(), Report> {
     let (graph, _names) = fixture_tree()?;
-    let (mut nodes, mut edges) = key_payloads(&graph);
+    let (mut nodes, mut edges) = key_indices(&graph);
     let expected_nodes = nodes.clone();
     let expected_edges = edges.clone();
     let mut pass = GraphPass::new(&graph, &mut nodes, &mut edges, |_| {
@@ -241,7 +241,7 @@ mod tests {
     use std::collections::BTreeMap;
     use treetime_utils::o;
 
-    /// Node names threaded as a value map, replacing the former node payload.
+    /// Node names threaded as a value map keyed by node key.
     pub type Names = BTreeMap<GraphNodeKey, String>;
 
     /// `((A,B)AB,C)root`. Returns the graph and the node-name value map, keyed by node key in
@@ -370,7 +370,7 @@ mod tests {
     }
 
     /// Pass inputs keyed and valued by the underlying key index, for round-trip checks.
-    pub fn key_payloads(graph: &Graph<()>) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<GraphEdgeKey, usize>) {
+    pub fn key_indices(graph: &Graph<()>) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<GraphEdgeKey, usize>) {
       let nodes = graph
         .get_nodes()
         .iter()
