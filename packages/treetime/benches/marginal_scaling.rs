@@ -9,7 +9,6 @@ use treetime::ancestral::fitch::create_fitch_partition;
 use treetime::ancestral::marginal::profile_branch_lengths;
 use treetime::ancestral::pipeline::SparseReconstruction;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
-use treetime::optimize::run_loop::marginal_update_sparse;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_io::fasta::read_many_fasta;
@@ -33,11 +32,8 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
       bencher.iter(|| {
         pool
           .install(|| {
-            marginal_update_sparse(
-              black_box(&graph),
-              &profile_branch_lengths(black_box(&branch_lengths)),
-              black_box(&mut partitions),
-            )
+            black_box(&mut partitions)[0]
+              .run_marginal_update(black_box(&graph), &profile_branch_lengths(black_box(&branch_lengths)))
           })
           .unwrap();
       });

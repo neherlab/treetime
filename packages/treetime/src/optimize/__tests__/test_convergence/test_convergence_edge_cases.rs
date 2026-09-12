@@ -27,7 +27,8 @@ mod tests {
     let graph: Graph = graph;
 
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let mixed_partitions = OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view();
+    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = readouts.view();
 
     // Run multiple optimization iterations
     for _ in 0..10 {
@@ -69,7 +70,8 @@ mod tests {
     let graph: Graph = graph;
 
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let mixed_partitions = OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view();
+    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = readouts.view();
 
     // Run optimization iterations
     for _ in 0..10 {
@@ -111,7 +113,8 @@ mod tests {
     let graph: Graph = graph;
 
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let mixed_partitions = OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view();
+    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = readouts.view();
 
     // Run optimization iterations
     for _ in 0..10 {

@@ -94,8 +94,8 @@ ACGTACGC
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 
-    let partition = &partitions[0];
-    for node_data in partition.data.nodes.values() {
+    let partition = &partitions;
+    for node_data in partition.node_states.values() {
       if node_data.profile.dis.is_empty() {
         continue;
       }
@@ -106,7 +106,7 @@ ACGTACGC
         assert_abs_diff_eq!(1.0, row.sum(), epsilon = 1e-8);
       }
     }
-    for edge_data in partition.data.edges.values() {
+    for edge_data in partition.forward.values() {
       if edge_data.msg_to_child.dis.is_empty() {
         continue;
       }
@@ -148,8 +148,8 @@ ACGTACGC
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 
-    let partition = &partitions[0];
-    for node_data in partition.nodes.values() {
+    let partition = &partitions;
+    for node_data in partition.node_states.values() {
       let profile = &node_data.profile;
       assert!(
         profile.log_lh.value().is_finite(),
@@ -167,7 +167,7 @@ ACGTACGC
         assert_abs_diff_eq!(1.0, fixed_dis.sum(), epsilon = 1e-8);
       }
     }
-    for edge_data in partition.edges.values() {
+    for edge_data in partition.forward.values() {
       let profile = &edge_data.msg_to_child;
       assert!(
         profile.log_lh.value().is_finite(),

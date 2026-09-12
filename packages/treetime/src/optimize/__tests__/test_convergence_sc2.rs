@@ -54,7 +54,8 @@ mod tests {
     marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
     let mut dense_partitions = vec![];
-    let mixed_partitions = OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view();
+    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = readouts.view();
     initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let max_iter = 50;
@@ -116,7 +117,8 @@ mod tests {
     marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
     let mut dense_partitions = vec![];
-    let mixed_partitions = OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view();
+    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = readouts.view();
     initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let names_tt_1 = names;

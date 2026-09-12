@@ -102,13 +102,13 @@ mod tests {
       prop_assert!(log_lh.is_finite(), "Log-likelihood non-finite: {log_lh}");
       prop_assert!(log_lh <= 0.0, "Log-likelihood should be <= 0: {log_lh}");
 
-      let partition = &partitions[0];
-      for node_data in partition.data.nodes.values() {
+      let partition = &partitions;
+      for node_data in partition.node_states.values() {
         if !node_data.profile.dis.is_empty() {
           assert_dense_rows_normalized(&node_data.profile.dis)?;
         }
       }
-      for edge_data in partition.data.edges.values() {
+      for edge_data in partition.forward.values() {
         if !edge_data.msg_to_child.dis.is_empty() {
           assert_dense_rows_normalized(&edge_data.msg_to_child.dis)?;
         }
@@ -134,11 +134,11 @@ mod tests {
       prop_assert!(log_lh.is_finite(), "Log-likelihood non-finite: {log_lh}");
       prop_assert!(log_lh <= 0.0, "Log-likelihood should be <= 0: {log_lh}");
 
-      let partition = &partitions[0];
-      for node_data in partition.nodes.values() {
+      let partition = &partitions;
+      for node_data in partition.node_states.values() {
         assert_sparse_profile_normalized(&node_data.profile)?;
       }
-      for edge_data in partition.edges.values() {
+      for edge_data in partition.forward.values() {
         assert_sparse_profile_normalized(&edge_data.msg_to_child)?;
       }
     }

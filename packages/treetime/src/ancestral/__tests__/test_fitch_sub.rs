@@ -5,7 +5,7 @@ mod tests {
     discover_fixed_disagreements_backward, finalize_sequence_forward, resolve_nonroot_substitutions_forward,
     resolve_root_forward, resolve_variable_positions_backward,
   };
-  use crate::partition::storage::sparse::{FitchSeqDistribution, SparseEdgePartition, SparseSeqInfo};
+  use crate::partition::storage::sparse::{FitchSeqDistribution, SparseEdgeObs, FitchSeqInfo};
   use crate::seq::composition::Composition;
   use eyre::Report;
   use maplit::btreemap;
@@ -16,9 +16,9 @@ mod tests {
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
-  fn make_seq_info(sequence: &str) -> SparseSeqInfo {
+  fn make_seq_info(sequence: &str) -> FitchSeqInfo {
     let seq = Seq::try_from_str(sequence).unwrap();
-    SparseSeqInfo {
+    FitchSeqInfo {
       unknown: vec![],
       gaps: vec![],
       non_char: vec![],
@@ -32,8 +32,8 @@ mod tests {
     }
   }
 
-  fn make_edge() -> SparseEdgePartition {
-    SparseEdgePartition::default()
+  fn make_edge() -> SparseEdgeObs {
+    SparseEdgeObs::default()
   }
 
   // --- resolve_variable_positions_backward ---
@@ -44,7 +44,7 @@ mod tests {
     let child1 = make_seq_info("ACGT");
     let edge0 = make_edge();
     let edge1 = make_edge();
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
     let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
@@ -58,7 +58,7 @@ mod tests {
     let child1 = make_seq_info("GCGT");
     let edge0 = make_edge();
     let edge1 = make_edge();
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
     let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
@@ -75,7 +75,7 @@ mod tests {
     child1.fitch.variable.insert(0, stateset! {b'A', b'C'});
     let edge0 = make_edge();
     let edge1 = make_edge();
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
     let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
@@ -93,7 +93,7 @@ mod tests {
     child1.fitch.variable.insert(0, stateset! {b'A', b'C'});
     let edge0 = make_edge();
     let edge1 = make_edge();
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
     let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
@@ -114,7 +114,7 @@ mod tests {
     child1.fitch.variable.insert(0, stateset! {b'G'});
     let edge0 = make_edge();
     let edge1 = make_edge();
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
     let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
@@ -133,7 +133,7 @@ mod tests {
     child1.fitch.variable.insert(0, stateset! {b'A'});
     let edge0 = make_edge();
     let edge1 = make_edge();
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
     let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
@@ -151,7 +151,7 @@ mod tests {
     child1.non_char = vec![(0, 1)];
     let edge0 = make_edge();
     let edge1 = make_edge();
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
     let variable = resolve_variable_positions_backward(&children, &[], &[], &mut sequence);
@@ -168,7 +168,7 @@ mod tests {
   fn test_fitch_sub_discover_sets_fill_char() {
     let child0 = make_seq_info("ACGT");
     let edge0 = make_edge();
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0)];
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> = vec![(&child0, &edge0)];
 
     let mut sequence = seq![FILL_CHAR; 4];
     let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
@@ -183,7 +183,7 @@ mod tests {
     let child1 = make_seq_info("GCGT");
     let edge0 = make_edge();
     let edge1 = make_edge();
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0), (&child1, &edge1)];
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> = vec![(&child0, &edge0), (&child1, &edge1)];
 
     let mut sequence = seq![FILL_CHAR; 4];
     let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
@@ -197,7 +197,7 @@ mod tests {
   fn test_fitch_sub_discover_skips_non_char() {
     let child0 = make_seq_info("ACGT");
     let edge0 = make_edge();
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![(&child0, &edge0)];
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> = vec![(&child0, &edge0)];
 
     let mut sequence = seq![NON_CHAR; 4];
     let discovered = discover_fixed_disagreements_backward(&children, &NUC_ALPHABET, &mut sequence);
@@ -215,7 +215,7 @@ mod tests {
     let child2 = make_seq_info("G");
     let child3 = make_seq_info("T");
     let edges = [make_edge(), make_edge(), make_edge(), make_edge()];
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> = vec![
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> = vec![
       (&child0, &edges[0]),
       (&child1, &edges[1]),
       (&child2, &edges[2]),
@@ -231,14 +231,14 @@ mod tests {
   // --- plurality resolution on multifurcations ---
 
   /// Builds `n` single-position children, each fixed at the given state.
-  fn fixed_children(states: &[&str]) -> Vec<SparseSeqInfo> {
+  fn fixed_children(states: &[&str]) -> Vec<FitchSeqInfo> {
     states.iter().map(|s| make_seq_info(s)).collect()
   }
 
   fn as_children<'a>(
-    infos: &'a [SparseSeqInfo],
-    edges: &'a [SparseEdgePartition],
-  ) -> Vec<(&'a SparseSeqInfo, &'a SparseEdgePartition)> {
+    infos: &'a [FitchSeqInfo],
+    edges: &'a [SparseEdgeObs],
+  ) -> Vec<(&'a FitchSeqInfo, &'a SparseEdgeObs)> {
     infos.iter().zip(edges.iter()).collect()
   }
 
@@ -313,7 +313,7 @@ mod tests {
     child0.fitch.variable.clear();
     child1.fitch.variable.clear();
     let edges = [make_edge(), make_edge(), make_edge()];
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> =
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> =
       vec![(&child0, &edges[0]), (&child1, &edges[1]), (&child2, &edges[2])];
 
     let mut sequence = seq![FILL_CHAR; 1];
@@ -333,7 +333,7 @@ mod tests {
     let child1 = make_seq_info("A");
     let child2 = make_seq_info("A");
     let edges = [make_edge(), make_edge(), make_edge()];
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> =
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> =
       vec![(&child0, &edges[0]), (&child1, &edges[1]), (&child2, &edges[2])];
 
     let mut sequence = seq![FILL_CHAR; 1];
@@ -353,7 +353,7 @@ mod tests {
     let child1 = make_seq_info("AA");
     let child2 = make_seq_info("GA");
     let edges = [make_edge(), make_edge(), make_edge()];
-    let children: Vec<(&SparseSeqInfo, &SparseEdgePartition)> =
+    let children: Vec<(&FitchSeqInfo, &SparseEdgeObs)> =
       vec![(&child0, &edges[0]), (&child1, &edges[1]), (&child2, &edges[2])];
 
     let mut sequence = seq![FILL_CHAR; 2];
