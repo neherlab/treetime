@@ -321,8 +321,8 @@ pub(crate) fn gather_ancestral_output_maps(
   };
   match partition {
     AncestralPartition::Fitch(partition) => gather_tree_output_maps(graph, partition),
-    AncestralPartition::Sparse(partition) => gather_tree_output_maps(graph, partition),
-    AncestralPartition::Dense(partition) => gather_tree_output_maps(graph, partition),
+    AncestralPartition::Sparse(partition) => gather_tree_output_maps(graph, &partition.readout()),
+    AncestralPartition::Dense(partition) => gather_tree_output_maps(graph, &partition.readout()),
   }
 }
 

@@ -142,7 +142,7 @@ fn build_mutation_index(partitions: &[SparseReconstruction], child_edges: &[Grap
   for &edge_key in child_edges {
     for (pi, partition) in partitions.iter().enumerate() {
       let empty_subs: &[Sub] = &[];
-      let edge = partition.edges.get(&edge_key);
+      let edge = partition.partition.obs_edges.get(&edge_key);
       for sub in edge.map_or(empty_subs, |e| e.fitch_subs()) {
         index
           .entry((pi, MutationKey::Sub(sub.clone())))

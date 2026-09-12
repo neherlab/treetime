@@ -300,7 +300,7 @@ where
   let cost_fn = GtrRateCostFn {
     graph,
     partition: &partition,
-    branch_lengths,
+    branch_lengths: &branch_lengths,
     nodes: &nodes,
   };
 
@@ -354,7 +354,7 @@ where
 struct GtrRateCostFn<'a, P: MarginalRefine> {
   graph: &'a Graph,
   partition: &'a P,
-  branch_lengths: BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
   nodes: &'a P::Nodes,
 }
 
@@ -370,7 +370,7 @@ where
     let mut partition = self.partition.clone();
     partition.gtr_mut().mu = sqrt_mu * sqrt_mu;
     let nodes = self.nodes.clone();
-    match partition.refine_marginal_backward(self.graph, &self.branch_lengths, &nodes) {
+    match partition.refine_marginal_backward(self.graph, self.branch_lengths, &nodes) {
       Ok((nodes, backward)) => match partition.refine_root_log_lh(self.graph, &nodes) {
         Ok(log_lh) => (-log_lh.value(), Some((partition, nodes, backward))),
         Err(e) => {

@@ -103,15 +103,15 @@ pub(crate) fn slide_bifurcating_root_for_child(
 ) -> Result<(), Report> {
   for partition in sparse.iter_mut() {
     let parent_subs = partition
-      .edges
+      .partition.obs_edges
       .get(&parent_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
     let sibling_subs = partition
-      .edges
+      .partition.obs_edges
       .get(&sibling_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
     let child_by_pos: BTreeMap<usize, (AsciiChar, AsciiChar)> = partition
-      .edges
+      .partition.obs_edges
       .get(&child_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec())
       .iter()
@@ -155,7 +155,7 @@ pub(crate) fn slide_bifurcating_root_for_child(
       sibling_edge.set_fitch_subs(remaining_sibling);
     }
     partition
-      .edges
+      .partition.obs_edges
       .entry(parent_edge_key)
       .or_default()
       .set_fitch_subs(hoisted_parent);

@@ -56,7 +56,7 @@ pub struct AncestralInput {
 /// A completed sparse reconstruction: the durable partition inputs together with the node states and
 /// per-edge messages/estimates the passes returned, kept as distinct owned maps. The output writers
 /// build a short-lived read view over these.
-#[derive(Clone, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct SparseReconstruction {
   pub partition: PartitionMarginalSparse,
   pub node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
@@ -93,7 +93,7 @@ impl SparseReconstruction {
 
 /// A completed dense reconstruction: the durable partition inputs together with the node states and
 /// per-edge messages/estimates the passes returned, kept as distinct owned maps.
-#[derive(Clone, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct DenseReconstruction {
   pub partition: PartitionMarginalDense,
   pub node_states: BTreeMap<GraphNodeKey, DenseNodeState>,

@@ -6,7 +6,7 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_prune_tree_outputs;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_error;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::ancestral::pipeline::SparseReconstruction;
 use crate::partition::traits::PartitionBranchOps;
 use crate::prune::pipeline::{self, PruneInput, PruneParams};
 use crate::seq::mutation::MutationTrack;
@@ -198,11 +198,12 @@ fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
 /// `edge_mutations` only for reached edges avoids touching an unpopulated edge.
 pub(crate) fn gather_prune_output_maps(
   graph: &Graph,
-  partitions: &[PartitionMarginalSparse],
+  partitions: &[SparseReconstruction],
 ) -> Result<PruneOutputMaps, Report> {
   let Some(partition) = partitions.first() else {
     return Ok(PruneOutputMaps::default());
   };
+  let partition = partition.readout();
   let root_sequence = Some(partition.root_sequence(graph)?);
   let node_sequences = graph
     .get_nodes()

@@ -1,6 +1,5 @@
+use crate::ancestral::pipeline::SparseReconstruction;
 use crate::optimize::topology::collapse::collapse_edge;
-use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
@@ -11,7 +10,7 @@ use treetime_graph::node::GraphNodeKey;
 
 pub fn prune_nodes(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   prune_short: Option<f64>,
   prune_empty: bool,
   node_names: &BTreeSet<String>,
@@ -39,14 +38,14 @@ pub fn prune_nodes(
 
 /// Count current nucleotide mutations on one edge across all partitions.
 pub fn get_edge_num_muts(
-  partitions: &[PartitionMarginalSparse],
+  partitions: &[SparseReconstruction],
   edge_key: GraphEdgeKey,
 ) -> Result<Option<usize>, Report> {
   let mut total_muts = 0;
   let mut found_any = false;
 
   for partition in partitions {
-    if let Some(edge) = partition.edges.get(&edge_key) {
+    if let Some(edge) = partition.partition.obs_edges.get(&edge_key) {
       total_muts += edge.fitch_subs().len();
       found_any = true;
     }
@@ -57,17 +56,16 @@ pub fn get_edge_num_muts(
 
 pub fn collapse_sparse_edges_from_leaf_recursive(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   edge_key: GraphEdgeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   let mut current_edge_key = edge_key;
-  let no_dense: &mut [PartitionMarginalDense] = &mut [];
 
   loop {
     let parent_node_key = graph.get_source_node_key(current_edge_key)?;
 
-    collapse_edge(graph, partitions, no_dense, current_edge_key, branch_lengths)?;
+    collapse_edge(graph, partitions, current_edge_key, branch_lengths)?;
 
     let next_edge_key = if should_collapse_parent(graph, parent_node_key) {
       graph.parent_inbound_edge(parent_node_key)?
@@ -86,7 +84,7 @@ pub fn collapse_sparse_edges_from_leaf_recursive(
 
 fn prune_internal_nodes(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   prune_short: Option<f64>,
   prune_empty: bool,
   node_names: &BTreeSet<String>,
@@ -122,16 +120,15 @@ fn prune_internal_nodes(
     .flatten()
     .collect();
 
-  let no_dense: &mut [PartitionMarginalDense] = &mut [];
   edges_to_collapse.into_iter().try_for_each(|edge_key| {
     debug!("Collapsing internal edge: {edge_key}");
-    collapse_edge(graph, partitions, no_dense, edge_key, branch_lengths)
+    collapse_edge(graph, partitions, edge_key, branch_lengths)
   })
 }
 
 fn prune_leaves(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   node_names: &BTreeSet<String>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,

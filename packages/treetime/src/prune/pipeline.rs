@@ -1,9 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::pipeline::SparseReconstruction;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
 use crate::gtr::gtr::GTR;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::prune::prune::prune_nodes;
 use eyre::Report;
 use serde::Serialize;
@@ -38,7 +38,7 @@ pub struct PruneOutput {
   #[serde(skip)]
   pub gtr: Option<GTR>,
   #[serde(skip)]
-  pub partitions: Vec<PartitionMarginalSparse>,
+  pub partitions: Vec<SparseReconstruction>,
   #[serde(skip)]
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
   #[serde(skip)]
@@ -59,7 +59,7 @@ pub fn run(
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
 
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
-  let mut partitions: Vec<PartitionMarginalSparse> = if needs_sequences {
+  let mut partitions: Vec<SparseReconstruction> = if needs_sequences {
     let sequences = input
       .sequences
       .as_ref()
@@ -74,17 +74,25 @@ pub fn run(
       &branch_lengths,
       &names,
     )?;
-    match created.partition {
-      MarginalPartition::Sparse(p) => vec![p],
+    // Prune is a Fitch/parsimony operation over the durable observations; it never runs a marginal
+    // pass, so the reconstruction bundle carries empty node-state, message, and estimate maps.
+    let (partition, node_states) = match created.partition {
+      MarginalPartition::Sparse(partition, node_states) => (partition, node_states),
       MarginalPartition::Dense(_) => {
         let gtr = get_gtr_by_name(GtrModelName::JC69)?;
         log_gtr(&gtr, GtrModelName::JC69);
         let fitch =
           crate::ancestral::fitch::create_fitch_partition(&input.graph, 0, input.alphabet.clone(), sequences, &names)?;
-        let partition = fitch.into_marginal_sparse(gtr, &input.graph)?;
-        vec![partition]
+        fitch.into_marginal_sparse(gtr, &input.graph)?
       },
-    }
+    };
+    vec![SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }]
   } else {
     vec![]
   };
@@ -107,7 +115,7 @@ pub fn run(
     names = assign_node_names(names, &input.graph)?;
   }
 
-  let gtr = (!partitions.is_empty()).then(|| partitions[0].gtr.clone());
+  let gtr = (!partitions.is_empty()).then(|| partitions[0].partition.gtr.clone());
 
   Ok(PruneOutput {
     graph: input.graph,
