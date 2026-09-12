@@ -13,7 +13,18 @@ Options:
     --only-failures    Show only failed tests
     --no-stats         Omit performance statistics
     --output-dir=PATH  Write command outputs below PATH instead of tmp/smoke-tests
-    --manifest=PATH    Write a JSON manifest (per-test id, exit code, output dir) to PATH
+    --manifest=PATH    Write a JSON completion manifest to PATH
+
+The manifest is a single JSON object written atomically only after the whole matrix has run:
+
+    {schema, completed: true, generated_at, binary, binary_sha256, results_dir,
+     matrix_id, input_id, case_count, cases: [{id, cmd_name, data_name, code, output_dir}, ...]}
+
+Because it is written once, at the end, via a temp-file rename, its presence attests that the driver
+finished the matrix (with or without per-case failures); a driver that dies mid-run leaves no fresh
+manifest. `binary_sha256`, `matrix_id`, and `input_id` bind the run to the exact binary, test matrix,
+and input files it covered. `dev/smoke-compare` consumes these fields to reject stale or mismatched
+evidence.
 
 NOTE: you must build and re-build the tested executable yourself, this script does not do that
 
@@ -30,8 +41,10 @@ How to add more tests:
 
 """
 
+import hashlib
 import json
 import os
+import re
 import resource
 import statistics
 import subprocess
@@ -39,6 +52,7 @@ import sys
 import time
 from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from signal import signal, SIGINT, SIG_IGN
@@ -47,6 +61,10 @@ from typing import Optional
 
 only_failures = False
 no_stats = False
+
+# Manifest schema tag. `smoke-compare` rejects any manifest whose schema does not match, so bump this
+# whenever the manifest shape changes and update the matching constant in `dev/smoke-compare`.
+MANIFEST_SCHEMA = "treetime-smoke-manifest/v2"
 
 # Add ancestral command runs here.
 # Each entry corresponds to 2 ancestral command runs - one with parsimony and one with marginal method.
@@ -741,15 +759,42 @@ def print_summary(results: list[dict[str, str | int | float | Timing | None]], w
   sys.exit(0 if n_err == 0 else 1)
 
 
-def write_manifest(results: list[dict], results_dir: str, manifest_path: Path) -> None:
-  """Write a machine-readable record of every test: its stable id, exit code, and output directory.
+def build_manifest(results: list[dict], results_dir: str, binary_path: str, data_dir_abs: str) -> dict:
+  """Assemble the completion-attesting manifest for one finished matrix run.
 
-  The id and output_dir are relative to `results_dir` so a before-run and an after-run produced with
-  different `--output-dir` roots yield matching ids for the same test.
+  `completed` is written only here, after the whole matrix has run to a result list, so its presence
+  (via the atomic write in `write_manifest`) is a driver-completion signal, not a per-case pass/fail
+  signal. `binary_sha256`, `matrix_id`, and `input_id` bind the manifest to the exact binary, test
+  matrix, and input data it describes, letting `smoke-compare` refuse to reuse or cross-compare
+  evidence produced against a different binary, matrix, or inputs.
   """
-  entries = [manifest_entry(res, results_dir) for res in results]
+  cases = [manifest_entry(res, results_dir) for res in results]
+  return {
+    "schema": MANIFEST_SCHEMA,
+    "completed": True,
+    "generated_at": datetime.now(timezone.utc).isoformat(),
+    "binary": binary_path,
+    "binary_sha256": sha256_file(Path(binary_path)),
+    "results_dir": results_dir,
+    "matrix_id": matrix_identity(),
+    "input_id": input_identity(data_dir_abs),
+    "case_count": len(cases),
+    "cases": cases,
+  }
+
+
+def write_manifest(manifest: dict, manifest_path: Path) -> None:
+  """Write the manifest atomically (temp file + rename).
+
+  A driver that dies mid-run therefore never leaves a half-written or stale-looking manifest: the
+  completed file appears whole or not at all. `smoke-compare` deletes the target path before each run
+  and requires a fresh completed manifest afterwards, so a missing manifest is read as a driver
+  failure rather than silently reusing older evidence.
+  """
   manifest_path.parent.mkdir(parents=True, exist_ok=True)
-  manifest_path.write_text(json.dumps(entries, indent=2))
+  tmp_path = manifest_path.with_name(f"{manifest_path.name}.tmp")
+  tmp_path.write_text(json.dumps(manifest, indent=2))
+  os.replace(tmp_path, manifest_path)
 
 
 def manifest_entry(res: dict, results_dir: str) -> dict:
@@ -762,6 +807,78 @@ def manifest_entry(res: dict, results_dir: str) -> dict:
     "code": res["code"],
     "output_dir": rel,
   }
+
+
+def sha256_file(path: Path) -> str:
+  digest = hashlib.sha256()
+  with path.open("rb") as handle:
+    for chunk in iter(lambda: handle.read(1 << 20), b""):
+      digest.update(chunk)
+  return digest.hexdigest()
+
+
+def matrix_identity() -> str:
+  """Content hash of the entire test-matrix definition (every batch table plus the expansion plan).
+
+  Two runs share a `matrix_id` only when they cover exactly the same set of cases, so a persisted
+  before-run cannot be silently compared against an after-run built from a changed matrix.
+  """
+  additional = [name for name, _cmd in make_additional_commands("EXE", "DATA", "OUT")]
+  payload = {
+    "ancestral": ANCESTRAL_BATCH_RUNS,
+    "clock": CLOCK_BATCH_RUNS,
+    "mugration": MUGRATION_BATCH_RUNS,
+    "optimize": OPTIMIZE_BATCH_RUNS,
+    "prune": PRUNE_BATCH_RUNS,
+    "timetree": TIMETREE_BATCH_RUNS,
+    "additional": additional,
+    "expansions": [
+      "clock",
+      "ancestral:parsimony",
+      "ancestral:marginal:sparse",
+      "ancestral:marginal:dense",
+      "mugration",
+      "optimize:false",
+      "prune",
+      "timetree",
+    ],
+  }
+  blob = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+  return hashlib.sha256(blob).hexdigest()
+
+
+def referenced_input_files(data_dir_abs: str) -> list[Path]:
+  """Every input file the matrix reads: the referenced dataset directories plus auxiliary files named
+  through `{data_dir}/...` in extra args (e.g. mugration weights)."""
+  root = Path(data_dir_abs)
+  names = {entry[0] for table in
+           (ANCESTRAL_BATCH_RUNS, CLOCK_BATCH_RUNS, OPTIMIZE_BATCH_RUNS, PRUNE_BATCH_RUNS, TIMETREE_BATCH_RUNS)
+           for entry in table}
+  names.update(entry[0] for entry in MUGRATION_BATCH_RUNS)
+
+  files = {path
+           for name in names
+           for path in (root / name).rglob("*")
+           if (root / name).is_dir() and path.is_file()}
+
+  aux = {root / match.group(1)
+         for entry in MUGRATION_BATCH_RUNS
+         for match in re.finditer(r"\{data_dir\}/(\S+)", entry[-1])}
+  files.update(path for path in aux if path.is_file())
+  return sorted(files)
+
+
+def input_identity(data_dir_abs: str) -> str:
+  """Content hash over every referenced input file, so a persisted before-run is only reused against
+  an after-run that read byte-identical inputs."""
+  root = Path(data_dir_abs)
+  digest = hashlib.sha256()
+  for path in referenced_input_files(data_dir_abs):
+    digest.update(path.relative_to(root).as_posix().encode())
+    digest.update(b"\0")
+    digest.update(sha256_file(path).encode())
+    digest.update(b"\n")
+  return digest.hexdigest()
 
 
 if __name__ == "__main__":
@@ -809,6 +926,7 @@ if __name__ == "__main__":
 
   TREETIME_BIN = normpath(Path(positional_args[0]))
   DATA_DIR = relpath(Path(PROJECT_ROOT) / 'data')
+  DATA_DIR_ABS = normpath(Path(PROJECT_ROOT) / 'data')
   RESULTS_DIR = relpath(Path(valued["--output-dir"])) if "--output-dir" in valued else relpath(Path(PROJECT_ROOT) / 'tmp/smoke-tests')
   RESULTS_DIR_ADDITIONAL = Path(RESULTS_DIR) / 'additional'
 
@@ -833,7 +951,8 @@ if __name__ == "__main__":
       results = [pool.starmap_async(func, args) for func, args in batches]
       results = [code for result in results for code in result.get()]
       if "--manifest" in valued:
-        write_manifest(results, RESULTS_DIR, Path(valued["--manifest"]))
+        manifest = build_manifest(results, RESULTS_DIR, TREETIME_BIN, DATA_DIR_ABS)
+        write_manifest(manifest, Path(valued["--manifest"]))
       wall_time = time.perf_counter() - start_time
       print_summary(results, wall_time, num_cores, skip_perf=no_stats)
     except KeyboardInterrupt:

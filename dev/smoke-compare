@@ -12,6 +12,22 @@ many datasets and flag combinations.
 Persisting the before run means it is computed once and then acts as a fixed comparison target while
 the after binary evolves: re-run with a fresh `--after-bin` and the before run is reused.
 
+Evidence integrity. A saved comparison is only trustworthy if it describes the binaries and outputs
+actually tested, so this script refuses stale or mismatched evidence:
+
+  - Each run owns fresh outputs: the run directory is wiped before the runner starts, so no output
+    from an earlier run can survive and be mistaken for this run's output.
+  - Each run must leave a fresh, completed manifest. `run-smoke-tests` writes its manifest atomically
+    only after the whole matrix finishes, so a missing manifest means the driver died (a "driver
+    failure"), distinct from a matrix that completed with some failing cases.
+  - Manifests are validated: correct schema, `completed: true`, matching `case_count`, no duplicate
+    case ids, and (when a binary is supplied) a `binary_sha256` that matches that binary. A persisted
+    before-run is therefore rejected the moment it no longer matches the requested before binary.
+  - Before and after must share `matrix_id` and `input_id`, so a persisted before-run is never
+    cross-compared against an after-run built from a different matrix or different input data.
+  - Every passing case with a declared output directory must actually have output files on both
+    sides; a missing expected output directory is a failure, not a silent empty-vs-empty match.
+
 Tests that FAIL on the before binary are excluded from the equality check (a failing run is not a
 meaningful target). A test that passed on before but fails on after is reported as a regression.
 
@@ -27,14 +43,21 @@ Options:
     --refresh-after     No-op kept for symmetry; the after run always executes.
     --only-failures     Quieter sub-runs (passed through to run-smoke-tests).
 
+Environment:
+    SMOKE_COMPARE_RUNNER  Path to the smoke-test runner (default: dev/run-smoke-tests). Overriding it
+                          lets tests drive this script against a controlled fake runner.
+
 NOTE: you must build the compared binaries yourself; this script does not build anything.
 
 Exit code: 0 if every compared test is identical, 1 otherwise.
 """
 
 import argparse
+import hashlib
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -47,8 +70,12 @@ from pathlib import Path
 UPDATED_DATE_RE = re.compile(rb'("updated"\s*:\s*)"\d{4}-\d{2}-\d{2}"')
 DATE_PLACEHOLDER = rb'\1"<normalized-date>"'
 
+# Must match the constant of the same name in `dev/run-smoke-tests`.
+MANIFEST_SCHEMA = "treetime-smoke-manifest/v2"
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-SMOKE_SCRIPT = Path(__file__).resolve().parent / "run-smoke-tests"
+DEFAULT_RUNNER = Path(__file__).resolve().parent / "run-smoke-tests"
+RUNNER = Path(os.environ.get("SMOKE_COMPARE_RUNNER", str(DEFAULT_RUNNER)))
 
 
 def main() -> None:
@@ -64,12 +91,20 @@ def main() -> None:
   else:
     print(f"Reusing persisted before run: {before.manifest.relative_to(PROJECT_ROOT)}")
 
-  run_smoke(args.after_bin, after, only_failures=args.only_failures, label="after")
+  # Validate the before run (fresh or persisted) before touching the after run: a stale or mismatched
+  # baseline (e.g. persisted against a different --before-bin) must be rejected up front.
+  before_manifest = load_manifest(before, label="before", expected_binary=args.before_bin)
 
-  before_tests = load_manifest(before.manifest)
-  after_tests = load_manifest(after.manifest)
-  outcomes = [compare_test(test_id, before_tests[test_id], after_tests.get(test_id), before, after)
-              for test_id in sorted(before_tests)]
+  run_smoke(args.after_bin, after, only_failures=args.only_failures, label="after")
+  after_manifest = load_manifest(after, label="after", expected_binary=args.after_bin)
+
+  if before_manifest.matrix_id != after_manifest.matrix_id:
+    sys.exit("matrix identity mismatch: before and after ran different test matrices; nothing to compare.")
+  if before_manifest.input_id != after_manifest.input_id:
+    sys.exit("input identity mismatch: before and after ran against different input data; nothing to compare.")
+
+  outcomes = [compare_test(test_id, before_manifest.cases[test_id], after_manifest.cases.get(test_id), before, after)
+              for test_id in sorted(before_manifest.cases)]
 
   report_path = output_root / "comparison.tsv"
   write_report(outcomes, report_path)
@@ -78,28 +113,72 @@ def main() -> None:
 
 
 def run_smoke(binary: str, paths: "RunPaths", only_failures: bool, label: str) -> None:
-  """Run the smoke-test matrix for one binary, writing outputs and a manifest under `paths`."""
+  """Run the smoke-test matrix for one binary into a freshly created, run-owned directory.
+
+  The run directory is wiped first so no earlier output or manifest can survive; the caller then
+  requires a fresh completed manifest via `load_manifest`, which is how a driver failure (no manifest)
+  is told apart from a completed matrix that merely had failing cases.
+  """
   binary_path = Path(binary)
   if not binary_path.is_file():
     sys.exit(f"{label} binary not found: {binary}")
+  shutil.rmtree(paths.root, ignore_errors=True)
   paths.out.mkdir(parents=True, exist_ok=True)
   command = [
-    sys.executable, str(SMOKE_SCRIPT), str(binary_path.resolve()),
+    sys.executable, str(RUNNER), str(binary_path.resolve()),
     f"--output-dir={paths.out}", f"--manifest={paths.manifest}", "--no-stats",
   ]
   if only_failures:
     command.append("--only-failures")
   print(f"Running smoke matrix ({label}): {binary} -> {paths.root.relative_to(PROJECT_ROOT)}")
   with paths.log.open("w") as log:
-    # run-smoke-tests exits nonzero when any test fails; that is expected (the before binary has known
-    # failures), so its exit code is ignored - the manifest is the source of truth for per-test status.
+    # run-smoke-tests exits nonzero when any case fails; that is expected (the before binary has known
+    # failures), so its exit code is ignored - completion is proven by a fresh, valid manifest, and a
+    # missing manifest (checked in load_manifest) is read as a driver failure.
     subprocess.run(command, cwd=PROJECT_ROOT, stdout=log, stderr=subprocess.STDOUT, check=False)
+
+
+def load_manifest(paths: "RunPaths", label: str, expected_binary: str | None) -> "Manifest":
+  """Load and validate a run's completion manifest, exiting on any integrity violation."""
   if not paths.manifest.exists():
-    sys.exit(f"{label} smoke run produced no manifest; see {paths.log.relative_to(PROJECT_ROOT)}")
+    sys.exit(f"{label} run left no fresh manifest (driver failure?); see {paths.log.relative_to(PROJECT_ROOT)}")
+  try:
+    doc = json.loads(paths.manifest.read_text())
+  except json.JSONDecodeError as error:
+    sys.exit(f"{label} manifest is not valid JSON ({error}); see {paths.log.relative_to(PROJECT_ROOT)}")
 
+  if not isinstance(doc, dict) or doc.get("schema") != MANIFEST_SCHEMA:
+    sys.exit(f"{label} manifest schema mismatch: expected {MANIFEST_SCHEMA!r}, got {doc.get('schema') if isinstance(doc, dict) else type(doc).__name__!r}")
+  if doc.get("completed") is not True:
+    sys.exit(f"{label} manifest is incomplete (completed != true); the run did not finish the matrix.")
 
-def load_manifest(path: Path) -> dict[str, dict]:
-  return {entry["id"]: entry for entry in json.loads(path.read_text())}
+  cases = doc.get("cases")
+  if not isinstance(cases, list) or not cases:
+    sys.exit(f"{label} manifest has no cases; nothing was run.")
+  if doc.get("case_count") != len(cases):
+    sys.exit(f"{label} manifest case_count ({doc.get('case_count')}) disagrees with the number of cases ({len(cases)}).")
+
+  ids = [case["id"] for case in cases]
+  duplicates = sorted({case_id for case_id in ids if ids.count(case_id) > 1})
+  if duplicates:
+    sys.exit(f"{label} manifest has duplicate case ids: {duplicates}")
+
+  for field in ("matrix_id", "input_id", "binary_sha256"):
+    if not isinstance(doc.get(field), str) or not doc[field]:
+      sys.exit(f"{label} manifest is missing required field {field!r}.")
+
+  if expected_binary is not None:
+    actual = sha256_file(Path(expected_binary))
+    if actual != doc["binary_sha256"]:
+      sys.exit(f"{label} binary identity mismatch: manifest records {doc['binary_sha256'][:12]} "
+               f"but {label} binary {expected_binary} hashes to {actual[:12]}.")
+
+  return Manifest(
+    cases={case["id"]: case for case in cases},
+    matrix_id=doc["matrix_id"],
+    input_id=doc["input_id"],
+    binary_sha256=doc["binary_sha256"],
+  )
 
 
 def compare_test(test_id: str, before: dict, after: dict | None, before_paths: "RunPaths", after_paths: "RunPaths") -> "Outcome":
@@ -112,8 +191,15 @@ def compare_test(test_id: str, before: dict, after: dict | None, before_paths: "
     return Outcome(test_id, cmd_name, Status.AFTER_FAILED, "before passed, after failed")
   if before["output_dir"] is None:
     return Outcome(test_id, cmd_name, Status.NO_OUTPUT, "no file output to compare")
+
   left = before_paths.out / before["output_dir"]
   right = after_paths.out / after["output_dir"]
+  left_missing = not dir_has_files(left)
+  right_missing = not dir_has_files(right)
+  if left_missing or right_missing:
+    where = "both sides" if left_missing and right_missing else ("before" if left_missing else "after")
+    return Outcome(test_id, cmd_name, Status.MISSING_OUTPUT, f"expected output missing ({where}): {before['output_dir']}")
+
   difference = diff_dirs(left, right)
   if difference is None:
     return Outcome(test_id, cmd_name, Status.IDENTICAL, "")
@@ -140,6 +226,18 @@ def relative_files(root: Path) -> set[str]:
   if not root.exists():
     return set()
   return {str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()}
+
+
+def dir_has_files(root: Path) -> bool:
+  return root.is_dir() and any(path.is_file() for path in root.rglob("*"))
+
+
+def sha256_file(path: Path) -> str:
+  digest = hashlib.sha256()
+  with path.open("rb") as handle:
+    for chunk in iter(lambda: handle.read(1 << 20), b""):
+      digest.update(chunk)
+  return digest.hexdigest()
 
 
 def normalize(path: Path) -> bytes:
@@ -177,6 +275,7 @@ class Status(Enum):
   DIFFERENT = "different"
   AFTER_FAILED = "after-failed"
   MISSING_AFTER = "missing-after"
+  MISSING_OUTPUT = "missing-output"
   SKIP_BEFORE_FAILED = "skip-before-failed"
   NO_OUTPUT = "no-output"
 
@@ -191,6 +290,14 @@ class Outcome:
   cmd_name: str
   status: Status
   detail: str
+
+
+@dataclass(frozen=True)
+class Manifest:
+  cases: dict[str, dict]
+  matrix_id: str
+  input_id: str
+  binary_sha256: str
 
 
 @dataclass(frozen=True)
