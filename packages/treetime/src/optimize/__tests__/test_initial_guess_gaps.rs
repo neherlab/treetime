@@ -2,12 +2,12 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::run_loop::optimize_partition_view;
+  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
   use crate::seq::alignment::get_common_length;
   use approx::assert_abs_diff_eq;
@@ -83,11 +83,18 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<Vec<PartitionMarginalSparse>, Report> {
+  ) -> Result<Vec<SparseReconstruction>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
-    let mut partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?];
-    marginal_update(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?.value();
+    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
+    let mut partitions = vec![SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }];
+    marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?;
 
     Ok(partitions)
   }
@@ -97,23 +104,19 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<Vec<PartitionMarginalDense>, Report> {
+  ) -> Result<Vec<DenseReconstruction>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let mut partitions = vec![PartitionMarginalDense::new(
-      0,
-      jc69(JC69Params::default())?,
-      alphabet,
-      get_common_length(aln)?,
-    )];
+    let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(aln)?);
+    let node_states = partition.attach_sequences(graph, aln, names)?;
+    let mut partitions = vec![DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }];
 
-    initialize_marginal(
-      graph,
-      &profile_branch_lengths(branch_lengths),
-      &mut partitions,
-      aln,
-      names,
-    )?
-    .value();
+    marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?;
 
     Ok(partitions)
   }
@@ -282,13 +285,10 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let partitions_clean = setup_sparse(&graph_clean, &graph_clean_names, &aln_clean, &branch_lengths_clean)?;
-    initial_guess_mixed(
-      &graph_clean,
-      &optimize_partition_view(&[], &partitions_clean),
-      true,
-      false,
-      &mut branch_lengths_clean,
-    )?;
+    {
+      let ro = OptimizeReadouts::new(&[], &partitions_clean);
+      initial_guess_mixed(&graph_clean, &ro.view(), true, false, &mut branch_lengths_clean)?;
+    }
     let bl_clean = get_branch_lengths(&graph_clean, &branch_lengths_clean);
 
     let aln_gappy = gappy_alignment_shared()?;
@@ -299,13 +299,10 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let partitions_gappy = setup_sparse(&graph_gappy, &graph_gappy_names, &aln_gappy, &branch_lengths_gappy)?;
-    initial_guess_mixed(
-      &graph_gappy,
-      &optimize_partition_view(&[], &partitions_gappy),
-      true,
-      false,
-      &mut branch_lengths_gappy,
-    )?;
+    {
+      let ro = OptimizeReadouts::new(&[], &partitions_gappy);
+      initial_guess_mixed(&graph_gappy, &ro.view(), true, false, &mut branch_lengths_gappy)?;
+    }
     let bl_gappy = get_branch_lengths(&graph_gappy, &branch_lengths_gappy);
 
     // With 4 shared gap positions out of 16, the effective length is 12.

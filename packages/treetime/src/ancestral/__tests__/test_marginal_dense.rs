@@ -2,9 +2,8 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::alphabet::alphabet::AlphabetName;
-  use crate::ancestral::marginal::{
-    ancestral_reconstruction_marginal, initialize_marginal, marginal_update, profile_branch_lengths,
-  };
+  use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
@@ -85,19 +84,19 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     gtr: GTR,
-  ) -> Result<(f64, [PartitionMarginalDense; 1]), Report> {
+  ) -> Result<(f64, DenseReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let mut partitions = [PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?)];
-
-    let log_lh = initialize_marginal(
-      graph,
-      &profile_branch_lengths(branch_lengths),
-      &mut partitions,
-      aln,
-      names,
-    )?
-    .value();
-    Ok((log_lh, partitions))
+    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
+    let node_states = partition.attach_sequences(graph, aln, names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    let log_lh = recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?.value();
+    Ok((log_lh, recon))
   }
 
   /// Parse a Newick tree string and compute the dense marginal log-likelihood.
@@ -189,21 +188,23 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (_, mut partitions) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
+    let (_, mut recon) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_marginal(
-      &graph,
-      false,
-      false,
-      &mut partitions,
-      SampleMode::Argmax,
-      &mut rand::thread_rng(),
-      |key, seq| {
-        actual.insert(names[&key].clone(), seq.to_string());
-        Ok(())
-      },
-    )?;
+    {
+      let DenseReconstruction {
+        partition, node_states, ..
+      } = &mut recon;
+      let mut rng = rand::thread_rng();
+      ancestral_reconstruction(
+        &graph,
+        |node| partition.reconstruct_node_sequence(node_states, node, false, false, SampleMode::Argmax, &mut rng),
+        |key, seq| {
+          actual.insert(names[&key].clone(), seq.to_string());
+          Ok(())
+        },
+      )?;
+    }
 
     assert_eq!(
       json_write_str(&expected, JsonPretty(false))?,
@@ -240,23 +241,22 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (log_lh, partitions) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
+    let (log_lh, recon) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
     // Regression check: known-good log-likelihood for this tree/alignment/model
     pretty_assert_ulps_eq!(-57.712498930787206, log_lh, epsilon = 1e-6);
 
-    let partition = &partitions[0];
     let max_ulps = 4;
 
     // Node profiles: marginal posterior P(s|data) at each position
-    for node_data in partition.data.nodes.values() {
+    for node_data in recon.node_states.values() {
       if !node_data.profile.dis.is_empty() {
         assert_dense_rows_normalized(&node_data.profile.dis, max_ulps);
       }
     }
 
     // Edge messages: outgroup message from parent toward child subtree
-    for edge_data in partition.data.edges.values() {
+    for edge_data in recon.forward.values() {
       if !edge_data.msg_to_child.dis.is_empty() {
         assert_dense_rows_normalized(&edge_data.msg_to_child.dis, max_ulps);
       }
@@ -293,10 +293,10 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (log_lh_init, mut partitions) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
+    let (log_lh_init, mut recon) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
-    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
-    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let log_lh_first = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    let log_lh_second = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
 
     // Repeated updates must produce identical log-likelihood to initialization
     pretty_assert_ulps_eq!(log_lh_init, log_lh_first, epsilon = 1e-10);
