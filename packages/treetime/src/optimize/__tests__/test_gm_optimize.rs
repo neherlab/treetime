@@ -179,11 +179,12 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::fitch::create_fitch_partition;
-    use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
+    use crate::ancestral::marginal::profile_branch_lengths;
+    use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::optimize::dispatch::initial_guess_mixed;
     use crate::optimize::params::{BranchOptMethod, TopologyOps};
-    use crate::optimize::run_loop::{optimize_partition_view, run_optimize_loop};
+    use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse, run_optimize_loop};
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::seq::alignment::get_common_length;
 
@@ -257,29 +258,33 @@ mod tests {
       let mut graph: Graph = graph;
 
       let fitch = create_fitch_partition(&graph, 0, alphabet_sparse, &aln, &names)?;
-      let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
+      let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
+      let mut sparse_partitions = vec![SparseReconstruction {
+        partition,
+        node_states,
+        backward: BTreeMap::new(),
+        forward: BTreeMap::new(),
+        estimates: BTreeMap::new(),
+      }];
 
       let length = get_common_length(&aln)?;
-      let mut dense_partitions = vec![PartitionMarginalDense::new(
-        1,
-        jc69(JC69Params::default())?,
-        alphabet_dense,
-        length,
-      )];
+      let dense_partition = PartitionMarginalDense::new(1, jc69(JC69Params::default())?, alphabet_dense, length);
+      let dense_node_states = dense_partition.attach_sequences(&graph, &aln, &names)?;
+      let mut dense_partitions = vec![DenseReconstruction {
+        partition: dense_partition,
+        node_states: dense_node_states,
+        backward: BTreeMap::new(),
+        forward: BTreeMap::new(),
+        estimates: BTreeMap::new(),
+      }];
 
-      initialize_marginal(
-        &graph,
-        &profile_branch_lengths(&branch_lengths),
-        &mut dense_partitions,
-        &aln,
-        &names,
-      )?
-      .value();
-      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
-      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?.value();
+      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?;
+      marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?;
 
-      let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
-      initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
+      {
+        let ro = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+        initial_guess_mixed(&graph, &ro.view(), true, false, &mut branch_lengths)?;
+      }
 
       let dp = 0.1;
       let names_tt_1 = names.clone();
@@ -303,8 +308,9 @@ mod tests {
       // at the START of each iteration, before that iteration's update).
       let mut lh_history = result.lh_history.into_iter().map(LogLh::value).collect_vec();
       let sparse_lh =
-        marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
-      let dense_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?.value();
+        marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
+      let dense_lh =
+        marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?.value();
       lh_history.push(sparse_lh + dense_lh);
 
       Ok(OptimizeResult {
