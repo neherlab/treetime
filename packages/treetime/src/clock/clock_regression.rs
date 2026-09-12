@@ -132,7 +132,12 @@ fn clock_regression_backward_node(
     let mut edge = edge.clone();
     edge.clock_to_parent = q_to_parent;
     let edge_input = inputs.edge(edge_key);
-    let edge_len = edge_divergence(branch_lengths[&edge_key], edge_input.time_length, edge_input.gamma, prev_clock_rate);
+    let edge_len = edge_divergence(
+      branch_lengths[&edge_key],
+      edge_input.time_length,
+      edge_input.gamma,
+      prev_clock_rate,
+    );
     let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
     edge.clock_from_child = if is_leaf {
       branch_variance += options.variance_offset_leaf;
@@ -171,7 +176,12 @@ pub fn clock_regression_forward(
       edge.clock_to_child = q_to_child;
 
       let edge_input = inputs.edge(edge_key);
-      let edge_len = edge_divergence(branch_lengths[&edge_key], edge_input.time_length, edge_input.gamma, prev_clock_rate);
+      let edge_len = edge_divergence(
+        branch_lengths[&edge_key],
+        edge_input.time_length,
+        edge_input.gamma,
+        prev_clock_rate,
+      );
       let branch_variance = options.variance_factor * edge_len + options.variance_offset;
       let mut q_dest = edge.clock_to_parent.clone();
       q_dest += edge.clock_to_child.propagate_averages(edge_len, branch_variance);

@@ -160,7 +160,17 @@ fn estimate_clock_model_with_prefilter(
         regression.clock_rate()
       );
     }
-    delta = Some(clock_filter_inplace(graph, inputs, &mut state, regression, branch_lengths, clock_filter_threshold)?.new_outliers);
+    delta = Some(
+      clock_filter_inplace(
+        graph,
+        inputs,
+        &mut state,
+        regression,
+        branch_lengths,
+        clock_filter_threshold,
+      )?
+      .new_outliers,
+    );
   }
 
   let reroot_params = RerootParams {

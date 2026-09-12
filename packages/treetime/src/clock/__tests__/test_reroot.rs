@@ -52,7 +52,7 @@ mod tests {
 
   #[test]
   fn test_reroot_min_dev_matches_fixed_zero_rate_objective() -> Result<(), Report> {
-    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, state, mut branch_lengths) = setup_reroot_test_graph()?;
     let branch_params = BranchPointOptimizationParams::default();
     let expected = find_best_root(
       &graph,
@@ -108,7 +108,7 @@ mod tests {
       graph_ascending_names,
       options_ascending,
       mut inputs_ascending,
-      mut state_ascending,
+      state_ascending,
       mut branch_lengths_ascending,
     ) = setup_reroot_test_graph_with_dates(&dates_ascending)?;
     let (
@@ -116,7 +116,7 @@ mod tests {
       graph_descending_names,
       options_descending,
       mut inputs_descending,
-      mut state_descending,
+      state_descending,
       mut branch_lengths_descending,
     ) = setup_reroot_test_graph_with_dates(&dates_descending)?;
     let reroot_params = RerootParams {
@@ -170,7 +170,7 @@ mod tests {
 
   #[test]
   fn test_reroot_policy_allow_edge_split_false_no_new_nodes() -> Result<(), Report> {
-    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, state, mut branch_lengths) = setup_reroot_test_graph()?;
     let node_count_before = graph.get_nodes().len();
 
     // Both flags false: don't split edges AND don't remove old root
@@ -204,7 +204,7 @@ mod tests {
 
   #[test]
   fn test_reroot_policy_remove_old_root_if_trivial_false_preserves_old_root() -> Result<(), Report> {
-    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, state, mut branch_lengths) = setup_reroot_test_graph()?;
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
 
     let reroot_params = RerootParams {
@@ -237,7 +237,7 @@ mod tests {
 
   #[test]
   fn test_reroot_policy_default_allows_edge_split() -> Result<(), Report> {
-    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, state, mut branch_lengths) = setup_reroot_test_graph()?;
     let node_count_before = graph.get_nodes().len();
 
     let reroot_params = RerootParams::default();
@@ -268,7 +268,7 @@ mod tests {
 
   #[test]
   fn test_reroot_tips_uses_mrca_branch() -> Result<(), Report> {
-    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, state, mut branch_lengths) = setup_reroot_test_graph()?;
     let reroot_params = RerootParams {
       spec: RerootSpec::Tips(vec![o!("A"), o!("B")]),
       ..RerootParams::default()
@@ -310,7 +310,7 @@ mod tests {
 
   #[test]
   fn test_reroot_tips_reports_missing_tip() -> Result<(), Report> {
-    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, state, mut branch_lengths) = setup_reroot_test_graph()?;
     let reroot_params = RerootParams {
       spec: RerootSpec::Tips(vec![o!("missing")]),
       ..RerootParams::default()
@@ -334,7 +334,7 @@ mod tests {
 
   #[test]
   fn test_reroot_oldest_uses_oldest_dated_leaf() -> Result<(), Report> {
-    let (mut graph, names, options, mut inputs, mut state, mut branch_lengths) = setup_reroot_test_graph()?;
+    let (mut graph, names, options, mut inputs, state, mut branch_lengths) = setup_reroot_test_graph()?;
     let reroot_params = RerootParams {
       spec: RerootSpec::Method(RerootMethod::Oldest),
       ..RerootParams::default()

@@ -47,7 +47,8 @@ mod tests {
   #[test]
   #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_refinement_rebuilds_complete_coalescent_state_after_topology_change() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) = create_polytomy_state()?;
+    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
+      create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
 
     let outcome = refine(
@@ -114,7 +115,8 @@ mod tests {
 
   #[test]
   fn test_refinement_missing_time_preserves_inference_state() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) = create_polytomy_state()?;
+    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
+      create_polytomy_state()?;
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     state.node_mut(root_key).time = None;
     let expected_error = format!(
@@ -144,7 +146,8 @@ mod tests {
 
   #[test]
   fn test_refinement_non_finite_time_preserves_inference_state() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) = create_polytomy_state()?;
+    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
+      create_polytomy_state()?;
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     state.node_mut(root_key).time = Some(f64::NAN);
     let before = serialize_state(&graph, &partitions, &clock_model)?;
@@ -182,7 +185,8 @@ mod tests {
   #[test]
   #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_refinement_unchanged_topology_recomputes_missing_time() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) = create_polytomy_state()?;
+    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
+      create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
     refine(
       &mut graph,
@@ -302,7 +306,15 @@ mod tests {
       &mut clock_state,
     )?;
 
-    Ok((graph, names, partitions, clock_model, state, run_branch_lengths, constraints))
+    Ok((
+      graph,
+      names,
+      partitions,
+      clock_model,
+      state,
+      run_branch_lengths,
+      constraints,
+    ))
   }
 
   fn serialize_state(

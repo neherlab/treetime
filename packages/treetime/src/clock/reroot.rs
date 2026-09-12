@@ -1,6 +1,8 @@
 use crate::clock::clock_regression::ClockParams;
 use crate::clock::clock_set::ClockSet;
-use crate::clock::clock_state::{ClockEdgeInput, ClockEdgeState, ClockInputs, ClockNodeInput, ClockNodeState, ClockState};
+use crate::clock::clock_state::{
+  ClockEdgeInput, ClockEdgeState, ClockInputs, ClockNodeInput, ClockNodeState, ClockState,
+};
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
@@ -70,7 +72,16 @@ pub fn reroot_in_place(
 ) -> Result<(ClockState, RerootResult), Report> {
   let FindRootResult {
     edge, split, clock_set, ..
-  } = select_root(graph, inputs, &state, options, params, reroot_params, branch_lengths, names)?;
+  } = select_root(
+    graph,
+    inputs,
+    &state,
+    options,
+    params,
+    reroot_params,
+    branch_lengths,
+    names,
+  )?;
 
   let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
   let Some(edge_key) = edge else {

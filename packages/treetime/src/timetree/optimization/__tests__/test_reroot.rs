@@ -119,8 +119,22 @@ mod tests {
     let timetree_state = TimetreeState::seed_from_values(&graph, &constraints);
     let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state.likely_times(&constraints));
     let mut clock_state = ClockState::new(&graph);
-    clock_regression_backward(&graph, &clock_inputs, &mut clock_state, &clock_params, &branch_lengths, None)?;
-    clock_regression_forward(&graph, &clock_inputs, &mut clock_state, &clock_params, &branch_lengths, None)?;
+    clock_regression_backward(
+      &graph,
+      &clock_inputs,
+      &mut clock_state,
+      &clock_params,
+      &branch_lengths,
+      None,
+    )?;
+    clock_regression_forward(
+      &graph,
+      &clock_inputs,
+      &mut clock_state,
+      &clock_params,
+      &branch_lengths,
+      None,
+    )?;
 
     let mut partitions = vec![sparse_partition];
 
@@ -561,8 +575,22 @@ mod tests {
     let timetree_state_1 = TimetreeState::seed_from_values(&graph, &constraints);
     let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state_1.likely_times(&constraints));
     let mut clock_state = ClockState::new(&graph);
-    clock_regression_backward(&graph, &clock_inputs, &mut clock_state, &clock_params, &branch_lengths, None)?;
-    clock_regression_forward(&graph, &clock_inputs, &mut clock_state, &clock_params, &branch_lengths, None)?;
+    clock_regression_backward(
+      &graph,
+      &clock_inputs,
+      &mut clock_state,
+      &clock_params,
+      &branch_lengths,
+      None,
+    )?;
+    clock_regression_forward(
+      &graph,
+      &clock_inputs,
+      &mut clock_state,
+      &clock_params,
+      &branch_lengths,
+      None,
+    )?;
 
     let mut partitions = vec![sparse_partition];
 

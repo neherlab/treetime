@@ -26,7 +26,9 @@ pub fn propagate_distributions_forward(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   state: &mut TimetreeState,
 ) -> Result<(), Report> {
-  state.map_forward(graph, |context| propagate_distributions_forward_node(constraints, names, &context))?;
+  state.map_forward(graph, |context| {
+    propagate_distributions_forward_node(constraints, names, &context)
+  })?;
 
   // Once per pass, not per node: a broken clock or topology makes a whole subtree disagree at once.
   let contradicted = state.nodes.values().filter(|node| node.contradicted).count();
@@ -55,12 +57,25 @@ fn propagate_distributions_forward_node(
   let mut node = context.input.clone();
   let date_constraint = constraints.date_constraints.get(&context.key).cloned().flatten();
   let edge = context.parent_edge.map(|(_, edge)| edge);
-  if refine_distribution_from_parent(names, context.key, date_constraint.as_ref(), context.parent, edge, &mut node)?
-    == Refinement::ContradictedGivenDate
+  if refine_distribution_from_parent(
+    names,
+    context.key,
+    date_constraint.as_ref(),
+    context.parent,
+    edge,
+    &mut node,
+  )? == Refinement::ContradictedGivenDate
   {
     node.contradicted = true;
   }
-  commit_node_time(names, context.key, date_constraint.as_ref(), context.parent, context.is_leaf, &mut node);
+  commit_node_time(
+    names,
+    context.key,
+    date_constraint.as_ref(),
+    context.parent,
+    context.is_leaf,
+    &mut node,
+  );
   let parent_message = context.parent_edge.map(|(_, edge)| edge.clone());
   Ok(GraphPassNodeOutput { node, parent_message })
 }
@@ -158,7 +173,9 @@ fn commit_node_time(
   // Project the inferred point estimate onto the committed parent time (an exact date keeps its
   // own). This adjusts the estimate without recomputing the posterior; the statistical contract is
   // open in kb/issues/M-timetree-marginal-node-times-can-violate-topology.md.
-  let parent_time = (!has_exact_date(date_constraint)).then(|| parent_time(parent)).flatten();
+  let parent_time = (!has_exact_date(date_constraint))
+    .then(|| parent_time(parent))
+    .flatten();
 
   // An empty distribution yields no time. Under NegLog (ordinate -ln p) even tiny posteriors survive
   // exactly, so empty means genuinely disjoint hard domains -- the subtree disagrees with the rest of

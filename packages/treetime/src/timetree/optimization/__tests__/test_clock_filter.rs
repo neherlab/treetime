@@ -45,7 +45,7 @@ mod tests {
   /// state starts from those dates with default divergence and outlier flags.
   fn seed_clock_state(graph: &Graph, constraints: &DateConstraints) -> (ClockInputs, ClockState) {
     let date_state = TimetreeState::seed_from_values(graph, constraints);
-    let inputs = ClockInputs::seed_from_times(graph, &date_state.likely_times(&constraints));
+    let inputs = ClockInputs::seed_from_times(graph, &date_state.likely_times(constraints));
     (inputs, ClockState::new(graph))
   }
 
@@ -173,7 +173,8 @@ mod tests {
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
     let (inputs, mut state) = seed_clock_state(&graph, &constraints);
-    let ClockFilterResult { iqd, .. } = clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
+    let ClockFilterResult { iqd, .. } =
+      clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0)?;
 
     // IQD should be computed (may be zero or positive depending on data fit)
     assert!(iqd.is_finite(), "IQD should be a finite number");
@@ -210,7 +211,14 @@ mod tests {
     // With high threshold, A should not be outlier. Each filter runs on its own freshly seeded state,
     // so the low-threshold outlier flags do not carry over.
     let (inputs_high, mut state_high) = seed_clock_state(&graph, &constraints);
-    clock_filter_inplace(&graph, &inputs_high, &mut state_high, &clock_model, &branch_lengths, 100.0)?;
+    clock_filter_inplace(
+      &graph,
+      &inputs_high,
+      &mut state_high,
+      &clock_model,
+      &branch_lengths,
+      100.0,
+    )?;
     let outliers_high_threshold = count_outliers(&graph, &state_high);
 
     assert!(

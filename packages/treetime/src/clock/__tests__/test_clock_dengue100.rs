@@ -244,7 +244,8 @@ mod tests {
       variance_offset_leaf: 1e-4,
     };
 
-    let (mut expected_graph, expected_names, mut expected_inputs, mut expected_state, mut expected_branch_lengths) = load_dengue100()?;
+    let (mut expected_graph, expected_names, mut expected_inputs, mut expected_state, mut expected_branch_lengths) =
+      load_dengue100()?;
     let (_expected_clock_model, _) = run_prefilter_pipeline(
       &mut expected_graph,
       &expected_names,
@@ -255,7 +256,8 @@ mod tests {
     )?;
     let expected_outliers = get_outlier_names(&expected_names, &expected_graph, &expected_state);
 
-    let (mut default_graph, default_names, mut default_inputs, mut default_state, mut default_branch_lengths) = load_dengue100()?;
+    let (mut default_graph, default_names, mut default_inputs, mut default_state, mut default_branch_lengths) =
+      load_dengue100()?;
     let (_default_clock_model, _) = run_prefilter_pipeline(
       &mut default_graph,
       &default_names,

@@ -196,7 +196,11 @@ mod tests {
     let mut constraints = DateConstraints::default();
     set_date_constraint(&mut constraints, leaf_a_key, Distribution::range((2014.0, 2016.0), 0.0));
     set_date_constraint(&mut constraints, leaf_b_key, Distribution::range((2013.0, 2015.0), 0.0));
-    set_date_constraint(&mut constraints, internal_key, Distribution::range((2012.0, 2014.0), 0.0));
+    set_date_constraint(
+      &mut constraints,
+      internal_key,
+      Distribution::range((2012.0, 2014.0), 0.0),
+    );
     let mut state = TimetreeState::new(&graph);
     set_edge_branch_dist(&graph, &mut state, leaf_a_key, 3.0);
     set_edge_branch_dist(&graph, &mut state, leaf_b_key, 2.0);
@@ -486,7 +490,11 @@ mod tests {
 
     /// Give a node the date it was loaded with, and nothing else: the backward pass is what lifts
     /// it into the node's time distribution.
-    pub(super) fn set_date_constraint(constraints: &mut DateConstraints, key: GraphNodeKey, dist: Distribution<NegLog>) {
+    pub(super) fn set_date_constraint(
+      constraints: &mut DateConstraints,
+      key: GraphNodeKey,
+      dist: Distribution<NegLog>,
+    ) {
       constraints.date_constraints.insert(key, Some(Arc::new(dist)));
     }
 
