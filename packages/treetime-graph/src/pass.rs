@@ -304,14 +304,18 @@ impl GraphPass {
         .expect("Every indexed slot must publish an output after a successful map");
       let key = self.nodes[index].key;
       if nodes.insert(key, output.node).is_some() {
-        return Err(make_internal_report!("Duplicate node {key} while collecting a graph map"));
+        return Err(make_internal_report!(
+          "Duplicate node {key} while collecting a graph map"
+        ));
       }
       if let Some(edge) = output.parent_message {
         let (_, edge_key) = self.nodes[index]
           .parent_edge
           .expect("Parent message must belong to a parent edge");
         if edges.insert(edge_key, edge).is_some() {
-          return Err(make_internal_report!("Duplicate edge {edge_key} while collecting a graph map"));
+          return Err(make_internal_report!(
+            "Duplicate edge {edge_key} while collecting a graph map"
+          ));
         }
       }
     }

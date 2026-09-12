@@ -26,7 +26,9 @@ pub fn propagate_distributions_backward(
   coalescent_model: Option<&CoalescentModel>,
   state: &mut TimetreeState,
 ) -> Result<(), Report> {
-  state.map_backward(graph, |context| propagate_distributions_backward_node(coalescent_model, &context))
+  state.map_backward(graph, |context| {
+    propagate_distributions_backward_node(coalescent_model, &context)
+  })
 }
 
 /// Computes a node's time distribution and the backward message it sends to its parent.

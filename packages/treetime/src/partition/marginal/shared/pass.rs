@@ -46,7 +46,13 @@ fn marginal_process_node_backward_indexed(
   gtr: &GTR,
   min_branch_length: f64,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  context: &GraphPassBackwardContext<'_, DenseNodePartition, DenseEdgePartition, DenseNodePartition, DenseEdgePartition>,
+  context: &GraphPassBackwardContext<
+    '_,
+    DenseNodePartition,
+    DenseEdgePartition,
+    DenseNodePartition,
+    DenseEdgePartition,
+  >,
 ) -> Result<GraphPassNodeOutput<DenseNodePartition, DenseEdgePartition>, Report> {
   let mut node = context.input.clone();
   let msg_to_parent = if context.is_leaf {

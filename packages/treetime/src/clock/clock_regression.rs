@@ -120,9 +120,7 @@ fn clock_regression_backward_node(
     // Children arrive in the graph's canonical `children_of` order, so the moment sums fold in that
     // order, keeping the floating-point result byte-for-byte identical.
     context.children.iter().fold(ClockSet::default(), |mut total, child| {
-      let edge = child
-        .edge
-        .expect("Non-root indexed node must own its parent edge");
+      let edge = child.edge.expect("Non-root indexed node must own its parent edge");
       total += &edge.clock_from_child;
       total
     })

@@ -69,13 +69,18 @@ mod tests {
     let (nodes, edges) = own_value_pass_values(&graph, &names);
     let pass = GraphPass::new(&graph)?;
 
-    let outputs: GraphMapOutputs<usize, ()> = pass.map_backward(&nodes, &edges, |_| Ok(0), |context| {
-      let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
-      Ok(GraphPassNodeOutput {
-        node: *context.input + children_sum,
-        parent_message: None,
-      })
-    })?;
+    let outputs: GraphMapOutputs<usize, ()> = pass.map_backward(
+      &nodes,
+      &edges,
+      |_| Ok(0),
+      |context| {
+        let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
+        Ok(GraphPassNodeOutput {
+          node: *context.input + children_sum,
+          parent_message: None,
+        })
+      },
+    )?;
 
     assert!(outputs.edges.is_empty());
     let actual_nodes = values_by_name(&names, &outputs.nodes);
@@ -140,11 +145,19 @@ mod tests {
     let (nodes, edges) = pass_zeros(&graph);
 
     let seen: Mutex<BTreeMap<GraphNodeKey, Vec<GraphNodeKey>>> = Mutex::new(BTreeMap::new());
-    let _outputs: GraphMapOutputs<usize, ()> = GraphPass::new(&graph)?.map_backward(&nodes, &edges, |_| Ok(0), |context| {
-      let order = context.children.iter().map(|child| child.node_key).collect::<Vec<_>>();
-      seen.lock().insert(context.key, order);
-      Ok(GraphPassNodeOutput { node: 0, parent_message: None })
-    })?;
+    let _outputs: GraphMapOutputs<usize, ()> = GraphPass::new(&graph)?.map_backward(
+      &nodes,
+      &edges,
+      |_| Ok(0),
+      |context| {
+        let order = context.children.iter().map(|child| child.node_key).collect::<Vec<_>>();
+        seen.lock().insert(context.key, order);
+        Ok(GraphPassNodeOutput {
+          node: 0,
+          parent_message: None,
+        })
+      },
+    )?;
 
     let actual = seen.lock().get(&parent_key).cloned().expect("Parent must be visited");
     let expected = child_order_by_parent(&graph, parent_key);
@@ -166,12 +179,17 @@ mod tests {
     let nodes = keys.iter().copied().zip([100, 10, 1]).collect::<BTreeMap<_, _>>();
     let edges = zero_edges(&graph);
 
-    let outputs: GraphMapOutputs<usize, usize> = GraphPass::new(&graph)?.map_backward(&nodes, &edges, |_| Ok(0), |context| {
-      let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
-      let node = *context.input + children_sum;
-      let parent_message = (!context.is_root).then_some(node);
-      Ok(GraphPassNodeOutput { node, parent_message })
-    })?;
+    let outputs: GraphMapOutputs<usize, usize> = GraphPass::new(&graph)?.map_backward(
+      &nodes,
+      &edges,
+      |_| Ok(0),
+      |context| {
+        let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
+        let node = *context.input + children_sum;
+        let parent_message = (!context.is_root).then_some(node);
+        Ok(GraphPassNodeOutput { node, parent_message })
+      },
+    )?;
 
     let expected = btreemap! { keys[0] => 111, keys[1] => 11, keys[2] => 1 };
     assert_eq!(expected, outputs.nodes);
@@ -187,10 +205,18 @@ mod tests {
     let nodes = btreemap! { root => 7 };
     let edges = zero_edges(&graph);
 
-    let outputs: GraphMapOutputs<usize, usize> = GraphPass::new(&graph)?.map_backward(&nodes, &edges, |_| Ok(0), |context| {
-      assert!(context.is_root && context.is_leaf && context.children.is_empty() && context.parent_edge.is_none());
-      Ok(GraphPassNodeOutput { node: *context.input, parent_message: None })
-    })?;
+    let outputs: GraphMapOutputs<usize, usize> = GraphPass::new(&graph)?.map_backward(
+      &nodes,
+      &edges,
+      |_| Ok(0),
+      |context| {
+        assert!(context.is_root && context.is_leaf && context.children.is_empty() && context.parent_edge.is_none());
+        Ok(GraphPassNodeOutput {
+          node: *context.input,
+          parent_message: None,
+        })
+      },
+    )?;
 
     assert_eq!(btreemap! { root => 7 }, outputs.nodes);
     assert!(outputs.edges.is_empty());
@@ -209,16 +235,24 @@ mod tests {
     graph.remove_node(removed)?; // leaves a gap at the removed node's key
     graph.build()?;
 
-    assert!(removed.as_usize() > child.as_usize(), "the removed key sits between live keys");
+    assert!(
+      removed.as_usize() > child.as_usize(),
+      "the removed key sits between live keys"
+    );
     let nodes = btreemap! { root => 100, child => 1 };
     let edges = zero_edges(&graph);
 
-    let outputs: GraphMapOutputs<usize, usize> = GraphPass::new(&graph)?.map_backward(&nodes, &edges, |_| Ok(0), |context| {
-      let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
-      let node = *context.input + children_sum;
-      let parent_message = (!context.is_root).then_some(node);
-      Ok(GraphPassNodeOutput { node, parent_message })
-    })?;
+    let outputs: GraphMapOutputs<usize, usize> = GraphPass::new(&graph)?.map_backward(
+      &nodes,
+      &edges,
+      |_| Ok(0),
+      |context| {
+        let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
+        let node = *context.input + children_sum;
+        let parent_message = (!context.is_root).then_some(node);
+        Ok(GraphPassNodeOutput { node, parent_message })
+      },
+    )?;
 
     assert_eq!(btreemap! { root => 101, child => 1 }, outputs.nodes);
     Ok(())
@@ -231,10 +265,18 @@ mod tests {
     let (graph, _names) = fixture_tree()?;
     let (nodes, edges) = key_indices(&graph);
 
-    let outputs: GraphMapOutputs<usize, usize> = GraphPass::new(&graph)?.map_backward(&nodes, &edges, |_| Ok(0), |context| {
-      let parent_message = context.parent_edge.map(|(_, edge)| *edge);
-      Ok(GraphPassNodeOutput { node: *context.input, parent_message })
-    })?;
+    let outputs: GraphMapOutputs<usize, usize> = GraphPass::new(&graph)?.map_backward(
+      &nodes,
+      &edges,
+      |_| Ok(0),
+      |context| {
+        let parent_message = context.parent_edge.map(|(_, edge)| *edge);
+        Ok(GraphPassNodeOutput {
+          node: *context.input,
+          parent_message,
+        })
+      },
+    )?;
 
     assert_eq!(nodes, outputs.nodes);
     assert_eq!(edges, outputs.edges);
@@ -251,8 +293,12 @@ mod tests {
     let edges_before = edges.clone();
     let pass = GraphPass::new(&graph)?;
 
-    let failed: Result<GraphMapOutputs<usize, usize>, Report> =
-      pass.map_backward(&nodes, &edges, |_| Ok(0), |_| Err(make_report!("injected pass failure")));
+    let failed: Result<GraphMapOutputs<usize, usize>, Report> = pass.map_backward(
+      &nodes,
+      &edges,
+      |_| Ok(0),
+      |_| Err(make_report!("injected pass failure")),
+    );
     assert_error!(failed, "injected pass failure");
 
     // Borrowed inputs are never mutated by a pass, so a failure leaves them exactly as supplied.
@@ -260,12 +306,17 @@ mod tests {
     assert_eq!(edges_before, edges);
 
     // Retry from the same inputs succeeds and produces the expected subtree sums.
-    let outputs = pass.map_backward(&nodes, &edges, |_| Ok(0), |context| {
-      let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
-      let node = *context.input + children_sum;
-      let parent_message = (!context.is_root).then_some(node);
-      Ok(GraphPassNodeOutput { node, parent_message })
-    })?;
+    let outputs = pass.map_backward(
+      &nodes,
+      &edges,
+      |_| Ok(0),
+      |context| {
+        let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
+        let node = *context.input + children_sum;
+        let parent_message = (!context.is_root).then_some(node);
+        Ok(GraphPassNodeOutput { node, parent_message })
+      },
+    )?;
     let actual_nodes = values_by_name(&names, &outputs.nodes);
     assert_eq!(&116, &actual_nodes[&o!("root")]);
     Ok(())
@@ -280,39 +331,73 @@ mod tests {
     let (nodes, edges) = own_value_pass_values(&graph, &names);
     let nodes_before = nodes.clone();
     let edges_before = edges.clone();
-    let key_by_name = names.iter().map(|(key, name)| (name.clone(), *key)).collect::<BTreeMap<_, _>>();
+    let key_by_name = names
+      .iter()
+      .map(|(key, name)| (name.clone(), *key))
+      .collect::<BTreeMap<_, _>>();
 
     let visited: Mutex<BTreeSet<GraphNodeKey>> = Mutex::new(BTreeSet::new());
-    let failed: Result<GraphMapOutputs<usize, usize>, Report> =
-      GraphPass::new(&graph)?.map_backward(&nodes, &edges, |_| Ok(0), |context| {
+    let failed: Result<GraphMapOutputs<usize, usize>, Report> = GraphPass::new(&graph)?.map_backward(
+      &nodes,
+      &edges,
+      |_| Ok(0),
+      |context| {
         visited.lock().insert(context.key);
         if context.key == key_by_name[&o!("B")] {
           return Err(make_report!("injected child failure"));
         }
-        Ok(GraphPassNodeOutput { node: *context.input, parent_message: (!context.is_root).then_some(0) })
-      });
+        Ok(GraphPassNodeOutput {
+          node: *context.input,
+          parent_message: (!context.is_root).then_some(0),
+        })
+      },
+    );
     assert_error!(failed, "injected child failure");
 
     let visited = visited.lock();
-    assert!(!visited.contains(&key_by_name[&o!("AB")]), "the failing child's parent must not run");
-    assert!(!visited.contains(&key_by_name[&o!("root")]), "an ancestor of the failing child must not run");
+    assert!(
+      !visited.contains(&key_by_name[&o!("AB")]),
+      "the failing child's parent must not run"
+    );
+    assert!(
+      !visited.contains(&key_by_name[&o!("root")]),
+      "an ancestor of the failing child must not run"
+    );
     assert_eq!(nodes_before, nodes);
     assert_eq!(edges_before, edges);
     Ok(())
   }
 
-  fn pass_zeros(graph: &Graph) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<crate::edge::GraphEdgeKey, usize>) {
+  fn pass_zeros(
+    graph: &Graph,
+  ) -> (
+    BTreeMap<GraphNodeKey, usize>,
+    BTreeMap<crate::edge::GraphEdgeKey, usize>,
+  ) {
     (
-      graph.get_nodes().iter().map(|node| (node.read_arc().key(), 0)).collect(),
+      graph
+        .get_nodes()
+        .iter()
+        .map(|node| (node.read_arc().key(), 0))
+        .collect(),
       zero_edges(graph),
     )
   }
 
   fn zero_edges(graph: &Graph) -> BTreeMap<crate::edge::GraphEdgeKey, usize> {
-    graph.get_edges().iter().map(|edge| (edge.read_arc().key(), 0)).collect()
+    graph
+      .get_edges()
+      .iter()
+      .map(|edge| (edge.read_arc().key(), 0))
+      .collect()
   }
 
-  fn key_indices(graph: &Graph) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<crate::edge::GraphEdgeKey, usize>) {
+  fn key_indices(
+    graph: &Graph,
+  ) -> (
+    BTreeMap<GraphNodeKey, usize>,
+    BTreeMap<crate::edge::GraphEdgeKey, usize>,
+  ) {
     let nodes = graph
       .get_nodes()
       .iter()
@@ -449,12 +534,17 @@ mod tests {
       let pass = GraphPass::new(graph)?;
       let pool = ThreadPoolBuilder::new().num_threads(threads).build()?;
       pool.install(|| {
-        pass.map_backward(&nodes, &edges, |_| Ok(0), |context| {
-          let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
-          let node = *context.input + children_sum;
-          let parent_message = (!context.is_root).then_some(node);
-          Ok(GraphPassNodeOutput { node, parent_message })
-        })
+        pass.map_backward(
+          &nodes,
+          &edges,
+          |_| Ok(0),
+          |context| {
+            let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
+            let node = *context.input + children_sum;
+            let parent_message = (!context.is_root).then_some(node);
+            Ok(GraphPassNodeOutput { node, parent_message })
+          },
+        )
       })
     }
 
@@ -469,12 +559,17 @@ mod tests {
       let pass = GraphPass::new(graph)?;
       let pool = ThreadPoolBuilder::new().num_threads(threads).build()?;
       pool.install(|| {
-        pass.map_forward(&nodes, &edges, |_| Ok(0), |context| {
-          let parent_sum = context.parent.copied().unwrap_or(0);
-          let node = *context.input + parent_sum;
-          let parent_message = (!context.is_root).then_some(node);
-          Ok(GraphPassNodeOutput { node, parent_message })
-        })
+        pass.map_forward(
+          &nodes,
+          &edges,
+          |_| Ok(0),
+          |context| {
+            let parent_sum = context.parent.copied().unwrap_or(0);
+            let node = *context.input + parent_sum;
+            let parent_message = (!context.is_root).then_some(node);
+            Ok(GraphPassNodeOutput { node, parent_message })
+          },
+        )
       })
     }
 
