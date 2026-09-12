@@ -1,6 +1,7 @@
+use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::partition::fitch::partition::PartitionFitch;
-use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::partition::marginal::dense::partition::DenseReadout;
+use crate::partition::marginal::sparse::partition::SparseReadout;
 use crate::partition::traits::{BranchTopology, PartitionBranchOps};
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
@@ -64,34 +65,60 @@ impl AugurNodeDataJsonAncestralPartition for PartitionFitch {
   }
 }
 
-impl AugurNodeDataJsonAncestralPartition for PartitionMarginalSparse {
-  fn sequence_length(&self) -> usize {
-    self.length
-  }
-
-  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    // `seq.sequence` holds the parsimony chain, so go through the branch-ops accessor, which resolves
-    // it against the posterior. Reading the field directly would emit parsimony states in the JSON
-    // while the reconstructed FASTA carried MAP states.
-    PartitionBranchOps::node_sequence(self, node_key)
-  }
-
-  fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    PartitionBranchOps::edge_subs(self, graph, edge_key)
-  }
-
-  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
-    PartitionBranchOps::edge_indels(self, edge_key)
-  }
-
-  fn ambiguous_char(&self) -> AsciiChar {
-    self.alphabet.unknown()
+impl SparseReconstruction {
+  /// Build a short-lived read view over this completed reconstruction's borrowed inputs and result maps.
+  fn readout(&self) -> SparseReadout<'_> {
+    SparseReadout {
+      partition: &self.partition,
+      node_states: &self.node_states,
+      backward: &self.backward,
+      forward: &self.forward,
+      estimates: &self.estimates,
+    }
   }
 }
 
-impl AugurNodeDataJsonAncestralPartition for PartitionMarginalDense {
+impl AugurNodeDataJsonAncestralPartition for SparseReconstruction {
   fn sequence_length(&self) -> usize {
-    self.length
+    self.partition.length
+  }
+
+  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+    // `sequence` holds the parsimony chain, so go through the branch-ops accessor, which resolves
+    // it against the posterior. Reading the field directly would emit parsimony states in the JSON
+    // while the reconstructed FASTA carried MAP states.
+    PartitionBranchOps::node_sequence(&self.readout(), node_key)
+  }
+
+  fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    PartitionBranchOps::edge_subs(&self.readout(), graph, edge_key)
+  }
+
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+    PartitionBranchOps::edge_indels(&self.readout(), edge_key)
+  }
+
+  fn ambiguous_char(&self) -> AsciiChar {
+    self.partition.alphabet.unknown()
+  }
+}
+
+impl DenseReconstruction {
+  /// Build a short-lived read view over this completed reconstruction's borrowed inputs and result maps.
+  fn readout(&self) -> DenseReadout<'_> {
+    DenseReadout {
+      partition: &self.partition,
+      node_states: &self.node_states,
+      backward: &self.backward,
+      forward: &self.forward,
+      estimates: &self.estimates,
+    }
+  }
+}
+
+impl AugurNodeDataJsonAncestralPartition for DenseReconstruction {
+  fn sequence_length(&self) -> usize {
+    self.partition.length
   }
 
   fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
@@ -99,18 +126,18 @@ impl AugurNodeDataJsonAncestralPartition for PartitionMarginalDense {
     // reconstruction pass writes into every node's `seq.sequence`. Reading it here (rather than
     // re-deriving MAP states from the profile) makes the node-data JSON reflect the flag-aware tip
     // reconstruction (observed echo or imputation) and keeps dense output consistent with sparse.
-    self.data.nodes[&node_key].seq.sequence.clone()
+    self.node_states[&node_key].seq.sequence.clone()
   }
 
   fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    PartitionBranchOps::edge_subs(self, graph, edge_key)
+    PartitionBranchOps::edge_subs(&self.readout(), graph, edge_key)
   }
 
   fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
-    PartitionBranchOps::edge_indels(self, edge_key)
+    PartitionBranchOps::edge_indels(&self.readout(), edge_key)
   }
 
   fn ambiguous_char(&self) -> AsciiChar {
-    self.alphabet.unknown()
+    self.partition.alphabet.unknown()
   }
 }

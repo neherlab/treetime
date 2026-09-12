@@ -1,5 +1,6 @@
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
+use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::discrete::DiscreteStates;
 use crate::partition::traits::HasGtr;
 use indexmap::IndexMap;
@@ -33,6 +34,7 @@ impl MugrationConfidenceOutput {
   pub fn new(
     graph: &Graph,
     partition: &PartitionMarginalDiscrete,
+    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
   ) -> Self {
     let states: Vec<String> = partition.states.iter().map(|s| s.to_owned()).collect();
@@ -44,10 +46,12 @@ impl MugrationConfidenceOutput {
         let node_key = node.read_arc().key();
         let node_name = node_name_or_fallback(names, node_key);
 
-        partition.get_confidence(node_key).map(|profile| ConfidenceRow {
-          node: node_name,
-          profile,
-        })
+        partition
+          .get_confidence(node_states, node_key)
+          .map(|profile| ConfidenceRow {
+            node: node_name,
+            profile,
+          })
       })
       .collect();
 
@@ -170,6 +174,7 @@ impl MugrationResult {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     partition: &PartitionMarginalDiscrete,
+    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     attribute: &str,
   ) -> Self {
     // Gather the per-node name/confidence and per-edge branch length off the tree into keyed value
@@ -191,9 +196,9 @@ impl MugrationResult {
         )
       })
       .collect();
-    let assignments = extract_trait_assignments(&graph, partition, names);
+    let assignments = extract_trait_assignments(&graph, partition, node_states, names);
     let traits = MugrationTraitsOutput::new(attribute, assignments);
-    let confidence = MugrationConfidenceOutput::new(&graph, partition, names);
+    let confidence = MugrationConfidenceOutput::new(&graph, partition, node_states, names);
 
     let edges: BTreeMap<GraphEdgeKey, EdgeOut> = graph
       .get_edges()
@@ -229,13 +234,14 @@ impl MugrationResult {
 pub(crate) fn gather_mugration_output_maps(
   graph: &Graph,
   partition: &PartitionMarginalDiscrete,
+  node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
 ) -> MugrationOutputMaps {
   let reconstructed_traits = graph
     .get_nodes()
     .iter()
     .map(|node| {
       let key = node.read_arc().key();
-      (key, partition.get_reconstructed_trait(key))
+      (key, partition.get_reconstructed_trait(node_states, key))
     })
     .collect();
   let confidences = graph
@@ -243,7 +249,7 @@ pub(crate) fn gather_mugration_output_maps(
     .iter()
     .map(|node| {
       let key = node.read_arc().key();
-      (key, partition.get_confidence(key))
+      (key, partition.get_confidence(node_states, key))
     })
     .collect();
   MugrationOutputMaps {
@@ -258,6 +264,7 @@ pub(crate) fn gather_mugration_output_maps(
 fn extract_trait_assignments(
   graph: &Graph,
   partition: &PartitionMarginalDiscrete,
+  node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> IndexMap<String, String> {
   graph
@@ -268,7 +275,7 @@ fn extract_trait_assignments(
       let node_name = node_name_or_fallback(names, node_key);
 
       partition
-        .get_reconstructed_trait(node_key)
+        .get_reconstructed_trait(node_states, node_key)
         .map(|trait_value| (node_name, trait_value))
     })
     .collect()

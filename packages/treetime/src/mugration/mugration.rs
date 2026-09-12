@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
+use crate::ancestral::marginal::profile_branch_lengths;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::refinement::refine_gtr_iterative;
@@ -12,7 +12,6 @@ use itertools::Itertools;
 use log::{info, warn};
 use ndarray::Array1;
 use statrs::statistics::Statistics;
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -155,27 +154,27 @@ pub fn execute_mugration(
     pi,
   })?;
 
-  let mut partition = PartitionMarginalDiscrete::new(
+  let partition = PartitionMarginalDiscrete::new(
     gtr,
     discrete_states,
     MIN_BRANCH_LENGTH_FRACTION,
     filter_uninformative_root,
   );
-  partition.attach_traits(&graph, traits, names)?;
+  let node_states = partition.attach_traits(&graph, traits, names)?;
 
-  let mut partition = RefCell::new(partition);
-
-  let log_lh = marginal_update(
-    &graph,
-    &profile_branch_lengths(branch_lengths),
-    std::slice::from_mut(partition.get_mut()),
-  )?;
+  let (node_states, backward, forward, _estimates, log_lh) =
+    partition.marginal_update(&graph, &profile_branch_lengths(branch_lengths), node_states)?;
   info!("Mugration: initial log likelihood = {:.4}", log_lh.value());
 
-  refine_gtr_iterative(
+  // GTR refinement borrows stable inputs and returns the refined model with its own reconstruction
+  // result maps; each rate candidate evaluates on an independent clone. Mugration optimizes the rate.
+  let (partition, node_states, _backward, _forward, _estimates, _log_lh) = refine_gtr_iterative(
     &graph,
-    &partition,
+    partition,
     branch_lengths,
+    node_states,
+    backward,
+    forward,
     iterations,
     fixed_pi.as_ref(),
     pc.unwrap_or(1.0),
@@ -183,12 +182,10 @@ pub fn execute_mugration(
     true,
   )?;
 
-  let partition = partition.into_inner();
-
-  // Gather the output value maps off the pipeline-local partition before it enters the graph data
-  // slot, taking the partition read out of the serialization path. The maps stay a local the command
-  // threads to the writers; the partition is dropped at the end of this function.
-  let maps = gather_mugration_output_maps(&graph, &partition);
-  let result = MugrationResult::new(graph, confidences, names, branch_lengths, &partition, attribute);
+  // Gather the output value maps off the pipeline-local partition and its node states before they leave
+  // scope, taking the partition read out of the serialization path. The maps stay a local the command
+  // threads to the writers; the partition and node states are dropped at the end of this function.
+  let maps = gather_mugration_output_maps(&graph, &partition, &node_states);
+  let result = MugrationResult::new(graph, confidences, names, branch_lengths, &partition, &node_states, attribute);
   Ok((result, maps))
 }
