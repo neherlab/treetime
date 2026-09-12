@@ -1,10 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::run_loop::optimize_partition_view;
+  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
@@ -28,7 +29,7 @@ mod tests {
 
     initial_guess_mixed(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       false,
       false,
       &mut branch_lengths,
@@ -50,9 +51,7 @@ mod tests {
     let edge_key = graph.get_edges()[0].read_arc().key();
     {
       let partition = &mut partitions[0];
-      let edge_data = partition.data.edges[&edge_key].clone();
-      let edge_entry = partition.data.edges.entry(edge_key).or_insert(edge_data);
-      edge_entry.indels.push(InDel {
+      partition.estimates.entry(edge_key).or_default().indels.push(InDel {
         range: (4, 7),
         seq: Seq::try_from_str("ACG")?,
         kind: crate::seq::indel::InDelKind::Deletion,
@@ -61,7 +60,7 @@ mod tests {
 
     initial_guess_mixed(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       false,
       false,
       &mut branch_lengths,
@@ -87,7 +86,7 @@ mod tests {
 
     pub fn setup_dense(
       newick: &str,
-    ) -> Result<(Graph, Vec<PartitionMarginalDense>, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    ) -> Result<(Graph, Vec<DenseReconstruction>, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let aln = read_many_fasta_str(
         indoc! {r#"
@@ -108,22 +107,17 @@ mod tests {
       } = nwk_read_str(newick)?;
       let graph: Graph = graph;
 
-      let mut partitions = vec![PartitionMarginalDense::new(
-        0,
-        jc69(JC69Params::default())?,
-        alphabet,
-        get_common_length(&aln)?,
-      )];
+      let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?);
+      let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+      let mut partitions = vec![DenseReconstruction {
+        partition,
+        node_states,
+        backward: BTreeMap::new(),
+        forward: BTreeMap::new(),
+        estimates: BTreeMap::new(),
+      }];
 
-      initialize_marginal(
-        &graph,
-        &profile_branch_lengths(&branch_lengths),
-        &mut partitions,
-        &aln,
-        &names,
-      )?
-      .value();
-      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+      marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
 
       Ok((graph, partitions, branch_lengths))
     }

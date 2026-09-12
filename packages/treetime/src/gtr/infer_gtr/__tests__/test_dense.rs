@@ -1,14 +1,13 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::initialize_marginal;
   use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::{
     InferGtrOptions, accumulate_mutation_counts, get_branch_mutation_matrix, infer_gtr_impl,
   };
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::traits::TransitionCounting;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
@@ -35,7 +34,7 @@ mod tests {
   fn setup_dense_partition(
     tree_nwk: &str,
     aln: &[FastaRecord],
-  ) -> Result<(Graph, PartitionMarginalDense, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+  ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let NwkParse {
       graph,
       names,
@@ -49,17 +48,17 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let mut partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
-
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      std::slice::from_mut(&mut partition),
-      aln,
-      &names,
-    )?
-    .value();
-    Ok((graph, partition, branch_lengths))
+    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
+    let node_states = partition.attach_sequences(&graph, aln, &names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    Ok((graph, recon, branch_lengths))
   }
 
   /// All sequences identical -> near-zero off-diagonal nij.
@@ -84,10 +83,10 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let (graph, partition, branch_lengths) =
+    let (graph, recon, branch_lengths) =
       setup_dense_partition("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
 
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
 
     // With fractional counts, identical sequences still have small probability
     // mass on off-diagonal states from the joint distribution
@@ -115,9 +114,9 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let (graph, partition, branch_lengths) = setup_dense_partition("(A:0.1,B:0.1)root:0.0;", &aln)?;
+    let (graph, recon, branch_lengths) = setup_dense_partition("(A:0.1,B:0.1)root:0.0;", &aln)?;
 
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
 
     // The root should be reconstructed with some state at position 0.
     // With marginal reconstruction on a symmetric tree, the root gets
@@ -179,10 +178,10 @@ mod tests {
       &*NUC_ALPHABET,
     )?;
 
-    let (graph, partition, branch_lengths) =
+    let (graph, recon, branch_lengths) =
       setup_dense_partition("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;", &aln)?;
 
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
 
     // Ti proportional to clamped BL (~2.5e-4), bounded well below 1e-2
     let ti_max = counts.Ti.iter().copied().fold(f64::NEG_INFINITY, f64::max);
@@ -261,9 +260,9 @@ mod tests {
     )?;
 
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
-    let (graph, partition, branch_lengths) = setup_dense_partition(tree_nwk, &aln)?;
+    let (graph, recon, branch_lengths) = setup_dense_partition(tree_nwk, &aln)?;
 
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
     let result = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     pretty_assert_abs_diff_eq!(result.W, result.W.t().to_owned(), epsilon = 1e-9);
