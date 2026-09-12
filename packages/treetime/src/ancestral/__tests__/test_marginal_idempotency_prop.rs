@@ -2,7 +2,8 @@
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::arb_marginal_input_small;
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
-  use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+  use crate::ancestral::pipeline::SparseReconstruction;
   use crate::ancestral::sample::SampleMode;
   use crate::seq::composition::Composition;
   use proptest::prelude::*;
@@ -45,12 +46,12 @@ mod tests {
     fn test_prop_marginal_idempotency_dense(input in arb_marginal_input_small()) {
       let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
       let graph: Graph = graph;
-      let (_, mut partitions) = run_dense_marginal(&input).unwrap();
+      let (_, mut recon) = run_dense_marginal(&input).unwrap();
 
-      let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)
+      let log_lh_first = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
         .unwrap()
         .value();
-      let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)
+      let log_lh_second = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
         .unwrap()
         .value();
 
@@ -80,12 +81,12 @@ mod tests {
     fn test_prop_marginal_idempotency_sparse(input in arb_marginal_input_small()) {
       let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
       let graph: Graph = graph;
-      let (_, mut partitions) = run_sparse_marginal(&input).unwrap();
+      let (_, mut recon) = run_sparse_marginal(&input).unwrap();
 
-      let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)
+      let log_lh_first = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
         .unwrap()
         .value();
-      let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)
+      let log_lh_second = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
         .unwrap()
         .value();
 
@@ -99,28 +100,31 @@ mod tests {
     fn test_prop_marginal_sparse_map_composition_matches_sequence(input in arb_marginal_input_small()) {
       let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
       let graph: Graph = graph;
-      let (_, mut partitions) = run_sparse_marginal(&input).unwrap();
+      let (_, mut recon) = run_sparse_marginal(&input).unwrap();
       let mut rng = rand::rngs::StdRng::seed_from_u64(0);
 
-      ancestral_reconstruction_marginal(
-        &graph,
-        true,
-        false,
-        &mut partitions,
-        SampleMode::Argmax,
-        &mut rng,
-        |_, _| Ok(()),
-      )
-      .unwrap();
+      {
+        let SparseReconstruction {
+          partition,
+          node_states,
+          forward,
+          ..
+        } = &mut recon;
+        ancestral_reconstruction(
+          &graph,
+          |node| partition.reconstruct_node_sequence(node_states, forward, node, true, false, SampleMode::Argmax, &mut rng),
+          |_, _| Ok(()),
+        )
+        .unwrap();
+      }
 
-      let partition = &partitions[0];
-      let compositions_match = partition.nodes.values().all(|node| {
+      let compositions_match = recon.node_states.iter().all(|(key, node)| {
         let expected = Composition::with_seq(
-          &node.seq.sequence,
-          partition.alphabet.chars(),
-          partition.alphabet.gap(),
+          &node.sequence,
+          recon.partition.alphabet.chars(),
+          recon.partition.alphabet.gap(),
         );
-        expected == node.seq.composition
+        expected == recon.partition.obs_nodes[key].composition
       });
       prop_assert!(compositions_match);
     }

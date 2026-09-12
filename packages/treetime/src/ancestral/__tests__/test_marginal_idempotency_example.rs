@@ -2,7 +2,7 @@
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
-  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
@@ -83,10 +83,10 @@ TCGGCCGTGTRTTG--
       ..
     } = nwk_read_str(&input.newick)?;
     let graph: Graph = graph;
-    let (_, mut partitions) = run_dense_marginal(&input)?;
+    let (_, mut recon) = run_dense_marginal(&input)?;
 
-    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
-    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let log_lh_first = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    let log_lh_second = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())
@@ -116,10 +116,10 @@ TCGGCCGTGTRTTG--
       ..
     } = nwk_read_str(&input.newick)?;
     let graph: Graph = graph;
-    let (_, mut partitions) = run_sparse_marginal(&input)?;
+    let (_, mut recon) = run_sparse_marginal(&input)?;
 
-    let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
-    let log_lh_second = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let log_lh_first = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    let log_lh_second = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())

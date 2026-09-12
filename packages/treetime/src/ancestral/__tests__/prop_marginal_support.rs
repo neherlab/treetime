@@ -3,11 +3,12 @@ pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
+  use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
 
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -34,7 +35,7 @@ pub mod tests {
   /// log-likelihood along with the populated partition for further inspection.
   ///
   /// Used by property tests to verify invariants of marginal ancestral reconstruction.
-  pub fn run_dense_marginal(input: &MarginalTestInput) -> Result<(f64, [PartitionMarginalDense; 1]), Report> {
+  pub fn run_dense_marginal(input: &MarginalTestInput) -> Result<(f64, DenseReconstruction), Report> {
     let NwkParse {
       graph,
       names,
@@ -45,17 +46,17 @@ pub mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&input.alignment)?;
 
-    let mut partitions = [PartitionMarginalDense::new(0, input.gtr.clone(), alphabet, length)];
-
-    let log_lh = initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
-      &input.alignment,
-      &names,
-    )?
-    .value();
-    Ok((log_lh, partitions))
+    let partition = PartitionMarginalDense::new(0, input.gtr.clone(), alphabet, length);
+    let node_states = partition.attach_sequences(&graph, &input.alignment, &names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    let log_lh = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    Ok((log_lh, recon))
   }
 
   /// Run marginal ancestral reconstruction using sparse representation.
@@ -76,7 +77,7 @@ pub mod tests {
   ///
   /// Returns the log-likelihood and the populated partition. Used by property tests
   /// to verify that the sparse path produces results consistent with the dense path.
-  pub fn run_sparse_marginal(input: &MarginalTestInput) -> Result<(f64, [PartitionMarginalSparse; 1]), Report> {
+  pub fn run_sparse_marginal(input: &MarginalTestInput) -> Result<(f64, SparseReconstruction), Report> {
     let NwkParse {
       graph,
       names,
@@ -85,11 +86,18 @@ pub mod tests {
     } = nwk_read_str(&input.newick)?;
     let graph: Graph = graph;
     let alphabet = Alphabet::default();
-    let length = get_common_length(&input.alignment)?;
+    let _ = get_common_length(&input.alignment)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &input.alignment, &names)?;
-    let mut partitions = [fitch.into_marginal_sparse(input.gtr.clone(), &graph)?];
-    let log_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
-    Ok((log_lh, partitions))
+    let (partition, node_states) = fitch.into_marginal_sparse(input.gtr.clone(), &graph)?;
+    let mut recon = SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    let log_lh = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    Ok((log_lh, recon))
   }
 }

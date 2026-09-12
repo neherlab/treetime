@@ -5,8 +5,9 @@ mod tests {
   use crate::coalescent::node_time::CoalescentNodeTimes;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
+  use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::convergence::likelihood::{
@@ -144,15 +145,22 @@ mod tests {
     }
 
     pub fn partition_with_root_log_lh(root_key: GraphNodeKey, log_lh: f64) -> Result<PartitionTimetree, Report> {
-      let mut partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::default(), 1);
-      partition.data.nodes.insert(
+      let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::default(), 1);
+      let mut node_states = BTreeMap::new();
+      node_states.insert(
         root_key,
-        DenseNodePartition {
+        DenseNodeState {
           seq: DenseSeqInfo::default(),
           profile: DenseSeqDistribution::new(array![[1.0, 0.0, 0.0, 0.0]], LogLh::new(log_lh)),
         },
       );
-      Ok(PartitionTimetree::Dense(partition))
+      Ok(PartitionTimetree::Dense(DenseReconstruction {
+        partition,
+        node_states,
+        backward: BTreeMap::new(),
+        forward: BTreeMap::new(),
+        estimates: BTreeMap::new(),
+      }))
     }
 
     pub fn positional_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
