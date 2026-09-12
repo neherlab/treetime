@@ -143,7 +143,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
-      let p = &partitions[0];
+      let p = partitions[0].readout();
       let effective = p.edge_effective_length(&graph, edge_key)?;
       assert_eq!(16, effective);
     }
@@ -165,7 +165,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
-      let p = &partitions[0];
+      let p = partitions[0].readout();
       let effective = p.edge_effective_length(&graph, edge_key)?;
       assert_eq!(16, effective);
     }
@@ -187,7 +187,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
-      let p = &partitions[0];
+      let p = partitions[0].readout();
       let effective = p.edge_effective_length(&graph, edge_key)?;
       // All nodes share gaps at positions 4-7, so effective = 16 - 4 = 12
       assert_eq!(12, effective);
@@ -210,7 +210,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
-      let p = &partitions[0];
+      let p = partitions[0].readout();
       let effective = p.edge_effective_length(&graph, edge_key)?;
       // All nodes share gaps at positions 4-7, so effective = 16 - 4 = 12
       assert_eq!(12, effective);
@@ -234,7 +234,7 @@ mod tests {
     let mut found_reduced = false;
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
-      let p = &partitions[0];
+      let p = partitions[0].readout();
       let effective = p.edge_effective_length(&graph, edge_key)?;
       // At least one edge (B→AB) should have reduced effective length
       if effective < 16 {
@@ -258,7 +258,7 @@ mod tests {
     let graph: Graph = graph;
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
-    let p = &partitions[0];
+    let p = partitions[0].readout();
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
       let subs = p.edge_subs(&graph, edge_key)?;

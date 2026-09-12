@@ -5,8 +5,10 @@ mod tests {
   };
 
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::initialize_marginal;
   use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::SparseReconstruction;
+  use crate::partition::timetree::marginal::initialize_marginal_timetree;
+  use std::collections::BTreeMap;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockState;
   use crate::clock::date_constraints::load_date_constraints;
@@ -58,12 +60,17 @@ mod tests {
 
     let aln = load_alignment_for_dataset(dataset)?;
     let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln, &names)?;
-    let sparse_partition = PartitionTimetree::Sparse(
-      fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?,
-    );
+    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
+    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    });
 
     let mut partitions: Vec<PartitionTimetree> = vec![sparse_partition];
-    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions, &aln, &names)?.value();
+    initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions, &aln, &names)?.value();
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
