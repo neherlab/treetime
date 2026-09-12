@@ -28,12 +28,12 @@ mod tests {
     let graph: Graph = graph;
     let mut partitions = setup_dense_only(&graph, &names, &aln, &branch_lengths)?;
 
-    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let initial_lh = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
       run_optimize_mixed(&graph, &OptimizeReadouts::new(&partitions, &[]).view(), method, &mut branch_lengths)?;
-      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+      let lh = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
       lh_history.push(lh);
     }
 
@@ -81,12 +81,12 @@ mod tests {
     let graph: Graph = graph;
     let mut partitions = setup_sparse_only(&graph, &names, &aln, &branch_lengths)?;
 
-    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let initial_lh = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
       run_optimize_mixed(&graph, &OptimizeReadouts::new(&[], &partitions).view(), method, &mut branch_lengths)?;
-      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+      let lh = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
       lh_history.push(lh);
     }
 

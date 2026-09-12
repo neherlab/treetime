@@ -23,7 +23,7 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
-    let log_lh_dense = marginal_update(
+    let log_lh_dense = marginal_update_dense(
       &graph_dense,
       &profile_branch_lengths(&branch_lengths_dense),
       &mut dense_partitions,
@@ -38,7 +38,7 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
-    let log_lh_sparse = marginal_update(
+    let log_lh_sparse = marginal_update_sparse(
       &graph_sparse,
       &profile_branch_lengths(&branch_lengths_sparse),
       &mut sparse_partitions,
@@ -76,7 +76,7 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
-    let log_lh_dense = marginal_update(
+    let log_lh_dense = marginal_update_dense(
       &graph_dense,
       &profile_branch_lengths(&branch_lengths_dense),
       &mut dense_partitions,
@@ -91,7 +91,7 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
-    let log_lh_sparse = marginal_update(
+    let log_lh_sparse = marginal_update_sparse(
       &graph_sparse,
       &profile_branch_lengths(&branch_lengths_sparse),
       &mut sparse_partitions,

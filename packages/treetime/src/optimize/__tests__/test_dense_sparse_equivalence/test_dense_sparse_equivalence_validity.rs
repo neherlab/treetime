@@ -28,16 +28,16 @@ mod tests {
     let graph: Graph = graph;
     let mut partitions = setup_dense_only(&graph, &names, &aln, &branch_lengths)?;
 
-    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let initial_lh = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
       run_optimize_mixed(&graph, &OptimizeReadouts::new(&partitions, &[]).view(), method, &mut branch_lengths)?;
-      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+      let lh = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }
 
-    let final_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let final_lh = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
 
     // Final log-LH should be in expected range for this simple tree
     // 16 sites, 4 leaves, mostly identical sequences -> log-LH between -100 and -10
@@ -78,16 +78,16 @@ mod tests {
     let graph: Graph = graph;
     let mut partitions = setup_sparse_only(&graph, &names, &aln, &branch_lengths)?;
 
-    let initial_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let initial_lh = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
       run_optimize_mixed(&graph, &OptimizeReadouts::new(&[], &partitions).view(), method, &mut branch_lengths)?;
-      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+      let lh = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }
 
-    let final_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let final_lh = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
 
     // Final log-LH should be in expected range for this simple tree
     // 16 sites, 4 leaves, mostly identical sequences -> log-LH between -100 and -10
