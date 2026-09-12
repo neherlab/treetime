@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::run_optimize_mixed_inner;
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::optimize_partition_view;
+  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
   use approx::assert_abs_diff_eq;
@@ -20,7 +21,7 @@ mod tests {
   fn setup_dense(
     newick: &str,
     fasta: &str,
-  ) -> Result<(Graph, Vec<PartitionMarginalDense>, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+  ) -> Result<(Graph, Vec<DenseReconstruction>, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let NwkParse {
@@ -32,16 +33,15 @@ mod tests {
     let graph: Graph = graph;
     let gtr = jc69(JC69Params::default())?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
-    let mut partitions: Vec<PartitionMarginalDense> = vec![partition];
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
-      &aln,
-      &names,
-    )?
-    .value();
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+    let mut partitions = vec![DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }];
+    marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
     Ok((graph, partitions, branch_lengths))
   }
 
@@ -80,7 +80,7 @@ mod tests {
 
     run_optimize_mixed_inner(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       BranchOptMethod::BrentSqrt,
       0.0,
       true,
@@ -103,7 +103,7 @@ mod tests {
 
     run_optimize_mixed_inner(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       BranchOptMethod::BrentSqrt,
       0.0,
       true,
@@ -150,7 +150,7 @@ mod tests {
     // The function should complete without error.
     run_optimize_mixed_inner(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       BranchOptMethod::BrentSqrt,
       0.0,
       true,
@@ -172,7 +172,7 @@ mod tests {
 
     run_optimize_mixed_inner(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       BranchOptMethod::BrentSqrt,
       0.0,
       true,

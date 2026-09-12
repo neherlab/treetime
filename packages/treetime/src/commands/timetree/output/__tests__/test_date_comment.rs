@@ -1,10 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
+  use crate::ancestral::pipeline::SparseReconstruction;
   use crate::commands::timetree::output::date_comment::DateCommentProvider;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
   use crate::partition::traits::MutationCommentProvider;
   use crate::seq::mutation::Sub;
   use eyre::Report;
@@ -27,7 +28,7 @@ mod tests {
     graph: &Graph,
     length: usize,
     edge_subs: &[(usize, Vec<Sub>)],
-  ) -> Result<PartitionMarginalSparse, Report> {
+  ) -> Result<SparseReconstruction, Report> {
     let alphabet = Alphabet::default();
     let mut ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
     for (_, subs) in edge_subs {
@@ -38,34 +39,44 @@ mod tests {
       }
     }
 
-    let mut partition = PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: alphabet.clone(),
-      length,
-      root_sequence: ref_seq.clone(),
-      nodes: btreemap! {},
-      edges: btreemap! {},
-    };
-
+    let mut obs_nodes = btreemap! {};
+    let mut node_states = btreemap! {};
     for node in graph.get_nodes() {
       let key = node.read_arc().key();
-      let mut node_part = SparseNodePartition::empty(&alphabet);
-      node_part.seq.sequence = ref_seq.clone();
-      partition.nodes.insert(key, node_part);
+      obs_nodes.insert(key, SparseNodeObs::new(&ref_seq, &alphabet));
+      node_states.insert(key, SparseNodeState::leaf(&ref_seq));
     }
 
+    let mut obs_edges = btreemap! {};
+    // MAP substitutions the comment provider reports come from the estimates map; the fixture seeds it
+    // directly since these output tests run no marginal pass.
+    let mut estimates = btreemap! {};
     let edges = graph.get_edges();
     for (idx, subs) in edge_subs {
       if let Some(edge) = edges.get(*idx) {
         let edge_key = edge.read_arc().key();
-        let mut edge_part = SparseEdgePartition::with_fitch_subs(subs.clone());
-        edge_part.set_ml_subs(subs.clone());
-        partition.edges.insert(edge_key, edge_part);
+        obs_edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs.clone()));
+        estimates.insert(edge_key, subs.clone());
       }
     }
 
-    Ok(partition)
+    let partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet,
+      length,
+      root_sequence: ref_seq,
+      obs_nodes,
+      obs_edges,
+    };
+
+    Ok(SparseReconstruction {
+      partition,
+      node_states,
+      backward: btreemap! {},
+      forward: btreemap! {},
+      estimates,
+    })
   }
 
   #[test]
@@ -83,7 +94,8 @@ mod tests {
         ],
       )],
     )?;
-    let provider = MutationCommentProvider::new(&partition, &graph);
+    let readout = partition.readout();
+    let provider = MutationCommentProvider::new(&readout, &graph);
     let leaf_key = graph.get_leaves()[0].read_arc().key();
     let comments = provider.node_comments(leaf_key)?;
     assert_eq!(comments.get("mutations").map(String::as_str), Some("A55G,T93C"));
@@ -112,7 +124,8 @@ mod tests {
       .map(|leaf| (leaf.read_arc().key(), 2003.84))
       .collect();
 
-    let provider = MutationCommentProvider::new(&partition, &graph);
+    let readout = partition.readout();
+    let provider = MutationCommentProvider::new(&readout, &graph);
     let date_provider = DateCommentProvider::new(&date_times);
     let providers = CommentProviders::new().with(&provider).with(&date_provider);
     let options = NexWriteOptions {
