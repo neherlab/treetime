@@ -4,6 +4,7 @@ mod tests {
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::SparseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
@@ -11,6 +12,7 @@ mod tests {
 
   use eyre::Report;
 
+  use std::collections::BTreeMap;
   use std::path::Path;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -41,7 +43,14 @@ mod tests {
     } = nwk_read_file(&tree_path)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
+    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
+    let mut sparse_partitions = vec![SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }];
     marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
     let mut dense_partitions = vec![];
@@ -96,7 +105,14 @@ mod tests {
     } = nwk_read_file(&tree_path)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
-    let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
+    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
+    let mut sparse_partitions = vec![SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }];
     marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
     let mut dense_partitions = vec![];

@@ -412,7 +412,7 @@ mod tests {
     slide_bifurcating_root_for_child(&mut sparse, root_key, root_v, root_s, v_c1)?;
 
     let p = &sparse[0];
-    assert_eq!(p.root_sequence[3], c(b'G'));
+    assert_eq!(p.partition.root_sequence[3], c(b'G'));
     assert_eq!(p.node_states[&root_key].sequence[3], c(b'G'));
     assert_eq!(edge_subs(p, root_s), Vec::<Sub>::new());
     assert_eq!(edge_subs(p, root_v), vec![sub(b'G', 3, b'A')]);

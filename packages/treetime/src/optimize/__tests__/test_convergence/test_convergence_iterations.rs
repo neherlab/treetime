@@ -33,7 +33,8 @@ mod tests {
     let lh_ref = {
       let NwkParse { graph: graph_ref, names: graph_ref_names, branch_lengths: mut branch_lengths_ref, .. } = nwk_read_str(TREE_NEWICK)?;
       let (mut dp_ref, mut sp_ref) = setup_partitions(&graph_ref, &graph_ref_names, &aln, &mut branch_lengths_ref)?;
-    let mp_ref = OptimizeReadouts::new(&dp_ref, &sp_ref).view();
+      let ro_ref = OptimizeReadouts::new(&dp_ref, &sp_ref);
+      let mp_ref = ro_ref.view();
       for _ in 0..max_iter {
         run_optimize_mixed(&graph_ref, &mp_ref, BranchOptMethod::BrentSqrt, &mut branch_lengths_ref)?;
       }

@@ -585,7 +585,7 @@ mod tests {
       ..
     } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let mut graph: Graph = graph;
-    let mut partitions: Vec<PartitionMarginalSparse> = vec![];
+    let mut partitions: Vec<SparseReconstruction> = vec![];
 
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
@@ -1008,7 +1008,7 @@ mod tests {
     pub fn extract_edge_mutation_counts<'a>(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
-      partition: &PartitionMarginalSparse,
+      partition: &SparseReconstruction,
     ) -> BTreeMap<Option<&'a str>, (usize, usize)> {
       let p = &partition;
       let mut result = BTreeMap::new();
