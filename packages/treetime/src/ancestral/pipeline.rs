@@ -1,9 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
 use crate::ancestral::fitch::{ancestral_reconstruction_fitch, create_fitch_partition};
-use crate::ancestral::marginal::{
-  ancestral_reconstruction_marginal, initialize_marginal, marginal_update, profile_branch_lengths,
-};
+use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
 use crate::ancestral::mask::create_mask;
 use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::sample::SampleMode;
@@ -13,12 +11,15 @@ use crate::gtr::refinement::refine_gtr_iterative;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState};
+use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseNodeState};
 use crate::partition::traits::HasGtr;
 use crate::progress::ProgressSink;
 use crate::seq::alignment::get_common_length;
+use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use strum::VariantNames;
 use treetime_graph::edge::GraphEdgeKey;
@@ -51,12 +52,35 @@ pub struct AncestralInput {
   pub sequences: Vec<FastaRecord>,
 }
 
+/// A completed sparse reconstruction: the durable partition inputs together with the node states and
+/// per-edge messages/estimates the passes returned, kept as distinct owned maps. The output writers
+/// build a short-lived read view over these.
+#[derive(Clone, Serialize)]
+pub struct SparseReconstruction {
+  pub partition: PartitionMarginalSparse,
+  pub node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
+  pub backward: BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
+  pub forward: BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+  pub estimates: BTreeMap<GraphEdgeKey, Vec<Sub>>,
+}
+
+/// A completed dense reconstruction: the durable partition inputs together with the node states and
+/// per-edge messages/estimates the passes returned, kept as distinct owned maps.
+#[derive(Clone, Serialize)]
+pub struct DenseReconstruction {
+  pub partition: PartitionMarginalDense,
+  pub node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
+  pub backward: BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
+  pub forward: BTreeMap<GraphEdgeKey, DenseEdgeForward>,
+  pub estimates: BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum AncestralPartition {
   Fitch(PartitionFitch),
-  Sparse(crate::partition::marginal::sparse::partition::PartitionMarginalSparse),
-  Dense(PartitionMarginalDense),
+  Sparse(SparseReconstruction),
+  Dense(DenseReconstruction),
 }
 
 #[derive(Debug, Serialize)]
@@ -170,105 +194,132 @@ where
         branch_lengths,
         names,
       )?;
+      let model_name = created.model_name;
+      let refine = params.gtr_iterations > 0 && params.model == GtrModelName::Infer;
 
       match created.partition {
-        MarginalPartition::Sparse(partition) => {
-          let mut partition = RefCell::new(partition);
-
+        MarginalPartition::Sparse(partition, node_states) => {
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          marginal_update(&graph, &profile_lengths, std::slice::from_mut(partition.get_mut()))?;
+          let (node_states, backward, forward, estimates, _log_lh) =
+            partition.marginal_update(&graph, &profile_lengths, node_states)?;
 
-          if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
+          let (partition, mut node_states, backward, forward, estimates) = if refine {
             refine_gtr_iterative(
               &graph,
-              &partition,
+              partition,
               branch_lengths,
+              node_states,
+              backward,
+              forward,
               params.gtr_iterations,
               None,
               1.0,
               None,
               false,
-            )?;
-          }
+            )
+            .map(|(p, n, b, f, e, _lh)| (p, n, b, f, e))?
+          } else {
+            (partition, node_states, backward, forward, estimates)
+          };
 
           progress.check_cancelled()?;
           progress.report("Reconstructing sequences", 0.6, "");
-          let node_sequences = ancestral_reconstruction_marginal(
+          let node_sequences = ancestral_reconstruction(
             &graph,
-            params.include_leaves,
-            params.impute_missing_data,
-            std::slice::from_mut(partition.get_mut()),
-            params.sample_from_profile,
-            &mut rng,
+            |node| {
+              partition.reconstruct_node_sequence(
+                &mut node_states,
+                &forward,
+                node,
+                params.include_leaves,
+                params.impute_missing_data,
+                params.sample_from_profile,
+                &mut rng,
+              )
+            },
             |key, seq| on_sequence(key, seq),
           )?;
 
-          let partition = partition.into_inner();
           let gtr = partition.gtr().clone();
           progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
             output: AncestralOutput {
               graph,
               gtr: Some(gtr),
-              model_name: created.model_name,
+              model_name,
               mask,
               node_sequences,
             },
-            partition: Some(AncestralPartition::Sparse(partition)),
+            partition: Some(AncestralPartition::Sparse(SparseReconstruction {
+              partition,
+              node_states,
+              backward,
+              forward,
+              estimates,
+            })),
           })
         },
         MarginalPartition::Dense(partition) => {
-          let mut partition = RefCell::new(partition);
-
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          initialize_marginal(
-            &graph,
-            &profile_lengths,
-            std::slice::from_mut(partition.get_mut()),
-            &sequences,
-            names,
-          )?;
-          marginal_update(&graph, &profile_lengths, std::slice::from_mut(partition.get_mut()))?;
+          let node_states = partition.attach_sequences(&graph, &sequences, names)?;
+          let (node_states, backward, forward, estimates, _log_lh) =
+            partition.marginal_update(&graph, &profile_lengths, node_states)?;
 
-          if params.gtr_iterations > 0 && params.model == GtrModelName::Infer {
+          let (partition, mut node_states, backward, forward, estimates) = if refine {
             refine_gtr_iterative(
               &graph,
-              &partition,
+              partition,
               branch_lengths,
+              node_states,
+              backward,
+              forward,
               params.gtr_iterations,
               None,
               1.0,
               None,
               false,
-            )?;
-          }
+            )
+            .map(|(p, n, b, f, e, _lh)| (p, n, b, f, e))?
+          } else {
+            (partition, node_states, backward, forward, estimates)
+          };
 
           progress.check_cancelled()?;
           progress.report("Reconstructing sequences", 0.6, "");
-          let node_sequences = ancestral_reconstruction_marginal(
+          let node_sequences = ancestral_reconstruction(
             &graph,
-            params.include_leaves,
-            params.impute_missing_data,
-            std::slice::from_mut(partition.get_mut()),
-            params.sample_from_profile,
-            &mut rng,
+            |node| {
+              partition.reconstruct_node_sequence(
+                &mut node_states,
+                node,
+                params.include_leaves,
+                params.impute_missing_data,
+                params.sample_from_profile,
+                &mut rng,
+              )
+            },
             |key, seq| on_sequence(key, seq),
           )?;
 
-          let partition = partition.into_inner();
           let gtr = partition.gtr().clone();
           progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
             output: AncestralOutput {
               graph,
               gtr: Some(gtr),
-              model_name: created.model_name,
+              model_name,
               mask,
               node_sequences,
             },
-            partition: Some(AncestralPartition::Dense(partition)),
+            partition: Some(AncestralPartition::Dense(DenseReconstruction {
+              partition,
+              node_states,
+              backward,
+              forward,
+              estimates,
+            })),
           })
         },
       }
