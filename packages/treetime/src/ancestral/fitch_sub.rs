@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
-use crate::partition::storage::sparse::{SparseEdgePartition, SparseSeqInfo};
+use crate::partition::storage::sparse::{FitchSeqInfo, SparseEdgeObs};
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -29,7 +29,7 @@ use treetime_utils::interval::range::range_contains;
 ///
 /// Positions transmitted along an edge or in `non_char` ranges are skipped.
 pub fn resolve_variable_positions_backward(
-  children: &[(&SparseSeqInfo, &SparseEdgePartition)],
+  children: &[(&FitchSeqInfo, &SparseEdgeObs)],
   discovered: &[usize],
   non_char: &[(usize, usize)],
   sequence: &mut Seq,
@@ -124,7 +124,7 @@ pub fn resolve_variable_positions_backward(
 /// as they are flagged rather than by rescanning `sequence` afterwards, which would add another
 /// full-length pass per node; the `VARIABLE_CHAR` skip guarantees each is recorded at most once.
 pub fn discover_fixed_disagreements_backward(
-  children: &[(&SparseSeqInfo, &SparseEdgePartition)],
+  children: &[(&FitchSeqInfo, &SparseEdgeObs)],
   alphabet: &Alphabet,
   sequence: &mut Seq,
 ) -> Vec<usize> {
@@ -200,7 +200,7 @@ pub fn resolve_nonroot_substitutions_forward(
   variable: &mut BTreeMap<usize, StateSet>,
   chosen_state: &mut BTreeMap<usize, AsciiChar>,
   composition: &mut Composition,
-  parent_seq: &SparseSeqInfo,
+  parent_seq: &FitchSeqInfo,
   alphabet: &Alphabet,
 ) -> Result<Vec<Sub>, Report> {
   let mut subs = vec![];

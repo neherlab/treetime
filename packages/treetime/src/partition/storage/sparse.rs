@@ -227,6 +227,73 @@ pub struct FitchSeqDistribution {
   pub chosen_state: BTreeMap<usize, AsciiChar>,
 }
 
+/// The Fitch parsimony pre-pass's own working per-node data. The parsimony passes build this in place;
+/// the marginal handoff (`PartitionFitch::into_marginal_*`) splits it into the durable observations the
+/// partition owns and the seed node state the marginal passes evolve.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FitchNodeData {
+  pub seq: FitchSeqInfo,
+}
+
+impl FitchNodeData {
+  pub fn empty(alphabet: &Alphabet) -> Self {
+    Self {
+      seq: FitchSeqInfo {
+        unknown: vec![],
+        gaps: vec![],
+        non_char: vec![],
+        composition: Composition::new(alphabet.chars(), alphabet.gap()),
+        sequence: seq![],
+        fitch: FitchSeqDistribution {
+          variable: btreemap! {},
+          variable_indel: BTreeSet::new(),
+          chosen_state: btreemap! {},
+        },
+      },
+    }
+  }
+
+  pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
+    let variable = seq
+      .iter()
+      .enumerate()
+      .filter(|&(_, c)| alphabet.is_ambiguous(*c))
+      .map(|(pos, &c)| (pos, alphabet.char_to_set(c)))
+      .collect();
+
+    let fitch = FitchSeqDistribution {
+      variable,
+      variable_indel: BTreeSet::new(),
+      chosen_state: btreemap! {},
+    };
+
+    let unknown = find_letter_ranges(seq, alphabet.unknown());
+    let gaps = find_letter_ranges(seq, alphabet.gap());
+    let non_char = range_union(&[unknown.clone(), gaps.clone()]);
+
+    Ok(Self {
+      seq: FitchSeqInfo {
+        unknown,
+        gaps,
+        non_char,
+        composition: Composition::with_seq(seq, alphabet.chars(), alphabet.gap()),
+        sequence: seq.to_owned(),
+        fitch,
+      },
+    })
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FitchSeqInfo {
+  pub unknown: Vec<(usize, usize)>,
+  pub gaps: Vec<(usize, usize)>,
+  pub non_char: Vec<(usize, usize)>,
+  pub composition: Composition,
+  pub sequence: Seq,
+  pub fitch: FitchSeqDistribution,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VarPos {
   pub dis: Array1<f64>, // array of floats of size 'alphabet'

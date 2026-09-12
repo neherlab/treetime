@@ -6,9 +6,7 @@ use crate::ancestral::fitch_sub::{
 };
 use crate::make_report;
 use crate::partition::fitch::partition::PartitionFitch;
-use crate::partition::storage::sparse::{
-  FitchSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, SparseSeqInfo,
-};
+use crate::partition::storage::sparse::{FitchNodeData, FitchSeqDistribution, FitchSeqInfo, SparseEdgeObs};
 use crate::seq::alignment::get_common_length;
 use crate::seq::composition::Composition;
 use eyre::Report;
@@ -77,13 +75,13 @@ pub(crate) fn attach_seqs_to_graph(
   let alphabet = partition.alphabet.clone();
   let nodes = leaf_records
     .par_iter()
-    .map(|(leaf_key, leaf_fasta)| SparseNodePartition::new(&leaf_fasta.seq, &alphabet).map(|node| (*leaf_key, node)))
+    .map(|(leaf_key, leaf_fasta)| FitchNodeData::new(&leaf_fasta.seq, &alphabet).map(|node| (*leaf_key, node)))
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   partition.nodes.extend(nodes);
 
   for edge in graph.get_edges() {
     let edge_key = edge.read_arc().key();
-    partition.edges.insert(edge_key, SparseEdgePartition::default());
+    partition.edges.insert(edge_key, SparseEdgeObs::default());
   }
 
   Ok(())
@@ -96,7 +94,7 @@ pub(crate) fn fitch_backward(graph: &Graph, partition: &mut PartitionFitch) -> R
   let outputs = pass.map_backward(
     &partition.nodes,
     &partition.edges,
-    |_| Ok(SparseNodePartition::empty(&alphabet)),
+    |_| Ok(FitchNodeData::empty(&alphabet)),
     |context| run_fitch_backward_indexed(&alphabet, length, &context),
   )?;
   partition.nodes = outputs.nodes;
@@ -107,14 +105,8 @@ pub(crate) fn fitch_backward(graph: &Graph, partition: &mut PartitionFitch) -> R
 fn run_fitch_backward_indexed(
   alphabet: &Alphabet,
   length: usize,
-  context: &GraphPassBackwardContext<
-    '_,
-    SparseNodePartition,
-    SparseEdgePartition,
-    SparseNodePartition,
-    SparseEdgePartition,
-  >,
-) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report> {
+  context: &GraphPassBackwardContext<'_, FitchNodeData, SparseEdgeObs, FitchNodeData, SparseEdgeObs>,
+) -> Result<GraphPassNodeOutput<FitchNodeData, SparseEdgeObs>, Report> {
   if context.is_leaf {
     // A leaf keeps its attached Fitch data unchanged and returns its parent edge untouched so the
     // forward pass keeps the edge entries it depends on. A single-node tree, where the leaf is also the
@@ -152,7 +144,7 @@ fn run_fitch_backward_indexed(
   // non-char position. `compute_node_ranges` intersects the children's `non_char`, which drops any
   // column a child left as `variable_indel`, while `resolve_indels_backward` still resolves such a
   // column to a gap (it counts `variable_indel` as gap-compatible). Taking the union keeps `gaps` a
-  // subset of `non_char`, the invariant leaves (`SparseNodePartition::new`) and the dense
+  // subset of `non_char`, the invariant leaves (`FitchNodeData::new`) and the dense
   // representation (`DenseSeqInfo::new`) already hold. Without it a single determined residue
   // stranded inside a missing-data run keeps a character state at a position the node reports as
   // deleted, and the forward pass then emits a substitution inside its own deletion.
@@ -171,8 +163,8 @@ fn run_fitch_backward_indexed(
   let discovered = discover_fixed_disagreements_backward(&children, alphabet, &mut sequence);
   let variable = resolve_variable_positions_backward(&children, &discovered, &non_char, &mut sequence);
 
-  let node = SparseNodePartition {
-    seq: SparseSeqInfo {
+  let node = FitchNodeData {
+    seq: FitchSeqInfo {
       gaps: indels_bw.resolved_gaps,
       unknown,
       non_char,
@@ -184,14 +176,6 @@ fn run_fitch_backward_indexed(
       sequence,
       composition: Composition::new(alphabet.chars(), alphabet.gap()),
     },
-    profile: SparseSeqDistribution {
-      variable: btreemap! {},
-      variable_indel: BTreeSet::new(),
-      fixed: btreemap! {},
-      fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
-      log_lh: LogLh::ZERO,
-    },
-    emitted: None,
   };
 
   // Fitch backward computes only node data. A non-root node returns its parent edge unchanged so the
@@ -220,8 +204,8 @@ pub(crate) fn fitch_forward(graph: &Graph, partition: &mut PartitionFitch) -> Re
 
 fn run_fitch_forward_indexed(
   alphabet: &Alphabet,
-  context: &GraphPassForwardContext<'_, SparseNodePartition, SparseEdgePartition, SparseNodePartition>,
-) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report> {
+  context: &GraphPassForwardContext<'_, FitchNodeData, SparseEdgeObs, FitchNodeData>,
+) -> Result<GraphPassNodeOutput<FitchNodeData, SparseEdgeObs>, Report> {
   let mut node = context.input.clone();
 
   // The forward pass produces the durable edge data for the asymmetric Fitch case, so a non-root

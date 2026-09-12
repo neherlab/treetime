@@ -2,8 +2,9 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
-use crate::partition::traits::{BranchTopology, PartitionBranchOps};
+use crate::partition::storage::sparse::{FitchNodeData, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
+use crate::partition::traits::BranchTopology;
+use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -17,62 +18,85 @@ pub struct PartitionFitch {
   pub index: usize,
   pub alphabet: Alphabet,
   pub length: usize,
-  pub nodes: BTreeMap<GraphNodeKey, SparseNodePartition>,
-  pub edges: BTreeMap<GraphEdgeKey, SparseEdgePartition>,
+  pub nodes: BTreeMap<GraphNodeKey, FitchNodeData>,
+  pub edges: BTreeMap<GraphEdgeKey, SparseEdgeObs>,
 }
 
 impl PartitionFitch {
-  pub fn into_marginal_sparse(self, gtr: GTR, graph: &Graph) -> Result<PartitionMarginalSparse, Report> {
+  /// Hand the Fitch results off to the sparse marginal representation: split each node's Fitch data
+  /// into the durable observations the partition owns and the seed node state the marginal passes
+  /// evolve. Internal-node sequences are cleared (the forward pass rebuilds them); leaf and root
+  /// sequences are kept.
+  pub fn into_marginal_sparse(
+    self,
+    gtr: GTR,
+    graph: &Graph,
+  ) -> Result<(PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>), Report> {
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     let root_sequence = self.nodes[&root_key].seq.sequence.clone();
-    let mut nodes = self.nodes;
-    for (key, node_data) in &mut nodes {
-      if *key != root_key && !graph.is_leaf(*key) {
-        node_data.seq.sequence = seq![];
-      }
+
+    let mut obs_nodes = BTreeMap::new();
+    let mut node_states = BTreeMap::new();
+    for (key, node_data) in self.nodes {
+      let keep_sequence = key == root_key || graph.is_leaf(key);
+      let sequence = if keep_sequence { node_data.seq.sequence } else { seq![] };
+      node_states.insert(
+        key,
+        SparseNodeState {
+          sequence,
+          profile: SparseSeqDistribution::default(),
+          emitted: None,
+        },
+      );
+      obs_nodes.insert(
+        key,
+        SparseNodeObs {
+          unknown: node_data.seq.unknown,
+          gaps: node_data.seq.gaps,
+          non_char: node_data.seq.non_char,
+          composition: node_data.seq.composition,
+          fitch: node_data.seq.fitch,
+        },
+      );
     }
-    Ok(PartitionMarginalSparse {
+
+    let partition = PartitionMarginalSparse {
       index: self.index,
       gtr,
       alphabet: self.alphabet,
       length: self.length,
       root_sequence,
-      nodes,
-      edges: self.edges,
-    })
+      obs_nodes,
+      obs_edges: self.edges,
+    };
+    Ok((partition, node_states))
   }
 
   pub fn into_marginal_dense(self, gtr: GTR) -> PartitionMarginalDense {
     PartitionMarginalDense::new(self.index, gtr, self.alphabet, self.length)
   }
-}
 
-impl PartitionBranchOps for PartitionFitch {
-  fn sequence_length(&self) -> usize {
+  pub fn sequence_length(&self) -> usize {
     self.length
   }
 
-  fn edge_subs(
-    &self,
-    _graph: &dyn BranchTopology,
-    edge_key: GraphEdgeKey,
-  ) -> Result<Vec<crate::seq::mutation::Sub>, Report> {
+  pub fn edge_subs(&self, _graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     Ok(self.edges[&edge_key].fitch_subs().to_vec())
   }
 
-  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
+  pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
     self.edges[&edge_key].indels.clone()
   }
 
-  fn root_sequence(&self, graph: &dyn BranchTopology) -> Result<Seq, Report> {
+  pub fn root_sequence(&self, graph: &dyn BranchTopology) -> Result<Seq, Report> {
     Ok(self.nodes[&graph.root_key()?].seq.sequence.clone())
   }
 
-  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+  pub fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
     self.nodes[&node_key].seq.sequence.clone()
   }
 
-  fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+  pub fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
     Ok(
       self.nodes[&parent_key]
