@@ -5,7 +5,9 @@ mod tests {
   };
   use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping};
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{ConvergenceReason, marginal_branch_lengths, run_optimize_loop};
+  use crate::optimize::run_loop::{
+    ConvergenceReason, marginal_branch_lengths, marginal_update_dense, marginal_update_sparse, run_optimize_loop,
+  };
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use num_traits::pow::pow;
@@ -205,8 +207,8 @@ mod tests {
 
     // Recompute the marginal likelihood from the returned (rolled-back) branch-length map.
     let marginal_bl = marginal_branch_lengths(&result.branch_lengths);
-    let sparse_lh = marginal_update(&graph, &marginal_bl, &mut sparse_partitions)?.value();
-    let dense_lh = marginal_update(&graph, &marginal_bl, &mut dense_partitions)?.value();
+    let sparse_lh = marginal_update_sparse(&graph, &marginal_bl, &mut sparse_partitions)?.value();
+    let dense_lh = marginal_update_dense(&graph, &marginal_bl, &mut dense_partitions)?.value();
     assert_abs_diff_eq!(sparse_lh + dense_lh, best_lh, epsilon = 1e-9);
     Ok(())
   }

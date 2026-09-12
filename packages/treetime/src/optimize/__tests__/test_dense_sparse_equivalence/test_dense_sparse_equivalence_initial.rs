@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
