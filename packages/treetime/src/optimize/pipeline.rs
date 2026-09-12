@@ -8,8 +8,8 @@ use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::run_loop::{
-  OptimizeReadouts, apply_initial_guess_mode, marginal_branch_lengths, marginal_update_dense, marginal_update_sparse,
-  normalize_partition_rates, run_optimize_loop,
+  OptimizeReadouts, apply_initial_guess_mode, marginal_update_dense, marginal_update_sparse, normalize_partition_rates,
+  run_optimize_loop,
 };
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::dense::reroot::reroot_dense;
@@ -237,7 +237,7 @@ pub fn run(
   let branch_lengths = loop_result.branch_lengths;
 
   info!("Re-running marginal to populate subs_ml after optimization loop");
-  let marginal_bl = marginal_branch_lengths(&branch_lengths);
+  let marginal_bl = profile_branch_lengths(&branch_lengths);
   marginal_update_sparse(&input.graph, &marginal_bl, &mut sparse_partitions)?;
   marginal_update_dense(&input.graph, &marginal_bl, &mut dense_partitions)?;
 

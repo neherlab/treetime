@@ -1,3 +1,4 @@
+use crate::ancestral::marginal::profile_branch_lengths;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;
@@ -148,7 +149,7 @@ pub fn run_optimize_loop(
   // missing weight stays `None` end to end. Supplied by the caller (the parsed lengths after any
   // initial guess and reroot), then updated in place by the per-edge optimizer, damping, and topology
   // cleanup (topology producers insert new-edge keys and drop removed ones). The marginal
-  // reconstruction reads the derived per-edge length (see [`marginal_branch_lengths`]).
+  // reconstruction reads the derived per-edge length (see [`profile_branch_lengths`]).
   let mut branch_lengths = branch_lengths;
 
   let indel_rate = if no_indels {
@@ -194,7 +195,7 @@ pub fn run_optimize_loop(
     if !iteration_lh.total_lh.value().is_finite() {
       if let Some(best) = &best_branch_lengths {
         branch_lengths = best.clone();
-        let marginal_bl = marginal_branch_lengths(&branch_lengths);
+        let marginal_bl = profile_branch_lengths(&branch_lengths);
         marginal_update_sparse(graph, &marginal_bl, sparse_partitions)?;
         marginal_update_dense(graph, &marginal_bl, dense_partitions)?;
       }
@@ -220,7 +221,7 @@ pub fn run_optimize_loop(
     if i >= 2 && iteration_lh.total_lh < lh_prev && lh_prev >= best_lh {
       if let Some(best) = &best_branch_lengths {
         branch_lengths = best.clone();
-        let marginal_bl = marginal_branch_lengths(&branch_lengths);
+        let marginal_bl = profile_branch_lengths(&branch_lengths);
         marginal_update_sparse(graph, &marginal_bl, sparse_partitions)?;
         marginal_update_dense(graph, &marginal_bl, dense_partitions)?;
       }
@@ -280,19 +281,6 @@ pub fn run_optimize_loop(
   })
 }
 
-/// Derive the per-edge length the marginal reconstruction propagates along from the loop's
-/// `Option<f64>` branch-length map.
-///
-/// Mirrors [`profile_branch_lengths`](crate::ancestral::marginal::profile_branch_lengths):
-/// a missing weight resolves to `0.0`. The ancestral edge carries no clock-constrained length,
-/// so `profile_branch_length() == branch_length()` and this derivation is exact.
-pub fn marginal_branch_lengths(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> BTreeMap<GraphEdgeKey, f64> {
-  branch_lengths
-    .iter()
-    .map(|(&key, &bl)| (key, bl.unwrap_or(0.0)))
-    .collect()
-}
-
 /// Why the optimization loop stopped early (before exhausting `max_iter`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConvergenceReason {
@@ -350,7 +338,7 @@ fn compute_iteration_likelihood(
   indel_rate: f64,
   no_indels: bool,
 ) -> Result<OptimizeIterationLikelihood, Report> {
-  let marginal_bl = marginal_branch_lengths(branch_lengths);
+  let marginal_bl = profile_branch_lengths(branch_lengths);
   let sparse_lh = marginal_update_sparse(graph, &marginal_bl, sparse_partitions)?;
   let dense_lh = marginal_update_dense(graph, &marginal_bl, dense_partitions)?;
   let indel_lh = if no_indels {
