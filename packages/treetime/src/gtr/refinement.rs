@@ -55,6 +55,17 @@ pub trait MarginalRefine: HasGtr + Clone {
   ) -> Result<MutationCounts, Report>;
 
   fn refine_root_log_lh(&self, graph: &Graph, nodes: &Self::Nodes) -> Result<LogLh, Report>;
+
+  /// Zero every node's profile log likelihood before a rate-candidate backward pass.
+  ///
+  /// The backward pass reads a leaf's profile log likelihood as its message to the parent and folds
+  /// it up the tree into the root log likelihood the cost function returns. A leaf profile carried
+  /// over from an earlier forward pass holds that pass's posterior log likelihood, which adds a large
+  /// mu-independent constant to every candidate's cost. That constant does not move the optimum in
+  /// exact arithmetic, but its magnitude erodes precision in Brent's parabolic interpolation and
+  /// shifts the selected rate. Clearing the log likelihoods first evaluates each candidate on the
+  /// backward likelihood alone, as the rate search did before the value-threaded refactor.
+  fn refine_reset_node_log_lh(&self, nodes: &mut Self::Nodes);
 }
 
 impl MarginalRefine for PartitionMarginalDense {
@@ -95,6 +106,12 @@ impl MarginalRefine for PartitionMarginalDense {
   fn refine_root_log_lh(&self, graph: &Graph, nodes: &Self::Nodes) -> Result<LogLh, Report> {
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     Ok(self.get_log_lh(nodes, root_key))
+  }
+
+  fn refine_reset_node_log_lh(&self, nodes: &mut Self::Nodes) {
+    for node in nodes.values_mut() {
+      node.profile.log_lh = LogLh::ZERO;
+    }
   }
 }
 
@@ -137,6 +154,12 @@ impl MarginalRefine for PartitionMarginalDiscrete {
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     Ok(self.get_log_lh(nodes, root_key))
   }
+
+  fn refine_reset_node_log_lh(&self, nodes: &mut Self::Nodes) {
+    for node in nodes.values_mut() {
+      node.profile.log_lh = LogLh::ZERO;
+    }
+  }
 }
 
 impl MarginalRefine for PartitionMarginalSparse {
@@ -177,6 +200,12 @@ impl MarginalRefine for PartitionMarginalSparse {
   fn refine_root_log_lh(&self, graph: &Graph, nodes: &Self::Nodes) -> Result<LogLh, Report> {
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     Ok(self.get_log_lh(nodes, root_key))
+  }
+
+  fn refine_reset_node_log_lh(&self, nodes: &mut Self::Nodes) {
+    for node in nodes.values_mut() {
+      node.profile.log_lh = LogLh::ZERO;
+    }
   }
 }
 
@@ -365,13 +394,16 @@ where
   P: MarginalRefine,
 {
   /// Evaluate one candidate `sqrt_mu` on an independent clone of the partition and node states: set the
-  /// rate, run the backward pass, and return the negative root log likelihood together with the
-  /// evaluated partition, node states, and backward messages. A failed backward pass yields an infinite
-  /// cost and no state, leaving the borrowed base observations intact for the next candidate.
+  /// rate, clear the carried-over profile log likelihoods, run the backward pass, and return the
+  /// negative root log likelihood together with the evaluated partition, node states, and backward
+  /// messages. Clearing the log likelihoods keeps the cost the backward likelihood alone, so a forward
+  /// pass's posterior log likelihood does not enter the rate search. A failed backward pass yields an
+  /// infinite cost and no state, leaving the borrowed base observations intact for the next candidate.
   fn evaluate(&self, sqrt_mu: f64) -> (f64, Option<(P, P::Nodes, P::Backward)>) {
     let mut partition = self.partition.clone();
     partition.gtr_mut().mu = sqrt_mu * sqrt_mu;
-    let nodes = self.nodes.clone();
+    let mut nodes = self.nodes.clone();
+    partition.refine_reset_node_log_lh(&mut nodes);
     match partition.refine_marginal_backward(self.graph, self.branch_lengths, &nodes) {
       Ok((nodes, backward)) => match partition.refine_root_log_lh(self.graph, &nodes) {
         Ok(log_lh) => (-log_lh.value(), Some((partition, nodes, backward))),
