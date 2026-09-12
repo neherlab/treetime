@@ -1,12 +1,11 @@
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::partition::marginal::discrete::input::{one_hot_profile, uniform_profile, validate_trait_names};
-use crate::partition::marginal::shared::data::{IndexedMarginalPartition, MarginalData, MarginalPartition};
-use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
+use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
+use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, indexed_forward};
+use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution};
 use crate::partition::storage::discrete::DiscreteStates;
-use crate::partition::traits::{HasGtr, HasLogLh, MarginalPass, PartitionMarginalPasses, TransitionCounting};
 use eyre::Report;
-use maplit::btreemap;
 use ndarray::Array1;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -16,19 +15,20 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::argmax_first;
 
+/// The discrete marginal representation as durable, borrowed inputs: the model and the state alphabet.
+/// The stage-filled node states, backward/forward messages, and edge estimates are owned separately by
+/// the values the passes return.
 #[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalDiscrete {
-  pub data: MarginalData,
+  pub inputs: DenseInputs,
   pub states: DiscreteStates,
 }
 
 impl PartitionMarginalDiscrete {
   pub fn new(gtr: GTR, states: DiscreteStates, min_branch_length: f64, filter_uninformative_root: bool) -> Self {
     Self {
-      data: MarginalData {
+      inputs: DenseInputs {
         gtr,
-        nodes: btreemap! {},
-        edges: btreemap! {},
         min_branch_length,
         filter_uninformative_root,
       },
@@ -40,15 +40,38 @@ impl PartitionMarginalDiscrete {
     self.states.len()
   }
 
+  pub fn gtr(&self) -> &GTR {
+    &self.inputs.gtr
+  }
+
+  pub fn gtr_mut(&mut self) -> &mut GTR {
+    &mut self.inputs.gtr
+  }
+
+  pub fn get_sequence_length(&self) -> usize {
+    1
+  }
+
+  pub fn weighted_rate(&self) -> f64 {
+    self.inputs.gtr.mu
+  }
+
+  pub fn normalize_rate(&mut self, scale: f64) {
+    self.inputs.gtr.mu /= scale;
+  }
+
+  /// Build the initial discrete node states by attaching each leaf's trait as a one-hot (or uniform)
+  /// profile. Returns the leaf-seeded node-state map.
   pub fn attach_traits(
-    &mut self,
+    &self,
     graph: &Graph,
     traits: &BTreeMap<String, String>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-  ) -> Result<(), Report> {
+  ) -> Result<BTreeMap<GraphNodeKey, DenseNodeState>, Report> {
     let n_states = self.n_states();
     validate_trait_names(graph, traits, names)?;
 
+    let mut node_states = BTreeMap::new();
     for leaf in graph.get_leaves() {
       let leaf_key = leaf.read_arc().key();
       let leaf_name = names[&leaf_key].clone().unwrap_or_default();
@@ -63,125 +86,94 @@ impl PartitionMarginalDiscrete {
         uniform_profile(n_states)
       };
 
-      self.data.nodes.insert(
+      node_states.insert(
         leaf_key,
-        DenseNodePartition {
-          seq: DenseSeqInfo::default(),
+        DenseNodeState {
+          seq: crate::partition::storage::dense::DenseSeqInfo::default(),
           profile: DenseSeqDistribution::new(profile, LogLh::ZERO),
         },
       );
     }
 
-    for edge in graph.get_edges() {
-      let edge_key = edge.read_arc().key();
-      self.data.edges.insert(edge_key, DenseEdgePartition::default());
-    }
-
-    Ok(())
+    Ok(node_states)
   }
 
-  pub fn get_reconstructed_trait(&self, node_key: GraphNodeKey) -> Option<String> {
-    let node = self.data.nodes.get(&node_key)?;
+  pub fn get_reconstructed_trait(
+    &self,
+    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    node_key: GraphNodeKey,
+  ) -> Option<String> {
+    let node = node_states.get(&node_key)?;
     let row = node.profile.dis.row(0);
     let argmax = argmax_first(&row)?;
     Some(self.states.get_name(argmax).to_owned())
   }
 
-  pub fn get_confidence(&self, node_key: GraphNodeKey) -> Option<Array1<f64>> {
-    let node = self.data.nodes.get(&node_key)?;
+  pub fn get_confidence(
+    &self,
+    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    node_key: GraphNodeKey,
+  ) -> Option<Array1<f64>> {
+    let node = node_states.get(&node_key)?;
     Some(node.profile.dis.row(0).to_owned())
   }
-}
 
-impl HasGtr for PartitionMarginalDiscrete {
-  fn gtr(&self) -> &GTR {
-    &self.data.gtr
+  pub fn marginal_backward(
+    &self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+  ) -> Result<(BTreeMap<GraphNodeKey, DenseNodeState>, BTreeMap<GraphEdgeKey, DenseEdgeBackward>), Report> {
+    indexed_backward(
+      &self.inputs,
+      // discrete carries no residue alphabet; the indexed driver only uses the alphabet on the dense
+      // leaf-profile branch, which discrete never takes.
+      None,
+      1,
+      IndexedKind::Discrete,
+      graph,
+      branch_lengths,
+      node_states,
+    )
   }
 
-  fn gtr_mut(&mut self) -> &mut GTR {
-    &mut self.data.gtr
+  pub fn marginal_forward(
+    &self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
+  ) -> Result<
+    (
+      BTreeMap<GraphNodeKey, DenseNodeState>,
+      BTreeMap<GraphEdgeKey, DenseEdgeForward>,
+      BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
+    ),
+    Report,
+  > {
+    indexed_forward(
+      &self.inputs,
+      None,
+      IndexedKind::Discrete,
+      graph,
+      branch_lengths,
+      node_states,
+      backward,
+    )
   }
 
-  fn sequence_length(&self) -> usize {
-    1
-  }
-}
-
-impl HasLogLh for PartitionMarginalDiscrete {
-  fn get_log_lh(&self, node_key: GraphNodeKey) -> LogLh {
-    self
-      .data
-      .nodes
-      .get(&node_key)
-      .map_or(LogLh::ZERO, |node| node.profile.log_lh)
-  }
-
-  fn reset_node_log_likelihoods(&mut self) {
-    for node_data in self.data.nodes.values_mut() {
-      node_data.profile.log_lh = LogLh::ZERO;
-    }
-  }
-}
-
-impl TransitionCounting for PartitionMarginalDiscrete {
-  fn count_transitions(
+  pub fn count_transitions(
     &self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
+    forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
   ) -> Result<MutationCounts, Report> {
-    self.data.count_transitions(graph, branch_lengths)
-  }
-}
-
-impl MarginalPartition for PartitionMarginalDiscrete {
-  fn marginal_data(&self) -> &MarginalData {
-    &self.data
+    count_transitions_dense(&self.inputs, graph, branch_lengths, node_states, backward, forward)
   }
 
-  fn marginal_data_mut(&mut self) -> &mut MarginalData {
-    &mut self.data
-  }
-
-  fn indexed_storage_mut(
-    &mut self,
-  ) -> (
-    &mut BTreeMap<GraphNodeKey, DenseNodePartition>,
-    &mut BTreeMap<GraphEdgeKey, DenseEdgePartition>,
-  ) {
-    (&mut self.data.nodes, &mut self.data.edges)
-  }
-}
-
-impl IndexedMarginalPartition for PartitionMarginalDiscrete {
-  fn indexed_missing_node(&self, _key: GraphNodeKey) -> Result<DenseNodePartition, Report> {
-    Ok(DenseNodePartition {
-      seq: DenseSeqInfo::default(),
-      profile: DenseSeqDistribution::default(),
-    })
-  }
-
-  fn indexed_leaf_profile(&self, node: &DenseNodePartition) -> Result<DenseSeqDistribution, Report> {
-    Ok(node.profile.clone())
-  }
-
-  fn indexed_forward_post(
-    &self,
-    _is_root: bool,
-    _is_leaf: bool,
-    _parent: Option<&DenseNodePartition>,
-    _node: &mut DenseNodePartition,
-    _parent_edge: Option<&mut DenseEdgePartition>,
-  ) -> Result<(), Report> {
-    Ok(())
-  }
-}
-
-impl PartitionMarginalPasses for PartitionMarginalDiscrete {
-  fn as_marginal_pass(&mut self) -> MarginalPass<'_> {
-    MarginalPass::Indexed(self)
-  }
-
-  fn get_sequence_length(&self) -> usize {
-    1
+  pub fn get_log_lh(&self, node_states: &BTreeMap<GraphNodeKey, DenseNodeState>, node_key: GraphNodeKey) -> LogLh {
+    node_states.get(&node_key).map_or(LogLh::ZERO, |node| node.profile.log_lh)
   }
 }

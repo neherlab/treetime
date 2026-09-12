@@ -33,7 +33,7 @@ pub enum IndexedKind {
 /// node states and the per-edge backward messages as distinct owned values.
 pub fn indexed_backward(
   inputs: &DenseInputs,
-  alphabet: &Alphabet,
+  alphabet: Option<&Alphabet>,
   length: usize,
   kind: IndexedKind,
   graph: &Graph,
@@ -55,7 +55,7 @@ pub fn indexed_backward(
 fn indexed_node_backward(
   gtr: &GTR,
   min_branch_length: f64,
-  alphabet: &Alphabet,
+  alphabet: Option<&Alphabet>,
   length: usize,
   kind: IndexedKind,
   context: &GraphPassBackwardContext<'_, DenseNodeState, f64, DenseNodeState, DenseEdgeBackward>,
@@ -64,7 +64,9 @@ fn indexed_node_backward(
   let msg_to_parent = if context.is_leaf {
     match kind {
       IndexedKind::Dense => DenseSeqDistribution {
-        dis: alphabet.seq2prof(&node.seq.sequence)?,
+        dis: alphabet
+          .expect("Dense marginal requires an alphabet")
+          .seq2prof(&node.seq.sequence)?,
         log_lh: LogLh::ZERO,
       },
       IndexedKind::Discrete => node.profile.clone(),
@@ -147,7 +149,7 @@ fn backward_internal_dense(children: &[&DenseNodeState], length: usize) -> Dense
 /// (indels) as distinct owned values.
 pub fn indexed_forward(
   inputs: &DenseInputs,
-  alphabet: &Alphabet,
+  alphabet: Option<&Alphabet>,
   kind: IndexedKind,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -195,7 +197,7 @@ struct DenseEdgeForwardOut {
 fn indexed_node_forward(
   gtr: &GTR,
   min_branch_length: f64,
-  alphabet: &Alphabet,
+  alphabet: Option<&Alphabet>,
   kind: IndexedKind,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   context: &GraphPassForwardContext<'_, DenseNodeState, DenseEdgeBackward, DenseNodeState>,
@@ -232,6 +234,7 @@ fn indexed_node_forward(
   }
 
   if let IndexedKind::Dense = kind {
+    let alphabet = alphabet.expect("Dense marginal requires an alphabet");
     let indels = forward_post_dense(context.is_root, context.is_leaf, context.parent, &mut node, alphabet)?;
     if let Some((_, _, out)) = edge_out.as_mut() {
       out.indels = indels;
