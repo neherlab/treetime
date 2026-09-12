@@ -17,13 +17,19 @@ pub struct DenseSeqInfo {
   pub sequence: Seq,
 }
 
+/// The evolving per-node dense state: site information and the posterior profile.
+///
+/// This is a genuinely unified positional slot, not a stage split: `seq.sequence` is the observed
+/// residue at a leaf and the reconstructed residue at an internal node, and `profile` is refined by the
+/// backward and then the forward pass. Both passes borrow the durable inputs and return updated node
+/// states; nothing here is a durable input the partition owns.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct DenseNodePartition {
+pub struct DenseNodeState {
   pub seq: DenseSeqInfo,
   pub profile: DenseSeqDistribution,
 }
 
-impl DenseNodePartition {
+impl DenseNodeState {
   pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
     let gaps = find_letter_ranges(seq, alphabet.gap());
     let unknown = find_letter_ranges(seq, alphabet.unknown());
@@ -40,15 +46,34 @@ impl DenseNodePartition {
       profile: DenseSeqDistribution::default(),
     })
   }
+
+  pub fn empty() -> Self {
+    Self {
+      seq: DenseSeqInfo::default(),
+      profile: DenseSeqDistribution::default(),
+    }
+  }
 }
 
+/// Backward-pass edge messages, produced by the backward pass and consumed by the forward pass and by
+/// transition counting. Distinct owner from the forward messages and the final estimates.
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct DenseEdgePartition {
-  pub indels: Vec<InDel>,
-  pub transmission: Option<Vec<(usize, usize)>>,
-  pub msg_to_child: DenseSeqDistribution,
+pub struct DenseEdgeBackward {
   pub msg_to_parent: DenseSeqDistribution,
   pub msg_from_child: DenseSeqDistribution,
+}
+
+/// Forward-pass edge message, produced by the forward pass and consumed by transition counting and the
+/// branch-length optimizer. Distinct owner from the backward messages and the final estimates.
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+pub struct DenseEdgeForward {
+  pub msg_to_child: DenseSeqDistribution,
+}
+
+/// Final per-edge estimate produced by the forward pass: the indels placed on the branch.
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+pub struct DenseEdgeEstimate {
+  pub indels: Vec<InDel>,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]

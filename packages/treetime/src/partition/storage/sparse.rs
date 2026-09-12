@@ -8,17 +8,76 @@ use maplit::btreemap;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
-use std::mem;
 use treetime_primitives::AlphabetLike;
 use treetime_primitives::{AsciiChar, LogLh, Seq, StateSet, seq};
 use treetime_utils::interval::range_union::range_union;
 
+/// Durable per-node observations produced by the Fitch pre-pass and consumed (never rewritten) by the
+/// marginal passes and reconstruction: the ambiguity/gap ranges, the residue composition, and the
+/// Fitch state sets. The partition owns these as immutable inputs.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SparseNodePartition {
-  pub seq: SparseSeqInfo,
+pub struct SparseNodeObs {
+  pub unknown: Vec<(usize, usize)>,
+  pub gaps: Vec<(usize, usize)>,
+  pub non_char: Vec<(usize, usize)>, // any position that does not evolve according to the substitution model, i.e. gap or N
+  pub composition: Composition,      // count of all characters in the region that is not `non_char`
+  pub fitch: FitchSeqDistribution,
+}
+
+impl SparseNodeObs {
+  /// Empty observations for a placeholder node created by an edge split.
+  pub fn empty(alphabet: &Alphabet) -> Self {
+    Self {
+      unknown: vec![],
+      gaps: vec![],
+      non_char: vec![],
+      composition: Composition::new(alphabet.chars(), alphabet.gap()),
+      fitch: FitchSeqDistribution {
+        variable: btreemap! {},
+        variable_indel: BTreeSet::new(),
+        chosen_state: btreemap! {},
+      },
+    }
+  }
+
+  pub fn new(seq: &Seq, alphabet: &Alphabet) -> Self {
+    let variable = seq
+      .iter()
+      .enumerate()
+      .filter(|&(_, c)| alphabet.is_ambiguous(*c))
+      .map(|(pos, &c)| (pos, alphabet.char_to_set(c)))
+      .collect();
+
+    let fitch = FitchSeqDistribution {
+      variable,
+      variable_indel: BTreeSet::new(),
+      chosen_state: btreemap! {},
+    };
+
+    let unknown = find_letter_ranges(seq, alphabet.unknown());
+    let gaps = find_letter_ranges(seq, alphabet.gap());
+    let non_char = range_union(&[unknown.clone(), gaps.clone()]);
+
+    Self {
+      unknown,
+      gaps,
+      non_char,
+      composition: Composition::with_seq(seq, alphabet.chars(), alphabet.gap()),
+      fitch,
+    }
+  }
+}
+
+/// The evolving per-node marginal state: the reconstructed (or observed, at a leaf) sequence, the
+/// posterior profile, and the cached emitted output. A genuinely unified positional slot -- `sequence`
+/// is observed at a leaf and parsimony-reconstructed at an internal node -- so it is kept together
+/// rather than split across obs/result structs.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SparseNodeState {
+  pub sequence: Seq,
   pub profile: SparseSeqDistribution,
 
-  /// Cached output sequence for the two cases that cannot be rebuilt from `seq.sequence` and `profile`.
+  /// Cached output sequence for the two cases that cannot be rebuilt from `sequence` and `profile`.
   ///
   /// Every output path normally rebuilds the sequence on demand, so nothing needs storing. Two results
   /// cannot be rebuilt and are kept here so all paths return the same bytes: a random draw under
@@ -28,101 +87,37 @@ pub struct SparseNodePartition {
   pub emitted: Option<Seq>,
 }
 
-impl SparseNodePartition {
-  /// Create an empty placeholder node partition for edge split operations.
-  /// The sequence and profile will be computed during the marginal update pass.
-  pub fn empty(alphabet: &Alphabet) -> Self {
+impl SparseNodeState {
+  pub fn empty() -> Self {
     Self {
-      seq: SparseSeqInfo {
-        unknown: vec![],
-        gaps: vec![],
-        non_char: vec![],
-        composition: Composition::new(alphabet.chars(), alphabet.gap()),
-        sequence: seq![],
-        fitch: FitchSeqDistribution {
-          variable: btreemap! {},
-          variable_indel: BTreeSet::new(),
-          chosen_state: btreemap! {},
-        },
-      },
+      sequence: seq![],
       profile: SparseSeqDistribution::default(),
       emitted: None,
     }
   }
 
-  pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
-    let variable = seq
-      .iter()
-      .enumerate()
-      .filter(|&(_, c)| alphabet.is_ambiguous(*c))
-      .map(|(pos, &c)| (pos, alphabet.char_to_set(c)))
-      .collect();
-
-    let seq_dis = FitchSeqDistribution {
-      variable,
-      variable_indel: BTreeSet::new(),
-      chosen_state: btreemap! {},
-    };
-
-    let unknown = find_letter_ranges(seq, alphabet.unknown());
-    let gaps = find_letter_ranges(seq, alphabet.gap());
-    let non_char = range_union(&[unknown.clone(), gaps.clone()]); // TODO(perf): avoid cloning
-
-    Ok(Self {
-      seq: SparseSeqInfo {
-        unknown,
-        gaps,
-        non_char,
-        composition: Composition::with_seq(seq, alphabet.chars(), alphabet.gap()),
-        sequence: seq.to_owned(), // TODO(perf): try to avoid cloning
-        fitch: seq_dis,
-      },
-      profile: SparseSeqDistribution {
-        variable: btreemap! {},
-        variable_indel: BTreeSet::new(),
-        fixed: btreemap! {},
-        fixed_counts: Composition::new(alphabet.chars(), alphabet.gap()),
-        log_lh: LogLh::ZERO,
-      },
+  /// Seed the node state for a leaf from its observed sequence: the observed sequence is also the
+  /// leaf's initial marginal sequence.
+  pub fn leaf(seq: &Seq) -> Self {
+    Self {
+      sequence: seq.to_owned(),
+      profile: SparseSeqDistribution::default(),
       emitted: None,
-    })
+    }
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SparseSeqInfo {
-  pub unknown: Vec<(usize, usize)>,
-  pub gaps: Vec<(usize, usize)>,
-  pub non_char: Vec<(usize, usize)>, // any position that does not evolve according to the substitution model, i.e. gap or N
-  pub composition: Composition,      // count of all characters in the region that is not `non_char`
-  pub sequence: Seq,
-  pub fitch: FitchSeqDistribution,
-}
-
+/// Durable per-edge observations produced by the Fitch pre-pass: the Fitch substitutions, the indels,
+/// and the transmission mask. The partition owns these as immutable inputs to the marginal passes.
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 #[allow(clippy::partial_pub_fields)]
-pub struct SparseEdgePartition {
+pub struct SparseEdgeObs {
   subs_fitch: Vec<Sub>,
-  subs_ml: Option<Vec<Sub>>,
   pub indels: Vec<InDel>,
-  pub msg_to_parent: SparseSeqDistribution,
-  pub msg_to_child: SparseSeqDistribution,
-  pub msg_from_child: SparseSeqDistribution,
-
-  /// The parent posterior evolved across this branch to the child (the marginal down-message).
-  ///
-  /// Populated by the forward pass only for edges whose child is a leaf, where tip imputation needs it
-  /// at reconstruction time. `msg_to_child` stores the pre-propagation cavity message; the forward pass
-  /// already computes this propagated form for the profile update but otherwise discards it. At a tip
-  /// position with no observed state the leaf likelihood is uniform, so this down-message is the leaf's
-  /// marginal posterior there, matching v0's per-leaf marginal profile.
-  #[serde(default)]
-  pub msg_from_parent: SparseSeqDistribution,
-
   pub transmission: Option<Vec<(usize, usize)>>,
 }
 
-impl SparseEdgePartition {
+impl SparseEdgeObs {
   pub fn with_fitch_subs(subs: Vec<Sub>) -> Self {
     Self {
       subs_fitch: subs,
@@ -144,19 +139,16 @@ impl SparseEdgePartition {
 
   pub fn set_fitch_subs(&mut self, subs: Vec<Sub>) {
     self.subs_fitch = subs;
-    self.subs_ml = None;
   }
 
   pub fn extend_fitch_subs(&mut self, subs: impl IntoIterator<Item = Sub>) {
     self.subs_fitch.extend(subs);
-    self.subs_ml = None;
   }
 
   pub fn invert_fitch_subs(&mut self) {
     for sub in &mut self.subs_fitch {
       sub.invert();
     }
-    self.subs_ml = None;
   }
 
   pub fn chain_fitch_subs(&self, suffix: &[Sub]) -> Result<Vec<Sub>, Report> {
@@ -170,7 +162,40 @@ impl SparseEdgePartition {
     sort_indels(&mut child);
     compose_indels(&parent, &child)
   }
+}
 
+/// Backward-pass edge messages: distinct owner from the forward messages and the final estimates.
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+pub struct SparseEdgeBackward {
+  pub msg_to_parent: SparseSeqDistribution,
+  pub msg_from_child: SparseSeqDistribution,
+}
+
+/// Forward-pass edge messages: the cavity down-message and, for leaf edges, the propagated parent
+/// posterior used for tip imputation. Distinct owner from the backward messages and the estimates.
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+pub struct SparseEdgeForward {
+  pub msg_to_child: SparseSeqDistribution,
+
+  /// The parent posterior evolved across this branch to the child (the marginal down-message).
+  ///
+  /// Populated by the forward pass only for edges whose child is a leaf, where tip imputation needs it
+  /// at reconstruction time. `msg_to_child` stores the pre-propagation cavity message; the forward pass
+  /// already computes this propagated form for the profile update but otherwise discards it. At a tip
+  /// position with no observed state the leaf likelihood is uniform, so this down-message is the leaf's
+  /// marginal posterior there, matching v0's per-leaf marginal profile.
+  #[serde(default)]
+  pub msg_from_parent: SparseSeqDistribution,
+}
+
+/// Final per-edge marginal estimate: the maximum-likelihood substitutions placed on the branch,
+/// produced by the forward pass.
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+pub struct SparseEdgeEstimate {
+  subs_ml: Option<Vec<Sub>>,
+}
+
+impl SparseEdgeEstimate {
   pub fn ml_subs(&self) -> Option<&[Sub]> {
     self.subs_ml.as_deref()
   }
@@ -181,17 +206,6 @@ impl SparseEdgePartition {
 
   pub fn clear_ml_subs(&mut self) {
     self.subs_ml = None;
-  }
-
-  pub fn invert_for_reroot(&mut self) {
-    self.invert_fitch_subs();
-    self.clear_ml_subs();
-    for indel in &mut self.indels {
-      indel.invert();
-    }
-    mem::swap(&mut self.msg_to_parent, &mut self.msg_to_child);
-    self.msg_from_child = SparseSeqDistribution::default();
-    self.msg_from_parent = SparseSeqDistribution::default();
   }
 }
 
