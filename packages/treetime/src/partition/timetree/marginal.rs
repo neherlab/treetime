@@ -73,15 +73,23 @@ impl PartitionMarginalOps<NodeTimetree, EdgeTimetree> for PartitionTimetree {
 
   fn reconstruct_node_sequence(
     &mut self,
-    node: &GraphNodeForward<NodeTimetree, EdgeTimetree>,
+    node: &GraphNodeForward,
     include_leaves: bool,
     impute: bool,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq> {
     match self {
-      Self::Dense(partition) => partition.reconstruct_node_sequence(node, include_leaves, impute, sample_mode, rng),
-      Self::Sparse(partition) => partition.reconstruct_node_sequence(node, include_leaves, impute, sample_mode, rng),
+      Self::Dense(partition) => {
+        <PartitionMarginalDense as PartitionMarginalOps<NodeTimetree, EdgeTimetree>>::reconstruct_node_sequence(
+          partition, node, include_leaves, impute, sample_mode, rng,
+        )
+      },
+      Self::Sparse(partition) => {
+        <PartitionMarginalSparse as PartitionMarginalOps<NodeTimetree, EdgeTimetree>>::reconstruct_node_sequence(
+          partition, node, include_leaves, impute, sample_mode, rng,
+        )
+      },
     }
   }
 }

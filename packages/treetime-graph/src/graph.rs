@@ -18,14 +18,7 @@ pub type SafeEdge<E> = Arc<RwLock<Edge<E>>>;
 pub type SafeEdgeRef<E> = ArcRwLockReadGuard<RawRwLock, Edge<E>>;
 pub type SafeEdgeRefMut<E> = ArcRwLockWriteGuard<RawRwLock, Edge<E>>;
 
-pub type SafeNodePayloadRef<N> = ArcRwLockReadGuard<RawRwLock, N>;
-pub type SafeNodePayloadRefMut<N> = ArcRwLockWriteGuard<RawRwLock, N>;
-
-pub type SafeEdgePayloadRef<E> = ArcRwLockReadGuard<RawRwLock, E>;
-pub type SafeEdgePayloadRefMut<E> = ArcRwLockWriteGuard<RawRwLock, E>;
-
 pub type NodeEdgePair<N, E> = (Arc<RwLock<Node<N>>>, Arc<RwLock<Edge<E>>>);
-pub type NodeEdgePayloadPair<N, E> = (Arc<RwLock<N>>, Arc<RwLock<E>>);
 
 #[allow(clippy::field_scoped_visibility_modifiers)]
 #[derive(Debug, Serialize, Deserialize)]
@@ -217,7 +210,7 @@ where
   }
 
   /// Iterates nodes synchronously and in unspecified order
-  pub fn for_each<T, F>(&self, f: &mut dyn FnMut(GraphNodeSafe<N, E>)) {
+  pub fn for_each<T, F>(&self, f: &mut dyn FnMut(GraphNodeSafe)) {
     self
       .nodes
       .iter()
@@ -228,7 +221,7 @@ where
   /// Iterates nodes synchronously and in unspecified order
   pub fn map<T, F>(&self, mut f: F) -> Vec<T>
   where
-    F: FnMut(GraphNodeSafe<N, E>) -> T,
+    F: FnMut(GraphNodeSafe) -> T,
   {
     self
       .nodes
@@ -241,7 +234,7 @@ where
   /// Iterates nodes synchronously and in unspecified order
   pub fn filter_map<T, F>(&self, mut f: F) -> Vec<T>
   where
-    F: FnMut(GraphNodeSafe<N, E>) -> Option<T>,
+    F: FnMut(GraphNodeSafe) -> Option<T>,
   {
     self
       .nodes

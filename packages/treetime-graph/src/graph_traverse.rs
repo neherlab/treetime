@@ -1,5 +1,5 @@
 use crate::edge::{GraphEdge, GraphEdgeKey};
-use crate::graph::{Graph, NodeEdgePair, NodeEdgePayloadPair, SafeEdgePayloadRefMut, SafeNodePayloadRefMut};
+use crate::graph::Graph;
 use crate::node::{GraphNode, GraphNodeKey, Node};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -7,33 +7,23 @@ use parking_lot::RwLock;
 use std::collections::{BTreeSet, VecDeque};
 use std::sync::Arc;
 use traversal::Bft;
-use treetime_utils::collections::container::{get_exactly_one, get_exactly_one_mut};
 
 /// Represents graph node during forward traversal
 #[must_use]
 #[derive(Debug)]
-pub struct GraphNodeForward<N, E>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+pub struct GraphNodeForward {
   pub is_root: bool,
   pub is_leaf: bool,
   pub key: GraphNodeKey,
-  pub payload: SafeNodePayloadRefMut<N>,
-  pub parents: Vec<NodeEdgePayloadPair<N, E>>,
   pub parent_keys: Vec<(GraphNodeKey, GraphEdgeKey)>,
-  pub child_edges: Vec<SafeEdgePayloadRefMut<E>>,
   pub child_edge_keys: Vec<GraphEdgeKey>,
 }
 
-impl<N, E> GraphNodeForward<N, E>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
-  pub fn new<D>(graph: &Graph<N, E, D>, node: &Node<N>) -> Self
+impl GraphNodeForward {
+  pub fn new<N, E, D>(graph: &Graph<N, E, D>, node: &Node<N>) -> Self
   where
+    N: GraphNode,
+    E: GraphEdge,
     D: Sync + Send,
   {
     let is_leaf = node.is_leaf();
@@ -52,64 +42,32 @@ where
       .map(|(_, edge)| edge.read_arc().key())
       .collect_vec();
 
-    let payload = node.payload().write_arc();
-
-    let parents = graph
-      .parents_of(node)
-      .iter()
-      .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
-      .collect_vec();
-
-    let child_edges = graph
-      .children_of(node)
-      .iter()
-      .map(|(_, edge)| edge.write_arc().payload().write_arc())
-      .collect_vec();
-
     Self {
       is_root,
       is_leaf,
       key,
-      payload,
-      parents,
       parent_keys,
-      child_edges,
       child_edge_keys,
     }
-  }
-
-  pub fn get_exactly_one_parent(&self) -> Result<NodeEdgePayloadPair<N, E>, Report> {
-    get_exactly_one(&self.parents)
-      .cloned()
-      .wrap_err("Nodes with multiple parents are not yet supported")
   }
 }
 
 /// Represents graph node during backwards traversal
 #[must_use]
 #[derive(Debug)]
-pub struct GraphNodeBackward<N, E>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+pub struct GraphNodeBackward {
   pub is_root: bool,
   pub is_leaf: bool,
   pub key: GraphNodeKey,
-  pub payload: SafeNodePayloadRefMut<N>,
-  pub children: Vec<NodeEdgePayloadPair<N, E>>,
   pub child_keys: Vec<(GraphNodeKey, GraphEdgeKey)>,
-  pub parent_edges: Vec<SafeEdgePayloadRefMut<E>>,
   pub parent_edge_keys: Vec<GraphEdgeKey>,
 }
 
-impl<N, E> GraphNodeBackward<N, E>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
-  pub fn new<D>(graph: &Graph<N, E, D>, node: &Node<N>) -> Self
+impl GraphNodeBackward {
+  pub fn new<N, E, D>(graph: &Graph<N, E, D>, node: &Node<N>) -> Self
   where
+    N: GraphNode,
+    E: GraphEdge,
     D: Sync + Send,
   {
     let is_leaf = node.is_leaf();
@@ -128,76 +86,36 @@ where
       .map(|(_, edge)| edge.read_arc().key())
       .collect_vec();
 
-    let payload = node.payload().write_arc();
-
-    let children = graph
-      .children_of(node)
-      .iter()
-      .map(|(node, edge)| (node.read().payload(), edge.read().payload()))
-      .collect_vec();
-
-    let parent_edges = graph
-      .parents_of(node)
-      .iter()
-      .map(|(_, edge)| edge.write_arc().payload().write_arc())
-      .collect_vec();
-
     Self {
       is_root,
       is_leaf,
       key,
-      payload,
-      children,
       child_keys,
-      parent_edges,
       parent_edge_keys,
     }
-  }
-
-  pub fn get_exactly_one_parent_edge(&mut self) -> Result<&mut SafeEdgePayloadRefMut<E>, Report> {
-    get_exactly_one_mut(&mut self.parent_edges).wrap_err("Nodes with multiple parents are not yet supported")
   }
 }
 
 /// Represents graph node during safe traversal
 #[derive(Debug)]
-pub struct GraphNodeSafe<N, E>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+pub struct GraphNodeSafe {
   pub is_root: bool,
   pub is_leaf: bool,
   pub key: GraphNodeKey,
-  pub payload: Arc<RwLock<N>>,
-  pub children: Vec<NodeEdgePair<N, E>>,
-  pub parents: Vec<NodeEdgePair<N, E>>,
 }
 
-impl<N, E> GraphNodeSafe<N, E>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
-  pub fn from_node<D>(graph: &Graph<N, E, D>, node: &Arc<RwLock<Node<N>>>) -> Self
+impl GraphNodeSafe {
+  pub fn from_node<N, E, D>(graph: &Graph<N, E, D>, node: &Arc<RwLock<Node<N>>>) -> Self
   where
+    N: GraphNode,
+    E: GraphEdge,
     D: Sync + Send,
   {
     let node = node.read();
     let is_leaf = node.is_leaf();
     let is_root = node.is_root();
     let key = node.key();
-    let payload = node.payload();
-    let parents = graph.parents_of(&node);
-    let children = graph.children_of(&node);
-    Self {
-      is_root,
-      is_leaf,
-      key,
-      payload,
-      children,
-      parents,
-    }
+    Self { is_root, is_leaf, key }
   }
 }
 
@@ -214,7 +132,7 @@ where
   /// Serial depth-first preorder forward traversal (roots to leaves, parents before children).
   pub fn iter_depth_first_preorder_forward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
-    F: FnMut(GraphNodeForward<N, E>) -> Result<(), Report>,
+    F: FnMut(GraphNodeForward) -> Result<(), Report>,
   {
     let root = self
       .get_exactly_one_root()
@@ -233,7 +151,7 @@ where
   /// Serial depth-first postorder forward traversal (children before parents).
   pub fn iter_depth_first_postorder_forward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
-    F: FnMut(GraphNodeBackward<N, E>) -> Result<(), Report>,
+    F: FnMut(GraphNodeBackward) -> Result<(), Report>,
   {
     let root = self
       .get_exactly_one_root()
@@ -265,7 +183,7 @@ where
   /// per-node work must capture mutable outer state, which a parallel callback cannot.
   pub fn iter_breadth_first_forward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
-    F: FnMut(GraphNodeForward<N, E>) -> Result<(), Report>,
+    F: FnMut(GraphNodeForward) -> Result<(), Report>,
   {
     let root = self
       .get_exactly_one_root()
@@ -286,7 +204,7 @@ where
   /// Serial breadth-first backward traversal (leaves to roots, against edge directions).
   pub fn iter_breadth_first_backward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
-    F: FnMut(GraphNodeBackward<N, E>) -> Result<(), Report>,
+    F: FnMut(GraphNodeBackward) -> Result<(), Report>,
   {
     let root = self
       .get_exactly_one_root()

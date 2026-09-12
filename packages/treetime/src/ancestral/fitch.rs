@@ -9,7 +9,7 @@ use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::storage::sparse::{
   FitchSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, SparseSeqInfo,
 };
-use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::payload::ancestral::GraphAncestral;
 use crate::seq::alignment::get_common_length;
 use crate::seq::composition::Composition;
 use eyre::Report;
@@ -373,7 +373,7 @@ pub fn ancestral_reconstruction_fitch(
   graph: &GraphAncestral,
   include_leaves: bool,
   partitions: &mut [PartitionFitch],
-  mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral>, &Seq) -> Result<(), Report>,
+  mut visitor: impl FnMut(&GraphNodeForward, &Seq) -> Result<(), Report>,
 ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
   let mut node_sequences = BTreeMap::new();
   graph.iter_depth_first_preorder_forward(|node| {
@@ -385,9 +385,9 @@ pub fn ancestral_reconstruction_fitch(
 fn run_fitch_reconstruction(
   include_leaves: bool,
   partitions: &mut [PartitionFitch],
-  mut visitor: impl FnMut(&GraphNodeForward<NodeAncestral, EdgeAncestral>, &Seq) -> Result<(), Report>,
+  mut visitor: impl FnMut(&GraphNodeForward, &Seq) -> Result<(), Report>,
   node_sequences: &mut BTreeMap<GraphNodeKey, Seq>,
-  node: &GraphNodeForward<NodeAncestral, EdgeAncestral>,
+  node: &GraphNodeForward,
 ) -> Result<(), Report> {
   if !include_leaves && node.is_leaf {
     return Ok(());

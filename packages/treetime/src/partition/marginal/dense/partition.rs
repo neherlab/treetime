@@ -277,7 +277,7 @@ where
 
   fn reconstruct_node_sequence(
     &mut self,
-    node: &GraphNodeForward<N, E>,
+    node: &GraphNodeForward,
     include_leaves: bool,
     impute: bool,
     sample_mode: SampleMode,
