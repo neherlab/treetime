@@ -2,17 +2,17 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_by_name, jc69};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::likelihood::{evaluate_mixed, evaluate_mixed_log_lh_only};
   use crate::optimize::method_newton::{newton_inner, newton_sqrt_inner};
   use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::run_loop::OptimizeReadouts;
   use crate::optimize::run_loop::find_zero_optimal_internal_edges;
-  use crate::optimize::run_loop::optimize_partition_view;
   use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::seq::alignment::get_common_length;
@@ -59,29 +59,43 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     model: GtrModelName,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<(Vec<PartitionMarginalDense>, Vec<PartitionMarginalSparse>), Report> {
+  ) -> Result<(Vec<DenseReconstruction>, Vec<SparseReconstruction>), Report> {
     let aln = read_many_fasta_str(IDENTICAL_ALIGNMENT, &Alphabet::default())?;
 
-    let mut dense_partitions = vec![PartitionMarginalDense::new(
+    let dense_partition = PartitionMarginalDense::new(
       0,
       get_gtr_by_name(model)?,
       Alphabet::new(AlphabetName::Nuc)?,
       get_common_length(&aln)?,
-    )];
+    );
+    let dense_node_states = dense_partition.attach_sequences(graph, &aln, names)?;
+    let mut dense_partitions = vec![DenseReconstruction {
+      partition: dense_partition,
+      node_states: dense_node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }];
 
     let fitch = create_fitch_partition(graph, 1, Alphabet::new(AlphabetName::Nuc)?, &aln, names)?;
-    let mut sparse_partitions = vec![fitch.into_marginal_sparse(get_gtr_by_name(model)?, graph)?];
-    initialize_marginal(
-      graph,
-      &profile_branch_lengths(branch_lengths),
-      &mut dense_partitions,
-      &aln,
-      names,
-    )?
-    .value();
-    marginal_update(graph, &profile_branch_lengths(branch_lengths), &mut sparse_partitions)?.value();
+    let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(get_gtr_by_name(model)?, graph)?;
+    let mut sparse_partitions = vec![SparseReconstruction {
+      partition: sparse_partition,
+      node_states: sparse_node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }];
 
-    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
+    for family in &mut dense_partitions {
+      family.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    }
+    for family in &mut sparse_partitions {
+      family.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    }
+
+    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = readouts.view();
     initial_guess_mixed(graph, &mixed_partitions, false, false, branch_lengths)?;
 
     Ok((dense_partitions, sparse_partitions))
@@ -117,7 +131,8 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
-    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
+    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = readouts.view();
 
     // Sanity check: every edge must start with a positive branch length so
     // that the optimizer has real work to do. If this fails, the test
@@ -166,13 +181,14 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, model, &mut branch_lengths)?;
-    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
+    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = readouts.view();
 
     // Precondition: the model must be classified as non-unimodal so that
     // the pre-dispatch shortcut is bypassed and the post-dispatch
     // reconciliation is exercised.
     assert!(
-      !dense_partitions[0].data.gtr.unimodal_branch_likelihood,
+      !dense_partitions[0].partition.gtr().unimodal_branch_likelihood,
       "precondition: {model:?} must be classified as non-unimodal"
     );
 
@@ -211,10 +227,11 @@ mod tests {
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) =
       setup_identical_partitions(&graph, &names, GtrModelName::JC69, &mut branch_lengths)?;
-    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
+    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = readouts.view();
 
     assert!(
-      dense_partitions[0].data.gtr.unimodal_branch_likelihood,
+      dense_partitions[0].partition.gtr().unimodal_branch_likelihood,
       "precondition: JC69 must be classified as unimodal"
     );
 
@@ -478,7 +495,8 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
-    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
+    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = readouts.view();
 
     // Before optimization, every edge starts at 0.1 and none are zero.
     assert_eq!(

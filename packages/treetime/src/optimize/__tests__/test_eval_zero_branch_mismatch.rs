@@ -2,16 +2,18 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::optimize_partition_view;
+  use crate::optimize::run_loop::OptimizeReadouts;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
 
   use eyre::Report;
   use indoc::indoc;
+  use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
 
   use treetime_io::fasta::read_many_fasta_str;
@@ -52,26 +54,35 @@ mod tests {
     let alphabet_dense = Alphabet::new(AlphabetName::Nuc)?;
     let alphabet_sparse = Alphabet::new(AlphabetName::Nuc)?;
 
-    let mut dense_partitions = vec![PartitionMarginalDense::new(
-      0,
-      jc69(JC69Params::default())?,
-      alphabet_dense,
-      get_common_length(&aln)?,
-    )];
+    let dense_partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet_dense, get_common_length(&aln)?);
+    let dense_node_states = dense_partition.attach_sequences(&graph, &aln, &names)?;
+    let mut dense_partitions = vec![DenseReconstruction {
+      partition: dense_partition,
+      node_states: dense_node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }];
 
     let fitch = create_fitch_partition(&graph, 1, alphabet_sparse, &aln, &names)?;
-    let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut dense_partitions,
-      &aln,
-      &names,
-    )?
-    .value();
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
+    let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
+    let mut sparse_partitions = vec![SparseReconstruction {
+      partition: sparse_partition,
+      node_states: sparse_node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }];
 
-    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
+    for family in &mut dense_partitions {
+      family.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    }
+    for family in &mut sparse_partitions {
+      family.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    }
+
+    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = readouts.view();
 
     // Do NOT call initial_guess_mixed -- leave branch lengths at 0.0
     // to exercise the zero-branch mismatch code path.

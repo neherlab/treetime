@@ -1,13 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
-  use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
+  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::shared::data::MarginalData;
-  use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
-  use crate::partition::traits::PartitionBranchOps;
+  use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
   use eyre::Report;
@@ -44,41 +42,21 @@ mod tests {
     // Child posterior: sharp at G (index 2) at position 0
     let child_posterior = array![[0.0, 0.0, 1.0, 0.0]];
 
-    // Edge messages: msg_to_parent = sharp G, msg_to_child = uniform (uninformative)
-    // Under the old code, argmax of uniform msg_to_child would resolve to index 0
-    // (state A), producing a false G->A substitution.
-    let msg_to_parent = array![[0.0, 0.0, 1.0, 0.0]];
-    let msg_to_child = array![[0.25, 0.25, 0.25, 0.25]];
-
-    let partition = PartitionMarginalDense {
-      data: MarginalData {
-        gtr: jc69(JC69Params::default())?,
-        nodes: btreemap! {
-          parent_key => DenseNodePartition {
-            seq: DenseSeqInfo::default(),
-            profile: DenseSeqDistribution::new(parent_posterior, LogLh::ZERO),
-          },
-          child_key => DenseNodePartition {
-            seq: DenseSeqInfo::default(),
-            profile: DenseSeqDistribution::new(child_posterior, LogLh::ZERO),
-          },
-        },
-        edges: btreemap! {
-          edge_key => DenseEdgePartition {
-            msg_to_parent: DenseSeqDistribution::new(msg_to_parent, LogLh::ZERO),
-            msg_to_child: DenseSeqDistribution::new(msg_to_child, LogLh::ZERO),
-            ..Default::default()
-          },
-        },
-        min_branch_length: MIN_BRANCH_LENGTH_FRACTION,
-        filter_uninformative_root: true,
+    // `edge_subs` compares node posteriors, not per-edge messages, so a uniform down-message cannot
+    // fabricate a substitution: parent argmax = G and child argmax = G give zero subs.
+    let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::new(AlphabetName::Nuc)?, 1);
+    let node_states = btreemap! {
+      parent_key => DenseNodeState {
+        seq: DenseSeqInfo::default(),
+        profile: DenseSeqDistribution::new(parent_posterior, LogLh::ZERO),
       },
-      index: 0,
-      alphabet: Alphabet::new(AlphabetName::Nuc)?,
-      length: 1,
+      child_key => DenseNodeState {
+        seq: DenseSeqInfo::default(),
+        profile: DenseSeqDistribution::new(child_posterior, LogLh::ZERO),
+      },
     };
 
-    let subs = partition.edge_subs(&graph, edge_key)?;
+    let subs = partition.edge_subs(&node_states, &graph, edge_key)?;
 
     assert_eq!(Vec::<Sub>::new(), subs);
     Ok(())
@@ -104,43 +82,25 @@ mod tests {
     let parent_posterior = array![[1.0, 0.0, 0.0, 0.0]];
     let child_posterior = array![[0.0, 1.0, 0.0, 0.0]];
 
-    // Edge messages: both sharp at G -> old code would see no difference
-    let msg_to_parent = array![[0.0, 0.0, 1.0, 0.0]];
-    let msg_to_child = array![[0.0, 0.0, 1.0, 0.0]];
-
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let parent_state = alphabet.char(0); // A
     let child_state = alphabet.char(1); // C
 
-    let partition = PartitionMarginalDense {
-      data: MarginalData {
-        gtr: jc69(JC69Params::default())?,
-        nodes: btreemap! {
-          parent_key => DenseNodePartition {
-            seq: DenseSeqInfo::default(),
-            profile: DenseSeqDistribution::new(parent_posterior, LogLh::ZERO),
-          },
-          child_key => DenseNodePartition {
-            seq: DenseSeqInfo::default(),
-            profile: DenseSeqDistribution::new(child_posterior, LogLh::ZERO),
-          },
-        },
-        edges: btreemap! {
-          edge_key => DenseEdgePartition {
-            msg_to_parent: DenseSeqDistribution::new(msg_to_parent, LogLh::ZERO),
-            msg_to_child: DenseSeqDistribution::new(msg_to_child, LogLh::ZERO),
-            ..Default::default()
-          },
-        },
-        min_branch_length: MIN_BRANCH_LENGTH_FRACTION,
-        filter_uninformative_root: true,
+    // `edge_subs` reads node posteriors directly, so the real A->C change is detected regardless of
+    // any per-edge message content.
+    let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, 1);
+    let node_states = btreemap! {
+      parent_key => DenseNodeState {
+        seq: DenseSeqInfo::default(),
+        profile: DenseSeqDistribution::new(parent_posterior, LogLh::ZERO),
       },
-      index: 0,
-      alphabet,
-      length: 1,
+      child_key => DenseNodeState {
+        seq: DenseSeqInfo::default(),
+        profile: DenseSeqDistribution::new(child_posterior, LogLh::ZERO),
+      },
     };
 
-    let subs = partition.edge_subs(&graph, edge_key)?;
+    let subs = partition.edge_subs(&node_states, &graph, edge_key)?;
 
     let expected = vec![Sub::new(parent_state, 0_usize, child_state)?];
     assert_eq!(expected, subs);
@@ -169,24 +129,22 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let graph: Graph = graph;
-    let mut partitions = vec![PartitionMarginalDense::new(
+    let partition = PartitionMarginalDense::new(
       0,
       jc69(JC69Params::default())?,
       Alphabet::new(AlphabetName::Nuc)?,
       get_common_length(&aln)?,
-    )];
-
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
-      &aln,
-      &names,
-    )?
-    .value();
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
-
-    let partition = &partitions[0];
+    );
+    let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
     // Collect edge_subs() results from all edges.
     let actual_by_edge: BTreeMap<_, _> = graph
@@ -194,7 +152,7 @@ mod tests {
       .iter()
       .map(|edge_ref| {
         let edge_key = edge_ref.read_arc().key();
-        let subs = partition.edge_subs(&graph, edge_key).unwrap();
+        let subs = recon.partition.edge_subs(&recon.node_states, &graph, edge_key).unwrap();
         (edge_key, subs)
       })
       .collect();
@@ -210,9 +168,9 @@ mod tests {
         let parent_key = edge_ref.source();
         let child_key = edge_ref.target();
         let expected = helpers::diff_map_states(
-          &partition.alphabet,
-          &partition.data.nodes[&parent_key],
-          &partition.data.nodes[&child_key],
+          &recon.partition.alphabet,
+          &recon.node_states[&parent_key],
+          &recon.node_states[&child_key],
         );
         (edge_key, expected)
       })
@@ -258,31 +216,19 @@ mod tests {
     ];
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = PartitionMarginalDense {
-      data: MarginalData {
-        gtr: jc69(JC69Params::default())?,
-        nodes: btreemap! {
-          parent_key => DenseNodePartition {
-            seq: DenseSeqInfo::default(),
-            profile: DenseSeqDistribution::new(parent_posterior, LogLh::ZERO),
-          },
-          child_key => DenseNodePartition {
-            seq: DenseSeqInfo { gaps: vec![(1, 3)], non_char: vec![(1, 3)], ..Default::default() },
-            profile: DenseSeqDistribution::new(child_posterior, LogLh::ZERO),
-          },
-        },
-        edges: btreemap! {
-          edge_key => DenseEdgePartition::default(),
-        },
-        min_branch_length: MIN_BRANCH_LENGTH_FRACTION / 4.0,
-        filter_uninformative_root: true,
+    let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet.clone(), 4);
+    let node_states = btreemap! {
+      parent_key => DenseNodeState {
+        seq: DenseSeqInfo::default(),
+        profile: DenseSeqDistribution::new(parent_posterior, LogLh::ZERO),
       },
-      index: 0,
-      alphabet: alphabet.clone(),
-      length: 4,
+      child_key => DenseNodeState {
+        seq: DenseSeqInfo { gaps: vec![(1, 3)], non_char: vec![(1, 3)], ..Default::default() },
+        profile: DenseSeqDistribution::new(child_posterior, LogLh::ZERO),
+      },
     };
 
-    let subs = partition.edge_subs(&graph, edge_key)?;
+    let subs = partition.edge_subs(&node_states, &graph, edge_key)?;
 
     // Only position 3 (A->C) should appear; positions 1-2 are gap-filtered.
     let expected = vec![Sub::new(alphabet.char(0), 3_usize, alphabet.char(1))?];
@@ -307,36 +253,34 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
     let graph: Graph = graph;
-    let mut partitions = vec![PartitionMarginalDense::new(
+    let partition = PartitionMarginalDense::new(
       0,
       jc69(JC69Params::default())?,
       Alphabet::new(AlphabetName::Nuc)?,
       get_common_length(&aln)?,
-    )];
-
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
-      &aln,
-      &names,
-    )?
-    .value();
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
-
-    let partition = &partitions[0];
+    );
+    let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
-      let subs = partition.edge_subs(&graph, edge_key)?;
+      let subs = recon.partition.edge_subs(&recon.node_states, &graph, edge_key)?;
       // Every reported substitution must involve canonical states only.
       // This validates the is_canonical filter is present and active.
       for sub in &subs {
         assert!(
-          partition.alphabet.is_canonical(sub.reff()),
+          recon.partition.alphabet.is_canonical(sub.reff()),
           "parent state must be canonical: {sub:?}"
         );
         assert!(
-          partition.alphabet.is_canonical(sub.qry()),
+          recon.partition.alphabet.is_canonical(sub.qry()),
           "child state must be canonical: {sub:?}"
         );
       }
@@ -363,7 +307,7 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
-    use crate::partition::storage::dense::DenseNodePartition;
+    use crate::partition::storage::dense::DenseNodeState;
     use crate::seq::mutation::Sub;
     use treetime_utils::array::ndarray::argmax_first;
 
@@ -375,8 +319,8 @@ mod tests {
     /// circular.
     pub fn diff_map_states(
       alphabet: &Alphabet,
-      parent_node: &DenseNodePartition,
-      child_node: &DenseNodePartition,
+      parent_node: &DenseNodeState,
+      child_node: &DenseNodeState,
     ) -> Vec<Sub> {
       let parent_profile = &parent_node.profile.dis;
       let child_profile = &child_node.profile.dis;
