@@ -120,20 +120,14 @@ mod tests {
     let partitions_dense = setup_dense(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
     let partitions_sparse = setup_sparse(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
 
-    initial_guess_mixed(
-      &graph_dense,
-      &optimize_partition_view(&partitions_dense, &[]),
-      true,
-      false,
-      &mut branch_lengths_dense,
-    )?;
-    initial_guess_mixed(
-      &graph_sparse,
-      &optimize_partition_view(&[], &partitions_sparse),
-      true,
-      false,
-      &mut branch_lengths_sparse,
-    )?;
+    {
+      let ro = OptimizeReadouts::new(&partitions_dense, &[]);
+      initial_guess_mixed(&graph_dense, &ro.view(), true, false, &mut branch_lengths_dense)?;
+    }
+    {
+      let ro = OptimizeReadouts::new(&[], &partitions_sparse);
+      initial_guess_mixed(&graph_sparse, &ro.view(), true, false, &mut branch_lengths_sparse)?;
+    }
 
     let dense_branch_lengths = branch_lengths_by_child_name(&graph_dense, &graph_dense_names, &branch_lengths_dense)?;
     let sparse_branch_lengths =
@@ -164,9 +158,9 @@ mod tests {
     let partitions_sparse = setup_sparse(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
 
     let dense_metrics =
-      optimization_metrics_by_child_name(&graph_dense, &graph_dense_names, &partitions_dense[0], 0.1)?;
+      optimization_metrics_by_child_name(&graph_dense, &graph_dense_names, &partitions_dense[0].readout(), 0.1)?;
     let sparse_metrics =
-      optimization_metrics_by_child_name(&graph_sparse, &graph_sparse_names, &partitions_sparse[0], 0.1)?;
+      optimization_metrics_by_child_name(&graph_sparse, &graph_sparse_names, &partitions_sparse[0].readout(), 0.1)?;
 
     assert_eq!(
       dense_metrics.keys().cloned().collect::<Vec<_>>(),
