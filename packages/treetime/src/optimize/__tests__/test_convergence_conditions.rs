@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::marginal_update;
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };

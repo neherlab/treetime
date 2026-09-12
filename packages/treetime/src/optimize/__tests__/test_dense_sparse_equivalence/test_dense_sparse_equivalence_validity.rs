@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::optimize_partition_view;
+  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::graph::Graph;
@@ -32,7 +32,7 @@ mod tests {
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &optimize_partition_view(&partitions, &[]), method, &mut branch_lengths)?;
+      run_optimize_mixed(&graph, &OptimizeReadouts::new(&partitions, &[]).view(), method, &mut branch_lengths)?;
       let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }
@@ -82,7 +82,7 @@ mod tests {
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &optimize_partition_view(&[], &partitions), method, &mut branch_lengths)?;
+      run_optimize_mixed(&graph, &OptimizeReadouts::new(&[], &partitions).view(), method, &mut branch_lengths)?;
       let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
       assert!(lh.is_finite(), "Log-LH should remain finite during optimization");
     }

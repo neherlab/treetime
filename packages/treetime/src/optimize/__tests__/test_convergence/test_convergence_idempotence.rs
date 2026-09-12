@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::optimize_partition_view;
+  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use rstest::rstest;
@@ -34,8 +34,8 @@ mod tests {
 
     // Run optimization iterations
     for i in 0..20 {
-      run_optimize_mixed(&graph, &optimize_partition_view(&dense_partitions, &sparse_partitions), method, &mut branch_lengths)?;
-      let lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?.value() + marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
+      run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
+      let lh = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?.value() + marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
       lh_history.push(lh);
 
@@ -83,9 +83,9 @@ mod tests {
     let (mut dense_partitions1, mut sparse_partitions1) = setup_partitions(&graph1, &graph1_names, &aln, &mut branch_lengths1)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph1, &optimize_partition_view(&dense_partitions1, &sparse_partitions1), method, &mut branch_lengths1)?;
-      marginal_update(&graph1, &profile_branch_lengths(&branch_lengths1), &mut dense_partitions1)?.value();
-      marginal_update(&graph1, &profile_branch_lengths(&branch_lengths1), &mut sparse_partitions1)?.value();
+      run_optimize_mixed(&graph1, &OptimizeReadouts::new(&dense_partitions1, &sparse_partitions1).view(), method, &mut branch_lengths1)?;
+      marginal_update_dense(&graph1, &profile_branch_lengths(&branch_lengths1), &mut dense_partitions1)?.value();
+      marginal_update_sparse(&graph1, &profile_branch_lengths(&branch_lengths1), &mut sparse_partitions1)?.value();
     }
 
     let lh1 = compute_total_lh(&graph1, &mut dense_partitions1, &mut sparse_partitions1, &branch_lengths1)?;
@@ -95,9 +95,9 @@ mod tests {
     let (mut dense_partitions2, mut sparse_partitions2) = setup_partitions(&graph2, &graph2_names, &aln, &mut branch_lengths2)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph2, &optimize_partition_view(&dense_partitions2, &sparse_partitions2), method, &mut branch_lengths2)?;
-      marginal_update(&graph2, &profile_branch_lengths(&branch_lengths2), &mut dense_partitions2)?.value();
-      marginal_update(&graph2, &profile_branch_lengths(&branch_lengths2), &mut sparse_partitions2)?.value();
+      run_optimize_mixed(&graph2, &OptimizeReadouts::new(&dense_partitions2, &sparse_partitions2).view(), method, &mut branch_lengths2)?;
+      marginal_update_dense(&graph2, &profile_branch_lengths(&branch_lengths2), &mut dense_partitions2)?.value();
+      marginal_update_sparse(&graph2, &profile_branch_lengths(&branch_lengths2), &mut sparse_partitions2)?.value();
     }
 
     let lh2 = compute_total_lh(&graph2, &mut dense_partitions2, &mut sparse_partitions2, &branch_lengths2)?;

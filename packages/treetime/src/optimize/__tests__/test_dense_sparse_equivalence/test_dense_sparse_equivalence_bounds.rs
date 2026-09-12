@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::optimize_partition_view;
+  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
   use eyre::Report;
   use rstest::rstest;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -29,7 +29,7 @@ mod tests {
     let mut dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &bl_dense)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_dense, &optimize_partition_view(&dense_partitions, &[]), method, &mut bl_dense)?;
+      run_optimize_mixed(&graph_dense, &OptimizeReadouts::new(&dense_partitions, &[]).view(), method, &mut bl_dense)?;
       marginal_update(&graph_dense, &profile_branch_lengths(&bl_dense), &mut dense_partitions)?.value();
     }
 
@@ -40,7 +40,7 @@ mod tests {
     let mut sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &bl_sparse)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_sparse, &optimize_partition_view(&[], &sparse_partitions), method, &mut bl_sparse)?;
+      run_optimize_mixed(&graph_sparse, &OptimizeReadouts::new(&[], &sparse_partitions).view(), method, &mut bl_sparse)?;
       marginal_update(&graph_sparse, &profile_branch_lengths(&bl_sparse), &mut sparse_partitions)?.value();
     }
 
@@ -85,7 +85,7 @@ mod tests {
     let mut dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &bl_dense)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_dense, &optimize_partition_view(&dense_partitions, &[]), method, &mut bl_dense)?;
+      run_optimize_mixed(&graph_dense, &OptimizeReadouts::new(&dense_partitions, &[]).view(), method, &mut bl_dense)?;
       marginal_update(&graph_dense, &profile_branch_lengths(&bl_dense), &mut dense_partitions)?.value();
     }
 
@@ -96,7 +96,7 @@ mod tests {
     let mut sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &bl_sparse)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph_sparse, &optimize_partition_view(&[], &sparse_partitions), method, &mut bl_sparse)?;
+      run_optimize_mixed(&graph_sparse, &OptimizeReadouts::new(&[], &sparse_partitions).view(), method, &mut bl_sparse)?;
       marginal_update(&graph_sparse, &profile_branch_lengths(&bl_sparse), &mut sparse_partitions)?.value();
     }
 

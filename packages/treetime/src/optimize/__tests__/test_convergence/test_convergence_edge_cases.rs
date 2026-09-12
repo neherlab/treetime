@@ -2,7 +2,7 @@
 mod tests {
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::optimize_partition_view;
+  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::graph::Graph;
@@ -27,7 +27,7 @@ mod tests {
     let graph: Graph = graph;
 
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view();
 
     // Run multiple optimization iterations
     for _ in 0..10 {
@@ -69,7 +69,7 @@ mod tests {
     let graph: Graph = graph;
 
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view();
 
     // Run optimization iterations
     for _ in 0..10 {
@@ -111,7 +111,7 @@ mod tests {
     let graph: Graph = graph;
 
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view();
 
     // Run optimization iterations
     for _ in 0..10 {

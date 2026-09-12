@@ -3,11 +3,11 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
 
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{optimize_partition_view, run_optimize_loop};
+  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse, run_optimize_loop};
 
   use eyre::Report;
 
@@ -42,10 +42,10 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
+    marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
     let mut dense_partitions = vec![];
-    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view();
     initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let max_iter = 50;
@@ -97,10 +97,10 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
-    marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
+    marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
 
     let mut dense_partitions = vec![];
-    let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
+    let mixed_partitions = OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view();
     initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
 
     let names_tt_1 = names;
