@@ -10,7 +10,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
 };
-use crate::partition::traits::BranchTopology;
+use crate::partition::traits::{BranchTopology, PartitionBranchOps, PartitionOptimizeOps};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::izip;
@@ -375,4 +375,51 @@ fn prof2seq_sampled(
     seq.push(alphabet.char(resolve_profile(row, sample, rng)));
   }
   seq
+}
+
+/// Short-lived read view over a completed dense reconstruction: borrows the durable partition inputs
+/// together with the node states, edge messages, and estimates the passes returned. Assembled at a
+/// consumer boundary purely to read; never stored.
+pub struct DenseReadout<'a> {
+  pub partition: &'a PartitionMarginalDense,
+  pub node_states: &'a BTreeMap<GraphNodeKey, DenseNodeState>,
+  pub backward: &'a BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
+  pub forward: &'a BTreeMap<GraphEdgeKey, DenseEdgeForward>,
+  pub estimates: &'a BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
+}
+
+impl PartitionBranchOps for DenseReadout<'_> {
+  fn sequence_length(&self) -> usize {
+    self.partition.length
+  }
+
+  fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    self.partition.edge_subs(self.node_states, graph, edge_key)
+  }
+
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
+    self.partition.edge_indels(self.estimates, edge_key)
+  }
+
+  fn root_sequence(&self, graph: &dyn BranchTopology) -> Result<Seq, Report> {
+    self.partition.root_sequence(self.node_states, graph)
+  }
+
+  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+    self.partition.node_sequence(self.node_states, node_key)
+  }
+
+  fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+    self.partition.edge_effective_length(self.node_states, graph, edge_key)
+  }
+}
+
+impl PartitionOptimizeOps for DenseReadout<'_> {
+  fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
+    Ok(self.partition.create_edge_contribution(self.backward, self.forward, edge_key))
+  }
+
+  fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+    self.partition.edge_indel_count(self.estimates, edge_key)
+  }
 }

@@ -1,50 +1,24 @@
-use crate::ancestral::sample::SampleMode;
-use crate::gtr::gtr::GTR;
-use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_internal_error;
 use crate::make_internal_report;
-use crate::partition::marginal::shared::data::IndexedMarginalPartition;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub, mutation_event_strings};
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
-use rayon::prelude::*;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::reroot::RerootChanges;
-use treetime_io::fasta::FastaRecord;
 use treetime_io::nwk::NodeCommentProvider;
-use treetime_primitives::{LogLh, Seq};
-
-pub trait HasGtr {
-  fn gtr(&self) -> &GTR;
-  fn gtr_mut(&mut self) -> &mut GTR;
-  fn sequence_length(&self) -> usize;
-
-  fn weighted_rate(&self) -> f64 {
-    self.sequence_length() as f64 * self.gtr().mu
-  }
-
-  fn normalize_rate(&mut self, scale: f64) {
-    self.gtr_mut().mu /= scale;
-  }
-}
+use treetime_primitives::Seq;
 
 /// Minimal graph-structure abstraction used by per-branch partition operations.
 ///
-/// Exists so that `PartitionBranchOps` can serve any phylogenetic graph payload
-/// (ancestral, timetree, etc.) without binding to a concrete `Graph`.
-/// Only the operations actually needed by branch-level computations are exposed:
-/// resolving an edge to its endpoints and walking one step toward the root.
-/// Trait-object safe so `&dyn BranchTopology` can flow through dynamic dispatch
-/// while callers keep their concrete `&Graph` thanks to unsized
-/// coercion.
+/// Exists so that read accessors can serve any phylogenetic graph without binding to a concrete
+/// `Graph`. Only the operations actually needed by branch-level computations are exposed: resolving an
+/// edge to its endpoints and walking one step toward the root. Trait-object safe so `&dyn
+/// BranchTopology` can flow through dynamic dispatch while callers keep their concrete `&Graph`.
 pub trait BranchTopology: Send + Sync {
   /// Return `(parent_node_key, child_node_key)` for one edge.
   fn edge_endpoints(&self, edge_key: GraphEdgeKey) -> Result<(GraphNodeKey, GraphNodeKey), Report>;
@@ -90,29 +64,19 @@ impl BranchTopology for Graph {
   }
 }
 
-/// Derive branch mutations and effective lengths from MAP-derived partition state.
+/// Read accessors over a completed marginal reconstruction, shared by dense and sparse representations.
 ///
-/// Both dense and sparse partitions implement this. Dense partitions compare
-/// MAP states from full marginal posteriors. Sparse partitions return
-/// pre-computed MAP-derived substitutions stored in `subs_ml` during
-/// the marginal forward pass.
+/// Implemented by short-lived per-representation read views that borrow the durable partition inputs
+/// together with the node states and edge messages/estimates the passes returned. The view is a
+/// transient read projection assembled at a consumer boundary, never a stored stage-filled object.
 ///
-/// Requires marginal inference to have run. Pre-marginal consumers (GTR
-/// inference, prune/merge) read `fitch_subs()` directly.
-///
-/// The graph is accepted as `&dyn BranchTopology` so the same partition trait
-/// serves ancestral, timetree, and any future payloads that share the sparse
-/// or dense representation.
+/// Requires marginal inference to have run. Pre-marginal consumers (GTR inference, prune/merge) read
+/// Fitch data directly.
 pub trait PartitionBranchOps: Send + Sync {
   /// Return the sequence length represented by this partition.
   fn sequence_length(&self) -> usize;
 
   /// Return MAP-derived nucleotide substitutions for one edge.
-  ///
-  /// For dense partitions, computes MAP state (argmax of node posterior) at
-  /// parent and child endpoints. For sparse partitions, returns pre-computed
-  /// `subs_ml` (populated during forward pass). Non-canonical states
-  /// and gap positions are excluded in both cases.
   fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report>;
 
   /// Return grouped aligned insertions and deletions for one edge.
@@ -228,105 +192,13 @@ impl NodeCommentProvider for EdgeMutationCommentProvider<'_> {
   }
 }
 
-/// The two marginal representations, borrowed for one pass. Dense and discrete partitions share the
-/// indexed dense machinery and travel through the `Indexed` arm; sparse partitions travel through
-/// `Sparse`. The marginal boundary matches on this to run the corresponding tail, keeping the two
-/// representations' code paths separate rather than merged into one conditional-laden function.
-pub enum MarginalPass<'a> {
-  Indexed(&'a mut dyn IndexedMarginalPartition),
-  Sparse(&'a mut PartitionMarginalSparse),
-}
-
-pub trait PartitionMarginalPasses: HasLogLh + Send + Sync {
-  /// Borrow this partition as one of the two marginal representations, so the boundary can run the
-  /// matching backward/forward tail.
-  fn as_marginal_pass(&mut self) -> MarginalPass<'_>;
-
-  fn get_sequence_length(&self) -> usize;
-}
-
-pub trait PartitionMarginalOps: PartitionMarginalPasses {
-  fn attach_sequences(
-    &mut self,
-    graph: &Graph,
-    aln: &[FastaRecord],
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-  ) -> Result<(), Report>;
-
-  fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq;
-
-  fn reconstruct_node_sequence(
-    &mut self,
-    node: &GraphNodeForward,
-    include_leaves: bool,
-    impute: bool,
-    sample_mode: SampleMode,
-    rng: &mut dyn rand::RngCore,
-  ) -> Option<Seq>;
-}
-
-pub trait HasLogLh {
-  fn get_log_lh(&self, node_key: GraphNodeKey) -> LogLh;
-
-  fn reset_node_log_likelihoods(&mut self);
-}
-
-/// Compute posterior-weighted transition counts from marginal profiles.
-///
-/// Each marginal partition type implements this over its native data layout:
-/// dense and discrete iterate `Array2<f64>` matrices, sparse iterates
-/// per-variable-site profiles and aggregates fixed-site contributions.
-pub trait TransitionCounting: HasGtr + Send + Sync {
-  fn count_transitions(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MutationCounts, Report>;
-}
-
-/// Operations that `optimize` needs from a sequence partition.
-///
-/// Extends `PartitionBranchOps` (which provides `edge_subs()`,
-/// `edge_effective_length()`, and `sequence_length()`) with
-/// optimize-specific likelihood contribution computation.
+/// Optimize-specific read accessors, extending [`PartitionBranchOps`] with the per-edge likelihood
+/// contribution and indel count the branch-length optimizer needs. Implemented by the same short-lived
+/// per-representation read views.
 pub trait PartitionOptimizeOps: PartitionBranchOps {
   /// Return the precomputed likelihood contribution for one edge.
   fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report>;
 
   /// Return the number of indel events on one edge.
   fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize;
-}
-
-/// Trait for partition updates during reroot operations.
-///
-/// Default implementation is a no-op, suitable for dense partitions that don't track mutations.
-/// Sparse partitions override to update mutation assignments when edges are split, merged, or inverted.
-pub trait PartitionRerootOps: Send + Sync {
-  /// Apply all partition updates for a reroot operation.
-  ///
-  /// Called after graph topology changes are complete. The `changes` struct bundles:
-  /// - Edge split info (if a new node was created)
-  /// - Edge merge info (if the old root was removed)
-  /// - Inverted edge keys (path from old to new root)
-  fn apply_reroot(&mut self, _changes: &RerootChanges) -> Result<(), Report> {
-    Ok(())
-  }
-}
-
-/// Calculate the total log likelihood of the graph given the partitions
-pub fn graph_log_lh<P>(graph: &Graph, partitions: &[P]) -> Result<LogLh, Report>
-where
-  P: HasLogLh + Sync,
-{
-  let root = graph.get_exactly_one_root()?;
-  let root_key = root.read_arc().key();
-
-  let log_lh = partitions
-    .par_iter()
-    .map(|partition| partition.get_log_lh(root_key))
-    .collect::<Vec<_>>()
-    .into_iter()
-    .sum();
-
-  Ok(log_lh)
 }

@@ -1,11 +1,10 @@
 use crate::gtr::gtr::GTR;
-use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::optimize;
+use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward};
+use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs};
 use eyre::Report;
 use itertools::Either;
 use ndarray::ArrayView1;
-use treetime_graph::edge::GraphEdgeKey;
 
 #[allow(clippy::large_enum_variant)]
 pub enum OptimizationContribution {
@@ -18,22 +17,22 @@ impl OptimizationContribution {
   ///
   /// Extracts the message data from the partition edge and computes the coefficient
   /// matrix using the dense optimization approach.
-  pub fn from_dense(edge_key: GraphEdgeKey, partition: &PartitionMarginalDense) -> Self {
-    let edge_partition = &partition.data.edges[&edge_key];
-    let contribution = optimize::dense::get_coefficients(
-      &edge_partition.msg_to_parent,
-      &edge_partition.msg_to_child,
-      &partition.data.gtr,
-    );
+  pub fn from_dense(gtr: &GTR, backward: &DenseEdgeBackward, forward: &DenseEdgeForward) -> Self {
+    let contribution = optimize::dense::get_coefficients(&backward.msg_to_parent, &forward.msg_to_child, gtr);
     OptimizationContribution::Dense(contribution)
   }
 
   /// Create optimization contribution from a sparse partition
   ///
-  /// Extracts variable positions and mutations from the sparse partition and
-  /// computes site contributions for optimization.
-  pub fn from_sparse(edge_key: GraphEdgeKey, partition: &PartitionMarginalSparse) -> Result<Self, Report> {
-    let contribution = optimize::sparse::get_coefficients(edge_key, partition)?;
+  /// Extracts variable positions and mutations from the edge's backward messages, forward messages, and
+  /// Fitch observations, and computes site contributions for optimization.
+  pub fn from_sparse(
+    gtr: &GTR,
+    backward: &SparseEdgeBackward,
+    forward: &SparseEdgeForward,
+    edge_obs: &SparseEdgeObs,
+  ) -> Result<Self, Report> {
+    let contribution = optimize::sparse::get_coefficients(gtr, backward, forward, edge_obs)?;
     Ok(OptimizationContribution::Sparse(contribution))
   }
 

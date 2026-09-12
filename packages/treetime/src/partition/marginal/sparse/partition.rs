@@ -10,7 +10,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{
   SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
 };
-use crate::partition::traits::BranchTopology;
+use crate::partition::traits::{BranchTopology, PartitionBranchOps, PartitionOptimizeOps};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
@@ -274,5 +274,52 @@ impl PartitionMarginalSparse {
     }
 
     Some(seq)
+  }
+}
+
+/// Short-lived read view over a completed sparse reconstruction: borrows the durable partition inputs
+/// (including the Fitch observations) together with the node states and edge messages/estimates the
+/// passes returned. Assembled at a consumer boundary purely to read; never stored.
+pub struct SparseReadout<'a> {
+  pub partition: &'a PartitionMarginalSparse,
+  pub node_states: &'a BTreeMap<GraphNodeKey, SparseNodeState>,
+  pub backward: &'a BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
+  pub forward: &'a BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+  pub estimates: &'a BTreeMap<GraphEdgeKey, Vec<Sub>>,
+}
+
+impl PartitionBranchOps for SparseReadout<'_> {
+  fn sequence_length(&self) -> usize {
+    self.partition.length
+  }
+
+  fn edge_subs(&self, _graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    self.partition.edge_subs(self.estimates, edge_key)
+  }
+
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
+    self.partition.edge_indels(edge_key)
+  }
+
+  fn root_sequence(&self, _graph: &dyn BranchTopology) -> Result<Seq, Report> {
+    Ok(self.partition.root_sequence())
+  }
+
+  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
+    self.partition.node_sequence(self.node_states, node_key)
+  }
+
+  fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+    self.partition.edge_effective_length(graph, edge_key)
+  }
+}
+
+impl PartitionOptimizeOps for SparseReadout<'_> {
+  fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
+    self.partition.create_edge_contribution(self.backward, self.forward, edge_key)
+  }
+
+  fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+    self.partition.edge_indel_count(edge_key)
   }
 }

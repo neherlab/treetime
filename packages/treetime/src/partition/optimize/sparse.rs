@@ -25,12 +25,11 @@
 //! each site's contribution; the squared term applies only to the per-site ratio.
 //!
 use crate::gtr::gtr::GTR;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs};
 use crate::seq::mutation::Sub;
 use eyre::{OptionExt, Report};
 use itertools::Itertools;
 use std::iter::zip;
-use treetime_graph::edge::GraphEdgeKey;
 
 pub struct SiteContribution {
   pub multiplicity: f64,
@@ -43,19 +42,21 @@ pub struct PartitionContribution {
 }
 
 pub fn get_coefficients(
-  edge_key: GraphEdgeKey,
-  partition: &PartitionMarginalSparse,
+  gtr: &GTR,
+  backward: &SparseEdgeBackward,
+  forward: &SparseEdgeForward,
+  edge_obs: &SparseEdgeObs,
 ) -> Result<PartitionContribution, Report> {
-  let edge = &partition.edges[&edge_key];
+  let msg_to_child = &forward.msg_to_child;
+  let msg_to_parent = &backward.msg_to_parent;
 
   // Collect variable positions from msg_to_child, msg_to_parent, and the substitutions along the edge
-  let variable_positions: Vec<usize> = edge
-    .msg_to_child
+  let variable_positions: Vec<usize> = msg_to_child
     .variable
     .keys()
     .copied()
-    .chain(edge.msg_to_parent.variable.keys().copied())
-    .chain(edge.fitch_subs().iter().map(Sub::pos))
+    .chain(msg_to_parent.variable.keys().copied())
+    .chain(edge_obs.fitch_subs().iter().map(Sub::pos))
     .unique()
     .collect();
 
@@ -63,21 +64,19 @@ pub fn get_coefficients(
     .iter()
     .map(|pos| -> Result<_, Report> {
       // Check whether the position is in substitutions
-      if let Some(sub) = edge.fitch_subs().iter().find(|m| m.pos() == *pos) {
+      if let Some(sub) = edge_obs.fitch_subs().iter().find(|m| m.pos() == *pos) {
         Ok((sub.reff(), sub.qry()))
       } else {
-        let parent = edge
-          .msg_to_child
+        let parent = msg_to_child
           .variable
           .get(pos)
-          .or_else(|| edge.msg_to_parent.variable.get(pos))
+          .or_else(|| msg_to_parent.variable.get(pos))
           .ok_or_eyre("Unable to find msg_to_parent")?
           .state;
-        let child = edge
-          .msg_to_parent
+        let child = msg_to_parent
           .variable
           .get(pos)
-          .or_else(|| edge.msg_to_child.variable.get(pos))
+          .or_else(|| msg_to_child.variable.get(pos))
           .ok_or_eyre("Unable to find msg_to_child")?
           .state;
         Ok((parent, child))
@@ -87,32 +86,32 @@ pub fn get_coefficients(
 
   let mut site_contributions: Vec<SiteContribution> = Vec::new();
   for (&pos, (parent_state, child_state)) in zip(&variable_positions, variable_states) {
-    let parent = if let Some(parent) = edge.msg_to_child.variable.get(&pos) {
+    let parent = if let Some(parent) = msg_to_child.variable.get(&pos) {
       &parent.dis
     } else {
-      &edge.msg_to_child.fixed[&parent_state]
+      &msg_to_child.fixed[&parent_state]
     };
 
-    let child = if let Some(child) = edge.msg_to_parent.variable.get(&pos) {
+    let child = if let Some(child) = msg_to_parent.variable.get(&pos) {
       &child.dis
     } else {
-      &edge.msg_to_parent.fixed[&child_state]
+      &msg_to_parent.fixed[&child_state]
     };
     site_contributions.push(SiteContribution {
       multiplicity: 1.0,
-      coefficients: parent.dot(&partition.gtr.v) * child.dot(&partition.gtr.v_inv.t()),
+      coefficients: parent.dot(&gtr.v) * child.dot(&gtr.v_inv.t()),
     });
   }
-  for state in edge.msg_to_child.fixed.keys() {
-    let parent = &edge.msg_to_child.fixed[state];
-    let child = &edge.msg_to_parent.fixed[state];
+  for state in msg_to_child.fixed.keys() {
+    let parent = &msg_to_child.fixed[state];
+    let child = &msg_to_parent.fixed[state];
     site_contributions.push(SiteContribution {
-      multiplicity: edge.msg_to_child.fixed_counts.get(*state).unwrap() as f64,
-      coefficients: parent.dot(&partition.gtr.v) * child.dot(&partition.gtr.v_inv.t()),
+      multiplicity: msg_to_child.fixed_counts.get(*state).unwrap() as f64,
+      coefficients: parent.dot(&gtr.v) * child.dot(&gtr.v_inv.t()),
     });
   }
   Ok(PartitionContribution {
     site_contributions,
-    gtr: partition.gtr.clone(),
+    gtr: gtr.clone(),
   })
 }
