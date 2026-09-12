@@ -2,7 +2,7 @@ use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdge;
-use treetime_graph::node::{GraphNode, Named};
+use treetime_graph::node::GraphNode;
 use treetime_io::graphviz::{EdgeToGraphviz, NodeToGraphviz};
 use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 
@@ -10,15 +10,6 @@ use treetime_io::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk};
 pub struct TestNode(pub Option<String>);
 
 impl GraphNode for TestNode {}
-
-impl Named for TestNode {
-  fn name(&self) -> Option<impl AsRef<str>> {
-    self.0.as_deref()
-  }
-  fn set_name(&mut self, name: Option<impl AsRef<str>>) {
-    self.0 = name.map(|n| n.as_ref().to_owned());
-  }
-}
 
 impl NodeFromNwk for TestNode {
   fn from_nwk(

@@ -8,7 +8,6 @@ mod tests {
 
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::Named;
   use treetime_io::nwk::{NwkParse, NwkWriteOptions, nwk_read_str, nwk_write_str};
 
   use crate::test_utils::{TestEdge, TestNode, find_edge_key, find_node_key_by_name};
@@ -24,7 +23,7 @@ mod tests {
 
     let mut actual = vec![];
     graph.iter_depth_first_preorder_forward(|node| {
-      actual.push(node.payload.name().unwrap().as_ref().to_owned());
+      actual.push(names[&node.key].clone().unwrap());
       Ok(())
     })?;
 
@@ -44,7 +43,7 @@ mod tests {
 
     let mut actual = vec![];
     graph.iter_depth_first_postorder_forward(|node| {
-      actual.push(node.payload.name().unwrap().as_ref().to_owned());
+      actual.push(names[&node.key].clone().unwrap());
       Ok(())
     })?;
 
@@ -64,7 +63,7 @@ mod tests {
 
     let mut actual = vec![];
     graph.iter_breadth_first_forward(|node| {
-      actual.push(node.payload.name().unwrap().as_ref().to_owned());
+      actual.push(names[&node.key].clone().unwrap());
       Ok(())
     })?;
 
@@ -84,7 +83,7 @@ mod tests {
 
     let mut actual = vec![];
     graph.iter_breadth_first_backward(|node| {
-      actual.push(node.payload.name().unwrap().as_ref().to_owned());
+      actual.push(names[&node.key].clone().unwrap());
       Ok(())
     })?;
 
@@ -105,7 +104,7 @@ mod tests {
     // Serial traversal captures mutable outer state directly, with no Arc/Mutex.
     let mut visited = vec![];
     graph.iter_breadth_first_forward(|node| {
-      visited.push(node.payload.name().unwrap().as_ref().to_owned());
+      visited.push(names[&node.key].clone().unwrap());
       Ok(())
     })?;
 
@@ -127,7 +126,7 @@ mod tests {
     // must surface the "AB" error and stop before visiting "CD" or any deeper node.
     let mut visited = vec![];
     let result = graph.iter_breadth_first_forward(|node| {
-      let name = node.payload.name().unwrap().as_ref().to_owned();
+      let name = names[&node.key].clone().unwrap();
       visited.push(name.clone());
       if name == "AB" || name == "CD" {
         return make_error!("boom {name}");
@@ -152,7 +151,7 @@ mod tests {
 
     let mut visited = vec![];
     graph.iter_breadth_first_forward(|node| {
-      visited.push(node.payload.name().unwrap().as_ref().to_owned());
+      visited.push(names[&node.key].clone().unwrap());
       Ok(())
     })?;
 
@@ -172,7 +171,7 @@ mod tests {
 
     let mut visited = vec![];
     let result = graph.iter_breadth_first_forward(|node| {
-      let name = node.payload.name().unwrap().as_ref().to_owned();
+      let name = names[&node.key].clone().unwrap();
       visited.push(name.clone());
       if name == "root" {
         return make_error!("boom {name}");
@@ -197,7 +196,7 @@ mod tests {
 
     let mut visited = vec![];
     graph.iter_breadth_first_backward(|node| {
-      visited.push(node.payload.name().unwrap().as_ref().to_owned());
+      visited.push(names[&node.key].clone().unwrap());
       Ok(())
     })?;
 
@@ -217,7 +216,7 @@ mod tests {
 
     let mut visited = vec![];
     let result = graph.iter_breadth_first_backward(|node| {
-      let name = node.payload.name().unwrap().as_ref().to_owned();
+      let name = names[&node.key].clone().unwrap();
       visited.push(name.clone());
       if name == "AB" {
         return make_error!("boom {name}");
@@ -242,7 +241,7 @@ mod tests {
 
     let mut visited = vec![];
     graph.iter_depth_first_postorder_forward(|node| {
-      visited.push(node.payload.name().unwrap().as_ref().to_owned());
+      visited.push(names[&node.key].clone().unwrap());
       Ok(())
     })?;
 
@@ -262,7 +261,7 @@ mod tests {
 
     let mut visited = vec![];
     let result = graph.iter_depth_first_postorder_forward(|node| {
-      let name = node.payload.name().unwrap().as_ref().to_owned();
+      let name = names[&node.key].clone().unwrap();
       visited.push(name.clone());
       if name == "AB" {
         return make_error!("boom {name}");

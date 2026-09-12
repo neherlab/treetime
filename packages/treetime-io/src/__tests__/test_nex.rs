@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::nex::{NexWriteOptions, nex_write_str};
-  use crate::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, nwk_read_str};
+  use crate::nwk::{EdgeFromNwk, EdgeToNwk, NodeFromNwk, NodeToNwk, NwkParse, nwk_read_str};
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -9,8 +9,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::{GraphNode, Named};
-  use treetime_graph::value_maps::node_names;
+  use treetime_graph::node::GraphNode;
 
   #[derive(Clone, Debug, Default)]
   struct TestNode {
@@ -18,16 +17,6 @@ mod tests {
   }
 
   impl GraphNode for TestNode {}
-
-  impl Named for TestNode {
-    fn name(&self) -> Option<impl AsRef<str>> {
-      self.name.as_deref()
-    }
-
-    fn set_name(&mut self, name: Option<impl AsRef<str>>) {
-      self.name = name.map(|n| n.as_ref().to_owned());
-    }
-  }
 
   impl NodeFromNwk for TestNode {
     fn from_nwk(
@@ -117,8 +106,8 @@ mod tests {
   )]
   #[trace]
   fn test_nex_exact_output(#[case] nwk: &str, #[case] expected: &str) -> Result<(), Report> {
-    let graph = nwk_read_str::<TestNode, TestEdge, ()>(nwk)?.graph;
-    let actual = nex_write_str(&graph, &node_names(&graph), &edge_branch_lengths(&graph), &NexWriteOptions::default())?;
+    let NwkParse { graph, names, .. } = nwk_read_str::<TestNode, TestEdge, ()>(nwk)?;
+    let actual = nex_write_str(&graph, &names, &edge_branch_lengths(&graph), &NexWriteOptions::default())?;
     assert_eq!(expected, actual);
     Ok(())
   }

@@ -6,12 +6,6 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
 
-/// Defines how to read and write node name
-pub trait Named {
-  fn name(&self) -> Option<impl AsRef<str>>;
-  fn set_name(&mut self, name: Option<impl AsRef<str>>);
-}
-
 pub trait GraphNode: Debug + Sync + Send {}
 
 /// Composite trait for nodes that support ancestral reconstruction

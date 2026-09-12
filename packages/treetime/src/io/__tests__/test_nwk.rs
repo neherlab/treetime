@@ -7,7 +7,6 @@ mod tests {
   use std::collections::BTreeMap;
   use std::path::PathBuf;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::Named;
   use treetime_io::nwk::{NwkParse, NwkWriteOptions, nwk_read_file, nwk_read_str, nwk_write_str};
 
   #[test]
@@ -27,12 +26,7 @@ mod tests {
 
     // Verify root
     let root = graph.get_exactly_one_root()?;
-    let root_name = root
-      .read_arc()
-      .payload()
-      .read_arc()
-      .name()
-      .map(|n| n.as_ref().to_owned());
+    let root_name = names[&root.read_arc().key()].clone();
     assert_eq!(root_name.as_deref(), Some("root"));
 
     // Verify roundtrip
@@ -79,12 +73,7 @@ mod tests {
     assert_eq!(graph.get_leaves().len(), 1, "Should have 1 leaf");
 
     let root = graph.get_exactly_one_root()?;
-    let root_name = root
-      .read_arc()
-      .payload()
-      .read_arc()
-      .name()
-      .map(|n| n.as_ref().to_owned());
+    let root_name = names[&root.read_arc().key()].clone();
     assert_eq!(root_name.as_deref(), Some("A"));
 
     let output = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
@@ -178,13 +167,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge_ref = edge.read_arc();
       let target_key = edge_ref.target();
-      let target_node = graph.get_node(target_key).expect("Target node should exist");
-      let target_name = target_node
-        .read_arc()
-        .payload()
-        .read_arc()
-        .name()
-        .map(|n| n.as_ref().to_owned());
+      let target_name = names[&target_key].clone();
       if let Some(name) = target_name {
         let length = edge_lengths[&edge_ref.key()];
         branch_lengths.insert(name, length);
@@ -228,14 +211,7 @@ mod tests {
     let leaf_names: Vec<String> = graph
       .get_leaves()
       .iter()
-      .map(|n| {
-        n.read_arc()
-          .payload()
-          .read_arc()
-          .name()
-          .map(|s| s.as_ref().to_owned())
-          .unwrap_or_default()
-      })
+      .map(|n| names[&n.read_arc().key()].clone().unwrap_or_default())
       .collect();
 
     assert!(leaf_names.contains(&"leaf_A".to_owned()));
@@ -284,13 +260,7 @@ mod tests {
     let mut branch_lengths = BTreeMap::new();
     for edge in graph.get_edges() {
       let edge_ref = edge.read_arc();
-      let target_node = graph.get_node(edge_ref.target()).expect("target node");
-      let name = target_node
-        .read_arc()
-        .payload()
-        .read_arc()
-        .name()
-        .map(|n| n.as_ref().to_owned());
+      let name = names[&edge_ref.target()].clone();
       if let Some(name) = name {
         branch_lengths.insert(name, edge_lengths[&edge_ref.key()]);
       }
