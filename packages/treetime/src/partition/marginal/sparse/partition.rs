@@ -1,14 +1,16 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::gtr::GTR;
+use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_error;
+use crate::partition::marginal::sparse::count::count_transitions_sparse;
 use crate::partition::marginal::sparse::reconstruct::{map_seq, map_seq_sampled, reconstruct_leaf_sequence};
+use crate::partition::marginal::sparse::{backward, forward};
 use crate::partition::optimize::contribution::OptimizationContribution;
-use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
-use crate::partition::traits::{
-  BranchTopology, HasGtr, HasLogLh, MarginalPass, PartitionBranchOps, PartitionMarginalOps, PartitionMarginalPasses,
-  PartitionOptimizeOps,
+use crate::partition::storage::sparse::{
+  SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
 };
+use crate::partition::traits::BranchTopology;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
@@ -17,11 +19,14 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
 
+/// The sparse marginal representation as durable, borrowed inputs: the substitution model, the
+/// alphabet/length/root metadata, and the Fitch-compressed per-node and per-edge observations. The
+/// stage-filled node states, backward/forward messages, and edge estimates are owned separately by the
+/// values the passes return.
 #[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalSparse {
   pub index: usize,
@@ -29,76 +34,112 @@ pub struct PartitionMarginalSparse {
   pub alphabet: Alphabet,
   pub length: usize,
   pub root_sequence: Seq,
-  pub nodes: BTreeMap<GraphNodeKey, SparseNodePartition>,
-  pub edges: BTreeMap<GraphEdgeKey, SparseEdgePartition>,
+  pub obs_nodes: BTreeMap<GraphNodeKey, SparseNodeObs>,
+  pub obs_edges: BTreeMap<GraphEdgeKey, SparseEdgeObs>,
 }
 
 impl PartitionMarginalSparse {
-  #[allow(clippy::same_name_method)]
   pub fn get_sequence_length(&self) -> usize {
     self.length
   }
-}
 
-impl HasGtr for PartitionMarginalSparse {
-  fn gtr(&self) -> &GTR {
+  pub fn gtr(&self) -> &GTR {
     &self.gtr
   }
-  fn gtr_mut(&mut self) -> &mut GTR {
+
+  pub fn gtr_mut(&mut self) -> &mut GTR {
     &mut self.gtr
   }
-  fn sequence_length(&self) -> usize {
-    self.length
-  }
-}
 
-impl HasLogLh for PartitionMarginalSparse {
-  fn get_log_lh(&self, node_key: GraphNodeKey) -> LogLh {
-    self
-      .nodes
+  pub fn weighted_rate(&self) -> f64 {
+    self.length as f64 * self.gtr.mu
+  }
+
+  pub fn normalize_rate(&mut self, scale: f64) {
+    self.gtr.mu /= scale;
+  }
+
+  pub fn marginal_backward(
+    &self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+  ) -> Result<(BTreeMap<GraphNodeKey, SparseNodeState>, BTreeMap<GraphEdgeKey, SparseEdgeBackward>), Report> {
+    backward::process_backward_indexed(self, graph, branch_lengths, node_states)
+  }
+
+  pub fn marginal_forward(
+    &self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+    backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
+  ) -> Result<
+    (
+      BTreeMap<GraphNodeKey, SparseNodeState>,
+      BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+      BTreeMap<GraphEdgeKey, Vec<Sub>>,
+    ),
+    Report,
+  > {
+    forward::process_forward_indexed(self, graph, branch_lengths, node_states, backward)
+  }
+
+  pub fn count_transitions(
+    &self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+    backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
+    forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+  ) -> Result<MutationCounts, Report> {
+    count_transitions_sparse(
+      &self.gtr,
+      self.length,
+      graph,
+      branch_lengths,
+      node_states,
+      backward,
+      forward,
+    )
+  }
+
+  pub fn get_log_lh(&self, node_states: &BTreeMap<GraphNodeKey, SparseNodeState>, node_key: GraphNodeKey) -> LogLh {
+    node_states
       .get(&node_key)
       .map_or(LogLh::ZERO, |node| node.profile.log_lh)
   }
 
-  fn reset_node_log_likelihoods(&mut self) {
-    for node_data in self.nodes.values_mut() {
-      node_data.profile.log_lh = LogLh::ZERO;
-    }
-  }
-}
-
-impl PartitionBranchOps for PartitionMarginalSparse {
-  fn sequence_length(&self) -> usize {
-    self.length
-  }
-
-  fn edge_subs(&self, _graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    let edge = &self.edges[&edge_key];
-    match edge.ml_subs() {
-      Some(subs) => Ok(subs.to_vec()),
+  pub fn edge_subs(
+    &self,
+    estimates: &BTreeMap<GraphEdgeKey, Vec<Sub>>,
+    edge_key: GraphEdgeKey,
+  ) -> Result<Vec<Sub>, Report> {
+    match estimates.get(&edge_key) {
+      Some(subs) => Ok(subs.clone()),
       None => make_error!("edge_subs() called before marginal inference populated subs_ml for edge {edge_key:?}"),
     }
   }
 
-  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
-    self.edges[&edge_key].indels.clone()
+  pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
+    self.obs_edges[&edge_key].indels.clone()
   }
 
-  fn root_sequence(&self, _graph: &dyn BranchTopology) -> Result<Seq, Report> {
-    Ok(self.root_sequence.clone())
+  pub fn root_sequence(&self) -> Seq {
+    self.root_sequence.clone()
   }
 
-  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    match self.nodes.get(&node_key) {
+  pub fn node_sequence(&self, node_states: &BTreeMap<GraphNodeKey, SparseNodeState>, node_key: GraphNodeKey) -> Seq {
+    match node_states.get(&node_key) {
       Some(node) => node.emitted.clone().unwrap_or_else(|| map_seq(node, &self.alphabet)),
       None => seq![],
     }
   }
 
-  fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+  pub fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
-    let parent_non_char = &self.nodes[&parent_key].seq.non_char;
-    let child_non_char = &self.nodes[&child_key].seq.non_char;
+    let parent_non_char = &self.obs_nodes[&parent_key].non_char;
+    let child_non_char = &self.obs_nodes[&child_key].non_char;
 
     // non_char covers both gaps and unknowns (positions that do not evolve
     // under the substitution model). For internal nodes, non_char is the
@@ -111,90 +152,84 @@ impl PartitionBranchOps for PartitionMarginalSparse {
 
     Ok(self.length.saturating_sub(non_char_positions))
   }
-}
 
-impl PartitionOptimizeOps for PartitionMarginalSparse {
-  fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
-    OptimizationContribution::from_sparse(edge_key, self)
+  pub fn create_edge_contribution(
+    &self,
+    backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
+    forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+    edge_key: GraphEdgeKey,
+  ) -> Result<OptimizationContribution, Report> {
+    OptimizationContribution::from_sparse(
+      &self.gtr,
+      &backward[&edge_key],
+      &forward[&edge_key],
+      &self.obs_edges[&edge_key],
+    )
   }
 
-  fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
-    self.edges[&edge_key].indels.len()
+  pub fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+    self.obs_edges[&edge_key].indels.len()
   }
-}
 
-#[allow(
-  clippy::multiple_inherent_impl,
-  reason = "split across files by concern; see partition.rs for the primary impl"
-)]
-impl PartitionMarginalSparse {
-  /// Ensure the partition has entries for all nodes and edges in the graph, dropping stale entries.
+  pub fn extract_ancestral_sequence(
+    &self,
+    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+    node_key: GraphNodeKey,
+  ) -> Seq {
+    self.node_sequence(node_states, node_key)
+  }
+
+  /// Ensure the observation maps have entries for all nodes and edges in the graph, dropping stale
+  /// entries. Placeholder observations are created for nodes and edges introduced by topology edits.
   pub fn reconcile_topology(&mut self, graph: &Graph) {
     let graph_node_keys: BTreeSet<GraphNodeKey> = graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();
     let graph_edge_keys: BTreeSet<GraphEdgeKey> = graph.get_edges().into_iter().map(|e| e.read_arc().key()).collect();
 
-    // Add missing nodes with empty partition data
     for &key in &graph_node_keys {
       self
-        .nodes
+        .obs_nodes
         .entry(key)
-        .or_insert_with(|| SparseNodePartition::empty(&self.alphabet));
+        .or_insert_with(|| SparseNodeObs::empty(&self.alphabet));
     }
-
-    // Add missing edges with default partition data
     for &key in &graph_edge_keys {
-      self.edges.entry(key).or_default();
+      self.obs_edges.entry(key).or_default();
     }
-
-    // Remove stale entries for nodes/edges no longer in graph
-    self.nodes.retain(|k, _| graph_node_keys.contains(k));
-    self.edges.retain(|k, _| graph_edge_keys.contains(k));
-  }
-}
-
-impl PartitionMarginalPasses for PartitionMarginalSparse {
-  fn as_marginal_pass(&mut self) -> MarginalPass<'_> {
-    MarginalPass::Sparse(self)
+    self.obs_nodes.retain(|k, _| graph_node_keys.contains(k));
+    self.obs_edges.retain(|k, _| graph_edge_keys.contains(k));
   }
 
-  fn get_sequence_length(&self) -> usize {
-    self.length
-  }
-}
-
-impl PartitionMarginalOps for PartitionMarginalSparse {
-  fn attach_sequences(
-    &mut self,
-    _graph: &Graph,
-    _aln: &[FastaRecord],
-    _names: &BTreeMap<GraphNodeKey, Option<String>>,
-  ) -> Result<(), Report> {
-    Ok(())
-  }
-
-  fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    self.node_sequence(node_key)
-  }
-
-  fn reconstruct_node_sequence(
-    &mut self,
+  pub fn reconstruct_node_sequence(
+    &self,
+    node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
+    forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
     node: &GraphNodeForward,
     include_leaves: bool,
     impute: bool,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq> {
-    let (parent_data, edge_data) = if node.is_root {
+    let (parent_state, msg_from_parent) = if node.is_root {
       (None, None)
     } else {
       let (parent_key, edge_key) = get_exactly_one(&node.parent_keys).ok()?;
-      (self.nodes.get(parent_key), self.edges.get(edge_key))
+      (
+        node_states.get(parent_key).cloned(),
+        forward.get(edge_key).map(|f| f.msg_from_parent.clone()),
+      )
     };
 
-    let node_data = self.nodes.get(&node.key)?;
+    let node_obs = self.obs_nodes.get(&node.key)?;
+    let node_data = node_states.get(&node.key)?;
     let sample = sample_mode.samples_node(node.is_root);
     let seq = if node.is_leaf {
-      reconstruct_leaf_sequence(node_data, edge_data, parent_data, impute, &self.alphabet)
+      reconstruct_leaf_sequence(
+        node_data,
+        node_obs,
+        msg_from_parent.as_ref(),
+        parent_state.as_ref(),
+        impute,
+        &self.alphabet,
+      )
     } else {
       map_seq_sampled(node_data, &self.alphabet, sample, rng)
     };
@@ -203,7 +238,7 @@ impl PartitionMarginalOps for PartitionMarginalSparse {
     // whose observed ambiguity and optional imputation are not a function of the parsimony chain and
     // the posterior. Everything else stays derivable, keeping one source of truth.
     if sample || node.is_leaf {
-      self.nodes.get_mut(&node.key)?.emitted = Some(seq.clone());
+      node_states.get_mut(&node.key)?.emitted = Some(seq.clone());
     }
 
     // A suppressed tip is still reconstructed above (so the node-data serializer reads the corrected

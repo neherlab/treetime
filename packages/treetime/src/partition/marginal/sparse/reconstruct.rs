@@ -1,6 +1,6 @@
 //! Turning a node's posterior into a sequence.
 //!
-//! `SparseSeqInfo::sequence` always holds the *parsimony* sequence: the root sequence with each
+//! `SparseNodeState::sequence` always holds the *parsimony* sequence: the root sequence with each
 //! edge's Fitch substitutions and indels applied, masked by the node's own missing data. It is built
 //! once by the marginal forward pass and never rewritten afterwards.
 //!
@@ -15,24 +15,24 @@
 
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::sample::resolve_profile;
-use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
+use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::array::ndarray::argmax_first;
 
 /// Extend the parsimony chain from the parent across one edge.
 pub(crate) fn parsimony_seq(
   parent_seq: &Seq,
-  edge: &SparseEdgePartition,
-  node: &SparseNodePartition,
+  edge_obs: &SparseEdgeObs,
+  node_obs: &SparseNodeObs,
   alphabet: &Alphabet,
 ) -> Seq {
   let mut seq = parent_seq.clone();
 
-  for sub in edge.fitch_subs() {
+  for sub in edge_obs.fitch_subs() {
     seq[sub.pos()] = sub.qry();
   }
 
-  for indel in &edge.indels {
+  for indel in &edge_obs.indels {
     if indel.is_deletion() {
       seq[indel.range.0..indel.range.1].fill(alphabet.gap());
     } else {
@@ -40,7 +40,7 @@ pub(crate) fn parsimony_seq(
     }
   }
 
-  for r in &node.seq.unknown {
+  for r in &node_obs.unknown {
     seq[r.0..r.1].fill(alphabet.unknown());
   }
 
@@ -48,7 +48,7 @@ pub(crate) fn parsimony_seq(
 }
 
 /// The node's most likely sequence.
-pub(crate) fn map_seq(node: &SparseNodePartition, alphabet: &Alphabet) -> Seq {
+pub(crate) fn map_seq(node: &SparseNodeState, alphabet: &Alphabet) -> Seq {
   map_seq_sampled(node, alphabet, false, &mut rand::thread_rng())
 }
 
@@ -58,12 +58,12 @@ pub(crate) fn map_seq(node: &SparseNodePartition, alphabet: &Alphabet) -> Seq {
 /// deletion is left alone. Unknown (`N`) positions are resolved from the posterior, which is the
 /// inference that fills them in.
 pub(crate) fn map_seq_sampled(
-  node: &SparseNodePartition,
+  node: &SparseNodeState,
   alphabet: &Alphabet,
   sample: bool,
   rng: &mut dyn rand::RngCore,
 ) -> Seq {
-  let mut seq = node.seq.sequence.clone();
+  let mut seq = node.sequence.clone();
 
   for (&pos, var) in &node.profile.variable {
     if seq[pos] != alphabet.gap() {
@@ -89,10 +89,10 @@ pub(crate) fn map_seq_sampled(
 }
 
 /// The node's most likely state at one position.
-pub(crate) fn map_state(node: &SparseNodePartition, pos: usize, alphabet: &Alphabet) -> AsciiChar {
+pub(crate) fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
   match node.profile.variable.get(&pos) {
     Some(var) => alphabet.char(argmax_first(&var.dis.view()).unwrap_or(0)),
-    None => node.seq.sequence.get(pos).copied().unwrap_or_else(|| alphabet.char(0)),
+    None => node.sequence.get(pos).copied().unwrap_or_else(|| alphabet.char(0)),
   }
 }
 
@@ -105,32 +105,32 @@ pub(crate) fn map_state(node: &SparseNodePartition, pos: usize, alphabet: &Alpha
 /// (`msg_from_parent`) restricted by the observed ambiguity mask, matching v0's per-leaf marginal
 /// profile; on long tip branches this differs from simply copying the parent MAP state.
 pub(crate) fn reconstruct_leaf_sequence(
-  node: &SparseNodePartition,
-  edge: Option<&SparseEdgePartition>,
-  parent: Option<&SparseNodePartition>,
+  node: &SparseNodeState,
+  node_obs: &SparseNodeObs,
+  msg_from_parent: Option<&SparseSeqDistribution>,
+  parent: Option<&SparseNodeState>,
   impute: bool,
   alphabet: &Alphabet,
 ) -> Seq {
-  let mut seq = node.seq.sequence.clone();
+  let mut seq = node.sequence.clone();
 
   // Fitch compression stores each observed IUPAC ambiguity as a single resolved canonical state in
-  // `seq.sequence`; restore the observed ambiguity code so a non-imputing tip echoes its true input.
-  // Unknown (`N`) positions already hold the unknown character in `seq.sequence`.
-  for (&pos, states) in &node.seq.fitch.variable {
+  // `sequence`; restore the observed ambiguity code so a non-imputing tip echoes its true input.
+  // Unknown (`N`) positions already hold the unknown character in `sequence`.
+  for (&pos, states) in &node_obs.fitch.variable {
     seq[pos] = alphabet.set_to_char(*states);
   }
 
   // A tip with no parent edge (a single-node tree) has no down-message to impute from.
-  let (true, Some(edge), Some(parent)) = (impute, edge, parent) else {
+  let (true, Some(down), Some(parent)) = (impute, msg_from_parent, parent) else {
     return seq;
   };
-  let down = &edge.msg_from_parent;
 
   // Imputable positions are the unknown (`N`) ranges and the IUPAC ambiguity positions detected from
   // the partition structure, not from the character being non-canonical (Fitch may already have
   // resolved an IUPAC code to a canonical state). Gaps are inferred deletions and are left untouched.
-  let unknown_positions = node.seq.unknown.iter().flat_map(|&(start, end)| start..end);
-  let ambiguous_positions = node.seq.fitch.variable.keys().copied();
+  let unknown_positions = node_obs.unknown.iter().flat_map(|&(start, end)| start..end);
+  let ambiguous_positions = node_obs.fitch.variable.keys().copied();
   for pos in unknown_positions.chain(ambiguous_positions) {
     let observed = seq[pos];
     // Parent posterior at this site: an explicit variable distribution when the parent varies here,

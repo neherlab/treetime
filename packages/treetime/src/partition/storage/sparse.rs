@@ -189,26 +189,7 @@ pub struct SparseEdgeForward {
 }
 
 /// Final per-edge marginal estimate: the maximum-likelihood substitutions placed on the branch,
-/// produced by the forward pass.
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct SparseEdgeEstimate {
-  subs_ml: Option<Vec<Sub>>,
-}
-
-impl SparseEdgeEstimate {
-  pub fn ml_subs(&self) -> Option<&[Sub]> {
-    self.subs_ml.as_deref()
-  }
-
-  pub fn set_ml_subs(&mut self, subs: Vec<Sub>) {
-    self.subs_ml = Some(subs);
-  }
-
-  pub fn clear_ml_subs(&mut self) {
-    self.subs_ml = None;
-  }
-}
-
+/// produced by the forward pass and held in the estimates map as a plain `Vec<Sub>`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseSeqDistribution {
   /// probability vector for each variable position collecting information from children

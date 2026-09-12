@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::marginal::shared::normalize::{forward_log_lh_add_normalization, forward_log_lh_remove_child};
 use crate::partition::marginal::sparse::message::{
@@ -7,7 +6,9 @@ use crate::partition::marginal::sparse::message::{
 };
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::marginal::sparse::reconstruct::{map_state, parsimony_seq};
-use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, VarPos};
+use crate::partition::storage::sparse::{
+  SparseEdgeBackward, SparseEdgeForward, SparseNodeObs, SparseNodeState, SparseSeqDistribution, VarPos,
+};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
@@ -15,94 +16,114 @@ use maplit::btreemap;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPass, GraphPassForwardContext, GraphPassNodeOutput};
-use treetime_primitives::{LogLh, Seq};
+use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
 
+/// Run the sparse marginal forward pass over borrowed inputs, node states, and backward messages,
+/// returning updated node states, per-edge forward messages, and per-edge estimates (ML subs) as
+/// distinct owned values.
 pub fn process_forward_indexed(
-  partition: &mut PartitionMarginalSparse,
+  partition: &PartitionMarginalSparse,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-) -> Result<(), Report> {
-  let alphabet = partition.alphabet.clone();
-  let gtr = partition.gtr.clone();
-  let length = partition.length;
-  let root_sequence = partition.root_sequence.clone();
+  node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+  backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
+) -> Result<
+  (
+    BTreeMap<GraphNodeKey, SparseNodeState>,
+    BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+    BTreeMap<GraphEdgeKey, Vec<Sub>>,
+  ),
+  Report,
+> {
   let pass = GraphPass::new(graph)?;
   let outputs = pass.map_forward(
-    &partition.nodes,
-    &partition.edges,
+    node_states,
+    backward,
     |key| treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass"),
-    |context| process_node_forward_indexed(&alphabet, &gtr, length, &root_sequence, branch_lengths, &context),
+    |context| process_node_forward_indexed(partition, branch_lengths, &context),
   )?;
-  partition.nodes = outputs.nodes;
-  partition.edges = outputs.edges;
-  Ok(())
+
+  let mut forward = BTreeMap::new();
+  let mut estimates = BTreeMap::new();
+  for (edge_key, out) in outputs.edges {
+    forward.insert(
+      edge_key,
+      SparseEdgeForward {
+        msg_to_child: out.msg_to_child,
+        msg_from_parent: out.msg_from_parent,
+      },
+    );
+    estimates.insert(edge_key, out.subs_ml);
+  }
+  Ok((outputs.nodes, forward, estimates))
+}
+
+/// Combined per-edge output of the forward node visit, split by the driver into the distinct
+/// forward-message and estimate owners.
+struct SparseEdgeForwardOut {
+  msg_to_child: SparseSeqDistribution,
+  msg_from_parent: SparseSeqDistribution,
+  subs_ml: Vec<Sub>,
 }
 
 fn process_node_forward_indexed(
-  alphabet: &Alphabet,
-  gtr: &GTR,
-  length: usize,
-  root_sequence: &Seq,
+  partition: &PartitionMarginalSparse,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  context: &GraphPassForwardContext<'_, SparseNodePartition, SparseEdgePartition, SparseNodePartition>,
-) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report> {
+  context: &GraphPassForwardContext<'_, SparseNodeState, SparseEdgeBackward, SparseNodeState>,
+) -> Result<GraphPassNodeOutput<SparseNodeState, SparseEdgeForwardOut>, Report> {
+  let alphabet = &partition.alphabet;
+  let gtr = &partition.gtr;
+  let length = partition.length;
+  let obs = &partition.obs_nodes[&context.key];
   let mut node = context.input.clone();
 
-  let parent_message = if let Some((edge_key, edge_data)) = context.parent_edge {
-    let mut edge_data = edge_data.clone();
+  let parent_message = if let Some((edge_key, backward)) = context.parent_edge {
+    let edge_obs = &partition.obs_edges[&edge_key];
     let parent = context.parent.expect("Non-root node must have a parent");
+    let parent_key = context.parent_key.expect("Non-root node must have a parent key");
+    let parent_obs = &partition.obs_nodes[&parent_key];
 
-    // Clone this node's parent-edge input and overwrite only the message and ML-subs fields. The edge
-    // already carries `msg_from_child` from the backward pass and `fitch_subs`/`transmission` from the
-    // Fitch pre-pass, and a fresh edge would corrupt the result.
-    edge_data.msg_to_child = compute_msg_to_child(&node, parent, &edge_data)?;
+    let msg_to_child = compute_msg_to_child(obs, parent, parent_obs, edge_obs, backward)?;
 
     let mut variable_pos = btreemap! {};
     let mut parent_state = btreemap! {};
     let mut child_state = btreemap! {};
-    for mutation in edge_data.fitch_subs() {
+    for mutation in edge_obs.fitch_subs() {
       let current_state = mutation.qry();
       variable_pos.insert(mutation.pos(), current_state);
       parent_state.entry(mutation.pos()).or_insert_with(|| mutation.reff());
       child_state.entry(mutation.pos()).or_insert(current_state);
     }
-    for (pos, profile) in &edge_data.msg_to_child.variable {
-      if !range_contains(&node.seq.non_char, *pos) {
+    for (pos, profile) in &msg_to_child.variable {
+      if !range_contains(&obs.non_char, *pos) {
         variable_pos.entry(*pos).or_insert(profile.state);
         parent_state.entry(*pos).or_insert(profile.state);
       }
     }
-    for (pos, profile) in &edge_data.msg_to_parent.variable {
+    for (pos, profile) in &backward.msg_to_parent.variable {
       variable_pos.entry(*pos).or_insert(profile.state);
       child_state.entry(*pos).or_insert(profile.state);
     }
 
     let branch_length = fix_branch_length(length, branch_lengths[&edge_key]);
     let msg_from_parent = if gtr.has_site_rates() {
-      propagate_raw_per_site(
-        gtr,
-        branch_length,
-        false,
-        &edge_data.msg_to_child,
-        edge_data.transmission.as_deref(),
-      )
+      propagate_raw_per_site(gtr, branch_length, false, &msg_to_child, edge_obs.transmission.as_deref())
     } else {
-      propagate_raw(
-        &gtr.expQt(branch_length),
-        &edge_data.msg_to_child,
-        edge_data.transmission.as_deref(),
-      )
+      propagate_raw(&gtr.expQt(branch_length), &msg_to_child, edge_obs.transmission.as_deref())
     };
     // Persist the down-message only for tips: reconstruct_node_sequence imputes missing tip states
     // from it and has no branch length to recompute the propagation. Internal nodes never need it.
-    if context.is_leaf {
-      edge_data.msg_from_parent = msg_from_parent.clone();
-    }
+    let msg_from_parent_out = if context.is_leaf {
+      msg_from_parent.clone()
+    } else {
+      SparseSeqDistribution::default()
+    };
     let profile = combine_messages(
-      &node.seq.composition,
-      &[msg_from_parent, edge_data.msg_to_parent.clone()],
+      &obs.composition,
+      &[msg_from_parent, backward.msg_to_parent.clone()],
       &variable_pos,
       &[parent_state, child_state],
       alphabet,
@@ -113,15 +134,19 @@ fn process_node_forward_indexed(
     // Extend the parsimony chain. Leaves already hold their observed sequence, which is their
     // parsimony sequence; rebuilding it from the parent would discard the observed states a leaf
     // shares with its parent under Fitch compression.
-    if !context.is_leaf && !parent.seq.sequence.is_empty() {
-      node.seq.sequence = parsimony_seq(&parent.seq.sequence, &edge_data, &node, alphabet);
+    if !context.is_leaf && !parent.sequence.is_empty() {
+      node.sequence = parsimony_seq(&parent.sequence, edge_obs, obs, alphabet);
     }
-    edge_data.set_ml_subs(compute_ml_subs_for_nodes(alphabet, parent, &node, &edge_data)?);
+    let subs_ml = compute_ml_subs_for_nodes(alphabet, parent, parent_obs, &node, obs, edge_obs)?;
 
-    Some(edge_data)
+    Some(SparseEdgeForwardOut {
+      msg_to_child,
+      msg_from_parent: msg_from_parent_out,
+      subs_ml,
+    })
   } else {
-    if node.seq.sequence.is_empty() {
-      node.seq.sequence = root_sequence.clone();
+    if node.sequence.is_empty() {
+      node.sequence = partition.root_sequence.clone();
     }
     None
   };
@@ -130,32 +155,34 @@ fn process_node_forward_indexed(
 }
 
 fn compute_msg_to_child(
-  child: &SparseNodePartition,
-  parent: &SparseNodePartition,
-  edge: &SparseEdgePartition,
+  child_obs: &SparseNodeObs,
+  parent: &SparseNodeState,
+  parent_obs: &SparseNodeObs,
+  edge_obs: &crate::partition::storage::sparse::SparseEdgeObs,
+  backward: &SparseEdgeBackward,
 ) -> Result<SparseSeqDistribution, Report> {
   let mut seq_dis = SparseSeqDistribution {
     variable: btreemap! {},
     variable_indel: BTreeSet::new(),
     fixed: btreemap! {},
-    fixed_counts: parent.seq.composition.clone(),
-    log_lh: forward_log_lh_remove_child(parent.profile.log_lh, edge.msg_from_child.log_lh),
+    fixed_counts: parent_obs.composition.clone(),
+    log_lh: forward_log_lh_remove_child(parent.profile.log_lh, backward.msg_from_child.log_lh),
   };
-  let child_dis = &edge.msg_from_child;
+  let child_dis = &backward.msg_from_child;
   let mut parent_states = btreemap! {};
   let mut child_states = btreemap! {};
-  for mutation in edge.fitch_subs() {
+  for mutation in edge_obs.fitch_subs() {
     child_states.insert(mutation.pos(), mutation.qry());
     parent_states.insert(mutation.pos(), mutation.reff());
   }
   for (pos, profile) in &parent.profile.variable {
-    if !range_contains(&child.seq.non_char, *pos) {
+    if !range_contains(&child_obs.non_char, *pos) {
       child_states.entry(*pos).or_insert(profile.state);
       parent_states.entry(*pos).or_insert(profile.state);
     }
   }
   for (pos, profile) in &child_dis.variable {
-    if !range_contains(&child.seq.non_char, *pos) {
+    if !range_contains(&child_obs.non_char, *pos) {
       child_states.entry(*pos).or_insert(profile.state);
       parent_states.entry(*pos).or_insert(profile.state);
     }
@@ -199,11 +226,13 @@ fn compute_msg_to_child(
 
 fn compute_ml_subs_for_nodes(
   alphabet: &Alphabet,
-  parent: &SparseNodePartition,
-  child: &SparseNodePartition,
-  edge: &SparseEdgePartition,
+  parent: &SparseNodeState,
+  parent_obs: &SparseNodeObs,
+  child: &SparseNodeState,
+  child_obs: &SparseNodeObs,
+  edge_obs: &crate::partition::storage::sparse::SparseEdgeObs,
 ) -> Result<Vec<Sub>, Report> {
-  let positions = edge
+  let positions = edge_obs
     .fitch_subs()
     .iter()
     .map(Sub::pos)
@@ -217,7 +246,7 @@ fn compute_ml_subs_for_nodes(
       // is `non_char` at either endpoint. A deleted position can still hold a `profile.variable`
       // entry whose argmax is an ordinary residue, and reporting it would put a substitution and
       // a deletion on the same edge at the same site.
-      if range_contains(&parent.seq.non_char, pos) || range_contains(&child.seq.non_char, pos) {
+      if range_contains(&parent_obs.non_char, pos) || range_contains(&child_obs.non_char, pos) {
         return None;
       }
       let parent_state = map_state(parent, pos, alphabet);

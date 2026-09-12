@@ -224,11 +224,13 @@ impl GraphPass {
           .node
       });
 
+      let parent_key = self.parents[index].map(|parent_index| self.nodes[parent_index].key);
       let context = GraphPassForwardContext {
         key: node.key,
         is_leaf: self.children[index].is_empty(),
         is_root: self.parents[index].is_none(),
         input,
+        parent_key,
         parent_edge,
         parent,
       };
@@ -344,13 +346,15 @@ pub struct GraphPassBackwardContext<'a, N, E, NodeOut, EdgeOut> {
   pub children: &'a [GraphPassChildBackward<'a, NodeOut, EdgeOut>],
 }
 
-/// Input handed to a forward-mapping visitor for one node: the node's own borrowed input, its borrowed
-/// parent-edge input, and the already-completed forward output of its single parent.
+/// Input handed to a forward-mapping visitor for one node: the node's own borrowed input, its parent
+/// node key, its borrowed parent-edge input, and the already-completed forward output of its single
+/// parent.
 pub struct GraphPassForwardContext<'a, N, E, NodeOut> {
   pub key: GraphNodeKey,
   pub is_leaf: bool,
   pub is_root: bool,
   pub input: &'a N,
+  pub parent_key: Option<GraphNodeKey>,
   pub parent_edge: Option<(GraphEdgeKey, &'a E)>,
   pub parent: Option<&'a NodeOut>,
 }
