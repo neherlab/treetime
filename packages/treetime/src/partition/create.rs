@@ -5,6 +5,7 @@ use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
 use crate::partition::algo::infer_dense::infer_dense;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::partition::storage::sparse::SparseNodeState;
 use crate::seq::alignment::get_common_length;
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -14,7 +15,9 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
 
 pub enum MarginalPartition {
-  Sparse(PartitionMarginalSparse),
+  /// A sparse partition together with the seed node-state map derived from the Fitch handoff. The
+  /// caller owns and threads the node states; the partition holds only the durable inputs.
+  Sparse(PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>),
   Dense(PartitionMarginalDense),
 }
 
@@ -46,9 +49,9 @@ pub fn create_marginal_partition(
       _ => get_gtr_by_name(model_name)?,
     };
     log_gtr(&gtr, model_name);
-    let partition = fitch.into_marginal_sparse(gtr, graph)?;
+    let (partition, node_states) = fitch.into_marginal_sparse(gtr, graph)?;
     Ok(PartitionCreated {
-      partition: MarginalPartition::Sparse(partition),
+      partition: MarginalPartition::Sparse(partition, node_states),
       model_name,
     })
   } else if model_name == GtrModelName::Infer {
