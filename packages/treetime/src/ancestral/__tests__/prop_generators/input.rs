@@ -4,10 +4,10 @@ use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::__tests__::prop_generators::alignment::{arb_alignment, arb_alignment_no_gaps};
 use crate::ancestral::__tests__::prop_generators::tree::{arb_tree_topology, taxa_names};
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::payload::ancestral::GraphAncestral;
 use ndarray::{Array1, Array2};
 use proptest::prelude::*;
 use std::collections::BTreeSet;
+use treetime_graph::graph::Graph;
 use treetime_io::fasta::FastaRecord;
 use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn test_prop_input_arb_marginal_input_parseable_and_taxa_exact(input in arb_marginal_input_small()) {
       let NwkParse { graph, names, .. } = nwk_read_str(&input.newick).unwrap();
-      let graph: GraphAncestral = graph;
+      let graph: Graph = graph;
 
       let mut leaf_names = Vec::new();
       for leaf in graph.get_leaves() {

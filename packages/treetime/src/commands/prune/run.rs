@@ -26,8 +26,6 @@ use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 
-use crate::payload::ancestral::GraphAncestral;
-
 pub fn run_prune(
   args: &TreetimePruneArgs,
   progress: &dyn crate::progress::ProgressSink,
@@ -38,7 +36,7 @@ pub fn run_prune(
   progress.report("Reading input", 0.0, "");
 
   let parse = nwk_read_file(args.tree())?;
-  let graph: GraphAncestral = parse.graph;
+  let graph: Graph = parse.graph;
   let confidences = parse.confidences;
   let names = parse.names;
   let branch_lengths_input = parse.branch_lengths;
@@ -206,7 +204,7 @@ fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
 /// whose `subs_ml` was never populated. Those never appear on the tree walk, so reading
 /// `edge_mutations` only for reached edges avoids touching an unpopulated edge.
 pub(crate) fn gather_prune_output_maps<D: Sync + Send>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   partitions: &[PartitionMarginalSparse],
 ) -> Result<PruneOutputMaps, Report> {
   let Some(partition) = partitions.first() else {

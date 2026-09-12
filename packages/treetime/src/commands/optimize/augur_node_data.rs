@@ -1,10 +1,10 @@
 use crate::commands::optimize::result::OptimizeNodeOut;
 use crate::partition::traits::BranchTopology;
-use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use util_augur_node_data_json::{
@@ -40,7 +40,7 @@ use util_augur_node_data_json::{
 /// When `mutation_counts` is `Some`, `branch_length` is set to the per-edge
 /// mutation count instead of the ML branch length (subs/site).
 pub fn build_augur_node_data_json<D: Send + Sync>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   node_outputs: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   alignment: Option<&Path>,
@@ -107,7 +107,7 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
 }
 
 pub fn write_augur_node_data_json<D: Send + Sync>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   node_outputs: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   alignment: Option<&Path>,

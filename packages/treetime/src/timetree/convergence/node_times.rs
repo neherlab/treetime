@@ -1,6 +1,6 @@
-use crate::partition::timetree::partition::GraphTimetree;
 use crate::timetree::timetree_state::TimetreeState;
 use std::collections::BTreeMap;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
 /// Inferred time of every dated node, keyed by node.
@@ -15,7 +15,7 @@ pub struct NodeTimeChange {
   pub rms: Option<f64>,
 }
 
-pub fn capture_node_times(graph: &GraphTimetree, state: &TimetreeState) -> NodeTimeSnapshot {
+pub fn capture_node_times(graph: &Graph, state: &TimetreeState) -> NodeTimeSnapshot {
   graph
     .get_nodes()
     .iter()

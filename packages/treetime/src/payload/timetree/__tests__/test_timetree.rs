@@ -5,7 +5,6 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
-  use crate::partition::timetree::partition::GraphTimetree;
   use crate::partition::traits::MutationCommentProvider;
   use crate::seq::mutation::Sub;
   use eyre::Report;
@@ -14,6 +13,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
   use treetime_io::nwk::{CommentProviders, NodeCommentProvider, NwkParse, NwkStyle, nwk_read_str};
@@ -24,7 +24,7 @@ mod tests {
   }
 
   fn make_test_partition(
-    graph: &GraphTimetree,
+    graph: &Graph,
     length: usize,
     edge_subs: &[(usize, Vec<Sub>)],
   ) -> Result<PartitionMarginalSparse, Report> {
@@ -71,7 +71,7 @@ mod tests {
   #[test]
   fn test_timetree_mutation_provider_produces_comments() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1)root;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
     let partition = make_test_partition(
       &graph,
       100,
@@ -93,7 +93,7 @@ mod tests {
   #[test]
   fn test_timetree_nexus_output_includes_mutations_and_date() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1)root;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
     let partition = make_test_partition(
       &graph,
       100,

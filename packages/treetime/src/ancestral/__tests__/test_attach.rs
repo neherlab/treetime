@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
-use crate::payload::ancestral::GraphAncestral;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
 use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -94,17 +94,17 @@ fn test_sanitize_to_alphabet_folds_stop_into_unknown_for_no_stop_alphabet() {
 mod helpers {
   use super::*;
 
-  pub fn two_leaf_tree() -> (GraphAncestral, BTreeMap<GraphNodeKey, Option<String>>) {
+  pub fn two_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
     (graph, names)
   }
 
-  pub fn three_leaf_tree() -> (GraphAncestral, BTreeMap<GraphNodeKey, Option<String>>) {
+  pub fn three_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;").unwrap();
     (graph, names)
   }
 
-  pub fn four_leaf_tree() -> (GraphAncestral, BTreeMap<GraphNodeKey, Option<String>>) {
+  pub fn four_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
     let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1):0.1,(C:0.1,D:0.1):0.1)root;").unwrap();
     (graph, names)
   }

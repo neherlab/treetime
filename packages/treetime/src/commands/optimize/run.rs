@@ -13,7 +13,6 @@ use crate::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::traits::{EdgeMutationCommentProvider, PartitionBranchOps};
-use crate::payload::ancestral::GraphAncestral;
 use crate::seq::gap_fill::apply_gap_fill;
 use crate::seq::mutation::MutationTrack;
 use eyre::Report;
@@ -21,6 +20,7 @@ use log::info;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nwk::CommentProviders;
@@ -199,7 +199,7 @@ pub fn run_optimize(
 /// Gather the per-node nucleotide sequences, root sequence, per-edge nucleotide mutations, and per-edge
 /// substitutions the output writers read off the optimize partition.
 pub(crate) fn gather_optimize_output_maps<D: Send + Sync>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   sparse_partitions: &[PartitionMarginalSparse],
   dense_partitions: &[PartitionMarginalDense],
 ) -> Result<OptimizeOutputMaps, Report> {
@@ -213,7 +213,7 @@ pub(crate) fn gather_optimize_output_maps<D: Send + Sync>(
 }
 
 fn gather_optimize_partition_maps<D: Send + Sync>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   partition: &dyn PartitionBranchOps,
 ) -> Result<OptimizeOutputMaps, Report> {
   let root_sequence = Some(partition.root_sequence(graph)?);

@@ -193,12 +193,12 @@ mod tests {
     use crate::gtr::get_gtr::GtrModelName;
     use crate::partition::fitch::partition::PartitionFitch;
     use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
-    use crate::payload::ancestral::GraphAncestral;
     use crate::progress::NoopProgress;
     use crate::seq::mutation::Sub;
     use maplit::btreemap;
     use std::collections::BTreeMap;
     use tempfile::tempdir;
+    use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::{NwkParse, nwk_read_str};
     use treetime_primitives::{AsciiChar, Seq};
@@ -220,9 +220,9 @@ mod tests {
 
     /// Two-leaf tree where leaf A differs from the root at one position.
     /// Root sequence ACGT, A is ACGA, with the substitution T4A on edge root->A.
-    pub fn mutation_case() -> (GraphAncestral, BTreeMap<GraphNodeKey, Option<String>>, PartitionFitch) {
+    pub fn mutation_case() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>, PartitionFitch) {
       let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
-      let graph: GraphAncestral = graph;
+      let graph: Graph = graph;
       let seqs = btreemap! { o!("A") => o!("ACGA"), o!("B") => o!("ACGT"), o!("root") => o!("ACGT") };
       let edge_subs = btreemap! { o!("A") => vec![sub(b'T', 3, b'A')] };
       let partition = build_fitch_partition(&graph, &names, &seqs, &edge_subs, 4);
@@ -231,7 +231,7 @@ mod tests {
 
     pub fn node_name_to_key(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &GraphAncestral,
+      graph: &Graph,
     ) -> BTreeMap<String, GraphNodeKey> {
       graph
         .get_nodes()
@@ -246,7 +246,7 @@ mod tests {
     }
 
     pub fn build_fitch_partition(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       seqs: &BTreeMap<String, String>,
       edge_subs_by_child: &BTreeMap<String, Vec<Sub>>,
@@ -284,7 +284,7 @@ mod tests {
     }
 
     pub fn write_json(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       partition: &PartitionFitch,
       mask: &[bool],

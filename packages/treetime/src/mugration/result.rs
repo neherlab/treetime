@@ -2,7 +2,6 @@ use crate::gtr::gtr::GTR;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::storage::discrete::DiscreteStates;
 use crate::partition::traits::HasGtr;
-use crate::payload::ancestral::GraphAncestral;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use ndarray::Array1;
@@ -10,6 +9,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Write;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 #[derive(Clone, Debug, Serialize)]
@@ -32,7 +32,7 @@ pub struct MugrationConfidenceOutput {
 
 impl MugrationConfidenceOutput {
   pub fn new(
-    graph: &GraphAncestral,
+    graph: &Graph,
     partition: &PartitionMarginalDiscrete,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
   ) -> Self {
@@ -161,7 +161,7 @@ pub struct EdgeOut {
 #[derive(Debug, serde::Serialize)]
 pub struct MugrationResult {
   #[serde(skip)]
-  pub graph: GraphAncestral<MugrationGraphData>,
+  pub graph: Graph<MugrationGraphData>,
   #[serde(skip)]
   pub nodes: BTreeMap<GraphNodeKey, MugrationNodeOut>,
   #[serde(skip)]
@@ -182,7 +182,7 @@ impl std::ops::Deref for MugrationResult {
 
 impl MugrationResult {
   pub fn new(
-    graph: GraphAncestral,
+    graph: Graph,
     confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -250,7 +250,7 @@ impl MugrationResult {
 /// keyed by node key and independent of node ordering, so gathering before `map_data` and topology
 /// ordering is bit-identical.
 pub(crate) fn gather_mugration_output_maps<D: Send + Sync>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   partition: &PartitionMarginalDiscrete,
 ) -> MugrationOutputMaps {
   let reconstructed_traits = graph
@@ -279,7 +279,7 @@ pub(crate) fn gather_mugration_output_maps<D: Send + Sync>(
 }
 
 fn extract_trait_assignments(
-  graph: &GraphAncestral,
+  graph: &Graph,
   partition: &PartitionMarginalDiscrete,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> IndexMap<String, String> {

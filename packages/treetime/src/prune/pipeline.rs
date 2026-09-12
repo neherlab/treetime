@@ -4,13 +4,13 @@ use crate::gtr::gtr::GTR;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::payload::ancestral::GraphAncestral;
 use crate::prune::prune::prune_nodes;
 use eyre::Report;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
 
@@ -22,7 +22,7 @@ pub struct PruneParams {
 }
 
 pub struct PruneInput {
-  pub graph: GraphAncestral,
+  pub graph: Graph,
   pub alphabet: Alphabet,
   pub sequences: Option<Vec<FastaRecord>>,
   /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. The collapse and
@@ -34,7 +34,7 @@ pub struct PruneInput {
 #[derive(Debug, Serialize)]
 pub struct PruneOutput {
   #[serde(skip)]
-  pub graph: GraphAncestral,
+  pub graph: Graph,
   #[serde(skip)]
   pub gtr: Option<GTR>,
   #[serde(skip)]

@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::clock_graph::GraphClock;
   use crate::clock::find_best_root::find_best_root::find_best_root;
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootMethod, RerootSpec, RootObjective};
   use crate::clock::reroot::{RerootParams, reroot_in_place};
@@ -11,6 +10,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::assign_node_names::assign_node_names;
+  use treetime_graph::graph::Graph;
   use treetime_graph::reroot::{record_merge, remove_node_if_trivial, trivial_node_branch_lengths};
   use treetime_io::nwk::{NwkParse, NwkWriteOptions, nwk_read_str, nwk_write_str};
   use treetime_utils::assert_error;
@@ -31,7 +31,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
-    let mut graph: GraphClock = graph;
+    let mut graph: Graph = graph;
 
     let mid_key = find_node_key_by_name(&graph, &names, "mid").expect("Expected node named 'mid'");
 
@@ -363,7 +363,6 @@ mod tests {
   }
 
   mod helpers {
-    use crate::clock::clock_graph::GraphClock;
     use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
     use crate::clock::clock_state::ClockState;
     use crate::o;
@@ -371,11 +370,12 @@ mod tests {
     use maplit::btreemap;
     use std::collections::BTreeMap;
     use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::{NwkParse, nwk_read_str};
 
     pub fn leaf_times(
-      graph: &GraphClock,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       dates: &BTreeMap<String, f64>,
     ) -> BTreeMap<GraphNodeKey, Option<f64>> {
@@ -394,7 +394,7 @@ mod tests {
       dates: &BTreeMap<String, f64>,
     ) -> Result<
       (
-        GraphClock,
+        Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
         ClockParams,
         ClockState,
@@ -408,7 +408,7 @@ mod tests {
         branch_lengths,
         ..
       } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-      let graph: GraphClock = graph;
+      let graph: Graph = graph;
       let times = leaf_times(&graph, &names, dates);
 
       let options = ClockParams::default();
@@ -421,7 +421,7 @@ mod tests {
 
     pub fn setup_reroot_test_graph() -> Result<
       (
-        GraphClock,
+        Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
         ClockParams,
         ClockState,

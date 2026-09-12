@@ -17,8 +17,9 @@ mod tests {
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
 
-  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+  use crate::partition::timetree::partition::PartitionTimetree;
   use eyre::Report;
+  use treetime_graph::graph::Graph;
 
   use rstest::rstest;
 
@@ -51,7 +52,7 @@ mod tests {
 
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
 
-    let mut graph: GraphTimetree = graph;
+    let mut graph: Graph = graph;
     let dates = load_dates_for_dataset(dataset)?;
     let constraints = load_date_constraints(&dates, &graph, &names)?;
 

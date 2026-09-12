@@ -4,7 +4,6 @@ mod tests {
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_state::ClockState;
   use crate::clock::date_constraints::DateConstraints;
-  use crate::partition::timetree::partition::GraphTimetree;
   use crate::timetree::optimization::clock_filter::propagate_bad_branches;
   use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
@@ -13,6 +12,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -22,7 +22,7 @@ mod tests {
   /// write. Each named leaf with a date carries a point distribution at that date.
   fn date_constraints(
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    graph: &GraphTimetree,
+    graph: &Graph,
     dates: &BTreeMap<String, f64>,
   ) -> DateConstraints {
     let mut time_distributions = BTreeMap::new();
@@ -44,12 +44,12 @@ mod tests {
   /// Seed the clock state from date-constraint values, reproducing the payload-reading seed: the date
   /// state built from `constraints` supplies each node's date through `likely_times`, and the clock
   /// state starts from those dates with default divergence and outlier flags.
-  fn seed_clock_state(graph: &GraphTimetree, constraints: &DateConstraints) -> ClockState {
+  fn seed_clock_state(graph: &Graph, constraints: &DateConstraints) -> ClockState {
     let date_state = TimetreeState::seed_from_values(graph, constraints);
     ClockState::seed_from_values(graph, &date_state.likely_times())
   }
 
-  fn count_outliers(graph: &GraphTimetree, state: &ClockState) -> usize {
+  fn count_outliers(graph: &Graph, state: &ClockState) -> usize {
     graph
       .get_leaves()
       .iter()
@@ -68,7 +68,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
 
     // Set dates that match the branch lengths well
     let dates = btreemap! {
@@ -106,7 +106,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
 
     // Set dates where one sample (A) has an extreme deviation
     // A is at div ~0.2 (root:0.01 + AB:0.1 + A:0.1) but claims date 1900 (very old)
@@ -159,7 +159,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
 
     // Dates with some spread to create non-zero IQD
     let dates = btreemap! {
@@ -190,7 +190,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
 
     let dates = btreemap! {
       "A".to_owned() => 1980.0,  // Moderate deviation
@@ -224,7 +224,7 @@ mod tests {
   #[test]
   fn test_clock_filter_propagates_bad_branches_after_topology_change() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
     let mut state = TimetreeState::new(&graph);
     for node in graph.get_leaves() {
       let node = node.read_arc();

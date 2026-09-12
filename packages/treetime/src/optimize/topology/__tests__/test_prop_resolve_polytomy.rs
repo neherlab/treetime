@@ -3,11 +3,11 @@ mod tests {
   use crate::optimize::params::TopologyOps;
   use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::mutation::Sub;
   use proptest::prelude::*;
   use std::collections::BTreeMap;
   use std::collections::BTreeSet;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
 
   proptest! {
@@ -112,7 +112,7 @@ mod tests {
       AsciiChar::from_byte_unchecked(b)
     }
 
-    pub fn leaf_names(names: &BTreeMap<GraphNodeKey, Option<String>>, graph: &GraphAncestral) -> BTreeSet<String> {
+    pub fn leaf_names(names: &BTreeMap<GraphNodeKey, Option<String>>, graph: &Graph) -> BTreeSet<String> {
       graph
         .get_nodes()
         .iter()
@@ -121,7 +121,7 @@ mod tests {
         .collect()
     }
 
-    pub fn total_subs(graph: &GraphAncestral, partition: &PartitionMarginalSparse) -> usize {
+    pub fn total_subs(graph: &Graph, partition: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
         .iter()
@@ -140,7 +140,7 @@ mod tests {
       revert_masks: &[u32],
       own_counts: &[usize],
     ) -> (
-      GraphAncestral,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       PartitionMarginalSparse,
       usize,
@@ -158,7 +158,7 @@ mod tests {
         branch_lengths,
         ..
       } = nwk_read_str(&newick).unwrap();
-      let graph: GraphAncestral = graph;
+      let graph: Graph = graph;
 
       // M_v: k substitutions A->C at positions 0..k.
       let parent_subs: Vec<Sub> = (0..k).map(|pos| Sub::new(c(b'A'), pos, c(b'C')).unwrap()).collect();
@@ -199,7 +199,7 @@ mod tests {
       a: usize,
       own_counts: &[usize],
     ) -> (
-      GraphAncestral,
+      Graph,
       PartitionMarginalSparse,
       usize,
       usize,
@@ -220,7 +220,7 @@ mod tests {
         branch_lengths,
         ..
       } = nwk_read_str(&newick).unwrap();
-      let graph: GraphAncestral = graph;
+      let graph: Graph = graph;
 
       let mut edge_mutations: Vec<(String, String, Vec<Sub>)> = vec![(
         "root".to_owned(),
@@ -251,7 +251,7 @@ mod tests {
     }
 
     fn make_partition(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
       edge_mutations: &[(String, String, Vec<Sub>)],

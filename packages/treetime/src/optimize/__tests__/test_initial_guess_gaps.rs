@@ -9,12 +9,12 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
 
   use pretty_assertions::assert_eq;
@@ -79,7 +79,7 @@ mod tests {
   }
 
   fn setup_sparse(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -93,7 +93,7 @@ mod tests {
   }
 
   fn setup_dense(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -118,7 +118,7 @@ mod tests {
     Ok(partitions)
   }
 
-  fn get_branch_lengths(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
+  fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
       .iter()
@@ -135,7 +135,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
@@ -157,7 +157,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
@@ -179,7 +179,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
@@ -202,7 +202,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
@@ -225,7 +225,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     let mut found_reduced = false;
@@ -252,7 +252,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     let p = &partitions[0];

@@ -12,9 +12,9 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
 
-  use crate::payload::ancestral::GraphAncestral;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
+  use treetime_graph::graph::Graph;
 
   use ndarray::array;
   use pretty_assertions::assert_eq;
@@ -71,7 +71,7 @@ mod tests {
       ..
     } = nwk_read_file(&tree_path)?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -194,7 +194,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(PYTHON_TREE)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -248,7 +248,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(PYTHON_TREE)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -298,7 +298,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(PYTHON_TREE)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -349,7 +349,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(PYTHON_TREE)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -400,7 +400,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(PYTHON_TREE)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
 
     let gtr1 = make_python_reference_gtr()?;
@@ -471,7 +471,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(PYTHON_TREE)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?;
 
     let gtr1 = make_python_reference_gtr()?;
@@ -540,7 +540,7 @@ mod tests {
       ..
     } = nwk_read_str(PYTHON_TREE)?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = read_many_fasta_str(simple_aln, &*NUC_ALPHABET)?;
 
     let gtr = make_python_reference_gtr()?;

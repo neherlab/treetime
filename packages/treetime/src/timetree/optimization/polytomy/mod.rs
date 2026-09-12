@@ -21,7 +21,7 @@ pub mod sweep;
 mod __tests__;
 
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+use crate::partition::timetree::partition::PartitionTimetree;
 use crate::partition::traits::PartitionBranchOps;
 use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
 use crate::timetree::optimization::polytomy::sweep::{Lineage, simulate_subtree};
@@ -32,6 +32,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::{record_merge, remove_node_if_trivial, trivial_node_branch_lengths};
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
@@ -41,7 +42,7 @@ use treetime_utils::make_error;
 ///
 /// This runs before relaxed-clock estimation and polytomy resolution so invalid
 /// input leaves the complete previous inference state untouched.
-pub fn validate_tree_before_topology_change(graph: &GraphTimetree, state: &TimetreeState) -> Result<(), Report> {
+pub fn validate_tree_before_topology_change(graph: &Graph, state: &TimetreeState) -> Result<(), Report> {
   for node in graph.get_nodes() {
     let node = node.read_arc();
     if node.is_leaf() {
@@ -78,7 +79,7 @@ pub fn validate_tree_before_topology_change(graph: &GraphTimetree, state: &Timet
 /// Returns the number of internal nodes created. Output depends on `rng`: the same tree and
 /// the same generator state produce the same topology, and different states do not.
 pub fn resolve_polytomies(
-  graph: &mut GraphTimetree,
+  graph: &mut Graph,
   partitions: &[PartitionTimetree],
   mutation_rate: f64,
   total_length: usize,
@@ -133,7 +134,7 @@ pub fn resolve_polytomies(
   reason = "one call site; splitting would only shuffle the arguments"
 )]
 fn resolve_single_polytomy(
-  graph: &mut GraphTimetree,
+  graph: &mut Graph,
   partitions: &[PartitionTimetree],
   node_key: GraphNodeKey,
   mutation_rate: f64,
@@ -202,7 +203,7 @@ struct ChildInfo {
 }
 
 fn collect_children(
-  graph: &GraphTimetree,
+  graph: &Graph,
   partitions: &[PartitionTimetree],
   node_key: GraphNodeKey,
   total_length: usize,
@@ -242,7 +243,7 @@ fn collect_children(
 /// v0's estimate from the observed branch length -- `round(mutation_length * L)` -- when it
 /// cannot be read.
 fn edge_mutation_count(
-  graph: &GraphTimetree,
+  graph: &Graph,
   partitions: &[PartitionTimetree],
   edge_key: GraphEdgeKey,
   mutation_length: Option<f64>,
@@ -280,7 +281,7 @@ fn inferred_time(state: &TimetreeState, node_key: GraphNodeKey) -> Result<f64, R
 /// Uses `remove_node_if_trivial` which properly sums branch lengths into the
 /// merged edge and calls `graph.build()` per removal.
 fn remove_single_child_nodes(
-  graph: &mut GraphTimetree,
+  graph: &mut Graph,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
   let mut removed_count = 0;
@@ -313,7 +314,7 @@ fn remove_single_child_nodes(
 /// date constraints and exclusion flags. Edge distributions, messages, and
 /// topology-dependent rate state are reset unconditionally. Branch lengths and
 /// time lengths remain valid inputs for the next inference pass.
-pub fn prepare_tree_after_topology_change(graph: &GraphTimetree, state: &mut TimetreeState) -> Result<(), Report> {
+pub fn prepare_tree_after_topology_change(graph: &Graph, state: &mut TimetreeState) -> Result<(), Report> {
   validate_tree_before_topology_change(graph, state)?;
 
   for node in graph.get_nodes() {

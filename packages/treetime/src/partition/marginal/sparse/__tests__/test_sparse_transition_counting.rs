@@ -5,12 +5,12 @@ mod tests {
   use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::traits::TransitionCounting;
-  use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::{pretty_assert_array_nonneg, pretty_assert_array_positive};
@@ -24,7 +24,7 @@ mod tests {
     fasta: &str,
   ) -> Result<
     (
-      GraphAncestral,
+      Graph,
       crate::partition::marginal::sparse::partition::PartitionMarginalSparse,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ),
@@ -38,7 +38,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(tree_nwk)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,

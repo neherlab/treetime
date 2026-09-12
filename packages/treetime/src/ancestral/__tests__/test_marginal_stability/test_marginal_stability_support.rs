@@ -8,10 +8,10 @@ pub mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::dense::DenseSeqDistribution;
   use crate::partition::storage::sparse::SparseSeqDistribution;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
+  use treetime_graph::graph::Graph;
   use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
   use std::sync::LazyLock;
@@ -67,7 +67,7 @@ pub mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
@@ -96,7 +96,7 @@ pub mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 

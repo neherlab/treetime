@@ -6,11 +6,11 @@ mod tests {
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::run_loop::optimize_partition_view;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
   use eyre::Report;
   use indoc::indoc;
+  use treetime_graph::graph::Graph;
 
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
@@ -87,14 +87,7 @@ mod tests {
 
     pub fn setup_dense(
       newick: &str,
-    ) -> Result<
-      (
-        GraphAncestral,
-        Vec<PartitionMarginalDense>,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
+    ) -> Result<(Graph, Vec<PartitionMarginalDense>, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let aln = read_many_fasta_str(
         indoc! {r#"
@@ -113,7 +106,7 @@ mod tests {
         branch_lengths,
         ..
       } = nwk_read_str(newick)?;
-      let graph: GraphAncestral = graph;
+      let graph: Graph = graph;
 
       let mut partitions = vec![PartitionMarginalDense::new(
         0,

@@ -3,15 +3,15 @@ mod tests {
   use super::super::helpers::{coalescent_node_times, setup_graph};
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::optimize_tc::optimize_tc;
-  use crate::partition::timetree::partition::GraphTimetree;
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use maplit::btreemap;
+  use treetime_graph::graph::Graph;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::o;
 
-  fn graph_with_dates(nwk: &str, dates: &DatesMap) -> Result<(GraphTimetree, DateConstraints), Report> {
+  fn graph_with_dates(nwk: &str, dates: &DatesMap) -> Result<(Graph, DateConstraints), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str(nwk)?;
     let constraints = load_date_constraints(dates, &graph, &names)?;
     Ok((graph, constraints))
@@ -22,7 +22,7 @@ mod tests {
   /// `k = 2` on `(t_root, t_x)` and `k = 3` on `(t_x, t_tip)`, so the pairwise-rate
   /// integral is `I = (t_x - t_root)·1 + (t_tip - t_x)·3` and there are two binary
   /// mergers (`M = 2`). The analytic constant optimum is `Tc* = I/M`.
-  fn tree3(t_root: f64, t_x: f64, t_tip: f64) -> Result<(GraphTimetree, DateConstraints), Report> {
+  fn tree3(t_root: f64, t_x: f64, t_tip: f64) -> Result<(Graph, DateConstraints), Report> {
     let dates = btreemap! {
       o!("root") => Some(DateConstraint::exact(t_root)),
       o!("x") => Some(DateConstraint::exact(t_x)),

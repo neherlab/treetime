@@ -2,7 +2,7 @@ use crate::clock::clock_model::{ClockModel, ClockModelStats};
 use crate::clock::clock_state::ClockState;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::make_error;
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+use crate::partition::timetree::partition::PartitionTimetree;
 use crate::timetree::inference::runner::run_timetree;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
@@ -16,6 +16,7 @@ use std::f64::consts::SQRT_2;
 use std::io::Write;
 use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::csv::CsvStructWriter;
 use treetime_utils::io::file::create_file_or_stdout;
@@ -56,7 +57,7 @@ const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5; // 0.95
 /// caller threads these into confidence extraction and the output gather; they are not written back
 /// onto the graph.
 pub fn compute_rate_susceptibility(
-  graph: &mut GraphTimetree,
+  graph: &mut Graph,
   partitions: &[PartitionTimetree],
   clock_model: &ClockModel,
   coalescent: Option<&CoalescentModel>,
@@ -219,7 +220,7 @@ pub(crate) fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)
 /// caller captures from the post-inference graph; each interval's label is read from it rather than
 /// off the payload.
 pub fn extract_confidence_intervals(
-  graph: &GraphTimetree,
+  graph: &Graph,
   state: &TimetreeState,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,

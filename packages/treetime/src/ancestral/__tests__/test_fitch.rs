@@ -10,7 +10,6 @@ mod tests {
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::traits::{PartitionBranchOps, PartitionRerootOps};
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::composition::Composition;
   use crate::test_utils::find_node_key_by_name;
@@ -21,6 +20,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::LazyLock;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::reroot::{
     RerootChanges, apply_reroot_topology, record_split, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
@@ -42,7 +42,7 @@ mod tests {
   /// Used to verify that compression (backward + forward + cleanup) correctly placed
   /// mutations on branches.
   fn collect_edge_subs(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     partition: &PartitionFitch,
   ) -> BTreeMap<String, Vec<String>> {
@@ -70,7 +70,7 @@ mod tests {
   /// child state sets was either empty (union taken) or contained more than one state
   /// (ambiguous intersection). Positions where the intersection was a singleton are resolved
   /// immediately and do not appear as variable.
-  fn get_root_variable_positions(graph: &GraphAncestral, partition: &PartitionFitch) -> Vec<usize> {
+  fn get_root_variable_positions(graph: &Graph, partition: &PartitionFitch) -> Vec<usize> {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
     let root_key = root.read_arc().key();
     partition.nodes[&root_key]
@@ -89,7 +89,7 @@ mod tests {
   /// union of child state sets (children share no common state, implying a state change).
   /// Singleton intersections (all children agree on one state) are resolved immediately and
   /// do not appear in this map.
-  fn get_root_state_sets(graph: &GraphAncestral, partition: &PartitionFitch) -> BTreeMap<usize, String> {
+  fn get_root_state_sets(graph: &Graph, partition: &PartitionFitch) -> BTreeMap<usize, String> {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
     let root_key = root.read_arc().key();
     partition.nodes[&root_key]
@@ -104,7 +104,7 @@ mod tests {
   /// Look up a node by name and return its variable positions after the Fitch backward pass.
   /// Panics if no node with the given name exists.
   fn get_node_variable_positions_by_name(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     partition: &PartitionFitch,
     name: &str,
@@ -129,14 +129,14 @@ mod tests {
   ///
   /// After the backward pass, unresolved variable positions are marked with '~'.
   /// After the forward pass, all positions are resolved to concrete nucleotides.
-  fn get_root_seq(graph: &GraphAncestral, partition: &PartitionFitch) -> String {
+  fn get_root_seq(graph: &Graph, partition: &PartitionFitch) -> String {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
     let root_key = root.read_arc().key();
     partition.nodes[&root_key].seq.sequence.as_str().to_owned()
   }
 
   fn get_internal_sequences(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     partition: &PartitionFitch,
   ) -> BTreeMap<String, String> {
@@ -158,7 +158,7 @@ mod tests {
   /// for a deletion of T at positions 12-13). Used to verify that the Fitch algorithm correctly
   /// identifies gap openings, extensions, and insertions relative to the ancestral sequence.
   fn collect_edge_indels(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     partition: &PartitionFitch,
   ) -> BTreeMap<String, Vec<String>> {
@@ -233,7 +233,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
 
@@ -311,7 +311,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
 
@@ -361,7 +361,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let alphabet = Alphabet::default();
 
     let mut partition = PartitionFitch {
@@ -416,7 +416,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
 
@@ -496,7 +496,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
 
@@ -579,7 +579,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
 
@@ -671,7 +671,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
 
@@ -776,7 +776,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let alphabet = Alphabet::default();
 
     let mut fitch = PartitionFitch {
@@ -1020,7 +1020,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let alphabet = Alphabet::default();
 
     let mut fitch = PartitionFitch {
@@ -1173,7 +1173,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let alphabet = Alphabet::default();
 
     let mut fitch = PartitionFitch {

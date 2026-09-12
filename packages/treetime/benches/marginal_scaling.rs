@@ -8,8 +8,8 @@ use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::fitch::create_fitch_partition;
 use treetime::ancestral::marginal::{marginal_update, profile_branch_lengths};
 use treetime::gtr::get_gtr::{JC69Params, jc69};
-use treetime::payload::ancestral::GraphAncestral;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nwk::{NwkParse, nwk_read_file};
 use treetime_utils::init::global::global_init;
@@ -45,7 +45,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
 }
 
 fn setup() -> (
-  GraphAncestral,
+  Graph,
   [treetime::partition::marginal::sparse::partition::PartitionMarginalSparse; 1],
   BTreeMap<GraphEdgeKey, Option<f64>>,
 ) {
@@ -57,7 +57,7 @@ fn setup() -> (
 }
 
 fn setup_inner() -> (
-  GraphAncestral,
+  Graph,
   [treetime::partition::marginal::sparse::partition::PartitionMarginalSparse; 1],
   BTreeMap<GraphEdgeKey, Option<f64>>,
 ) {

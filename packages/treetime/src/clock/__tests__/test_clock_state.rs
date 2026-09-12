@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::clock_graph::GraphClock;
   use crate::clock::clock_state::{ClockEdgeState, ClockNodeState, ClockState};
   use crate::payload::clock_set::ClockSet;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -16,7 +16,7 @@ mod tests {
   #[test]
   fn test_clock_state_seed_from_values_sources_times_and_defaults_the_rest() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let graph: GraphClock = graph;
+    let graph: Graph = graph;
     let key_of = helpers::key_by_name(&names, &graph);
     let (a, b, root) = (key_of["A"], key_of["B"], key_of["root"]);
 
@@ -50,7 +50,7 @@ mod tests {
 
     pub(super) fn key_by_name(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &GraphClock,
+      graph: &Graph,
     ) -> BTreeMap<String, GraphNodeKey> {
       graph
         .get_nodes()

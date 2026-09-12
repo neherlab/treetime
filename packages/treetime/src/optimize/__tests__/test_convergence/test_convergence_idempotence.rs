@@ -4,10 +4,10 @@ mod tests {
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::optimize_partition_view;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use rstest::rstest;
+  use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   use super::super::test_convergence_support::tests::{
@@ -26,7 +26,7 @@ mod tests {
   fn test_optimization_converges_with_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 

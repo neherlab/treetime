@@ -9,11 +9,11 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
+  use treetime_graph::graph::Graph;
 
   use ndarray::prelude::*;
   use pretty_assertions::assert_eq;
@@ -80,7 +80,7 @@ mod tests {
   /// root to leaves) to compute marginal posterior distributions P(s|data) at
   /// every node and position.
   fn run_dense_marginal(
-    graph: &GraphAncestral,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
@@ -112,7 +112,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (log_lh, _) = run_dense_marginal(&graph, &branch_lengths, &names, aln, gtr)?;
     Ok(log_lh)
   }
@@ -183,7 +183,7 @@ mod tests {
       ..
     } = nwk_read_str(TREE_7_TAXON)?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
@@ -234,7 +234,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_7_TAXON)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
@@ -287,7 +287,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_7_TAXON)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
@@ -401,7 +401,7 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let states = ['A', 'C', 'G', 'T'];
     for &state_a in &states {
       for &state_b in &states {

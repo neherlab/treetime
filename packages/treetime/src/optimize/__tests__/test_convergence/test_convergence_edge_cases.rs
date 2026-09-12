@@ -3,9 +3,9 @@ mod tests {
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::optimize_partition_view;
-  use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use rstest::rstest;
+  use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   use super::super::test_convergence_support::tests::{compute_total_lh, setup_partitions, simple_alignment};
@@ -24,7 +24,7 @@ mod tests {
     let tree_newick = "((A:0.0,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let aln = simple_alignment()?;
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(tree_newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
     let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
@@ -66,7 +66,7 @@ mod tests {
     let tree_newick = "((A:0.0001,B:0.0001)AB:0.0001,(C:0.0001,D:0.0001)CD:0.0001)root:0.0001;";
     let aln = simple_alignment()?;
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(tree_newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
     let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
@@ -108,7 +108,7 @@ mod tests {
     let tree_newick = "((A:1.0,B:2.0)AB:1.0,(C:2.0,D:1.2)CD:0.5)root:0.1;";
     let aln = simple_alignment()?;
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(tree_newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
     let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);

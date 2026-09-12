@@ -166,7 +166,7 @@ mod tests {
 
     pub fn node_name_to_key(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &GraphAncestral,
+      graph: &Graph,
     ) -> BTreeMap<String, GraphNodeKey> {
       graph
         .get_nodes()
@@ -180,7 +180,7 @@ mod tests {
         .collect()
     }
 
-    pub fn named_tree() -> (GraphAncestral, BTreeMap<GraphNodeKey, Option<String>>) {
+    pub fn named_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
       let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
       (graph, names)
     }
@@ -192,7 +192,7 @@ mod tests {
 
     impl StubAugurPartition {
       pub fn new(
-        graph: &GraphAncestral,
+        graph: &Graph,
         names: &BTreeMap<GraphNodeKey, Option<String>>,
         sequences_by_name: &BTreeMap<String, String>,
       ) -> Self {

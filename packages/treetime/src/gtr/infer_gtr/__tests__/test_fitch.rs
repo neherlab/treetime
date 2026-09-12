@@ -6,13 +6,13 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
   use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
-  use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
   use ndarray::array;
   use pretty_assertions::assert_eq;
+  use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -43,7 +43,7 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
@@ -86,7 +86,7 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;

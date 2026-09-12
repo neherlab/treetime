@@ -20,7 +20,6 @@ mod tests {
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::partition::traits::PartitionOptimizeOps;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -29,6 +28,7 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::Seq;
@@ -260,7 +260,7 @@ mod tests {
   #[trace]
   fn test_optimize_method_equivalence_no_indels(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (dense_mixed_partitions, sparse_mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
     let mixed_partitions = optimize_partition_view(&dense_mixed_partitions, &sparse_mixed_partitions);
@@ -292,7 +292,7 @@ mod tests {
   #[trace]
   fn test_optimize_method_local_optimality(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
     let mixed_partitions = optimize_partition_view(&dense_mixed_partitions, &sparse_mixed_partitions);
 
@@ -332,7 +332,7 @@ mod tests {
   #[trace]
   fn test_optimize_method_stationarity(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 2)?;
     let mixed_partitions = optimize_partition_view(&dense_mixed_partitions, &sparse_mixed_partitions);
 
@@ -469,7 +469,7 @@ mod tests {
 
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (dense_partitions, sparse_partitions, rate) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
     run_optimize_mixed(&graph, &partitions, method, &mut branch_lengths)?;
@@ -649,7 +649,7 @@ mod tests {
     #[case] n_indels: usize,
   ) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let mixed_partitions = optimize_partition_view(&dense_mixed_partitions, &sparse_mixed_partitions);
 
@@ -670,7 +670,7 @@ mod tests {
   #[trace]
   fn test_optimize_method_newton_log_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let mixed_partitions = optimize_partition_view(&dense_mixed_partitions, &sparse_mixed_partitions);
 
@@ -691,7 +691,7 @@ mod tests {
   #[trace]
   fn test_optimize_method_newton_sqrt_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let mixed_partitions = optimize_partition_view(&dense_mixed_partitions, &sparse_mixed_partitions);
 
@@ -712,7 +712,7 @@ mod tests {
   #[trace]
   fn test_optimize_method_newton_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let mixed_partitions = optimize_partition_view(&dense_mixed_partitions, &sparse_mixed_partitions);
 
@@ -792,7 +792,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (dense_mixed_partitions, sparse_mixed_partitions) =
       setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
@@ -853,7 +853,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (dense_mixed_partitions, sparse_mixed_partitions) =
       setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
@@ -912,7 +912,7 @@ mod tests {
   #[trace]
   fn test_optimize_method_brent_bracket_validity(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
     let mixed_partitions = optimize_partition_view(&dense_mixed_partitions, &sparse_mixed_partitions);
 
@@ -1083,7 +1083,7 @@ mod tests {
     /// lengths and uses it as a constant throughout. Test evaluations must
     /// use the same rate for consistent verification.
     pub(super) fn setup_with_indels(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
       n_indels: usize,
@@ -1116,7 +1116,7 @@ mod tests {
     /// length t for the first edge, using a fixed indel rate (the rate
     /// the optimizer used, not the post-optimization rate).
     pub(super) fn eval_combined_first_edge(
-      graph: &GraphAncestral,
+      graph: &Graph,
       partitions: &[&dyn PartitionOptimizeOps],
       indel_rate: f64,
       t: f64,
@@ -1142,7 +1142,7 @@ mod tests {
     /// Evaluate combined metrics at branch length t for the first edge,
     /// using a fixed indel rate.
     pub(super) fn eval_metrics_first_edge(
-      graph: &GraphAncestral,
+      graph: &Graph,
       partitions: &[&dyn PartitionOptimizeOps],
       indel_rate: f64,
       t: f64,
@@ -1163,7 +1163,7 @@ mod tests {
     /// Branch length on the first edge after optimization, panicking if it
     /// is missing or NaN. Captures the 5-line read chain that recurs across
     /// tests in this file.
-    pub(super) fn first_edge_bl(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {
+    pub(super) fn first_edge_bl(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {
       branch_lengths[&graph.get_edges()[0].read_arc().key()].unwrap()
     }
   }

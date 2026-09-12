@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::payload::ancestral::GraphAncestral;
   use crate::test_utils::find_node_key_by_name;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use pretty_assertions::assert_eq;
+  use treetime_graph::graph::Graph;
   use treetime_graph::reroot::{
     apply_reroot_topology, record_merge, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
   };
@@ -18,7 +18,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.6,B:0.4)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let a_key = find_node_key_by_name(&graph, &names, "A").unwrap();
@@ -63,7 +63,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:1.0,B:2.0)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let b_key = find_node_key_by_name(&graph, &names, "B").unwrap();
@@ -92,7 +92,7 @@ mod tests {
   #[test]
   fn test_reroot_apply_reroot_topology_inverts_path() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let ab_key = find_node_key_by_name(&graph, &names, "AB").unwrap();
@@ -116,7 +116,7 @@ mod tests {
   #[test]
   fn test_reroot_apply_reroot_topology_multi_hop() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let a_key = find_node_key_by_name(&graph, &names, "A").unwrap();
@@ -136,7 +136,7 @@ mod tests {
   #[test]
   fn test_reroot_apply_reroot_topology_preserves_leaf_count() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let initial_leaves = graph.get_leaves().len();
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
@@ -163,7 +163,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let mid_key = find_node_key_by_name(&graph, &names, "mid").unwrap();
 
@@ -197,7 +197,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     // AB has two children, not trivial
     let ab_key = find_node_key_by_name(&graph, &names, "AB").unwrap();
@@ -222,7 +222,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root:0.001;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let cd_key = find_node_key_by_name(&graph, &names, "CD").unwrap();
@@ -268,7 +268,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.5)mid,B:0.2)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let mid_key = find_node_key_by_name(&graph, &names, "mid").unwrap();
     let (mid_parent, mid_child) = trivial_node_branch_lengths(&graph, mid_key, &branch_lengths);
@@ -291,7 +291,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     // Compute total branch length before reroot
     let total_bl_before: f64 = graph

@@ -4,13 +4,14 @@ use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_rero
 use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+use crate::partition::timetree::partition::PartitionTimetree;
 use crate::partition::traits::PartitionRerootOps;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
 use log::info;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
 
@@ -19,7 +20,7 @@ use treetime_graph::reroot::RerootChanges;
 /// Performs clock-based rerooting, then calls `apply_reroot` on each partition
 /// with bundled topology changes (edge split, edge merge, inverted edges).
 pub fn reroot_tree(
-  graph: &mut GraphTimetree,
+  graph: &mut Graph,
   clock_state: &mut ClockState,
   timetree_state: &TimetreeState,
   partitions: &mut [PartitionTimetree],

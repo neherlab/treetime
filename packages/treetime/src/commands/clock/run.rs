@@ -1,4 +1,3 @@
-use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_output::write_clock_model;
 use crate::clock::clock_regression::ClockParams;
@@ -60,7 +59,7 @@ pub struct EdgeOut {
 #[derive(serde::Serialize)]
 pub struct ClockResult {
   #[serde(skip)]
-  pub graph: GraphClock<ClockGraphData>,
+  pub graph: Graph<ClockGraphData>,
   #[serde(skip)]
   pub nodes: BTreeMap<GraphNodeKey, ClockNodeOut>,
   #[serde(skip)]
@@ -83,7 +82,7 @@ impl std::ops::Deref for ClockResult {
 /// `branch_lengths` map. The graph payloads are not read here. The maps are keyed by the final
 /// (post-reroot) node and edge set.
 fn gather_clock_outputs(
-  graph: &GraphClock<ClockGraphData>,
+  graph: &Graph<ClockGraphData>,
   state: &ClockState,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,

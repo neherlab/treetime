@@ -3,18 +3,18 @@ mod tests {
   use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::o;
   use crate::partition::marginal::shared::pass::{marginal_process_backward_indexed, marginal_process_forward_indexed};
-  use crate::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::assert_error;
 
   #[test]
   fn test_discrete_marginal_attach_traits_maps_observed_and_missing_profiles() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let mut partition = helpers::make_partition(["usa", "germany"])?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -39,7 +39,7 @@ mod tests {
   #[test]
   fn test_discrete_marginal_attach_traits_rejects_tree_leaf_missing_from_metadata() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let mut partition = helpers::make_partition(["usa", "germany"])?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -54,7 +54,7 @@ mod tests {
   #[test]
   fn test_discrete_marginal_attach_traits_accepts_metadata_name_missing_from_tree() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let mut partition = helpers::make_partition(["usa", "germany"])?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -153,13 +153,13 @@ mod tests {
     use crate::o;
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use crate::partition::storage::discrete::DiscreteStates;
-    use crate::payload::ancestral::GraphAncestral;
     use crate::test_utils::{find_edge_key, find_node_key_by_name};
     use eyre::Report;
     use maplit::btreemap;
     use ndarray::Array1;
     use std::collections::BTreeMap;
     use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::{NwkParse, nwk_read_str};
     use treetime_utils::pretty_assert_abs_diff_eq;
@@ -184,7 +184,7 @@ mod tests {
 
     pub(super) fn make_fixture_graph() -> Result<
       (
-        GraphAncestral,
+        Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
@@ -215,7 +215,7 @@ mod tests {
     }
 
     pub(super) fn get_node_key(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       name: &str,
     ) -> GraphNodeKey {
@@ -223,7 +223,7 @@ mod tests {
     }
 
     pub(super) fn get_node_profile(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       partition: &PartitionMarginalDiscrete,
       name: &str,
@@ -238,7 +238,7 @@ mod tests {
     }
 
     pub(super) fn get_edge_msg_from_child(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       partition: &PartitionMarginalDiscrete,
       source_name: &str,
@@ -255,7 +255,7 @@ mod tests {
     }
 
     pub(super) fn get_edge_msg_to_child(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       partition: &PartitionMarginalDiscrete,
       source_name: &str,

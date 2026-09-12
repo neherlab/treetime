@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::payload::ancestral::GraphAncestral;
   use crate::reroot::div_stats::DivStats;
   use crate::reroot::div_stats_traversal::compute_div_stats;
   use crate::reroot::orchestrate::{RerootTopologyParams, reroot_in_place};
@@ -11,9 +10,10 @@ mod tests {
   use eyre::Report;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
-  fn root_to_tip_distances(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
+  fn root_to_tip_distances(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     let root_key = graph.get_exactly_one_root().unwrap().read_arc().key();
     let mut distances = Vec::new();
     collect_distances(graph, root_key, 0.0, &mut distances, branch_lengths);
@@ -22,7 +22,7 @@ mod tests {
   }
 
   fn collect_distances(
-    graph: &GraphAncestral,
+    graph: &Graph,
     node_key: treetime_graph::node::GraphNodeKey,
     dist: f64,
     out: &mut Vec<f64>,
@@ -50,7 +50,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
@@ -79,7 +79,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
@@ -107,7 +107,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.3)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
@@ -141,7 +141,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.5)i:0.02,C:0.2)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
     let root_before = graph.get_exactly_one_root().unwrap().read_arc().key();

@@ -4,18 +4,18 @@ use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::make_error;
 use crate::make_report;
 use crate::optimize::params::BranchLengthMode;
-use crate::partition::timetree::partition::GraphTimetree;
 use crate::seq::gap_fill::apply_gap_fill;
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::{DatesMap, read_dates};
 use treetime_io::fasta::{FastaRecord, read_many_fasta};
 use treetime_io::nwk::{NwkParse, nwk_read_file};
 
 pub struct InputData {
-  pub graph: GraphTimetree,
+  pub graph: Graph,
   /// Per-node input-tree branch support read from the Newick annotations, keyed by node. The
   /// output gather reads each node's input branch support from here rather than off the payload;
   /// a node the pipeline creates after the parse is absent and reads as `None`.
@@ -37,7 +37,7 @@ pub struct InputData {
 
 pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report> {
   let (graph, confidences, names, branch_lengths): (
-    GraphTimetree,
+    Graph,
     BTreeMap<GraphNodeKey, Option<f64>>,
     BTreeMap<GraphNodeKey, Option<String>>,
     BTreeMap<GraphEdgeKey, Option<f64>>,

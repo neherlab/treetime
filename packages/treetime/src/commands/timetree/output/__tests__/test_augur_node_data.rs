@@ -158,19 +158,19 @@ mod tests {
     use crate::clock::clock_model::{ClockModel, ClockModelStats, RegressionStats};
     use crate::commands::timetree::output::augur_node_data::build_augur_node_data_json;
     use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut};
-    use crate::partition::timetree::partition::GraphTimetree;
     use crate::timetree::confidence::NodeConfidenceInterval;
     use ndarray::array;
     use std::collections::BTreeMap;
     use std::path::Path;
     use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
     pub struct SampleCase {
-      pub graph: GraphTimetree,
+      pub graph: Graph,
       pub names: BTreeMap<GraphNodeKey, Option<String>>,
       pub times: BTreeMap<GraphNodeKey, Option<f64>>,
       pub clock_model: ClockModel,
@@ -227,7 +227,7 @@ mod tests {
     /// date constraints (exact for leaf_a, uncertain for leaf_b), and CIs for root
     /// and leaf_a.
     pub fn sample_case() -> SampleCase {
-      let mut graph = GraphTimetree::new();
+      let mut graph = Graph::new();
       let mut names = BTreeMap::new();
       let mut times = BTreeMap::new();
       let root_key = graph.add_node();
@@ -294,7 +294,7 @@ mod tests {
     }
 
     fn timetree_nodes<D: Send + Sync>(
-      graph: &GraphTimetree<D>,
+      graph: &Graph<D>,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       times: &BTreeMap<GraphNodeKey, Option<f64>>,
     ) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
@@ -325,7 +325,7 @@ mod tests {
     }
 
     fn timetree_edges<D: Send + Sync>(
-      graph: &GraphTimetree<D>,
+      graph: &Graph<D>,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     ) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
       graph

@@ -9,13 +9,13 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::traits::PartitionMarginalOps;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -58,7 +58,7 @@ mod tests {
     } = nwk_read_str(
       "((T1:0.0,((((C1:0.005,C2:0.005)Y3:0.005,C3:0.005)Y2:0.005,C4:0.005)Y1:0.005,C5:0.005)Z:0.5,C6:0.5)X:0.3,C7:0.3)root:0.0;",
     )?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let sparse = reconstruct_sparse(&graph, &branch_lengths, &names, &aln)?;
     let dense = reconstruct_dense(&graph, &branch_lengths, &names, &aln)?;
@@ -110,7 +110,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(((D1:0.05,D2:0.05)DD:0.05,D3:0.05)DEL:0.2,(A1:0.05,A2:0.05)POLY:0.2)root:0.0;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let sparse = reconstruct_sparse(&graph, &branch_lengths, &names, &aln)?;
 
@@ -140,7 +140,7 @@ mod tests {
   }
 
   fn reconstruct_named<P>(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     partitions: &mut [P],
   ) -> Result<BTreeMap<String, String>, Report>
@@ -164,7 +164,7 @@ mod tests {
   }
 
   fn reconstruct_sparse(
-    graph: &GraphAncestral,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
@@ -176,7 +176,7 @@ mod tests {
   }
 
   fn reconstruct_dense(
-    graph: &GraphAncestral,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],

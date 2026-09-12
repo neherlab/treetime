@@ -16,11 +16,11 @@ mod tests {
   use crate::optimize::run_loop::apply_initial_guess_mode;
   use crate::optimize::run_loop::optimize_partition_view;
   use crate::optimize::run_loop::run_optimize_loop;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
+  use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::Seq;
 
@@ -105,7 +105,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let first_edge_key = graph.get_edges()[0].read_arc().key();

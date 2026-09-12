@@ -6,9 +6,9 @@ pub mod tests {
   use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
+  use treetime_graph::graph::Graph;
 
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -41,7 +41,7 @@ pub mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(&input.newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&input.alignment)?;
 
@@ -83,7 +83,7 @@ pub mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(&input.newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let alphabet = Alphabet::default();
     let length = get_common_length(&input.alignment)?;
 

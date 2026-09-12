@@ -59,9 +59,9 @@ mod tests {
   }
 
   mod helpers {
-    use crate::payload::ancestral::GraphAncestral;
     use eyre::Report;
     use itertools::Itertools;
+    use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::reroot::{
       apply_reroot_topology, record_merge, remove_node_if_trivial, trivial_node_branch_lengths,
@@ -80,7 +80,7 @@ mod tests {
         mut branch_lengths,
         ..
       } = nwk_read_str(newick)?;
-      let mut graph: GraphAncestral = graph;
+      let mut graph: Graph = graph;
 
       let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
 
@@ -135,7 +135,7 @@ mod tests {
           ..
         } = nwk_read_str(&rerooted)?;
 
-        let graph: GraphAncestral = graph;
+        let graph: Graph = graph;
         let leaves = graph.get_leaves();
         assert_eq!(leaves.len(), 4, "Must have 4 leaves: {rerooted}");
 

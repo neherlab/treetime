@@ -7,13 +7,13 @@ mod tests {
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use statrs::function::factorial::ln_factorial;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::Seq;
 
@@ -40,7 +40,7 @@ mod tests {
   }
 
   fn manual_total_indel_log_lh(
-    graph: &GraphAncestral,
+    graph: &Graph,
     sparse_partitions: &[PartitionMarginalSparse],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> f64 {
@@ -91,7 +91,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let max_iter = 5;
@@ -125,7 +125,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let first_edge_key = graph.get_edges()[0].read_arc().key();
@@ -174,7 +174,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let max_iter = 50;
@@ -210,7 +210,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_3 = names.clone();
@@ -246,7 +246,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_2 = names.clone();
@@ -282,7 +282,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
     let first_edge_key = graph.get_edges()[0].read_arc().key();
     branch_lengths.insert(first_edge_key, Some(0.1));

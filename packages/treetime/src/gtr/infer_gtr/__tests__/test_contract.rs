@@ -24,10 +24,10 @@ mod tests {
   use crate::seq::alignment::get_common_length;
   use pretty_assertions::assert_eq;
 
-  use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
+  use treetime_graph::graph::Graph;
   use treetime_utils::{
     pretty_assert_array_diag_abs, pretty_assert_array_nonneg, pretty_assert_array_positive, pretty_assert_ulps_eq,
   };
@@ -51,21 +51,14 @@ mod tests {
   fn setup_dense(
     tree_nwk: &str,
     aln: &[FastaRecord],
-  ) -> Result<
-    (
-      GraphAncestral,
-      PartitionMarginalDense,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
+  ) -> Result<(Graph, PartitionMarginalDense, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let NwkParse {
       graph,
       names,
       branch_lengths,
       ..
     } = nwk_read_str(tree_nwk)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -86,14 +79,14 @@ mod tests {
   fn setup_sparse(
     tree_nwk: &str,
     aln: &[FastaRecord],
-  ) -> Result<(GraphAncestral, PartitionFitch, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+  ) -> Result<(Graph, PartitionFitch, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let NwkParse {
       graph,
       names,
       branch_lengths,
       ..
     } = nwk_read_str(tree_nwk)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, aln, &names)?;
     Ok((graph, fitch, branch_lengths))

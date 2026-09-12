@@ -5,9 +5,9 @@ pub mod tests {
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::gtr::gtr::GTR;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
+  use treetime_graph::graph::Graph;
 
   use std::sync::LazyLock;
   use treetime_io::fasta::read_many_fasta_str;
@@ -103,7 +103,7 @@ pub mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 

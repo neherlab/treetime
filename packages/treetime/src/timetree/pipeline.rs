@@ -22,7 +22,7 @@ use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchLengthMode, BranchOptMethod};
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+use crate::partition::timetree::partition::PartitionTimetree;
 use crate::partition::traits::{HasGtr, PartitionOptimizeOps};
 use crate::progress::ProgressSink;
 use crate::timetree::confidence::{
@@ -44,6 +44,7 @@ use std::collections::BTreeMap;
 use std::io::Write;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_io::dates_csv::DatesMap;
@@ -97,7 +98,7 @@ pub struct TimetreeParams {
 }
 
 pub struct TimetreeInput {
-  pub graph: GraphTimetree,
+  pub graph: Graph,
   pub alphabet: Alphabet,
   pub sequences: Option<Vec<FastaRecord>>,
   pub dates: Option<DatesMap>,
@@ -110,7 +111,7 @@ pub struct TimetreeInput {
 #[derive(Serialize)]
 pub struct TimetreeOutput {
   #[serde(skip)]
-  pub graph: GraphTimetree,
+  pub graph: Graph,
   #[serde(skip)]
   pub clock_model: ClockModel,
   #[serde(skip)]
@@ -721,7 +722,7 @@ fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent_sky
 /// message rather than silently substituting an invented timescale.
 fn estimate_coalescent_tc(
   mode: CoalescentMode,
-  graph: &GraphTimetree,
+  graph: &Graph,
   skyline_params: &SkylineParams,
   node_times: &CoalescentNodeTimes,
 ) -> Result<Option<CoalescentTimescale>, Report> {
@@ -762,11 +763,7 @@ fn estimate_coalescent_tc(
 /// modes report -- so a fixed Tc reports the whole tree as its single segment. No solve runs (a fixed
 /// Tc is the escape hatch for trees the optimizer rejects as degenerate), so the report carries no
 /// confidence band and no likelihood.
-fn fixed_timescale(
-  tc: f64,
-  graph: &GraphTimetree,
-  node_times: &CoalescentNodeTimes,
-) -> Result<CoalescentTimescale, Report> {
+fn fixed_timescale(tc: f64, graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<CoalescentTimescale, Report> {
   let lineage_counts =
     compute_lineage_counts(graph, node_times).wrap_err("Failed to compute coalescent lineage counts")?;
   let breakpoints = lineage_counts.breakpoints();
@@ -793,7 +790,7 @@ fn fixed_timescale(
 /// the very time window the sampled history has to fit into.
 fn coalescent_timescale(
   mode: CoalescentMode,
-  graph: &GraphTimetree,
+  graph: &Graph,
   skyline_params: &SkylineParams,
   node_times: &CoalescentNodeTimes,
 ) -> Result<CoalescentTimescale, Report> {
@@ -911,7 +908,7 @@ struct PartitionInitResult {
 
 fn initialize_partitions_from_params(
   params: &TimetreeParams,
-  graph: &GraphTimetree,
+  graph: &Graph,
   alphabet: Alphabet,
   aln: Option<&[FastaRecord]>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -953,7 +950,7 @@ fn initialize_partitions_from_params(
 }
 
 fn optimize_branch_lengths_pre_step(
-  graph: &GraphTimetree,
+  graph: &Graph,
   partitions: &mut [PartitionTimetree],
   no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -986,7 +983,6 @@ mod tests {
   };
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
-  use crate::partition::timetree::partition::GraphTimetree;
   use crate::timetree::timetree_state::TimetreeState;
   use eyre::Report;
   use maplit::btreemap;
@@ -994,6 +990,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_distribution::Distribution;
+  use treetime_graph::graph::Graph;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -1164,7 +1161,7 @@ mod tests {
     Ok(())
   }
 
-  fn dated_tree() -> Result<(GraphTimetree, DateConstraints), Report> {
+  fn dated_tree() -> Result<(Graph, DateConstraints), Report> {
     // Small dated 3-tip tree spanning [2000, 2010] with two binary mergers, enough for a
     // multi-segment skyline solve.
     let dates: DatesMap = btreemap! {

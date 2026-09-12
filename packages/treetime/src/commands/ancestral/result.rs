@@ -1,11 +1,11 @@
 use crate::commands::ancestral::aa_node_data::AaNodeData;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
-use crate::payload::ancestral::GraphAncestral;
 use crate::seq::mutation::{Mutation, Sub};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AsciiChar, Seq};
 
@@ -84,7 +84,7 @@ pub struct EdgeOut {
 #[derive(Serialize)]
 pub struct AncestralResult {
   #[serde(skip)]
-  pub graph: GraphAncestral<AncestralGraphData>,
+  pub graph: Graph<AncestralGraphData>,
   #[serde(skip)]
   pub nodes: BTreeMap<GraphNodeKey, AncestralNodeOut>,
   #[serde(skip)]

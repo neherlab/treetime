@@ -6,7 +6,6 @@ use crate::make_error;
 use crate::mugration::result::{MugrationOutputMaps, MugrationResult, gather_mugration_output_maps};
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::storage::discrete::DiscreteStates;
-use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -16,6 +15,7 @@ use statrs::statistics::Statistics;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
 #[derive(Debug)]
@@ -79,7 +79,7 @@ pub fn apply_pseudo_counts(pi: Array1<f64>, pc: Option<f64>) -> Array1<f64> {
 }
 
 pub fn execute_mugration(
-  graph: GraphAncestral,
+  graph: Graph,
   confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,

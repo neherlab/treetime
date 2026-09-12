@@ -185,10 +185,10 @@ mod tests {
   mod helpers {
     use crate::commands::optimize::augur_node_data::build_augur_node_data_json;
     use crate::commands::optimize::result::OptimizeNodeOut;
-    use crate::payload::ancestral::GraphAncestral;
     use std::collections::BTreeMap;
     use std::path::{Path, PathBuf};
     use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read_str;
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
@@ -196,7 +196,7 @@ mod tests {
 
     pub fn node_outputs<D: Send + Sync>(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &GraphAncestral<D>,
+      graph: &Graph<D>,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
     ) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
       graph
@@ -218,7 +218,7 @@ mod tests {
 
     pub fn write_json(nwk: &str) -> String {
       let parse = nwk_read_str(nwk).unwrap();
-      let graph: GraphAncestral = parse.graph;
+      let graph: Graph = parse.graph;
       let names = parse.names;
       let confidences = parse.confidences;
       let branch_lengths = parse.branch_lengths;
@@ -240,7 +240,7 @@ mod tests {
 
     pub fn write_and_read_with_mutations(nwk: &str, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
       let parse = nwk_read_str(nwk).unwrap();
-      let graph: GraphAncestral = parse.graph;
+      let graph: Graph = parse.graph;
       let names = parse.names;
       let confidences = parse.confidences;
       let branch_lengths = parse.branch_lengths;

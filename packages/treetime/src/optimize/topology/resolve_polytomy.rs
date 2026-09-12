@@ -7,11 +7,11 @@ use crate::optimize::topology::merge_shared_mutations::merge_single_polytomy;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
 /// Resolve reversion-driven and shared-mutation polytomies across the whole tree.
@@ -30,7 +30,7 @@ use treetime_graph::node::GraphNodeKey;
 ///
 /// [`merge_shared_mutation_branches`]: crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches
 pub fn resolve_polytomies(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
   dense: &mut [PartitionMarginalDense],
   topology_ops: TopologyOps,
@@ -80,7 +80,7 @@ pub fn resolve_polytomies(
 ///
 /// Returns whether anything changed.
 fn resolve_one(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
   dense: &mut [PartitionMarginalDense],
   node_key: GraphNodeKey,
@@ -117,7 +117,7 @@ fn resolve_one(
 /// reversion on that single child is left in place (a greedy limitation, tracked in the
 /// knowledge base), rather than removing the pre-existing node the input asserted.
 fn try_hoist_reverting_child(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
   dense: &mut [PartitionMarginalDense],
   node_key: GraphNodeKey,
@@ -154,10 +154,7 @@ fn try_hoist_reverting_child(
 /// detection and in the root slide. Returns `None` when the parent node is not the root or the
 /// root has other than two children, where every edge is a genuine tree edge and no slide
 /// applies.
-fn bifurcating_root_sibling_edge(
-  graph: &GraphAncestral,
-  parent_edge_key: GraphEdgeKey,
-) -> Option<(GraphNodeKey, GraphEdgeKey)> {
+fn bifurcating_root_sibling_edge(graph: &Graph, parent_edge_key: GraphEdgeKey) -> Option<(GraphNodeKey, GraphEdgeKey)> {
   let root_key = graph.get_source_node_key(parent_edge_key).ok()?;
   let root = graph.get_node(root_key)?;
   let root = root.read_arc();
@@ -178,7 +175,7 @@ fn bifurcating_root_sibling_edge(
 /// Returns `None` when no child reverts any parent substitution. With `sibling_edge_key` set,
 /// reversions are counted across a bifurcating root (see [`count_child_reversions`]).
 fn best_reverting_child(
-  graph: &GraphAncestral,
+  graph: &Graph,
   sparse: &[PartitionMarginalSparse],
   node_key: GraphNodeKey,
   parent_edge_key: GraphEdgeKey,
@@ -220,7 +217,7 @@ fn best_reverting_child(
 ///
 /// Returns whether any edge was retired.
 fn retire_created_helpers(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
   dense: &mut [PartitionMarginalDense],
   preexisting: &BTreeSet<GraphNodeKey>,
@@ -258,7 +255,7 @@ fn retire_created_helpers(
 }
 
 /// The single parent edge of a node, or `None` for the root.
-fn single_inbound_edge(graph: &GraphAncestral, node_key: GraphNodeKey) -> Option<GraphEdgeKey> {
+fn single_inbound_edge(graph: &Graph, node_key: GraphNodeKey) -> Option<GraphEdgeKey> {
   let node = graph.get_node(node_key)?;
   let node = node.read_arc();
   match node.inbound() {

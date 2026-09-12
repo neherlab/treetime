@@ -3,12 +3,12 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::compress_sequences;
   use crate::partition::fitch::partition::PartitionFitch;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
   use maplit::btreemap;
+  use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -19,7 +19,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let NwkParse { graph, names, .. } = nwk_read_str(nwk)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let mut partition = PartitionFitch {
       index: 0,
       alphabet,

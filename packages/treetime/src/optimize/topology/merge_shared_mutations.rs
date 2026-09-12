@@ -2,7 +2,6 @@ use crate::gtr::jc_distance::jukes_cantor_distance;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::SparseNodePartition;
-use crate::payload::ancestral::GraphAncestral;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -10,6 +9,7 @@ use itertools::Itertools;
 use log::debug;
 use std::collections::{BTreeMap, HashSet};
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::iterator::difference::iterator_difference;
 
@@ -27,7 +27,7 @@ use treetime_utils::iterator::difference::iterator_difference;
 /// internal node. Repeats until no siblings share any mutations. Returns the total number
 /// of new internal nodes created.
 pub fn merge_shared_mutation_branches(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
@@ -61,7 +61,7 @@ pub fn merge_shared_mutation_branches(
 ///
 /// Returns number of new internal nodes created.
 pub(crate) fn merge_single_polytomy(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
   node_key: GraphNodeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -100,7 +100,7 @@ pub(crate) fn merge_single_polytomy(
 }
 
 /// Collect outbound edge keys for a node.
-fn collect_child_edge_keys(graph: &GraphAncestral, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
+fn collect_child_edge_keys(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
   let node = graph.get_node(node_key).expect("Node must exist");
   let node = node.read_arc();
   node.outbound().to_vec()
@@ -265,7 +265,7 @@ struct ChildEdgeData {
 /// substitution process underestimates true evolutionary distance by the
 /// same mechanism (back-mutations and parallel substitutions).
 fn merge_sibling_group(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
   parent_key: GraphNodeKey,
   group: &MergeGroup,

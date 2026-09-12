@@ -4,12 +4,12 @@ mod tests {
   use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
 
   use helpers::{no_dense, reversion_present, sub, total_subs};
@@ -29,7 +29,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(NWK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = helpers::make_partition(
       &graph,
       &names,
@@ -78,7 +78,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(NWK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = helpers::make_partition(
       &graph,
       &names,
@@ -132,7 +132,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((G1:0.1,G2:0.1,A1:0.1,A2:0.1)V:0.1,S:0.1)root:0.0;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = helpers::make_partition(
       &graph,
       &names,
@@ -183,7 +183,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((((X1:0.1,X2:0.1)W:0.0,C1:0.1,C2:0.1)V:0.2)U:0.1)root:0.0;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = helpers::make_partition(
       &graph,
       &names,
@@ -233,7 +233,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = helpers::make_partition(
       &graph,
       &names,
@@ -272,7 +272,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(NWK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = helpers::make_partition(
       &graph,
       &names,
@@ -324,7 +324,7 @@ mod tests {
       vec![]
     }
 
-    pub fn total_subs(graph: &GraphAncestral, partition: &PartitionMarginalSparse) -> usize {
+    pub fn total_subs(graph: &Graph, partition: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
         .iter()
@@ -333,7 +333,7 @@ mod tests {
         .sum()
     }
 
-    pub fn reversion_present(graph: &GraphAncestral, partition: &PartitionMarginalSparse, needle: &Sub) -> bool {
+    pub fn reversion_present(graph: &Graph, partition: &PartitionMarginalSparse, needle: &Sub) -> bool {
       graph
         .get_edges()
         .iter()
@@ -342,7 +342,7 @@ mod tests {
     }
 
     pub fn make_partition(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       index: usize,
       length: usize,

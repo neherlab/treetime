@@ -9,13 +9,13 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::traits::{PartitionBranchOps, PartitionMarginalOps};
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -40,7 +40,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.4,B:0.1)root:0.0;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let sparse = reconstruct_sparse(&graph, &branch_lengths, &names, &aln, false)?;
     let dense = reconstruct_dense(&graph, &branch_lengths, &names, &aln, false)?;
@@ -71,7 +71,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root:0.0;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
@@ -116,7 +116,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     // Without imputation the tip echoes its observed input (`N` and `R` preserved).
     let sparse_plain = reconstruct_sparse(&graph, &branch_lengths, &names, &aln, false)?;
@@ -153,7 +153,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let sparse = reconstruct_sparse(&graph, &branch_lengths, &names, &aln, true)?;
     let dense = reconstruct_dense(&graph, &branch_lengths, &names, &aln, true)?;
@@ -173,7 +173,7 @@ mod tests {
   }
 
   fn reconstruct_named<P>(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     partitions: &mut [P],
     impute: bool,
@@ -198,7 +198,7 @@ mod tests {
   }
 
   fn reconstruct_sparse(
-    graph: &GraphAncestral,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
@@ -211,7 +211,7 @@ mod tests {
   }
 
   fn reconstruct_dense(
-    graph: &GraphAncestral,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],

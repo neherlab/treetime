@@ -18,7 +18,6 @@ use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::traits::{BranchTopology, PartitionBranchOps};
-use crate::payload::ancestral::GraphAncestral;
 use crate::progress::ProgressSink;
 use crate::seq::gap_fill::apply_gap_fill;
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, mutation_event_strings};
@@ -28,6 +27,7 @@ use log::{info, warn};
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
 use treetime_io::nwk::{CommentProviders, NodeCommentProvider};
@@ -292,7 +292,7 @@ pub fn run_ancestral_reconstruction(
 }
 
 fn write_tree_for_partition(
-  graph: &GraphAncestral<AncestralGraphData>,
+  graph: &Graph<AncestralGraphData>,
   nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &AncestralOutputMaps,
@@ -328,7 +328,7 @@ fn write_tree_for_partition(
 /// Gather the per-node nucleotide sequences, root sequence, and per-edge nucleotide mutations the tree
 /// writers read off the ancestral partition.
 pub(crate) fn gather_ancestral_output_maps<D: Send + Sync>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   partition: Option<&AncestralPartition>,
 ) -> Result<AncestralOutputMaps, Report> {
   let Some(partition) = partition else {
@@ -342,7 +342,7 @@ pub(crate) fn gather_ancestral_output_maps<D: Send + Sync>(
 }
 
 fn gather_tree_output_maps<D: Send + Sync>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   partition: &dyn PartitionBranchOps,
 ) -> Result<AncestralOutputMaps, Report> {
   let root_sequence = Some(partition.root_sequence(graph)?);
@@ -372,7 +372,7 @@ fn gather_tree_output_maps<D: Send + Sync>(
 /// Gather the augur node-data sequences and substitutions for the partition in the graph data slot, or
 /// `None` when no partition exists.
 fn gather_augur_output_maps_opt<D: Send + Sync>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   partition: Option<&AncestralPartition>,
 ) -> Result<Option<AugurOutputMaps>, Report> {
   let Some(partition) = partition else {
@@ -388,7 +388,7 @@ fn gather_augur_output_maps_opt<D: Send + Sync>(
 
 /// Gather the augur node-data sequences and substitutions from one partition.
 pub(crate) fn gather_augur_output_maps<D: Send + Sync>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   partition: &dyn AugurNodeDataJsonAncestralPartition,
 ) -> Result<AugurOutputMaps, Report> {
   let sequence_length = partition.sequence_length();
@@ -458,7 +458,7 @@ fn run_aa_reconstructions(
   ancestral_args: &TreetimeAncestralArgs,
   translations: &str,
   aa_fasta_template: Option<&str>,
-  graph: &GraphAncestral,
+  graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   progress: &dyn ProgressSink,
@@ -572,7 +572,7 @@ fn run_aa_reconstructions(
 }
 
 fn write_aa_partition_sequences(
-  graph: &GraphAncestral,
+  graph: &Graph,
   partition: &dyn AugurNodeDataJsonAncestralPartition,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   name: &str,

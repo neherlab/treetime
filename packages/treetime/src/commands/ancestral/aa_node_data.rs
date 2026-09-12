@@ -6,7 +6,6 @@ use crate::ancestral::attach::sanitize_to_alphabet;
 use crate::make_error;
 use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::traits::BranchTopology;
-use crate::payload::ancestral::GraphAncestral;
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
 use eyre::Report;
 use itertools::Itertools;
@@ -14,6 +13,7 @@ use serde::Serialize;
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::gff::{GffCdsFeature, read_gff3_cds_features_filtered};
@@ -228,7 +228,7 @@ fn gff_cds_to_annotation(feature: &GffCdsFeature) -> AugurNodeDataJsonAnnotation
 }
 
 pub fn collect_aa_cds_node_data(
-  graph: &GraphAncestral,
+  graph: &Graph,
   partition: &dyn AugurNodeDataJsonAncestralPartition,
   cds: &str,
   names: &BTreeMap<GraphNodeKey, Option<String>>,

@@ -11,13 +11,13 @@ pub mod tests {
     any_indel_edge_has_zero_branch_length, apply_initial_guess_mode, invalid_branch_length_warning,
   };
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
 
   use pretty_assertions::assert_eq;
@@ -46,7 +46,7 @@ pub mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_WITHOUT_LENGTHS)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     assert!(!invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
     Ok(())
   }
@@ -59,7 +59,7 @@ pub mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_WITH_LENGTHS)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let nan_edge_key = graph.get_edges()[0].read_arc().key();
     branch_lengths.insert(nan_edge_key, Some(f64::NAN));
     assert!(!invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
@@ -74,7 +74,7 @@ pub mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_WITH_LENGTHS)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     set_first_branch_length(&graph, &mut branch_lengths, -0.1);
     assert!(!invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
     Ok(())
@@ -88,7 +88,7 @@ pub mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_WITH_LENGTHS)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     set_branch_length_by_target_name(&names, &graph, &mut branch_lengths, "A", -0.1);
     set_branch_length_by_target_name(&names, &graph, &mut branch_lengths, "C", f64::INFINITY);
 
@@ -112,7 +112,7 @@ pub mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_WITH_LENGTHS)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     assert!(invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
     Ok(())
   }
@@ -396,10 +396,7 @@ pub mod tests {
   pub mod helpers {
     use super::*;
 
-    pub fn get_branch_lengths(
-      graph: &GraphAncestral,
-      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    ) -> Vec<f64> {
+    pub fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
       graph
         .get_edges()
         .iter()
@@ -408,7 +405,7 @@ pub mod tests {
     }
 
     pub fn set_first_branch_length(
-      graph: &GraphAncestral,
+      graph: &Graph,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
       branch_length: f64,
     ) {
@@ -418,7 +415,7 @@ pub mod tests {
 
     pub fn set_branch_length_by_target_name(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &GraphAncestral,
+      graph: &Graph,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
       target_name: &str,
       branch_length: f64,
@@ -440,10 +437,7 @@ pub mod tests {
     /// Attach a single 3-base deletion indel to the partition's entry for
     /// the first graph edge. Marginal initialization populates the edge
     /// map, so the entry always exists by the time this helper is called.
-    pub fn inject_indel_on_first_edge(
-      graph: &GraphAncestral,
-      partitions: &mut [PartitionMarginalDense],
-    ) -> Result<(), Report> {
+    pub fn inject_indel_on_first_edge(graph: &Graph, partitions: &mut [PartitionMarginalDense]) -> Result<(), Report> {
       let edge_key = graph.get_edges()[0].read_arc().key();
       for partition in partitions.iter_mut() {
         partition.data.edges.get_mut(&edge_key).unwrap().indels = vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)?];
@@ -455,7 +449,7 @@ pub mod tests {
       newick: &str,
     ) -> Result<
       (
-        GraphAncestral,
+        Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
         Vec<PartitionMarginalDense>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -470,7 +464,7 @@ pub mod tests {
         branch_lengths,
         ..
       } = nwk_read_str(newick)?;
-      let graph: GraphAncestral = graph;
+      let graph: Graph = graph;
 
       let mut partitions = vec![PartitionMarginalDense::new(
         0,

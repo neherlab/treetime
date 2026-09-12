@@ -4,9 +4,9 @@ mod tests {
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::optimize_partition_view;
-  use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use rstest::rstest;
+  use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   use super::super::test_dense_sparse_equivalence_support::tests::{
@@ -25,7 +25,7 @@ mod tests {
   fn test_dense_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let mut partitions = setup_dense_only(&graph, &names, &aln, &branch_lengths)?;
 
     let initial_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
@@ -78,7 +78,7 @@ mod tests {
   fn test_sparse_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let mut partitions = setup_sparse_only(&graph, &names, &aln, &branch_lengths)?;
 
     let initial_lh = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();

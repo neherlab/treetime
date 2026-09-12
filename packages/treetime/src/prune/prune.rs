@@ -1,16 +1,16 @@
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
 pub fn prune_nodes(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
   prune_short: Option<f64>,
   prune_empty: bool,
@@ -56,7 +56,7 @@ pub fn get_edge_num_muts(
 }
 
 pub fn collapse_sparse_edges_from_leaf_recursive(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
   edge_key: GraphEdgeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -85,7 +85,7 @@ pub fn collapse_sparse_edges_from_leaf_recursive(
 }
 
 fn prune_internal_nodes(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
   prune_short: Option<f64>,
   prune_empty: bool,
@@ -130,7 +130,7 @@ fn prune_internal_nodes(
 }
 
 fn prune_leaves(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
   node_names: &BTreeSet<String>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -162,6 +162,6 @@ fn prune_leaves(
   })
 }
 
-fn should_collapse_parent(graph: &GraphAncestral, node_key: GraphNodeKey) -> bool {
+fn should_collapse_parent(graph: &Graph, node_key: GraphNodeKey) -> bool {
   graph.has_at_most_one_child(node_key) && !graph.is_root(node_key)
 }

@@ -17,7 +17,7 @@ use crate::commands::timetree::result::{
 };
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+use crate::partition::timetree::partition::PartitionTimetree;
 use crate::partition::traits::{EdgeMutationCommentProvider, PartitionBranchOps};
 use crate::seq::div::compute_edge_mutation_counts;
 use crate::seq::mutation::MutationTrack;
@@ -31,6 +31,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaWriter;
 use treetime_io::nwk::CommentProviders;
@@ -398,7 +399,7 @@ pub fn run_timetree_estimation(
 /// read from here rather than off the payload, and a node the pipeline created after the parse is
 /// absent and reads as `None`.
 fn gather_timetree_outputs(
-  graph: &GraphTimetree<TimetreeGraphData>,
+  graph: &Graph<TimetreeGraphData>,
   clock_state: &ClockState,
   timetree_state: &TimetreeState,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
@@ -454,7 +455,7 @@ fn gather_timetree_outputs(
 /// Gather the per-node nucleotide sequences, root sequence, and per-edge nucleotide mutations the tree
 /// writers read off the timetree partition.
 pub(crate) fn gather_timetree_output_maps<D: Send + Sync>(
-  graph: &GraphTimetree<D>,
+  graph: &Graph<D>,
   partitions: &[PartitionTimetree],
 ) -> Result<TimetreeOutputMaps, Report> {
   let Some(partition) = partitions.first() else {

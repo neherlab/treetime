@@ -3,7 +3,6 @@ mod tests {
   use crate::optimize::topology::hoist_reversions::{hoist_reverting_child, slide_bifurcating_root_for_child};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
   use crate::seq::indel::InDelKind;
   use crate::seq::mutation::Sub;
@@ -13,6 +12,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -32,7 +32,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(NWK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -76,7 +76,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(NWK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -112,7 +112,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(NWK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -153,7 +153,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(NWK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
     let ru = find_edge_key(&graph, &names, "root", "U").unwrap();
@@ -197,7 +197,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(NWK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -249,7 +249,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(NWK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -293,7 +293,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(NWK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -341,7 +341,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(NWK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -392,7 +392,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(NWK_BIFURCATING)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_v = find_edge_key(&graph, &names, "root", "V").unwrap();
     let root_s = find_edge_key(&graph, &names, "root", "S").unwrap();
@@ -432,7 +432,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(NWK_BIFURCATING)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_v = find_edge_key(&graph, &names, "root", "V").unwrap();
     let root_s = find_edge_key(&graph, &names, "root", "S").unwrap();
@@ -499,12 +499,7 @@ mod tests {
     }
 
     impl Hoisted {
-      pub fn locate(
-        graph: &GraphAncestral,
-        names: &BTreeMap<GraphNodeKey, Option<String>>,
-        v_name: &str,
-        c_name: &str,
-      ) -> Self {
+      pub fn locate(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>, v_name: &str, c_name: &str) -> Self {
         let v = find_node_key_by_name(graph, names, v_name).unwrap();
         let c = find_node_key_by_name(graph, names, c_name).unwrap();
         let nv = single_inbound(graph, v);
@@ -515,7 +510,7 @@ mod tests {
       }
     }
 
-    fn single_inbound(graph: &GraphAncestral, node_key: GraphNodeKey) -> GraphEdgeKey {
+    fn single_inbound(graph: &Graph, node_key: GraphNodeKey) -> GraphEdgeKey {
       let node = graph.get_node(node_key).unwrap();
       let node = node.read_arc();
       match node.inbound() {
@@ -532,7 +527,7 @@ mod tests {
       partition.edges[&edge_key].indels.clone()
     }
 
-    pub fn total_subs(graph: &GraphAncestral, partition: &PartitionMarginalSparse) -> usize {
+    pub fn total_subs(graph: &Graph, partition: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
         .iter()
@@ -542,7 +537,7 @@ mod tests {
     }
 
     pub fn make_partition(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       index: usize,
       length: usize,

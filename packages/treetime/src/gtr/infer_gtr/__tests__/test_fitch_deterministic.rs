@@ -3,12 +3,12 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::infer_gtr_fitch;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use lazy_static::lazy_static;
   use rstest::rstest;
   use std::path::PathBuf;
+  use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
 
@@ -38,14 +38,14 @@ mod tests {
 
     let gtr_a = {
       let NwkParse { graph, names, branch_lengths, .. } = nwk_read_file(&tree_path)?;
-      let graph: GraphAncestral = graph;
+      let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &names)?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths)?
     };
 
     let gtr_b = {
       let NwkParse { graph, names, branch_lengths, .. } = nwk_read_file(&tree_path)?;
-      let graph: GraphAncestral = graph;
+      let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &names)?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths)?
     };

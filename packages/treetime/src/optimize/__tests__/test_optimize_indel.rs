@@ -17,7 +17,6 @@ pub mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_neg_inf;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
@@ -25,6 +24,7 @@ pub mod tests {
   use eyre::Report;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
 
   use ndarray::array;
@@ -35,7 +35,7 @@ pub mod tests {
 
   /// Inject indels onto the first edge in each partition (both dense and sparse).
   pub fn inject_indels_on_first_edge(
-    graph: &GraphAncestral,
+    graph: &Graph,
     dense_partitions: &mut [PartitionMarginalDense],
     sparse_partitions: &mut [PartitionMarginalSparse],
     indels: &[InDel],
@@ -61,7 +61,7 @@ pub mod tests {
 
   /// Set up partitions with identical sequences (zero substitutions on every edge).
   pub fn setup_identical_partitions(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<(Vec<PartitionMarginalDense>, Vec<PartitionMarginalSparse>), Report> {
@@ -108,7 +108,7 @@ pub mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -130,7 +130,7 @@ pub mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -168,7 +168,7 @@ pub mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -216,7 +216,7 @@ pub mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -250,7 +250,7 @@ pub mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -349,7 +349,7 @@ pub mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) =
       setup_identical_partitions(&graph, &names, &mut branch_lengths)?;
 
@@ -383,7 +383,7 @@ pub mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) =
       setup_identical_partitions(&graph, &names, &mut branch_lengths)?;
 
@@ -426,7 +426,7 @@ pub mod tests {
   #[trace]
   fn test_optimize_indel_run_optimize_nonzero_with_indels(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -456,7 +456,7 @@ pub mod tests {
   #[trace]
   fn test_optimize_indel_run_optimize_rejects_negative_branch_length(#[case] has_indels: bool) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -486,7 +486,7 @@ pub mod tests {
   #[trace]
   fn test_optimize_indel_zero_bl_pipeline_escapes_zero(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) = setup_identical_partitions(&graph, &names, &mut branch_lengths)?;
 
     // Zero all branch lengths
@@ -748,7 +748,7 @@ pub mod tests {
   #[trace]
   fn test_optimize_indel_min_branch_length_clamping(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) = setup_identical_partitions(&graph, &names, &mut branch_lengths)?;
 
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];

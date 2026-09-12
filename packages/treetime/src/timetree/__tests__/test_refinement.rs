@@ -14,7 +14,7 @@ mod tests {
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+  use crate::partition::timetree::partition::PartitionTimetree;
   use crate::pretty_assert_abs_diff_eq;
   use crate::seq::alignment::get_common_length;
   use crate::timetree::inference::runner::run_timetree;
@@ -31,6 +31,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_distribution::Distribution;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
@@ -207,7 +208,7 @@ mod tests {
   }
 
   type PolytomyStateSetup = (
-    GraphTimetree,
+    Graph,
     BTreeMap<GraphNodeKey, Option<String>>,
     Vec<PartitionTimetree>,
     ClockModel,
@@ -222,7 +223,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("(A:0.01,B:0.01,C:0.01)root;")?;
-    let mut graph: GraphTimetree = graph;
+    let mut graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(
       indoc! {r#"
@@ -293,7 +294,7 @@ mod tests {
   }
 
   fn serialize_state(
-    graph: &GraphTimetree,
+    graph: &Graph,
     partitions: &[PartitionTimetree],
     clock_model: &ClockModel,
   ) -> Result<SerializedState, Report> {
@@ -319,7 +320,7 @@ mod tests {
   const REFINEMENT_TEST_TC: f64 = 10.0;
 
   fn refine(
-    graph: &mut GraphTimetree,
+    graph: &mut Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     partitions: &mut [PartitionTimetree],
     clock_model: &mut ClockModel,

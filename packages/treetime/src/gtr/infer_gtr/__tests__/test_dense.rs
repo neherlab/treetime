@@ -9,7 +9,6 @@ mod tests {
   };
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::traits::TransitionCounting;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
@@ -18,6 +17,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_utils::{
     pretty_assert_abs_diff_eq, pretty_assert_array_nonneg, pretty_assert_array_offdiag_upper_bounded,
     pretty_assert_array_positive,
@@ -35,21 +35,14 @@ mod tests {
   fn setup_dense_partition(
     tree_nwk: &str,
     aln: &[FastaRecord],
-  ) -> Result<
-    (
-      GraphAncestral,
-      PartitionMarginalDense,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
+  ) -> Result<(Graph, PartitionMarginalDense, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let NwkParse {
       graph,
       names,
       branch_lengths,
       ..
     } = nwk_read_str(tree_nwk)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,

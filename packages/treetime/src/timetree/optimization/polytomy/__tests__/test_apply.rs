@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::timetree::partition::GraphTimetree;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
   use crate::timetree::optimization::polytomy::sweep::{Merger, SubtreePlan};
@@ -9,6 +8,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::io::json::{JsonPretty, json_write_str};
@@ -16,22 +16,14 @@ mod tests {
 
   /// `((A,B,C)P)root` with each child edge carrying a distinct mutation length. The node times
   /// `apply_plan` acts on are passed to it directly (`parent_time` and each [`ChildRef::time`]).
-  fn polytomy_graph() -> Result<
-    (
-      GraphTimetree,
-      GraphNodeKey,
-      Vec<ChildRef>,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
+  fn polytomy_graph() -> Result<(Graph, GraphNodeKey, Vec<ChildRef>, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let NwkParse {
       graph,
       names,
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2,C:0.15)P:0.05)root;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
 
     let parent_key = find_node_key_by_name(&graph, &names, "P").ok_or_else(|| make_report!("P not found"))?;
 
@@ -50,14 +42,14 @@ mod tests {
     Ok((graph, parent_key, children, branch_lengths))
   }
 
-  fn child_edge_of(graph: &GraphTimetree, node_key: GraphNodeKey) -> GraphEdgeKey {
+  fn child_edge_of(graph: &Graph, node_key: GraphNodeKey) -> GraphEdgeKey {
     let node = graph.get_node(node_key).expect("Node must exist");
     let node = node.read_arc();
     assert_eq!(node.inbound().len(), 1, "a tree node has exactly one parent edge");
     node.inbound()[0]
   }
 
-  fn parent_of(graph: &GraphTimetree, node_key: GraphNodeKey) -> GraphNodeKey {
+  fn parent_of(graph: &Graph, node_key: GraphNodeKey) -> GraphNodeKey {
     let edge_key = child_edge_of(graph, node_key);
     graph.get_edge(edge_key).expect("Edge must exist").read_arc().source()
   }

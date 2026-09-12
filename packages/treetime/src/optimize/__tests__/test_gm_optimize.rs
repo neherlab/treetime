@@ -187,9 +187,9 @@ mod tests {
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::seq::alignment::get_common_length;
 
-    use crate::payload::ancestral::GraphAncestral;
     use eyre::Report;
     use itertools::Itertools;
+    use treetime_graph::graph::Graph;
 
     use serde::Deserialize;
     use std::collections::BTreeMap;
@@ -216,7 +216,7 @@ mod tests {
     }
 
     pub struct OptimizeResult {
-      pub graph: GraphAncestral,
+      pub graph: Graph,
       pub names: BTreeMap<GraphNodeKey, Option<String>>,
       pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
       pub lh_history: Vec<f64>,
@@ -254,7 +254,7 @@ mod tests {
         mut branch_lengths,
         ..
       } = nwk_read_file(&tree_path)?;
-      let mut graph: GraphAncestral = graph;
+      let mut graph: Graph = graph;
 
       let fitch = create_fitch_partition(&graph, 0, alphabet_sparse, &aln, &names)?;
       let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];

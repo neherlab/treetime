@@ -10,13 +10,13 @@ use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::traits::{HasGtr, PartitionOptimizeOps};
-use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use itertools::{Itertools, chain};
 use log::{debug, warn};
 use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
@@ -67,7 +67,7 @@ use treetime_utils::make_error;
 /// the convergence point, which are useful for tests and diagnostics but unused by the
 /// production `run_optimize` wrapper.
 pub fn run_optimize_loop(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   sparse_partitions: &mut [PartitionMarginalSparse],
   dense_partitions: &mut [PartitionMarginalDense],
   max_iter: usize,
@@ -305,7 +305,7 @@ struct OptimizeIterationLikelihood {
 }
 
 fn compute_iteration_likelihood(
-  graph: &GraphAncestral,
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   sparse_partitions: &mut [PartitionMarginalSparse],
   dense_partitions: &mut [PartitionMarginalDense],
@@ -359,7 +359,7 @@ fn compute_iteration_likelihood(
 /// onto child edges and trigger an oscillation where merge_shared_mutation_branches
 /// re-creates the node, which then optimizes to zero again.
 pub fn find_zero_optimal_internal_edges(
-  graph: &GraphAncestral,
+  graph: &Graph,
   sparse_partitions: &[PartitionMarginalSparse],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Vec<GraphEdgeKey> {
@@ -405,7 +405,7 @@ pub fn find_zero_optimal_internal_edges(
 ///
 /// Returns true if any topology change occurred.
 pub fn prune_and_merge_in_loop(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   sparse_partitions: &mut [PartitionMarginalSparse],
   dense_partitions: &mut [PartitionMarginalDense],
   zero_optimal_edges: &[GraphEdgeKey],
@@ -471,7 +471,7 @@ pub fn prune_and_merge_in_loop(
 /// The `Never` path skips `initial_guess_mixed()` entirely, so it must reject
 /// this configuration at validation time instead.
 pub fn any_indel_edge_has_zero_branch_length(
-  graph: &GraphAncestral,
+  graph: &Graph,
   partitions: &[&dyn PartitionOptimizeOps],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> bool {
@@ -496,7 +496,7 @@ pub fn any_indel_edge_has_zero_branch_length(
 ///   value (None/NaN) or has zero branch length while carrying indels (the
 ///   Poisson indel log-likelihood diverges at $t = 0$ when $k > 0$).
 pub fn apply_initial_guess_mode(
-  graph: &GraphAncestral,
+  graph: &Graph,
   mixed_partitions: &[&dyn PartitionOptimizeOps],
   mode: InitialGuessMode,
   no_indels: bool,

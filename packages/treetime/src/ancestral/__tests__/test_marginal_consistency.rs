@@ -11,13 +11,13 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use indoc::indoc;
+  use treetime_graph::graph::Graph;
 
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
@@ -89,7 +89,7 @@ mod tests {
   ///
   /// Returns the total log-likelihood and the populated partition.
   fn run_dense_marginal(
-    graph: &GraphAncestral,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
@@ -125,7 +125,7 @@ mod tests {
   ///
   /// Returns the total log-likelihood and the populated partition.
   fn run_sparse_marginal(
-    graph: &GraphAncestral,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
@@ -160,7 +160,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let gtr_dense = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -198,7 +198,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let gtr_dense = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -270,7 +270,7 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let gtr_dense = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -337,7 +337,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let gtr_dense = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -365,7 +365,7 @@ mod tests {
   }
 
   fn reconstruct_named_sequences<P>(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     partitions: &mut [P],
   ) -> Result<BTreeMap<String, String>, Report>
@@ -389,7 +389,7 @@ mod tests {
   }
 
   fn edge_subs_by_edge_name<P>(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     partition: &P,
   ) -> Result<BTreeMap<String, Vec<Sub>>, Report>
@@ -455,7 +455,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(tree_newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     // 64bp alignment: all 4^3 = 64 three-taxon state combinations (A x B x C)
     let aln = read_many_fasta_str(
@@ -513,7 +513,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let seq_len = get_common_length(&aln)?;
 
     // Run without site_rates (scalar mu)
@@ -546,7 +546,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let seq_len = get_common_length(&aln)?;
 
     let gtr_scalar = jc69(JC69Params {

@@ -22,15 +22,16 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
 
-  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+  use crate::partition::timetree::partition::PartitionTimetree;
   use eyre::Report;
   use itertools::Itertools;
+  use treetime_graph::graph::Graph;
 
   use rstest::rstest;
 
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
-  fn extract_branch_lengths(graph: &GraphTimetree, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
+  fn extract_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
       .iter()
@@ -52,7 +53,7 @@ mod tests {
 
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
 
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
     let aln = load_alignment_for_dataset(dataset)?;
     let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln, &names)?;
     let sparse_partition = PartitionTimetree::Sparse(
@@ -100,7 +101,7 @@ mod tests {
 
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(case.rerooted_tree_nwk())?;
 
-    let mut graph: GraphTimetree = graph;
+    let mut graph: Graph = graph;
     let dates = load_dates_for_dataset(dataset)?;
     let constraints = load_date_constraints(&dates, &graph, &names)?;
 

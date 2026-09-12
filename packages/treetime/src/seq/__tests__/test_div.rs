@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::clock_graph::GraphClock;
   use crate::o;
   use crate::seq::div::{OnlyLeaves, compute_divs};
   use approx::assert_abs_diff_eq;
@@ -48,7 +47,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let graph: GraphClock = graph;
+    let graph: Graph = graph;
 
     let actual = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;
 

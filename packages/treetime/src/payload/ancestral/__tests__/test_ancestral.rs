@@ -5,12 +5,12 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
   use crate::partition::traits::MutationCommentProvider;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NodeCommentProvider, NwkParse, nwk_read_str};
   use treetime_primitives::{AsciiChar, Seq};
@@ -20,7 +20,7 @@ mod tests {
   }
 
   fn make_test_partition(
-    graph: &GraphAncestral,
+    graph: &Graph,
     length: usize,
     edge_subs: &[(usize, Vec<Sub>)],
   ) -> Result<PartitionMarginalSparse, Report> {
@@ -64,14 +64,14 @@ mod tests {
     Ok(partition)
   }
 
-  fn leaf_key(graph: &GraphAncestral) -> GraphNodeKey {
+  fn leaf_key(graph: &Graph) -> GraphNodeKey {
     graph.get_leaves()[0].read_arc().key()
   }
 
   #[test]
   fn test_mutation_comment_provider_formats_1_based_substitutions_and_indels() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let mut partition = make_test_partition(
       &graph,
       100,
@@ -98,7 +98,7 @@ mod tests {
   #[test]
   fn test_mutation_comment_provider_root_has_no_comments() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let partition = make_test_partition(&graph, 100, &[(0, vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?])])?;
     let provider = MutationCommentProvider::new(&partition, &graph);
     let root_key = graph.get_roots()[0].read_arc().key();
@@ -110,7 +110,7 @@ mod tests {
   #[test]
   fn test_mutation_comment_provider_no_mutations_returns_empty() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let partition = make_test_partition(&graph, 100, &[(0, vec![])])?;
     let provider = MutationCommentProvider::new(&partition, &graph);
     let comments = provider.node_comments(leaf_key(&graph))?;
@@ -121,7 +121,7 @@ mod tests {
   #[test]
   fn test_mutation_comment_provider_sorts_by_position() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let partition = make_test_partition(
       &graph,
       100,

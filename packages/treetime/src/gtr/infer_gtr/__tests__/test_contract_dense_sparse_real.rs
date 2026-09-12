@@ -43,9 +43,9 @@ mod tests {
   use crate::partition::traits::TransitionCounting;
   use crate::seq::alignment::get_common_length;
 
-  use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use lazy_static::lazy_static;
+  use treetime_graph::graph::Graph;
 
   use ndarray::{Array1, Array2};
   use rstest::rstest;
@@ -125,7 +125,7 @@ mod tests {
         branch_lengths,
         ..
       } = nwk_read_file(&tree_path)?;
-      let graph: GraphAncestral = graph;
+      let graph: Graph = graph;
       let mut partition = PartitionMarginalDense::new(
         0,
         jc69(JC69Params {
@@ -161,7 +161,7 @@ mod tests {
         branch_lengths,
         ..
       } = nwk_read_file(&tree_path)?;
-      let graph: GraphAncestral = graph;
+      let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &aln, &names)?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths)?
     };

@@ -7,7 +7,6 @@ mod tests {
   use crate::gtr::jc_distance::jukes_cantor_distance;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
@@ -18,6 +17,7 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::seq;
@@ -32,7 +32,7 @@ mod tests {
   }
 
   fn make_partition(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     length: usize,
     edge_mutations: &[(&str, &str, Vec<Sub>)],
@@ -81,10 +81,7 @@ mod tests {
   }
 
   /// Find the new internal node (unnamed, non-root, non-leaf).
-  fn find_unnamed_internal_nodes(
-    graph: &GraphAncestral,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-  ) -> Vec<GraphNodeKey> {
+  fn find_unnamed_internal_nodes(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Vec<GraphNodeKey> {
     graph
       .get_nodes()
       .iter()
@@ -106,7 +103,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)internal:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -135,7 +132,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -168,7 +165,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
     let partition = make_partition(
       &graph,
@@ -234,7 +231,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -295,7 +292,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.2,C:0.3,D:0.4)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -352,7 +349,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
     let partition = make_partition(
       &graph,
@@ -399,7 +396,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.05,B:0.2,C:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let shared: Vec<Sub> = (0..10).map(|i| sub(b'A', i, b'T')).collect();
     let partition = make_partition(
       &graph,
@@ -440,7 +437,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let p1 = make_partition(
       &graph,
@@ -539,7 +536,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -576,7 +573,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let mut partitions: Vec<PartitionMarginalSparse> = vec![];
 
     let mut branch_lengths = branch_lengths;
@@ -596,7 +593,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1,C:0.1)internal1:0.1,D:0.2)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -635,7 +632,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.05,B:0.05,C:0.05)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -682,7 +679,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let shared: Vec<Sub> = (0..10).map(|i| sub(b'A', i, b'T')).collect();
     let partition = make_partition(
       &graph,
@@ -735,7 +732,7 @@ mod tests {
   ) -> Result<(), Report> {
     let newick = format!("(A:{newick_bl},B:{newick_bl},C:{newick_bl})root;");
     let NwkParse { graph, names, branch_lengths, .. } = nwk_read_str(&newick)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let edge_subs = helpers::build_shared_unique_subs(n_shared, n_unique_a, n_unique_b);
     let partition = make_partition(&graph, &names, length, &edge_subs)?;
@@ -764,7 +761,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
     let mut partition = make_partition(
       &graph,
@@ -806,7 +803,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let p1 = make_partition(
       &graph,
@@ -860,7 +857,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -897,7 +894,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let mut partition = make_partition(
       &graph,
       &names,
@@ -935,7 +932,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let mut partition = make_partition(
       &graph,
       &names,
@@ -981,7 +978,7 @@ mod tests {
 
     pub fn extract_branch_lengths(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &GraphAncestral,
+      graph: &Graph,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     ) -> BTreeMap<String, f64> {
       graph
@@ -999,7 +996,7 @@ mod tests {
 
     pub fn extract_edge_mutation_counts<'a>(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &GraphAncestral,
+      graph: &Graph,
       partition: &PartitionMarginalSparse,
     ) -> BTreeMap<Option<&'a str>, (usize, usize)> {
       let p = &partition;
@@ -1054,7 +1051,7 @@ mod tests {
     }
 
     pub fn make_second_partition(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
       edge_subs: &[((&str, &str), Vec<Sub>)],

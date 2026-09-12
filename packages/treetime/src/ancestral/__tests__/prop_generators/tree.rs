@@ -6,9 +6,9 @@
 //! - Caterpillar: maximally unbalanced (for edge cases)
 
 use crate::ancestral::__tests__::prop_generators::branch_length::arb_branch_length;
-use crate::payload::ancestral::GraphAncestral;
 use proptest::prelude::*;
 use std::collections::BTreeSet;
+use treetime_graph::graph::Graph;
 use treetime_io::nwk::{NwkParse, nwk_read_str};
 
 /// Format a subtree with branch length, wrapping in parens only if it's a compound subtree.
@@ -308,7 +308,7 @@ mod tests {
     #[test]
     fn test_prop_tree_arb_newick_parseable_and_leaf_names_exact(newick in arb_newick(6)) {
       let NwkParse { graph, names, .. } = nwk_read_str(&newick).unwrap();
-      let graph: GraphAncestral = graph;
+      let graph: Graph = graph;
 
       let mut actual_names = Vec::new();
       for leaf in graph.get_leaves() {

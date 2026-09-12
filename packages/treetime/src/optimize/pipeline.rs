@@ -14,7 +14,6 @@ use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::traits::{HasGtr, PartitionRerootOps};
-use crate::payload::ancestral::GraphAncestral;
 use crate::progress::ProgressSink;
 use crate::reroot::div_stats::DivStats;
 use crate::reroot::div_stats_traversal::compute_div_stats;
@@ -27,6 +26,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
 use treetime_io::fasta::FastaRecord;
@@ -53,7 +53,7 @@ pub struct OptimizeParams {
 }
 
 pub struct OptimizeInput {
-  pub graph: GraphAncestral,
+  pub graph: Graph,
   pub alphabet: Alphabet,
   pub sequences: Vec<FastaRecord>,
   /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. The optimize loop
@@ -65,7 +65,7 @@ pub struct OptimizeInput {
 #[derive(Debug, Serialize)]
 pub struct OptimizeOutput {
   #[serde(skip)]
-  pub graph: GraphAncestral,
+  pub graph: Graph,
   #[serde(skip)]
   pub gtr: GTR,
   pub model_name: GtrModelName,
@@ -267,7 +267,7 @@ pub fn run(
 
 /// Single damped branch-length pass run before rerooting.
 fn pre_reroot_optimize(
-  graph: &GraphAncestral,
+  graph: &Graph,
   sparse_partitions: &mut [PartitionMarginalSparse],
   dense_partitions: &mut [PartitionMarginalDense],
   opt_method: BranchOptMethod,
@@ -293,7 +293,7 @@ fn pre_reroot_optimize(
 
 /// Reroot the tree by the requested date-free policy and reconcile partitions.
 fn reroot_optimize(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   spec: &RerootSpec,
   sparse_partitions: &mut [PartitionMarginalSparse],
   dense_partitions: &mut [PartitionMarginalDense],
@@ -347,7 +347,7 @@ fn reroot_optimize(
 }
 
 fn resolve_tip_keys(
-  graph: &GraphAncestral,
+  graph: &Graph,
   tips: &[String],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<Vec<GraphNodeKey>, Report> {

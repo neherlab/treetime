@@ -5,7 +5,6 @@ mod tests {
   use crate::coalescent::events::collect_tree_events;
   use crate::coalescent::node_time::CoalescentNodeTime;
   use crate::coalescent::time_coordinate::CalendarTime;
-  use crate::partition::timetree::partition::GraphTimetree;
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
@@ -13,6 +12,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_distribution::{Distribution, NegLog};
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -21,7 +21,7 @@ mod tests {
   fn create_graph_with_dates(
     tree_nwk: &str,
     dates: &DatesMap,
-  ) -> Result<(GraphTimetree, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
+  ) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str(tree_nwk)?;
     let constraints = load_date_constraints(dates, &graph, &names)?;
     Ok((graph, names, constraints))

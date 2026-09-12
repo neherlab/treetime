@@ -8,7 +8,6 @@ mod tests {
 
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
-  use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
@@ -34,7 +33,7 @@ mod tests {
 
   /// Populate partition node entries for all graph nodes with dummy reference sequences.
   /// Required for `edge_subs()` to work (it accesses node data to reconstruct states).
-  fn populate_test_nodes(partition: &mut PartitionMarginalSparse, graph: &GraphAncestral) {
+  fn populate_test_nodes(partition: &mut PartitionMarginalSparse, graph: &Graph) {
     let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(partition.length).collect();
     if partition.root_sequence.is_empty() {
       partition.root_sequence = ref_seq.clone();
@@ -54,7 +53,7 @@ mod tests {
     edge_mutations: &[(usize, Option<usize>)], // (edge_index, num_mutations)
   ) -> Result<
     (
-      GraphAncestral,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       Vec<PartitionMarginalSparse>,
       BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -67,7 +66,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(nwk)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let partitions = if edge_mutations.is_empty() {
       vec![]
@@ -113,7 +112,7 @@ mod tests {
     edge_mutations: &[(&str, &str, Option<usize>)],
   ) -> Result<
     (
-      GraphAncestral,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       Vec<PartitionMarginalSparse>,
       BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -126,7 +125,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(nwk)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let partitions = if edge_mutations.is_empty() {
       vec![]
@@ -223,7 +222,7 @@ mod tests {
 
   #[test]
   fn test_prune_nodes_empty_graph() -> Result<(), Report> {
-    let mut graph: GraphAncestral = Graph::new();
+    let mut graph: Graph = Graph::new();
     let names: BTreeMap<GraphNodeKey, Option<String>> = btreemap! {};
     let mut partitions = vec![];
     let mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = btreemap! {};
@@ -538,7 +537,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("(((A:0.1)internal2:0.1)internal1:0.1,B:0.2,C:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let mut partitions: Vec<PartitionMarginalSparse> = vec![];
 
@@ -576,7 +575,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)internal1:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let mut partitions: Vec<PartitionMarginalSparse> = vec![];
 
@@ -611,7 +610,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("(A:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let mut partitions = vec![];
 
     // Collapse the path starting at leaf A; should stop at root
@@ -629,7 +628,7 @@ mod tests {
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_invalid_edge_key_errors() -> Result<(), Report> {
-    let mut graph = GraphAncestral::new();
+    let mut graph = Graph::new();
 
     let root = graph.add_node();
     let a = graph.add_node();
@@ -832,7 +831,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let root_internal_edge_key = find_edge_key(&graph, &names, "root", "internal").unwrap();
     let internal_a_edge_key = find_edge_key(&graph, &names, "internal", "A").unwrap();
@@ -922,7 +921,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let root_internal_edge_key = find_edge_key(&graph, &names, "root", "internal").unwrap();
     let internal_a_edge_key = find_edge_key(&graph, &names, "internal", "A").unwrap();
@@ -993,7 +992,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let root_internal_edge_key = find_edge_key(&graph, &names, "root", "internal").unwrap();
     let internal_a_edge_key = find_edge_key(&graph, &names, "internal", "A").unwrap();
@@ -1062,7 +1061,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let root_internal_edge_key = find_edge_key(&graph, &names, "root", "internal").unwrap();
     let internal_a_edge_key = find_edge_key(&graph, &names, "internal", "A").unwrap();
@@ -1157,7 +1156,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.2,B:0.1)internal:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let mut partitions = vec![];
 
@@ -1203,7 +1202,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:2e-10,B:3e-10)internal:1e-10)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let mut partitions = vec![];
     prune_nodes(
@@ -1240,7 +1239,7 @@ mod tests {
   fn test_collapse_edge_branch_length_none_plus_some() -> Result<(), Report> {
     // When removed edge has Some and new edge has None, result should stay None
     // (based on collapse_sparse_edge logic: only sums when both are Some)
-    let mut graph = GraphAncestral::new();
+    let mut graph = Graph::new();
 
     let root = graph.add_node();
     let internal = graph.add_node();
@@ -1296,7 +1295,7 @@ mod tests {
   fn test_collapse_edge_branch_length_some_plus_none() -> Result<(), Report> {
     // When removed edge has None and new edge has Some, result should stay as-is (Some)
     // because condition requires both Some
-    let mut graph = GraphAncestral::new();
+    let mut graph = Graph::new();
 
     let root = graph.add_node();
     let internal = graph.add_node();
@@ -1351,7 +1350,7 @@ mod tests {
   #[test]
   fn test_collapse_edge_branch_length_both_none() -> Result<(), Report> {
     // When both edges have None, result should stay None
-    let mut graph = GraphAncestral::new();
+    let mut graph = Graph::new();
 
     let root = graph.add_node();
     let internal = graph.add_node();
@@ -1415,7 +1414,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)I:1e-8,C:0.1,D:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
@@ -1503,7 +1502,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let root_internal_edge_key = find_edge_key(&graph, &names, "root", "internal").unwrap();
     let internal_a_edge_key = find_edge_key(&graph, &names, "internal", "A").unwrap();

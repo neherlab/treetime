@@ -6,10 +6,10 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::traits::PartitionMarginalOps;
-use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
@@ -56,7 +56,7 @@ pub struct MarginalPartitionParams {
 /// with `--model infer`), matching augur's single `infer_gtr=True` inference; there is no outer
 /// GTR-refinement loop here.
 pub fn reconstruct_marginal_partition(
-  graph: &GraphAncestral,
+  graph: &Graph,
   index: usize,
   plan: PartitionPlan,
   params: &MarginalPartitionParams,
@@ -122,7 +122,7 @@ pub fn reconstruct_marginal_partition(
 /// Dense partitions attach their leaf sequences here; sparse partitions already carry them from
 /// construction (`attach_sequences` is a no-op for sparse), so the call is uniform and safe.
 fn run_marginal_passes<P>(
-  graph: &GraphAncestral,
+  graph: &Graph,
   mut partition: P,
   sequences: &[FastaRecord],
   names: &BTreeMap<GraphNodeKey, Option<String>>,

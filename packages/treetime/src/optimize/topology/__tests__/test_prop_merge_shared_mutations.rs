@@ -5,7 +5,6 @@ mod tests {
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_edge_key;
@@ -17,6 +16,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::collections::BTreeSet;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::seq;
@@ -208,7 +208,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
       &names,
@@ -250,7 +250,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
       &names,
@@ -280,7 +280,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
       &names,
@@ -314,7 +314,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1,C:0.1)I:0.1,D:0.1,E:0.1,F:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
       &names,
@@ -348,7 +348,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let mut partition = helpers::make_partition_from_static(
       &graph,
       &names,
@@ -390,7 +390,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let p1 = helpers::make_partition_from_static(
       &graph,
@@ -438,7 +438,7 @@ mod tests {
     use super::*;
 
     type PolytomySetup = (
-      GraphAncestral,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       Vec<(String, String, Vec<Sub>)>,
       usize,
@@ -460,7 +460,7 @@ mod tests {
         branch_lengths,
         ..
       } = nwk_read_str(&newick).unwrap();
-      let graph: GraphAncestral = graph;
+      let graph: Graph = graph;
 
       let mut pos_counter = 0_usize;
       let shared: Vec<Sub> = (pos_counter..pos_counter + n_shared).map(sub_at).collect();
@@ -483,7 +483,7 @@ mod tests {
     }
 
     pub fn make_partition(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
       edge_mutations: &[(String, String, Vec<Sub>)],
@@ -496,7 +496,7 @@ mod tests {
     }
 
     pub fn make_partition_from_static(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
@@ -505,7 +505,7 @@ mod tests {
     }
 
     pub fn make_partition_from_static_indexed(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       index: usize,
       length: usize,

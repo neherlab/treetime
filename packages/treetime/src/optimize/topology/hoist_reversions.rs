@@ -2,13 +2,13 @@ use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::storage::sparse::SparseNodePartition;
-use crate::payload::ancestral::GraphAncestral;
 use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::AsciiChar;
 
@@ -202,7 +202,7 @@ pub(crate) fn slide_bifurcating_root_for_child(
 ///
 /// Returns the key of the new node $N$.
 pub(crate) fn hoist_reverting_child(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
   dense: &mut [PartitionMarginalDense],
   parent_edge_key: GraphEdgeKey,

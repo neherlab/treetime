@@ -1,4 +1,3 @@
-use crate::clock::clock_graph::GraphClock;
 use crate::commands::ancestral::result::{AncestralGraphData, AncestralNodeOut, AncestralOutputMaps};
 use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
 use crate::commands::mugration::augur_node_data::{build_confidence_map, compute_entropy};
@@ -7,7 +6,6 @@ use crate::commands::prune::result::{PruneGraphData, PruneNodeOut, PruneOutputMa
 use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, TimetreeNodeOut, TimetreeOutputMaps};
 use crate::mugration::result::{MugrationGraphData, MugrationNodeOut, MugrationOutputMaps};
 use crate::partition::traits::BranchTopology;
-use crate::payload::ancestral::GraphAncestral;
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, mutation_event_strings};
 use chrono::Utc;
 use eyre::{Report, WrapErr};
@@ -68,7 +66,7 @@ const TYPE_INPUT_BRANCH_SUPPORT: &str = "treetime:input_branch_support";
 const PROPERTY_TOKEN_ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC.remove(b'-').remove(b'.').remove(b'_').remove(b'~');
 
 pub fn write_ancestral_tree_outputs(
-  graph: &GraphAncestral<AncestralGraphData>,
+  graph: &Graph<AncestralGraphData>,
   nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &AncestralOutputMaps,
@@ -93,7 +91,7 @@ pub fn write_ancestral_tree_outputs(
 }
 
 pub fn write_optimize_tree_outputs(
-  graph: &GraphAncestral<OptimizeGraphData>,
+  graph: &Graph<OptimizeGraphData>,
   nodes: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &OptimizeOutputMaps,
@@ -118,7 +116,7 @@ pub fn write_optimize_tree_outputs(
 }
 
 pub fn write_prune_tree_outputs(
-  graph: &GraphAncestral<PruneGraphData>,
+  graph: &Graph<PruneGraphData>,
   nodes: &BTreeMap<GraphNodeKey, PruneNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &PruneOutputMaps,
@@ -143,7 +141,7 @@ pub fn write_prune_tree_outputs(
 }
 
 pub fn write_clock_tree_outputs(
-  graph: &GraphClock<ClockGraphData>,
+  graph: &Graph<ClockGraphData>,
   nodes: &BTreeMap<GraphNodeKey, ClockNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
@@ -167,7 +165,7 @@ pub fn write_clock_tree_outputs(
 }
 
 pub fn write_mugration_tree_outputs(
-  graph: &GraphAncestral<MugrationGraphData>,
+  graph: &Graph<MugrationGraphData>,
   nodes: &BTreeMap<GraphNodeKey, MugrationNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &MugrationOutputMaps,
@@ -295,7 +293,7 @@ where
 }
 
 pub(crate) fn ancestral_to_auspice(
-  graph: &GraphAncestral<AncestralGraphData>,
+  graph: &Graph<AncestralGraphData>,
   nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &AncestralOutputMaps,
@@ -323,7 +321,7 @@ pub(crate) fn ancestral_to_auspice(
 }
 
 pub(crate) fn optimize_to_auspice(
-  graph: &GraphAncestral<OptimizeGraphData>,
+  graph: &Graph<OptimizeGraphData>,
   nodes: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &OptimizeOutputMaps,
@@ -356,7 +354,7 @@ pub(crate) fn optimize_to_auspice(
 }
 
 pub(crate) fn prune_to_auspice(
-  graph: &GraphAncestral<PruneGraphData>,
+  graph: &Graph<PruneGraphData>,
   nodes: &BTreeMap<GraphNodeKey, PruneNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &PruneOutputMaps,
@@ -389,7 +387,7 @@ pub(crate) fn prune_to_auspice(
 }
 
 pub(crate) fn clock_to_auspice(
-  graph: &GraphClock<ClockGraphData>,
+  graph: &Graph<ClockGraphData>,
   nodes: &BTreeMap<GraphNodeKey, ClockNodeOut>,
   updated: &str,
 ) -> Result<AuspiceTree, Report> {
@@ -423,7 +421,7 @@ pub(crate) fn clock_to_auspice(
 }
 
 pub(crate) fn mugration_to_auspice(
-  graph: &GraphAncestral<MugrationGraphData>,
+  graph: &Graph<MugrationGraphData>,
   nodes: &BTreeMap<GraphNodeKey, MugrationNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &MugrationOutputMaps,
@@ -681,7 +679,7 @@ struct TraitValue {
 }
 
 pub(crate) fn ancestral_to_phyloxml(
-  graph: &GraphAncestral<AncestralGraphData>,
+  graph: &Graph<AncestralGraphData>,
   nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &AncestralOutputMaps,
@@ -705,7 +703,7 @@ pub(crate) fn ancestral_to_phyloxml(
 }
 
 pub(crate) fn optimize_to_phyloxml(
-  graph: &GraphAncestral<OptimizeGraphData>,
+  graph: &Graph<OptimizeGraphData>,
   nodes: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &OptimizeOutputMaps,
@@ -728,7 +726,7 @@ pub(crate) fn optimize_to_phyloxml(
 }
 
 pub(crate) fn prune_to_phyloxml(
-  graph: &GraphAncestral<PruneGraphData>,
+  graph: &Graph<PruneGraphData>,
   nodes: &BTreeMap<GraphNodeKey, PruneNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &PruneOutputMaps,
@@ -751,7 +749,7 @@ pub(crate) fn prune_to_phyloxml(
 }
 
 pub(crate) fn clock_to_phyloxml(
-  graph: &GraphClock<ClockGraphData>,
+  graph: &Graph<ClockGraphData>,
   nodes: &BTreeMap<GraphNodeKey, ClockNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<Phyloxml, Report> {
@@ -796,7 +794,7 @@ pub(crate) fn clock_to_phyloxml(
 }
 
 pub(crate) fn mugration_to_phyloxml(
-  graph: &GraphAncestral<MugrationGraphData>,
+  graph: &Graph<MugrationGraphData>,
   nodes: &BTreeMap<GraphNodeKey, MugrationNodeOut>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &MugrationOutputMaps,
@@ -1001,7 +999,7 @@ where
 }
 
 pub(crate) fn ancestral_to_mat(
-  graph: &GraphAncestral<AncestralGraphData>,
+  graph: &Graph<AncestralGraphData>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &AncestralOutputMaps,
@@ -1013,7 +1011,7 @@ pub(crate) fn ancestral_to_mat(
 }
 
 pub(crate) fn optimize_to_mat(
-  graph: &GraphAncestral<OptimizeGraphData>,
+  graph: &Graph<OptimizeGraphData>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &OptimizeOutputMaps,
@@ -1029,7 +1027,7 @@ pub(crate) fn optimize_to_mat(
 }
 
 pub(crate) fn prune_to_mat(
-  graph: &GraphAncestral<PruneGraphData>,
+  graph: &Graph<PruneGraphData>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &PruneOutputMaps,
@@ -1045,7 +1043,7 @@ pub(crate) fn prune_to_mat(
 }
 
 pub(crate) fn clock_to_mat(
-  graph: &GraphClock<ClockGraphData>,
+  graph: &Graph<ClockGraphData>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<UsherTree, Report> {
@@ -1053,7 +1051,7 @@ pub(crate) fn clock_to_mat(
 }
 
 pub(crate) fn mugration_to_mat(
-  graph: &GraphAncestral<MugrationGraphData>,
+  graph: &Graph<MugrationGraphData>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<UsherTree, Report> {
@@ -1184,10 +1182,7 @@ fn mat_nucleotide(nucleotide: AsciiChar, node_name: &str, role: &str) -> Result<
   }
 }
 
-fn ancestral_root_sequences(
-  graph: &GraphAncestral<AncestralGraphData>,
-  maps: &AncestralOutputMaps,
-) -> BTreeMap<String, String> {
+fn ancestral_root_sequences(graph: &Graph<AncestralGraphData>, maps: &AncestralOutputMaps) -> BTreeMap<String, String> {
   let mut sequences = BTreeMap::new();
   if let Some(sequence) = maps.root_sequence.as_ref() {
     sequences.insert(NUC_TRACK.to_owned(), sequence.to_string());
@@ -1199,7 +1194,7 @@ fn ancestral_root_sequences(
 }
 
 fn ancestral_node_sequences(
-  graph: &GraphAncestral<AncestralGraphData>,
+  graph: &Graph<AncestralGraphData>,
   maps: &AncestralOutputMaps,
   node_key: GraphNodeKey,
 ) -> BTreeMap<String, String> {
@@ -1217,7 +1212,7 @@ fn ancestral_node_sequences(
 }
 
 fn ancestral_genome_annotations(
-  graph: &GraphAncestral<AncestralGraphData>,
+  graph: &Graph<AncestralGraphData>,
   root_sequences: &BTreeMap<String, String>,
 ) -> Result<Option<AuspiceGenomeAnnotations>, Report> {
   let nuc = root_sequences
@@ -1365,7 +1360,7 @@ fn timetree_node_sequences(maps: &TimetreeOutputMaps, node_key: GraphNodeKey) ->
 }
 
 fn ancestral_node_mutations(
-  graph: &GraphAncestral<AncestralGraphData>,
+  graph: &Graph<AncestralGraphData>,
   maps: &AncestralOutputMaps,
   node_key: GraphNodeKey,
   edge_key: Option<GraphEdgeKey>,
@@ -1386,7 +1381,7 @@ fn ancestral_node_mutations(
   mutations
 }
 
-fn ancestral_all_mutations(graph: &GraphAncestral<AncestralGraphData>, maps: &AncestralOutputMaps) -> Vec<Mutation> {
+fn ancestral_all_mutations(graph: &Graph<AncestralGraphData>, maps: &AncestralOutputMaps) -> Vec<Mutation> {
   graph
     .get_nodes()
     .into_iter()
@@ -1416,7 +1411,7 @@ fn timetree_mutations(maps: &TimetreeOutputMaps, edge_key: Option<GraphEdgeKey>)
 }
 
 fn mugration_traits(
-  graph: &GraphAncestral<MugrationGraphData>,
+  graph: &Graph<MugrationGraphData>,
   maps: &MugrationOutputMaps,
   node_key: GraphNodeKey,
   node_name: &str,
@@ -1449,7 +1444,7 @@ fn mugration_traits(
 }
 
 fn mugration_transition(
-  graph: &GraphAncestral<MugrationGraphData>,
+  graph: &Graph<MugrationGraphData>,
   maps: &MugrationOutputMaps,
   node_key: GraphNodeKey,
 ) -> Result<Option<(String, String)>, Report> {
@@ -1465,7 +1460,7 @@ fn mugration_transition(
 }
 
 fn mugration_transition_label(
-  graph: &GraphAncestral<MugrationGraphData>,
+  graph: &Graph<MugrationGraphData>,
   maps: &MugrationOutputMaps,
   node_key: GraphNodeKey,
 ) -> Result<Option<AuspiceTreeBranchAttrsLabels>, Report> {

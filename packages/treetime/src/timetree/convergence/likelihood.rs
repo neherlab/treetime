@@ -1,14 +1,15 @@
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::total_lh::compute_coalescent_total_lh;
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+use crate::partition::timetree::partition::PartitionTimetree;
 use crate::partition::traits::graph_log_lh;
 use crate::timetree::timetree_state::TimetreeState;
 use log::{debug, warn};
 use treetime_distribution::Distribution;
+use treetime_graph::graph::Graph;
 use treetime_primitives::LogLh;
 
 /// Sum of per-partition root log-likelihoods from marginal reconstruction.
-pub fn compute_sequence_log_lh(graph: &GraphTimetree, partitions: &[PartitionTimetree]) -> Option<LogLh> {
+pub fn compute_sequence_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Option<LogLh> {
   if partitions.is_empty() {
     return None;
   }
@@ -29,7 +30,7 @@ pub fn compute_sequence_log_lh(graph: &GraphTimetree, partitions: &[PartitionTim
 /// This is a v1-specific metric. v0's `positional_LH` sums node-level marginal
 /// log-likelihoods from the forward pass. Both metrics trend in the same direction
 /// during convergence but produce different numerical values.
-pub fn compute_positional_log_lh(graph: &GraphTimetree, state: &TimetreeState) -> Option<LogLh> {
+pub fn compute_positional_log_lh(graph: &Graph, state: &TimetreeState) -> Option<LogLh> {
   let mut total = 0.0;
   let mut count = 0_usize;
 
@@ -75,7 +76,7 @@ pub fn compute_positional_log_lh(graph: &GraphTimetree, state: &TimetreeState) -
 /// Sums per-edge costs under the Kingman coalescent for the given Tc distribution.
 /// Returns `None` when no coalescent model is active (coalescent_tc is None).
 pub fn compute_coalescent_log_lh(
-  graph: &GraphTimetree,
+  graph: &Graph,
   coalescent_tc: Option<&Distribution>,
   node_times: &CoalescentNodeTimes,
 ) -> Option<LogLh> {

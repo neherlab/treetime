@@ -61,12 +61,12 @@ mod tests {
     use crate::ancestral::marginal::{ancestral_reconstruction_marginal, marginal_update, profile_branch_lengths};
     use crate::ancestral::sample::SampleMode;
     use crate::gtr::get_gtr::{JC69Params, jc69};
-    use crate::payload::ancestral::GraphAncestral;
     use eyre::Report;
     use indoc::indoc;
     use rand::SeedableRng;
     use rand::rngs::StdRng;
     use std::collections::BTreeMap;
+    use treetime_graph::graph::Graph;
     use treetime_io::fasta::read_many_fasta_str;
     use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -101,7 +101,7 @@ mod tests {
         ..
       } = nwk_read_str(TREE)?;
 
-      let graph: GraphAncestral = graph;
+      let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
       let mut partitions = [fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
 

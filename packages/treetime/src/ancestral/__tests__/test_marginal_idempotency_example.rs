@@ -4,9 +4,9 @@ mod tests {
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
   use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
+  use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -82,7 +82,7 @@ TCGGCCGTGTRTTG--
       branch_lengths,
       ..
     } = nwk_read_str(&input.newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (_, mut partitions) = run_dense_marginal(&input)?;
 
     let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
@@ -115,7 +115,7 @@ TCGGCCGTGTRTTG--
       branch_lengths,
       ..
     } = nwk_read_str(&input.newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (_, mut partitions) = run_sparse_marginal(&input)?;
 
     let log_lh_first = marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();

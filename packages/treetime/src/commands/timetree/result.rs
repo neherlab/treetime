@@ -1,12 +1,12 @@
 use crate::clock::clock_model::ClockModel;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
-use crate::partition::timetree::partition::GraphTimetree;
 use crate::seq::mutation::Mutation;
 use crate::timetree::confidence::NodeConfidenceInterval;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DatesMap;
 use treetime_primitives::Seq;
@@ -96,7 +96,7 @@ impl TimetreeEdgeOut {
 #[derive(Serialize)]
 pub struct TimetreeResult {
   #[serde(skip)]
-  pub graph: GraphTimetree<TimetreeGraphData>,
+  pub graph: Graph<TimetreeGraphData>,
   #[serde(skip)]
   pub nodes: BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   #[serde(skip)]

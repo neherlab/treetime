@@ -1,4 +1,4 @@
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+use crate::partition::timetree::partition::PartitionTimetree;
 use crate::timetree::convergence::likelihood::{
   compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
 };
@@ -9,6 +9,7 @@ use eyre::Report;
 use log::info;
 use std::io::Write;
 use treetime_distribution::Distribution;
+use treetime_graph::graph::Graph;
 use treetime_io::csv::CsvStructWriter;
 
 pub struct TimetreeOptimizer {
@@ -52,7 +53,7 @@ impl TimetreeOptimizer {
     n_diff: usize,
     n_resolved: usize,
     time_change: NodeTimeChange,
-    graph: &GraphTimetree,
+    graph: &Graph,
     partitions: &[PartitionTimetree],
     state: &TimetreeState,
     coalescent_tc: Option<&Distribution>,

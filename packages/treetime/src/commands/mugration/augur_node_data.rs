@@ -1,9 +1,9 @@
 use crate::mugration::result::{MugrationOutputMaps, MugrationResult};
 use crate::partition::storage::discrete::DiscreteStates;
-use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use util_augur_node_data_json::{
@@ -88,7 +88,7 @@ fn build_models(attribute: &str, maps: &MugrationOutputMaps) -> BTreeMap<String,
 
 fn build_nodes<D: Send + Sync>(
   attribute: &str,
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   maps: &MugrationOutputMaps,
 ) -> BTreeMap<String, AugurNodeDataJsonTraitsNode> {
@@ -145,7 +145,7 @@ pub(crate) fn compute_entropy(profile: &ndarray::Array1<f64>) -> f64 {
 
 fn build_branches<D: Send + Sync>(
   attribute: &str,
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   maps: &MugrationOutputMaps,
 ) -> BTreeMap<String, AugurNodeDataJsonTraitsBranches> {
@@ -191,7 +191,7 @@ fn build_branches<D: Send + Sync>(
 }
 
 fn build_parent_trait_map<D: Send + Sync>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   maps: &MugrationOutputMaps,
 ) -> BTreeMap<GraphNodeKey, Option<String>> {
   let mut map = BTreeMap::new();

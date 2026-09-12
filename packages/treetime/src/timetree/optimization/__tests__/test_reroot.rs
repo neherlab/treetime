@@ -12,7 +12,7 @@ mod tests {
   use crate::o;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition, SparseSeqDistribution};
-  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+  use crate::partition::timetree::partition::PartitionTimetree;
   use crate::partition::traits::PartitionRerootOps;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::indel::InDel;
@@ -27,6 +27,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::reroot::RerootChanges;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -43,7 +44,7 @@ mod tests {
   /// Per-leaf date inputs as a value map, replacing the payload `time_distribution` the tests used to
   /// write. Each dated leaf carries a point distribution at its date; internal nodes get no entry,
   /// which `seed_from_values` reads as no constraint.
-  fn date_constraints(names: &BTreeMap<GraphNodeKey, Option<String>>, graph: &GraphTimetree) -> DateConstraints {
+  fn date_constraints(names: &BTreeMap<GraphNodeKey, Option<String>>, graph: &Graph) -> DateConstraints {
     let dates = btreemap! {
       o!("A") => 2013.0,
       o!("B") => 2022.0,
@@ -93,7 +94,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphTimetree = graph;
+    let mut graph: Graph = graph;
     let constraints = date_constraints(&names, &graph);
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -175,7 +176,7 @@ mod tests {
     // Tree: (A:0.1,B:0.2)root;
     // After reroot to A, edge direction inverts
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
@@ -261,7 +262,7 @@ mod tests {
     //
     // Tree: (A:0.1,B:0.2)root;
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
@@ -346,7 +347,7 @@ mod tests {
   #[test]
   fn test_reroot_root_sequence_updated_with_indel() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
 
@@ -404,7 +405,7 @@ mod tests {
   #[test]
   fn test_reroot_root_sequence_multi_hop() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.3)root;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
 
@@ -485,7 +486,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphTimetree = graph;
+    let mut graph: Graph = graph;
     let constraints = date_constraints(&names, &graph);
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;

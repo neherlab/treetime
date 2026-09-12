@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::timetree::partition::GraphTimetree;
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
@@ -10,6 +9,7 @@ mod tests {
   use serde::Deserialize;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::io::json::json_read_str;
   use treetime_utils::pretty_assert_map_ulps_eq;
@@ -33,7 +33,7 @@ mod tests {
       .find(|output| output.name == case_name)
       .ok_or_else(|| eyre::eyre!("Golden-master output case {case_name} not found"))?;
     let NwkParse { graph, names, branch_lengths, .. } = nwk_read_str(&input.newick)?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
 
     let mut state = TimetreeState::new(&graph);
     for (name, branch) in &input.branches {
@@ -121,7 +121,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root:0.0;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
@@ -276,7 +276,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.01,B:0.02)AB:0.015,(C:0.005,D:0.01)CD:0.008)root:0.0;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
 
     let params = [1.0, 1.0];
 
@@ -354,7 +354,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1)root:0.0;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
@@ -399,7 +399,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("root:0.0;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
     let params = [slack, 1.0];
     let mut state = TimetreeState::new(&graph);
     apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &mut state)?;
@@ -422,7 +422,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.01)root:0.0;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
@@ -464,14 +464,14 @@ mod tests {
       pub gammas: BTreeMap<String, f64>,
     }
 
-    pub fn build_simple_tree() -> Result<(GraphTimetree, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    pub fn build_simple_tree() -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let NwkParse {
         graph, branch_lengths, ..
       } = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?;
       Ok((graph, branch_lengths))
     }
 
-    pub fn build_deep_tree() -> Result<(GraphTimetree, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    pub fn build_deep_tree() -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let NwkParse {
         graph, branch_lengths, ..
       } = nwk_read_str("((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;")?;
@@ -481,7 +481,7 @@ mod tests {
     /// Fresh date state whose edge time lengths come from the value path: each edge's time length is
     /// `factor * branch_length`, replacing what the tests previously wrote onto the edge payload.
     pub fn seed_state_scaled(
-      graph: &GraphTimetree,
+      graph: &Graph,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
       factor: f64,
     ) -> TimetreeState {

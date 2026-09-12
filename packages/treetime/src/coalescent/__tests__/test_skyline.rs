@@ -4,11 +4,11 @@ mod tests {
   use crate::coalescent::__tests__::helpers::coalescent_node_times;
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
-  use crate::partition::timetree::partition::GraphTimetree;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use maplit::btreemap;
   use rstest::rstest;
+  use treetime_graph::graph::Graph;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::assert_error;
@@ -261,10 +261,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub fn create_graph_with_dates(
-      tree_nwk: &str,
-      dates: &DatesMap,
-    ) -> Result<(GraphTimetree, DateConstraints), Report> {
+    pub fn create_graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<(Graph, DateConstraints), Report> {
       let NwkParse { graph, names, .. } = nwk_read_str(tree_nwk)?;
       let constraints = load_date_constraints(dates, &graph, &names)?;
       Ok((graph, constraints))

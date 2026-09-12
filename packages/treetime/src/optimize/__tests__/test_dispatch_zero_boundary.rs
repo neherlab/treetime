@@ -15,11 +15,11 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
 
   use ndarray::array;
@@ -55,7 +55,7 @@ mod tests {
   /// into `run_optimize_mixed`, forcing each method to perform real
   /// optimization work.
   fn setup_identical_partitions(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     model: GtrModelName,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -115,7 +115,7 @@ mod tests {
   fn test_dispatch_zero_boundary_k80_identical_sequences(#[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
     let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
 
@@ -164,7 +164,7 @@ mod tests {
   fn test_dispatch_zero_boundary_non_unimodal_models_all_reach_zero(#[case] model: GtrModelName,
   ) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, model, &mut branch_lengths)?;
     let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
 
@@ -208,7 +208,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) =
       setup_identical_partitions(&graph, &names, GtrModelName::JC69, &mut branch_lengths)?;
     let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
@@ -476,7 +476,7 @@ mod tests {
   fn test_dispatch_zero_boundary_topology_cleanup_collects_k80_internal_edges(#[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
     let mixed_partitions = optimize_partition_view(&dense_partitions, &sparse_partitions);
 

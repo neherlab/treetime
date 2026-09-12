@@ -13,11 +13,11 @@ mod tests {
   use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::traits::TransitionCounting;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use lazy_static::lazy_static;
+  use treetime_graph::graph::Graph;
 
   use rstest::rstest;
   use serde::Deserialize;
@@ -128,21 +128,14 @@ mod tests {
   fn setup_dense_partition(
     tree_nwk: &str,
     aln: &[FastaRecord],
-  ) -> Result<
-    (
-      GraphAncestral,
-      PartitionMarginalDense,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
+  ) -> Result<(Graph, PartitionMarginalDense, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let NwkParse {
       graph,
       names,
       branch_lengths,
       ..
     } = nwk_read_str(tree_nwk)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -165,14 +158,7 @@ mod tests {
   fn setup_dense_partition_from_files(
     tree_path: impl AsRef<Path>,
     alignment_path: impl AsRef<Path>,
-  ) -> Result<
-    (
-      GraphAncestral,
-      PartitionMarginalDense,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
+  ) -> Result<(Graph, PartitionMarginalDense, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let tree_path = PROJECT_ROOT.join(tree_path);
     let alignment_path = PROJECT_ROOT.join(alignment_path);
 
@@ -183,7 +169,7 @@ mod tests {
       ..
     } = nwk_read_file(&tree_path)?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = read_many_fasta(&[&alignment_path], &*NUC_ALPHABET)?;
 
     let gtr = jc69(JC69Params {

@@ -23,10 +23,10 @@ pub mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
+  use treetime_graph::graph::Graph;
 
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
@@ -53,7 +53,7 @@ pub mod tests {
   }
 
   pub fn setup_dense_only(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -79,7 +79,7 @@ pub mod tests {
   }
 
   pub fn setup_sparse_only(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -92,7 +92,7 @@ pub mod tests {
     Ok(partitions)
   }
 
-  pub fn get_branch_lengths(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
+  pub fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
       .iter()

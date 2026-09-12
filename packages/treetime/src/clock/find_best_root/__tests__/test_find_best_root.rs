@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::clock_graph::GraphClock;
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::clock::clock_state::ClockState;
   use crate::clock::find_best_root::find_best_root::find_best_root;
@@ -14,12 +13,13 @@ mod tests {
   use maplit::btreemap;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   fn leaf_times(
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    graph: &GraphClock,
+    graph: &Graph,
     dates: &BTreeMap<String, f64>,
   ) -> BTreeMap<GraphNodeKey, Option<f64>> {
     graph
@@ -37,7 +37,7 @@ mod tests {
     dates: &BTreeMap<String, f64>,
   ) -> Result<
     (
-      GraphClock,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       ClockParams,
       ClockState,
@@ -51,7 +51,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let graph: GraphClock = graph;
+    let graph: Graph = graph;
     let times = leaf_times(&names, &graph, dates);
 
     let options = ClockParams::default();
@@ -64,7 +64,7 @@ mod tests {
 
   fn setup_test_graph() -> Result<
     (
-      GraphClock,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       ClockParams,
       ClockState,
@@ -82,7 +82,7 @@ mod tests {
   }
 
   fn get_edge_node_names(
-    graph: &GraphClock,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     result: &FindRootResult,
   ) -> (String, String) {
@@ -383,7 +383,7 @@ mod tests {
   /// Root-to-tip: A=0.2, B=0.3, C=0.25, D=0.17
   fn setup_negative_rate_graph() -> Result<
     (
-      GraphClock,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       ClockParams,
       ClockState,

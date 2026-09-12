@@ -7,13 +7,13 @@ mod tests {
   use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping};
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, marginal_branch_lengths, run_optimize_loop};
-  use crate::payload::ancestral::GraphAncestral;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use num_traits::pow::pow;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   // At very high iteration counts, the exponential damping factor decays below the floor.
@@ -29,7 +29,7 @@ mod tests {
   ) -> Result<(), Report> {
     let damping = 0.75;
     let NwkParse { graph, names, branch_lengths, .. } = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let old_bls = branch_lengths;
 
     // Set all "optimized" branch lengths to zero.
@@ -59,7 +59,7 @@ mod tests {
       ..
     } = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let old_bls = branch_lengths;
 
     let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(0.0))).collect();
@@ -83,7 +83,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_6 = names.clone();
@@ -120,7 +120,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     // Undamped with dp=0 (convergence/oscillation checks never fire) forces the
@@ -177,7 +177,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_4 = names.clone();
@@ -223,7 +223,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     // Use damping to prevent the worsened condition from firing, but set dp
@@ -264,7 +264,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     // Only 2 iterations with dp=0 and damping. The worsened condition requires
@@ -302,7 +302,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     // Use the setup but only dense partitions (sparse empty)
     let (mut dense_partitions, _sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;

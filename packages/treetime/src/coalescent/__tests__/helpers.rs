@@ -1,10 +1,10 @@
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::coalescent::node_time::CoalescentNodeTimes;
-use crate::partition::timetree::partition::GraphTimetree;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DateConstraint;
 use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -12,7 +12,7 @@ use treetime_utils::o;
 
 pub const TREE_NWK: &str = "((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;";
 
-pub fn setup_graph() -> Result<(GraphTimetree, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
+pub fn setup_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
   let dates = btreemap! {
     o!("root") => Some(DateConstraint::exact(2000.0)),
     o!("internal1") => Some(DateConstraint::exact(2005.0)),
@@ -21,7 +21,7 @@ pub fn setup_graph() -> Result<(GraphTimetree, BTreeMap<GraphNodeKey, Option<Str
     o!("leaf3") => Some(DateConstraint::exact(2012.0)),
   };
   let NwkParse { graph, names, .. } = nwk_read_str(TREE_NWK)?;
-  let graph: GraphTimetree = graph;
+  let graph: Graph = graph;
   let constraints = load_date_constraints(&dates, &graph, &names)?;
   Ok((graph, names, constraints))
 }
@@ -30,6 +30,6 @@ pub fn setup_graph() -> Result<(GraphTimetree, BTreeMap<GraphNodeKey, Option<Str
 /// [`load_date_constraints`] returns, matching what the payload-reading seed produced right after the
 /// constraints load: each node's committed time starts `None`, its distribution peak comes from the
 /// constraint, and its bad-branch flag from the constraint pass.
-pub fn coalescent_node_times(graph: &GraphTimetree, constraints: &DateConstraints) -> CoalescentNodeTimes {
+pub fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
   TimetreeState::seed_from_values(graph, constraints).coalescent_node_times()
 }

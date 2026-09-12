@@ -8,16 +8,16 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
   use crate::partition::traits::PartitionOptimizeOps;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
   use eyre::Report;
+  use treetime_graph::graph::Graph;
 
   use pretty_assertions::assert_eq;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
-  fn setup_dense_with_unknowns() -> Result<(GraphAncestral, PartitionMarginalDense), Report> {
+  fn setup_dense_with_unknowns() -> Result<(Graph, PartitionMarginalDense), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let fasta = "
 >A
@@ -35,7 +35,7 @@ NNGTACGTAC
       branch_lengths,
       ..
     } = nwk_read_str(newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
@@ -53,7 +53,7 @@ NNGTACGTAC
     Ok((graph, partition))
   }
 
-  fn setup_sparse_with_unknowns() -> Result<(GraphAncestral, PartitionMarginalSparse), Report> {
+  fn setup_sparse_with_unknowns() -> Result<(Graph, PartitionMarginalSparse), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let fasta = "
 >A
@@ -71,7 +71,7 @@ NNGTACGTAC
       branch_lengths,
       ..
     } = nwk_read_str(newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
@@ -161,7 +161,7 @@ NNGTACGTAC
     Ok(())
   }
 
-  fn setup_dense_with_gaps() -> Result<(GraphAncestral, PartitionMarginalDense), Report> {
+  fn setup_dense_with_gaps() -> Result<(Graph, PartitionMarginalDense), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let fasta = "
 >A
@@ -179,7 +179,7 @@ ACGTACGTAC
       branch_lengths,
       ..
     } = nwk_read_str(newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
@@ -238,7 +238,7 @@ ACGTACGTAC
     Ok(())
   }
 
-  fn setup_sparse_with_gaps() -> Result<(GraphAncestral, PartitionMarginalSparse), Report> {
+  fn setup_sparse_with_gaps() -> Result<(Graph, PartitionMarginalSparse), Report> {
     let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let fasta = "
 >A
@@ -256,7 +256,7 @@ ACGTACGTAC
       branch_lengths,
       ..
     } = nwk_read_str(newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;

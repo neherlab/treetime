@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::payload::ancestral::GraphAncestral;
   use crate::reroot::div_stats::DivStats;
   use crate::reroot::div_stats_traversal::compute_div_stats;
   use crate::reroot::params::BrentParams;
@@ -9,6 +8,7 @@ mod tests {
   use crate::reroot::variance::VarianceModel;
   use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use eyre::Report;
+  use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   // Root-to-tip distances {0.1, 0.3} => variance (0.1-0.3)^2/4 = 0.01 at the
@@ -21,7 +21,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.3)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let field = compute_div_stats(&graph, &branch_lengths, &VarianceModel::default())?;
     assert_ulps_eq!(field.root_stats.count(), 2.0, max_ulps = 4);
     assert_ulps_eq!(field.root_stats.d_sum(), 0.4, max_ulps = 4);
@@ -40,7 +40,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.3)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let field = compute_div_stats(&graph, &branch_lengths, &VarianceModel::default())?;
     let best = find_best_root(
       &graph,
@@ -66,7 +66,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.2,B:0.2)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let field = compute_div_stats(&graph, &branch_lengths, &VarianceModel::default())?;
     let best = find_best_root(
       &graph,
@@ -91,7 +91,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.2,B:0.2,C:0.2)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let field = compute_div_stats(&graph, &branch_lengths, &VarianceModel::default())?;
     let best = find_best_root(
       &graph,
@@ -116,7 +116,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)i:0.3,C:0.4)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let field = compute_div_stats(&graph, &branch_lengths, &VarianceModel::default())?;
     assert_eq!(field.edge_stats.len(), graph.get_edges().len());
     for (to_parent, to_child) in field.edge_stats.values() {
@@ -134,7 +134,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.1,B:0.3)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let field = compute_div_stats(&graph, &branch_lengths, &VarianceModel::default())?;
     let score = <DivStats as RootStats>::score(&field.root_stats);
     assert_ulps_eq!(score, 0.01, max_ulps = 8);

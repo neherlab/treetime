@@ -5,7 +5,6 @@ mod tests {
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::o;
-  use crate::partition::timetree::partition::GraphTimetree;
   use eyre::{Report, WrapErr};
   use indexmap::IndexMap;
   use ndarray::Array1;
@@ -14,6 +13,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::path::Path;
   use treetime_distribution::Distribution;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::grid::Grid;
   use treetime_io::dates_csv::read_dates;
@@ -129,7 +129,7 @@ mod tests {
 
   fn load_graph(
     snapshot: &Snapshot,
-  ) -> Result<(GraphTimetree, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
+  ) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
     let fixtures_dir = Path::new(FIXTURES_DIR);
     let NwkParse { graph, names, .. } = nwk_read_file(fixtures_dir.join(&snapshot.inputs.tree_path))?;
     let dates = read_dates(

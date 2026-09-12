@@ -1,9 +1,9 @@
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 
 /// Collapse a single edge, updating graph topology and partition state.
 ///
@@ -31,7 +31,7 @@ use treetime_graph::edge::GraphEdgeKey;
 /// reverse substitution on the child edge) cancel to no net change. See
 /// [`compose_substitutions`] for the exact composition semantics.
 pub fn collapse_edge(
-  graph: &mut GraphAncestral,
+  graph: &mut Graph,
   sparse_partitions: &mut [PartitionMarginalSparse],
   dense_partitions: &mut [PartitionMarginalDense],
   edge_key: GraphEdgeKey,

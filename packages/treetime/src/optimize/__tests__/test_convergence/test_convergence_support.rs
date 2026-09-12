@@ -8,12 +8,12 @@ pub mod tests {
   use crate::optimize::run_loop::optimize_partition_view;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
 
   use std::sync::LazyLock;
@@ -41,7 +41,7 @@ pub mod tests {
   }
 
   pub fn setup_partitions(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -75,7 +75,7 @@ pub mod tests {
   }
 
   pub fn compute_total_lh(
-    graph: &GraphAncestral,
+    graph: &Graph,
     dense_partitions: &mut [PartitionMarginalDense],
     sparse_partitions: &mut [PartitionMarginalSparse],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,

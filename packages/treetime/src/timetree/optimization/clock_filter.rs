@@ -1,12 +1,12 @@
 use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_state::ClockState;
-use crate::partition::timetree::partition::GraphTimetree;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use itertools::Itertools;
 use log::warn;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
@@ -24,7 +24,7 @@ pub struct OutlierRecord {
 /// from the date-state `given_dates` map (the same node dates the filter regressed on); the leaf name
 /// stays transitional on the payload.
 pub fn collect_outliers(
-  graph: &GraphTimetree,
+  graph: &Graph,
   clock_state: &ClockState,
   clock_model: &ClockModel,
   iqd: f64,
@@ -60,7 +60,7 @@ pub fn collect_outliers(
 
 /// Report outlier branches that violate molecular clock.
 pub fn report_bad_branches(
-  graph: &GraphTimetree,
+  graph: &Graph,
   clock_state: &ClockState,
   clock_model: &ClockModel,
   iqd: f64,
@@ -97,7 +97,7 @@ pub fn report_bad_branches(
 /// The outlier flag is read from the threaded [`ClockState`] value; the bad-branch flag is written
 /// into the threaded [`TimetreeState`] value, the home the coalescent and date passes read.
 pub fn apply_outlier_bad_branches(
-  graph: &GraphTimetree,
+  graph: &Graph,
   clock_state: &ClockState,
   state: &mut TimetreeState,
 ) -> Result<(), Report> {
@@ -115,7 +115,7 @@ pub fn apply_outlier_bad_branches(
 ///
 /// Each internal node's flag is the conjunction of its children's flags, read from the threaded
 /// [`TimetreeState`] value and written back into it.
-pub fn propagate_bad_branches(graph: &GraphTimetree, state: &mut TimetreeState) -> Result<(), Report> {
+pub fn propagate_bad_branches(graph: &Graph, state: &mut TimetreeState) -> Result<(), Report> {
   graph.iter_depth_first_postorder_forward(|node| {
     if node.is_leaf {
       return Ok(());

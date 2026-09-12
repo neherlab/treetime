@@ -1,12 +1,12 @@
 use crate::clock::clock_model::ClockModel;
 use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut};
-use crate::partition::timetree::partition::GraphTimetree;
 use crate::partition::traits::BranchTopology;
 use crate::timetree::confidence::NodeConfidenceInterval;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::{DateConstraint, DatesMap};
 use treetime_utils::datetime::year_fraction::year_fraction_to_datestring;
@@ -50,7 +50,7 @@ use util_augur_node_data_json::{
 /// mutation count instead of the ML branch length (subs/site). `branch_length`
 /// and `clock_length` remain time-valued (years) regardless.
 pub fn build_augur_node_data_json<D: Send + Sync>(
-  graph: &GraphTimetree<D>,
+  graph: &Graph<D>,
   outputs: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
   clock_model: &ClockModel,
@@ -147,7 +147,7 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
 }
 
 pub fn write_augur_node_data_json<D: Send + Sync>(
-  graph: &GraphTimetree<D>,
+  graph: &Graph<D>,
   outputs: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
   clock_model: &ClockModel,

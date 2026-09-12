@@ -1,8 +1,8 @@
-use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_state::ClockState;
 use crate::make_error;
 use eyre::Report;
 use std::collections::BTreeMap;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DatesMap;
 
@@ -14,7 +14,7 @@ const MIN_GOOD_LEAVES: usize = 3;
 /// is a dateless leaf). The postorder walk visits children before parents, so each child's flag is
 /// already in `state` when the parent reads it.
 pub fn assign_dates(
-  graph: &GraphClock,
+  graph: &Graph,
   dates: &DatesMap,
   state: &mut ClockState,
   names: &BTreeMap<GraphNodeKey, Option<String>>,

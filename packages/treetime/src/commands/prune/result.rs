@@ -1,9 +1,9 @@
 use crate::gtr::gtr::GTR;
-use crate::payload::ancestral::GraphAncestral;
 use crate::seq::mutation::Mutation;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 
@@ -54,7 +54,7 @@ pub struct EdgeOut {
 #[derive(Serialize)]
 pub struct PruneResult {
   #[serde(skip)]
-  pub graph: GraphAncestral<PruneGraphData>,
+  pub graph: Graph<PruneGraphData>,
   #[serde(skip)]
   pub nodes: BTreeMap<GraphNodeKey, PruneNodeOut>,
   #[serde(skip)]

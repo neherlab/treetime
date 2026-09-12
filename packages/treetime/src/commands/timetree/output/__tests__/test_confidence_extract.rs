@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::timetree::partition::GraphTimetree;
   use crate::timetree::confidence::{extract_confidence_intervals, write_confidence_intervals};
   use approx::assert_relative_eq;
   use helpers::add_named;
@@ -9,10 +8,11 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
+  use treetime_graph::graph::Graph;
 
   #[test]
   fn test_extract_confidence_intervals_includes_unnamed_nodes() {
-    let mut graph = GraphTimetree::new();
+    let mut graph = Graph::new();
     let mut names = BTreeMap::new();
     let unnamed_key = add_named(&mut graph, &mut names, None);
     let named_key = add_named(&mut graph, &mut names, Some("named"));
@@ -31,7 +31,7 @@ mod tests {
 
   #[test]
   fn test_extract_confidence_intervals_skips_nodes_without_time() {
-    let mut graph = GraphTimetree::new();
+    let mut graph = Graph::new();
     let mut names = BTreeMap::new();
     let no_time_key = add_named(&mut graph, &mut names, Some("no_time"));
     let has_time_key = add_named(&mut graph, &mut names, Some("has_time"));
@@ -45,7 +45,7 @@ mod tests {
 
   #[test]
   fn test_extract_confidence_intervals_uses_date_as_fallback() {
-    let mut graph = GraphTimetree::new();
+    let mut graph = Graph::new();
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
@@ -64,7 +64,7 @@ mod tests {
   #[ignore = "marginal-posterior HPD disabled pending NegLog-aware HPD"]
   #[test]
   fn test_extract_confidence_intervals_with_distribution() {
-    let mut graph = GraphTimetree::new();
+    let mut graph = Graph::new();
     let mut names = BTreeMap::new();
     let dist = Arc::new(Distribution::range((2019.0, 2021.0), 0.0));
     let key = add_named(&mut graph, &mut names, Some("node_a"));
@@ -81,7 +81,7 @@ mod tests {
 
   #[test]
   fn test_extract_confidence_intervals_sorted_by_key() {
-    let mut graph = GraphTimetree::new();
+    let mut graph = Graph::new();
     let mut names = BTreeMap::new();
     // Insertion order: zebra (key 0), alpha (key 1), middle (key 2)
     let zebra_key = add_named(&mut graph, &mut names, Some("zebra"));
@@ -108,7 +108,7 @@ mod tests {
   #[test]
   fn test_extract_confidence_intervals_rate_only() {
     // Rate susceptibility data but no marginal distribution
-    let mut graph = GraphTimetree::new();
+    let mut graph = Graph::new();
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
@@ -133,7 +133,7 @@ mod tests {
   fn test_extract_confidence_intervals_combined_wider_than_either() {
     // Both marginal distribution and rate susceptibility data present.
     // The quadrature combination must be wider than either source alone.
-    let mut graph = GraphTimetree::new();
+    let mut graph = Graph::new();
     let mut names = BTreeMap::new();
     let dist = Arc::new(Distribution::range((2008.0, 2012.0), 0.0));
     let key = add_named(&mut graph, &mut names, Some("node_a"));
@@ -161,7 +161,7 @@ mod tests {
     // When the final marginal pass date differs from the rate susceptibility
     // central date, the raw rate CI may not bracket the point estimate.
     // The postcondition clamp ensures lower <= date <= upper.
-    let mut graph = GraphTimetree::new();
+    let mut graph = Graph::new();
     let mut names = BTreeMap::new();
     // date = 2020.5 (final pass), rate susceptibility centered on 2020.0
     // with small variation [2019.9, 2020.0, 2020.1].
@@ -186,7 +186,7 @@ mod tests {
   #[test]
   fn test_extract_confidence_intervals_clamps_when_date_below_rate_ci() {
     // Mirror case: date below the raw rate CI lower bound.
-    let mut graph = GraphTimetree::new();
+    let mut graph = Graph::new();
     let mut names = BTreeMap::new();
     // date = 2019.5 (final pass), rate susceptibility centered on 2020.0
     // Rate CI at 90%: [2019.836, 2020.164]
@@ -240,7 +240,7 @@ mod tests {
     let dist = Distribution::Function(dist_fn);
     let peak_time = dist.likely_time().unwrap();
 
-    let mut graph = GraphTimetree::new();
+    let mut graph = Graph::new();
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("skewed"));
     graph.build().unwrap();
@@ -262,7 +262,7 @@ mod tests {
     // The confidence TSV mirrors the augur node-data contract: columns are
     // name, date, lower, upper. The graph node key is internal (serde-skipped)
     // and must never leak as a serialized column.
-    let mut graph = GraphTimetree::new();
+    let mut graph = Graph::new();
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("named"));
     graph.build().unwrap();
@@ -278,11 +278,11 @@ mod tests {
   }
 
   mod helpers {
-    use crate::partition::timetree::partition::GraphTimetree;
     use crate::timetree::timetree_state::TimetreeState;
     use std::collections::BTreeMap;
     use std::sync::Arc;
     use treetime_distribution::{Distribution, NegLog};
+    use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
 
     /// Per-node committed time and time distribution the confidence extraction reads, keyed by node.
@@ -290,7 +290,7 @@ mod tests {
 
     /// Date state built from the test nodes' committed times and distributions as values, so
     /// `extract_confidence_intervals` reads them from the state rather than the graph payload.
-    pub fn state(graph: &GraphTimetree, entries: &[NodeTimeEntry]) -> TimetreeState {
+    pub fn state(graph: &Graph, entries: &[NodeTimeEntry]) -> TimetreeState {
       let mut state = TimetreeState::new(graph);
       for (key, time, dist) in entries {
         let node = state.node_mut(*key);
@@ -301,7 +301,7 @@ mod tests {
     }
 
     pub fn add_named(
-      graph: &mut GraphTimetree,
+      graph: &mut Graph,
       names: &mut BTreeMap<GraphNodeKey, Option<String>>,
       name: Option<&str>,
     ) -> GraphNodeKey {

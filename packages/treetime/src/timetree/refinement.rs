@@ -5,7 +5,7 @@ use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+use crate::partition::timetree::partition::PartitionTimetree;
 use crate::partition::traits::PartitionMarginalPasses;
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
@@ -21,11 +21,12 @@ use log::info;
 use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
 pub(crate) struct Refinement<'a> {
-  pub graph: &'a mut GraphTimetree,
+  pub graph: &'a mut Graph,
   pub partitions: &'a mut [PartitionTimetree],
   pub clock_model: &'a mut ClockModel,
   pub clock_params: &'a ClockParams,

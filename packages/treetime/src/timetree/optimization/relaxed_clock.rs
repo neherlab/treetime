@@ -1,8 +1,8 @@
-use crate::partition::timetree::partition::GraphTimetree;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
 /// Relaxed clock penalty coefficients computed during postorder pass.
@@ -28,7 +28,7 @@ struct RelaxedClockCoeffs {
 /// 1. Postorder pass: compute quadratic penalty coefficients (k1, k2) for each node
 /// 2. Preorder pass: compute optimal gamma (rate multiplier) for each branch
 pub fn apply_relaxed_clock(
-  graph: &GraphTimetree,
+  graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   params: &[f64],
   one_mutation: f64,

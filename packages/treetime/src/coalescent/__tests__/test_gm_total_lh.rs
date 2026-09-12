@@ -15,17 +15,17 @@ mod tests {
   use super::super::helpers::{coalescent_node_times, setup_graph};
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
-  use crate::partition::timetree::partition::GraphTimetree;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
   use rstest::rstest;
   use treetime_distribution::Distribution;
+  use treetime_graph::graph::Graph;
   use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::o;
 
-  fn setup_polytomy_graph() -> Result<(GraphTimetree, DateConstraints), Report> {
+  fn setup_polytomy_graph() -> Result<(Graph, DateConstraints), Report> {
     let dates = btreemap! {
       o!("root") => Some(DateConstraint::exact(2000.0)),
       o!("internal") => Some(DateConstraint::exact(2005.0)),
@@ -36,7 +36,7 @@ mod tests {
     };
     let NwkParse { graph, names, .. } =
       nwk_read_str("((leaf1:0.005,leaf2:0.005,leaf3:0.005)internal:0.01,leaf4:0.02)root:0.0;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
     let constraints = load_date_constraints(&dates, &graph, &names)?;
     Ok((graph, constraints))
   }

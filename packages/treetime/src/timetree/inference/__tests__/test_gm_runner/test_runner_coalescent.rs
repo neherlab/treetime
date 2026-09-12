@@ -15,11 +15,12 @@ mod tests {
   use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+  use crate::partition::timetree::partition::PartitionTimetree;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
   use eyre::Report;
+  use treetime_graph::graph::Graph;
 
   use rstest::rstest;
   use std::collections::BTreeMap;
@@ -79,7 +80,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
   }
 
   type TimetreeSetup = (
-    GraphTimetree,
+    Graph,
     BTreeMap<GraphNodeKey, Option<String>>,
     Vec<PartitionTimetree>,
     ClockModel,
@@ -97,7 +98,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
       mut branch_lengths,
       ..
     } = nwk_read_str(case.rerooted_tree_nwk())?;
-    let mut graph: GraphTimetree = graph;
+    let mut graph: Graph = graph;
     let dates = load_dates_for_dataset(dataset)?;
     let constraints = load_date_constraints(&dates, &graph, &names)?;
 

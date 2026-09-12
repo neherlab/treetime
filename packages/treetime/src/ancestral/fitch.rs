@@ -9,7 +9,6 @@ use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::storage::sparse::{
   FitchSeqDistribution, SparseEdgePartition, SparseNodePartition, SparseSeqDistribution, SparseSeqInfo,
 };
-use crate::payload::ancestral::GraphAncestral;
 use crate::seq::alignment::get_common_length;
 use crate::seq::composition::Composition;
 use eyre::Report;
@@ -341,7 +340,7 @@ pub fn compress_sequences(
 /// partition (read by the node-data serializer until the tree writers read the map directly).
 /// Optionally reconstructs leaf sequences.
 pub fn ancestral_reconstruction_fitch(
-  graph: &GraphAncestral,
+  graph: &Graph,
   include_leaves: bool,
   partitions: &mut [PartitionFitch],
   mut visitor: impl FnMut(&GraphNodeForward, &Seq) -> Result<(), Report>,

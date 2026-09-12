@@ -8,10 +8,10 @@ use crate::make_report;
 use crate::mugration::mugration::execute_mugration;
 use crate::mugration::result::MugrationResult;
 use crate::partition::marginal::discrete::comment::DiscreteTraitCommentProvider;
-use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use log::info;
 use std::collections::BTreeMap;
+use treetime_graph::graph::Graph;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
@@ -28,7 +28,7 @@ pub fn run_mugration(
     .as_ref()
     .ok_or_else(|| make_report!("Tree file is required"))?;
   let parse = nwk_read_file(tree_path)?;
-  let graph: GraphAncestral = parse.graph;
+  let graph: Graph = parse.graph;
   let confidences = parse.confidences;
   let names = parse.names;
   let branch_lengths = parse.branch_lengths;

@@ -10,11 +10,11 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::traits::PartitionBranchOps;
   use crate::partition::traits::PartitionOptimizeOps;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
+  use treetime_graph::graph::Graph;
 
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
@@ -37,7 +37,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     initial_guess_mixed(
@@ -77,7 +77,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     initial_guess_mixed(
@@ -221,7 +221,7 @@ mod tests {
   }
 
   fn setup_sparse(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -235,7 +235,7 @@ mod tests {
   }
 
   fn setup_dense(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -261,7 +261,7 @@ mod tests {
   }
 
   fn branch_lengths_by_child_name(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<BTreeMap<String, f64>, Report> {
@@ -279,7 +279,7 @@ mod tests {
   }
 
   fn optimization_metrics_by_child_name<P: PartitionOptimizeOps>(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     partition: &P,
     branch_length: f64,

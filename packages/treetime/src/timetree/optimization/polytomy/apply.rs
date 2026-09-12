@@ -3,12 +3,12 @@
 //! Kept apart from [`super::sweep`] so the simulation stays free of graph state. Every
 //! mutation of the tree for one polytomy happens here, in a single pass over the plan.
 
-use crate::partition::timetree::partition::GraphTimetree;
 use crate::timetree::optimization::polytomy::sweep::SubtreePlan;
 use crate::timetree::timetree_state::{DateNodeState, TimetreeState};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::make_internal_error;
 
@@ -35,7 +35,7 @@ pub struct ChildRef {
 /// would have its entry rebuilt as empty. Only `time_length` is rewritten, since only the
 /// parent moved.
 pub fn apply_plan(
-  graph: &mut GraphTimetree,
+  graph: &mut Graph,
   parent_key: GraphNodeKey,
   parent_time: f64,
   children: &[ChildRef],
@@ -169,7 +169,7 @@ fn validate_plan(parent_time: f64, children: &[ChildRef], plan: &SubtreePlan) ->
 /// The time length is written into the threaded [`TimetreeState`] value (the home the reseed reads)
 /// and mirrored onto the edge payload transitionally.
 fn attach(
-  graph: &mut GraphTimetree,
+  graph: &mut Graph,
   children: &[ChildRef],
   merger_nodes: &[GraphNodeKey],
   times: &[f64],

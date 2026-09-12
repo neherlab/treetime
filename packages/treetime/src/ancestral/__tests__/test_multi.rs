@@ -2,8 +2,8 @@ use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partition};
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
-use crate::payload::ancestral::GraphAncestral;
 use pretty_assertions::assert_eq;
+use treetime_graph::graph::Graph;
 use treetime_io::nwk::{NwkParse, nwk_read_str};
 use treetime_utils::sync::random::get_random_number_generator;
 
@@ -19,7 +19,7 @@ fn test_multi_reconstructs_each_cds_independently_with_stop_codon() {
     branch_lengths,
     ..
   } = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
-  let graph: GraphAncestral = graph;
+  let graph: Graph = graph;
   let aa = Alphabet::new(AlphabetName::Aa).unwrap();
 
   let plans = vec![

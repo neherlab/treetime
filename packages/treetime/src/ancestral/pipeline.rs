@@ -14,7 +14,6 @@ use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::traits::HasGtr;
-use crate::payload::ancestral::GraphAncestral;
 use crate::progress::ProgressSink;
 use crate::seq::alignment::get_common_length;
 use eyre::Report;
@@ -23,6 +22,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use strum::VariantNames;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
@@ -46,7 +46,7 @@ pub struct AncestralParams {
 }
 
 pub struct AncestralInput {
-  pub graph: GraphAncestral,
+  pub graph: Graph,
   pub alphabet: Alphabet,
   pub sequences: Vec<FastaRecord>,
 }
@@ -62,7 +62,7 @@ pub enum AncestralPartition {
 #[derive(Debug, Serialize)]
 pub struct AncestralOutput {
   #[serde(skip)]
-  pub graph: GraphAncestral,
+  pub graph: Graph,
   #[serde(skip)]
   pub gtr: Option<GTR>,
   pub model_name: GtrModelName,

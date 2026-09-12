@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
+  use crate::partition::timetree::partition::PartitionTimetree;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change, resolve_polytomies};
   use crate::timetree::timetree_state::TimetreeState;
@@ -14,6 +14,7 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_graph::assign_node_names::assign_node_names;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -29,7 +30,7 @@ mod tests {
 
   /// Set a node's committed time on the date state, the value `resolve_polytomies` reads.
   fn set_time(
-    graph: &GraphTimetree,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     state: &mut TimetreeState,
     name: &str,
@@ -47,7 +48,7 @@ mod tests {
   /// substitutions; the resolution timing comes from the node times alone.
   fn polytomy_tree() -> Result<
     (
-      GraphTimetree,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       TimetreeState,
       BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -60,7 +61,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
     let mut state = TimetreeState::new(&graph);
     for (name, time) in [
       ("A", 2020.0),
@@ -80,7 +81,7 @@ mod tests {
   /// A 6-way polytomy, closer to what the sweep is meant for.
   fn wide_polytomy_tree() -> Result<
     (
-      GraphTimetree,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       TimetreeState,
       BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -93,7 +94,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1,C:0.1,D:0.1,E:0.1,F:0.1)P:0.05)root;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
     let mut state = TimetreeState::new(&graph);
     for (name, time) in [
       ("A", 2020.0),
@@ -115,7 +116,7 @@ mod tests {
 
   fn binary_tree() -> Result<
     (
-      GraphTimetree,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       TimetreeState,
       BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -128,7 +129,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.05,(C:0.15,D:0.1)CD:0.08)root;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
     let mut state = TimetreeState::new(&graph);
     for (name, time) in [
       ("A", 2020.0),
@@ -154,7 +155,7 @@ mod tests {
   /// and the total alignment length never enters: the sampled history is shaped by the merger
   /// rate alone.
   fn resolve(
-    graph: &mut GraphTimetree,
+    graph: &mut Graph,
     state: &mut TimetreeState,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
     rng: &mut dyn RngCore,
@@ -176,7 +177,7 @@ mod tests {
 
   /// Names of the leaves reachable from `node_key`.
   fn leaf_names_under(
-    graph: &GraphTimetree,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     node_key: GraphNodeKey,
   ) -> BTreeSet<String> {
@@ -318,7 +319,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
-    let graph: GraphTimetree = graph;
+    let graph: Graph = graph;
     let mut state = TimetreeState::new(&graph);
     for (name, time) in [
       ("A", 2010.0),

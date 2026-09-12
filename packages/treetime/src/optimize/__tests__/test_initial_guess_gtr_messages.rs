@@ -6,11 +6,11 @@ mod tests {
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::run_loop::optimize_partition_view;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
 
   use ndarray::array;
@@ -41,7 +41,7 @@ mod tests {
   }
 
   fn setup_dense_jc69(
-    graph: &GraphAncestral,
+    graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -64,7 +64,7 @@ mod tests {
     Ok(partitions)
   }
 
-  fn get_branch_lengths(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
+  fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
       .iter()
@@ -166,7 +166,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let mut partitions = setup_dense_jc69(&graph, &names, &aln, &branch_lengths)?;
     marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
     partitions[0].data.gtr = f81_gtr.clone();

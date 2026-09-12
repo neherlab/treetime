@@ -5,11 +5,11 @@ mod tests {
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
   use crate::partition::traits::HasGtr;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::progress::NoopProgress;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use std::path::Path;
+  use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
 
@@ -38,7 +38,7 @@ mod tests {
       ..
     } = nwk_read_file(&tree_path)?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let sequences = read_many_fasta(&[aln_path.to_str().expect("utf-8 path")], &alphabet)?;
 
     let params = OptimizeParams {

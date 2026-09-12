@@ -10,9 +10,9 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
 
-  use crate::payload::ancestral::GraphAncestral;
   use eyre::Report;
   use indoc::indoc;
+  use treetime_graph::graph::Graph;
 
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -29,7 +29,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     // Alignment with mismatches: leaf A differs from leaf B at multiple positions,
     // so after marginal reconstruction some edges have sites where parent and child

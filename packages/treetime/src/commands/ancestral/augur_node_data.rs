@@ -2,12 +2,12 @@ use crate::ancestral::mask::mask_to_string;
 use crate::commands::ancestral::aa_node_data::AaNodeData;
 use crate::commands::ancestral::result::AugurOutputMaps;
 use crate::partition::traits::BranchTopology;
-use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::path::Path;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use util_augur_node_data_json::{
@@ -23,7 +23,7 @@ use util_augur_node_data_json::{
 /// `sequence` (masked positions set to the ambiguous character, matching augur's
 /// `collect_sequences`).
 pub fn write_augur_node_data_json<D: Send + Sync>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   maps: &AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -33,7 +33,7 @@ pub fn write_augur_node_data_json<D: Send + Sync>(
 }
 
 pub fn build_augur_node_data_json<D: Send + Sync>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   maps: &AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -127,7 +127,7 @@ pub fn build_augur_node_data_json<D: Send + Sync>(
 }
 
 pub fn write_augur_node_data_json_with_aa<D: Send + Sync>(
-  graph: &GraphAncestral<D>,
+  graph: &Graph<D>,
   maps: &AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,

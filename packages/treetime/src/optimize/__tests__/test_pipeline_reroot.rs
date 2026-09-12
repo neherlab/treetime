@@ -5,19 +5,19 @@ mod tests {
   use crate::gtr::get_gtr::GtrModelName;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
-  use crate::payload::ancestral::GraphAncestral;
   use crate::progress::NoopProgress;
   use eyre::Report;
   use std::collections::BTreeMap;
   use std::path::Path;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta};
   use treetime_io::nwk::{NwkParse, nwk_read_file};
 
   fn load() -> Result<
     (
-      GraphAncestral,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       Alphabet,
       Vec<FastaRecord>,
@@ -36,7 +36,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_file(workspace_root.join("data/flu/h3n2/20/tree.nwk"))?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let aln = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
     let sequences = read_many_fasta(&[aln.to_str().expect("utf-8 path")], &alphabet)?;
     Ok((graph, names, alphabet, sequences, branch_lengths))
@@ -57,7 +57,7 @@ mod tests {
     }
   }
 
-  fn assert_branch_lengths_valid(graph: &GraphAncestral, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) {
+  fn assert_branch_lengths_valid(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) {
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let bl = branch_lengths[&edge.key()].expect("every edge has a branch length after optimization");
@@ -65,11 +65,11 @@ mod tests {
     }
   }
 
-  fn root_key(graph: &GraphAncestral) -> GraphNodeKey {
+  fn root_key(graph: &Graph) -> GraphNodeKey {
     graph.get_exactly_one_root().unwrap().read_arc().key()
   }
 
-  fn root_child_keys(graph: &GraphAncestral) -> Vec<GraphNodeKey> {
+  fn root_child_keys(graph: &Graph) -> Vec<GraphNodeKey> {
     let root = graph.get_exactly_one_root().unwrap();
     let root = root.read_arc();
     root
@@ -79,7 +79,7 @@ mod tests {
       .collect()
   }
 
-  fn leaf_names(graph: &GraphAncestral, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Vec<String> {
+  fn leaf_names(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Vec<String> {
     graph
       .get_leaves()
       .iter()

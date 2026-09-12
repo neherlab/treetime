@@ -10,13 +10,13 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::SparseSeqDistribution;
   use crate::partition::traits::PartitionBranchOps;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::composition::Composition;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use indoc::indoc;
+  use treetime_graph::graph::Graph;
 
   use ndarray::prelude::*;
   use pretty_assertions::assert_eq;
@@ -115,7 +115,7 @@ mod tests {
   /// sparse representation. Returns the total log-likelihood and the partition for further
   /// inspection of node/edge posteriors.
   fn run_sparse_marginal(
-    graph: &GraphAncestral,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
@@ -140,7 +140,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let (log_lh, _) = run_sparse_marginal(&graph, &branch_lengths, &names, aln, gtr)?;
     Ok(log_lh)
   }
@@ -194,7 +194,7 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
 
@@ -277,7 +277,7 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let gtr = jc69(JC69Params::default())?;
 
     let (log_lh, partitions) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
@@ -329,7 +329,7 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let gtr = jc69(JC69Params::default())?;
 
     let alphabet = Alphabet::default();
@@ -430,7 +430,7 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let gtr = make_nonuniform_gtr()?;
 
     let (log_lh, partitions) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
@@ -500,7 +500,7 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     // Generate all possible triplets (4^3 = 64 combinations)
     let states = ['A', 'C', 'G', 'T'];
     for &state_a in &states {
@@ -559,7 +559,7 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
 
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
     let mut partitions = [fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?];
     marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
@@ -680,7 +680,7 @@ mod tests {
     /// test. First reconstruct node sequences, then compare parent and child for
     /// each edge.
     pub fn expected_edge_subs_by_edge(
-      graph: &GraphAncestral,
+      graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       partition: &PartitionMarginalSparse,
       seqs_by_name: &BTreeMap<String, Seq>,
@@ -703,7 +703,7 @@ mod tests {
 
     /// Retrieve one reconstructed node sequence by graph node.
     fn get_reconstructed_seq<'a>(
-      _graph: &GraphAncestral,
+      _graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       seqs_by_name: &'a BTreeMap<String, Seq>,
       node_key: GraphNodeKey,

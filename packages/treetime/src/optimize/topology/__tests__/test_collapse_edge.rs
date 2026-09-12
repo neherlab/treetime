@@ -8,13 +8,13 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
@@ -27,7 +27,7 @@ mod tests {
     Sub::new(c(reff), pos, c(qry)).unwrap()
   }
 
-  fn populate_test_nodes(partition: &mut PartitionMarginalSparse, graph: &GraphAncestral) {
+  fn populate_test_nodes(partition: &mut PartitionMarginalSparse, graph: &Graph) {
     let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(partition.length).collect();
     if partition.root_sequence.is_empty() {
       partition.root_sequence = ref_seq.clone();
@@ -65,7 +65,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
@@ -127,7 +127,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let i_key = find_node_key_by_name(&graph, &names, "I").unwrap();
@@ -174,7 +174,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
@@ -210,7 +210,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)I:0.0)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
@@ -248,7 +248,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
 
@@ -284,7 +284,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
     let mut sparse: Vec<PartitionMarginalSparse> = vec![];
@@ -322,7 +322,7 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
 
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
@@ -380,7 +380,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1)I:0.0)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
@@ -432,7 +432,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let i_node_key = find_node_key_by_name(&graph, &names, "I").unwrap();
 
@@ -459,7 +459,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();

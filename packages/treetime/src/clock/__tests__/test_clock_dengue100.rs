@@ -2,7 +2,6 @@
 mod tests {
   use crate::clock::assign_dates::assign_dates;
   use crate::clock::clock_filter::clock_filter_inplace;
-  use crate::clock::clock_graph::GraphClock;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockState;
@@ -18,6 +17,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::path::Path;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::read_dates;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -27,7 +27,7 @@ mod tests {
   /// Load dengue/100 graph with dates assigned into a fresh clock state.
   fn load_dengue100() -> Result<
     (
-      GraphClock,
+      Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       ClockState,
       BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -41,7 +41,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_file(data_dir.join("tree.nwk"))?;
-    let graph: GraphClock = graph;
+    let graph: Graph = graph;
     let dates = read_dates(
       data_dir.join("metadata.tsv"),
       &[',', '\t', ';'],
@@ -57,7 +57,7 @@ mod tests {
   /// Run the full prefilter pipeline: pre-filter with force_positive=false,
   /// IQD-based outlier filtering, then final regression with force_positive=true.
   fn run_prefilter_pipeline(
-    graph: &mut GraphClock,
+    graph: &mut Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     state: &mut ClockState,
     clock_params: &ClockParams,
@@ -109,7 +109,7 @@ mod tests {
 
   fn get_outlier_names(
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    graph: &GraphClock,
+    graph: &Graph,
     state: &ClockState,
   ) -> Vec<String> {
     graph
@@ -263,7 +263,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_file(data_dir.join("tree.nwk"))?;
-    let graph: GraphClock = graph;
+    let graph: Graph = graph;
     let dates = read_dates(
       data_dir.join("metadata.tsv"),
       &[',', '\t', ';'],
@@ -313,7 +313,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_file(data_dir.join("tree.nwk"))?;
-    let graph: GraphClock = graph;
+    let graph: Graph = graph;
     let dates = read_dates(
       data_dir.join("metadata.tsv"),
       &[',', '\t', ';'],

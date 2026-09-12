@@ -1,4 +1,3 @@
-use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_state::ClockState;
 use eyre::Report;
@@ -6,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::GraphPassNodeOutput;
 use treetime_io::csv::CsvStructFileWriter;
@@ -26,7 +26,7 @@ pub struct ClockRegressionResult {
 
 /// Get results of the root-to-tip clock inference.
 pub fn gather_clock_regression_results(
-  graph: &GraphClock,
+  graph: &Graph,
   state: &mut ClockState,
   clock_model: &ClockModel,
   names: &BTreeMap<GraphNodeKey, Option<String>>,

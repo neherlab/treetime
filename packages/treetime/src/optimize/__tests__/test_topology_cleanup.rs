@@ -13,7 +13,6 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
@@ -23,6 +22,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
+  use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::AsciiChar;
@@ -36,7 +36,7 @@ mod tests {
     Sub::new(c(reff), pos, c(qry)).unwrap()
   }
 
-  fn populate_test_nodes(partition: &mut PartitionMarginalSparse, graph: &GraphAncestral) {
+  fn populate_test_nodes(partition: &mut PartitionMarginalSparse, graph: &Graph) {
     let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(partition.length).collect();
     if partition.root_sequence.is_empty() {
       partition.root_sequence = ref_seq.clone();
@@ -53,7 +53,7 @@ mod tests {
 
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_empty_graph() -> Result<(), Report> {
-    let graph = GraphAncestral::new();
+    let graph = Graph::new();
     let sparse: Vec<PartitionMarginalSparse> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &BTreeMap::new());
     assert_eq!(edges.len(), 0);
@@ -68,7 +68,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let sparse: Vec<PartitionMarginalSparse> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
     assert_eq!(edges.len(), 0);
@@ -84,7 +84,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(A:0.0,B:0.2)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let sparse: Vec<PartitionMarginalSparse> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
     assert_eq!(edges.len(), 0);
@@ -100,7 +100,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)I:0.0,C:0.3)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let sparse: Vec<PartitionMarginalSparse> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
     assert_eq!(edges.len(), 1);
@@ -123,7 +123,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;")?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let sparse: Vec<PartitionMarginalSparse> = vec![];
     let edges = find_zero_optimal_internal_edges(&graph, &sparse, &branch_lengths);
     assert_eq!(edges.len(), 2);
@@ -138,7 +138,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
     let mut sparse: Vec<PartitionMarginalSparse> = vec![];
     let mut dense: Vec<PartitionMarginalDense> = vec![];
 
@@ -171,7 +171,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
@@ -269,7 +269,7 @@ mod tests {
 
     // A and B are identical: the internal edge AB should be optimized to zero
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
@@ -346,7 +346,7 @@ mod tests {
 
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;")?;
 
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
@@ -416,7 +416,7 @@ mod tests {
       ..
     } = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
 
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];
@@ -456,7 +456,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
@@ -534,7 +534,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let ri1_key = find_edge_key(&graph, &names, "root", "I1").unwrap();
     let i1i2_key = find_edge_key(&graph, &names, "I1", "I2").unwrap();
@@ -595,7 +595,7 @@ mod tests {
 
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let mut dense_partitions = vec![PartitionMarginalDense::new(0, jc69(JC69Params::default())?, nuc, get_common_length(&aln)?)];
 
@@ -651,7 +651,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
@@ -728,7 +728,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
@@ -803,7 +803,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
@@ -875,7 +875,7 @@ mod tests {
       mut branch_lengths,
       ..
     } = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
@@ -963,7 +963,7 @@ mod tests {
 
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let mut sparse_partitions = vec![
@@ -1034,7 +1034,7 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
 
-    let mut graph: GraphAncestral = graph;
+    let mut graph: Graph = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let mut sparse_partitions = vec![fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?];

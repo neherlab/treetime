@@ -7,27 +7,20 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::optimize_partition_view;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   fn setup_dense(
     newick: &str,
     fasta: &str,
-  ) -> Result<
-    (
-      GraphAncestral,
-      Vec<PartitionMarginalDense>,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
+  ) -> Result<(Graph, Vec<PartitionMarginalDense>, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let NwkParse {
@@ -36,7 +29,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str(newick)?;
-    let graph: GraphAncestral = graph;
+    let graph: Graph = graph;
     let gtr = jc69(JC69Params::default())?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
     let mut partitions: Vec<PartitionMarginalDense> = vec![partition];
@@ -52,10 +45,7 @@ mod tests {
     Ok((graph, partitions, branch_lengths))
   }
 
-  fn root_edge_branch_lengths(
-    graph: &GraphAncestral,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> (f64, f64) {
+  fn root_edge_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> (f64, f64) {
     let root = graph.get_exactly_one_root().unwrap();
     let children = graph.children_of(&root.read_arc());
     assert_eq!(children.len(), 2);

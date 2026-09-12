@@ -1,6 +1,5 @@
 use crate::clock::assign_dates::assign_dates;
 use crate::clock::clock_filter::clock_filter_inplace;
-use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::ClockState;
@@ -13,6 +12,7 @@ use log::info;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DatesMap;
 
@@ -26,7 +26,7 @@ pub struct ClockPipelineParams {
 }
 
 pub struct ClockInput {
-  pub graph: GraphClock,
+  pub graph: Graph,
   pub dates: DatesMap,
   /// Raw per-edge branch lengths captured from the Newick parse, keyed by edge id. Routed through
   /// estimation (the reroot search updates it in place) and read by the regression gather instead of
@@ -37,7 +37,7 @@ pub struct ClockInput {
 #[derive(Debug, Serialize)]
 pub struct ClockOutput {
   #[serde(skip)]
-  pub graph: GraphClock,
+  pub graph: Graph,
   #[serde(skip)]
   pub state: ClockState,
   pub clock_model: ClockModel,
@@ -109,7 +109,7 @@ pub fn run(
 }
 
 fn estimate_clock_model_with_prefilter(
-  graph: &mut GraphClock,
+  graph: &mut Graph,
   state: &mut ClockState,
   options: &ClockParams,
   keep_root: bool,
