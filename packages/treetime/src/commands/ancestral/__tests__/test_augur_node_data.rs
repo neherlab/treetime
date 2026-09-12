@@ -192,7 +192,7 @@ mod tests {
     use crate::commands::shared::output::OutputCoreArgs;
     use crate::gtr::get_gtr::GtrModelName;
     use crate::partition::fitch::partition::PartitionFitch;
-    use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
+    use crate::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
     use crate::progress::NoopProgress;
     use crate::seq::mutation::Sub;
     use maplit::btreemap;
@@ -261,7 +261,7 @@ mod tests {
         let key = node_guard.key();
         let name = names[&key].clone().unwrap();
         let seq = Seq::try_from_str(&seqs[&name]).unwrap();
-        nodes.insert(key, SparseNodePartition::new(&seq, &alphabet).unwrap());
+        nodes.insert(key, FitchNodeData::new(&seq, &alphabet).unwrap());
         key_to_name.insert(key, name);
       }
 
@@ -271,7 +271,7 @@ mod tests {
         let edge_key = edge_guard.key();
         let child_name = &key_to_name[&edge_guard.target()];
         let subs = edge_subs_by_child.get(child_name).cloned().unwrap_or_default();
-        edges.insert(edge_key, SparseEdgePartition::with_fitch_subs(subs));
+        edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs));
       }
 
       PartitionFitch {

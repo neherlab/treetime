@@ -11,7 +11,7 @@ mod tests {
     timetree_to_auspice, timetree_to_mat, timetree_to_phyloxml, write_ancestral_tree_outputs,
   };
   use crate::partition::fitch::partition::PartitionFitch;
-  use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
   use crate::partition::traits::BranchTopology;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
@@ -500,7 +500,7 @@ mod tests {
     use crate::mugration::result::gather_mugration_output_maps;
     use crate::mugration::result::{MugrationNodeOut, MugrationOutputMaps, MugrationResult};
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
-    use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
+    use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
     use crate::partition::storage::discrete::DiscreteStates;
     use jsonschema::{Retrieve, Uri, Validator};
     use ndarray::array;
@@ -546,8 +546,12 @@ mod tests {
       gather_timetree_output_maps(graph, &[]).unwrap()
     }
 
-    pub fn mugration_maps(graph: &Graph, partition: &PartitionMarginalDiscrete) -> MugrationOutputMaps {
-      gather_mugration_output_maps(graph, partition)
+    pub fn mugration_maps(
+      graph: &Graph,
+      partition: &PartitionMarginalDiscrete,
+      node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    ) -> MugrationOutputMaps {
+      gather_mugration_output_maps(graph, partition, node_states)
     }
 
     type AncestralGraphSetup = (
@@ -580,9 +584,9 @@ mod tests {
       let include_indel = matches!(mutations, Mutations::Indel | Mutations::IndelAndAminoAcid);
       let include_aa = matches!(mutations, Mutations::AminoAcid | Mutations::IndelAndAminoAcid);
       let mut a_edge_data = if include_substitution {
-        SparseEdgePartition::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?])
+        SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?])
       } else {
-        SparseEdgePartition::default()
+        SparseEdgeObs::default()
       };
       if include_indel {
         a_edge_data.indels = vec![InDel::del((1, 3), Seq::try_from_str("CG")?)?];
@@ -592,13 +596,13 @@ mod tests {
         alphabet: alphabet.clone(),
         length: 3,
         nodes: btreemap! {
-          root_key => SparseNodePartition::new(&root_sequence, &alphabet)?,
-          a_key => SparseNodePartition::new(&a_sequence, &alphabet)?,
-          b_key => SparseNodePartition::new(&b_sequence, &alphabet)?,
+          root_key => FitchNodeData::new(&root_sequence, &alphabet)?,
+          a_key => FitchNodeData::new(&a_sequence, &alphabet)?,
+          b_key => FitchNodeData::new(&b_sequence, &alphabet)?,
         },
         edges: btreemap! {
           a_edge => a_edge_data,
-          b_edge => SparseEdgePartition::default(),
+          b_edge => SparseEdgeObs::default(),
         },
       };
 
@@ -719,12 +723,12 @@ mod tests {
       )?;
       let (clock_graph, clock_names, _clock_bl) = clock_graph()?;
       let clock = clock_to_auspice(&clock_graph, &clock_nodes(&clock_names, &clock_graph), "2026-07-19")?;
-      let (mugration_graph, mugration_names, mugration_bl, mugration_partition) = mugration_graph()?;
+      let (mugration_graph, mugration_names, mugration_bl, mugration_partition, mugration_node_states) = mugration_graph()?;
       let mugration = mugration_to_auspice(
         &mugration_graph,
         &mugration_nodes(&mugration_names, &mugration_graph, &btreemap! {}),
         &mugration_bl,
-        &mugration_maps(&mugration_graph, &mugration_partition),
+        &mugration_maps(&mugration_graph, &mugration_partition, &mugration_node_states),
         "country",
         "2026-07-19",
       )?;
@@ -777,12 +781,12 @@ mod tests {
           clock_to_phyloxml(&clock_graph, &clock_nodes(&clock_names, &clock_graph), &clock_bl)?
         },
         {
-          let (mugration_graph, mugration_names, mugration_bl, mugration_partition) = mugration_graph()?;
+          let (mugration_graph, mugration_names, mugration_bl, mugration_partition, mugration_node_states) = mugration_graph()?;
           mugration_to_phyloxml(
             &mugration_graph,
             &mugration_nodes(&mugration_names, &mugration_graph, &btreemap! {}),
             &mugration_bl,
-            &mugration_maps(&mugration_graph, &mugration_partition),
+            &mugration_maps(&mugration_graph, &mugration_partition, &mugration_node_states),
             "country",
           )?
         },
@@ -810,7 +814,7 @@ mod tests {
       set_mat_branch_lengths(&prune, &prune_names, &mut prune_bl)?;
       let (clock, clock_names, mut clock_bl) = clock_graph()?;
       set_mat_branch_lengths(&clock, &clock_names, &mut clock_bl)?;
-      let (mugration, mugration_names, mut mugration_bl, _mugration_partition) = mugration_graph()?;
+      let (mugration, mugration_names, mut mugration_bl, _mugration_partition, _mugration_node_states) = mugration_graph()?;
       set_mat_branch_lengths(&mugration, &mugration_names, &mut mugration_bl)?;
       let (timetree, timetree_names, _timetree_bl) = timetree_graph()?;
       let timetree_weights = timetree_mat_nwk_weights(&timetree, &timetree_names)?;
@@ -1049,6 +1053,7 @@ mod tests {
         BTreeMap<GraphNodeKey, Option<String>>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
         PartitionMarginalDiscrete,
+        BTreeMap<GraphNodeKey, DenseNodeState>,
       ),
       Report,
     > {
@@ -1066,8 +1071,8 @@ mod tests {
         W: None,
         pi: array![0.5, 0.5],
       })?;
-      let mut partition = PartitionMarginalDiscrete::new(gtr, states, 1e-8, false);
-      partition.data.nodes = graph
+      let partition = PartitionMarginalDiscrete::new(gtr, states, 1e-8, false);
+      let node_states: BTreeMap<GraphNodeKey, DenseNodeState> = graph
         .get_nodes()
         .into_iter()
         .enumerate()
@@ -1080,15 +1085,15 @@ mod tests {
           };
           (
             key,
-            DenseNodePartition {
+            DenseNodeState {
               seq: DenseSeqInfo::default(),
               profile: DenseSeqDistribution::new(profile, LogLh::ZERO),
             },
           )
         })
         .collect();
-      let result = MugrationResult::new(graph, &btreemap! {}, &names, &branch_lengths, &partition, "country");
-      Ok((result.graph, names, branch_lengths, partition))
+      let result = MugrationResult::new(graph, &btreemap! {}, &names, &branch_lengths, &partition, &node_states, "country");
+      Ok((result.graph, names, branch_lengths, partition, node_states))
     }
 
     fn timetree_graph() -> Result<
