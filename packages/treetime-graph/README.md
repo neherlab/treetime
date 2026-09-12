@@ -28,8 +28,6 @@ Composite traits (`NodeAncestralOps`, `NodeOptimizeOps`) combine these for speci
 
 - `GraphEdge` - marker trait (`Clone + Debug + Sync + Send`)
 - `HasBranchLength` - read/write branch length
-- `ClockMessages<T>` - message passing fields for clock inference
-- `BranchDistribution<T>` - branch length distribution and parent message
 - `TimeLength` - time-scaled branch length
 
 ## Graph operations

@@ -9,20 +9,6 @@ use std::hash::Hash;
 use std::mem::swap;
 use std::sync::Arc;
 
-/// Defines access to clock message passing fields on edges
-#[allow(clippy::wrong_self_convention)]
-pub trait ClockMessages<T> {
-  fn to_parent(&self) -> &T;
-  fn to_parent_mut(&mut self) -> &mut T;
-  fn to_child(&self) -> &T;
-  fn to_child_mut(&mut self) -> &mut T;
-  fn from_child(&self) -> &T;
-  fn from_child_mut(&mut self) -> &mut T;
-}
-
-/// Defines access to branch length distribution and message to parent
-pub trait BranchDistribution<T> {}
-
 pub trait GraphEdge: Debug + Sync + Send {}
 
 /// Composite trait for edges that support ancestral reconstruction.

@@ -268,13 +268,6 @@ where
     self.nodes.iter().filter_map(Option::as_ref).cloned().collect()
   }
 
-  pub fn get_node_payloads(&self) -> impl Iterator<Item = Arc<RwLock<N>>> + '_ {
-    self
-      .nodes
-      .iter()
-      .filter_map(|node| node.as_ref().map(|n| Arc::clone(&n.read_arc().payload())))
-  }
-
   pub fn get_exactly_one_root(&self) -> Result<Arc<RwLock<Node<N>>>, Report> {
     let roots = self.get_roots();
     if roots.len() != 1 {
@@ -290,14 +283,6 @@ where
   // All nodes having no parents
   pub fn get_roots(&self) -> Vec<Arc<RwLock<Node<N>>>> {
     self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec()
-  }
-
-  pub fn get_root_payloads(&self) -> impl Iterator<Item = Arc<RwLock<N>>> + '_ {
-    self
-      .roots
-      .iter()
-      .filter_map(|idx| self.get_node(*idx))
-      .map(|node| node.read().payload())
   }
 
   // All nodes having no children

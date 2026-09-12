@@ -40,8 +40,6 @@ Tree readers/writers use trait bounds on graph node and edge types:
 - `NodeFromNwk` / `EdgeFromNwk` - construct nodes and edges from Newick data
 - `NodeToNwk` / `EdgeToNwk` - serialize nodes and edges to Newick
 - `NodeToGraphviz` / `EdgeToGraphviz` - serialize to Graphviz DOT
-- `AuspiceRead` / `AuspiceWrite` - convert to/from Auspice v2 JSON
-- `PhyloxmlToGraph` / `PhyloxmlDataToGraphData` - convert to/from PhyloXML
 
 ## API patterns
 
