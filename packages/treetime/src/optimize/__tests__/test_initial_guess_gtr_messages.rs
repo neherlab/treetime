@@ -97,9 +97,9 @@ mod tests {
     )?;
     *partitions_stale[0].partition.gtr_mut() = f81_gtr.clone();
     {
-        let ro = OptimizeReadouts::new(&partitions_stale, &[]);
-        initial_guess_mixed(&graph_stale, &ro.view(), true, false, &mut branch_lengths_stale)?;
-      }
+      let ro = OptimizeReadouts::new(&partitions_stale, &[]);
+      initial_guess_mixed(&graph_stale, &ro.view(), true, false, &mut branch_lengths_stale)?;
+    }
     let bl_stale = get_branch_lengths(&graph_stale, &branch_lengths_stale);
 
     // Scenario 2: fresh F81 messages (the fix)
@@ -123,9 +123,9 @@ mod tests {
       &mut partitions_fresh,
     )?;
     {
-        let ro = OptimizeReadouts::new(&partitions_fresh, &[]);
-        initial_guess_mixed(&graph_fresh, &ro.view(), true, false, &mut branch_lengths_fresh)?;
-      }
+      let ro = OptimizeReadouts::new(&partitions_fresh, &[]);
+      initial_guess_mixed(&graph_fresh, &ro.view(), true, false, &mut branch_lengths_fresh)?;
+    }
     let bl_fresh = get_branch_lengths(&graph_fresh, &branch_lengths_fresh);
 
     assert_ne!(
@@ -160,9 +160,9 @@ mod tests {
     *partitions[0].partition.gtr_mut() = f81_gtr.clone();
     marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
     {
-        let ro = OptimizeReadouts::new(&partitions, &[]);
-        initial_guess_mixed(&graph, &ro.view(), true, false, &mut branch_lengths)?;
-      }
+      let ro = OptimizeReadouts::new(&partitions, &[]);
+      initial_guess_mixed(&graph, &ro.view(), true, false, &mut branch_lengths)?;
+    }
     let bl_first = get_branch_lengths(&graph, &branch_lengths);
 
     // Run marginal_update + initial_guess again on the same graph.
@@ -182,9 +182,9 @@ mod tests {
     *partitions2[0].partition.gtr_mut() = f81_gtr;
     marginal_update_dense(&graph2, &profile_branch_lengths(&branch_lengths2), &mut partitions2)?;
     {
-        let ro = OptimizeReadouts::new(&partitions2, &[]);
-        initial_guess_mixed(&graph2, &ro.view(), true, false, &mut branch_lengths2)?;
-      }
+      let ro = OptimizeReadouts::new(&partitions2, &[]);
+      initial_guess_mixed(&graph2, &ro.view(), true, false, &mut branch_lengths2)?;
+    }
     let bl_second = get_branch_lengths(&graph2, &branch_lengths2);
 
     assert_eq!(

@@ -15,7 +15,12 @@ mod tests {
 
   fn zero_length_partitions(_graph: &Graph) -> (Vec<DenseReconstruction>, Vec<SparseReconstruction>) {
     let dense = vec![DenseReconstruction {
-      partition: PartitionMarginalDense::new(0, jc69(JC69Params::default()).unwrap(), Alphabet::new(AlphabetName::Nuc).unwrap(), 0),
+      partition: PartitionMarginalDense::new(
+        0,
+        jc69(JC69Params::default()).unwrap(),
+        Alphabet::new(AlphabetName::Nuc).unwrap(),
+        0,
+      ),
       node_states: BTreeMap::new(),
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),

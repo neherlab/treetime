@@ -193,7 +193,9 @@ mod tests {
     let mut rng = rand::thread_rng();
     ancestral_reconstruction(
       graph,
-      |node| partition.reconstruct_node_sequence(node_states, forward, node, true, impute, SampleMode::Argmax, &mut rng),
+      |node| {
+        partition.reconstruct_node_sequence(node_states, forward, node, true, impute, SampleMode::Argmax, &mut rng)
+      },
       |key, seq| {
         out.insert(names[&key].clone().expect("named node"), seq.clone());
         Ok(())

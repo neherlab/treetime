@@ -102,7 +102,9 @@ mod tests {
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    let log_lh = recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?.value();
+    let log_lh = recon
+      .run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?
+      .value();
     Ok((log_lh, recon))
   }
 
@@ -136,7 +138,9 @@ mod tests {
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    let log_lh = recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?.value();
+    let log_lh = recon
+      .run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?
+      .value();
     Ok((log_lh, recon))
   }
 
@@ -399,7 +403,9 @@ mod tests {
     let mut rng = rand::thread_rng();
     ancestral_reconstruction(
       graph,
-      |node| partition.reconstruct_node_sequence(node_states, forward, node, false, false, SampleMode::Argmax, &mut rng),
+      |node| {
+        partition.reconstruct_node_sequence(node_states, forward, node, false, false, SampleMode::Argmax, &mut rng)
+      },
       |key, seq| {
         actual.insert(names[&key].clone().expect("all test nodes are named"), seq.to_string());
         Ok(())
@@ -500,7 +506,9 @@ mod tests {
       estimates: BTreeMap::new(),
     };
 
-    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
 
     // Verify all marginal posterior rows sum to 1.0
     for (node_key, node_data) in &recon.node_states {

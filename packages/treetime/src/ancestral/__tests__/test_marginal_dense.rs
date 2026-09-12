@@ -95,7 +95,9 @@ mod tests {
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    let log_lh = recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?.value();
+    let log_lh = recon
+      .run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?
+      .value();
     Ok((log_lh, recon))
   }
 
@@ -295,8 +297,12 @@ mod tests {
 
     let (log_lh_init, mut recon) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
-    let log_lh_first = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
-    let log_lh_second = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    let log_lh_first = recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
+    let log_lh_second = recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
 
     // Repeated updates must produce identical log-likelihood to initialization
     pretty_assert_ulps_eq!(log_lh_init, log_lh_first, epsilon = 1e-10);

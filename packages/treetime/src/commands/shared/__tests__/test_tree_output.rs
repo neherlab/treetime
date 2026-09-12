@@ -723,7 +723,8 @@ mod tests {
       )?;
       let (clock_graph, clock_names, _clock_bl) = clock_graph()?;
       let clock = clock_to_auspice(&clock_graph, &clock_nodes(&clock_names, &clock_graph), "2026-07-19")?;
-      let (mugration_graph, mugration_names, mugration_bl, mugration_partition, mugration_node_states) = mugration_graph()?;
+      let (mugration_graph, mugration_names, mugration_bl, mugration_partition, mugration_node_states) =
+        mugration_graph()?;
       let mugration = mugration_to_auspice(
         &mugration_graph,
         &mugration_nodes(&mugration_names, &mugration_graph, &btreemap! {}),
@@ -781,7 +782,8 @@ mod tests {
           clock_to_phyloxml(&clock_graph, &clock_nodes(&clock_names, &clock_graph), &clock_bl)?
         },
         {
-          let (mugration_graph, mugration_names, mugration_bl, mugration_partition, mugration_node_states) = mugration_graph()?;
+          let (mugration_graph, mugration_names, mugration_bl, mugration_partition, mugration_node_states) =
+            mugration_graph()?;
           mugration_to_phyloxml(
             &mugration_graph,
             &mugration_nodes(&mugration_names, &mugration_graph, &btreemap! {}),
@@ -814,7 +816,8 @@ mod tests {
       set_mat_branch_lengths(&prune, &prune_names, &mut prune_bl)?;
       let (clock, clock_names, mut clock_bl) = clock_graph()?;
       set_mat_branch_lengths(&clock, &clock_names, &mut clock_bl)?;
-      let (mugration, mugration_names, mut mugration_bl, _mugration_partition, _mugration_node_states) = mugration_graph()?;
+      let (mugration, mugration_names, mut mugration_bl, _mugration_partition, _mugration_node_states) =
+        mugration_graph()?;
       set_mat_branch_lengths(&mugration, &mugration_names, &mut mugration_bl)?;
       let (timetree, timetree_names, _timetree_bl) = timetree_graph()?;
       let timetree_weights = timetree_mat_nwk_weights(&timetree, &timetree_names)?;
@@ -1092,7 +1095,15 @@ mod tests {
           )
         })
         .collect();
-      let result = MugrationResult::new(graph, &btreemap! {}, &names, &branch_lengths, &partition, &node_states, "country");
+      let result = MugrationResult::new(
+        graph,
+        &btreemap! {},
+        &names,
+        &branch_lengths,
+        &partition,
+        &node_states,
+        "country",
+      );
       Ok((result.graph, names, branch_lengths, partition, node_states))
     }
 

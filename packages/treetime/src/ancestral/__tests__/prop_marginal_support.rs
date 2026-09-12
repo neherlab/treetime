@@ -55,7 +55,9 @@ pub mod tests {
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    let log_lh = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    let log_lh = recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
     Ok((log_lh, recon))
   }
 
@@ -97,7 +99,9 @@ pub mod tests {
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    let log_lh = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    let log_lh = recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
     Ok((log_lh, recon))
   }
 }

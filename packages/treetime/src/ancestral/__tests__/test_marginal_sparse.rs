@@ -132,7 +132,9 @@ mod tests {
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    let log_lh = recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?.value();
+    let log_lh = recon
+      .run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?
+      .value();
     Ok((log_lh, recon))
   }
 
@@ -216,7 +218,9 @@ mod tests {
       estimates: BTreeMap::new(),
     };
 
-    let log_lh = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    let log_lh = recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
 
     // generate ancestral reconstruction and test against expectation
     let mut actual = BTreeMap::new();
@@ -230,7 +234,9 @@ mod tests {
       let mut rng = rand::thread_rng();
       ancestral_reconstruction(
         &graph,
-        |node| partition.reconstruct_node_sequence(node_states, forward, node, false, false, SampleMode::Argmax, &mut rng),
+        |node| {
+          partition.reconstruct_node_sequence(node_states, forward, node, false, false, SampleMode::Argmax, &mut rng)
+        },
         |key, seq| {
           actual.insert(names[&key].clone(), seq.to_string());
           Ok(())
@@ -250,8 +256,11 @@ mod tests {
     for name in expected.keys() {
       let node_key = find_node_key_by_name(&graph, &names, name).expect("expected internal node must exist");
       let sequence = &recon.node_states[&node_key].sequence;
-      let stored_composition =
-        Composition::with_seq(sequence, recon.partition.alphabet.chars(), recon.partition.alphabet.gap());
+      let stored_composition = Composition::with_seq(
+        sequence,
+        recon.partition.alphabet.chars(),
+        recon.partition.alphabet.gap(),
+      );
       assert_eq!(stored_composition, recon.partition.obs_nodes[&node_key].composition);
     }
 
@@ -355,8 +364,12 @@ mod tests {
       estimates: BTreeMap::new(),
     };
 
-    let log_lh_first = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
-    let log_lh_second = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    let log_lh_first = recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
+    let log_lh_second = recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
 
     // Verify log-likelihood value matches expected (same tree/alignment as normalization test)
     pretty_assert_ulps_eq!(-55.33813399214274, log_lh_first, epsilon = 1e-6);
@@ -536,7 +549,9 @@ mod tests {
             estimates: BTreeMap::new(),
           };
 
-          let log_lh = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+          let log_lh = recon
+            .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+            .value();
           total_lh += log_lh.exp();
         }
       }
@@ -588,7 +603,9 @@ mod tests {
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
 
     let actual_by_edge = {
       let readout = recon.readout();
@@ -616,7 +633,9 @@ mod tests {
       let mut rng = rand::thread_rng();
       ancestral_reconstruction(
         &graph,
-        |node| partition.reconstruct_node_sequence(node_states, forward, node, true, false, SampleMode::Argmax, &mut rng),
+        |node| {
+          partition.reconstruct_node_sequence(node_states, forward, node, true, false, SampleMode::Argmax, &mut rng)
+        },
         |key, seq| {
           seqs_by_name.insert(
             names[&key].clone().expect("all test nodes should have names"),

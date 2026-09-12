@@ -2,12 +2,12 @@
 mod tests {
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::pipeline::SparseReconstruction;
-  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
+  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -21,7 +21,13 @@ mod tests {
   fn manual_indel_count_on_edge(sparse_partitions: &[SparseReconstruction], edge_key: GraphEdgeKey) -> usize {
     sparse_partitions
       .iter()
-      .map(|partition| partition.partition.obs_edges.get(&edge_key).map_or(0, |edge| edge.indels.len()))
+      .map(|partition| {
+        partition
+          .partition
+          .obs_edges
+          .get(&edge_key)
+          .map_or(0, |edge| edge.indels.len())
+      })
       .sum()
   }
 
@@ -131,11 +137,17 @@ mod tests {
 
     let first_edge_key = graph.get_edges()[0].read_arc().key();
     branch_lengths.insert(first_edge_key, Some(0.1));
-    sparse_partitions[0].partition.obs_edges.get_mut(&first_edge_key).unwrap().indels =
-      vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+    sparse_partitions[0]
+      .partition
+      .obs_edges
+      .get_mut(&first_edge_key)
+      .unwrap()
+      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
-    let sparse_lh = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
-    let dense_lh = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?.value();
+    let sparse_lh =
+      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
+    let dense_lh =
+      marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?.value();
     let indel_lh = manual_total_indel_log_lh(&graph, &sparse_partitions, &branch_lengths);
     let expected_total_lh = sparse_lh + dense_lh + indel_lh;
 
@@ -287,8 +299,12 @@ mod tests {
     let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
     let first_edge_key = graph.get_edges()[0].read_arc().key();
     branch_lengths.insert(first_edge_key, Some(0.1));
-    sparse_partitions[0].partition.obs_edges.get_mut(&first_edge_key).unwrap().indels =
-      vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+    sparse_partitions[0]
+      .partition
+      .obs_edges
+      .get_mut(&first_edge_key)
+      .unwrap()
+      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     let initial_sparse_lh =
       marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();

@@ -3,7 +3,6 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::pipeline::DenseReconstruction;
-  use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockState;
@@ -15,6 +14,7 @@ mod tests {
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::pretty_assert_abs_diff_eq;
   use crate::seq::alignment::get_common_length;

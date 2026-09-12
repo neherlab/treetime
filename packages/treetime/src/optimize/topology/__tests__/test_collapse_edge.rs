@@ -27,7 +27,9 @@ mod tests {
   }
 
   fn populate_test_nodes(recon: &mut SparseReconstruction, graph: &Graph) {
-    let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(recon.partition.length).collect();
+    let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A'))
+      .take(recon.partition.length)
+      .collect();
     if recon.partition.root_sequence.is_empty() {
       recon.partition.root_sequence = ref_seq.clone();
     }
@@ -148,8 +150,14 @@ mod tests {
     collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
-    assert!(graph.get_node(i_key).is_none(), "removed node should be gone from graph");
-    assert!(graph.get_edge(ri_key).is_none(), "removed edge should be gone from graph");
+    assert!(
+      graph.get_node(i_key).is_none(),
+      "removed node should be gone from graph"
+    );
+    assert!(
+      graph.get_edge(ri_key).is_none(),
+      "removed edge should be gone from graph"
+    );
 
     Ok(())
   }

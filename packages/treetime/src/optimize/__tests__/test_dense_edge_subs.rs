@@ -317,11 +317,7 @@ mod tests {
     /// that edge_subs() reads, computes argmax independently, and compares. The
     /// implementation deliberately avoids calling edge_subs() so the test is not
     /// circular.
-    pub fn diff_map_states(
-      alphabet: &Alphabet,
-      parent_node: &DenseNodeState,
-      child_node: &DenseNodeState,
-    ) -> Vec<Sub> {
+    pub fn diff_map_states(alphabet: &Alphabet, parent_node: &DenseNodeState, child_node: &DenseNodeState) -> Vec<Sub> {
       let parent_profile = &parent_node.profile.dis;
       let child_profile = &child_node.profile.dis;
       let parent_gaps = &parent_node.seq.gaps;

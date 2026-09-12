@@ -47,8 +47,8 @@ mod tests {
   use treetime_graph::graph::Graph;
 
   use ndarray::{Array1, Array2};
-  use std::collections::BTreeMap;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use std::path::PathBuf;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -144,10 +144,13 @@ mod tests {
         estimates: BTreeMap::new(),
       };
       recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
-      let counts =
-        recon
-          .partition
-          .count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
+      let counts = recon.partition.count_transitions(
+        &graph,
+        &branch_lengths,
+        &recon.node_states,
+        &recon.backward,
+        &recon.forward,
+      )?;
       let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
       let n_states = recon.partition.alphabet.n_canonical();
       GTR::new(GTRParams {

@@ -57,7 +57,9 @@ mod tests {
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
     Ok((graph, recon, branch_lengths))
   }
 
@@ -86,7 +88,13 @@ mod tests {
     let (graph, recon, branch_lengths) =
       setup_dense_partition("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
 
-    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
+    let counts = recon.partition.count_transitions(
+      &graph,
+      &branch_lengths,
+      &recon.node_states,
+      &recon.backward,
+      &recon.forward,
+    )?;
 
     // With fractional counts, identical sequences still have small probability
     // mass on off-diagonal states from the joint distribution
@@ -116,7 +124,13 @@ mod tests {
 
     let (graph, recon, branch_lengths) = setup_dense_partition("(A:0.1,B:0.1)root:0.0;", &aln)?;
 
-    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
+    let counts = recon.partition.count_transitions(
+      &graph,
+      &branch_lengths,
+      &recon.node_states,
+      &recon.backward,
+      &recon.forward,
+    )?;
 
     // The root should be reconstructed with some state at position 0.
     // With marginal reconstruction on a symmetric tree, the root gets
@@ -181,7 +195,13 @@ mod tests {
     let (graph, recon, branch_lengths) =
       setup_dense_partition("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;", &aln)?;
 
-    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
+    let counts = recon.partition.count_transitions(
+      &graph,
+      &branch_lengths,
+      &recon.node_states,
+      &recon.backward,
+      &recon.forward,
+    )?;
 
     // Ti proportional to clamped BL (~2.5e-4), bounded well below 1e-2
     let ti_max = counts.Ti.iter().copied().fold(f64::NEG_INFINITY, f64::max);
@@ -262,7 +282,13 @@ mod tests {
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let (graph, recon, branch_lengths) = setup_dense_partition(tree_nwk, &aln)?;
 
-    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
+    let counts = recon.partition.count_transitions(
+      &graph,
+      &branch_lengths,
+      &recon.node_states,
+      &recon.backward,
+      &recon.forward,
+    )?;
     let result = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     pretty_assert_abs_diff_eq!(result.W, result.W.t().to_owned(), epsilon = 1e-9);

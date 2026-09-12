@@ -36,8 +36,9 @@ mod tests {
   /// Required for `edge_subs()` to work (it accesses node data to reconstruct states).
   fn populate_test_nodes(recon: &mut SparseReconstruction, graph: &Graph) {
     let alphabet = recon.partition.alphabet.clone();
-    let ref_seq: treetime_primitives::Seq =
-      std::iter::repeat_with(|| c(b'A')).take(recon.partition.length).collect();
+    let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A'))
+      .take(recon.partition.length)
+      .collect();
     if recon.partition.root_sequence.is_empty() {
       recon.partition.root_sequence = ref_seq.clone();
     }
@@ -48,7 +49,10 @@ mod tests {
         .obs_nodes
         .entry(key)
         .or_insert_with(|| SparseNodeObs::empty(&alphabet));
-      recon.node_states.entry(key).or_insert_with(|| SparseNodeState::leaf(&ref_seq));
+      recon
+        .node_states
+        .entry(key)
+        .or_insert_with(|| SparseNodeState::leaf(&ref_seq));
     }
   }
 
@@ -141,20 +145,20 @@ mod tests {
       vec![]
     } else {
       let mut partition = SparseReconstruction {
-      partition: PartitionMarginalSparse {
-        index: 0,
-        gtr: jc69(JC69Params::default())?,
-        alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
-        length: 100,
-        root_sequence: seq![],
-        obs_nodes: btreemap! {},
-        obs_edges: btreemap! {},
-      },
-      node_states: btreemap! {},
-      backward: btreemap! {},
-      forward: btreemap! {},
-      estimates: btreemap! {},
-    };
+        partition: PartitionMarginalSparse {
+          index: 0,
+          gtr: jc69(JC69Params::default())?,
+          alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
+          length: 100,
+          root_sequence: seq![],
+          obs_nodes: btreemap! {},
+          obs_edges: btreemap! {},
+        },
+        node_states: btreemap! {},
+        backward: btreemap! {},
+        forward: btreemap! {},
+        estimates: btreemap! {},
+      };
 
       populate_test_nodes(&mut partition, &graph);
 
@@ -164,9 +168,7 @@ mod tests {
             Some(n) => {
               partition.partition.obs_edges.insert(
                 edge_key,
-                SparseEdgeObs::with_fitch_subs(
-                  (0..*n).map(|i| Sub::new(c(b'A'), i, c(b'T')).unwrap()).collect_vec(),
-                ),
+                SparseEdgeObs::with_fitch_subs((0..*n).map(|i| Sub::new(c(b'A'), i, c(b'T')).unwrap()).collect_vec()),
               );
             },
             None => {
@@ -887,7 +889,8 @@ mod tests {
     );
     // Internal -> B has no mutations
     partition
-      .partition.obs_edges
+      .partition
+      .obs_edges
       .insert(internal_b_edge_key, SparseEdgeObs::default());
 
     let mut partitions = vec![partition];
@@ -976,7 +979,8 @@ mod tests {
       SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'G'), 0_usize, c(b'T'))?]),
     );
     partition
-      .partition.obs_edges
+      .partition
+      .obs_edges
       .insert(internal_b_edge_key, SparseEdgeObs::default());
 
     let mut partitions = vec![partition];
@@ -1053,7 +1057,8 @@ mod tests {
       SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'G'), 0_usize, c(b'A'))?]),
     );
     partition
-      .partition.obs_edges
+      .partition
+      .obs_edges
       .insert(internal_b_edge_key, SparseEdgeObs::default());
 
     let mut partitions = vec![partition];
@@ -1126,7 +1131,8 @@ mod tests {
       SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'G'), 1_usize, c(b'C'))?]),
     );
     partition1
-      .partition.obs_edges
+      .partition
+      .obs_edges
       .insert(internal_b_edge_key, SparseEdgeObs::default());
 
     let mut partition2 = SparseReconstruction {
@@ -1156,7 +1162,8 @@ mod tests {
       SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 12_usize, c(b'T'))?]),
     );
     partition2
-      .partition.obs_edges
+      .partition
+      .obs_edges
       .insert(internal_b_edge_key, SparseEdgeObs::default());
 
     let mut partitions = vec![partition1, partition2];
@@ -1588,7 +1595,8 @@ mod tests {
       SparseEdgeObs::with_fitch_subs_and_indels(vec![], vec![child_indel]),
     );
     partition
-      .partition.obs_edges
+      .partition
+      .obs_edges
       .insert(internal_b_edge_key, SparseEdgeObs::default());
 
     let mut partitions = vec![partition];

@@ -5,7 +5,6 @@ mod tests {
   };
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::pipeline::DenseReconstruction;
-  use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockState;
@@ -16,6 +15,7 @@ mod tests {
   use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
@@ -105,7 +105,12 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
 
     let aln = load_alignment_for_dataset(dataset)?;
     let dense_partition = PartitionTimetree::Dense(DenseReconstruction {
-      partition: PartitionMarginalDense::new(0, jc69(JC69Params::default())?, ALPHABET.clone(), case.sequence_length()),
+      partition: PartitionMarginalDense::new(
+        0,
+        jc69(JC69Params::default())?,
+        ALPHABET.clone(),
+        case.sequence_length(),
+      ),
       node_states: BTreeMap::new(),
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),

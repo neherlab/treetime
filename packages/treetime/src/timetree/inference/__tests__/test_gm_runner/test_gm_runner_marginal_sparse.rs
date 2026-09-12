@@ -7,17 +7,17 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::pipeline::SparseReconstruction;
-  use crate::partition::timetree::marginal::initialize_marginal_timetree;
-  use std::collections::BTreeMap;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockState;
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
+  use std::collections::BTreeMap;
 
   use crate::partition::timetree::partition::PartitionTimetree;
   use eyre::Report;

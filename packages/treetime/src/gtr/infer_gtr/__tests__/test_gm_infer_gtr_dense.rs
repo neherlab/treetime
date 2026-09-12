@@ -42,10 +42,13 @@ mod tests {
     let aln = read_many_fasta_str(&fasta_str, &*NUC_ALPHABET)?;
     let (graph, recon, branch_lengths) = setup_dense_partition(&case.tree, &aln)?;
 
-    let counts =
-      recon
-        .partition
-        .count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
+    let counts = recon.partition.count_transitions(
+      &graph,
+      &branch_lengths,
+      &recon.node_states,
+      &recon.backward,
+      &recon.forward,
+    )?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     // Short synthetic sequences: limited floating-point accumulation, tight tolerance
@@ -69,10 +72,13 @@ mod tests {
     let expected = &OUTPUTS.real[case_name];
 
     let (graph, recon, branch_lengths) = setup_dense_partition_from_files(&case.tree_path, &case.alignment_path)?;
-    let counts =
-      recon
-        .partition
-        .count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
+    let counts = recon.partition.count_transitions(
+      &graph,
+      &branch_lengths,
+      &recon.node_states,
+      &recon.backward,
+      &recon.forward,
+    )?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     // BLAS drift between NumPy and ndarray scales with sequence length. mpox_clade_ii_20

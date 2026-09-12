@@ -283,7 +283,11 @@ ACGTACGTAC
     let dense_total: usize = graph_d
       .get_edges()
       .iter()
-      .map(|e| recon_d.partition.edge_indel_count(&recon_d.estimates, e.read_arc().key()))
+      .map(|e| {
+        recon_d
+          .partition
+          .edge_indel_count(&recon_d.estimates, e.read_arc().key())
+      })
       .sum();
 
     let sparse_total: usize = graph_s

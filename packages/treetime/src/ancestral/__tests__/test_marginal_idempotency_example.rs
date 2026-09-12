@@ -85,8 +85,12 @@ TCGGCCGTGTRTTG--
     let graph: Graph = graph;
     let (_, mut recon) = run_dense_marginal(&input)?;
 
-    let log_lh_first = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
-    let log_lh_second = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    let log_lh_first = recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
+    let log_lh_second = recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())
@@ -118,8 +122,12 @@ TCGGCCGTGTRTTG--
     let graph: Graph = graph;
     let (_, mut recon) = run_sparse_marginal(&input)?;
 
-    let log_lh_first = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
-    let log_lh_second = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    let log_lh_first = recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
+    let log_lh_second = recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
     Ok(())

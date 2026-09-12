@@ -69,7 +69,12 @@ pub mod tests {
     let alphabet_dense = Alphabet::new(AlphabetName::Nuc)?;
     let alphabet_sparse = Alphabet::new(AlphabetName::Nuc)?;
 
-    let dense_partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet_dense, get_common_length(&aln)?);
+    let dense_partition = PartitionMarginalDense::new(
+      0,
+      jc69(JC69Params::default())?,
+      alphabet_dense,
+      get_common_length(&aln)?,
+    );
     let dense_node_states = dense_partition.attach_sequences(graph, &aln, names)?;
     let mut dense_partitions = vec![DenseReconstruction {
       partition: dense_partition,

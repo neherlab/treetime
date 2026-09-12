@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
@@ -13,7 +14,6 @@ mod tests {
   use crate::optimize::method_newton::newton_tolerance_t;
   use crate::optimize::method_newton::{chain_rule_log, chain_rule_sqrt};
   use crate::optimize::params::BranchOptMethod;
-  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::optimize::run_loop::OptimizeReadouts;
   use crate::optimize::zero_boundary::min_branch_length_for_indels;
   use crate::partition::optimize;

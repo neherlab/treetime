@@ -13,7 +13,9 @@ mod tests {
   };
   use crate::optimize::dispatch::run_optimize_mixed_inner;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
-  use crate::optimize::run_loop::{OptimizeReadouts, apply_initial_guess_mode, marginal_update_sparse, run_optimize_loop};
+  use crate::optimize::run_loop::{
+    OptimizeReadouts, apply_initial_guess_mode, marginal_update_sparse, run_optimize_loop,
+  };
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -45,13 +47,21 @@ mod tests {
 
     let first_edge_key = graph_with.get_edges()[0].read_arc().key();
     branch_lengths_with.insert(first_edge_key, Some(0.1));
-    sparse_with[0].partition.obs_edges.get_mut(&first_edge_key).unwrap().indels =
-      vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+    sparse_with[0]
+      .partition
+      .obs_edges
+      .get_mut(&first_edge_key)
+      .unwrap()
+      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     let first_edge_key_without = graph_without.get_edges()[0].read_arc().key();
     branch_lengths_without.insert(first_edge_key_without, Some(0.1));
-    sparse_without[0].partition.obs_edges.get_mut(&first_edge_key_without).unwrap().indels =
-      vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+    sparse_without[0]
+      .partition
+      .obs_edges
+      .get_mut(&first_edge_key_without)
+      .unwrap()
+      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     let names_tt_4 = graph_with_names.clone();
     let result_with = run_optimize_loop(
@@ -106,8 +116,12 @@ mod tests {
 
     let first_edge_key = graph.get_edges()[0].read_arc().key();
     branch_lengths.insert(first_edge_key, Some(0.05));
-    sparse_partitions[0].partition.obs_edges.get_mut(&first_edge_key).unwrap().indels =
-      vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+    sparse_partitions[0]
+      .partition
+      .obs_edges
+      .get_mut(&first_edge_key)
+      .unwrap()
+      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?;
 

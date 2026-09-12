@@ -45,7 +45,9 @@ mod tests {
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    recon
+      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
+      .value();
     Ok((graph, recon, branch_lengths))
   }
 
@@ -65,7 +67,13 @@ mod tests {
       "#},
     )?;
 
-    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
+    let counts = recon.partition.count_transitions(
+      &graph,
+      &branch_lengths,
+      &recon.node_states,
+      &recon.backward,
+      &recon.forward,
+    )?;
 
     pretty_assert_array_nonneg!(counts.nij);
     pretty_assert_array_nonneg!(counts.Ti);
@@ -89,7 +97,13 @@ mod tests {
       "#},
     )?;
 
-    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
+    let counts = recon.partition.count_transitions(
+      &graph,
+      &branch_lengths,
+      &recon.node_states,
+      &recon.backward,
+      &recon.forward,
+    )?;
 
     pretty_assert_array_positive!(counts.Ti);
 
@@ -112,7 +126,13 @@ mod tests {
       "#},
     )?;
 
-    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
+    let counts = recon.partition.count_transitions(
+      &graph,
+      &branch_lengths,
+      &recon.node_states,
+      &recon.backward,
+      &recon.forward,
+    )?;
 
     for i in 0..counts.nij.nrows() {
       #[allow(clippy::float_cmp, reason = "diagonal is zero by construction, no arithmetic")]
@@ -140,7 +160,13 @@ mod tests {
       "#},
     )?;
 
-    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
+    let counts = recon.partition.count_transitions(
+      &graph,
+      &branch_lengths,
+      &recon.node_states,
+      &recon.backward,
+      &recon.forward,
+    )?;
 
     assert!(counts.root_state.sum() > 0.0, "root_state should be populated");
 

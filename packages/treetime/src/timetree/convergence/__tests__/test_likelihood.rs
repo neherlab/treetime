@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
+  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::node_time::CoalescentNodeTimes;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
   use crate::partition::timetree::partition::PartitionTimetree;
