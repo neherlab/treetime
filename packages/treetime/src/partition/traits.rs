@@ -3,15 +3,11 @@ use crate::make_internal_error;
 use crate::make_internal_report;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::seq::indel::InDel;
-use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub, mutation_event_strings};
+use crate::seq::mutation::{Mutation, MutationTrack, Sub};
 use eyre::Report;
-use itertools::Itertools;
-use maplit::btreemap;
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::nwk::NodeCommentProvider;
 use treetime_primitives::Seq;
 
 /// Access to a partition's substitution model and sequence length, shared by the concrete
@@ -127,86 +123,6 @@ pub trait PartitionBranchOps: Send + Sync {
   /// Return the number of alignment positions where both parent and child
   /// have canonical (non-gap, non-ambiguous) states for one edge.
   fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report>;
-}
-
-pub struct MutationCommentProvider<'a> {
-  partition: &'a dyn PartitionBranchOps,
-  graph: &'a dyn BranchTopology,
-}
-
-impl<'a> MutationCommentProvider<'a> {
-  pub fn new(partition: &'a dyn PartitionBranchOps, graph: &'a dyn BranchTopology) -> Self {
-    Self { partition, graph }
-  }
-}
-
-impl NodeCommentProvider for MutationCommentProvider<'_> {
-  fn node_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report> {
-    let Some((_parent_key, edge_key)) = self.graph.node_parent(key)? else {
-      return Ok(BTreeMap::new());
-    };
-    let mut mutations = self
-      .partition
-      .edge_mutations(self.graph, edge_key, MutationTrack::Nucleotide)?;
-    if mutations.is_empty() {
-      return Ok(BTreeMap::new());
-    }
-    mutations.sort_by_key(|mutation| match &mutation.event {
-      MutationEvent::Substitution(substitution) => substitution.pos(),
-      MutationEvent::Insertion(segment) | MutationEvent::Deletion(segment) => segment.range.0,
-    });
-    let mutations = mutations
-      .iter()
-      .map(|mutation| mutation_event_strings(&mutation.event))
-      .collect::<Result<Vec<_>, _>>()?
-      .into_iter()
-      .flatten()
-      .join(",");
-    Ok(btreemap! {
-      "mutations".to_owned() => mutations,
-    })
-  }
-}
-
-/// Newick/Nexus node-comment provider that reads a gathered per-edge nucleotide mutation map.
-///
-/// Mirrors [`MutationCommentProvider`], but reads mutations from a value map instead of the partition,
-/// so the tree writers no longer touch the partition during serialization.
-pub struct EdgeMutationCommentProvider<'a> {
-  edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  graph: &'a dyn BranchTopology,
-}
-
-impl<'a> EdgeMutationCommentProvider<'a> {
-  pub fn new(edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>, graph: &'a dyn BranchTopology) -> Self {
-    Self { edge_mutations, graph }
-  }
-}
-
-impl NodeCommentProvider for EdgeMutationCommentProvider<'_> {
-  fn node_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report> {
-    let Some((_parent_key, edge_key)) = self.graph.node_parent(key)? else {
-      return Ok(BTreeMap::new());
-    };
-    let mut mutations = self.edge_mutations[&edge_key].clone();
-    if mutations.is_empty() {
-      return Ok(BTreeMap::new());
-    }
-    mutations.sort_by_key(|mutation| match &mutation.event {
-      MutationEvent::Substitution(substitution) => substitution.pos(),
-      MutationEvent::Insertion(segment) | MutationEvent::Deletion(segment) => segment.range.0,
-    });
-    let mutations = mutations
-      .iter()
-      .map(|mutation| mutation_event_strings(&mutation.event))
-      .collect::<Result<Vec<_>, _>>()?
-      .into_iter()
-      .flatten()
-      .join(",");
-    Ok(btreemap! {
-      "mutations".to_owned() => mutations,
-    })
-  }
 }
 
 /// Optimize-specific read accessors, extending [`PartitionBranchOps`] with the per-edge likelihood

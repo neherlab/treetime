@@ -2,12 +2,13 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::pipeline::SparseReconstruction;
+  use crate::commands::shared::mutation_comment::EdgeMutationCommentProvider;
   use crate::commands::timetree::output::date_comment::DateCommentProvider;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
-  use crate::partition::traits::MutationCommentProvider;
-  use crate::seq::mutation::Sub;
+  use crate::partition::traits::PartitionBranchOps;
+  use crate::seq::mutation::{Mutation, MutationTrack, Sub};
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
@@ -22,6 +23,23 @@ mod tests {
 
   fn c(b: u8) -> AsciiChar {
     AsciiChar::from_byte_unchecked(b)
+  }
+
+  /// Gather the per-edge nucleotide mutation map the comment provider consumes off a completed
+  /// sparse reconstruction, mirroring how the timetree tree writers gather it in production.
+  fn edge_mutation_map(
+    graph: &Graph,
+    partition: &SparseReconstruction,
+  ) -> Result<BTreeMap<GraphEdgeKey, Vec<Mutation>>, Report> {
+    let readout = partition.readout();
+    graph
+      .get_edges()
+      .iter()
+      .map(|edge| {
+        let key = edge.read_arc().key();
+        Ok((key, readout.edge_mutations(graph, key, MutationTrack::Nucleotide)?))
+      })
+      .collect()
   }
 
   fn make_test_partition(
@@ -94,8 +112,8 @@ mod tests {
         ],
       )],
     )?;
-    let readout = partition.readout();
-    let provider = MutationCommentProvider::new(&readout, &graph);
+    let edge_mutations = edge_mutation_map(&graph, &partition)?;
+    let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
     let leaf_key = graph.get_leaves()[0].read_arc().key();
     let comments = provider.node_comments(leaf_key)?;
     assert_eq!(comments.get("mutations").map(String::as_str), Some("A55G,T93C"));
@@ -124,8 +142,8 @@ mod tests {
       .map(|leaf| (leaf.read_arc().key(), 2003.84))
       .collect();
 
-    let readout = partition.readout();
-    let provider = MutationCommentProvider::new(&readout, &graph);
+    let edge_mutations = edge_mutation_map(&graph, &partition)?;
+    let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
     let date_provider = DateCommentProvider::new(&date_times);
     let providers = CommentProviders::new().with(&provider).with(&date_provider);
     let options = NexWriteOptions {

@@ -8,6 +8,3 @@ pub mod optimize;
 pub mod storage;
 pub mod timetree;
 pub mod traits;
-
-#[cfg(test)]
-mod __tests__;
