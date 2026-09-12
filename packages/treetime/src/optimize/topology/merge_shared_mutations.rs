@@ -1,7 +1,7 @@
+use crate::ancestral::pipeline::SparseReconstruction;
 use crate::gtr::jc_distance::jukes_cantor_distance;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::storage::sparse::SparseNodePartition;
+use crate::partition::storage::sparse::SparseNodeObs;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -28,7 +28,7 @@ use treetime_utils::iterator::difference::iterator_difference;
 /// of new internal nodes created.
 pub fn merge_shared_mutation_branches(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
   let mut total_merged = 0;
@@ -62,7 +62,7 @@ pub fn merge_shared_mutation_branches(
 /// Returns number of new internal nodes created.
 pub(crate) fn merge_single_polytomy(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   node_key: GraphNodeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
@@ -137,7 +137,7 @@ type MutationIndex = BTreeMap<(usize, MutationKey), Vec<GraphEdgeKey>>;
 /// Each substitution and each indel on each edge is entered under its (partition, key) bucket.
 /// Buckets with a single entry contribute no pair scores; buckets with >= 2 entries contribute
 /// +1 to all pairwise scores within the bucket.
-fn build_mutation_index(partitions: &[PartitionMarginalSparse], child_edges: &[GraphEdgeKey]) -> MutationIndex {
+fn build_mutation_index(partitions: &[SparseReconstruction], child_edges: &[GraphEdgeKey]) -> MutationIndex {
   let mut index: MutationIndex = BTreeMap::new();
   for &edge_key in child_edges {
     for (pi, partition) in partitions.iter().enumerate() {
@@ -266,7 +266,7 @@ struct ChildEdgeData {
 /// same mechanism (back-mutations and parallel substitutions).
 fn merge_sibling_group(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   parent_key: GraphNodeKey,
   group: &MergeGroup,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -287,7 +287,7 @@ fn merge_sibling_group(
         .edges
         .iter()
         .map(|&ek| {
-          let edge = partition.edges.get(&ek);
+          let edge = partition.partition.obs_edges.get(&ek);
           let all_subs = edge.map_or(empty_subs, |e| e.fitch_subs());
           let all_indels = edge.map_or(empty_indels, |e| e.indels.as_slice());
           let shared_subs = &group.shared_subs[pi];
@@ -305,8 +305,8 @@ fn merge_sibling_group(
     })
     .collect();
 
-  let total_alignment_length: usize = partitions.iter().map(|p| p.length).sum();
-  let n_states = partitions[0].alphabet.n_canonical();
+  let total_alignment_length: usize = partitions.iter().map(|p| p.partition.length).sum();
+  let n_states = partitions[0].partition.alphabet.n_canonical();
   let jc_bl = |count: usize| -> f64 {
     if total_alignment_length > 0 {
       jukes_cantor_distance(count as f64 / total_alignment_length as f64, n_states)
@@ -344,21 +344,24 @@ fn merge_sibling_group(
     new_child_edge_keys.push(new_ek);
   }
 
-  for (pi, partition) in partitions.iter_mut().enumerate() {
-    let mut new_node = SparseNodePartition::empty(&partition.alphabet);
-    new_node.seq.composition = partition.nodes[&parent_key].seq.composition.clone();
-    partition.nodes.entry(new_node_key).or_insert(new_node);
+  for (pi, family) in partitions.iter_mut().enumerate() {
+    let partition = &mut family.partition;
+    // The new internal node inherits the parent's residue composition; the marginal passes rebuild
+    // its evolving state, and the caller reconciles the node-state map after the topology batch.
+    let mut new_node = SparseNodeObs::empty(&partition.alphabet);
+    new_node.composition = partition.obs_nodes[&parent_key].composition.clone();
+    partition.obs_nodes.entry(new_node_key).or_insert(new_node);
 
     for &ek in &group.edges {
-      partition.edges.remove(&ek);
+      partition.obs_edges.remove(&ek);
     }
 
-    let parent_edge = partition.edges.entry(new_parent_edge_key).or_default();
+    let parent_edge = partition.obs_edges.entry(new_parent_edge_key).or_default();
     parent_edge.set_fitch_subs(group.shared_subs[pi].clone());
     parent_edge.indels = group.shared_indels[pi].clone();
 
     for (i, &new_ek) in new_child_edge_keys.iter().enumerate() {
-      let child_edge = partition.edges.entry(new_ek).or_default();
+      let child_edge = partition.obs_edges.entry(new_ek).or_default();
       child_edge.set_fitch_subs(per_edge_data[pi][i].remaining_subs.clone());
       child_edge.indels = per_edge_data[pi][i].remaining_indels.clone();
     }

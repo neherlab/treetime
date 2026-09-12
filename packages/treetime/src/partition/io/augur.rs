@@ -1,7 +1,5 @@
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::partition::fitch::partition::PartitionFitch;
-use crate::partition::marginal::dense::partition::DenseReadout;
-use crate::partition::marginal::sparse::partition::SparseReadout;
 use crate::partition::traits::{BranchTopology, PartitionBranchOps};
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
@@ -65,19 +63,6 @@ impl AugurNodeDataJsonAncestralPartition for PartitionFitch {
   }
 }
 
-impl SparseReconstruction {
-  /// Build a short-lived read view over this completed reconstruction's borrowed inputs and result maps.
-  fn readout(&self) -> SparseReadout<'_> {
-    SparseReadout {
-      partition: &self.partition,
-      node_states: &self.node_states,
-      backward: &self.backward,
-      forward: &self.forward,
-      estimates: &self.estimates,
-    }
-  }
-}
-
 impl AugurNodeDataJsonAncestralPartition for SparseReconstruction {
   fn sequence_length(&self) -> usize {
     self.partition.length
@@ -100,19 +85,6 @@ impl AugurNodeDataJsonAncestralPartition for SparseReconstruction {
 
   fn ambiguous_char(&self) -> AsciiChar {
     self.partition.alphabet.unknown()
-  }
-}
-
-impl DenseReconstruction {
-  /// Build a short-lived read view over this completed reconstruction's borrowed inputs and result maps.
-  fn readout(&self) -> DenseReadout<'_> {
-    DenseReadout {
-      partition: &self.partition,
-      node_states: &self.node_states,
-      backward: &self.backward,
-      forward: &self.forward,
-      estimates: &self.estimates,
-    }
   }
 }
 

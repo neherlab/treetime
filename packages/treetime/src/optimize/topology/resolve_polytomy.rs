@@ -1,3 +1,4 @@
+use crate::ancestral::pipeline::SparseReconstruction;
 use crate::optimize::params::TopologyOps;
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::hoist_reversions::{
@@ -5,8 +6,6 @@ use crate::optimize::topology::hoist_reversions::{
 };
 use crate::optimize::topology::merge_shared_mutations::merge_single_polytomy;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
-use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use eyre::Report;
 use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
@@ -31,8 +30,7 @@ use treetime_graph::node::GraphNodeKey;
 /// [`merge_shared_mutation_branches`]: crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches
 pub fn resolve_polytomies(
   graph: &mut Graph,
-  sparse: &mut [PartitionMarginalSparse],
-  dense: &mut [PartitionMarginalDense],
+  sparse: &mut [SparseReconstruction],
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
@@ -46,7 +44,7 @@ pub fn resolve_polytomies(
     let polytomy_keys = find_polytomy_nodes(graph);
     let mut round_changed = 0;
     for node_key in polytomy_keys {
-      if resolve_one(graph, sparse, dense, node_key, topology_ops, branch_lengths)? {
+      if resolve_one(graph, sparse, node_key, topology_ops, branch_lengths)? {
         round_changed += 1;
       }
     }
@@ -81,8 +79,7 @@ pub fn resolve_polytomies(
 /// Returns whether anything changed.
 fn resolve_one(
   graph: &mut Graph,
-  sparse: &mut [PartitionMarginalSparse],
-  dense: &mut [PartitionMarginalDense],
+  sparse: &mut [SparseReconstruction],
   node_key: GraphNodeKey,
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -95,8 +92,8 @@ fn resolve_one(
     // collapses helper edges the enabled moves just created, so it is a no-op when neither ran.
     let merged = topology_ops.merge_siblings && merge_single_polytomy(graph, sparse, node_key, branch_lengths)? > 0;
     let hoisted =
-      topology_ops.flip_parent_child && try_hoist_reverting_child(graph, sparse, dense, node_key, branch_lengths)?;
-    let retired = retire_created_helpers(graph, sparse, dense, &preexisting, branch_lengths)?;
+      topology_ops.flip_parent_child && try_hoist_reverting_child(graph, sparse, node_key, branch_lengths)?;
+    let retired = retire_created_helpers(graph, sparse, &preexisting, branch_lengths)?;
 
     if !(merged || hoisted || retired) {
       break;
@@ -118,8 +115,7 @@ fn resolve_one(
 /// knowledge base), rather than removing the pre-existing node the input asserted.
 fn try_hoist_reverting_child(
   graph: &mut Graph,
-  sparse: &mut [PartitionMarginalSparse],
-  dense: &mut [PartitionMarginalDense],
+  sparse: &mut [SparseReconstruction],
   node_key: GraphNodeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<bool, Report> {
@@ -143,7 +139,7 @@ fn try_hoist_reverting_child(
   if let Some((root_key, sibling_edge_key)) = root_and_sibling {
     slide_bifurcating_root_for_child(sparse, root_key, parent_edge_key, sibling_edge_key, child_edge_key)?;
   }
-  hoist_reverting_child(graph, sparse, dense, parent_edge_key, child_edge_key, branch_lengths)?;
+  hoist_reverting_child(graph, sparse, parent_edge_key, child_edge_key, branch_lengths)?;
   Ok(true)
 }
 
@@ -176,7 +172,7 @@ fn bifurcating_root_sibling_edge(graph: &Graph, parent_edge_key: GraphEdgeKey) -
 /// reversions are counted across a bifurcating root (see [`count_child_reversions`]).
 fn best_reverting_child(
   graph: &Graph,
-  sparse: &[PartitionMarginalSparse],
+  sparse: &[SparseReconstruction],
   node_key: GraphNodeKey,
   parent_edge_key: GraphEdgeKey,
   sibling_edge_key: Option<GraphEdgeKey>,
@@ -218,8 +214,7 @@ fn best_reverting_child(
 /// Returns whether any edge was retired.
 fn retire_created_helpers(
   graph: &mut Graph,
-  sparse: &mut [PartitionMarginalSparse],
-  dense: &mut [PartitionMarginalDense],
+  sparse: &mut [SparseReconstruction],
   preexisting: &BTreeSet<GraphNodeKey>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<bool, Report> {
@@ -236,7 +231,7 @@ fn retire_created_helpers(
         return None;
       }
       let edge_key = edge.key();
-      let mutation_free = sparse.iter().all(|partition| match partition.edges.get(&edge_key) {
+      let mutation_free = sparse.iter().all(|partition| match partition.partition.obs_edges.get(&edge_key) {
         Some(edge_data) => edge_data.fitch_subs().is_empty() && edge_data.indels.is_empty(),
         None => true,
       });
@@ -245,7 +240,7 @@ fn retire_created_helpers(
 
     match candidate {
       Some(edge_key) => {
-        collapse_edge(graph, sparse, dense, edge_key, branch_lengths)?;
+        collapse_edge(graph, sparse, edge_key, branch_lengths)?;
         retired = true;
       },
       None => break,

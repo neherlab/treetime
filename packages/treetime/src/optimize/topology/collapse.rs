@@ -1,11 +1,10 @@
-use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::ancestral::pipeline::SparseReconstruction;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
-/// Collapse a single edge, updating graph topology and partition state.
+/// Collapse a single edge, updating graph topology and partition observations.
 ///
 /// Graph topology: the target node is removed and its children become children of the
 /// source node. Edge keys of the former children are preserved (graph reuses them).
@@ -19,8 +18,10 @@ use treetime_graph::graph::Graph;
 /// composed (overlapping/adjacent deletions merged, cancellations applied).
 /// See `compose_substitutions()` and `compose_indels()` for details.
 ///
-/// Stale entries for the removed node and removed edge are dropped from every sparse
-/// and dense partition so the partition state stays consistent with the graph.
+/// Stale observations for the removed node and removed edge are dropped from every sparse
+/// partition so the observation maps stay consistent with the graph. The evolving node
+/// states, edge messages, and estimates are reconciled by the caller after the topology
+/// batch and rebuilt by the next marginal update.
 ///
 /// # Scientific background
 ///
@@ -29,11 +30,11 @@ use treetime_graph::graph::Graph;
 /// Markov semigroup property rather than taking the set union. Reversions at the
 /// same position (e.g. a forward substitution on the collapsed edge followed by the
 /// reverse substitution on the child edge) cancel to no net change. See
-/// [`compose_substitutions`] for the exact composition semantics.
+/// [`SparseEdgeObs::chain_fitch_subs`](crate::partition::storage::sparse::SparseEdgeObs::chain_fitch_subs)
+/// for the exact composition semantics.
 pub fn collapse_edge(
   graph: &mut Graph,
-  sparse_partitions: &mut [PartitionMarginalSparse],
-  dense_partitions: &mut [PartitionMarginalDense],
+  sparse: &mut [SparseReconstruction],
   edge_key: GraphEdgeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
@@ -51,28 +52,25 @@ pub fn collapse_edge(
       branch_lengths.insert(new_edge_key, Some(bl1 + bl2));
     }
 
-    // Compose substitutions and merge indels on each sparse partition.
-    // Each graph edge is expected to have a corresponding partition entry (populated
-    // by `compress_sequences`); strict indexing surfaces any invariant violation.
-    for partition in sparse_partitions.iter_mut() {
-      let removed_edge_data = partition.edges[&edge_key].clone();
-      let child_edge = partition.edges.entry(new_edge_key).or_default();
+    // Compose substitutions and merge indels on each sparse partition's observations.
+    // Each graph edge is expected to have a corresponding observation entry (populated
+    // by the Fitch pre-pass); strict indexing surfaces any invariant violation.
+    for family in sparse.iter_mut() {
+      let obs_edges = &mut family.partition.obs_edges;
+      let removed_edge_data = obs_edges[&edge_key].clone();
+      let child_edge = obs_edges.entry(new_edge_key).or_default();
       let merged_subs = removed_edge_data.chain_fitch_subs(child_edge.fitch_subs())?;
       child_edge.set_fitch_subs(merged_subs);
       child_edge.indels = removed_edge_data.chain_fitch_indels(&child_edge.indels);
     }
   }
 
-  // Drop stale entries for the removed node and removed edge in every partition.
+  // Drop stale observations for the removed node and removed edge in every partition.
   // Downstream passes (e.g. `marginal_update`) recompute any state they need from
   // the remaining entries.
-  for partition in sparse_partitions.iter_mut() {
-    partition.nodes.remove(&target_node_key);
-    partition.edges.remove(&edge_key);
-  }
-  for partition in dense_partitions.iter_mut() {
-    partition.data.nodes.remove(&target_node_key);
-    partition.data.edges.remove(&edge_key);
+  for family in sparse.iter_mut() {
+    family.partition.obs_nodes.remove(&target_node_key);
+    family.partition.obs_edges.remove(&edge_key);
   }
 
   // The collapsed edge no longer exists; drop its stale entry from the branch-length map.

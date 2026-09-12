@@ -10,8 +10,8 @@ use crate::gtr::gtr::GTR;
 use crate::gtr::refinement::refine_gtr_iterative;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::fitch::partition::PartitionFitch;
-use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::partition::marginal::dense::partition::{DenseReadout, PartitionMarginalDense};
+use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseReadout};
 use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState};
 use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseNodeState};
 use crate::partition::traits::HasGtr;
@@ -25,6 +25,7 @@ use strum::VariantNames;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_primitives::LogLh;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
 use treetime_utils::make_error;
@@ -64,6 +65,32 @@ pub struct SparseReconstruction {
   pub estimates: BTreeMap<GraphEdgeKey, Vec<Sub>>,
 }
 
+impl SparseReconstruction {
+  /// Build a short-lived read view over the borrowed inputs and result maps.
+  pub fn readout(&self) -> SparseReadout<'_> {
+    SparseReadout {
+      partition: &self.partition,
+      node_states: &self.node_states,
+      backward: &self.backward,
+      forward: &self.forward,
+      estimates: &self.estimates,
+    }
+  }
+
+  /// Run a full marginal update in place, replacing the result maps and returning the substitution
+  /// log likelihood. The node states are consumed and refreshed.
+  pub fn run_marginal_update(&mut self, graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, f64>) -> Result<LogLh, Report> {
+    let node_states = std::mem::take(&mut self.node_states);
+    let (node_states, backward, forward, estimates, log_lh) =
+      self.partition.marginal_update(graph, branch_lengths, node_states)?;
+    self.node_states = node_states;
+    self.backward = backward;
+    self.forward = forward;
+    self.estimates = estimates;
+    Ok(log_lh)
+  }
+}
+
 /// A completed dense reconstruction: the durable partition inputs together with the node states and
 /// per-edge messages/estimates the passes returned, kept as distinct owned maps.
 #[derive(Clone, Serialize)]
@@ -73,6 +100,32 @@ pub struct DenseReconstruction {
   pub backward: BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
   pub forward: BTreeMap<GraphEdgeKey, DenseEdgeForward>,
   pub estimates: BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
+}
+
+impl DenseReconstruction {
+  /// Build a short-lived read view over the borrowed inputs and result maps.
+  pub fn readout(&self) -> DenseReadout<'_> {
+    DenseReadout {
+      partition: &self.partition,
+      node_states: &self.node_states,
+      backward: &self.backward,
+      forward: &self.forward,
+      estimates: &self.estimates,
+    }
+  }
+
+  /// Run a full marginal update in place, replacing the result maps and returning the substitution
+  /// log likelihood. The node states are consumed and refreshed.
+  pub fn run_marginal_update(&mut self, graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, f64>) -> Result<LogLh, Report> {
+    let node_states = std::mem::take(&mut self.node_states);
+    let (node_states, backward, forward, estimates, log_lh) =
+      self.partition.marginal_update(graph, branch_lengths, node_states)?;
+    self.node_states = node_states;
+    self.backward = backward;
+    self.forward = forward;
+    self.estimates = estimates;
+    Ok(log_lh)
+  }
 }
 
 #[derive(Clone, Serialize)]
