@@ -4,9 +4,10 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 
+  use crate::ancestral::pipeline::SparseReconstruction;
   use crate::gtr::jc_distance::jukes_cantor_distance;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
@@ -36,16 +37,8 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     length: usize,
     edge_mutations: &[(&str, &str, Vec<Sub>)],
-  ) -> Result<PartitionMarginalSparse, Report> {
-    let mut partition = PartitionMarginalSparse {
-      index: 0,
-      gtr: jc69(JC69Params::default())?,
-      alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
-      length,
-      nodes: btreemap! {},
-      edges: btreemap! {},
-      root_sequence: seq![],
-    };
+  ) -> Result<SparseReconstruction, Report> {
+    let alphabet = Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?;
 
     // Build root reference sequence consistent with edge subs.
     // Set each position to the sub's ref character so that edge_subs()
@@ -59,25 +52,39 @@ mod tests {
       }
     }
 
-    partition.root_sequence = ref_seq.clone();
-
-    // Populate node entries so edge_subs() can reconstruct states
+    // Populate node observations/states so edge_subs() can reconstruct states
+    let mut obs_nodes = btreemap! {};
+    let mut node_states = btreemap! {};
     for node in graph.get_nodes() {
       let key = node.read_arc().key();
-      let mut node_part = SparseNodePartition::empty(&partition.alphabet);
-      node_part.seq.sequence = ref_seq.clone();
-      partition.nodes.insert(key, node_part);
+      obs_nodes.insert(key, SparseNodeObs::new(&ref_seq, &alphabet));
+      node_states.insert(key, SparseNodeState::leaf(&ref_seq));
     }
 
+    let mut obs_edges = btreemap! {};
     for (source, target, subs) in edge_mutations {
       let edge_key = find_edge_key(graph, names, source, target)
         .unwrap_or_else(|| panic!("edge {source}->{target} not found in graph"));
-      partition
-        .edges
-        .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
+      obs_edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs.clone()));
     }
 
-    Ok(partition)
+    let partition = PartitionMarginalSparse {
+      index: 0,
+      gtr: jc69(JC69Params::default())?,
+      alphabet,
+      length,
+      root_sequence: ref_seq,
+      obs_nodes,
+      obs_edges,
+    };
+
+    Ok(SparseReconstruction {
+      partition,
+      node_states,
+      backward: btreemap! {},
+      forward: btreemap! {},
+      estimates: btreemap! {},
+    })
   }
 
   /// Find the new internal node (unnamed, non-root, non-leaf).
