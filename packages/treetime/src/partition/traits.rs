@@ -1,3 +1,4 @@
+use crate::gtr::gtr::GTR;
 use crate::make_internal_error;
 use crate::make_internal_report;
 use crate::partition::optimize::contribution::OptimizationContribution;
@@ -12,6 +13,22 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::nwk::NodeCommentProvider;
 use treetime_primitives::Seq;
+
+/// Access to a partition's substitution model and sequence length, shared by the concrete
+/// representations so rate normalization can stay generic over them.
+pub trait HasGtr {
+  fn gtr(&self) -> &GTR;
+  fn gtr_mut(&mut self) -> &mut GTR;
+  fn sequence_length(&self) -> usize;
+
+  fn weighted_rate(&self) -> f64 {
+    self.sequence_length() as f64 * self.gtr().mu
+  }
+
+  fn normalize_rate(&mut self, scale: f64) {
+    self.gtr_mut().mu /= scale;
+  }
+}
 
 /// Minimal graph-structure abstraction used by per-branch partition operations.
 ///

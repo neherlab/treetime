@@ -10,7 +10,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
 };
-use crate::partition::traits::{BranchTopology, PartitionBranchOps, PartitionOptimizeOps};
+use crate::partition::traits::{BranchTopology, HasGtr, PartitionBranchOps, PartitionOptimizeOps};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::izip;
@@ -421,5 +421,17 @@ impl PartitionOptimizeOps for DenseReadout<'_> {
 
   fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
     self.partition.edge_indel_count(self.estimates, edge_key)
+  }
+}
+
+impl HasGtr for PartitionMarginalDense {
+  fn gtr(&self) -> &GTR {
+    &self.inputs.gtr
+  }
+  fn gtr_mut(&mut self) -> &mut GTR {
+    &mut self.inputs.gtr
+  }
+  fn sequence_length(&self) -> usize {
+    self.length
   }
 }

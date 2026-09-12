@@ -1,5 +1,6 @@
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
+use crate::partition::traits::HasGtr;
 use crate::partition::marginal::discrete::input::{one_hot_profile, uniform_profile, validate_trait_names};
 use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, indexed_forward};
@@ -201,5 +202,17 @@ impl PartitionMarginalDiscrete {
 
   pub fn get_log_lh(&self, node_states: &BTreeMap<GraphNodeKey, DenseNodeState>, node_key: GraphNodeKey) -> LogLh {
     node_states.get(&node_key).map_or(LogLh::ZERO, |node| node.profile.log_lh)
+  }
+}
+
+impl HasGtr for PartitionMarginalDiscrete {
+  fn gtr(&self) -> &GTR {
+    &self.inputs.gtr
+  }
+  fn gtr_mut(&mut self) -> &mut GTR {
+    &mut self.inputs.gtr
+  }
+  fn sequence_length(&self) -> usize {
+    1
   }
 }

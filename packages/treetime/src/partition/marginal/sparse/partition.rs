@@ -10,7 +10,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{
   SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
 };
-use crate::partition::traits::{BranchTopology, PartitionBranchOps, PartitionOptimizeOps};
+use crate::partition::traits::{BranchTopology, HasGtr, PartitionBranchOps, PartitionOptimizeOps};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
@@ -321,5 +321,17 @@ impl PartitionOptimizeOps for SparseReadout<'_> {
 
   fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
     self.partition.edge_indel_count(edge_key)
+  }
+}
+
+impl HasGtr for PartitionMarginalSparse {
+  fn gtr(&self) -> &GTR {
+    &self.gtr
+  }
+  fn gtr_mut(&mut self) -> &mut GTR {
+    &mut self.gtr
+  }
+  fn sequence_length(&self) -> usize {
+    self.length
   }
 }
