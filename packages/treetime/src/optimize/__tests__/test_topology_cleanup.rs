@@ -471,7 +471,7 @@ mod tests {
     // the evolving node-state map keyed to the pre-merge topology. Reconcile the node states to the
     // current node set (seeding placeholders for merge-created nodes) before the next marginal pass,
     // exactly as the production optimize loop does after a topology batch.
-    for family in sparse_partitions.iter_mut() {
+    for family in &mut sparse_partitions {
       reconcile_sparse_family(&graph, family);
     }
 

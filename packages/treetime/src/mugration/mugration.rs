@@ -186,6 +186,14 @@ pub fn execute_mugration(
   // scope, taking the partition read out of the serialization path. The maps stay a local the command
   // threads to the writers; the partition and node states are dropped at the end of this function.
   let maps = gather_mugration_output_maps(&graph, &partition, &node_states);
-  let result = MugrationResult::new(graph, confidences, names, branch_lengths, &partition, &node_states, attribute);
+  let result = MugrationResult::new(
+    graph,
+    confidences,
+    names,
+    branch_lengths,
+    &partition,
+    &node_states,
+    attribute,
+  );
   Ok((result, maps))
 }

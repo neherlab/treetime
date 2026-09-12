@@ -2,7 +2,9 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::storage::sparse::{FitchNodeData, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
+use crate::partition::storage::sparse::{
+  FitchNodeData, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution,
+};
 use crate::partition::traits::BranchTopology;
 use crate::seq::mutation::Sub;
 use eyre::Report;

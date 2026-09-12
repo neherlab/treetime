@@ -110,9 +110,19 @@ fn process_node_forward_indexed(
 
     let branch_length = fix_branch_length(length, branch_lengths[&edge_key]);
     let msg_from_parent = if gtr.has_site_rates() {
-      propagate_raw_per_site(gtr, branch_length, false, &msg_to_child, edge_obs.transmission.as_deref())
+      propagate_raw_per_site(
+        gtr,
+        branch_length,
+        false,
+        &msg_to_child,
+        edge_obs.transmission.as_deref(),
+      )
     } else {
-      propagate_raw(&gtr.expQt(branch_length), &msg_to_child, edge_obs.transmission.as_deref())
+      propagate_raw(
+        &gtr.expQt(branch_length),
+        &msg_to_child,
+        edge_obs.transmission.as_deref(),
+      )
     };
     // Persist the down-message only for tips: reconstruct_node_sequence imputes missing tip states
     // from it and has no branch length to recompute the propagation. Internal nodes never need it.

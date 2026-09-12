@@ -64,7 +64,13 @@ impl PartitionMarginalSparse {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
-  ) -> Result<(BTreeMap<GraphNodeKey, SparseNodeState>, BTreeMap<GraphEdgeKey, SparseEdgeBackward>), Report> {
+  ) -> Result<
+    (
+      BTreeMap<GraphNodeKey, SparseNodeState>,
+      BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
+    ),
+    Report,
+  > {
     backward::process_backward_indexed(self, graph, branch_lengths, node_states)
   }
 
@@ -316,7 +322,9 @@ impl PartitionBranchOps for SparseReadout<'_> {
 
 impl PartitionOptimizeOps for SparseReadout<'_> {
   fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
-    self.partition.create_edge_contribution(self.backward, self.forward, edge_key)
+    self
+      .partition
+      .create_edge_contribution(self.backward, self.forward, edge_key)
   }
 
   fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {

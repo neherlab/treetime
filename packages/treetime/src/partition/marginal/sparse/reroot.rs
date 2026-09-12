@@ -4,8 +4,6 @@ use crate::make_internal_report;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
 use eyre::Report;
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::{EdgeMergeInfo, RerootChanges};
 use treetime_primitives::Seq;
@@ -79,10 +77,9 @@ fn apply_reroot_changes(family: &mut SparseReconstruction, changes: &RerootChang
       info.new_node_key,
       SparseNodeObs::new(&partition.root_sequence, &partition.alphabet),
     );
-    family.node_states.insert(
-      info.new_node_key,
-      SparseNodeState::leaf(&partition.root_sequence),
-    );
+    family
+      .node_states
+      .insert(info.new_node_key, SparseNodeState::leaf(&partition.root_sequence));
   }
 
   Ok(())

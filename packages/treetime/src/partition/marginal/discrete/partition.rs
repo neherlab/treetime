@@ -1,11 +1,13 @@
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
-use crate::partition::traits::HasGtr;
 use crate::partition::marginal::discrete::input::{one_hot_profile, uniform_profile, validate_trait_names};
 use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, indexed_forward};
-use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution};
+use crate::partition::storage::dense::{
+  DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
+};
 use crate::partition::storage::discrete::DiscreteStates;
+use crate::partition::traits::HasGtr;
 use eyre::Report;
 use ndarray::Array1;
 use serde::Serialize;
@@ -124,7 +126,13 @@ impl PartitionMarginalDiscrete {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-  ) -> Result<(BTreeMap<GraphNodeKey, DenseNodeState>, BTreeMap<GraphEdgeKey, DenseEdgeBackward>), Report> {
+  ) -> Result<
+    (
+      BTreeMap<GraphNodeKey, DenseNodeState>,
+      BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
+    ),
+    Report,
+  > {
     indexed_backward(
       &self.inputs,
       // discrete carries no residue alphabet; the indexed driver only uses the alphabet on the dense
@@ -201,7 +209,9 @@ impl PartitionMarginalDiscrete {
   }
 
   pub fn get_log_lh(&self, node_states: &BTreeMap<GraphNodeKey, DenseNodeState>, node_key: GraphNodeKey) -> LogLh {
-    node_states.get(&node_key).map_or(LogLh::ZERO, |node| node.profile.log_lh)
+    node_states
+      .get(&node_key)
+      .map_or(LogLh::ZERO, |node| node.profile.log_lh)
   }
 }
 

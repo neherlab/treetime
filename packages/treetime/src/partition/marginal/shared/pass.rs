@@ -39,7 +39,13 @@ pub fn indexed_backward(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-) -> Result<(BTreeMap<GraphNodeKey, DenseNodeState>, BTreeMap<GraphEdgeKey, DenseEdgeBackward>), Report> {
+) -> Result<
+  (
+    BTreeMap<GraphNodeKey, DenseNodeState>,
+    BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
+  ),
+  Report,
+> {
   let gtr = &inputs.gtr;
   let min_branch_length = inputs.min_branch_length;
   let pass = GraphPass::new(graph)?;

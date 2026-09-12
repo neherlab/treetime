@@ -1,8 +1,8 @@
 use crate::ancestral::marginal::profile_branch_lengths;
 use crate::gtr::brent_bracketed::BrentBracketed;
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
 use crate::gtr::infer_gtr::common::MutationCounts;
+use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
 use crate::make_internal_report;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
@@ -225,7 +225,10 @@ where
 
   if optimize_rate {
     (partition, nodes, backward) = optimize_gtr_rate(graph, partition, branch_lengths, nodes)?;
-    debug!("GTR refinement: initial rate optimization, mu = {:.6}", partition.gtr().mu);
+    debug!(
+      "GTR refinement: initial rate optimization, mu = {:.6}",
+      partition.gtr().mu
+    );
   }
 
   for i in 0..iterations {
@@ -338,12 +341,11 @@ where
     // No interior bracket: keep the node states and backward messages from the last (`hi`) evaluation
     // but restore the rate, exactly as before. A failed `hi` evaluation leaves the input observations
     // untouched, so fall back to the input node states with the rate restored.
-    let (mut restored_partition, restored_nodes, restored_backward) = match at_hi {
-      Some((p, n, b)) => (p, n, b),
-      None => {
-        let (n, b) = partition.refine_marginal_backward(graph, &branch_lengths, &nodes)?;
-        (partition, n, b)
-      },
+    let (mut restored_partition, restored_nodes, restored_backward) = if let Some((p, n, b)) = at_hi {
+      (p, n, b)
+    } else {
+      let (n, b) = partition.refine_marginal_backward(graph, &branch_lengths, &nodes)?;
+      (partition, n, b)
     };
     restored_partition.gtr_mut().mu = old_mu;
     debug!("GTR rate optimization: skipped (no bracket), keeping mu = {old_mu:.6}");
@@ -374,12 +376,18 @@ where
       Ok((nodes, backward)) => match partition.refine_root_log_lh(self.graph, &nodes) {
         Ok(log_lh) => (-log_lh.value(), Some((partition, nodes, backward))),
         Err(e) => {
-          warn!("GTR rate optimization: root likelihood failed at mu={:.6}: {e}", sqrt_mu * sqrt_mu);
+          warn!(
+            "GTR rate optimization: root likelihood failed at mu={:.6}: {e}",
+            sqrt_mu * sqrt_mu
+          );
           (f64::INFINITY, None)
         },
       },
       Err(e) => {
-        warn!("GTR rate optimization: backward pass failed at mu={:.6}: {e}", sqrt_mu * sqrt_mu);
+        warn!(
+          "GTR rate optimization: backward pass failed at mu={:.6}: {e}",
+          sqrt_mu * sqrt_mu
+        );
         (f64::INFINITY, None)
       },
     }

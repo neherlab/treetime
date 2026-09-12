@@ -1,4 +1,3 @@
-use crate::partition::timetree::marginal::{ancestral_reconstruction_timetree, marginal_update_timetree};
 use crate::ancestral::sample::SampleMode;
 use crate::clock::clock_output::write_clock_model;
 use crate::clock::clock_state::ClockState;
@@ -15,6 +14,7 @@ use crate::commands::timetree::output::date_comment::DateCommentProvider;
 use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
+use crate::partition::timetree::marginal::{ancestral_reconstruction_timetree, marginal_update_timetree};
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::partition::traits::{EdgeMutationCommentProvider, PartitionBranchOps};
 use crate::seq::div::compute_edge_mutation_counts;

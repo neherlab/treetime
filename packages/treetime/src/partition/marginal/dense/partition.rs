@@ -110,7 +110,13 @@ impl PartitionMarginalDense {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-  ) -> Result<(BTreeMap<GraphNodeKey, DenseNodeState>, BTreeMap<GraphEdgeKey, DenseEdgeBackward>), Report> {
+  ) -> Result<
+    (
+      BTreeMap<GraphNodeKey, DenseNodeState>,
+      BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
+    ),
+    Report,
+  > {
     indexed_backward(
       &self.inputs,
       Some(&self.alphabet),
@@ -187,7 +193,9 @@ impl PartitionMarginalDense {
   }
 
   pub fn get_log_lh(&self, node_states: &BTreeMap<GraphNodeKey, DenseNodeState>, node_key: GraphNodeKey) -> LogLh {
-    node_states.get(&node_key).map_or(LogLh::ZERO, |node| node.profile.log_lh)
+    node_states
+      .get(&node_key)
+      .map_or(LogLh::ZERO, |node| node.profile.log_lh)
   }
 
   pub fn edge_subs(
@@ -270,7 +278,11 @@ impl PartitionMarginalDense {
     OptimizationContribution::from_dense(&self.inputs.gtr, &backward[&edge_key], &forward[&edge_key])
   }
 
-  pub fn edge_indel_count(&self, estimates: &BTreeMap<GraphEdgeKey, DenseEdgeEstimate>, edge_key: GraphEdgeKey) -> usize {
+  pub fn edge_indel_count(
+    &self,
+    estimates: &BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
+    edge_key: GraphEdgeKey,
+  ) -> usize {
     estimates[&edge_key].indels.len()
   }
 
@@ -416,7 +428,11 @@ impl PartitionBranchOps for DenseReadout<'_> {
 
 impl PartitionOptimizeOps for DenseReadout<'_> {
   fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
-    Ok(self.partition.create_edge_contribution(self.backward, self.forward, edge_key))
+    Ok(
+      self
+        .partition
+        .create_edge_contribution(self.backward, self.forward, edge_key),
+    )
   }
 
   fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {

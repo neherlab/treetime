@@ -32,11 +32,23 @@ pub(crate) fn count_child_reversions(
   sparse
     .iter()
     .map(|partition| {
-      let parent_subs: &[Sub] = partition.partition.obs_edges.get(&parent_edge_key).map_or(&[], |e| e.fitch_subs());
-      let child_subs: &[Sub] = partition.partition.obs_edges.get(&child_edge_key).map_or(&[], |e| e.fitch_subs());
+      let parent_subs: &[Sub] = partition
+        .partition
+        .obs_edges
+        .get(&parent_edge_key)
+        .map_or(&[], |e| e.fitch_subs());
+      let child_subs: &[Sub] = partition
+        .partition
+        .obs_edges
+        .get(&child_edge_key)
+        .map_or(&[], |e| e.fitch_subs());
       match sibling_edge_key {
         Some(sibling_edge_key) => {
-          let sibling_subs: &[Sub] = partition.partition.obs_edges.get(&sibling_edge_key).map_or(&[], |e| e.fitch_subs());
+          let sibling_subs: &[Sub] = partition
+            .partition
+            .obs_edges
+            .get(&sibling_edge_key)
+            .map_or(&[], |e| e.fitch_subs());
           let (augmented, _) = augment_parent_with_sibling(parent_subs, sibling_subs);
           count_reversions(&augmented, child_subs)
         },
@@ -103,15 +115,18 @@ pub(crate) fn slide_bifurcating_root_for_child(
 ) -> Result<(), Report> {
   for partition in sparse.iter_mut() {
     let parent_subs = partition
-      .partition.obs_edges
+      .partition
+      .obs_edges
       .get(&parent_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
     let sibling_subs = partition
-      .partition.obs_edges
+      .partition
+      .obs_edges
       .get(&sibling_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
     let child_by_pos: BTreeMap<usize, (AsciiChar, AsciiChar)> = partition
-      .partition.obs_edges
+      .partition
+      .obs_edges
       .get(&child_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec())
       .iter()
@@ -155,7 +170,8 @@ pub(crate) fn slide_bifurcating_root_for_child(
       sibling_edge.set_fitch_subs(remaining_sibling);
     }
     partition
-      .partition.obs_edges
+      .partition
+      .obs_edges
       .entry(parent_edge_key)
       .or_default()
       .set_fitch_subs(hoisted_parent);
@@ -221,12 +237,8 @@ pub(crate) fn hoist_reverting_child(
     let child_subs = obs_edges
       .get(&child_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
-    let parent_indels = obs_edges
-      .get(&parent_edge_key)
-      .map_or(Vec::new(), |e| e.indels.clone());
-    let child_indels = obs_edges
-      .get(&child_edge_key)
-      .map_or(Vec::new(), |e| e.indels.clone());
+    let parent_indels = obs_edges.get(&parent_edge_key).map_or(Vec::new(), |e| e.indels.clone());
+    let child_indels = obs_edges.get(&child_edge_key).map_or(Vec::new(), |e| e.indels.clone());
 
     let sub_split = split_subs(&parent_subs, &child_subs)?;
     let indel_split = split_indels(&parent_indels, &child_indels);

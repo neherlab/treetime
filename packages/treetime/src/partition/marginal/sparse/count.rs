@@ -1,7 +1,9 @@
 use crate::constants::{MIN_BRANCH_LENGTH_FRACTION, SUPERTINY_NUMBER};
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{MutationCounts, is_profile_informative};
-use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseNodeState, SparseSeqDistribution, VarPos};
+use crate::partition::storage::sparse::{
+  SparseEdgeBackward, SparseEdgeForward, SparseNodeState, SparseSeqDistribution, VarPos,
+};
 use eyre::Report;
 use ndarray::{Array1, Array2};
 use std::collections::BTreeMap;

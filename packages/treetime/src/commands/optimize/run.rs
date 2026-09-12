@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::optimize::augur_node_data::write_augur_node_data_json;
 use crate::commands::optimize::result::{EdgeOut, OptimizeNodeOut, OptimizeOutputMaps, OptimizeResult};
@@ -8,7 +9,6 @@ use crate::commands::shared::tree_output::write_optimize_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
-use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::partition::traits::{EdgeMutationCommentProvider, PartitionBranchOps};
 use crate::seq::gap_fill::apply_gap_fill;
 use crate::seq::mutation::MutationTrack;

@@ -25,8 +25,8 @@ use strum::VariantNames;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::LogLh;
 use treetime_io::fasta::FastaRecord;
+use treetime_primitives::LogLh;
 use treetime_primitives::Seq;
 use treetime_utils::make_error;
 use treetime_utils::sync::random::get_random_number_generator;
@@ -79,7 +79,11 @@ impl SparseReconstruction {
 
   /// Run a full marginal update in place, replacing the result maps and returning the substitution
   /// log likelihood. The node states are consumed and refreshed.
-  pub fn run_marginal_update(&mut self, graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, f64>) -> Result<LogLh, Report> {
+  pub fn run_marginal_update(
+    &mut self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  ) -> Result<LogLh, Report> {
     let node_states = std::mem::take(&mut self.node_states);
     let (node_states, backward, forward, estimates, log_lh) =
       self.partition.marginal_update(graph, branch_lengths, node_states)?;
@@ -116,7 +120,11 @@ impl DenseReconstruction {
 
   /// Run a full marginal update in place, replacing the result maps and returning the substitution
   /// log likelihood. The node states are consumed and refreshed.
-  pub fn run_marginal_update(&mut self, graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, f64>) -> Result<LogLh, Report> {
+  pub fn run_marginal_update(
+    &mut self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  ) -> Result<LogLh, Report> {
     let node_states = std::mem::take(&mut self.node_states);
     let (node_states, backward, forward, estimates, log_lh) =
       self.partition.marginal_update(graph, branch_lengths, node_states)?;

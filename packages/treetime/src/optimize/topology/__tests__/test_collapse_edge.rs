@@ -31,7 +31,7 @@ mod tests {
       .take(recon.partition.length)
       .collect();
     if recon.partition.root_sequence.is_empty() {
-      recon.partition.root_sequence = ref_seq.clone();
+      recon.partition.root_sequence = ref_seq;
     }
     let alphabet = recon.partition.alphabet.clone();
     for node in graph.get_nodes() {

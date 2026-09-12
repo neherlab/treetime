@@ -37,10 +37,7 @@ pub fn prune_nodes(
 }
 
 /// Count current nucleotide mutations on one edge across all partitions.
-pub fn get_edge_num_muts(
-  partitions: &[SparseReconstruction],
-  edge_key: GraphEdgeKey,
-) -> Result<Option<usize>, Report> {
+pub fn get_edge_num_muts(partitions: &[SparseReconstruction], edge_key: GraphEdgeKey) -> Result<Option<usize>, Report> {
   let mut total_muts = 0;
   let mut found_any = false;
 

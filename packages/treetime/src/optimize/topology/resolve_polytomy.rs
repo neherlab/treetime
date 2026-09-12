@@ -91,8 +91,7 @@ fn resolve_one(
     // Each move is gated independently; retirement stays unconditional because it only ever
     // collapses helper edges the enabled moves just created, so it is a no-op when neither ran.
     let merged = topology_ops.merge_siblings && merge_single_polytomy(graph, sparse, node_key, branch_lengths)? > 0;
-    let hoisted =
-      topology_ops.flip_parent_child && try_hoist_reverting_child(graph, sparse, node_key, branch_lengths)?;
+    let hoisted = topology_ops.flip_parent_child && try_hoist_reverting_child(graph, sparse, node_key, branch_lengths)?;
     let retired = retire_created_helpers(graph, sparse, &preexisting, branch_lengths)?;
 
     if !(merged || hoisted || retired) {
@@ -231,10 +230,12 @@ fn retire_created_helpers(
         return None;
       }
       let edge_key = edge.key();
-      let mutation_free = sparse.iter().all(|partition| match partition.partition.obs_edges.get(&edge_key) {
-        Some(edge_data) => edge_data.fitch_subs().is_empty() && edge_data.indels.is_empty(),
-        None => true,
-      });
+      let mutation_free = sparse
+        .iter()
+        .all(|partition| match partition.partition.obs_edges.get(&edge_key) {
+          Some(edge_data) => edge_data.fitch_subs().is_empty() && edge_data.indels.is_empty(),
+          None => true,
+        });
       mutation_free.then_some(edge_key)
     });
 

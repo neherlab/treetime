@@ -4,7 +4,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::partition::traits::{PartitionBranchOps, PartitionOptimizeOps};
+use crate::partition::traits::PartitionOptimizeOps;
 use eyre::Report;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;

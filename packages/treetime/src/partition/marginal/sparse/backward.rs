@@ -1,7 +1,9 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::marginal::sparse::message::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeObs, SparseNodeState, SparseSeqDistribution, VarPos};
+use crate::partition::storage::sparse::{
+  SparseEdgeBackward, SparseEdgeObs, SparseNodeState, SparseSeqDistribution, VarPos,
+};
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::{BTreeMap, BTreeSet};
@@ -19,7 +21,13 @@ pub fn process_backward_indexed(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
-) -> Result<(BTreeMap<GraphNodeKey, SparseNodeState>, BTreeMap<GraphEdgeKey, SparseEdgeBackward>), Report> {
+) -> Result<
+  (
+    BTreeMap<GraphNodeKey, SparseNodeState>,
+    BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
+  ),
+  Report,
+> {
   let pass = GraphPass::new(graph)?;
   let outputs = pass.map_backward(
     node_states,
@@ -130,7 +138,13 @@ fn process_node_backward_indexed(
     let (edge_key, edge_obs) = context.parent_edge.expect("Non-root node must own its parent edge");
     let branch_length = fix_branch_length(length, branch_lengths[&edge_key]);
     let msg_from_child = if gtr.has_site_rates() {
-      propagate_raw_per_site(gtr, branch_length, true, &msg_to_parent, edge_obs.transmission.as_deref())
+      propagate_raw_per_site(
+        gtr,
+        branch_length,
+        true,
+        &msg_to_parent,
+        edge_obs.transmission.as_deref(),
+      )
     } else {
       propagate_raw(
         &gtr.expQt(branch_length).t().to_owned(),
@@ -139,8 +153,8 @@ fn process_node_backward_indexed(
       )
     };
     Some(SparseEdgeBackward {
-      msg_from_child,
       msg_to_parent,
+      msg_from_child,
     })
   };
 

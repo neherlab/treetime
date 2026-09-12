@@ -57,8 +57,12 @@ impl PartitionTimetree {
   /// The deterministic most-likely-state sequence for one node (convergence reads).
   pub fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
     match self {
-      Self::Dense(family) => family.partition.extract_ancestral_sequence(&family.node_states, node_key),
-      Self::Sparse(family) => family.partition.extract_ancestral_sequence(&family.node_states, node_key),
+      Self::Dense(family) => family
+        .partition
+        .extract_ancestral_sequence(&family.node_states, node_key),
+      Self::Sparse(family) => family
+        .partition
+        .extract_ancestral_sequence(&family.node_states, node_key),
     }
   }
 

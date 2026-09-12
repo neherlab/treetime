@@ -1,7 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::marginal::profile_branch_lengths;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
-use crate::partition::timetree::marginal::{initialize_marginal_timetree, marginal_update_timetree};
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
@@ -24,6 +23,7 @@ use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchLengthMode, BranchOptMethod};
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
+use crate::partition::timetree::marginal::{initialize_marginal_timetree, marginal_update_timetree};
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::partition::traits::{HasGtr, PartitionOptimizeOps};
 use crate::progress::ProgressSink;

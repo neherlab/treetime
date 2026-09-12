@@ -12,7 +12,10 @@ use treetime_graph::reroot::RerootChanges;
 /// This is the value-style successor of the retired `PartitionRerootOps::apply_reroot` for dense.
 pub fn reroot_dense(family: &mut DenseReconstruction, changes: &RerootChanges) -> Result<(), Report> {
   if let Some(info) = &changes.edge_split {
-    family.node_states.entry(info.new_node_key).or_insert_with(DenseNodeState::empty);
+    family
+      .node_states
+      .entry(info.new_node_key)
+      .or_insert_with(DenseNodeState::empty);
   }
 
   if let Some(info) = &changes.edge_merge {

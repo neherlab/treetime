@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::pipeline::SparseReconstruction;
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::prune::result::{EdgeOut, PruneNodeOut, PruneOutputMaps, PruneResult};
 use crate::commands::shared::output::OutputSelection;
@@ -6,7 +7,6 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_prune_tree_outputs;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_error;
-use crate::ancestral::pipeline::SparseReconstruction;
 use crate::partition::traits::PartitionBranchOps;
 use crate::prune::pipeline::{self, PruneInput, PruneParams};
 use crate::seq::mutation::MutationTrack;
