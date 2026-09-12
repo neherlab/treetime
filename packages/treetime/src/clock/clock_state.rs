@@ -2,10 +2,9 @@ use crate::payload::clock_set::ClockSet;
 use eyre::Report;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdge;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{
   GraphMapOutputs, GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput,
 };
@@ -58,10 +57,8 @@ pub struct ClockState {
 
 impl ClockState {
   /// Empty per-node/per-edge state for every node and edge of `graph`, all fields default.
-  pub fn new<N, E, D>(graph: &Graph<N, E, D>) -> Self
+  pub fn new<D>(graph: &Graph<D>) -> Self
   where
-    N: GraphNode,
-    E: GraphEdge,
     D: Send + Sync,
   {
     let nodes = graph
@@ -85,10 +82,8 @@ impl ClockState {
   /// start at their payload defaults (`0.0` and `false`), `bad_branch` starts false, the clock set
   /// starts default (the backward pass recomputes the root clock set before it is read), and every
   /// edge starts default.
-  pub fn seed_from_values<N, E, D>(graph: &Graph<N, E, D>, times: &BTreeMap<GraphNodeKey, Option<f64>>) -> Self
+  pub fn seed_from_values<D>(graph: &Graph<D>, times: &BTreeMap<GraphNodeKey, Option<f64>>) -> Self
   where
-    N: GraphNode,
-    E: GraphEdge,
     D: Send + Sync,
   {
     let nodes = graph
@@ -134,14 +129,12 @@ impl ClockState {
   /// lengths instead.
   ///
   /// [`reseed_transitional_from_payloads`]: ClockState::reseed_transitional_from_payloads
-  pub fn reseed_transitional_from_times<N, E, D>(
+  pub fn reseed_transitional_from_times<D>(
     &mut self,
-    graph: &Graph<N, E, D>,
+    graph: &Graph<D>,
     times: &BTreeMap<GraphNodeKey, Option<f64>>,
     edge_inputs: &BTreeMap<GraphEdgeKey, (Option<f64>, f64)>,
   ) where
-    N: GraphNode,
-    E: GraphEdge,
     D: Send + Sync,
   {
     self.reseed_transitional(graph, |key| times.get(&key).copied().flatten());
@@ -153,10 +146,8 @@ impl ClockState {
     }
   }
 
-  fn reseed_transitional<N, E, D, F>(&mut self, graph: &Graph<N, E, D>, time_of: F)
+  fn reseed_transitional<D, F>(&mut self, graph: &Graph<D>, time_of: F)
   where
-    N: GraphNode,
-    E: GraphEdge,
     D: Send + Sync,
     F: Fn(GraphNodeKey) -> Option<f64>,
   {
@@ -218,10 +209,8 @@ impl ClockState {
   ///
   /// The engine reads the node/edge inputs from the current state and reproduces the same
   /// thread-independent, deterministic child fold order as the payload-based passes.
-  pub fn map_backward<GN, GE, D, F>(&mut self, graph: &Graph<GN, GE, D>, visit: F) -> Result<(), Report>
+  pub fn map_backward<D, F>(&mut self, graph: &Graph<D>, visit: F) -> Result<(), Report>
   where
-    GN: GraphNode,
-    GE: GraphEdge,
     D: Send + Sync,
     F: Fn(
         GraphPassBackwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState, ClockEdgeState>,
@@ -241,10 +230,8 @@ impl ClockState {
   /// Run a value-returning forward pass over the clock state through the graph's dependency engine,
   /// replacing the per-node and per-edge maps with the visitor's outputs. Each node reads its single
   /// parent's already-published output.
-  pub fn map_forward<GN, GE, D, F>(&mut self, graph: &Graph<GN, GE, D>, visit: F) -> Result<(), Report>
+  pub fn map_forward<D, F>(&mut self, graph: &Graph<D>, visit: F) -> Result<(), Report>
   where
-    GN: GraphNode,
-    GE: GraphEdge,
     D: Send + Sync,
     F: Fn(
         GraphPassForwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState>,

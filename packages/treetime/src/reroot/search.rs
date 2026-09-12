@@ -4,9 +4,8 @@ use crate::reroot::traits::RootStats;
 use crate::reroot::variance::VarianceModel;
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 
 /// Find the best root position over the whole tree.
 ///
@@ -15,8 +14,8 @@ use treetime_graph::node::GraphNode;
 /// left unchanged (`edge = None`). Optimizing each edge over `[0, 1]` covers
 /// rooting at any existing node as a split endpoint, so no separate per-node
 /// scan is needed.
-pub fn find_best_root<N, E, D, S>(
-  graph: &Graph<N, E, D>,
+pub fn find_best_root<D, S>(
+  graph: &Graph<D>,
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
   root_stats: &S,
   variance: &VarianceModel,
@@ -24,8 +23,6 @@ pub fn find_best_root<N, E, D, S>(
   params: &BrentParams,
 ) -> Result<FindRootResult<S>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
   S: RootStats,
 {

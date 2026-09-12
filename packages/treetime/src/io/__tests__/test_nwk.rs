@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::test_utils::{TestEdge, TestNode};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use pretty_assertions::assert_eq;
@@ -17,7 +16,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
+    } = nwk_read_str::<()>(input)?;
 
     // Verify graph structure
     assert_eq!(graph.get_nodes().len(), 7, "Should have 7 nodes");
@@ -43,7 +42,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
+    } = nwk_read_str::<()>(input)?;
 
     // Verify structure is correct
     assert_eq!(graph.get_nodes().len(), 7);
@@ -66,7 +65,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
+    } = nwk_read_str::<()>(input)?;
 
     assert_eq!(graph.get_nodes().len(), 1, "Should have 1 node");
     assert_eq!(graph.get_edges().len(), 0, "Should have 0 edges");
@@ -90,7 +89,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
+    } = nwk_read_str::<()>(input)?;
 
     assert_eq!(graph.get_nodes().len(), 4, "Should have 4 nodes");
     assert_eq!(graph.get_edges().len(), 3, "Should have 3 edges");
@@ -115,7 +114,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
+    } = nwk_read_str::<()>(input)?;
 
     assert_eq!(graph.get_nodes().len(), 7, "Should have 7 nodes");
     assert_eq!(graph.get_edges().len(), 6, "Should have 6 edges");
@@ -134,7 +133,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
+    } = nwk_read_str::<()>(input)?;
 
     assert_eq!(graph.get_nodes().len(), 7);
     assert_eq!(graph.get_edges().len(), 6);
@@ -160,7 +159,7 @@ mod tests {
       names,
       branch_lengths: edge_lengths,
       ..
-    } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
+    } = nwk_read_str::<()>(input)?;
 
     // Collect branch lengths by finding edges to specific nodes
     let mut branch_lengths = BTreeMap::new();
@@ -206,7 +205,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
+    } = nwk_read_str::<()>(input)?;
 
     let leaf_names: Vec<String> = graph
       .get_leaves()
@@ -224,7 +223,7 @@ mod tests {
 
   #[test]
   fn test_nwk_rejects_enewick_hybrid() {
-    let result = nwk_read_str::<TestNode, TestEdge, ()>("((A,(B)x#H1)c,(x#H1,C)d);");
+    let result = nwk_read_str::<()>("((A,(B)x#H1)c,(x#H1,C)d);");
     let err = result.unwrap_err();
     let msg = format!("{err:?}");
     assert!(
@@ -235,7 +234,7 @@ mod tests {
 
   #[test]
   fn test_nwk_parse_error_includes_position() {
-    let result = nwk_read_str::<TestNode, TestEdge, ()>("(A:0.1,B:0.2");
+    let result = nwk_read_str::<()>("(A:0.1,B:0.2");
     let err = result.unwrap_err();
     let msg = format!("{err:?}");
     assert!(
@@ -252,7 +251,7 @@ mod tests {
       names,
       branch_lengths: edge_lengths,
       ..
-    } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
+    } = nwk_read_str::<()>(input)?;
 
     assert_eq!(graph.get_nodes().len(), 3);
     assert_eq!(graph.get_edges().len(), 2);
@@ -283,7 +282,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<TestNode, TestEdge, ()>(input)?;
+    } = nwk_read_str::<()>(input)?;
 
     assert_eq!(graph.get_nodes().len(), 3);
     assert_eq!(graph.get_edges().len(), 2);
@@ -302,7 +301,7 @@ mod tests {
 
     for path in &trees {
       let NwkParse { graph, names, .. } = nwk_read_file(path)?;
-      let graph: Graph<TestNode, TestEdge, ()> = graph;
+      let graph: Graph<()> = graph;
       assert!(!graph.get_nodes().is_empty(), "Tree {path:?} should have nodes");
       assert!(!graph.get_edges().is_empty(), "Tree {path:?} should have edges");
     }

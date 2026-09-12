@@ -7,16 +7,16 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
 use crate::partition::traits::{
   BranchTopology, HasGtr, HasLogLh, MarginalPass, PartitionBranchOps, PartitionMarginalOps, PartitionMarginalPasses,
-  PartitionOptimizeOps, PartitionTimetreeOps,
+  PartitionOptimizeOps,
 };
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
@@ -123,12 +123,13 @@ impl PartitionOptimizeOps for PartitionMarginalSparse {
   }
 }
 
-impl<N, E> PartitionTimetreeOps<N, E> for PartitionMarginalSparse
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
-  fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>) {
+#[allow(
+  clippy::multiple_inherent_impl,
+  reason = "split across files by concern; see partition.rs for the primary impl"
+)]
+impl PartitionMarginalSparse {
+  /// Ensure the partition has entries for all nodes and edges in the graph, dropping stale entries.
+  pub fn reconcile_topology(&mut self, graph: &Graph<()>) {
     let graph_node_keys: BTreeSet<GraphNodeKey> = graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();
     let graph_edge_keys: BTreeSet<GraphEdgeKey> = graph.get_edges().into_iter().map(|e| e.read_arc().key()).collect();
 
@@ -151,12 +152,8 @@ where
   }
 }
 
-impl<N, E> PartitionMarginalPasses<N, E> for PartitionMarginalSparse
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
-  fn as_marginal_pass(&mut self) -> MarginalPass<'_, N, E> {
+impl PartitionMarginalPasses for PartitionMarginalSparse {
+  fn as_marginal_pass(&mut self) -> MarginalPass<'_> {
     MarginalPass::Sparse(self)
   }
 
@@ -165,14 +162,10 @@ where
   }
 }
 
-impl<N, E> PartitionMarginalOps<N, E> for PartitionMarginalSparse
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+impl PartitionMarginalOps for PartitionMarginalSparse {
   fn attach_sequences(
     &mut self,
-    _graph: &Graph<N, E, ()>,
+    _graph: &Graph<()>,
     _aln: &[FastaRecord],
     _names: &BTreeMap<GraphNodeKey, Option<String>>,
   ) -> Result<(), Report> {

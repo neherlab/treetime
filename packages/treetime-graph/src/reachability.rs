@@ -1,6 +1,5 @@
-use crate::edge::GraphEdge;
 use crate::graph::Graph;
-use crate::node::{GraphNode, Node};
+use crate::node::Node;
 use parking_lot::RwLock;
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -9,14 +8,8 @@ use std::sync::Arc;
 ///
 /// A node reaches itself, so `start == finish` is `true`. Serial depth-first walk over the outbound
 /// edges; the visited set makes it terminate on cycles.
-pub fn exists_forward_path_between<N, E, D>(
-  graph: &Graph<N, E, D>,
-  start: &Arc<RwLock<Node<N>>>,
-  finish: &Arc<RwLock<Node<N>>>,
-) -> bool
+pub fn exists_forward_path_between<D>(graph: &Graph<D>, start: &Arc<RwLock<Node>>, finish: &Arc<RwLock<Node>>) -> bool
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let finish_key = finish.read().key();

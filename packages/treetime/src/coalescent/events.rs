@@ -2,9 +2,7 @@ use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::time_coordinate::CalendarTime;
 use eyre::Report;
 use ordered_float::OrderedFloat;
-use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_utils::make_error;
 
 /// Collects tree merger events as (time, delta_branches) tuples sorted by increasing time.
@@ -14,13 +12,11 @@ use treetime_utils::make_error;
 /// bad-branch subtree contributes one remaining lineage because all of its node
 /// events are excluded.
 /// delta_branches: +1 for leaf nodes, -(k-1) for internal nodes with k children.
-pub fn collect_tree_events<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn collect_tree_events<D>(
+  graph: &Graph<D>,
   node_times: &CoalescentNodeTimes,
 ) -> Result<(CalendarTime, Vec<(CalendarTime, i32)>, i32), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   if graph.num_roots() != 1 {

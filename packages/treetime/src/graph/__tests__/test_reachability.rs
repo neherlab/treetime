@@ -28,19 +28,14 @@ mod tests {
     use eyre::Report;
     use treetime_graph::graph::{Graph, SafeNode};
 
-    use crate::test_utils::{TestEdge, TestNode};
-
-    pub fn graph_with_edges(
-      node_count: usize,
-      edges: &[(usize, usize)],
-    ) -> Result<(Graph<TestNode, TestEdge, ()>, Vec<SafeNode<TestNode>>), Report> {
+    pub fn graph_with_edges(node_count: usize, edges: &[(usize, usize)]) -> Result<(Graph<()>, Vec<SafeNode>), Report> {
       let mut graph = Graph::new();
-      let keys = (0..node_count)
-        .map(|index| graph.add_node(TestNode(Some(format!("node_{index}")))))
+      let keys = std::iter::repeat_with(|| graph.add_node())
+        .take(node_count)
         .collect::<Vec<_>>();
       edges
         .iter()
-        .try_for_each(|(source, target)| graph.add_edge(keys[*source], keys[*target], TestEdge(None)).map(|_| ()))?;
+        .try_for_each(|(source, target)| graph.add_edge(keys[*source], keys[*target]).map(|_| ()))?;
       graph.build()?;
       let nodes = keys.iter().map(|key| graph.get_node(*key).unwrap()).collect::<Vec<_>>();
       Ok((graph, nodes))

@@ -11,25 +11,20 @@ use crate::{make_error, make_internal_report, make_report};
 use eyre::{Report, WrapErr};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 
 /// Unified optimization function for mixed partition types.
 ///
 /// Main optimization loop that works with both sparse and dense partitions simultaneously.
 /// For each edge, it collects contributions from all partitions and optimizes the branch
 /// length using the selected method.
-pub fn run_optimize_mixed<N, E>(
-  graph: &Graph<N, E, ()>,
+pub fn run_optimize_mixed(
+  graph: &Graph<()>,
   partitions: &[&dyn PartitionOptimizeOps],
   method: BranchOptMethod,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<(), Report> {
   let total_length = total_sequence_length(partitions);
   if total_length == 0 {
     return make_error!("Total sequence length across all partitions is zero; cannot optimize branch lengths");
@@ -41,33 +36,25 @@ where
 }
 
 #[cfg(test)]
-pub fn run_optimize_mixed_with_indel_rate<N, E>(
-  graph: &Graph<N, E, ()>,
+pub fn run_optimize_mixed_with_indel_rate(
+  graph: &Graph<()>,
   partitions: &[&dyn PartitionOptimizeOps],
   method: BranchOptMethod,
   indel_rate: f64,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<(), Report> {
   run_optimize_mixed_inner(graph, partitions, method, indel_rate, false, branch_lengths)?;
   Ok(())
 }
 
-pub fn run_optimize_mixed_inner<N, E>(
-  graph: &Graph<N, E, ()>,
+pub fn run_optimize_mixed_inner(
+  graph: &Graph<()>,
   partitions: &[&dyn PartitionOptimizeOps],
   method: BranchOptMethod,
   indel_rate: f64,
   no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<(), Report> {
   let total_length = total_sequence_length(partitions);
 
   if total_length == 0 {
@@ -249,14 +236,7 @@ struct BifurcatingRootState {
 }
 
 impl BifurcatingRootState {
-  fn capture<N, E>(
-    graph: &Graph<N, E, ()>,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<Option<Self>, Report>
-  where
-    N: GraphNode,
-    E: GraphEdge,
-  {
+  fn capture(graph: &Graph<()>, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Result<Option<Self>, Report> {
     let root = graph.get_exactly_one_root()?;
     let children = graph.children_of(&root.read_arc());
     if children.len() == 2 {
@@ -299,17 +279,13 @@ impl BifurcatingRootState {
 ///
 /// When `no_indels` is true, indel counts and rates do not affect either
 /// branch validity or the estimated branch length.
-pub fn initial_guess_mixed<N, E>(
-  graph: &Graph<N, E, ()>,
+pub fn initial_guess_mixed(
+  graph: &Graph<()>,
   partitions: &[&dyn PartitionOptimizeOps],
   overwrite_valid: bool,
   no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<(), Report> {
   let total_length: usize = partitions.iter().map(|partition| partition.sequence_length()).sum();
 
   if total_length == 0 {

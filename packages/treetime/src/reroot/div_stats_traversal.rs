@@ -4,9 +4,9 @@ use crate::reroot::traits::RootStats;
 use crate::reroot::variance::VarianceModel;
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 
 /// Per-edge directional `DivStats` messages plus the aggregate at the current root.
 pub struct DivStatsField {
@@ -25,14 +25,12 @@ pub struct DivStatsField {
 /// rest-of-tree message (`to_child`) by subtracting a child's contribution from
 /// the node aggregate. Statistics are returned in maps rather than stored on the
 /// graph, since the optimize payloads carry no message fields.
-pub fn compute_div_stats<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn compute_div_stats<D>(
+  graph: &Graph<D>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   variance: &VarianceModel,
 ) -> Result<DivStatsField, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   // Leaves-to-root order (children precede parents).
@@ -150,10 +148,8 @@ struct NodeTopology {
   parent_edge: Option<GraphEdgeKey>,
 }
 
-fn node_topology<N, E, D>(graph: &Graph<N, E, D>, node_key: GraphNodeKey) -> Result<NodeTopology, Report>
+fn node_topology<D>(graph: &Graph<D>, node_key: GraphNodeKey) -> Result<NodeTopology, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let node = graph

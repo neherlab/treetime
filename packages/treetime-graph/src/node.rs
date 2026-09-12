@@ -1,20 +1,8 @@
 use crate::edge::GraphEdgeKey;
 use derive_more::Display;
-use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::sync::Arc;
-
-pub trait GraphNode: Debug + Sync + Send {}
-
-/// Composite trait for nodes that support ancestral reconstruction
-pub trait NodeAncestralOps: GraphNode {}
-impl<T: GraphNode> NodeAncestralOps for T {}
-
-/// Composite trait for nodes that support tree optimization
-pub trait NodeOptimizeOps: GraphNode {}
-impl<T: GraphNode> NodeOptimizeOps for T {}
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphNodeKey(pub usize);
@@ -28,40 +16,27 @@ impl GraphNodeKey {
 
 /// Internal representation of a node in a graph
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Node<N: GraphNode> {
+pub struct Node {
   key: GraphNodeKey,
-  data: Arc<RwLock<N>>,
   outbound_edges: Vec<GraphEdgeKey>,
   inbound_edges: Vec<GraphEdgeKey>,
 }
 
-impl<N> PartialEq<Self> for Node<N>
-where
-  N: GraphNode,
-{
+impl PartialEq<Self> for Node {
   fn eq(&self, other: &Self) -> bool {
     self.key == other.key
   }
 }
 
-impl<N> Node<N>
-where
-  N: GraphNode,
-{
+impl Node {
   /// Create a new node.
   #[inline]
-  pub fn new(key: GraphNodeKey, data: N) -> Node<N> {
+  pub fn new(key: GraphNodeKey) -> Node {
     Self {
       key,
-      data: Arc::new(RwLock::new(data)),
       outbound_edges: Vec::new(),
       inbound_edges: Vec::new(),
     }
-  }
-
-  #[inline]
-  pub fn payload(&self) -> Arc<RwLock<N>> {
-    Arc::clone(&self.data)
   }
 
   /// Get node key.

@@ -1,7 +1,6 @@
-use crate::edge::GraphEdge;
 use crate::graph::Graph;
 use crate::graph_traverse::GraphNodeForward;
-use crate::node::{GraphNode, GraphNodeKey};
+use crate::node::GraphNodeKey;
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -15,9 +14,9 @@ use std::collections::{BTreeMap, BTreeSet};
 /// unnamed node takes the next free `NODE_xxxxx`, skipping any name already held by a current node, so
 /// the numbering is deterministic and stable across re-runs after a topology change. Names are a
 /// threaded value rather than node payload state.
-pub fn assign_node_names<N: GraphNode, E: GraphEdge, D: Sync + Send>(
+pub fn assign_node_names<D: Sync + Send>(
   mut names: BTreeMap<GraphNodeKey, Option<String>>,
-  graph: &Graph<N, E, D>,
+  graph: &Graph<D>,
 ) -> Result<BTreeMap<GraphNodeKey, Option<String>>, Report> {
   let mut result: BTreeMap<GraphNodeKey, Option<String>> = BTreeMap::new();
   let mut used: BTreeSet<String> = BTreeSet::new();

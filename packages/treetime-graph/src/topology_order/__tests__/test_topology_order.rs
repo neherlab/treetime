@@ -6,12 +6,12 @@ mod tests {
   #[test]
   fn topology_order_descendant_count_sorts_children_ascending() -> Result<(), Report> {
     let (mut graph, names) = fixture_tree()?;
-    let original = child_names(&graph, "root")?;
+    let original = child_names(&graph, &names, "root")?;
     let __bl = edge_branch_lengths(&graph);
     TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let actual = child_names(ordered, "root")?;
+    let actual = child_names(ordered, &names, "root")?;
 
     assert_eq!(vec!["A", "BC", "DEF"], actual);
     assert_eq!(vec!["DEF", "A", "BC"], original);
@@ -26,7 +26,7 @@ mod tests {
     TopologyOrderSpec::descendant_count(true).apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let actual = child_names(ordered, "root")?;
+    let actual = child_names(ordered, &names, "root")?;
 
     assert_eq!(vec!["DEF", "BC", "A"], actual);
 
@@ -40,7 +40,7 @@ mod tests {
     TopologyOrderSpec::keep().apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let actual = child_names(ordered, "root")?;
+    let actual = child_names(ordered, &names, "root")?;
 
     assert_eq!(vec!["DEF", "A", "BC"], actual);
 
@@ -49,18 +49,18 @@ mod tests {
 
   #[test]
   fn topology_order_dag_counts_shared_descendant_once_per_child() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
-    let root = graph.add_node(TestNode::new("root"));
-    let left = graph.add_node(TestNode::new("left"));
-    let right = graph.add_node(TestNode::new("right"));
-    let shared = graph.add_node(TestNode::new("shared"));
-    let right_only = graph.add_node(TestNode::new("right_only"));
+    let mut graph = Graph::<()>::new();
+    let root = graph.add_node();
+    let left = graph.add_node();
+    let right = graph.add_node();
+    let shared = graph.add_node();
+    let right_only = graph.add_node();
 
-    graph.add_edge(root, right, TestEdge::new())?;
-    graph.add_edge(root, left, TestEdge::new())?;
-    graph.add_edge(left, shared, TestEdge::new())?;
-    graph.add_edge(right, shared, TestEdge::new())?;
-    graph.add_edge(right, right_only, TestEdge::new())?;
+    graph.add_edge(root, right)?;
+    graph.add_edge(root, left)?;
+    graph.add_edge(left, shared)?;
+    graph.add_edge(right, shared)?;
+    graph.add_edge(right, right_only)?;
     graph.build()?;
 
     let names = make_names(vec![
@@ -74,7 +74,7 @@ mod tests {
     TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let actual = child_names(ordered, "root")?;
+    let actual = child_names(ordered, &names, "root")?;
 
     assert_eq!(vec!["left", "right"], actual);
 
@@ -96,7 +96,7 @@ mod tests {
     spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let actual = child_names(ordered, "root")?;
+    let actual = child_names(ordered, &names, "root")?;
 
     assert_eq!(vec!["DEF", "BC", "A"], actual);
 
@@ -105,14 +105,14 @@ mod tests {
 
   #[test]
   fn topology_order_rejects_cycles() -> Result<(), Report> {
-    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
-    let a = graph.add_node(TestNode::new("A"));
-    let b = graph.add_node(TestNode::new("B"));
-    let c = graph.add_node(TestNode::new("C"));
+    let mut graph = Graph::<()>::new();
+    let a = graph.add_node();
+    let b = graph.add_node();
+    let c = graph.add_node();
 
-    graph.add_edge(a, b, TestEdge::new())?;
-    graph.add_edge(b, c, TestEdge::new())?;
-    graph.add_edge(c, a, TestEdge::new())?;
+    graph.add_edge(a, b)?;
+    graph.add_edge(b, c)?;
+    graph.add_edge(c, a)?;
     graph.build()?;
 
     let names = make_names(vec![(a, "A"), (b, "B"), (c, "C")]);
@@ -137,7 +137,7 @@ mod tests {
     spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let actual = child_names(ordered, "root")?;
+    let actual = child_names(ordered, &names, "root")?;
 
     // A is leaf (height 0), shallow has height 1, deep has height 2
     assert_eq!(vec!["A", "shallow", "deep"], actual);
@@ -156,7 +156,7 @@ mod tests {
     spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let actual = child_names(ordered, "root")?;
+    let actual = child_names(ordered, &names, "root")?;
 
     assert_eq!(vec!["deep", "shallow", "A"], actual);
 
@@ -169,16 +169,16 @@ mod tests {
     // short: max divergence = 0.1 + 0.1 = 0.2
     // long:  max divergence = 0.5 + 0.2 = 0.7
     // D:     leaf, divergence = 0.0
-    let (mut graph, names) = fixture_branch_length_tree()?;
+    let (mut graph, names, __bl) = fixture_branch_length_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::Divergence,
       ..TopologyOrderSpec::default()
     };
-    let __bl = edge_branch_lengths(&graph);
+
     spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let actual = child_names(ordered, "root")?;
+    let actual = child_names(ordered, &names, "root")?;
 
     assert_eq!(vec!["D", "short", "long"], actual);
 
@@ -187,16 +187,16 @@ mod tests {
 
   #[test]
   fn topology_order_divergence_reverse_sorts_longest_first() -> Result<(), Report> {
-    let (mut graph, names) = fixture_branch_length_tree()?;
+    let (mut graph, names, __bl) = fixture_branch_length_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::DivergenceReverse,
       ..TopologyOrderSpec::default()
     };
-    let __bl = edge_branch_lengths(&graph);
+
     spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let actual = child_names(ordered, "root")?;
+    let actual = child_names(ordered, &names, "root")?;
 
     assert_eq!(vec!["long", "short", "D"], actual);
 
@@ -214,7 +214,7 @@ mod tests {
     spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let actual = child_names(ordered, "root")?;
+    let actual = child_names(ordered, &names, "root")?;
 
     // A has label "A", BC has min label "B", DEF has min label "D"
     assert_eq!(vec!["A", "BC", "DEF"], actual);
@@ -233,7 +233,7 @@ mod tests {
     spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let actual = child_names(ordered, "root")?;
+    let actual = child_names(ordered, &names, "root")?;
 
     assert_eq!(vec!["DEF", "BC", "A"], actual);
 
@@ -257,7 +257,7 @@ mod tests {
     spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let actual = child_names(ordered, "root")?;
+    let actual = child_names(ordered, &names, "root")?;
 
     assert_eq!(vec!["DEF", "BC", "A"], actual);
 
@@ -271,11 +271,11 @@ mod tests {
     TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let deep_children = child_names(ordered, "deep")?;
+    let deep_children = child_names(ordered, &names, "deep")?;
     // mid (2 leaves) vs D (1 leaf): D first
     assert_eq!(vec!["D", "mid"], deep_children);
 
-    let mid_children = child_names(ordered, "mid")?;
+    let mid_children = child_names(ordered, &names, "mid")?;
     assert_eq!(vec!["E", "F"], mid_children);
 
     Ok(())
@@ -296,7 +296,7 @@ mod tests {
     spec.apply(&mut graph, &names, &__bl)?;
     let ordered = &graph;
 
-    let actual = child_names(ordered, "root")?;
+    let actual = child_names(ordered, &names, "root")?;
 
     assert_eq!(vec!["A", "BC", "DEF"], actual);
 
@@ -336,7 +336,7 @@ mod tests {
   #[test]
   fn topology_order_target_order_rejects_duplicate_final_leaf_labels() -> Result<(), Report> {
     let (mut graph, mut names) = fixture_tree()?;
-    let node_c = find_node(&graph, "C")?;
+    let node_c = find_node(&names, "C")?;
     names.insert(node_c, Some("B".to_owned()));
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrder,
@@ -365,7 +365,7 @@ mod tests {
     let __bl = edge_branch_lengths(&graph);
     spec.apply(&mut graph, &names, &__bl)?;
 
-    assert_eq!(vec!["DEF", "BC", "A"], child_names(&graph, "root")?);
+    assert_eq!(vec!["DEF", "BC", "A"], child_names(&graph, &names, "root")?);
     Ok(())
   }
 
@@ -377,10 +377,10 @@ mod tests {
 
     let __bl = edge_branch_lengths(&graph);
     TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
-    let first = child_names_with_data(&graph, "root")?;
+    let first = child_names_with_data(&graph, &names, "root")?;
     let __bl = edge_branch_lengths(&graph);
     TopologyOrderSpec::default().apply(&mut graph, &names, &__bl)?;
-    let second = child_names_with_data(&graph, "root")?;
+    let second = child_names_with_data(&graph, &names, "root")?;
 
     assert_eq!(first, second);
     assert!(std::ptr::eq(data, graph.data()));
@@ -388,28 +388,28 @@ mod tests {
   }
 
   /// root -> [deep -> [D, mid -> [E, F]], shallow -> [B, C], A]
-  fn fixture_deep_tree() -> Result<(Graph<TestNode, TestEdge, ()>, BTreeMap<GraphNodeKey, Option<String>>), Report> {
-    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
-    let root = graph.add_node(TestNode::new("root"));
-    let deep = graph.add_node(TestNode::new("deep"));
-    let tip_a = graph.add_node(TestNode::new("A"));
-    let shallow = graph.add_node(TestNode::new("shallow"));
-    let mid = graph.add_node(TestNode::new("mid"));
-    let tip_d = graph.add_node(TestNode::new("D"));
-    let tip_e = graph.add_node(TestNode::new("E"));
-    let tip_f = graph.add_node(TestNode::new("F"));
-    let tip_b = graph.add_node(TestNode::new("B"));
-    let tip_c = graph.add_node(TestNode::new("C"));
+  fn fixture_deep_tree() -> Result<(Graph<()>, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    let mut graph = Graph::<()>::new();
+    let root = graph.add_node();
+    let deep = graph.add_node();
+    let tip_a = graph.add_node();
+    let shallow = graph.add_node();
+    let mid = graph.add_node();
+    let tip_d = graph.add_node();
+    let tip_e = graph.add_node();
+    let tip_f = graph.add_node();
+    let tip_b = graph.add_node();
+    let tip_c = graph.add_node();
 
-    graph.add_edge(root, deep, TestEdge::new())?;
-    graph.add_edge(root, tip_a, TestEdge::new())?;
-    graph.add_edge(root, shallow, TestEdge::new())?;
-    graph.add_edge(deep, tip_d, TestEdge::new())?;
-    graph.add_edge(deep, mid, TestEdge::new())?;
-    graph.add_edge(mid, tip_e, TestEdge::new())?;
-    graph.add_edge(mid, tip_f, TestEdge::new())?;
-    graph.add_edge(shallow, tip_b, TestEdge::new())?;
-    graph.add_edge(shallow, tip_c, TestEdge::new())?;
+    graph.add_edge(root, deep)?;
+    graph.add_edge(root, tip_a)?;
+    graph.add_edge(root, shallow)?;
+    graph.add_edge(deep, tip_d)?;
+    graph.add_edge(deep, mid)?;
+    graph.add_edge(mid, tip_e)?;
+    graph.add_edge(mid, tip_f)?;
+    graph.add_edge(shallow, tip_b)?;
+    graph.add_edge(shallow, tip_c)?;
     graph.build()?;
 
     let names = make_names(vec![
@@ -428,23 +428,32 @@ mod tests {
   }
 
   /// root -> [short(0.1) -> [A(0.1), B(0.1)], long(0.5) -> [C(0.2)], D(0.3)]
-  fn fixture_branch_length_tree()
-  -> Result<(Graph<TestNode, TestEdge, ()>, BTreeMap<GraphNodeKey, Option<String>>), Report> {
-    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
-    let root = graph.add_node(TestNode::new("root"));
-    let short = graph.add_node(TestNode::new("short"));
-    let long = graph.add_node(TestNode::new("long"));
-    let tip_a = graph.add_node(TestNode::new("A"));
-    let tip_b = graph.add_node(TestNode::new("B"));
-    let tip_c = graph.add_node(TestNode::new("C"));
-    let tip_d = graph.add_node(TestNode::new("D"));
+  #[allow(clippy::type_complexity)]
+  fn fixture_branch_length_tree() -> Result<
+    (
+      Graph<()>,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
+    ),
+    Report,
+  > {
+    let mut graph = Graph::<()>::new();
+    let root = graph.add_node();
+    let short = graph.add_node();
+    let long = graph.add_node();
+    let tip_a = graph.add_node();
+    let tip_b = graph.add_node();
+    let tip_c = graph.add_node();
+    let tip_d = graph.add_node();
 
-    graph.add_edge(root, short, TestEdge::with_length(0.1))?;
-    graph.add_edge(root, long, TestEdge::with_length(0.5))?;
-    graph.add_edge(root, tip_d, TestEdge::with_length(0.3))?;
-    graph.add_edge(short, tip_a, TestEdge::with_length(0.1))?;
-    graph.add_edge(short, tip_b, TestEdge::with_length(0.1))?;
-    graph.add_edge(long, tip_c, TestEdge::with_length(0.2))?;
+    let branch_lengths = make_branch_lengths(vec![
+      (graph.add_edge(root, short)?, 0.1),
+      (graph.add_edge(root, long)?, 0.5),
+      (graph.add_edge(root, tip_d)?, 0.3),
+      (graph.add_edge(short, tip_a)?, 0.1),
+      (graph.add_edge(short, tip_b)?, 0.1),
+      (graph.add_edge(long, tip_c)?, 0.2),
+    ]);
     graph.build()?;
 
     let names = make_names(vec![
@@ -456,29 +465,29 @@ mod tests {
       (tip_c, "C"),
       (tip_d, "D"),
     ]);
-    Ok((graph, names))
+    Ok((graph, names, branch_lengths))
   }
 
-  fn fixture_tree() -> Result<(Graph<TestNode, TestEdge, ()>, BTreeMap<GraphNodeKey, Option<String>>), Report> {
-    let mut graph = Graph::<TestNode, TestEdge, ()>::new();
-    let root = graph.add_node(TestNode::new("root"));
-    let def = graph.add_node(TestNode::new("DEF"));
-    let tip_a = graph.add_node(TestNode::new("A"));
-    let bc = graph.add_node(TestNode::new("BC"));
-    let tip_d = graph.add_node(TestNode::new("D"));
-    let tip_e = graph.add_node(TestNode::new("E"));
-    let tip_f = graph.add_node(TestNode::new("F"));
-    let tip_b = graph.add_node(TestNode::new("B"));
-    let tip_c = graph.add_node(TestNode::new("C"));
+  fn fixture_tree() -> Result<(Graph<()>, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    let mut graph = Graph::<()>::new();
+    let root = graph.add_node();
+    let def = graph.add_node();
+    let tip_a = graph.add_node();
+    let bc = graph.add_node();
+    let tip_d = graph.add_node();
+    let tip_e = graph.add_node();
+    let tip_f = graph.add_node();
+    let tip_b = graph.add_node();
+    let tip_c = graph.add_node();
 
-    graph.add_edge(root, def, TestEdge::new())?;
-    graph.add_edge(root, tip_a, TestEdge::new())?;
-    graph.add_edge(root, bc, TestEdge::new())?;
-    graph.add_edge(def, tip_d, TestEdge::new())?;
-    graph.add_edge(def, tip_e, TestEdge::new())?;
-    graph.add_edge(def, tip_f, TestEdge::new())?;
-    graph.add_edge(bc, tip_b, TestEdge::new())?;
-    graph.add_edge(bc, tip_c, TestEdge::new())?;
+    graph.add_edge(root, def)?;
+    graph.add_edge(root, tip_a)?;
+    graph.add_edge(root, bc)?;
+    graph.add_edge(def, tip_d)?;
+    graph.add_edge(def, tip_e)?;
+    graph.add_edge(def, tip_f)?;
+    graph.add_edge(bc, tip_b)?;
+    graph.add_edge(bc, tip_c)?;
     graph.build()?;
 
     let names = make_names(vec![
@@ -495,8 +504,20 @@ mod tests {
     Ok((graph, names))
   }
 
-  fn child_names(graph: &Graph<TestNode, TestEdge, ()>, parent_name: &str) -> Result<Vec<String>, Report> {
-    let parent_key = find_node(graph, parent_name)?;
+  fn child_names(
+    graph: &Graph<()>,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    parent_name: &str,
+  ) -> Result<Vec<String>, Report> {
+    child_names_with_data(graph, names, parent_name)
+  }
+
+  fn child_names_with_data<D: Send + Sync>(
+    graph: &Graph<D>,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    parent_name: &str,
+  ) -> Result<Vec<String>, Report> {
+    let parent_key = find_node(names, parent_name)?;
     let parent = graph
       .get_node(parent_key)
       .ok_or_else(|| make_report!("Node {parent_key} not found"))?;
@@ -504,85 +525,44 @@ mod tests {
       graph
         .children_of(&parent.read_arc())
         .into_iter()
-        .map(|(node, _)| node.read_arc().payload().read_arc().0.clone())
+        .map(|(node, _)| node_name(names, node.read_arc().key()))
         .collect_vec(),
     )
   }
 
-  fn find_node(graph: &Graph<TestNode, TestEdge, ()>, name: &str) -> Result<GraphNodeKey, Report> {
-    graph
-      .find_node(|node| node.0 == name)
+  fn find_node(names: &BTreeMap<GraphNodeKey, Option<String>>, name: &str) -> Result<GraphNodeKey, Report> {
+    names
+      .iter()
+      .find_map(|(key, value)| (value.as_deref() == Some(name)).then_some(*key))
       .ok_or_else(|| make_report!("Node '{name}' not found"))
   }
 
-  #[derive(Debug, Eq, PartialEq)]
-  struct TestNode(String);
-
-  impl TestNode {
-    fn new(name: &str) -> Self {
-      Self(name.to_owned())
-    }
+  fn node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {
+    names[&key].clone().unwrap_or_default()
   }
 
-  impl GraphNode for TestNode {}
-
-  /// Build a payload-independent node-name value map from the keys and names created at fixture
-  /// construction, matching what the production parse threads to `TopologyOrderSpec::apply`.
+  /// Build the node-name value map the production parse threads to `TopologyOrderSpec::apply`.
   fn make_names(pairs: Vec<(GraphNodeKey, &str)>) -> BTreeMap<GraphNodeKey, Option<String>> {
-    pairs.into_iter().map(|(key, name)| (key, Some(name.to_owned()))).collect()
+    pairs
+      .into_iter()
+      .map(|(key, name)| (key, Some(name.to_owned())))
+      .collect()
   }
 
-  #[derive(Debug, PartialEq)]
-  struct TestEdge {
-    branch_length: Option<f64>,
+  /// Build the edge branch-length value map the production parse threads to `TopologyOrderSpec::apply`.
+  fn make_branch_lengths(pairs: Vec<(GraphEdgeKey, f64)>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+    pairs.into_iter().map(|(key, len)| (key, Some(len))).collect()
   }
 
-  impl TestEdge {
-    fn new() -> Self {
-      Self { branch_length: None }
-    }
-
-    fn with_length(len: f64) -> Self {
-      Self {
-        branch_length: Some(len),
-      }
-    }
-  }
-
-  impl GraphEdge for TestEdge {}
-
-  /// Snapshot each edge's `branch_length` field into an edge-keyed value map, matching what the
-  /// production parse produces for `TopologyOrderSpec::apply`.
-  fn edge_branch_lengths<D: Send + Sync>(graph: &Graph<TestNode, TestEdge, D>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+  /// The edge branch-length value map for a graph whose edges carry no length (all `None`).
+  fn edge_branch_lengths<D: Send + Sync>(graph: &Graph<D>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
     graph
       .get_edges()
       .iter()
-      .map(|edge| {
-        let edge = edge.read_arc();
-        (edge.key(), edge.payload().read_arc().branch_length)
-      })
+      .map(|edge| (edge.read_arc().key(), None))
       .collect()
   }
 
   #[derive(Debug)]
   struct NonCloneData;
-
-  fn child_names_with_data<D: Send + Sync>(
-    graph: &Graph<TestNode, TestEdge, D>,
-    parent_name: &str,
-  ) -> Result<Vec<String>, Report> {
-    let parent_key = graph
-      .find_node(|node| node.0 == parent_name)
-      .ok_or_else(|| make_report!("Node '{parent_name}' not found"))?;
-    let parent = graph
-      .get_node(parent_key)
-      .ok_or_else(|| make_report!("Node {parent_key} not found"))?;
-    Ok(
-      graph
-        .children_of(&parent.read_arc())
-        .into_iter()
-        .map(|(node, _)| node.read_arc().payload().read_arc().0.clone())
-        .collect_vec(),
-    )
-  }
 }

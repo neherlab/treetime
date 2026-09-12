@@ -1,16 +1,14 @@
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 
-pub fn find_node_key_by_name<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn find_node_key_by_name<D>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   name: &str,
 ) -> Option<GraphNodeKey>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   for node in graph.get_nodes() {
@@ -22,15 +20,13 @@ where
   None
 }
 
-pub fn find_edge_key<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn find_edge_key<D>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   source_name: &str,
   target_name: &str,
 ) -> Option<GraphEdgeKey>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let source_key = find_node_key_by_name(graph, names, source_name)?;

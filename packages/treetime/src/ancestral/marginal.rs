@@ -5,9 +5,9 @@ use crate::partition::traits::{MarginalPass, PartitionMarginalOps, PartitionMarg
 use eyre::Report;
 use log::trace;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{LogLh, Seq, seq};
 
@@ -35,17 +35,15 @@ pub fn profile_branch_lengths(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64
     .collect()
 }
 
-pub fn initialize_marginal<N, E, P>(
-  graph: &Graph<N, E, ()>,
+pub fn initialize_marginal<P>(
+  graph: &Graph<()>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   partitions: &mut [P],
   aln: &[FastaRecord],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<LogLh, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
-  P: PartitionMarginalOps<N, E>,
+  P: PartitionMarginalOps,
 {
   for partition in partitions.iter_mut() {
     partition.attach_sequences(graph, aln, names)?;
@@ -60,15 +58,13 @@ where
 /// input tree (via [`profile_branch_lengths`]) or from its own store. Each partition contributes its own
 /// substitution model; the boundary dispatches dense and sparse representations to their separate
 /// tails via [`MarginalPass`].
-pub fn marginal_update<N, E, P>(
-  graph: &Graph<N, E, ()>,
+pub fn marginal_update<P>(
+  graph: &Graph<()>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   partitions: &mut [P],
 ) -> Result<LogLh, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
-  P: PartitionMarginalPasses<N, E>,
+  P: PartitionMarginalPasses,
 {
   marginal_backward(graph, branch_lengths, partitions)?;
   let log_lh = graph_log_lh(graph, partitions)?;
@@ -77,15 +73,13 @@ where
   Ok(log_lh)
 }
 
-pub fn marginal_backward<N, E, P>(
-  graph: &Graph<N, E, ()>,
+pub fn marginal_backward<P>(
+  graph: &Graph<()>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   partitions: &mut [P],
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
-  P: PartitionMarginalPasses<N, E>,
+  P: PartitionMarginalPasses,
 {
   for partition in partitions.iter_mut() {
     match partition.as_marginal_pass() {
@@ -96,15 +90,13 @@ where
   Ok(())
 }
 
-fn marginal_forward<N, E, P>(
-  graph: &Graph<N, E, ()>,
+fn marginal_forward<P>(
+  graph: &Graph<()>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   partitions: &mut [P],
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
-  P: PartitionMarginalPasses<N, E>,
+  P: PartitionMarginalPasses,
 {
   for partition in partitions.iter_mut() {
     match partition.as_marginal_pass() {
@@ -123,8 +115,8 @@ where
 /// visitor is also recorded in the map, so the two views hold the same sequences. Until the tree
 /// writers read the map directly, the partition still stores each `seq.sequence` (written inside
 /// `reconstruct_node_sequence`) for the node-data serializer.
-pub fn ancestral_reconstruction_marginal<N, E, P>(
-  graph: &Graph<N, E, ()>,
+pub fn ancestral_reconstruction_marginal<P>(
+  graph: &Graph<()>,
   include_leaves: bool,
   impute: bool,
   partitions: &mut [P],
@@ -133,9 +125,7 @@ pub fn ancestral_reconstruction_marginal<N, E, P>(
   mut visitor: impl FnMut(GraphNodeKey, &Seq) -> Result<(), Report>,
 ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
-  P: PartitionMarginalOps<N, E>,
+  P: PartitionMarginalOps,
 {
   // Preorder traversal is sequential, so a single threaded RNG yields deterministic output under a
   // fixed seed: every node draws from the profile in a fixed traversal order.

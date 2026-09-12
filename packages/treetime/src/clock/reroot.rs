@@ -13,9 +13,9 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use treetime_graph::common_ancestor::common_ancestor;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::{
   self as topology_reroot, record_merge, record_split, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
 };
@@ -58,8 +58,8 @@ impl RerootParams {
   }
 }
 
-pub fn reroot_in_place<N, E, D>(
-  graph: &mut Graph<N, E, D>,
+pub fn reroot_in_place<D>(
+  graph: &mut Graph<D>,
   state: &mut ClockState,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
@@ -68,8 +68,6 @@ pub fn reroot_in_place<N, E, D>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<RerootResult, Report>
 where
-  N: GraphNode + Default,
-  E: GraphEdge + Default,
   D: Send + Sync,
 {
   let FindRootResult {
@@ -145,8 +143,8 @@ where
 
 /// Create new root node by splitting the edge into two, then recording clock data for the new node
 /// in the clock state.
-fn create_new_root_node<N, E, D>(
-  graph: &mut Graph<N, E, D>,
+fn create_new_root_node<D>(
+  graph: &mut Graph<D>,
   state: &mut ClockState,
   edge_key: GraphEdgeKey,
   split: f64,
@@ -154,8 +152,6 @@ fn create_new_root_node<N, E, D>(
   clock_set: ClockSet,
 ) -> Result<EdgeSplitInfo, Report>
 where
-  N: GraphNode + Default,
-  E: GraphEdge + Default,
   D: Send + Sync,
 {
   let split_info = split_edge(graph, edge_key, split, branch_length)?;
@@ -181,8 +177,8 @@ where
   Ok(split_info)
 }
 
-fn select_root<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn select_root<D>(
+  graph: &Graph<D>,
   state: &ClockState,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
@@ -191,8 +187,6 @@ fn select_root<N, E, D>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<FindRootResult, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   match &reroot_params.spec {
@@ -229,16 +223,14 @@ where
   }
 }
 
-fn find_oldest_root<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn find_oldest_root<D>(
+  graph: &Graph<D>,
   state: &ClockState,
   options: &ClockParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let Some(oldest_key) = graph
@@ -258,8 +250,8 @@ where
   find_named_root_point(graph, state, options, oldest_key, branch_lengths, objective)
 }
 
-fn find_tip_group_root<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn find_tip_group_root<D>(
+  graph: &Graph<D>,
   state: &ClockState,
   options: &ClockParams,
   tips: &[String],
@@ -268,8 +260,6 @@ fn find_tip_group_root<N, E, D>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<FindRootResult, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   if tips.is_empty() {
@@ -290,8 +280,8 @@ where
   find_named_root_point(graph, state, options, mrca_key, branch_lengths, objective)
 }
 
-fn find_named_root_point<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn find_named_root_point<D>(
+  graph: &Graph<D>,
   state: &ClockState,
   options: &ClockParams,
   node_key: GraphNodeKey,
@@ -299,8 +289,6 @@ fn find_named_root_point<N, E, D>(
   objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let Some(edge) = graph.parent_inbound_edge(node_key)? else {
@@ -327,8 +315,8 @@ where
 
 /// Modify graph topology to make the newly identified root the actual root,
 /// then update clock-specific edge messages in the clock state.
-fn apply_reroot<N, E, D>(
-  graph: &mut Graph<N, E, D>,
+fn apply_reroot<D>(
+  graph: &mut Graph<D>,
   state: &mut ClockState,
   old_root_key: GraphNodeKey,
   new_root_key: GraphNodeKey,
@@ -336,8 +324,6 @@ fn apply_reroot<N, E, D>(
   options: &ClockParams,
 ) -> Result<Vec<GraphEdgeKey>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let inverted_edge_keys = topology_reroot::apply_reroot_topology(graph, old_root_key, new_root_key)?;

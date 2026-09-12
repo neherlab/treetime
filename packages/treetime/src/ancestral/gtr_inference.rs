@@ -5,19 +5,16 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use ndarray::{Array1, Array2};
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 
 /// Infer GTR model from Fitch substitution counts on a compressed partition.
-pub fn infer_gtr_fitch<N, E, D>(
+pub fn infer_gtr_fitch<D>(
   partition: &PartitionFitch,
-  graph: &Graph<N, E, D>,
+  graph: &Graph<D>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<GTR, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let counts = get_mutation_counts_fitch(graph, partition, branch_lengths)?;
@@ -32,14 +29,12 @@ where
 /// Reads `fitch_subs()` directly. GTR inference runs before marginal inference
 /// (the marginal pass needs the GTR model), so only Fitch-derived mutations
 /// are available at this point.
-pub fn get_mutation_counts_fitch<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn get_mutation_counts_fitch<D>(
+  graph: &Graph<D>,
   partition: &PartitionFitch,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<MutationCounts, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let alphabet = &partition.alphabet;

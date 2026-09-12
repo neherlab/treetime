@@ -2,7 +2,7 @@ use crate::gtr::jc_distance::jukes_cantor_distance;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::SparseNodePartition;
-use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::payload::ancestral::GraphAncestral;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -331,15 +331,15 @@ fn merge_sibling_group(
     branch_lengths.remove(&ek);
   }
 
-  let new_node_key = graph.add_node(NodeAncestral::default());
+  let new_node_key = graph.add_node();
 
   // New edges carry their length in the branch-length map, not the payload.
-  let new_parent_edge_key = graph.add_edge(parent_key, new_node_key, EdgeAncestral::default())?;
+  let new_parent_edge_key = graph.add_edge(parent_key, new_node_key)?;
   branch_lengths.insert(new_parent_edge_key, Some(new_edge_bl));
 
   let mut new_child_edge_keys: Vec<GraphEdgeKey> = Vec::with_capacity(child_keys.len());
   for (&ck, &bl) in child_keys.iter().zip(child_bls.iter()) {
-    let new_ek = graph.add_edge(new_node_key, ck, EdgeAncestral::default())?;
+    let new_ek = graph.add_edge(new_node_key, ck)?;
     branch_lengths.insert(new_ek, Some(bl));
     new_child_edge_keys.push(new_ek);
   }

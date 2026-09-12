@@ -1,10 +1,9 @@
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::partition::traits::{PartitionOptimizeOps, PartitionRerootOps, PartitionTimetreeOps};
+use crate::partition::traits::{PartitionOptimizeOps, PartitionRerootOps};
 use eyre::Report;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_graph::reroot::RerootChanges;
 
 impl PartitionOptimizeOps for PartitionTimetree {
@@ -32,12 +31,13 @@ impl PartitionRerootOps for PartitionTimetree {
   }
 }
 
-impl<N, E> PartitionTimetreeOps<N, E> for PartitionTimetree
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
-  fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>) {
+impl PartitionTimetree {
+  /// Ensure the partition has entries for all nodes and edges in the graph.
+  ///
+  /// After topology changes (polytomy resolution), new nodes/edges may lack partition entries.
+  /// This adds empty/default entries for missing elements and removes stale entries for
+  /// elements no longer in the graph. The subsequent marginal update pass recomputes values.
+  pub fn reconcile_topology(&mut self, graph: &Graph<()>) {
     match self {
       Self::Dense(partition) => partition.reconcile_topology(graph),
       Self::Sparse(partition) => partition.reconcile_topology(graph),

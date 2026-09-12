@@ -10,14 +10,14 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
-  use treetime_graph::edge::GraphEdge;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNode;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
-  use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk, NwkParse, nwk_read_str};
+  use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_utils::io::json::json_read_str;
 
+  /// Plain data holder for the per-node expected values compared against JSON. Node data now lives in
+  /// value maps rather than a graph payload, so this is a test-local record, not a graph node type.
   #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
   struct TestNode {
     name: Option<String>,
@@ -27,33 +27,7 @@ mod tests {
     bad_branch: bool,
   }
 
-  impl GraphNode for TestNode {}
-
-  impl NodeFromNwk for TestNode {
-    fn from_nwk(
-      name: Option<impl AsRef<str>>,
-      _confidence: Option<f64>,
-      _: &BTreeMap<String, String>,
-    ) -> Result<Self, Report> {
-      Ok(Self {
-        name: name.map(|n| o!(n.as_ref())),
-        ..Default::default()
-      })
-    }
-  }
-
-  #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-  struct TestEdge;
-
-  impl GraphEdge for TestEdge {}
-
-  impl EdgeFromNwk for TestEdge {
-    fn from_nwk(_: Option<f64>) -> Result<Self, Report> {
-      Ok(Self)
-    }
-  }
-
-  type TestGraph = Graph<TestNode, TestEdge, ()>;
+  type TestGraph = Graph<()>;
 
   /// The returned date constraints projected per node and sorted by name, with the fixed date
   /// constraint checked against the time distribution and then cleared: loading records the input in

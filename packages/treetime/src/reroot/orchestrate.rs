@@ -8,9 +8,9 @@ use eyre::Report;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::{
   RerootResult, apply_reroot_topology, record_merge, record_split, remove_node_if_trivial, split_edge,
   trivial_node_branch_lengths,
@@ -35,8 +35,8 @@ pub struct RerootTopologyParams {
 /// repair domain-specific edge data. Objectives whose statistics are ephemeral
 /// (e.g. divergence-only rooting) pass a no-op; partition state is reconciled
 /// separately by the caller from the returned `RerootResult`.
-pub fn reroot_in_place<N, E, D, S, F>(
-  graph: &mut Graph<N, E, D>,
+pub fn reroot_in_place<D, S, F>(
+  graph: &mut Graph<D>,
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
   root_stats: &S,
   variance: &VarianceModel,
@@ -46,11 +46,9 @@ pub fn reroot_in_place<N, E, D, S, F>(
   fixup: F,
 ) -> Result<RerootResult, Report>
 where
-  N: GraphNode + Default,
-  E: GraphEdge + Default,
   D: Send + Sync,
   S: RootStats,
-  F: FnMut(&mut Graph<N, E, D>, &[GraphEdgeKey]) -> Result<(), Report>,
+  F: FnMut(&mut Graph<D>, &[GraphEdgeKey]) -> Result<(), Report>,
 {
   let best = find_best_root(graph, edge_stats, root_stats, variance, branch_lengths, opt_params)?;
   apply_root_at_edge(graph, best.edge, best.split, topo, branch_lengths, fixup)
@@ -60,25 +58,23 @@ where
 ///
 /// Used for tip- or MRCA-based rerooting, which needs no scoring. When the node
 /// is already the root, the tree is left unchanged.
-pub fn reroot_at_node<N, E, D, F>(
-  graph: &mut Graph<N, E, D>,
+pub fn reroot_at_node<D, F>(
+  graph: &mut Graph<D>,
   node_key: GraphNodeKey,
   topo: RerootTopologyParams,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   fixup: F,
 ) -> Result<RerootResult, Report>
 where
-  N: GraphNode + Default,
-  E: GraphEdge + Default,
   D: Send + Sync,
-  F: FnMut(&mut Graph<N, E, D>, &[GraphEdgeKey]) -> Result<(), Report>,
+  F: FnMut(&mut Graph<D>, &[GraphEdgeKey]) -> Result<(), Report>,
 {
   let edge = graph.parent_inbound_edge(node_key)?;
   apply_root_at_edge(graph, edge, 0.5, topo, branch_lengths, fixup)
 }
 
-fn apply_root_at_edge<N, E, D, F>(
-  graph: &mut Graph<N, E, D>,
+fn apply_root_at_edge<D, F>(
+  graph: &mut Graph<D>,
   edge: Option<GraphEdgeKey>,
   split: f64,
   topo: RerootTopologyParams,
@@ -86,10 +82,8 @@ fn apply_root_at_edge<N, E, D, F>(
   mut fixup: F,
 ) -> Result<RerootResult, Report>
 where
-  N: GraphNode + Default,
-  E: GraphEdge + Default,
   D: Send + Sync,
-  F: FnMut(&mut Graph<N, E, D>, &[GraphEdgeKey]) -> Result<(), Report>,
+  F: FnMut(&mut Graph<D>, &[GraphEdgeKey]) -> Result<(), Report>,
 {
   let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
 

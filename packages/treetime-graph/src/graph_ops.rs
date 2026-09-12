@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod __tests__;
 
-use crate::edge::{Edge, GraphEdge, GraphEdgeKey};
+use crate::edge::{Edge, GraphEdgeKey};
 use crate::graph::{Graph, SafeEdge};
-use crate::node::{GraphNode, GraphNodeKey, Node};
+use crate::node::{GraphNodeKey, Node};
 use eyre::{Report, WrapErr};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -14,21 +14,19 @@ use treetime_utils::{make_error, make_internal_report, make_report};
   clippy::multiple_inherent_impl,
   reason = "split across files by concern; see graph.rs for the primary impl"
 )]
-impl<N, E, D> Graph<N, E, D>
+impl<D> Graph<D>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
-  pub fn add_node(&mut self, node_payload: N) -> GraphNodeKey {
+  pub fn add_node(&mut self) -> GraphNodeKey {
     let node_key = GraphNodeKey(self.nodes.len());
-    let node = Arc::new(RwLock::new(Node::new(node_key, node_payload)));
+    let node = Arc::new(RwLock::new(Node::new(node_key)));
     self.nodes.push(Some(node));
     node_key
   }
 
   #[allow(clippy::needless_collect)]
-  pub fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<(Node<N>, Vec<Edge<E>>), Report> {
+  pub fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<(Node, Vec<Edge>), Report> {
     let edges_to_remove: Vec<GraphEdgeKey> = self
       .edges
       .iter()
@@ -42,7 +40,7 @@ where
 
     let removed_edges = edges_to_remove
       .into_iter()
-      .map(|edge_key| -> Result<Edge<E>, Report> { self.remove_edge(edge_key) })
+      .map(|edge_key| -> Result<Edge, Report> { self.remove_edge(edge_key) })
       .collect::<Result<Vec<_>, _>>()?;
 
     let removed_node = self
@@ -57,12 +55,7 @@ where
   }
 
   /// Add a new edge to the graph.
-  pub fn add_edge(
-    &mut self,
-    source_key: GraphNodeKey,
-    target_key: GraphNodeKey,
-    edge_payload: E,
-  ) -> Result<GraphEdgeKey, Report> {
+  pub fn add_edge(&mut self, source_key: GraphNodeKey, target_key: GraphNodeKey) -> Result<GraphEdgeKey, Report> {
     if source_key == target_key {
       return make_error!(
         "When adding a graph edge {source_key}->{target_key}: Attempted to connect node {source_key} to itself."
@@ -78,7 +71,7 @@ where
     })?;
 
     let edge_key = GraphEdgeKey(self.edges.len());
-    let new_edge = Arc::new(RwLock::new(Edge::new(edge_key, source_key, target_key, edge_payload)));
+    let new_edge = Arc::new(RwLock::new(Edge::new(edge_key, source_key, target_key)));
 
     {
       let (source, target) = (source_lock.read(), target_lock.read());
@@ -167,7 +160,7 @@ where
     Ok(())
   }
 
-  pub fn remove_edge(&mut self, edge_key: GraphEdgeKey) -> Result<Edge<E>, Report> {
+  pub fn remove_edge(&mut self, edge_key: GraphEdgeKey) -> Result<Edge, Report> {
     // Remove the edge key from inbound/outbound lists of nodes
     self.nodes.iter_mut().for_each(|node| {
       if let Some(node) = node {
@@ -211,11 +204,7 @@ where
     Ok(())
   }
   #[allow(clippy::type_complexity)]
-  pub fn collapse_edge(&mut self, edge_key: GraphEdgeKey) -> Result<(Node<N>, Edge<E>, Vec<SafeEdge<E>>), Report>
-  where
-    N: Clone,
-    E: Clone,
-  {
+  pub fn collapse_edge(&mut self, edge_key: GraphEdgeKey) -> Result<(Node, Edge, Vec<SafeEdge>), Report> {
     let (source_key, target_key) = {
       let edge = self
         .get_edge(edge_key)

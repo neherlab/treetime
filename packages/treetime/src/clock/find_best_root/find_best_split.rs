@@ -7,9 +7,8 @@ use crate::payload::clock_set::ClockSet;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FindRootResult {
@@ -26,8 +25,8 @@ pub struct FindRootResult {
 }
 
 /// Find the best split point along an edge using the specified optimization method
-pub fn find_best_split<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn find_best_split<D>(
+  graph: &Graph<D>,
   state: &ClockState,
   edge: GraphEdgeKey,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -36,8 +35,6 @@ pub fn find_best_split<N, E, D>(
   objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   // Create cost function once

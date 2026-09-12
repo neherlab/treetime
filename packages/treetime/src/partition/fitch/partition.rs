@@ -7,9 +7,9 @@ use crate::partition::traits::{BranchTopology, PartitionBranchOps};
 use eyre::Report;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{Seq, seq};
 
 #[derive(Clone, Debug, Serialize)]
@@ -22,11 +22,7 @@ pub struct PartitionFitch {
 }
 
 impl PartitionFitch {
-  pub fn into_marginal_sparse<N, E>(self, gtr: GTR, graph: &Graph<N, E, ()>) -> Result<PartitionMarginalSparse, Report>
-  where
-    N: GraphNode,
-    E: GraphEdge,
-  {
+  pub fn into_marginal_sparse(self, gtr: GTR, graph: &Graph<()>) -> Result<PartitionMarginalSparse, Report> {
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     let root_sequence = self.nodes[&root_key].seq.sequence.clone();
     let mut nodes = self.nodes;

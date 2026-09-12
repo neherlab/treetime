@@ -31,17 +31,15 @@ mod tests {
     use itertools::Itertools;
     use treetime_graph::graph::{Graph, SafeNode};
 
-    use crate::test_utils::{TestEdge, TestNode};
-
-    pub fn graph_chain(node_count: usize) -> Result<(Graph<TestNode, TestEdge, ()>, Vec<SafeNode<TestNode>>), Report> {
+    pub fn graph_chain(node_count: usize) -> Result<(Graph<()>, Vec<SafeNode>), Report> {
       let mut graph = Graph::new();
-      let keys = (0..node_count)
-        .map(|index| graph.add_node(TestNode(Some(format!("node_{index}")))))
+      let keys = std::iter::repeat_with(|| graph.add_node())
+        .take(node_count)
         .collect_vec();
       keys
         .iter()
         .tuple_windows()
-        .try_for_each(|(source, target)| graph.add_edge(*source, *target, TestEdge(None)).map(|_| ()))?;
+        .try_for_each(|(source, target)| graph.add_edge(*source, *target).map(|_| ()))?;
       graph.build()?;
       let nodes = keys.iter().map(|key| graph.get_node(*key).unwrap()).collect_vec();
       Ok((graph, nodes))

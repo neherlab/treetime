@@ -3,7 +3,6 @@ use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
 use crate::partition::traits::{HasLogLh, MarginalPass, PartitionMarginalOps, PartitionMarginalPasses};
-use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::graph_traverse::GraphNodeForward;
@@ -27,8 +26,8 @@ impl HasLogLh for PartitionTimetree {
   }
 }
 
-impl PartitionMarginalPasses<NodeTimetree, EdgeTimetree> for PartitionTimetree {
-  fn as_marginal_pass(&mut self) -> MarginalPass<'_, NodeTimetree, EdgeTimetree> {
+impl PartitionMarginalPasses for PartitionTimetree {
+  fn as_marginal_pass(&mut self) -> MarginalPass<'_> {
     match self {
       Self::Dense(partition) => MarginalPass::Indexed(partition),
       Self::Sparse(partition) => MarginalPass::Sparse(partition),
@@ -43,7 +42,7 @@ impl PartitionMarginalPasses<NodeTimetree, EdgeTimetree> for PartitionTimetree {
   }
 }
 
-impl PartitionMarginalOps<NodeTimetree, EdgeTimetree> for PartitionTimetree {
+impl PartitionMarginalOps for PartitionTimetree {
   fn attach_sequences(
     &mut self,
     graph: &GraphTimetree,
@@ -59,14 +58,10 @@ impl PartitionMarginalOps<NodeTimetree, EdgeTimetree> for PartitionTimetree {
   fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
     match self {
       Self::Dense(partition) => {
-        <PartitionMarginalDense as PartitionMarginalOps<NodeTimetree, EdgeTimetree>>::extract_ancestral_sequence(
-          partition, node_key,
-        )
+        <PartitionMarginalDense as PartitionMarginalOps>::extract_ancestral_sequence(partition, node_key)
       },
       Self::Sparse(partition) => {
-        <PartitionMarginalSparse as PartitionMarginalOps<NodeTimetree, EdgeTimetree>>::extract_ancestral_sequence(
-          partition, node_key,
-        )
+        <PartitionMarginalSparse as PartitionMarginalOps>::extract_ancestral_sequence(partition, node_key)
       },
     }
   }
@@ -80,16 +75,22 @@ impl PartitionMarginalOps<NodeTimetree, EdgeTimetree> for PartitionTimetree {
     rng: &mut dyn rand::RngCore,
   ) -> Option<Seq> {
     match self {
-      Self::Dense(partition) => {
-        <PartitionMarginalDense as PartitionMarginalOps<NodeTimetree, EdgeTimetree>>::reconstruct_node_sequence(
-          partition, node, include_leaves, impute, sample_mode, rng,
-        )
-      },
-      Self::Sparse(partition) => {
-        <PartitionMarginalSparse as PartitionMarginalOps<NodeTimetree, EdgeTimetree>>::reconstruct_node_sequence(
-          partition, node, include_leaves, impute, sample_mode, rng,
-        )
-      },
+      Self::Dense(partition) => <PartitionMarginalDense as PartitionMarginalOps>::reconstruct_node_sequence(
+        partition,
+        node,
+        include_leaves,
+        impute,
+        sample_mode,
+        rng,
+      ),
+      Self::Sparse(partition) => <PartitionMarginalSparse as PartitionMarginalOps>::reconstruct_node_sequence(
+        partition,
+        node,
+        include_leaves,
+        impute,
+        sample_mode,
+        rng,
+      ),
     }
   }
 }

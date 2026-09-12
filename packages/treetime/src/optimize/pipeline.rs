@@ -307,7 +307,7 @@ fn reroot_optimize(
   let reroot_result = match spec {
     RerootSpec::Method(RerootMethod::MinDev) => {
       let field = compute_div_stats(graph, branch_lengths, &variance)?;
-      reroot_in_place::<_, _, _, DivStats, _>(
+      reroot_in_place::<_, DivStats, _>(
         graph,
         &field.edge_stats,
         &field.root_stats,

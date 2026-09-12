@@ -7,21 +7,16 @@ use crate::partition::storage::dense::{DenseEdgePartition, DenseNodePartition, D
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_primitives::LogLh;
 
-pub fn marginal_process_backward_indexed<N, E>(
-  partition: &mut dyn IndexedMarginalPartition<N, E>,
-  graph: &Graph<N, E, ()>,
+pub fn marginal_process_backward_indexed(
+  partition: &mut dyn IndexedMarginalPartition,
+  graph: &Graph<()>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<(), Report> {
   let mut missing_nodes = BTreeMap::new();
   for node in graph.get_nodes() {
     let key = node.read_arc().key();
@@ -42,18 +37,14 @@ where
   Ok(())
 }
 
-fn marginal_process_node_backward_indexed<N, E>(
-  partition: &dyn IndexedMarginalPartition<N, E>,
-  graph: &Graph<N, E, ()>,
+fn marginal_process_node_backward_indexed(
+  partition: &dyn IndexedMarginalPartition,
+  graph: &Graph<()>,
   gtr: &GTR,
   min_branch_length: f64,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   context: GraphPassBackwardContext<'_, DenseNodePartition, DenseEdgePartition, DenseNodePartition, DenseEdgePartition>,
-) -> Result<GraphPassNodeOutput<DenseNodePartition, DenseEdgePartition>, Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<GraphPassNodeOutput<DenseNodePartition, DenseEdgePartition>, Report> {
   let mut node = context.input;
   let graph_node = graph.get_node(context.key).expect("Indexed node must exist in graph");
   let graph_node = graph_node.read_arc();
@@ -135,15 +126,11 @@ where
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-pub fn marginal_process_forward_indexed<N, E>(
-  partition: &mut dyn IndexedMarginalPartition<N, E>,
-  graph: &Graph<N, E, ()>,
+pub fn marginal_process_forward_indexed(
+  partition: &mut dyn IndexedMarginalPartition,
+  graph: &Graph<()>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<(), Report> {
   let gtr = partition.marginal_data().gtr.clone();
   let min_branch_length = partition.marginal_data().min_branch_length;
   let (nodes, edges) = partition.indexed_storage_mut();
@@ -158,18 +145,14 @@ where
   Ok(())
 }
 
-fn marginal_process_node_forward_indexed<N, E>(
-  partition: &dyn IndexedMarginalPartition<N, E>,
-  graph: &Graph<N, E, ()>,
+fn marginal_process_node_forward_indexed(
+  partition: &dyn IndexedMarginalPartition,
+  graph: &Graph<()>,
   gtr: &GTR,
   min_branch_length: f64,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   context: GraphPassForwardContext<'_, DenseNodePartition, DenseEdgePartition, DenseNodePartition>,
-) -> Result<GraphPassNodeOutput<DenseNodePartition, DenseEdgePartition>, Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<GraphPassNodeOutput<DenseNodePartition, DenseEdgePartition>, Report> {
   let mut node = context.input;
 
   // Reuse this node's moved-in parent-edge input and overwrite only `msg_to_child`, exactly as the

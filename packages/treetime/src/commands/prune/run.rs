@@ -17,9 +17,9 @@ use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
@@ -259,13 +259,8 @@ fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   Ok(())
 }
 
-fn leaf_order<N, E, D>(
-  graph: &Graph<N, E, D>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<Vec<String>, Report>
+fn leaf_order<D>(graph: &Graph<D>, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   graph

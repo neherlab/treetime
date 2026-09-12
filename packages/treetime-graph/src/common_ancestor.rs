@@ -1,6 +1,5 @@
-use crate::edge::GraphEdge;
 use crate::graph::Graph;
-use crate::node::{GraphNode, GraphNodeKey};
+use crate::node::GraphNodeKey;
 use eyre::{Report, eyre};
 use itertools::Itertools;
 
@@ -9,10 +8,8 @@ use itertools::Itertools;
 /// Walks the root-to-node path of every input node and returns the
 /// last node shared by all of them. With a single input the node itself is its
 /// own ancestor. Errors on an empty input set.
-pub fn common_ancestor<N, E, D>(graph: &Graph<N, E, D>, node_keys: &[GraphNodeKey]) -> Result<GraphNodeKey, Report>
+pub fn common_ancestor<D>(graph: &Graph<D>, node_keys: &[GraphNodeKey]) -> Result<GraphNodeKey, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let paths = node_keys

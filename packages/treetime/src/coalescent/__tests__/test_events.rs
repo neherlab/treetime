@@ -6,7 +6,6 @@ mod tests {
   use crate::coalescent::node_time::CoalescentNodeTime;
   use crate::coalescent::time_coordinate::CalendarTime;
   use crate::partition::timetree::partition::GraphTimetree;
-  use crate::payload::timetree::NodeTimetree;
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
@@ -143,7 +142,7 @@ mod tests {
       "child3".to_owned() => Some(DateConstraint::exact(2015.0)),
     };
     let (mut graph, names, constraints) = create_graph_with_dates(TREE_NWK, &dates)?;
-    let new_key = graph.add_node(NodeTimetree::default());
+    let new_key = graph.add_node();
     let mut node_times = coalescent_node_times(&graph, &constraints);
     // The disconnected node is active (has a time) but unreachable from the root, matching the payload
     // seed that read the added node's time. Event collection is walked from the root, so this entry is

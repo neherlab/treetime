@@ -10,13 +10,12 @@ use log::{debug, info, warn};
 use ndarray::Array1;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_primitives::LogLh;
 
-pub fn refine_gtr_iterative<N, E, P>(
-  graph: &Graph<N, E, ()>,
+pub fn refine_gtr_iterative<P>(
+  graph: &Graph<()>,
   partition: &RefCell<P>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   iterations: usize,
@@ -26,9 +25,7 @@ pub fn refine_gtr_iterative<N, E, P>(
   optimize_rate: bool,
 ) -> Result<LogLh, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
-  P: TransitionCounting<N, E> + PartitionMarginalPasses<N, E> + HasGtr,
+  P: TransitionCounting + PartitionMarginalPasses + HasGtr,
 {
   let n_states = partition.borrow().gtr().pi.len();
   let options = InferGtrOptions {
@@ -99,15 +96,13 @@ fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<
   })
 }
 
-fn optimize_gtr_rate<N, E, P>(
-  graph: &Graph<N, E, ()>,
+fn optimize_gtr_rate<P>(
+  graph: &Graph<()>,
   partition: &RefCell<P>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
-  P: PartitionMarginalPasses<N, E> + HasGtr,
+  P: PartitionMarginalPasses + HasGtr,
 {
   let old_mu = partition.borrow().gtr().mu;
   let sqrt_old_mu = old_mu.sqrt();
@@ -162,18 +157,16 @@ where
   Ok(())
 }
 
-struct GtrRateCostFn<'a, N: GraphNode, E: GraphEdge, P> {
-  graph: &'a Graph<N, E, ()>,
+struct GtrRateCostFn<'a, P> {
+  graph: &'a Graph<()>,
   partition: &'a RefCell<P>,
   branch_lengths: BTreeMap<GraphEdgeKey, f64>,
   root_key: treetime_graph::node::GraphNodeKey,
 }
 
-impl<N, E, P> GtrRateCostFn<'_, N, E, P>
+impl<P> GtrRateCostFn<'_, P>
 where
-  N: GraphNode,
-  E: GraphEdge,
-  P: PartitionMarginalPasses<N, E> + HasGtr,
+  P: PartitionMarginalPasses + HasGtr,
 {
   fn neg_log_lh(&self, sqrt_mu: f64) -> f64 {
     {
@@ -192,11 +185,9 @@ where
   }
 }
 
-impl<N, E, P> CostFunction for &GtrRateCostFn<'_, N, E, P>
+impl<P> CostFunction for &GtrRateCostFn<'_, P>
 where
-  N: GraphNode,
-  E: GraphEdge,
-  P: PartitionMarginalPasses<N, E> + HasGtr,
+  P: PartitionMarginalPasses + HasGtr,
 {
   type Param = f64;
   type Output = f64;

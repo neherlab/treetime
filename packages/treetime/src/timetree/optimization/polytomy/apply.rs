@@ -4,7 +4,6 @@
 //! mutation of the tree for one polytomy happens here, in a single pass over the plan.
 
 use crate::partition::timetree::partition::GraphTimetree;
-use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use crate::timetree::optimization::polytomy::sweep::SubtreePlan;
 use crate::timetree::timetree_state::{DateNodeState, TimetreeState};
 use eyre::Report;
@@ -50,7 +49,7 @@ pub fn apply_plan(
   let mut merger_nodes: Vec<GraphNodeKey> = Vec::with_capacity(plan.mergers.len());
 
   for merger in &plan.mergers {
-    let new_node_key = graph.add_node(NodeTimetree::default());
+    let new_node_key = graph.add_node();
     // The new merger node's committed time lives on the value state, its home;
     // `prepare_tree_after_topology_change` reads it back to seed the node's point time distribution.
     state.nodes.insert(
@@ -196,7 +195,7 @@ fn attach(
         "Polytomy plan referenced merger node {lineage} before it was created; mergers must only reference earlier mergers"
       );
     };
-    let new_edge_key = graph.add_edge(new_parent_key, node_key, EdgeTimetree::default())?;
+    let new_edge_key = graph.add_edge(new_parent_key, node_key)?;
     // The sweep only merges lineages that have placed every substitution, so the branch above a
     // merger node carries none.
     branch_lengths.insert(new_edge_key, Some(0.0));

@@ -4,9 +4,7 @@ use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use eyre::Report;
 use treetime_distribution::Distribution;
-use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_primitives::LogLh;
 
 /// Computes the total coalescent log-likelihood of the tree under the given Tc.
@@ -22,14 +20,12 @@ use treetime_primitives::LogLh;
 ///
 /// Accepts any `Distribution` for Tc (constant, skyline, or formula-based).
 /// Nonconstant distributions are evaluated in decimal calendar years.
-pub fn compute_coalescent_total_lh<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn compute_coalescent_total_lh<D>(
+  graph: &Graph<D>,
   tc_dist: &Distribution,
   node_times: &CoalescentNodeTimes,
 ) -> Result<LogLh, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let model = CoalescentModel::new(&compute_lineage_counts(graph, node_times)?, tc_dist)?;

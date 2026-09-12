@@ -7,9 +7,9 @@ use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, DistributionFunction, NegLog};
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 
 /// Grid floor as a fraction of one mutation's worth of time. Keeps the first grid point strictly
 /// above the hard boundary at `t = 0`, so the divergent `-ln p` there is never stored on the grid.
@@ -21,15 +21,13 @@ const MIN_TIME_MUTATION_FRACTION: f64 = 0.01;
 /// [`ClockState`], not on the node payload; a node absent from the state (introduced by a topology
 /// change since the last rebuild) is inserted with default fields before its divergence is written,
 /// so a fresh polytomy or reroot node gets its divergence here rather than a stale zero.
-pub fn initialize_node_divergences<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn initialize_node_divergences<D>(
+  graph: &Graph<D>,
   clock_state: &mut ClockState,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let divs = compute_divs(graph, OnlyLeaves(false), branch_lengths, names)?;
@@ -45,14 +43,12 @@ where
   Ok(())
 }
 
-pub fn extract_node_times<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn extract_node_times<D>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   state: &TimetreeState,
 ) -> BTreeMap<String, f64>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   graph
@@ -76,16 +72,14 @@ where
 /// - `b` = branch length (substitutions/site)
 ///
 /// An edge with no branch length is absent from the returned map.
-pub fn create_poisson_branch_distributions<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn create_poisson_branch_distributions<D>(
+  graph: &Graph<D>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   mu: f64,
   seq_len: usize,
   n_points: usize,
 ) -> Result<BTreeMap<GraphEdgeKey, Arc<Distribution<NegLog>>>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let seq_len_f64 = seq_len as f64;

@@ -8,7 +8,6 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
   use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
-  use crate::payload::timetree::NodeTimetree;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::convergence::likelihood::{
     compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
@@ -138,7 +137,7 @@ mod tests {
 
     pub fn single_root_graph() -> Result<(GraphTimetree, GraphNodeKey), Report> {
       let mut graph = GraphTimetree::new();
-      let root_key = graph.add_node(NodeTimetree::default());
+      let root_key = graph.add_node();
       graph.build()?;
       Ok((graph, root_key))
     }

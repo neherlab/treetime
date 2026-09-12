@@ -1,6 +1,6 @@
-use crate::edge::{GraphEdge, GraphEdgeKey, invert_edge};
+use crate::edge::{GraphEdgeKey, invert_edge};
 use crate::graph::Graph;
-use crate::node::{GraphNode, GraphNodeKey};
+use crate::node::GraphNodeKey;
 use eyre::Report;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -74,25 +74,20 @@ pub struct RerootChanges {
 /// - parent-side: from original source to new node (length = `split_position * original_length`)
 /// - child-side: from new node to original target (length = `(1 - split_position) * original_length`)
 ///
-/// The new node is created with `N::default()`. Callers needing domain-specific
-/// initialization (e.g. clock data) should configure the returned node afterward.
-///
 /// The original branch length is supplied by the caller (`branch_length`, taken from its
-/// branch-length value map). The two new edges are created with `E::default()` and carry no payload
-/// branch length; their lengths are returned in [`EdgeSplitInfo`] for the caller to record in its
-/// map. A missing input length resolves to `0.0` for the split, matching the input-tree derivation.
-pub fn split_edge<N, E, D>(
-  graph: &mut Graph<N, E, D>,
+/// branch-length value map). The two new edges carry no branch length; their lengths are returned in
+/// [`EdgeSplitInfo`] for the caller to record in its map. A missing input length resolves to `0.0`
+/// for the split, matching the input-tree derivation.
+pub fn split_edge<D>(
+  graph: &mut Graph<D>,
   edge_key: GraphEdgeKey,
   split_position: f64,
   branch_length: Option<f64>,
 ) -> Result<EdgeSplitInfo, Report>
 where
-  N: GraphNode + Default,
-  E: GraphEdge + Default,
   D: Send + Sync,
 {
-  let new_node_key = graph.add_node(N::default());
+  let new_node_key = graph.add_node();
 
   let (source_key, target_key) = {
     let edge = graph.get_edge(edge_key).expect("Edge not found");
@@ -105,8 +100,8 @@ where
   let parent_side_length = Some(split_position * length);
   let child_side_length = Some((1.0 - split_position) * length);
 
-  let parent_side_edge_key = graph.add_edge(source_key, new_node_key, E::default())?;
-  let child_side_edge_key = graph.add_edge(new_node_key, target_key, E::default())?;
+  let parent_side_edge_key = graph.add_edge(source_key, new_node_key)?;
+  let child_side_edge_key = graph.add_edge(new_node_key, target_key)?;
 
   graph.remove_edge(edge_key)?;
 
@@ -126,14 +121,12 @@ where
 /// Returns the keys of all inverted edges (in old-root-to-new-root order).
 /// Only inverts graph topology (edge direction). Domain-specific edge data
 /// (clock messages, partition state) must be updated by the caller.
-pub fn apply_reroot_topology<N, E, D>(
-  graph: &mut Graph<N, E, D>,
+pub fn apply_reroot_topology<D>(
+  graph: &mut Graph<D>,
   old_root_key: GraphNodeKey,
   new_root_key: GraphNodeKey,
 ) -> Result<Vec<GraphEdgeKey>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let paths = graph.path_from_node_to_node(new_root_key, old_root_key)?;
@@ -155,20 +148,16 @@ where
 /// Returns `Some(EdgeMergeInfo)` if the node was removed, `None` if the node was not trivial.
 ///
 /// The parent-side and child-side branch lengths are supplied by the caller (from its branch-length
-/// value map). The merged edge is created with `E::default()` and carries no payload branch length;
-/// the merged length is returned in [`EdgeMergeInfo`] for the caller to record in its map. Merge
-/// semantics: the sum when both sides carry a length, otherwise whichever side has one (never coerce
-/// `None` to `0.0` and sum). Domain-specific properties of the removed node and its connecting edges
-/// are discarded.
-pub fn remove_node_if_trivial<N, E, D>(
-  graph: &mut Graph<N, E, D>,
+/// value map). The merged edge carries no branch length; the merged length is returned in
+/// [`EdgeMergeInfo`] for the caller to record in its map. Merge semantics: the sum when both sides
+/// carry a length, otherwise whichever side has one (never coerce `None` to `0.0` and sum).
+pub fn remove_node_if_trivial<D>(
+  graph: &mut Graph<D>,
   node_key: GraphNodeKey,
   parent_branch: Option<f64>,
   child_branch: Option<f64>,
 ) -> Result<Option<EdgeMergeInfo>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge + Default,
   D: Send + Sync,
 {
   let (parent_edge_key, child_edge_key) = {
@@ -197,7 +186,7 @@ where
 
   graph.remove_node(node_key)?;
 
-  let merged_edge_key = graph.add_edge(parent_key, child_key, E::default())?;
+  let merged_edge_key = graph.add_edge(parent_key, child_key)?;
 
   graph.build()?;
 
@@ -215,14 +204,12 @@ where
 /// Returns `(None, None)` when the node is not trivial (not exactly one inbound and one outbound
 /// edge), matching the guard in [`remove_node_if_trivial`]. A caller can therefore compute the merge
 /// inputs unconditionally and leave the triviality decision to the removal.
-pub fn trivial_node_branch_lengths<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn trivial_node_branch_lengths<D>(
+  graph: &Graph<D>,
   node_key: GraphNodeKey,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> (Option<f64>, Option<f64>)
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let node = graph.get_node(node_key).expect("Node not found");

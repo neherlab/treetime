@@ -13,10 +13,10 @@ use itertools::Itertools;
 use maplit::btreemap;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
 use treetime_io::fasta::FastaRecord;
 use treetime_io::nwk::NodeCommentProvider;
@@ -39,11 +39,11 @@ pub trait HasGtr {
 /// Minimal graph-structure abstraction used by per-branch partition operations.
 ///
 /// Exists so that `PartitionBranchOps` can serve any phylogenetic graph payload
-/// (ancestral, timetree, etc.) without binding to a concrete `Graph<N, E, D>`.
+/// (ancestral, timetree, etc.) without binding to a concrete `Graph<D>`.
 /// Only the operations actually needed by branch-level computations are exposed:
 /// resolving an edge to its endpoints and walking one step toward the root.
 /// Trait-object safe so `&dyn BranchTopology` can flow through dynamic dispatch
-/// while callers keep their concrete `&Graph<N, E, D>` thanks to unsized
+/// while callers keep their concrete `&Graph<D>` thanks to unsized
 /// coercion.
 pub trait BranchTopology: Send + Sync {
   /// Return `(parent_node_key, child_node_key)` for one edge.
@@ -59,10 +59,8 @@ pub trait BranchTopology: Send + Sync {
   fn root_key(&self) -> Result<GraphNodeKey, Report>;
 }
 
-impl<N, E, D> BranchTopology for Graph<N, E, D>
+impl<D> BranchTopology for Graph<D>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   fn edge_endpoints(&self, edge_key: GraphEdgeKey) -> Result<(GraphNodeKey, GraphNodeKey), Report> {
@@ -237,35 +235,23 @@ impl NodeCommentProvider for EdgeMutationCommentProvider<'_> {
 /// indexed dense machinery and travel through the `Indexed` arm; sparse partitions travel through
 /// `Sparse`. The marginal boundary matches on this to run the corresponding tail, keeping the two
 /// representations' code paths separate rather than merged into one conditional-laden function.
-pub enum MarginalPass<'a, N, E>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
-  Indexed(&'a mut dyn IndexedMarginalPartition<N, E>),
+pub enum MarginalPass<'a> {
+  Indexed(&'a mut dyn IndexedMarginalPartition),
   Sparse(&'a mut PartitionMarginalSparse),
 }
 
-pub trait PartitionMarginalPasses<N, E>: HasLogLh + Send + Sync
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+pub trait PartitionMarginalPasses: HasLogLh + Send + Sync {
   /// Borrow this partition as one of the two marginal representations, so the boundary can run the
   /// matching backward/forward tail.
-  fn as_marginal_pass(&mut self) -> MarginalPass<'_, N, E>;
+  fn as_marginal_pass(&mut self) -> MarginalPass<'_>;
 
   fn get_sequence_length(&self) -> usize;
 }
 
-pub trait PartitionMarginalOps<N, E>: PartitionMarginalPasses<N, E>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+pub trait PartitionMarginalOps: PartitionMarginalPasses {
   fn attach_sequences(
     &mut self,
-    graph: &Graph<N, E, ()>,
+    graph: &Graph,
     aln: &[FastaRecord],
     names: &BTreeMap<GraphNodeKey, Option<String>>,
   ) -> Result<(), Report>;
@@ -293,14 +279,10 @@ pub trait HasLogLh {
 /// Each marginal partition type implements this over its native data layout:
 /// dense and discrete iterate `Array2<f64>` matrices, sparse iterates
 /// per-variable-site profiles and aggregates fixed-site contributions.
-pub trait TransitionCounting<N, E>: HasGtr + Send + Sync
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+pub trait TransitionCounting: HasGtr + Send + Sync {
   fn count_transitions(
     &self,
-    graph: &Graph<N, E, ()>,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<MutationCounts, Report>;
 }
@@ -334,48 +316,10 @@ pub trait PartitionRerootOps: Send + Sync {
   }
 }
 
-/// Trait for timetree-specific partition operations.
-///
-/// Separate from PartitionMarginalOps to avoid polluting the ancestral command.
-pub trait PartitionTimetreeOps<N, E>: PartitionOptimizeOps + Send + Sync
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
-  /// Ensure partition has entries for all nodes and edges in the graph.
-  ///
-  /// After topology changes (polytomy resolution), new nodes/edges may lack partition entries.
-  /// This adds empty/default entries for missing elements and removes stale entries for
-  /// elements no longer in the graph. The subsequent marginal update pass recomputes values.
-  fn reconcile_topology(&mut self, graph: &Graph<N, E, ()>);
-}
-
-/// Combined trait for partitions that support both marginal and timetree operations.
-/// This allows trait objects to be used for both ancestral reconstruction and timetree inference.
-/// Includes `PartitionRerootOps` for reroot support with default no-op.
-pub trait PartitionTimetreeAll<N, E>:
-  PartitionBranchOps + PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
-}
-
-/// Blanket implementation: any type implementing all required traits automatically implements the combined trait
-impl<T, N, E> PartitionTimetreeAll<N, E> for T
-where
-  T: PartitionBranchOps + PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh,
-  N: GraphNode,
-  E: GraphEdge,
-{
-}
-
 /// Calculate the total log likelihood of the graph given the partitions
-pub fn graph_log_lh<P, N, E, D>(graph: &Graph<N, E, D>, partitions: &[P]) -> Result<LogLh, Report>
+pub fn graph_log_lh<P, D>(graph: &Graph<D>, partitions: &[P]) -> Result<LogLh, Report>
 where
   P: HasLogLh + Sync,
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send + Default,
 {
   let root = graph.get_exactly_one_root()?;

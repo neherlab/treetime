@@ -9,7 +9,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::traits::PartitionMarginalOps;
-  use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+  use crate::payload::ancestral::GraphAncestral;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use indoc::indoc;
@@ -145,7 +145,7 @@ mod tests {
     partitions: &mut [P],
   ) -> Result<BTreeMap<String, String>, Report>
   where
-    P: PartitionMarginalOps<NodeAncestral, EdgeAncestral> + crate::partition::traits::HasLogLh,
+    P: PartitionMarginalOps + crate::partition::traits::HasLogLh,
   {
     let mut out = BTreeMap::new();
     ancestral_reconstruction_marginal(

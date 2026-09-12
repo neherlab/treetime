@@ -2,9 +2,7 @@ use crate::coalescent::events::collect_tree_events;
 use crate::coalescent::lineage_dynamics::compute_lineage_count_distribution;
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use eyre::Report;
-use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
 /// The number of extant lineages $k(t)$ implied by a tree's topology and node times. v0's
@@ -14,13 +12,11 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 /// $H(t)$, which is a compound of the two. Which tree it is read from matters: $k(t)$ has two
 /// roles, and only one of them may track the times being inferred. See
 /// [`CoalescentModel`](crate::coalescent::coalescent::CoalescentModel).
-pub fn compute_lineage_counts<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn compute_lineage_counts<D>(
+  graph: &Graph<D>,
   node_times: &CoalescentNodeTimes,
 ) -> Result<PiecewiseConstantFn, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let (_, events, terminal_lineage_count) = collect_tree_events(graph, node_times)?;

@@ -54,7 +54,7 @@ mod tests {
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
-    reroot_in_place::<_, _, _, DivStats, _>(
+    reroot_in_place::<_, DivStats, _>(
       &mut graph,
       &field.edge_stats,
       &field.root_stats,
@@ -83,7 +83,7 @@ mod tests {
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
-    reroot_in_place::<_, _, _, DivStats, _>(
+    reroot_in_place::<_, DivStats, _>(
       &mut graph,
       &field.edge_stats,
       &field.root_stats,
@@ -146,7 +146,7 @@ mod tests {
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
     let root_before = graph.get_exactly_one_root().unwrap().read_arc().key();
 
-    reroot_in_place::<_, _, _, DivStats, _>(
+    reroot_in_place::<_, DivStats, _>(
       &mut graph,
       &field.edge_stats,
       &field.root_stats,

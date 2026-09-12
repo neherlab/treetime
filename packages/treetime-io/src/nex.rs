@@ -5,9 +5,9 @@ use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::file::create_file_or_stdout;
 use util_newick::NwkStyle;
 
@@ -24,16 +24,14 @@ pub struct NexWriteOptions {
   pub weight_decimal_digits: Option<i8>,
 }
 
-pub fn nex_write_file<N, E, D>(
+pub fn nex_write_file<D>(
   filepath: impl AsRef<Path>,
-  graph: &Graph<N, E, D>,
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NexWriteOptions,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut f = create_file_or_stdout(filepath)?;
@@ -42,17 +40,15 @@ where
   Ok(())
 }
 
-pub fn nex_write_file_with<N, E, D>(
+pub fn nex_write_file_with<D>(
   filepath: impl AsRef<Path>,
-  graph: &Graph<N, E, D>,
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NexWriteOptions,
   providers: &CommentProviders,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut f = create_file_or_stdout(filepath)?;
@@ -61,15 +57,13 @@ where
   Ok(())
 }
 
-pub fn nex_write_str<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn nex_write_str<D>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NexWriteOptions,
 ) -> Result<String, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let providers = CommentProviders::new();
@@ -77,16 +71,14 @@ where
 }
 
 /// Return the Nexus representation of a graph, augmented by external node comment providers.
-pub fn nex_write_str_with<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn nex_write_str_with<D>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NexWriteOptions,
   providers: &CommentProviders,
 ) -> Result<String, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut buf = Vec::new();
@@ -94,16 +86,14 @@ where
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn nex_write<N, E, D>(
+pub fn nex_write<D>(
   w: &mut impl Write,
-  graph: &Graph<N, E, D>,
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NexWriteOptions,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let providers = CommentProviders::new();
@@ -112,17 +102,15 @@ where
 
 /// Write a graph in Nexus format, passing node names, edge weights, and comment providers through to
 /// the embedded Newick tree.
-pub fn nex_write_with<N, E, D>(
+pub fn nex_write_with<D>(
   w: &mut impl Write,
-  graph: &Graph<N, E, D>,
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NexWriteOptions,
   providers: &CommentProviders,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let n_leaves = graph.num_leaves();

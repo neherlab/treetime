@@ -8,9 +8,9 @@ use eyre::Report;
 use ndarray::prelude::*;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_utils::array::ndarray::argmax_first;
 
 #[derive(Clone, Debug, Serialize)]
@@ -34,15 +34,11 @@ impl MarginalData {
   /// Count posterior-weighted transitions from dense profile matrices.
   ///
   /// Shared by dense and discrete partitions (both store full profile matrices).
-  pub fn count_transitions<N, E>(
+  pub fn count_transitions(
     &self,
-    graph: &Graph<N, E, ()>,
+    graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MutationCounts, Report>
-  where
-    N: GraphNode,
-    E: GraphEdge,
-  {
+  ) -> Result<MutationCounts, Report> {
     let n_states = self.gtr.pi.len();
     let mut nij = Array2::zeros((n_states, n_states));
     let mut Ti = Array1::zeros(n_states);
@@ -77,11 +73,7 @@ impl MarginalData {
   }
 }
 
-pub trait MarginalPartition<N, E>: Send + Sync
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+pub trait MarginalPartition: Send + Sync {
   fn marginal_data(&self) -> &MarginalData;
   fn marginal_data_mut(&mut self) -> &mut MarginalData;
 
@@ -93,11 +85,7 @@ where
   );
 }
 
-pub trait IndexedMarginalPartition<N, E>: MarginalPartition<N, E>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+pub trait IndexedMarginalPartition: MarginalPartition {
   fn indexed_missing_node(&self, key: GraphNodeKey) -> Result<DenseNodePartition, Report>;
 
   fn indexed_leaf_profile(&self, node: &DenseNodePartition) -> Result<DenseSeqDistribution, Report>;

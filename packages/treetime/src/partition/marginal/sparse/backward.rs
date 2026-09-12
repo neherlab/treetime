@@ -7,22 +7,17 @@ use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
 
-pub fn process_backward_indexed<N, E>(
+pub fn process_backward_indexed(
   partition: &mut PartitionMarginalSparse,
-  graph: &Graph<N, E, ()>,
+  graph: &Graph<()>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<(), Report> {
   let alphabet = partition.alphabet.clone();
   let gtr = partition.gtr.clone();
   let length = partition.length;
@@ -38,8 +33,8 @@ where
   Ok(())
 }
 
-fn process_node_backward_indexed<N, E>(
-  graph: &Graph<N, E, ()>,
+fn process_node_backward_indexed(
+  graph: &Graph<()>,
   alphabet: &Alphabet,
   gtr: &GTR,
   length: usize,
@@ -51,11 +46,7 @@ fn process_node_backward_indexed<N, E>(
     SparseNodePartition,
     SparseEdgePartition,
   >,
-) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report> {
   let mut node = context.input;
   let graph_node = graph.get_node(context.key).expect("Indexed node must exist in graph");
   let graph_node = graph_node.read_arc();

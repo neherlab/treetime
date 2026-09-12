@@ -5,9 +5,8 @@ use crate::payload::clock_set::ClockSet;
 use argmin::core::{CostFunction, Error};
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_utils::make_report;
 
 /// Cost function for branch point optimization using various optimization methods
@@ -23,8 +22,8 @@ pub struct BranchPointCostFunction<'a> {
 }
 
 impl<'a> BranchPointCostFunction<'a> {
-  pub fn new<N, E, D>(
-    graph: &Graph<N, E, D>,
+  pub fn new<D>(
+    graph: &Graph<D>,
     state: &ClockState,
     edge: GraphEdgeKey,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -32,8 +31,6 @@ impl<'a> BranchPointCostFunction<'a> {
     objective: RootObjective,
   ) -> Result<BranchPointCostFunction<'a>, Report>
   where
-    N: GraphNode,
-    E: GraphEdge,
     D: Send + Sync,
   {
     let edge_obj = graph

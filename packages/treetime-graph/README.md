@@ -1,33 +1,18 @@
 # treetime-graph
 
-Generic directed graph data structure for phylogenetic trees. Provides thread-safe nodes and edges with user-defined payloads, plus synchronous and parallel traversal algorithms.
+Directed graph data structure for phylogenetic trees. Provides thread-safe node and edge structure with graph-level command data `D`, plus synchronous and parallel traversal algorithms. Per-node and per-edge data flows through external value maps keyed by `GraphNodeKey`/`GraphEdgeKey`, not through node or edge payloads.
 
 ## Key types
 
-| Type             | Description                                                                                  |
-| ---------------- | -------------------------------------------------------------------------------------------- |
-| `Graph<N, E, D>` | Directed graph parameterized by node payload `N`, edge payload `E`, and graph-level data `D` |
-| `Node<N>`        | Graph node wrapping a payload `N` with inbound/outbound edge tracking                        |
-| `Edge<E>`        | Directed edge connecting source to target node, wrapping a payload `E`                       |
-| `GraphNodeKey`   | Newtype index into the node storage (`usize`)                                                |
-| `GraphEdgeKey`   | Newtype index into the edge storage (`usize`)                                                |
+| Type           | Description                                                         |
+| -------------- | ------------------------------------------------------------------- |
+| `Graph<D>`     | Directed graph carrying graph-level command data `D` (default `()`) |
+| `Node`         | Graph node with inbound/outbound edge tracking                      |
+| `Edge`         | Directed edge connecting a source to a target node                  |
+| `GraphNodeKey` | Newtype index into the node storage (`usize`)                       |
+| `GraphEdgeKey` | Newtype index into the edge storage (`usize`)                       |
 
-All nodes and edges are stored as `Arc<RwLock<_>>` (using `parking_lot`) for concurrent access. Type aliases `SafeNode`, `SafeEdge`, `SafeNodeRef`, etc. wrap the lock guard types.
-
-## Node traits
-
-- `GraphNode` - marker trait (`Clone + Debug + Sync + Send`)
-- `Described` - read/write node description
-- `Outlier` - outlier flag
-- `TimeConstraint<T>` - time distribution and bad-branch flag
-
-Composite traits (`NodeAncestralOps`, `NodeOptimizeOps`) combine these for specific algorithms.
-
-## Edge traits
-
-- `GraphEdge` - marker trait (`Clone + Debug + Sync + Send`)
-- `HasBranchLength` - read/write branch length
-- `TimeLength` - time-scaled branch length
+All nodes and edges are stored as `Arc<RwLock<_>>` (using `parking_lot`) for concurrent traversal. Type aliases `SafeNode`, `SafeEdge`, `SafeNodeRef`, etc. wrap the lock guard types.
 
 ## Graph operations
 
@@ -56,7 +41,7 @@ Query operations: `get_node`, `get_edge`, `find_node`, `parents_of`, `children_o
 | `iter_breadth_first_forward`         | root to leaves | BFS            |
 | `iter_breadth_first_reverse`         | leaves to root | BFS reverse    |
 
-Each traversal method takes a closure receiving `GraphNodeForward` or `GraphNodeBackward`, which provides mutable access to the current node's payload plus read access to parent/child payloads and edges.
+Each traversal method takes a closure receiving `GraphNodeForward` or `GraphNodeBackward`, which exposes the current node's key and its parent/child keys and edge keys, so the closure can index the external value maps it operates on.
 
 ### Parallel (rayon-based)
 

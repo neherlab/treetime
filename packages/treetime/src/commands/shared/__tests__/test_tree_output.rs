@@ -492,9 +492,8 @@ mod tests {
     use std::collections::BTreeMap;
     use std::error::Error as StdError;
     use std::io;
-    use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+    use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNode;
     use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
     use treetime_io::phyloxml::{Phyloxml, PhyloxmlClade};
     use treetime_io::usher_mat::UsherTree;
@@ -1012,7 +1011,6 @@ mod tests {
         .map(|(index, node)| {
           let node = node.read_arc();
           let key = node.key();
-          let payload = node.payload().read_arc();
           (
             key,
             ClockNodeOut {
@@ -1189,14 +1187,12 @@ mod tests {
         .collect()
     }
 
-    fn set_mat_branch_lengths<N, E, D>(
-      graph: &Graph<N, E, D>,
+    fn set_mat_branch_lengths<D>(
+      graph: &Graph<D>,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
     ) -> Result<(), Report>
     where
-      N: GraphNode,
-      E: GraphEdge,
       D: Send + Sync,
     {
       set_branch_length(graph, names, branch_lengths, "A", None)?;
@@ -1204,16 +1200,14 @@ mod tests {
       set_branch_length(graph, names, branch_lengths, "C", Some(0.5))
     }
 
-    fn set_branch_length<N, E, D>(
-      graph: &Graph<N, E, D>,
+    fn set_branch_length<D>(
+      graph: &Graph<D>,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
       name: &str,
       length: Option<f64>,
     ) -> Result<(), Report>
     where
-      N: GraphNode,
-      E: GraphEdge,
       D: Send + Sync,
     {
       let key = graph

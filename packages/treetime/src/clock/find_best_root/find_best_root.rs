@@ -9,17 +9,16 @@ use log::{debug, info};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_utils::collections::container::get_exactly_one;
 
 /// Find the best new root node
 ///
 // Loop over all nodes, pick the one with the lowest chisq (and positive clock rate
 // when force_positive is true), then optimize position along surrounding branches.
-pub fn find_best_root<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn find_best_root<D>(
+  graph: &Graph<D>,
   state: &ClockState,
   options: &ClockParams,
   params: &BranchPointOptimizationParams,
@@ -28,8 +27,6 @@ pub fn find_best_root<N, E, D>(
   objective: RootObjective,
 ) -> Result<FindRootResult, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   info!("Starting root optimization with method: {params:?}, force_positive={force_positive}");

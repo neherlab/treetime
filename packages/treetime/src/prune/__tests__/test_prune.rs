@@ -8,7 +8,7 @@ mod tests {
 
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
-  use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+  use crate::payload::ancestral::GraphAncestral;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
@@ -631,10 +631,10 @@ mod tests {
   fn test_collapse_sparse_edges_from_leaf_recursive_invalid_edge_key_errors() -> Result<(), Report> {
     let mut graph = GraphAncestral::new();
 
-    let root = graph.add_node(NodeAncestral {});
-    let a = graph.add_node(NodeAncestral {});
+    let root = graph.add_node();
+    let a = graph.add_node();
 
-    let e_root_a = graph.add_edge(root, a, EdgeAncestral {})?;
+    let e_root_a = graph.add_edge(root, a)?;
     graph.build()?;
 
     let mut partitions = vec![];
@@ -1242,17 +1242,17 @@ mod tests {
     // (based on collapse_sparse_edge logic: only sums when both are Some)
     let mut graph = GraphAncestral::new();
 
-    let root = graph.add_node(NodeAncestral {});
-    let internal = graph.add_node(NodeAncestral {});
-    let a = graph.add_node(NodeAncestral {});
-    let b = graph.add_node(NodeAncestral {});
+    let root = graph.add_node();
+    let internal = graph.add_node();
+    let a = graph.add_node();
+    let b = graph.add_node();
     let names =
       btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) };
 
     // Root -> internal has branch length, internal -> A has None
-    let e_root_internal = graph.add_edge(root, internal, EdgeAncestral {})?;
-    let e_internal_a = graph.add_edge(internal, a, EdgeAncestral {})?;
-    let e_internal_b = graph.add_edge(internal, b, EdgeAncestral {})?;
+    let e_root_internal = graph.add_edge(root, internal)?;
+    let e_internal_a = graph.add_edge(internal, a)?;
+    let e_internal_b = graph.add_edge(internal, b)?;
 
     graph.build()?;
 
@@ -1298,17 +1298,17 @@ mod tests {
     // because condition requires both Some
     let mut graph = GraphAncestral::new();
 
-    let root = graph.add_node(NodeAncestral {});
-    let internal = graph.add_node(NodeAncestral {});
-    let a = graph.add_node(NodeAncestral {});
-    let b = graph.add_node(NodeAncestral {});
+    let root = graph.add_node();
+    let internal = graph.add_node();
+    let a = graph.add_node();
+    let b = graph.add_node();
     let names =
       btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) };
 
     // Root -> internal has None, internal -> A has Some
-    let e_root_internal = graph.add_edge(root, internal, EdgeAncestral {})?;
-    let e_internal_a = graph.add_edge(internal, a, EdgeAncestral {})?;
-    let e_internal_b = graph.add_edge(internal, b, EdgeAncestral {})?;
+    let e_root_internal = graph.add_edge(root, internal)?;
+    let e_internal_a = graph.add_edge(internal, a)?;
+    let e_internal_b = graph.add_edge(internal, b)?;
 
     graph.build()?;
 
@@ -1353,16 +1353,16 @@ mod tests {
     // When both edges have None, result should stay None
     let mut graph = GraphAncestral::new();
 
-    let root = graph.add_node(NodeAncestral {});
-    let internal = graph.add_node(NodeAncestral {});
-    let a = graph.add_node(NodeAncestral {});
-    let b = graph.add_node(NodeAncestral {});
+    let root = graph.add_node();
+    let internal = graph.add_node();
+    let a = graph.add_node();
+    let b = graph.add_node();
     let names =
       btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) };
 
-    let e_root_internal = graph.add_edge(root, internal, EdgeAncestral {})?;
-    let e_internal_a = graph.add_edge(internal, a, EdgeAncestral {})?;
-    let e_internal_b = graph.add_edge(internal, b, EdgeAncestral {})?;
+    let e_root_internal = graph.add_edge(root, internal)?;
+    let e_internal_a = graph.add_edge(internal, a)?;
+    let e_internal_b = graph.add_edge(internal, b)?;
 
     graph.build()?;
 

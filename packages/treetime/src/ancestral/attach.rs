@@ -4,9 +4,8 @@ use crate::{make_error, make_report};
 use eyre::Report;
 use log::warn;
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNodeKey, NodeAncestralOps};
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, Seq, seq};
 
@@ -25,17 +24,13 @@ use treetime_primitives::{AlphabetLike, Seq, seq};
 /// (`packages/legacy/treetime/treetime/treeanc.py:419-440`): per-leaf warning, abort when
 /// `failed_leaves > tree.count_terminals()/3` unless `ignore_missing_alns`, missing leaves later
 /// assigned a uniform (all-states-equal) profile at reconstruction time.
-pub fn complete_alignment_for_leaves<N, E>(
-  graph: &Graph<N, E, ()>,
+pub fn complete_alignment_for_leaves(
+  graph: &Graph<()>,
   mut sequences: Vec<FastaRecord>,
   alphabet: &Alphabet,
   ignore_missing_alns: bool,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<Vec<FastaRecord>, Report>
-where
-  N: NodeAncestralOps,
-  E: GraphEdge,
-{
+) -> Result<Vec<FastaRecord>, Report> {
   let alignment_length = get_common_length(&sequences)?;
 
   let present: BTreeSet<String> = sequences.iter().map(|record| record.seq_name.clone()).collect();

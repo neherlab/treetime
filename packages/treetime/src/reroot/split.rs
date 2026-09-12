@@ -6,9 +6,8 @@ use crate::reroot::traits::RootStats;
 use crate::reroot::variance::VarianceModel;
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 
 /// Outcome of a root search: the winning edge (or `None` for the current root),
 /// the split fraction along it, the combined statistics, and the objective value.
@@ -29,8 +28,8 @@ pub struct FindRootResult<S> {
 }
 
 /// Optimize the root position along a single edge using Brent's method.
-pub fn find_best_split<N, E, D, S>(
-  graph: &Graph<N, E, D>,
+pub fn find_best_split<D, S>(
+  graph: &Graph<D>,
   edge: GraphEdgeKey,
   edge_stats: &BTreeMap<GraphEdgeKey, (S, S)>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -38,8 +37,6 @@ pub fn find_best_split<N, E, D, S>(
   params: &BrentParams,
 ) -> Result<FindRootResult<S>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
   S: RootStats,
 {

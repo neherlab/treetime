@@ -3,9 +3,7 @@ use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::coalescent::time_coordinate::CalendarTime;
 use eyre::Report;
 use log::warn;
-use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_primitives::LogLh;
 use treetime_utils::make_error;
 
@@ -55,13 +53,11 @@ fn node_time(entry: &CoalescentNodeTime) -> Option<f64> {
 ///
 /// Node times come from `node_times`, keyed by node, instead of the graph payload; `bad_branch`
 /// stays on the payload.
-pub fn collect_coalescent_edges<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn collect_coalescent_edges<D>(
+  graph: &Graph<D>,
   node_times: &CoalescentNodeTimes,
 ) -> Result<Vec<CoalescentEdgeData>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut edges = Vec::new();

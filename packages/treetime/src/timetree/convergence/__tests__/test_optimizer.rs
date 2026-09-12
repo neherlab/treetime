@@ -165,7 +165,6 @@ mod tests {
 
   mod helpers {
     use crate::partition::timetree::partition::GraphTimetree;
-    use crate::payload::timetree::NodeTimetree;
     use crate::timetree::convergence::node_times::NodeTimeChange;
 
     /// A measured movement of `years`, as a single node moving that far would produce.
@@ -178,7 +177,7 @@ mod tests {
 
     pub fn empty_graph() -> GraphTimetree {
       let mut graph = GraphTimetree::new();
-      graph.add_node(NodeTimetree::default());
+      graph.add_node();
       graph.build().expect("build graph");
       graph
     }

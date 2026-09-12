@@ -6,9 +6,8 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::{Graph, SafeEdge, SafeNode};
-use treetime_graph::node::GraphNode;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::io::file::create_file_or_stdout;
@@ -32,13 +31,11 @@ use util_newick::{
 /// with `None` where a node has no name. It lets a consumer read each node's name as a value
 /// threaded from the parse rather than off the node payload.
 #[derive(Debug)]
-pub struct NwkParse<N, E, D = ()>
+pub struct NwkParse<D = ()>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
-  pub graph: Graph<N, E, D>,
+  pub graph: Graph<D>,
   pub confidences: BTreeMap<GraphNodeKey, Option<f64>>,
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
   /// Each edge's raw input-tree branch length, keyed by the graph's own edge keys, with `None`
@@ -47,40 +44,32 @@ where
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-pub fn nwk_read_file<N, E, D>(filepath: impl AsRef<Path>) -> Result<NwkParse<N, E, D>, Report>
+pub fn nwk_read_file<D>(filepath: impl AsRef<Path>) -> Result<NwkParse<D>, Report>
 where
-  N: GraphNode + NodeFromNwk,
-  E: GraphEdge + EdgeFromNwk,
   D: Sync + Send + Default,
 {
   let filepath = filepath.as_ref();
   nwk_read(open_file_or_stdin(&Some(filepath))?).wrap_err_with(|| format!("When reading file '{}'", filepath.display()))
 }
 
-pub fn nwk_read_str<N, E, D>(nwk_string: impl AsRef<str>) -> Result<NwkParse<N, E, D>, Report>
+pub fn nwk_read_str<D>(nwk_string: impl AsRef<str>) -> Result<NwkParse<D>, Report>
 where
-  N: GraphNode + NodeFromNwk,
-  E: GraphEdge + EdgeFromNwk,
   D: Sync + Send + Default,
 {
   let nwk_graph = newick_from_string(nwk_string.as_ref()).wrap_err("When parsing Newick string")?;
   graph_from_newick(&nwk_graph)
 }
 
-pub fn nwk_read<N, E, D>(reader: impl Read) -> Result<NwkParse<N, E, D>, Report>
+pub fn nwk_read<D>(reader: impl Read) -> Result<NwkParse<D>, Report>
 where
-  N: GraphNode + NodeFromNwk,
-  E: GraphEdge + EdgeFromNwk,
   D: Sync + Send + Default,
 {
   let nwk_graph = newick_from_reader(reader)?;
   graph_from_newick(&nwk_graph)
 }
 
-fn graph_from_newick<N, E, D>(nwk_graph: &NewickGraph) -> Result<NwkParse<N, E, D>, Report>
+fn graph_from_newick<D>(nwk_graph: &NewickGraph) -> Result<NwkParse<D>, Report>
 where
-  N: GraphNode + NodeFromNwk,
-  E: GraphEdge + EdgeFromNwk,
   D: Sync + Send + Default,
 {
   for (idx, node) in nwk_graph.nodes.iter().enumerate() {
@@ -92,23 +81,16 @@ where
     }
   }
 
-  let mut graph = Graph::<N, E, D>::new();
+  let mut graph = Graph::<D>::new();
 
   let mut node_keys: Vec<GraphNodeKey> = Vec::with_capacity(nwk_graph.nodes.len());
   let mut confidences: BTreeMap<GraphNodeKey, Option<f64>> = BTreeMap::new();
   let mut names: BTreeMap<GraphNodeKey, Option<String>> = BTreeMap::new();
   let mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = BTreeMap::new();
-  for (nwk_idx, nwk_node) in nwk_graph.nodes.iter().enumerate() {
+  for nwk_node in &nwk_graph.nodes {
     let name: Option<&str> = nwk_node.name.as_deref().filter(|n| !n.is_empty());
 
-    let comments: BTreeMap<String, String> = nwk_node
-      .node_attrs
-      .iter()
-      .map(|(k, v)| (k.clone(), v.to_string()))
-      .collect();
-    let node = N::from_nwk(name, nwk_node.confidence, &comments)
-      .wrap_err_with(|| format!("When reading node #{nwk_idx} '{}'", name.unwrap_or_default()))?;
-    let key = graph.add_node(node);
+    let key = graph.add_node();
     confidences.insert(key, nwk_node.confidence);
     names.insert(key, name.map(ToOwned::to_owned));
     node_keys.push(key);
@@ -129,8 +111,7 @@ where
       )
     })?;
 
-    let edge = E::from_nwk(nwk_edge.data.branch_length)?;
-    let edge_key = graph.add_edge(*source, *target, edge)?;
+    let edge_key = graph.add_edge(*source, *target)?;
     branch_lengths.insert(edge_key, nwk_edge.data.branch_length);
   }
 
@@ -159,16 +140,14 @@ pub struct NwkWriteOptions {
   pub weight_decimal_digits: Option<i8>,
 }
 
-pub fn nwk_write_file<N, E, D>(
+pub fn nwk_write_file<D>(
   filepath: impl AsRef<Path>,
-  graph: &Graph<N, E, D>,
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut f = create_file_or_stdout(filepath)?;
@@ -177,17 +156,15 @@ where
   Ok(())
 }
 
-pub fn nwk_write_file_with<N, E, D>(
+pub fn nwk_write_file_with<D>(
   filepath: impl AsRef<Path>,
-  graph: &Graph<N, E, D>,
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
   providers: &CommentProviders,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut f = create_file_or_stdout(filepath)?;
@@ -196,15 +173,13 @@ where
   Ok(())
 }
 
-pub fn nwk_write_str<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn nwk_write_str<D>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
 ) -> Result<String, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let providers = CommentProviders::new();
@@ -212,16 +187,14 @@ where
 }
 
 /// Return the Newick representation of a graph, augmented by external node comment providers.
-pub fn nwk_write_str_with<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn nwk_write_str_with<D>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
   providers: &CommentProviders,
 ) -> Result<String, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut buf = Vec::new();
@@ -229,16 +202,14 @@ where
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn nwk_write<N, E, D>(
+pub fn nwk_write<D>(
   writer: &mut impl Write,
-  graph: &Graph<N, E, D>,
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let providers = CommentProviders::new();
@@ -251,17 +222,15 @@ where
 /// `names` supplies each node's display label and `weights` each edge's branch weight, both keyed by
 /// the graph's own keys and kept as `Option` so a missing label writes no name and a missing weight
 /// writes no `:weight`. Comments come solely from the providers.
-pub fn nwk_write_with<N, E, D>(
+pub fn nwk_write_with<D>(
   writer: &mut impl Write,
-  graph: &Graph<N, E, D>,
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
   providers: &CommentProviders,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let roots = graph.get_roots();
@@ -274,7 +243,7 @@ where
   }
   let root = &roots[0];
 
-  let mut stack: Vec<(SafeNode<N>, Option<SafeEdge<E>>, usize)> = vec![(Arc::clone(root), None, 0)];
+  let mut stack: Vec<(SafeNode, Option<SafeEdge>, usize)> = vec![(Arc::clone(root), None, 0)];
   while let Some((node, edge, child_visit)) = stack.pop() {
     let children: Vec<_> = graph.children_of(&node.read()).into_iter().collect();
 
@@ -356,22 +325,6 @@ pub fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {
   )
 }
 
-/// Defines how to construct node when reading from Newick and Nexus files
-pub trait NodeFromNwk: Sized {
-  fn from_nwk(
-    name: Option<impl AsRef<str>>,
-    confidence: Option<f64>,
-    comments: &BTreeMap<String, String>,
-  ) -> Result<Self, Report>;
-}
-
-/// Defines how to display node information when writing to Newick and Nexus files
-pub trait NodeToNwk {
-  fn nwk_comments(&self) -> BTreeMap<String, String> {
-    BTreeMap::<String, String>::new()
-  }
-}
-
 /// Return extra node comments for a graph node during Newick or Nexus serialization.
 pub trait NodeCommentProvider {
   fn node_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report>;
@@ -403,14 +356,4 @@ impl<'a> CommentProviders<'a> {
     }
     Ok(comments)
   }
-}
-
-/// Defines how to construct edge when reading from Newick and Nexus files
-pub trait EdgeFromNwk: Sized {
-  fn from_nwk(weight: Option<f64>) -> Result<Self, Report>;
-}
-
-/// Defines how to display edge information when writing to Newick and Nexus files
-pub trait EdgeToNwk {
-  fn nwk_weight(&self) -> Option<f64>;
 }

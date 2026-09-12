@@ -370,10 +370,7 @@ mod tests {
     partitions: &mut [P],
   ) -> Result<BTreeMap<String, String>, Report>
   where
-    P: crate::partition::traits::PartitionMarginalOps<
-        crate::payload::ancestral::NodeAncestral,
-        crate::payload::ancestral::EdgeAncestral,
-      > + crate::partition::traits::HasLogLh,
+    P: crate::partition::traits::PartitionMarginalOps + crate::partition::traits::HasLogLh,
   {
     let mut actual = BTreeMap::new();
     ancestral_reconstruction_marginal(

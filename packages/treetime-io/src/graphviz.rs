@@ -4,21 +4,19 @@ use itertools::{Itertools, iproduct};
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::{Graph, SafeNode};
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::make_internal_report;
 
-pub fn graphviz_write_file<N, E, D>(
+pub fn graphviz_write_file<D>(
   filepath: impl AsRef<Path>,
-  graph: &Graph<N, E, D>,
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let mut f = create_file_or_stdout(filepath)?;
@@ -27,14 +25,12 @@ where
   Ok(())
 }
 
-pub fn graphviz_write_str<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn graphviz_write_str<D>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<String, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let mut buf = Vec::new();
@@ -42,16 +38,14 @@ where
   Ok(String::from_utf8(buf)?)
 }
 
-pub fn graphviz_write<W, N, E, D>(
+pub fn graphviz_write<W, D>(
   mut writer: W,
-  graph: &Graph<N, E, D>,
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report>
 where
   W: Write,
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   write!(
@@ -70,14 +64,9 @@ digraph Phylogeny {{
   Ok(())
 }
 
-fn print_node<W, N>(
-  mut writer: W,
-  node: &SafeNode<N>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<(), Report>
+fn print_node<W>(mut writer: W, node: &SafeNode, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<(), Report>
 where
   W: Write,
-  N: GraphNode,
 {
   let key = node.read_arc().key();
   let label = names[&key].clone();
@@ -90,15 +79,13 @@ where
   Ok(())
 }
 
-fn print_nodes<W, N, E, D>(
-  graph: &Graph<N, E, D>,
+fn print_nodes<W, D>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   mut writer: W,
 ) -> Result<(), Report>
 where
   W: Write,
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   writeln!(writer, "\n  subgraph roots {{")?;
@@ -125,15 +112,13 @@ where
   Ok(())
 }
 
-fn print_edges<W, N, E, D>(
-  graph: &Graph<N, E, D>,
+fn print_edges<W, D>(
+  graph: &Graph<D>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   mut writer: W,
 ) -> Result<(), Report>
 where
   W: Write,
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   for node in graph.get_nodes() {
@@ -166,10 +151,9 @@ where
   Ok(())
 }
 
-fn print_fake_edges<W, N>(mut writer: W, nodes: &[SafeNode<N>]) -> Result<(), Report>
+fn print_fake_edges<W>(mut writer: W, nodes: &[SafeNode]) -> Result<(), Report>
 where
   W: Write,
-  N: GraphNode,
 {
   // Fake edges needed to align a set of nodes beautifully
   let node_keys = nodes.iter().map(|node| node.read().key()).collect_vec();
@@ -189,21 +173,4 @@ where
     )?;
   }
   Ok(())
-}
-
-/// Defines how to display node information when writing to GraphViz (.dot) file
-pub trait NodeToGraphviz {
-  // Defines how to display additional attributes of the node in GraphViz (.dot) file
-  fn to_graphviz_attributes(&self) -> BTreeMap<String, String> {
-    BTreeMap::<String, String>::new()
-  }
-}
-
-/// Defines how to display edge information when writing to GraphViz (.dot) file.
-/// Edge display hook for GraphViz (.dot) output. Edge label and weight are supplied by the caller's
-/// per-edge weight value map; this trait carries only extra attributes.
-pub trait EdgeToGraphviz {
-  fn to_graphviz_attributes(&self) -> BTreeMap<String, String> {
-    BTreeMap::<String, String>::new()
-  }
 }

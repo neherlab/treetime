@@ -279,7 +279,6 @@ mod tests {
 
   mod helpers {
     use crate::partition::timetree::partition::GraphTimetree;
-    use crate::payload::timetree::NodeTimetree;
     use crate::timetree::timetree_state::TimetreeState;
     use std::collections::BTreeMap;
     use std::sync::Arc;
@@ -306,7 +305,7 @@ mod tests {
       names: &mut BTreeMap<GraphNodeKey, Option<String>>,
       name: Option<&str>,
     ) -> GraphNodeKey {
-      let key = graph.add_node(NodeTimetree::default());
+      let key = graph.add_node();
       names.insert(key, name.map(|n| n.to_owned()));
       key
     }

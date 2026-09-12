@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_graph::reroot::RerootResult;
 
@@ -89,16 +89,14 @@ impl ClockRerootResult {
 ///
 /// `prev_clock_rate`: when `Some(rate)`, uses solver-updated `time_length * rate * gamma`
 /// as divergence (re-estimation mode). When `None`, uses input `branch_length()` (initial estimation).
-pub fn clock_regression_backward<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn clock_regression_backward<D>(
+  graph: &Graph<D>,
   state: &mut ClockState,
   options: &ClockParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   state.map_backward(graph, |context| {
@@ -106,16 +104,14 @@ where
   })
 }
 
-fn clock_regression_backward_node<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn clock_regression_backward_node<D>(
+  graph: &Graph<D>,
   options: &ClockParams,
   prev_clock_rate: Option<f64>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   context: GraphPassBackwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState, ClockEdgeState>,
 ) -> Result<GraphPassNodeOutput<ClockNodeState, ClockEdgeState>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let mut node = context.input;
@@ -176,16 +172,14 @@ where
 ///
 /// `prev_clock_rate`: when `Some(rate)`, uses solver-updated `time_length * rate * gamma`
 /// as divergence (re-estimation mode). When `None`, uses input `branch_length()` (initial estimation).
-pub fn clock_regression_forward<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn clock_regression_forward<D>(
+  graph: &Graph<D>,
   state: &mut ClockState,
   options: &ClockParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   state.map_forward(graph, |context| {
@@ -213,8 +207,8 @@ where
 ///
 /// `prev_clock_rate`: when `Some(rate)`, regression uses solver-updated time lengths
 /// converted to divergence (re-estimation mode). When `None`, uses input branch lengths.
-pub fn estimate_clock_model_with_reroot_policy<N, E, D>(
-  graph: &mut Graph<N, E, D>,
+pub fn estimate_clock_model_with_reroot_policy<D>(
+  graph: &mut Graph<D>,
   state: &mut ClockState,
   options: &ClockParams,
   clock_rate: Option<f64>,
@@ -226,8 +220,6 @@ pub fn estimate_clock_model_with_reroot_policy<N, E, D>(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<ClockRerootResult, Report>
 where
-  N: GraphNode + Default,
-  E: GraphEdge + Default,
   D: Send + Sync,
 {
   if let Some(rate) = clock_rate {

@@ -2,9 +2,9 @@
 mod __tests__;
 
 use crate::dependency_queue::{run_dependency_queue, validate_dependency_graph};
-use crate::edge::{GraphEdge, GraphEdgeKey};
+use crate::edge::GraphEdgeKey;
 use crate::graph::Graph;
-use crate::node::{GraphNode, GraphNodeKey};
+use crate::node::GraphNodeKey;
 use crossbeam_utils::atomic::AtomicCell;
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
@@ -79,16 +79,12 @@ pub struct GraphMapOutputs<NodeOut, EdgeOut> {
 }
 
 impl<N, E> GraphPass<N, E> {
-  pub fn new<GN, GE>(
-    graph: &Graph<GN, GE, impl Send + Sync>,
+  pub fn new(
+    graph: &Graph<impl Send + Sync>,
     nodes: &mut BTreeMap<GraphNodeKey, N>,
     edges: &mut BTreeMap<GraphEdgeKey, E>,
     missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
-  ) -> Result<Self, Report>
-  where
-    GN: GraphNode,
-    GE: GraphEdge,
-  {
+  ) -> Result<Self, Report> {
     let topology = GraphPassTopology::new(graph)?;
     Self::from_topology(&topology, nodes, edges, missing_node)
   }
@@ -504,11 +500,7 @@ struct GraphPassTopology {
 }
 
 impl GraphPassTopology {
-  fn new<N, E>(graph: &Graph<N, E, impl Send + Sync>) -> Result<Self, Report>
-  where
-    N: GraphNode,
-    E: GraphEdge,
-  {
+  fn new(graph: &Graph<impl Send + Sync>) -> Result<Self, Report> {
     let nodes = graph
       .get_nodes()
       .iter()

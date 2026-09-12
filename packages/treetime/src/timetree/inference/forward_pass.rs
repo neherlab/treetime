@@ -9,9 +9,8 @@ use treetime_distribution::NegLog;
 use treetime_distribution::convolve_across_edge;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
-use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_grid::Side;
 
@@ -21,14 +20,12 @@ use treetime_grid::Side;
 /// refining the posteriors and committing point-estimate times in place. The caller owns re-reading
 /// the transitional payload fields into the state and writing the results back. The count of nodes
 /// whose given date the rest of the tree contradicted is folded out of the per-node outputs.
-pub fn propagate_distributions_forward<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn propagate_distributions_forward<D>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   state: &mut TimetreeState,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   state.map_forward(graph, |context| propagate_distributions_forward_node(names, context))?;

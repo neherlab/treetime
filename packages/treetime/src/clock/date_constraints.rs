@@ -5,9 +5,8 @@ use log::{info, warn};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
-use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::{DateConstraint, DateValue, DatesMap};
 
 /// The per-node date inputs [`load_date_constraints`] derives from the dates metadata, keyed by node.
@@ -37,14 +36,12 @@ pub fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribut
   }
 }
 
-pub fn load_date_constraints<N, E, D>(
+pub fn load_date_constraints<D>(
   dates: &DatesMap,
-  graph: &Graph<N, E, D>,
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<DateConstraints, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut good_leaf_count = 0;

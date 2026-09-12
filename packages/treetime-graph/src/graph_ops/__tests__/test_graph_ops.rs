@@ -1,32 +1,23 @@
 #[cfg(test)]
 mod tests {
-  use crate::edge::{GraphEdge, GraphEdgeKey};
+  use crate::edge::GraphEdgeKey;
   use crate::graph::Graph;
-  use crate::node::{GraphNode, GraphNodeKey};
+  use crate::node::GraphNodeKey;
   use eyre::Report;
   use pretty_assertions::assert_eq;
 
-  #[derive(Debug, PartialEq)]
-  struct TestNode(&'static str);
-  impl GraphNode for TestNode {}
-
-  /// Carries a value so tests can tell a preserved payload from a rebuilt one.
-  #[derive(Debug, PartialEq)]
-  struct TestEdge(f64);
-  impl GraphEdge for TestEdge {}
-
-  type TestGraph = Graph<TestNode, TestEdge, ()>;
+  type TestGraph = Graph<()>;
 
   /// `root -> {a, b}`, `a -> c`. Returns the graph and the keys in that order.
   fn fixture() -> Result<(TestGraph, [GraphNodeKey; 4], GraphEdgeKey), Report> {
     let mut graph = TestGraph::new();
-    let root = graph.add_node(TestNode("root"));
-    let a = graph.add_node(TestNode("a"));
-    let b = graph.add_node(TestNode("b"));
-    let c = graph.add_node(TestNode("c"));
-    graph.add_edge(root, a, TestEdge(1.0))?;
-    graph.add_edge(root, b, TestEdge(2.0))?;
-    let a_to_c = graph.add_edge(a, c, TestEdge(3.0))?;
+    let root = graph.add_node();
+    let a = graph.add_node();
+    let b = graph.add_node();
+    let c = graph.add_node();
+    graph.add_edge(root, a)?;
+    graph.add_edge(root, b)?;
+    let a_to_c = graph.add_edge(a, c)?;
     graph.build()?;
     Ok((graph, [root, a, b, c], a_to_c))
   }
@@ -50,19 +41,15 @@ mod tests {
   }
 
   #[test]
-  fn test_reparent_edge_moves_the_edge_and_keeps_key_and_payload() -> Result<(), Report> {
+  fn test_reparent_edge_moves_the_edge_and_keeps_key() -> Result<(), Report> {
     let (mut graph, [root, a, b, c], a_to_c) = fixture()?;
 
     graph.reparent_edge(a_to_c, b)?;
 
     let edge = graph.get_edge(a_to_c).expect("edge survives reparenting");
+    assert_eq!(edge.read_arc().key(), a_to_c, "the edge keeps its key (not rebuilt)");
     assert_eq!(edge.read_arc().source(), b);
     assert_eq!(edge.read_arc().target(), c);
-    assert_eq!(
-      *edge.read_arc().payload().read_arc(),
-      TestEdge(3.0),
-      "payload must survive"
-    );
 
     assert!(!outbound(&graph, a).contains(&a_to_c), "old source must drop the edge");
     assert!(outbound(&graph, b).contains(&a_to_c), "new source must gain the edge");
@@ -98,7 +85,7 @@ mod tests {
     let (mut graph, [root, _, _, c], a_to_c) = fixture()?;
     // `root` already reaches `c` directly, so moving `a -> c` under `root` would create a
     // second `root -> c` edge.
-    graph.add_edge(root, c, TestEdge(4.0))?;
+    graph.add_edge(root, c)?;
 
     assert!(graph.reparent_edge(a_to_c, root).is_err());
 

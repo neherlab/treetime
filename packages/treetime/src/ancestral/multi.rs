@@ -6,7 +6,7 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
 use crate::partition::traits::PartitionMarginalOps;
-use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::payload::ancestral::GraphAncestral;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -131,7 +131,7 @@ fn run_marginal_passes<P>(
   rng: &mut dyn rand::RngCore,
 ) -> Result<P, Report>
 where
-  P: PartitionMarginalOps<NodeAncestral, EdgeAncestral>,
+  P: PartitionMarginalOps,
 {
   partition.attach_sequences(graph, sequences, names)?;
   marginal_update(graph, profile_lengths, std::slice::from_mut(&mut partition))?;
@@ -160,12 +160,6 @@ pub struct ReconstructedPartition {
 /// A marginal partition that can both take part in the marginal traversal and be read back into augur
 /// node data. Both `PartitionMarginalSparse` and `PartitionMarginalDense` satisfy it, so a partition
 /// can be erased to `dyn MarginalAugurPartition`.
-pub trait MarginalAugurPartition:
-  PartitionMarginalOps<NodeAncestral, EdgeAncestral> + AugurNodeDataJsonAncestralPartition
-{
-}
+pub trait MarginalAugurPartition: PartitionMarginalOps + AugurNodeDataJsonAncestralPartition {}
 
-impl<T> MarginalAugurPartition for T where
-  T: PartitionMarginalOps<NodeAncestral, EdgeAncestral> + AugurNodeDataJsonAncestralPartition
-{
-}
+impl<T> MarginalAugurPartition for T where T: PartitionMarginalOps + AugurNodeDataJsonAncestralPartition {}

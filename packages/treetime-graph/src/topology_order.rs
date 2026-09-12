@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod __tests__;
 
-use crate::edge::{GraphEdge, GraphEdgeKey};
+use crate::edge::GraphEdgeKey;
 use crate::graph::{Graph, SafeNode};
-use crate::node::{GraphNode, GraphNodeKey};
+use crate::node::GraphNodeKey;
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
@@ -52,15 +52,13 @@ impl TopologyOrderSpec {
   ///
   /// All fallible computation and validation completes before the graph is
   /// mutated. Node and edge keys and their slot storage remain unchanged.
-  pub fn apply<N, E, D>(
+  pub fn apply<D>(
     &self,
-    graph: &mut Graph<N, E, D>,
+    graph: &mut Graph<D>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<(), Report>
   where
-    N: GraphNode,
-    E: GraphEdge,
     D: Sync + Send,
   {
     let order = if self.preset == TopologyOrderPreset::Keep {
@@ -93,7 +91,7 @@ impl TopologyOrderSpec {
       }
     }?;
 
-    let ordered_nodes: Vec<(SafeNode<N>, Vec<GraphEdgeKey>)> = order
+    let ordered_nodes: Vec<(SafeNode, Vec<GraphEdgeKey>)> = order
       .outbound_edges
       .into_iter()
       .map(|(node_key, outbound_edges)| {
@@ -162,10 +160,8 @@ struct TopologyOrder {
   outbound_edges: BTreeMap<GraphNodeKey, Vec<GraphEdgeKey>>,
 }
 
-fn build_order_unmodified<N, E, D>(graph: &Graph<N, E, D>) -> Result<TopologyOrder, Report>
+fn build_order_unmodified<D>(graph: &Graph<D>) -> Result<TopologyOrder, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   Ok(TopologyOrder {
@@ -183,14 +179,12 @@ where
   })
 }
 
-fn build_order<N, E, D, K: Ord>(
-  graph: &Graph<N, E, D>,
+fn build_order<D, K: Ord>(
+  graph: &Graph<D>,
   keys: &BTreeMap<GraphNodeKey, K>,
   reverse: bool,
 ) -> Result<TopologyOrder, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let compare = |a: &GraphNodeKey, b: &GraphNodeKey| -> Ordering {
@@ -259,13 +253,8 @@ impl PartialOrd for TargetScore {
   }
 }
 
-fn compute_descendant_counts<N, E, D>(
-  graph: &Graph<N, E, D>,
-  postorder: &[GraphNodeKey],
-) -> BTreeMap<GraphNodeKey, usize>
+fn compute_descendant_counts<D>(graph: &Graph<D>, postorder: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut counts = BTreeMap::new();
@@ -282,10 +271,8 @@ where
   counts
 }
 
-fn compute_heights<N, E, D>(graph: &Graph<N, E, D>, postorder: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize>
+fn compute_heights<D>(graph: &Graph<D>, postorder: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut heights = BTreeMap::new();
@@ -298,14 +285,12 @@ where
   heights
 }
 
-fn compute_divergences<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn compute_divergences<D>(
+  graph: &Graph<D>,
   postorder: &[GraphNodeKey],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> BTreeMap<GraphNodeKey, OrderedFloat<f64>>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut divergences: BTreeMap<GraphNodeKey, OrderedFloat<f64>> = BTreeMap::new();
@@ -327,14 +312,12 @@ where
   divergences
 }
 
-fn compute_labels<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn compute_labels<D>(
+  graph: &Graph<D>,
   postorder: &[GraphNodeKey],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<BTreeMap<GraphNodeKey, String>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut labels: BTreeMap<GraphNodeKey, String> = BTreeMap::new();
@@ -354,16 +337,14 @@ where
   Ok(labels)
 }
 
-fn compute_target_scores<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn compute_target_scores<D>(
+  graph: &Graph<D>,
   postorder: &[GraphNodeKey],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   target_order: &[String],
   aggregate: TopologyOrderTargetAggregate,
 ) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   if target_order.is_empty() {
@@ -393,15 +374,13 @@ where
   }
 }
 
-fn compute_target_scores_mean<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn compute_target_scores_mean<D>(
+  graph: &Graph<D>,
   postorder: &[GraphNodeKey],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   position_of: &BTreeMap<&str, usize>,
 ) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut scores: BTreeMap<GraphNodeKey, TargetScore> = BTreeMap::new();
@@ -431,15 +410,13 @@ where
   Ok(scores)
 }
 
-fn compute_target_scores_median<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn compute_target_scores_median<D>(
+  graph: &Graph<D>,
   postorder: &[GraphNodeKey],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   position_of: &BTreeMap<&str, usize>,
 ) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut positions: BTreeMap<GraphNodeKey, Vec<usize>> = BTreeMap::new();
@@ -486,14 +463,12 @@ fn median_score(sorted_positions: &[usize]) -> TargetScore {
   }
 }
 
-fn validate_target_order<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn validate_target_order<D>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   position_of: &BTreeMap<&str, usize>,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let mut final_labels = BTreeMap::new();
@@ -515,10 +490,8 @@ where
   Ok(())
 }
 
-fn postorder_keys<N, E, D>(graph: &Graph<N, E, D>) -> Result<Vec<GraphNodeKey>, Report>
+fn postorder_keys<D>(graph: &Graph<D>) -> Result<Vec<GraphNodeKey>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let node_keys = graph

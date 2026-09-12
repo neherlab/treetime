@@ -33,13 +33,9 @@ Generic serialization helpers (JSON, YAML) live in `treetime-utils::io`.
 - `DateConstraint` - parsed date with original input string, distinguishing exact, uncertain, and range inputs
 - `CsvStructWriter` / `CsvStructFileWriter` - typed CSV writing via serde
 
-## Tree I/O traits
+## Tree I/O values
 
-Tree readers/writers use trait bounds on graph node and edge types:
-
-- `NodeFromNwk` / `EdgeFromNwk` - construct nodes and edges from Newick data
-- `NodeToNwk` / `EdgeToNwk` - serialize nodes and edges to Newick
-- `NodeToGraphviz` / `EdgeToGraphviz` - serialize to Graphviz DOT
+Readers return the parsed graph alongside per-node and per-edge value maps (`NwkParse`: names, confidence, branch lengths). Writers take those value maps plus optional `NodeCommentProvider`s for node annotations, so serialization reads threaded values rather than graph payloads.
 
 ## API patterns
 

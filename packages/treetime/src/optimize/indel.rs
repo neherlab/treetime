@@ -8,9 +8,8 @@ use eyre::Report;
 use rayon::prelude::*;
 use statrs::function::factorial::ln_factorial;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_primitives::LogLh;
 use treetime_utils::{make_error, make_report};
 
@@ -67,15 +66,11 @@ pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMet
 ///
 /// Generic over the graph's node and edge payload types: the branch length of
 /// each edge is supplied by the `branch_lengths` value map (ancestral, timetree, ...).
-pub fn estimate_indel_rate<N, E>(
-  graph: &Graph<N, E, ()>,
+pub fn estimate_indel_rate(
+  graph: &Graph<()>,
   partitions: &[&dyn PartitionOptimizeOps],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> f64
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> f64 {
   let per_edge = graph
     .get_edges()
     .par_iter()
@@ -102,16 +97,12 @@ where
 /// evaluator as the per-edge branch-length optimizer, but evaluated at the
 /// tree's current branch lengths. For an indel-bearing edge at zero branch
 /// length, the Poisson log-likelihood is $-\infty$.
-pub fn total_indel_log_lh<N, E>(
-  graph: &Graph<N, E, ()>,
+pub fn total_indel_log_lh(
+  graph: &Graph<()>,
   partitions: &[&dyn PartitionOptimizeOps],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   indel_rate: f64,
-) -> Result<LogLh, Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<LogLh, Report> {
   graph
     .get_edges()
     .par_iter()

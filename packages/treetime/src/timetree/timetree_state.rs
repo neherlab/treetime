@@ -5,9 +5,9 @@ use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{
   GraphMapOutputs, GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput,
 };
@@ -59,10 +59,8 @@ pub struct TimetreeState {
 
 impl TimetreeState {
   /// Empty per-node/per-edge state for every node and edge of `graph`, all fields default.
-  pub fn new<N, E, D>(graph: &Graph<N, E, D>) -> Self
+  pub fn new<D>(graph: &Graph<D>) -> Self
   where
-    N: GraphNode,
-    E: GraphEdge,
     D: Send + Sync,
   {
     let nodes = graph
@@ -86,10 +84,8 @@ impl TimetreeState {
   /// backward message, `None` time length, strict-clock `gamma`).
   ///
   /// [`load_date_constraints`]: crate::clock::date_constraints::load_date_constraints
-  pub fn seed_from_values<N, E, D>(graph: &Graph<N, E, D>, constraints: &DateConstraints) -> Self
+  pub fn seed_from_values<D>(graph: &Graph<D>, constraints: &DateConstraints) -> Self
   where
-    N: GraphNode,
-    E: GraphEdge,
     D: Send + Sync,
   {
     let nodes = graph
@@ -131,10 +127,8 @@ impl TimetreeState {
   /// ([`propagate_bad_branches`](crate::timetree::optimization::clock_filter::propagate_bad_branches)),
   /// and the branch-distribution builders and polytomy application for the time length -- so preserving
   /// them from the state reproduces exactly what the payload re-read produced.
-  pub fn reseed_from_values<N, E, D>(&mut self, graph: &Graph<N, E, D>)
+  pub fn reseed_from_values<D>(&mut self, graph: &Graph<D>)
   where
-    N: GraphNode,
-    E: GraphEdge,
     D: Send + Sync,
   {
     let nodes = graph
@@ -186,10 +180,8 @@ impl TimetreeState {
   /// [`prepare_tree_after_topology_change`](crate::timetree::optimization::polytomy::prepare_tree_after_topology_change)
   /// does for the transitional fields. The following [`reseed_from_values`](Self::reseed_from_values) preserves
   /// these blanked values, so the branch-distribution builders start each surviving edge from `None`.
-  pub fn reset_date_edges_for_topology_change<N, E, D>(&mut self, graph: &Graph<N, E, D>)
+  pub fn reset_date_edges_for_topology_change<D>(&mut self, graph: &Graph<D>)
   where
-    N: GraphNode,
-    E: GraphEdge,
     D: Send + Sync,
   {
     for edge_ref in graph.get_edges() {
@@ -207,9 +199,8 @@ impl TimetreeState {
 
   /// Per-node date the clock regression reads, keyed by node, computed from this state.
   ///
-  /// Matches [`NodeTimetree::likely_time`](crate::payload::timetree::NodeTimetree): the input date
-  /// constraint where there is one, the refined time distribution's peak otherwise. Used to reseed the
-  /// clock state in the refinement loop from the value rather than off the payload.
+  /// The likely time: the input date constraint where there is one, the refined time distribution's
+  /// peak otherwise. Used to reseed the clock state in the refinement loop.
   #[must_use]
   pub fn likely_times(&self) -> BTreeMap<GraphNodeKey, Option<f64>> {
     self
@@ -280,10 +271,8 @@ impl TimetreeState {
   /// Run a value-returning backward pass over the date state through the graph's dependency engine,
   /// replacing the per-node and per-edge maps with the visitor's outputs. Reproduces the same
   /// thread-independent, deterministic child fold order as the payload-based passes.
-  pub fn map_backward<GN, GE, D, F>(&mut self, graph: &Graph<GN, GE, D>, visit: F) -> Result<(), Report>
+  pub fn map_backward<D, F>(&mut self, graph: &Graph<D>, visit: F) -> Result<(), Report>
   where
-    GN: GraphNode,
-    GE: GraphEdge,
     D: Send + Sync,
     F: Fn(
         GraphPassBackwardContext<'_, DateNodeState, DateEdgeState, DateNodeState, DateEdgeState>,
@@ -306,10 +295,8 @@ impl TimetreeState {
   /// Run a value-returning forward pass over the date state through the graph's dependency engine,
   /// replacing the per-node and per-edge maps with the visitor's outputs. Each node reads its single
   /// parent's already-published output.
-  pub fn map_forward<GN, GE, D, F>(&mut self, graph: &Graph<GN, GE, D>, visit: F) -> Result<(), Report>
+  pub fn map_forward<D, F>(&mut self, graph: &Graph<D>, visit: F) -> Result<(), Report>
   where
-    GN: GraphNode,
-    GE: GraphEdge,
     D: Send + Sync,
     F: Fn(
         GraphPassForwardContext<'_, DateNodeState, DateEdgeState, DateNodeState>,
@@ -333,7 +320,6 @@ impl TimetreeState {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use treetime_distribution::Distribution;
@@ -343,7 +329,7 @@ mod tests {
   /// every edge, so the next branch-distribution build starts each surviving edge from scratch.
   #[test]
   fn test_timetree_state_reset_date_edges_clears_distribution_and_message() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:1.0,B:1.0)I:1.0)root;")?;
+    let NwkParse { graph, names, .. } = nwk_read_str::<()>("((A:1.0,B:1.0)I:1.0)root;")?;
     let mut state = TimetreeState::new(&graph);
     for edge_ref in graph.get_edges() {
       let key = edge_ref.read_arc().key();
@@ -368,7 +354,7 @@ mod tests {
   /// edges already in the state, so they carry across passes without a payload round-trip.
   #[test]
   fn test_timetree_state_reseed_preserves_distribution_and_message() -> Result<(), Report> {
-    let NwkParse { graph, names, .. } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:1.0,B:1.0)I:1.0)root;")?;
+    let NwkParse { graph, names, .. } = nwk_read_str::<()>("((A:1.0,B:1.0)I:1.0)root;")?;
     let mut state = TimetreeState::new(&graph);
     let key = graph
       .get_edges()

@@ -10,9 +10,9 @@ use maplit::btreemap;
 use ndarray::Array1;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::argmax_first;
 
@@ -40,16 +40,12 @@ impl PartitionMarginalDiscrete {
     self.states.len()
   }
 
-  pub fn attach_traits<N, E>(
+  pub fn attach_traits(
     &mut self,
-    graph: &Graph<N, E, ()>,
+    graph: &Graph<()>,
     traits: &BTreeMap<String, String>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-  ) -> Result<(), Report>
-  where
-    N: GraphNode,
-    E: GraphEdge,
-  {
+  ) -> Result<(), Report> {
     let n_states = self.n_states();
     validate_trait_names(graph, traits, names)?;
 
@@ -127,25 +123,17 @@ impl HasLogLh for PartitionMarginalDiscrete {
   }
 }
 
-impl<N, E> TransitionCounting<N, E> for PartitionMarginalDiscrete
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+impl TransitionCounting for PartitionMarginalDiscrete {
   fn count_transitions(
     &self,
-    graph: &Graph<N, E, ()>,
+    graph: &Graph<()>,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<MutationCounts, Report> {
     self.data.count_transitions(graph, branch_lengths)
   }
 }
 
-impl<N, E> MarginalPartition<N, E> for PartitionMarginalDiscrete
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+impl MarginalPartition for PartitionMarginalDiscrete {
   fn marginal_data(&self) -> &MarginalData {
     &self.data
   }
@@ -164,11 +152,7 @@ where
   }
 }
 
-impl<N, E> IndexedMarginalPartition<N, E> for PartitionMarginalDiscrete
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+impl IndexedMarginalPartition for PartitionMarginalDiscrete {
   fn indexed_missing_node(&self, _key: GraphNodeKey) -> Result<DenseNodePartition, Report> {
     Ok(DenseNodePartition {
       seq: DenseSeqInfo::default(),
@@ -192,12 +176,8 @@ where
   }
 }
 
-impl<N, E> PartitionMarginalPasses<N, E> for PartitionMarginalDiscrete
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
-  fn as_marginal_pass(&mut self) -> MarginalPass<'_, N, E> {
+impl PartitionMarginalPasses for PartitionMarginalDiscrete {
+  fn as_marginal_pass(&mut self) -> MarginalPass<'_> {
     MarginalPass::Indexed(self)
   }
 

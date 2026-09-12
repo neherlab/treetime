@@ -1,6 +1,6 @@
-use crate::edge::{GraphEdge, GraphEdgeKey};
+use crate::edge::GraphEdgeKey;
 use crate::graph::Graph;
-use crate::node::{GraphNode, GraphNodeKey, Node};
+use crate::node::{GraphNodeKey, Node};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use parking_lot::RwLock;
@@ -20,10 +20,8 @@ pub struct GraphNodeForward {
 }
 
 impl GraphNodeForward {
-  pub fn new<N, E, D>(graph: &Graph<N, E, D>, node: &Node<N>) -> Self
+  pub fn new<D>(graph: &Graph<D>, node: &Node) -> Self
   where
-    N: GraphNode,
-    E: GraphEdge,
     D: Sync + Send,
   {
     let is_leaf = node.is_leaf();
@@ -64,10 +62,8 @@ pub struct GraphNodeBackward {
 }
 
 impl GraphNodeBackward {
-  pub fn new<N, E, D>(graph: &Graph<N, E, D>, node: &Node<N>) -> Self
+  pub fn new<D>(graph: &Graph<D>, node: &Node) -> Self
   where
-    N: GraphNode,
-    E: GraphEdge,
     D: Sync + Send,
   {
     let is_leaf = node.is_leaf();
@@ -105,12 +101,7 @@ pub struct GraphNodeSafe {
 }
 
 impl GraphNodeSafe {
-  pub fn from_node<N, E, D>(graph: &Graph<N, E, D>, node: &Arc<RwLock<Node<N>>>) -> Self
-  where
-    N: GraphNode,
-    E: GraphEdge,
-    D: Sync + Send,
-  {
+  pub fn from_node(node: &Arc<RwLock<Node>>) -> Self {
     let node = node.read();
     let is_leaf = node.is_leaf();
     let is_root = node.is_root();
@@ -123,10 +114,8 @@ impl GraphNodeSafe {
   clippy::multiple_inherent_impl,
   reason = "split across files by concern; see graph.rs for the primary impl"
 )]
-impl<N, E, D> Graph<N, E, D>
+impl<D> Graph<D>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   /// Serial depth-first preorder forward traversal (roots to leaves, parents before children).
@@ -216,8 +205,8 @@ where
     Ok(())
   }
 
-  fn iter_children_arc(&self, node: &Arc<RwLock<Node<N>>>) -> impl Iterator<Item = &Arc<RwLock<Node<N>>>> {
-    let child_keys = self.child_keys_of(&*node.read());
+  fn iter_children_arc(&self, node: &Arc<RwLock<Node>>) -> impl Iterator<Item = &Arc<RwLock<Node>>> {
+    let child_keys = self.child_keys_of(&node.read());
     self.nodes.iter().filter_map(move |node| {
       node
         .as_ref()

@@ -13,22 +13,17 @@ use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_graph::pass::{GraphPass, GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_primitives::{LogLh, Seq};
 use treetime_utils::interval::range::range_contains;
 
-pub fn process_forward_indexed<N, E>(
+pub fn process_forward_indexed(
   partition: &mut PartitionMarginalSparse,
-  graph: &Graph<N, E, ()>,
+  graph: &Graph<()>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<(), Report> {
   let alphabet = partition.alphabet.clone();
   let gtr = partition.gtr.clone();
   let length = partition.length;
@@ -45,19 +40,15 @@ where
   Ok(())
 }
 
-fn process_node_forward_indexed<N, E>(
-  graph: &Graph<N, E, ()>,
+fn process_node_forward_indexed(
+  graph: &Graph<()>,
   alphabet: &Alphabet,
   gtr: &GTR,
   length: usize,
   root_sequence: &Seq,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   context: GraphPassForwardContext<'_, SparseNodePartition, SparseEdgePartition, SparseNodePartition>,
-) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report> {
   let mut node = context.input;
 
   let parent_message = if let Some((edge_key, mut edge_data)) = context.parent_edge {

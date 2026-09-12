@@ -8,7 +8,6 @@ use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeGraphData, Time
 use crate::mugration::result::{MugrationGraphData, MugrationNodeOut, MugrationOutputMaps};
 use crate::partition::traits::BranchTopology;
 use crate::payload::ancestral::GraphAncestral;
-use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, mutation_event_strings};
 use chrono::Utc;
 use eyre::{Report, WrapErr};
@@ -20,9 +19,9 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
-use treetime_graph::edge::{Edge, GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::{Edge, GraphEdgeKey};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey, Node};
+use treetime_graph::node::{GraphNodeKey, Node};
 use treetime_io::auspice::auspice_write_file;
 use treetime_io::auspice_types::{
   AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotationCds, AuspiceGenomeAnnotationNuc,
@@ -193,7 +192,7 @@ pub fn write_mugration_tree_outputs(
 }
 
 pub fn write_timetree_tree_outputs(
-  graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
+  graph: &Graph<TimetreeGraphData>,
   nodes: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
   maps: &TimetreeOutputMaps,
@@ -224,8 +223,8 @@ pub fn write_timetree_tree_outputs(
   )
 }
 
-fn write_tree_outputs<N, E, D, A, P, M>(
-  graph: &Graph<N, E, D>,
+fn write_tree_outputs<D, A, P, M>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   graphviz_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -237,8 +236,6 @@ fn write_tree_outputs<N, E, D, A, P, M>(
   to_mat: M,
 ) -> Result<(), Report>
 where
-  N: GraphNode + Serialize,
-  E: GraphEdge + Serialize,
   D: Send + Sync + Serialize,
   A: Fn() -> Result<AuspiceTree, Report>,
   P: Fn() -> Result<Phyloxml, Report>,
@@ -466,7 +463,7 @@ pub(crate) fn mugration_to_auspice(
 }
 
 pub(crate) fn timetree_to_auspice(
-  graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
+  graph: &Graph<TimetreeGraphData>,
   nodes: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   maps: &TimetreeOutputMaps,
   updated: &str,
@@ -600,14 +597,8 @@ fn auspice_node(
   }
 }
 
-fn auspice_from_graph<N, E, D, F>(
-  graph: &Graph<N, E, D>,
-  data: AuspiceTreeData,
-  mut convert: F,
-) -> Result<AuspiceTree, Report>
+fn auspice_from_graph<D, F>(graph: &Graph<D>, data: AuspiceTreeData, mut convert: F) -> Result<AuspiceTree, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
   F: FnMut(&GraphNodeContext) -> Result<AuspiceTreeNode, Report>,
 {
@@ -620,7 +611,7 @@ where
     let node_key = current_node.read_arc().key();
     let edge_key = current_edge
       .as_ref()
-      .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().key());
+      .map(|edge: &Arc<RwLock<Edge>>| edge.read_arc().key());
     let converted = convert(&GraphNodeContext { node_key, edge_key })?;
     if converted.node_attrs.div.is_none() && converted.node_attrs.num_date.is_none() {
       return make_error!(
@@ -641,14 +632,12 @@ where
   Ok(AuspiceTree { data, tree })
 }
 
-fn attach_auspice_children<N, E, D>(
-  graph: &Graph<N, E, D>,
-  root: &Arc<RwLock<Node<N>>>,
+fn attach_auspice_children<D>(
+  graph: &Graph<D>,
+  root: &Arc<RwLock<Node>>,
   node_map: &mut BTreeMap<GraphNodeKey, AuspiceTreeNode>,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let mut visited = btreeset! {};
@@ -842,7 +831,7 @@ pub(crate) fn mugration_to_phyloxml(
 }
 
 pub(crate) fn timetree_to_phyloxml(
-  graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
+  graph: &Graph<TimetreeGraphData>,
   nodes: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
   edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
   maps: &TimetreeOutputMaps,
@@ -929,10 +918,8 @@ fn ancestral_phyloxml_clade(
   Ok(clade)
 }
 
-fn phyloxml_from_graph<N, E, D, F>(graph: &Graph<N, E, D>, title: &str, mut convert: F) -> Result<Phyloxml, Report>
+fn phyloxml_from_graph<D, F>(graph: &Graph<D>, title: &str, mut convert: F) -> Result<Phyloxml, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
   F: FnMut(&GraphNodeContext) -> Result<PhyloxmlClade, Report>,
 {
@@ -945,7 +932,7 @@ where
     let node_key = current_node.read_arc().key();
     let edge_key = current_edge
       .as_ref()
-      .map(|edge: &Arc<RwLock<Edge<E>>>| edge.read_arc().key());
+      .map(|edge: &Arc<RwLock<Edge>>| edge.read_arc().key());
     node_map.insert(node_key, convert(&GraphNodeContext { node_key, edge_key })?);
     for (child, edge) in graph.children_of(&current_node.read_arc()) {
       queue.push_back((child, Some(edge)));
@@ -977,14 +964,12 @@ where
   })
 }
 
-fn attach_phyloxml_children<N, E, D>(
-  graph: &Graph<N, E, D>,
-  root: &Arc<RwLock<Node<N>>>,
+fn attach_phyloxml_children<D>(
+  graph: &Graph<D>,
+  root: &Arc<RwLock<Node>>,
   node_map: &mut BTreeMap<GraphNodeKey, PhyloxmlClade>,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let mut visited = BTreeSet::new();
@@ -1076,7 +1061,7 @@ pub(crate) fn mugration_to_mat(
 }
 
 pub(crate) fn timetree_to_mat(
-  graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
+  graph: &Graph<TimetreeGraphData>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &TimetreeOutputMaps,
@@ -1091,29 +1076,25 @@ pub(crate) fn timetree_to_mat(
   )
 }
 
-fn mutation_free_mat<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn mutation_free_mat<D>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<UsherTree, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   mat_from_graph(graph, names, nwk_weights, None, |_node_key, _edge_key| Ok(vec![]))
 }
 
-fn mat_from_graph<N, E, D, F>(
-  graph: &Graph<N, E, D>,
+fn mat_from_graph<D, F>(
+  graph: &Graph<D>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   reference: Option<&str>,
   mut edge_mutations: F,
 ) -> Result<UsherTree, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
   F: FnMut(GraphNodeKey, GraphEdgeKey) -> Result<Vec<Mutation>, Report>,
 {
@@ -1498,11 +1479,7 @@ fn mugration_transition_label(
   }))
 }
 
-fn timetree_divergence(
-  graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
-  node_key: GraphNodeKey,
-  div: f64,
-) -> Result<f64, Report> {
+fn timetree_divergence(graph: &Graph<TimetreeGraphData>, node_key: GraphNodeKey, div: f64) -> Result<f64, Report> {
   graph.data().mutation_counts.as_ref().map_or(Ok(div), |counts| {
     let mut key = node_key;
     let mut count = 0;
@@ -1515,7 +1492,7 @@ fn timetree_divergence(
 }
 
 fn timetree_date_confidence(
-  graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
+  graph: &Graph<TimetreeGraphData>,
   node_key: GraphNodeKey,
   node_name: &str,
 ) -> Result<Option<[f64; 2]>, Report> {
@@ -1535,7 +1512,7 @@ fn timetree_date_confidence(
 }
 
 fn timetree_date_is_inferred(
-  graph: &Graph<NodeTimetree, EdgeTimetree, TimetreeGraphData>,
+  graph: &Graph<TimetreeGraphData>,
   node_key: GraphNodeKey,
   name: Option<&str>,
   time: Option<f64>,
@@ -1760,14 +1737,12 @@ fn build_trait_attrs(traits: BTreeMap<String, TraitValue>) -> Value {
 /// Sum of parent-edge branch lengths from `key` to the root, resolved from a snapshot value map
 /// rather than the payload. Matches `cumulative_branch_length` exactly: a missing (`None`) edge
 /// length short-circuits the whole sum to `None`.
-fn cumulative_branch_length_from<N, E, D>(
-  graph: &Graph<N, E, D>,
+fn cumulative_branch_length_from<D>(
+  graph: &Graph<D>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   mut key: GraphNodeKey,
 ) -> Result<Option<f64>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   let mut total = 0.0;

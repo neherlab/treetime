@@ -8,9 +8,9 @@ use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::seq::alignment::get_common_length;
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNodeKey, NodeAncestralOps};
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
 
 pub enum MarginalPartition {
@@ -27,8 +27,8 @@ pub struct PartitionCreated {
 /// sparse, dense+infer GTR, dense+named GTR.
 ///
 /// No file I/O. GTR JSON writing is the caller's responsibility.
-pub fn create_marginal_partition<N, E>(
-  graph: &Graph<N, E, ()>,
+pub fn create_marginal_partition(
+  graph: &Graph<()>,
   index: usize,
   alphabet: Alphabet,
   sequences: &[FastaRecord],
@@ -36,11 +36,7 @@ pub fn create_marginal_partition<N, E>(
   dense: Option<bool>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<PartitionCreated, Report>
-where
-  N: NodeAncestralOps,
-  E: GraphEdge,
-{
+) -> Result<PartitionCreated, Report> {
   let dense = dense.unwrap_or_else(infer_dense);
 
   if !dense {

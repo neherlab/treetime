@@ -9,9 +9,7 @@ use ndarray::{Array1, Array2, array};
 use ndarray_linalg::layout::MatrixLayout;
 use ndarray_linalg::{SolveTridiagonal, Tridiagonal};
 use treetime_distribution::{Distribution, DistributionFormula};
-use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::exp;
@@ -96,14 +94,12 @@ pub struct SkylineResult {
 /// `Iᵢ` and `Mᵢ` are attributed to segments using the same interval-midpoint and
 /// node-time conventions as [`CoalescentModel`], so the analytic optimum coincides
 /// with the maximizer of the model-evaluated likelihood.
-pub fn optimize_skyline<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn optimize_skyline<D>(
+  graph: &Graph<D>,
   params: &SkylineParams,
   node_times: &CoalescentNodeTimes,
 ) -> Result<SkylineResult, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   if params.n_points < 1 {

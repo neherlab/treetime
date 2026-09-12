@@ -1,7 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::payload::timetree::EdgeTimetree;
-  use crate::payload::timetree::NodeTimetree;
   use crate::pretty_assert_ulps_eq;
   use crate::timetree::inference::runner::create_branch_distributions_input_mode;
   use crate::timetree::timetree_state::TimetreeState;
@@ -22,7 +20,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    } = nwk_read_str::<()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
     let clock_rate = 0.001; // 0.001 subs/site/year
 
     let mut state = TimetreeState::new(&graph);
@@ -52,7 +50,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    } = nwk_read_str::<()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
     let clock_rate = 0.001;
 
     let mut state = TimetreeState::new(&graph);
@@ -111,7 +109,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.006)I:0.003)root;")?;
+    } = nwk_read_str::<()>("((A:0.006)I:0.003)root;")?;
     let clock_rate = 0.001;
 
     let mut state = TimetreeState::new(&graph);
@@ -170,7 +168,7 @@ mod tests {
       names,
       branch_lengths,
       ..
-    } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    } = nwk_read_str::<()>("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
     let clock_rate = 0.001;
 
     // All edges have default gamma=1.0
@@ -198,7 +196,7 @@ mod tests {
       names,
       mut branch_lengths,
       ..
-    } = nwk_read_str::<NodeTimetree, EdgeTimetree, ()>("(A)root;")?;
+    } = nwk_read_str::<()>("(A)root;")?;
     let edge = graph.get_edges().pop().expect("tree must contain one edge");
     let edge_key = edge.read_arc().key();
     branch_lengths.insert(edge_key, None);

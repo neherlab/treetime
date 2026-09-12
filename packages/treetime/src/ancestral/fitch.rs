@@ -17,27 +17,22 @@ use itertools::Itertools;
 use maplit::btreemap;
 use rayon::prelude::*;
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
-use treetime_graph::node::{GraphNode, GraphNodeKey, NodeAncestralOps};
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::{AlphabetLike, LogLh, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
 
-pub fn create_fitch_partition<N, E>(
-  graph: &Graph<N, E, ()>,
+pub fn create_fitch_partition(
+  graph: &Graph<()>,
   index: usize,
   alphabet: Alphabet,
   aln: &[FastaRecord],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<PartitionFitch, Report>
-where
-  N: NodeAncestralOps,
-  E: GraphEdge,
-{
+) -> Result<PartitionFitch, Report> {
   let length = get_common_length(aln)?;
   let mut partition = PartitionFitch {
     index,
@@ -50,16 +45,12 @@ where
   Ok(partition)
 }
 
-pub(crate) fn attach_seqs_to_graph<N, E>(
-  graph: &Graph<N, E, ()>,
+pub(crate) fn attach_seqs_to_graph(
+  graph: &Graph<()>,
   partition: &mut PartitionFitch,
   aln: &[FastaRecord],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<(), Report>
-where
-  N: NodeAncestralOps,
-  E: GraphEdge,
-{
+) -> Result<(), Report> {
   let aln_by_name = aln.iter().fold(BTreeMap::new(), |mut records, record| {
     records.entry(record.seq_name.as_str()).or_insert(record);
     records
@@ -99,11 +90,7 @@ where
   Ok(())
 }
 
-pub(crate) fn fitch_backward<N, E>(graph: &Graph<N, E, ()>, partition: &mut PartitionFitch) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+pub(crate) fn fitch_backward(graph: &Graph<()>, partition: &mut PartitionFitch) -> Result<(), Report> {
   let alphabet = partition.alphabet.clone();
   let length = partition.length;
   let pass = GraphPass::new(graph, &mut partition.nodes, &mut partition.edges, |_| {
@@ -115,8 +102,8 @@ where
   Ok(())
 }
 
-fn run_fitch_backward_indexed<N, E>(
-  graph: &Graph<N, E, ()>,
+fn run_fitch_backward_indexed(
+  graph: &Graph<()>,
   alphabet: &Alphabet,
   length: usize,
   context: GraphPassBackwardContext<
@@ -126,11 +113,7 @@ fn run_fitch_backward_indexed<N, E>(
     SparseNodePartition,
     SparseEdgePartition,
   >,
-) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report> {
   let mut node = context.input;
   let graph_node = graph.get_node(context.key).expect("Indexed node must exist in graph");
   let graph_node = graph_node.read_arc();
@@ -236,11 +219,7 @@ where
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-pub(crate) fn fitch_forward<N, E>(graph: &Graph<N, E, ()>, partition: &mut PartitionFitch) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+pub(crate) fn fitch_forward(graph: &Graph<()>, partition: &mut PartitionFitch) -> Result<(), Report> {
   let alphabet = partition.alphabet.clone();
   let pass = GraphPass::new(graph, &mut partition.nodes, &mut partition.edges, |key| {
     Err(make_report!(
@@ -333,11 +312,7 @@ fn run_fitch_forward_indexed(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-fn fitch_cleanup<N, E>(graph: &Graph<N, E, ()>, partition: &mut PartitionFitch) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+fn fitch_cleanup(graph: &Graph<()>, partition: &mut PartitionFitch) -> Result<(), Report> {
   for (key, node) in &mut partition.nodes {
     if !graph.is_leaf(*key) {
       node.seq.fitch.variable = btreemap! {};
@@ -346,16 +321,12 @@ where
   Ok(())
 }
 
-pub fn compress_sequences<N, E>(
-  graph: &Graph<N, E, ()>,
+pub fn compress_sequences(
+  graph: &Graph<()>,
   partition: &mut PartitionFitch,
   aln: &[FastaRecord],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<(), Report>
-where
-  N: NodeAncestralOps,
-  E: GraphEdge,
-{
+) -> Result<(), Report> {
   attach_seqs_to_graph(graph, partition, aln, names)?;
   fitch_backward(graph, partition)?;
   fitch_forward(graph, partition)?;

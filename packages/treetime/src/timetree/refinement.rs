@@ -6,7 +6,7 @@ use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::partition::timetree::partition::{GraphTimetree, PartitionTimetree};
-use crate::partition::traits::{PartitionMarginalPasses, PartitionTimetreeOps};
+use crate::partition::traits::PartitionMarginalPasses;
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
 use crate::timetree::inference::runner::{

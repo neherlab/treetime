@@ -2,7 +2,7 @@ use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
 use crate::partition::storage::sparse::SparseNodePartition;
-use crate::payload::ancestral::{EdgeAncestral, GraphAncestral, NodeAncestral};
+use crate::payload::ancestral::GraphAncestral;
 use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::Sub;
 use eyre::Report;
@@ -263,8 +263,8 @@ pub(crate) fn hoist_reverting_child(
   // Graph surgery: add N, connect u -> N, then relocate the two existing edges under N.
   // Branch lengths live in the map: the fresh u -> N edge gets a new entry, and the two
   // relocated edges (which keep their keys) get their split lengths.
-  let n_key = graph.add_node(NodeAncestral::default());
-  let un_edge_key = graph.add_edge(u_key, n_key, EdgeAncestral::default())?;
+  let n_key = graph.add_node();
+  let un_edge_key = graph.add_edge(u_key, n_key)?;
   branch_lengths.insert(un_edge_key, Some(bl_un));
   graph.reparent_edge(parent_edge_key, n_key)?; // e_p becomes N -> v
   graph.reparent_edge(child_edge_key, n_key)?; // e_c becomes N -> c

@@ -3,7 +3,6 @@ mod tests {
   use crate::clock::clock_graph::GraphClock;
   use crate::o;
   use crate::seq::div::{OnlyLeaves, compute_divs};
-  use crate::test_utils::{TestEdge, TestNode};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -21,7 +20,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let graph: Graph<TestNode, TestEdge, ()> = graph;
+    let graph: Graph<()> = graph;
 
     let actual = compute_divs(&graph, OnlyLeaves(false), &branch_lengths, &names)?;
 
@@ -74,7 +73,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1,B:0.2):0.1,(C:0.2,D:0.12):0.05):0.01;")?;
-    let graph: Graph<TestNode, TestEdge, ()> = graph;
+    let graph: Graph<()> = graph;
 
     let actual = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;
 
@@ -99,7 +98,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("A:0.5;")?;
-    let graph: Graph<TestNode, TestEdge, ()> = graph;
+    let graph: Graph<()> = graph;
 
     let actual = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;
 
@@ -118,7 +117,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.1)B:0.2)C:0.3;")?;
-    let graph: Graph<TestNode, TestEdge, ()> = graph;
+    let graph: Graph<()> = graph;
 
     let actual = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;
 
@@ -147,7 +146,7 @@ mod tests {
       ..
     } = nwk_read_str(&nwk)?;
 
-    let graph: Graph<TestNode, TestEdge, ()> = graph;
+    let graph: Graph<()> = graph;
     let actual = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;
 
     assert_eq!(1, actual.len());
@@ -167,7 +166,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_str("((A:0.0,B:0.1):0.0,(C:0.2,D:0.0):0.1):0.0;")?;
-    let graph: Graph<TestNode, TestEdge, ()> = graph;
+    let graph: Graph<()> = graph;
 
     let actual = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;
 

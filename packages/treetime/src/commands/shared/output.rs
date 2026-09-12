@@ -10,13 +10,12 @@ use std::ffi::OsString;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use strum::IntoEnumIterator;
-use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::NwkStyle;
-use treetime_io::nwk::{EdgeFromNwk, NodeFromNwk, NwkParse, nwk_read_file};
+use treetime_io::nwk::{NwkParse, nwk_read_file};
 use treetime_utils::io::fs::read_file_to_string;
 use treetime_utils::{make_error, make_report};
 
@@ -791,15 +790,13 @@ pub struct TopologyOrderArgs {
 }
 
 impl TopologyOrderArgs {
-  pub fn resolve_topology_order<N, E, D>(
+  pub fn resolve_topology_order<D>(
     &self,
-    graph: &Graph<N, E, D>,
+    graph: &Graph<D>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     input_order: Option<Vec<String>>,
   ) -> Result<TopologyOrderSpec, Report>
   where
-    N: GraphNode,
-    E: GraphEdge,
     D: Sync + Send,
   {
     self.validate()?;
@@ -864,15 +861,13 @@ impl TopologyOrderArgs {
     Ok(())
   }
 
-  fn target_order<N, E, D>(
+  fn target_order<D>(
     &self,
-    graph: &Graph<N, E, D>,
+    graph: &Graph<D>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     input_order: Option<Vec<String>>,
   ) -> Result<Vec<String>, Report>
   where
-    N: GraphNode,
-    E: GraphEdge,
     D: Sync + Send,
   {
     match self
@@ -889,7 +884,7 @@ impl TopologyOrderArgs {
           graph: ref_graph,
           names: ref_names,
           ..
-        } = nwk_read_file::<OrderNode, OrderEdge, ()>(path).wrap_err("When reading target reference topology")?;
+        } = nwk_read_file::<()>(path).wrap_err("When reading target reference topology")?;
         leaf_order(&ref_graph, &ref_names)
       },
       TopologyOrderTargetSourceArg::List => {
@@ -1011,13 +1006,8 @@ impl From<TopologyOrderTargetAggregateArg> for TopologyOrderTargetAggregate {
   }
 }
 
-fn leaf_order<N, E, D>(
-  graph: &Graph<N, E, D>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<Vec<String>, Report>
+fn leaf_order<D>(graph: &Graph<D>, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   graph
@@ -1030,30 +1020,4 @@ where
         .ok_or_else(|| make_report!("Leaf node {key} has no name"))
     })
     .collect()
-}
-
-#[derive(Clone, Debug, Default)]
-struct OrderNode {}
-
-impl GraphNode for OrderNode {}
-
-impl NodeFromNwk for OrderNode {
-  fn from_nwk(
-    _name: Option<impl AsRef<str>>,
-    _confidence: Option<f64>,
-    _: &BTreeMap<String, String>,
-  ) -> Result<Self, Report> {
-    Ok(Self {})
-  }
-}
-
-#[derive(Clone, Debug, Default)]
-struct OrderEdge {}
-
-impl GraphEdge for OrderEdge {}
-
-impl EdgeFromNwk for OrderEdge {
-  fn from_nwk(_branch_length: Option<f64>) -> Result<Self, Report> {
-    Ok(Self {})
-  }
 }

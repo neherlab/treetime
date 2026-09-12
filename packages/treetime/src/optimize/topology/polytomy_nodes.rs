@@ -1,13 +1,10 @@
 use itertools::Itertools;
-use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 
 /// Find all nodes with more than 2 children (polytomies).
-pub fn find_polytomy_nodes<N, E, D>(graph: &Graph<N, E, D>) -> Vec<GraphNodeKey>
+pub fn find_polytomy_nodes<D>(graph: &Graph<D>) -> Vec<GraphNodeKey>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   graph

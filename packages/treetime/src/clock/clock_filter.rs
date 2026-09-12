@@ -6,9 +6,9 @@ use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::GraphPassNodeOutput;
 
 #[derive(Debug, Clone, Copy)]
@@ -25,16 +25,14 @@ pub struct ClockFilterResult {
 /// Accepts any `ClockLine` implementor: both validated `ClockModel` (positive
 /// rate) and raw `ClockRegression` (any rate sign, used in pre-filter path).
 #[allow(clippy::integer_division_remainder_used)]
-pub fn clock_filter_inplace<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn clock_filter_inplace<D>(
+  graph: &Graph<D>,
   state: &mut ClockState,
   clock_line: &(impl ClockLine + Sync),
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   threshold: f64,
 ) -> Result<ClockFilterResult, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   log::info!("### Filtering outliers (threshold={threshold})");

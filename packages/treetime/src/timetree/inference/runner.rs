@@ -3,7 +3,9 @@ use crate::clock::clock_state::ClockState;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::optimize::indel::estimate_indel_rate;
 use crate::partition::optimize::contribution::OptimizationContribution;
-use crate::partition::traits::{PartitionOptimizeOps, PartitionTimetreeAll};
+use crate::partition::traits::{
+  HasLogLh, PartitionBranchOps, PartitionMarginalOps, PartitionOptimizeOps, PartitionRerootOps,
+};
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::timetree::inference::forward_pass::propagate_distributions_forward;
@@ -15,9 +17,9 @@ use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 
 /// Target resolution of every *stored* timetree time-distribution grid (design D3, proposal Part D).
 ///
@@ -48,8 +50,8 @@ pub const EPS: f64 = 5e-4;
 /// each edge's length from `branch_lengths`, and the forward pass reads each node's label from
 /// `names`, rather than off the graph payload. The caller re-snapshots them after any length or
 /// topology change so each pass sees the current tree.
-pub fn run_timetree<N, E, P>(
-  graph: &mut Graph<N, E, ()>,
+pub fn run_timetree<P>(
+  graph: &mut Graph<()>,
   partitions: &[P],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -60,9 +62,7 @@ pub fn run_timetree<N, E, P>(
   clock_state: &mut ClockState,
 ) -> Result<(), Report>
 where
-  N: GraphNode + Default,
-  E: GraphEdge + Default,
-  P: PartitionTimetreeAll<N, E>,
+  P: PartitionBranchOps + PartitionMarginalOps + PartitionOptimizeOps + PartitionRerootOps + HasLogLh,
 {
   info!("# Running timetree inference");
 
@@ -123,15 +123,13 @@ pub const CLOCK_BRANCH_LENGTH_DAMPING: f64 = 0.5;
 /// their parent but leaves observed leaf dates alone, so a leaf dated before its parent reaches
 /// here; that is a real inconsistency in the input or the fit, and it is reported rather than
 /// silently floored. Edges whose endpoints are not both dated are left untouched.
-pub fn commit_clock_branch_lengths<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn commit_clock_branch_lengths<D>(
+  graph: &Graph<D>,
   clock_rate: f64,
   damping: f64,
   clock_branch_lengths: &mut BTreeMap<GraphEdgeKey, f64>,
   state: &TimetreeState,
 ) where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   let node_time = |key| state.nodes.get(&key).and_then(|node| node.time);
@@ -177,8 +175,8 @@ pub fn commit_clock_branch_lengths<N, E, D>(
   }
 }
 
-fn compute_branch_distributions_marginal_mode<N, E, P>(
-  graph: &Graph<N, E, ()>,
+fn compute_branch_distributions_marginal_mode<P>(
+  graph: &Graph<()>,
   partitions: &[P],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   clock_rate: f64,
@@ -186,9 +184,7 @@ fn compute_branch_distributions_marginal_mode<N, E, P>(
   state: &mut TimetreeState,
 ) -> Result<(), Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
-  P: PartitionTimetreeAll<N, E>,
+  P: PartitionBranchOps + PartitionMarginalOps + PartitionOptimizeOps + PartitionRerootOps + HasLogLh,
 {
   let one_mutation = calculate_one_mutation(partitions);
   let total_sites: usize = partitions.iter().map(|p| p.get_sequence_length()).sum();
@@ -262,24 +258,17 @@ where
   Ok(())
 }
 
-fn calculate_one_mutation<N, E, P>(partitions: &[P]) -> f64
+fn calculate_one_mutation<P>(partitions: &[P]) -> f64
 where
-  N: GraphNode,
-  E: GraphEdge,
-  P: PartitionTimetreeAll<N, E>,
+  P: PartitionBranchOps + PartitionMarginalOps + PartitionOptimizeOps + PartitionRerootOps + HasLogLh,
 {
   let total_length: usize = partitions.iter().map(|part| part.get_sequence_length()).sum();
   1.0 / total_length as f64
 }
 
-fn collect_contributions<N, E, P>(
-  partitions: &[P],
-  edge_key: GraphEdgeKey,
-) -> Result<Vec<OptimizationContribution>, Report>
+fn collect_contributions<P>(partitions: &[P], edge_key: GraphEdgeKey) -> Result<Vec<OptimizationContribution>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
-  P: PartitionTimetreeAll<N, E>,
+  P: PartitionBranchOps + PartitionMarginalOps + PartitionOptimizeOps + PartitionRerootOps + HasLogLh,
 {
   partitions
     .iter()
@@ -287,16 +276,12 @@ where
     .collect()
 }
 
-pub(super) fn create_branch_distributions_input_mode<N, E>(
-  graph: &Graph<N, E, ()>,
+pub(super) fn create_branch_distributions_input_mode(
+  graph: &Graph<()>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   clock_rate: f64,
   state: &mut TimetreeState,
-) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<(), Report> {
   // Build each edge's point branch-length distribution in parallel, reading its relaxed-clock rate
   // from the value state, and carry the distribution out to insert into the value serially. An edge
   // with neither a branch length nor a time length is left untouched: its previous value-side
@@ -343,14 +328,12 @@ where
 /// the value is the committed clock length held in `clock_branch_lengths` when the edge has one, and
 /// the edge's own branch length otherwise. Used only after a commit, where the clock length has been
 /// established; before the first commit the two collectors agree, because no clock length exists yet.
-pub fn timetree_branch_lengths<N, E, D>(
-  graph: &Graph<N, E, D>,
+pub fn timetree_branch_lengths<D>(
+  graph: &Graph<D>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   clock_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> BTreeMap<GraphEdgeKey, f64>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Send + Sync,
 {
   graph

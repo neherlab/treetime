@@ -159,7 +159,6 @@ mod tests {
     use crate::commands::timetree::output::augur_node_data::build_augur_node_data_json;
     use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut};
     use crate::partition::timetree::partition::GraphTimetree;
-    use crate::payload::timetree::{EdgeTimetree, NodeTimetree};
     use crate::timetree::confidence::NodeConfidenceInterval;
     use ndarray::array;
     use std::collections::BTreeMap;
@@ -231,17 +230,17 @@ mod tests {
       let mut graph = GraphTimetree::new();
       let mut names = BTreeMap::new();
       let mut times = BTreeMap::new();
-      let root_key = graph.add_node(NodeTimetree::default());
+      let root_key = graph.add_node();
       names.insert(root_key, Some("root".to_owned()));
       times.insert(root_key, Some(2000.0));
-      let leaf_a_key = graph.add_node(NodeTimetree::default());
+      let leaf_a_key = graph.add_node();
       names.insert(leaf_a_key, Some("leaf_a".to_owned()));
       times.insert(leaf_a_key, Some(2005.0));
-      let leaf_b_key = graph.add_node(NodeTimetree::default());
+      let leaf_b_key = graph.add_node();
       names.insert(leaf_b_key, Some("leaf_b".to_owned()));
       times.insert(leaf_b_key, Some(2010.0));
-      let edge_a_key = graph.add_edge(root_key, leaf_a_key, EdgeTimetree::default()).unwrap();
-      let edge_b_key = graph.add_edge(root_key, leaf_b_key, EdgeTimetree::default()).unwrap();
+      let edge_a_key = graph.add_edge(root_key, leaf_a_key).unwrap();
+      let edge_b_key = graph.add_edge(root_key, leaf_b_key).unwrap();
       graph.build().unwrap();
 
       let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = maplit::btreemap! {

@@ -1,4 +1,4 @@
-use crate::clock::clock_graph::{EdgeClock, GraphClock, NodeClock};
+use crate::clock::clock_graph::GraphClock;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_output::write_clock_model;
 use crate::clock::clock_regression::ClockParams;
@@ -15,9 +15,9 @@ use crate::make_report;
 use eyre::{Report, WrapErr};
 use serde::Serialize;
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::read_dates;
 use treetime_io::nwk::{NwkParse, nwk_read_file};
 
@@ -146,7 +146,7 @@ pub fn run_clock(
     branch_lengths,
     ..
   } = if let Some(tree) = &clock_args.tree {
-    nwk_read_file::<NodeClock, EdgeClock, ()>(tree)
+    nwk_read_file::<()>(tree)
   } else {
     return make_error!("Tree inference is not implemented. Provide a tree file with --tree");
   }?;
@@ -237,13 +237,8 @@ pub fn run_clock(
   Ok(ClockResult { graph, nodes, edges })
 }
 
-fn leaf_order<N, E, D>(
-  graph: &Graph<N, E, D>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<Vec<String>, Report>
+fn leaf_order<D>(graph: &Graph<D>, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<Vec<String>, Report>
 where
-  N: GraphNode,
-  E: GraphEdge,
   D: Sync + Send,
 {
   graph

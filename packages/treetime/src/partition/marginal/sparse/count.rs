@@ -6,23 +6,18 @@ use crate::partition::traits::TransitionCounting;
 use eyre::Report;
 use ndarray::{Array1, Array2};
 use std::collections::BTreeMap;
-use treetime_graph::edge::{GraphEdge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNode;
 use treetime_utils::array::ndarray::argmax_first;
 
 // Split by codepath stage: these helpers sit beside the trait impl that consumes them.
 #[allow(clippy::multiple_inherent_impl)]
 impl PartitionMarginalSparse {
-  fn count_transitions_impl<N, E>(
+  fn count_transitions_impl(
     &self,
-    graph: &Graph<N, E, ()>,
+    graph: &Graph<()>,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MutationCounts, Report>
-  where
-    N: GraphNode,
-    E: GraphEdge,
-  {
+  ) -> Result<MutationCounts, Report> {
     let n_states = self.gtr.pi.len();
     let min_bl = MIN_BRANCH_LENGTH_FRACTION / self.length as f64;
     let mut nij = Array2::zeros((n_states, n_states));
@@ -167,14 +162,10 @@ impl PartitionMarginalSparse {
   }
 }
 
-impl<N, E> TransitionCounting<N, E> for PartitionMarginalSparse
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+impl TransitionCounting for PartitionMarginalSparse {
   fn count_transitions(
     &self,
-    graph: &Graph<N, E, ()>,
+    graph: &Graph<()>,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<MutationCounts, Report> {
     self.count_transitions_impl(graph, branch_lengths)

@@ -5,9 +5,8 @@ use itertools::Itertools;
 use log::warn;
 use ndarray::Array2;
 use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdge;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNode, GraphNodeKey};
+use treetime_graph::node::GraphNodeKey;
 
 pub(crate) fn one_hot_profile(index: usize, n_states: usize) -> Array2<f64> {
   let mut profile = Array2::zeros((1, n_states));
@@ -19,15 +18,11 @@ pub(crate) fn uniform_profile(n_states: usize) -> Array2<f64> {
   Array2::from_elem((1, n_states), 1.0 / n_states as f64)
 }
 
-pub(crate) fn validate_trait_names<N, E>(
-  graph: &Graph<N, E, ()>,
+pub(crate) fn validate_trait_names(
+  graph: &Graph<()>,
   traits: &BTreeMap<String, String>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<(), Report>
-where
-  N: GraphNode,
-  E: GraphEdge,
-{
+) -> Result<(), Report> {
   let leaf_names: IndexSet<String> = graph
     .get_leaves()
     .iter()
