@@ -2,9 +2,8 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{
-    ancestral_reconstruction_marginal, initialize_marginal, marginal_update, profile_branch_lengths,
-  };
+  use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+  use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
@@ -22,7 +21,6 @@ mod tests {
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::slice::from_mut;
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
@@ -94,21 +92,19 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     gtr: GTR,
-  ) -> Result<(f64, PartitionMarginalDense), Report> {
+  ) -> Result<(f64, DenseReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
-    let mut partitions = [partition];
-
-    let log_lh = initialize_marginal(
-      graph,
-      &profile_branch_lengths(branch_lengths),
-      &mut partitions,
-      aln,
-      names,
-    )?
-    .value();
-    let [partition] = partitions;
-    Ok((log_lh, partition))
+    let node_states = partition.attach_sequences(graph, aln, names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    let log_lh = recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?.value();
+    Ok((log_lh, recon))
   }
 
   /// Run sparse marginal ancestral reconstruction on the given tree and alignment.
@@ -130,15 +126,19 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
     gtr: GTR,
-  ) -> Result<(f64, PartitionMarginalSparse), Report> {
+  ) -> Result<(f64, SparseReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
-    let partition = fitch.into_marginal_sparse(gtr, graph)?;
-    let mut partitions = [partition];
-
-    let log_lh = marginal_update(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?.value();
-    let [partition] = partitions;
-    Ok((log_lh, partition))
+    let (partition, node_states) = fitch.into_marginal_sparse(gtr, graph)?;
+    let mut recon = SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    let log_lh = recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?.value();
+    Ok((log_lh, recon))
   }
 
   /// Verify that dense and sparse marginal implementations produce the same
@@ -219,8 +219,8 @@ mod tests {
     let sparse = &sparse_partition;
 
     for node_key in [root_key, ab_key] {
-      let dense_node = &dense.data.nodes[&node_key];
-      let sparse_node = &sparse.nodes[&node_key];
+      let dense_node = &dense.node_states[&node_key];
+      let sparse_node = &sparse.node_states[&node_key];
 
       for (&pos, var_pos) in &sparse_node.profile.variable {
         let dense_row = dense_node.profile.dis.row(pos).to_owned();
@@ -289,7 +289,7 @@ mod tests {
     let dense = &dense_partition;
     let sparse = &sparse_partition;
 
-    for node_data in dense.data.nodes.values() {
+    for node_data in dense.node_states.values() {
       if !node_data.profile.dis.is_empty() {
         for row in node_data.profile.dis.rows() {
           let sum: f64 = row.sum();
@@ -299,7 +299,7 @@ mod tests {
       }
     }
 
-    for node_data in sparse.nodes.values() {
+    for node_data in sparse.node_states.values() {
       assert!(
         node_data.profile.log_lh.value().is_finite(),
         "Sparse node profile log_lh is not finite: {}",
@@ -353,33 +353,54 @@ mod tests {
 
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
-    let dense_sequences = reconstruct_named_sequences(&graph, &names, from_mut(&mut dense_partition))?;
-    let sparse_sequences = reconstruct_named_sequences(&graph, &names, from_mut(&mut sparse_partition))?;
+    let dense_sequences = reconstruct_named_sequences_dense(&graph, &names, &mut dense_partition)?;
+    let sparse_sequences = reconstruct_named_sequences_sparse(&graph, &names, &mut sparse_partition)?;
     assert_eq!(dense_sequences, sparse_sequences);
 
-    let dense_branch_subs = edge_subs_by_edge_name(&graph, &names, &dense_partition)?;
-    let sparse_branch_subs = edge_subs_by_edge_name(&graph, &names, &sparse_partition)?;
+    let dense_branch_subs = edge_subs_by_edge_name(&graph, &names, &dense_partition.readout())?;
+    let sparse_branch_subs = edge_subs_by_edge_name(&graph, &names, &sparse_partition.readout())?;
     assert_eq!(dense_branch_subs, sparse_branch_subs);
 
     Ok(())
   }
 
-  fn reconstruct_named_sequences<P>(
+  fn reconstruct_named_sequences_dense(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    partitions: &mut [P],
-  ) -> Result<BTreeMap<String, String>, Report>
-  where
-    P: crate::partition::traits::PartitionMarginalOps + crate::partition::traits::HasLogLh,
-  {
+    recon: &mut DenseReconstruction,
+  ) -> Result<BTreeMap<String, String>, Report> {
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_marginal(
+    let DenseReconstruction {
+      partition, node_states, ..
+    } = recon;
+    let mut rng = rand::thread_rng();
+    ancestral_reconstruction(
       graph,
-      false,
-      false,
-      partitions,
-      SampleMode::Argmax,
-      &mut rand::thread_rng(),
+      |node| partition.reconstruct_node_sequence(node_states, node, false, false, SampleMode::Argmax, &mut rng),
+      |key, seq| {
+        actual.insert(names[&key].clone().expect("all test nodes are named"), seq.to_string());
+        Ok(())
+      },
+    )?;
+    Ok(actual)
+  }
+
+  fn reconstruct_named_sequences_sparse(
+    graph: &Graph,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    recon: &mut SparseReconstruction,
+  ) -> Result<BTreeMap<String, String>, Report> {
+    let mut actual = BTreeMap::new();
+    let SparseReconstruction {
+      partition,
+      node_states,
+      forward,
+      ..
+    } = recon;
+    let mut rng = rand::thread_rng();
+    ancestral_reconstruction(
+      graph,
+      |node| partition.reconstruct_node_sequence(node_states, forward, node, false, false, SampleMode::Argmax, &mut rng),
       |key, seq| {
         actual.insert(names[&key].clone().expect("all test nodes are named"), seq.to_string());
         Ok(())
@@ -471,20 +492,19 @@ mod tests {
     )?;
 
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
-    let mut partitions = [partition];
+    let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
 
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
-      &aln,
-      &names,
-    )?
-    .value();
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
 
     // Verify all marginal posterior rows sum to 1.0
-    let partition = &partitions[0];
-    for (node_key, node_data) in &partition.data.nodes {
+    for (node_key, node_data) in &recon.node_states {
       if node_data.profile.dis.is_empty() {
         continue;
       }

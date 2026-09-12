@@ -1,12 +1,13 @@
 #[cfg(test)]
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::{initialize_marginal, marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::branch_length::invalid_branch_length_descriptions;
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::params::InitialGuessMode;
-  use crate::optimize::run_loop::optimize_partition_view;
+  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense};
   use crate::optimize::run_loop::{
     any_indel_edge_has_zero_branch_length, apply_initial_guess_mode, invalid_branch_length_warning,
   };
@@ -124,7 +125,7 @@ pub mod tests {
 
     initial_guess_mixed(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       false,
       false,
       &mut branch_lengths,
@@ -153,7 +154,7 @@ pub mod tests {
 
     initial_guess_mixed(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       false,
       false,
       &mut branch_lengths,
@@ -181,7 +182,7 @@ pub mod tests {
 
     initial_guess_mixed(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       false,
       false,
       &mut branch_lengths,
@@ -222,7 +223,7 @@ pub mod tests {
       inject_indel_on_first_edge(&graph, &mut partitions)?;
     }
 
-    let result = apply_initial_guess_mode(&graph, &optimize_partition_view(&partitions, &[]), mode, false, &mut branch_lengths, &names);
+    let result = apply_initial_guess_mode(&graph, &OptimizeReadouts::new(&partitions, &[]).view(), mode, false, &mut branch_lengths, &names);
 
     if expects_error {
       let error = result.expect_err("Never mode must reject a negative branch length");
@@ -247,7 +248,7 @@ pub mod tests {
 
     initial_guess_mixed(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       true,
       false,
       &mut branch_lengths,
@@ -264,7 +265,7 @@ pub mod tests {
     let before = get_branch_lengths(&graph, &branch_lengths);
     apply_initial_guess_mode(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       InitialGuessMode::Never,
       false,
       &mut branch_lengths,
@@ -280,7 +281,7 @@ pub mod tests {
     let (graph, names, partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_WITHOUT_LENGTHS)?;
     let result = apply_initial_guess_mode(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       InitialGuessMode::Never,
       false,
       &mut branch_lengths,
@@ -301,7 +302,7 @@ pub mod tests {
     let before = get_branch_lengths(&graph, &branch_lengths);
     apply_initial_guess_mode(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       InitialGuessMode::Never,
       false,
       &mut branch_lengths,
@@ -321,7 +322,7 @@ pub mod tests {
     inject_indel_on_first_edge(&graph, &mut partitions)?;
     let result = apply_initial_guess_mode(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       InitialGuessMode::Never,
       false,
       &mut branch_lengths,
@@ -347,7 +348,7 @@ pub mod tests {
     let before = get_branch_lengths(&graph, &branch_lengths);
     apply_initial_guess_mode(
       &graph,
-      &optimize_partition_view(&partitions, &[]),
+      &OptimizeReadouts::new(&partitions, &[]).view(),
       InitialGuessMode::Never,
       false,
       &mut branch_lengths,
@@ -365,7 +366,7 @@ pub mod tests {
   fn test_any_indel_edge_has_zero_bl_false_without_indels() -> Result<(), Report> {
     let (graph, names, partitions, branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     assert!(
-      !any_indel_edge_has_zero_branch_length(&graph, &optimize_partition_view(&partitions, &[]), &branch_lengths),
+      !any_indel_edge_has_zero_branch_length(&graph, &OptimizeReadouts::new(&partitions, &[]).view(), &branch_lengths),
       "Without any indels, no indel-bearing zero-BL edges should be detected"
     );
     Ok(())
@@ -376,7 +377,7 @@ pub mod tests {
     let (graph, names, mut partitions, branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     inject_indel_on_first_edge(&graph, &mut partitions)?;
     assert!(
-      !any_indel_edge_has_zero_branch_length(&graph, &optimize_partition_view(&partitions, &[]), &branch_lengths),
+      !any_indel_edge_has_zero_branch_length(&graph, &OptimizeReadouts::new(&partitions, &[]).view(), &branch_lengths),
       "Positive branch length on indel-bearing edge must not trigger the zero-BL check"
     );
     Ok(())
@@ -387,7 +388,7 @@ pub mod tests {
     let (graph, names, mut partitions, branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     inject_indel_on_first_edge(&graph, &mut partitions)?;
     assert!(
-      any_indel_edge_has_zero_branch_length(&graph, &optimize_partition_view(&partitions, &[]), &branch_lengths),
+      any_indel_edge_has_zero_branch_length(&graph, &OptimizeReadouts::new(&partitions, &[]).view(), &branch_lengths),
       "Zero branch length on an indel-bearing edge must be detected"
     );
     Ok(())
@@ -437,10 +438,10 @@ pub mod tests {
     /// Attach a single 3-base deletion indel to the partition's entry for
     /// the first graph edge. Marginal initialization populates the edge
     /// map, so the entry always exists by the time this helper is called.
-    pub fn inject_indel_on_first_edge(graph: &Graph, partitions: &mut [PartitionMarginalDense]) -> Result<(), Report> {
+    pub fn inject_indel_on_first_edge(graph: &Graph, partitions: &mut [DenseReconstruction]) -> Result<(), Report> {
       let edge_key = graph.get_edges()[0].read_arc().key();
       for partition in partitions.iter_mut() {
-        partition.data.edges.get_mut(&edge_key).unwrap().indels = vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)?];
+        partition.estimates.get_mut(&edge_key).unwrap().indels = vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)?];
       }
       Ok(())
     }
@@ -451,7 +452,7 @@ pub mod tests {
       (
         Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
-        Vec<PartitionMarginalDense>,
+        Vec<DenseReconstruction>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
       Report,
@@ -466,22 +467,17 @@ pub mod tests {
       } = nwk_read_str(newick)?;
       let graph: Graph = graph;
 
-      let mut partitions = vec![PartitionMarginalDense::new(
-        0,
-        jc69(JC69Params::default())?,
-        alphabet,
-        get_common_length(&aln)?,
-      )];
+      let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?);
+      let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+      let mut partitions = vec![DenseReconstruction {
+        partition,
+        node_states,
+        backward: BTreeMap::new(),
+        forward: BTreeMap::new(),
+        estimates: BTreeMap::new(),
+      }];
 
-      initialize_marginal(
-        &graph,
-        &profile_branch_lengths(&branch_lengths),
-        &mut partitions,
-        &aln,
-        &names,
-      )?
-      .value();
-      marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+      marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
 
       Ok((graph, names, partitions, branch_lengths))
     }

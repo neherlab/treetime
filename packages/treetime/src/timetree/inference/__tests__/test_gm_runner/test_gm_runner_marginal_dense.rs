@@ -3,8 +3,9 @@ mod tests {
   use super::super::test_gm_runner_support::support::{
     ALPHABET, OUTPUTS, load_alignment_for_dataset, load_dates_for_dataset,
   };
-  use crate::ancestral::marginal::initialize_marginal;
   use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::DenseReconstruction;
+  use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockState;
   use crate::clock::date_constraints::load_date_constraints;
@@ -51,15 +52,16 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names)?;
 
     let aln = load_alignment_for_dataset(dataset)?;
-    let dense_partition = PartitionTimetree::Dense(PartitionMarginalDense::new(
-      0,
-      jc69(JC69Params::default())?,
-      ALPHABET.clone(),
-      case.sequence_length(),
-    ));
+    let dense_partition = PartitionTimetree::Dense(DenseReconstruction {
+      partition: PartitionMarginalDense::new(0, jc69(JC69Params::default())?, ALPHABET.clone(), case.sequence_length()),
+      node_states: std::collections::BTreeMap::new(),
+      backward: std::collections::BTreeMap::new(),
+      forward: std::collections::BTreeMap::new(),
+      estimates: std::collections::BTreeMap::new(),
+    });
 
     let mut partitions: Vec<PartitionTimetree> = vec![dense_partition];
-    initialize_marginal(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions, &aln, &names)?.value();
+    initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions, &aln, &names)?.value();
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 

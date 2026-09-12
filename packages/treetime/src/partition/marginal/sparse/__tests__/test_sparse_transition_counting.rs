@@ -2,9 +2,9 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::SparseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::traits::TransitionCounting;
   use eyre::Report;
   use indoc::indoc;
   use lazy_static::lazy_static;
@@ -22,14 +22,7 @@ mod tests {
   fn setup_sparse(
     tree_nwk: &str,
     fasta: &str,
-  ) -> Result<
-    (
-      Graph,
-      crate::partition::marginal::sparse::partition::PartitionMarginalSparse,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
+  ) -> Result<(Graph, SparseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let alphabet = NUC_ALPHABET.clone();
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let NwkParse {
@@ -44,19 +37,21 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    let mut partition = fitch.into_marginal_sparse(gtr, &graph)?;
-    marginal_update(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      std::slice::from_mut(&mut partition),
-    )?
-    .value();
-    Ok((graph, partition, branch_lengths))
+    let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
+    let mut recon = SparseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?.value();
+    Ok((graph, recon, branch_lengths))
   }
 
   #[test]
   fn test_sparse_transition_counting_nij_nonneg() -> Result<(), Report> {
-    let (graph, partition, branch_lengths) = setup_sparse(
+    let (graph, recon, branch_lengths) = setup_sparse(
       "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
       indoc! {r#"
       >A
@@ -70,7 +65,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
 
     pretty_assert_array_nonneg!(counts.nij);
     pretty_assert_array_nonneg!(counts.Ti);
@@ -80,7 +75,7 @@ mod tests {
 
   #[test]
   fn test_sparse_transition_counting_ti_positive() -> Result<(), Report> {
-    let (graph, partition, branch_lengths) = setup_sparse(
+    let (graph, recon, branch_lengths) = setup_sparse(
       "((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;",
       indoc! {r#"
       >A
@@ -94,7 +89,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
 
     pretty_assert_array_positive!(counts.Ti);
 
@@ -103,7 +98,7 @@ mod tests {
 
   #[test]
   fn test_sparse_transition_counting_diagonal_zero() -> Result<(), Report> {
-    let (graph, partition, branch_lengths) = setup_sparse(
+    let (graph, recon, branch_lengths) = setup_sparse(
       "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
       indoc! {r#"
       >A
@@ -117,7 +112,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
 
     for i in 0..counts.nij.nrows() {
       #[allow(clippy::float_cmp, reason = "diagonal is zero by construction, no arithmetic")]
@@ -131,7 +126,7 @@ mod tests {
 
   #[test]
   fn test_sparse_transition_counting_root_state_sums_to_length() -> Result<(), Report> {
-    let (graph, partition, branch_lengths) = setup_sparse(
+    let (graph, recon, branch_lengths) = setup_sparse(
       "((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;",
       indoc! {r#"
       >A
@@ -145,7 +140,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let counts = recon.partition.count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
 
     assert!(counts.root_state.sum() > 0.0, "root_state should be populated");
 

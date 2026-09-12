@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::initialize_marginal;
   use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::DenseReconstruction;
+  use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockState;
@@ -236,13 +237,14 @@ mod tests {
       "#},
       &alphabet,
     )?;
-    let mut partitions = vec![PartitionTimetree::Dense(PartitionMarginalDense::new(
-      0,
-      jc69(JC69Params::default())?,
-      alphabet,
-      get_common_length(&aln)?,
-    ))];
-    initialize_marginal(
+    let mut partitions = vec![PartitionTimetree::Dense(DenseReconstruction {
+      partition: PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?),
+      node_states: BTreeMap::new(),
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    })];
+    initialize_marginal_timetree(
       &graph,
       &profile_branch_lengths(&branch_lengths),
       &mut partitions,
