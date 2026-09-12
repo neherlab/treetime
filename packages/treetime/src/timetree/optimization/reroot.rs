@@ -2,6 +2,7 @@ use crate::ancestral::marginal::profile_branch_lengths;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::{ClockInputs, ClockState};
+use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
 use crate::partition::timetree::marginal::marginal_update_timetree;
@@ -19,8 +20,10 @@ use treetime_graph::reroot::RerootChanges;
 ///
 /// Performs clock-based rerooting, then calls `apply_reroot` on each partition
 /// with bundled topology changes (edge split, edge merge, inverted edges).
+#[allow(clippy::too_many_arguments)]
 pub fn reroot_tree(
   graph: &mut Graph,
+  constraints: &DateConstraints,
   clock_state: &mut ClockState,
   timetree_state: &TimetreeState,
   partitions: &mut [PartitionTimetree],
@@ -48,7 +51,7 @@ pub fn reroot_tree(
   // the clock results, so the regression excludes the leaves the clock filter marked. The reroot
   // rebuilds the returned results and remaps the inputs to match the new topology.
   clock_state.reseed_transitional(graph);
-  let mut clock_inputs = ClockInputs::seed_from_times(graph, &timetree_state.likely_times());
+  let mut clock_inputs = ClockInputs::seed_from_times(graph, &timetree_state.likely_times(constraints));
   let (new_clock_state, clock_reroot_result) = estimate_clock_model_with_reroot_policy(
     graph,
     &mut clock_inputs,

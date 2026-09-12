@@ -16,15 +16,18 @@ use treetime_graph::pass::{
 ///
 /// `time_distribution` is the node's posterior over its date, refined in place across the two date
 /// passes; `time` the committed point estimate; `bad_branch` the exclusion flag a parent reads when
-/// gathering child messages; `date_constraint` the fixed input date lifted back into the posterior on
-/// every backward pass, carried read-only; `contradicted` a per-pass flag the forward pass raises when
-/// the rest of the tree gives the given date no probability, folded into a diagnostic count.
+/// gathering child messages; `contradicted` a per-pass flag the forward pass raises when the rest of
+/// the tree gives the given date no probability, folded into a diagnostic count.
+///
+/// The fixed input date lives outside this working state, in the durable
+/// [`DateConstraints`](crate::clock::date_constraints::DateConstraints) the passes borrow: the
+/// backward pass lifts it back into the posterior on every pass, so keeping it out of the produced
+/// results is what keeps the input recoverable and separately owned.
 #[derive(Debug, Clone, Default)]
 pub struct DateNodeState {
   pub time_distribution: Option<Arc<Distribution<NegLog>>>,
   pub time: Option<f64>,
   pub bad_branch: bool,
-  pub date_constraint: Option<Arc<Distribution<NegLog>>>,
   pub contradicted: bool,
 }
 
@@ -88,7 +91,6 @@ impl TimetreeState {
           time_distribution: constraints.time_distributions.get(&key).cloned().flatten(),
           time: None,
           bad_branch: constraints.bad_branches.get(&key).copied().unwrap_or(false),
-          date_constraint: constraints.date_constraints.get(&key).cloned().flatten(),
           contradicted: false,
         };
         (key, state)
@@ -106,10 +108,12 @@ impl TimetreeState {
   /// field forward.
   ///
   /// Stays valid across a reroot or polytomy resolution that added or dropped nodes and edges: each
-  /// surviving node and edge keeps its date constraint, bad-branch flag, committed time, time
-  /// distribution, committed time length, branch-length distribution, backward message, and
-  /// relaxed-clock rate multiplier from the previous state, and a node or edge a topology change
-  /// introduced starts default. `contradicted` is a per-pass flag and always resets to false.
+  /// surviving node and edge keeps its bad-branch flag, committed time, time distribution, committed
+  /// time length, branch-length distribution, backward message, and relaxed-clock rate multiplier
+  /// from the previous state, and a node or edge a topology change introduced starts default. The
+  /// fixed date constraint lives in the durable
+  /// [`DateConstraints`](crate::clock::date_constraints::DateConstraints), not here. `contradicted` is
+  /// a per-pass flag and always resets to false.
   ///
   /// The bad-branch flag and committed time length are written straight into this state by their
   /// producers -- the clock filter
@@ -130,7 +134,6 @@ impl TimetreeState {
             time_distribution: node.time_distribution.clone(),
             time: node.time,
             bad_branch: node.bad_branch,
-            date_constraint: node.date_constraint.clone(),
             contradicted: false,
           });
         (key, state)
@@ -181,18 +184,22 @@ impl TimetreeState {
     }
   }
 
-  /// Per-node date the clock regression reads, keyed by node, computed from this state.
+  /// Per-node date the clock regression reads, keyed by node, computed from this state and the
+  /// durable `constraints`.
   ///
   /// The likely time: the input date constraint where there is one, the refined time distribution's
-  /// peak otherwise. Used to reseed the clock state in the refinement loop.
+  /// peak otherwise. Used to seed the clock inputs in the refinement loop.
   #[must_use]
-  pub fn likely_times(&self) -> BTreeMap<GraphNodeKey, Option<f64>> {
+  pub fn likely_times(&self, constraints: &DateConstraints) -> BTreeMap<GraphNodeKey, Option<f64>> {
     self
       .nodes
       .iter()
       .map(|(key, node)| {
-        let time = node
-          .date_constraint
+        let time = constraints
+          .date_constraints
+          .get(key)
+          .cloned()
+          .flatten()
           .as_ref()
           .or(node.time_distribution.as_ref())
           .and_then(|dist| dist.likely_time());

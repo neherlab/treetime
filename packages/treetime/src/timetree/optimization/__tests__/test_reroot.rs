@@ -117,7 +117,7 @@ mod tests {
 
     let clock_params = ClockParams::default();
     let timetree_state = TimetreeState::seed_from_values(&graph, &constraints);
-    let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state.likely_times());
+    let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state.likely_times(&constraints));
     let mut clock_state = ClockState::new(&graph);
     clock_regression_backward(&graph, &clock_inputs, &mut clock_state, &clock_params, &branch_lengths, None)?;
     clock_regression_forward(&graph, &clock_inputs, &mut clock_state, &clock_params, &branch_lengths, None)?;
@@ -132,6 +132,7 @@ mod tests {
     let names_tt_3 = names;
     let clock_model = reroot_tree(
       &mut graph,
+      &constraints,
       &mut clock_state,
       &timetree_state,
       &mut partitions,
@@ -558,7 +559,7 @@ mod tests {
 
     let clock_params = ClockParams::default();
     let timetree_state_1 = TimetreeState::seed_from_values(&graph, &constraints);
-    let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state_1.likely_times());
+    let clock_inputs = ClockInputs::seed_from_times(&graph, &timetree_state_1.likely_times(&constraints));
     let mut clock_state = ClockState::new(&graph);
     clock_regression_backward(&graph, &clock_inputs, &mut clock_state, &clock_params, &branch_lengths, None)?;
     clock_regression_forward(&graph, &clock_inputs, &mut clock_state, &clock_params, &branch_lengths, None)?;
@@ -575,6 +576,7 @@ mod tests {
     let names_tt_2 = names.clone();
     let clock_model_1 = reroot_tree(
       &mut graph,
+      &constraints,
       &mut clock_state,
       &timetree_state_1,
       &mut partitions,
@@ -604,6 +606,7 @@ mod tests {
     let names_tt_1 = names;
     let clock_model_2 = reroot_tree(
       &mut graph,
+      &constraints,
       &mut clock_state,
       &timetree_state_2,
       &mut partitions,

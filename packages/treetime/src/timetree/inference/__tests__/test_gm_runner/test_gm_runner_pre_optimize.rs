@@ -133,7 +133,7 @@ mod tests {
     run_optimize_mixed(&graph, &opt_partitions, BranchOptMethod::BrentSqrt, &mut branch_lengths)?;
     marginal_update_timetree(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
 
-    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times();
+    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints);
     let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);
     let names_tt_1 = names.clone();
     let clock_estimate_state = ClockState::new(&graph);
@@ -154,14 +154,15 @@ mod tests {
     let mut state = TimetreeState::seed_from_values(&graph, &constraints);
     let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
-    run_timetree(
+    state = run_timetree(
       &mut graph,
+      &constraints,
       &partitions,      &run_branch_lengths,
       &run_names,
       &clock_model,
       None,
       false,
-      &mut state,
+      state,
       &mut clock_state,
     )?;
 

@@ -1,5 +1,6 @@
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_state::ClockState;
+use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::optimize::indel::estimate_indel_rate;
 use crate::partition::optimize::contribution::OptimizationContribution;
@@ -48,17 +49,19 @@ pub const EPS: f64 = 5e-4;
 /// each edge's length from `branch_lengths`, and the forward pass reads each node's label from
 /// `names`. The caller re-snapshots them after any length or
 /// topology change so each pass sees the current tree.
+#[allow(clippy::too_many_arguments)]
 pub fn run_timetree<P>(
   graph: &mut Graph,
+  constraints: &DateConstraints,
   partitions: &[P],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   clock_model: &ClockModel,
   coalescent: Option<&CoalescentModel>,
   no_indels: bool,
-  state: &mut TimetreeState,
+  mut state: TimetreeState,
   clock_state: &mut ClockState,
-) -> Result<(), Report>
+) -> Result<TimetreeState, Report>
 where
   P: PartitionOptimizeOps,
 {
@@ -69,7 +72,8 @@ where
 
   // Rebuild the state's maps for the current topology, carrying every value-resident date field
   // forward. Times, distributions, bad-branch flags, and time lengths all live on the state
-  // (their producers write them straight into it).
+  // (their producers write them straight into it); the fixed date constraints stay in the durable
+  // `constraints` the passes borrow.
   state.reseed_from_values(graph);
 
   info!("## Using clock model");
@@ -78,20 +82,20 @@ where
 
   if !partitions.is_empty() {
     info!("## Computing branch distributions from partitions");
-    compute_branch_distributions_marginal_mode(graph, partitions, branch_lengths, clock_rate, no_indels, state)?;
+    compute_branch_distributions_marginal_mode(graph, partitions, branch_lengths, clock_rate, no_indels, &mut state)?;
   } else {
     info!("## Creating branch distributions from input lengths");
-    create_branch_distributions_input_mode(graph, branch_lengths, clock_rate, state)?;
+    create_branch_distributions_input_mode(graph, branch_lengths, clock_rate, &mut state)?;
   }
 
   info!("## Propagating distributions backward");
-  propagate_distributions_backward(graph, coalescent, state)?;
+  propagate_distributions_backward(graph, constraints, coalescent, &mut state)?;
 
   info!("## Propagating distributions forward");
-  propagate_distributions_forward(graph, names, state)?;
+  propagate_distributions_forward(graph, constraints, names, &mut state)?;
 
   info!("# Timetree inference completed");
-  Ok(())
+  Ok(state)
 }
 
 /// Weight given to the freshly inferred value when a commit damps against the previous one.

@@ -50,8 +50,8 @@ mod tests {
     for (edge_key, dist) in branch_distributions {
       state.edge_mut(edge_key).branch_length_distribution = Some(dist);
     }
-    propagate_distributions_backward(&graph, None, &mut state)?;
-    propagate_distributions_forward(&graph, &names, &mut state)?;
+    propagate_distributions_backward(&graph, &constraints, None, &mut state)?;
+    propagate_distributions_forward(&graph, &constraints, &names, &mut state)?;
 
     let actual = extract_node_times(&graph, &names, &state);
     pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);

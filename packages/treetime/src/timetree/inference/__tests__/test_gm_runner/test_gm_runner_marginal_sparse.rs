@@ -74,7 +74,7 @@ mod tests {
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
-    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times();
+    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints);
     let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);
     let names_tt_1 = names.clone();
     let clock_estimate_state = ClockState::new(&graph);
@@ -95,14 +95,15 @@ mod tests {
     let mut state = TimetreeState::new(&graph);
     let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
-    run_timetree(
+    state = run_timetree(
       &mut graph,
+      &constraints,
       &partitions,      &run_branch_lengths,
       &run_names,
       &clock_model,
       None,
       false,
-      &mut state,
+      state,
       &mut clock_state,
     )?;
 

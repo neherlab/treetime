@@ -1,6 +1,7 @@
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::{ClockInputs, ClockState};
+use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
@@ -39,9 +40,12 @@ pub(crate) struct Refinement<'a> {
   /// stream: re-seeding per round would correlate the sampled histories.
   pub rng: &'a mut dyn rand::RngCore,
   pub options: &'a RefinementOptions,
-  /// Persistent per-node/per-edge date state routed across the whole pipeline. The date passes
-  /// carry the branch-length distributions and backward messages here.
-  pub state: &'a mut TimetreeState,
+  /// Durable date constraints the date passes borrow. Never mutated by refinement.
+  pub constraints: &'a DateConstraints,
+  /// The date inference state this round starts from, taken by value. A successful round returns the
+  /// refined state; a failed round returns an error without publishing any partial accepted state, so
+  /// the caller keeps its pre-round value (A5).
+  pub state: TimetreeState,
   /// Persistent per-node/per-edge clock state routed across the whole pipeline. The node divergence
   /// and outlier flag live here; the clock re-estimation reads them back
   /// from it, and each `run_timetree` refreshes the divergence into it.
@@ -60,14 +64,14 @@ pub(crate) struct Refinement<'a> {
 }
 
 impl Refinement<'_> {
-  pub fn run(mut self) -> Result<RefinementOutcome, Report> {
+  pub fn run(mut self) -> Result<(TimetreeState, RefinementOutcome), Report> {
     let total_length = self.total_sequence_length();
     self.apply_relaxed_clock(total_length)?;
 
     // Node times are what the round moves, so they are the primary convergence signal. The
     // ancestral-state comparison is a hold-over from early v0, where internal node states were
     // fixed; it survives only as the fallback for a tree with no comparable dated nodes.
-    let previous_times = capture_node_times(self.graph, self.state);
+    let previous_times = capture_node_times(self.graph, &self.state);
     let previous_states = capture_ancestral_states(self.graph, self.partitions);
     let topology = self.refine_topology(total_length)?;
     self.rebuild_inference(topology.changed())?;
@@ -79,19 +83,20 @@ impl Refinement<'_> {
       self.clock_model.clock_rate(),
       CLOCK_BRANCH_LENGTH_DAMPING,
       self.clock_branch_lengths,
-      self.state,
+      &self.state,
     );
 
     let current_states = capture_ancestral_states(self.graph, self.partitions);
-    let time_change = measure_node_time_change(&previous_times, &capture_node_times(self.graph, self.state));
+    let time_change = measure_node_time_change(&previous_times, &capture_node_times(self.graph, &self.state));
 
     self.update_clock_model()?;
 
-    Ok(RefinementOutcome {
+    let outcome = RefinementOutcome {
       sequence_changes: count_sequence_changes(&previous_states, &current_states),
       time_change,
       topology,
-    })
+    };
+    Ok((self.state, outcome))
   }
 
   fn total_sequence_length(&self) -> usize {
@@ -122,7 +127,7 @@ impl Refinement<'_> {
       &self.options.relax,
       1.0 / total_length as f64,
       self.clock_model.clock_rate(),
-      self.state,
+      &mut self.state,
     )
   }
 
@@ -142,7 +147,7 @@ impl Refinement<'_> {
       self.merger_rate,
       self.rng,
       self.branch_lengths,
-      self.state,
+      &mut self.state,
     )
     .wrap_err("Polytomy resolution failed")?;
     if resolved_nodes == 0 {
@@ -151,8 +156,8 @@ impl Refinement<'_> {
 
     info!("Resolved polytomies, introduced {resolved_nodes} new nodes");
     *self.names = assign_node_names(std::mem::take(self.names), self.graph)?;
-    propagate_bad_branches(self.graph, self.state)?;
-    prepare_tree_after_topology_change(self.graph, self.state)
+    propagate_bad_branches(self.graph, &mut self.state)?;
+    prepare_tree_after_topology_change(self.graph, &mut self.state)
       .wrap_err("Failed to prepare tree after topology change")?;
     // Reset the value-resident edge fields for the new topology, the counterpart of the reset
     // `prepare_tree_after_topology_change` performs on the transitional fields.
@@ -170,7 +175,7 @@ impl Refinement<'_> {
       self.clock_model.clock_rate(),
       1.0,
       self.clock_branch_lengths,
-      self.state,
+      &self.state,
     );
 
     Ok(TopologyOutcome::Changed { resolved_nodes })
@@ -195,15 +200,16 @@ impl Refinement<'_> {
 
     if topology_changed {
       info!("Tree structure changed - rebuilding node-time state before coalescent inference");
-      run_timetree(
+      self.state = run_timetree(
         self.graph,
+        self.constraints,
         self.partitions,
         run_branch_lengths,
         run_names,
         self.clock_model,
         None,
         self.options.no_indels,
-        self.state,
+        std::mem::take(&mut self.state),
         self.clock_state,
       )
       .wrap_err("Coalescent-free timetree rebuild failed")?;
@@ -214,18 +220,20 @@ impl Refinement<'_> {
       info!("Updating node times via timetree inference");
     }
 
-    run_timetree(
+    self.state = run_timetree(
       self.graph,
+      self.constraints,
       self.partitions,
       run_branch_lengths,
       run_names,
       self.clock_model,
       self.prior,
       self.options.no_indels,
-      self.state,
+      std::mem::take(&mut self.state),
       self.clock_state,
     )
-    .wrap_err("Timetree inference failed")
+    .wrap_err("Timetree inference failed")?;
+    Ok(())
   }
 
   fn update_clock_model(&mut self) -> Result<(), Report> {
@@ -242,7 +250,7 @@ impl Refinement<'_> {
       .collect();
     self.clock_state.reseed_transitional(self.graph);
     let mut clock_inputs = ClockInputs::new(self.graph);
-    clock_inputs.reseed_from_times(self.graph, &self.state.likely_times(), &edge_inputs);
+    clock_inputs.reseed_from_times(self.graph, &self.state.likely_times(self.constraints), &edge_inputs);
     let (new_clock_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
       self.graph,
       &mut clock_inputs,

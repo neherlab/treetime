@@ -1,3 +1,4 @@
+use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use crate::timetree::timetree_state::{DateEdgeState, DateNodeState, TimetreeState};
@@ -23,11 +24,12 @@ use treetime_grid::Side;
 /// refining the node posteriors and backward messages in place.
 pub fn propagate_distributions_backward(
   graph: &Graph,
+  constraints: &DateConstraints,
   coalescent_model: Option<&CoalescentModel>,
   state: &mut TimetreeState,
 ) -> Result<(), Report> {
   state.map_backward(graph, |context| {
-    propagate_distributions_backward_node(coalescent_model, &context)
+    propagate_distributions_backward_node(constraints, coalescent_model, &context)
   })
 }
 
@@ -38,6 +40,7 @@ pub fn propagate_distributions_backward(
 /// peak-normalized. Second, the distribution is convolved across the branch into the backward message
 /// the parent folds in.
 fn propagate_distributions_backward_node(
+  constraints: &DateConstraints,
   coalescent_model: Option<&CoalescentModel>,
   context: &GraphPassBackwardContext<'_, DateNodeState, DateEdgeState, DateNodeState, DateEdgeState>,
 ) -> Result<GraphPassNodeOutput<DateNodeState, DateEdgeState>, Report> {
@@ -46,10 +49,11 @@ fn propagate_distributions_backward_node(
   // multiply messages, date constraint, and coalescent --> node distribution
   // regrid node distribution to sensible grid
   let mut node = context.input.clone();
+  let date_constraint = constraints.date_constraints.get(&context.key).cloned().flatten();
   let messages = gather_child_messages(context.children);
   let distribution = combine_child_messages(&messages)?;
   let distribution = apply_coalescent_prior(coalescent_model, context.is_root, context.children.len(), distribution)?;
-  let distribution = apply_date_constraint(node.date_constraint.as_ref(), distribution)?;
+  let distribution = apply_date_constraint(date_constraint.as_ref(), distribution)?;
 
   if !matches!(distribution, Distribution::Empty) {
     // Peak-normalize the combined posterior. Every downstream consumer (likely_time, quantile, and

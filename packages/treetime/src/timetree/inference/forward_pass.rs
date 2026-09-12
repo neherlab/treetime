@@ -1,3 +1,4 @@
+use crate::clock::date_constraints::DateConstraints;
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use crate::timetree::timetree_state::{DateEdgeState, DateNodeState, TimetreeState};
 use eyre::Report;
@@ -21,10 +22,11 @@ use treetime_grid::Side;
 /// whose given date the rest of the tree contradicted is folded out of the per-node outputs.
 pub fn propagate_distributions_forward(
   graph: &Graph,
+  constraints: &DateConstraints,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   state: &mut TimetreeState,
 ) -> Result<(), Report> {
-  state.map_forward(graph, |context| propagate_distributions_forward_node(names, &context))?;
+  state.map_forward(graph, |context| propagate_distributions_forward_node(constraints, names, &context))?;
 
   // Once per pass, not per node: a broken clock or topology makes a whole subtree disagree at once.
   let contradicted = state.nodes.values().filter(|node| node.contradicted).count();
@@ -46,17 +48,19 @@ pub fn propagate_distributions_forward(
 /// The forward pass only reads the parent edge (its branch length and backward message), so the edge
 /// is passed through unchanged; the root has no parent edge and yields `None`.
 fn propagate_distributions_forward_node(
+  constraints: &DateConstraints,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   context: &GraphPassForwardContext<'_, DateNodeState, DateEdgeState, DateNodeState>,
 ) -> Result<GraphPassNodeOutput<DateNodeState, DateEdgeState>, Report> {
   let mut node = context.input.clone();
+  let date_constraint = constraints.date_constraints.get(&context.key).cloned().flatten();
   let edge = context.parent_edge.map(|(_, edge)| edge);
-  if refine_distribution_from_parent(names, context.key, context.parent, edge, &mut node)?
+  if refine_distribution_from_parent(names, context.key, date_constraint.as_ref(), context.parent, edge, &mut node)?
     == Refinement::ContradictedGivenDate
   {
     node.contradicted = true;
   }
-  commit_node_time(names, context.key, context.parent, context.is_leaf, &mut node);
+  commit_node_time(names, context.key, date_constraint.as_ref(), context.parent, context.is_leaf, &mut node);
   let parent_message = context.parent_edge.map(|(_, edge)| edge.clone());
   Ok(GraphPassNodeOutput { node, parent_message })
 }
@@ -78,6 +82,7 @@ enum Refinement {
 fn refine_distribution_from_parent(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
+  date_constraint: Option<&Arc<Distribution<NegLog>>>,
   parent: Option<&DateNodeState>,
   edge: Option<&DateEdgeState>,
   node: &mut DateNodeState,
@@ -89,7 +94,7 @@ fn refine_distribution_from_parent(
   let Some(parent) = parent else {
     return Ok(Refinement::Done);
   };
-  if has_exact_date(node) {
+  if has_exact_date(date_constraint) {
     return Ok(Refinement::Done);
   }
 
@@ -129,8 +134,8 @@ fn refine_distribution_from_parent(
   // Empty product: the parent message and the given date have disjoint support. Refining onto it
   // would leave the node undated -- worse than the input date -- so keep the given date and report
   // it. A node with no given date has nothing to fall back on and stays undated.
-  if combined.likely_time().is_none() && node.date_constraint.is_some() {
-    log_kept_given_date(names, key, node, &dist_from_parent);
+  if combined.likely_time().is_none() && date_constraint.is_some() {
+    log_kept_given_date(names, key, date_constraint, &dist_from_parent);
     return Ok(Refinement::ContradictedGivenDate);
   }
   node.time_distribution = Some(Arc::new(combined));
@@ -145,6 +150,7 @@ fn refine_distribution_from_parent(
 fn commit_node_time(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
+  date_constraint: Option<&Arc<Distribution<NegLog>>>,
   parent: Option<&DateNodeState>,
   is_leaf: bool,
   node: &mut DateNodeState,
@@ -152,13 +158,13 @@ fn commit_node_time(
   // Project the inferred point estimate onto the committed parent time (an exact date keeps its
   // own). This adjusts the estimate without recomputing the posterior; the statistical contract is
   // open in kb/issues/M-timetree-marginal-node-times-can-violate-topology.md.
-  let parent_time = (!has_exact_date(node)).then(|| parent_time(parent)).flatten();
+  let parent_time = (!has_exact_date(date_constraint)).then(|| parent_time(parent)).flatten();
 
   // An empty distribution yields no time. Under NegLog (ordinate -ln p) even tiny posteriors survive
   // exactly, so empty means genuinely disjoint hard domains -- the subtree disagrees with the rest of
   // the tree. Surface that rather than drop the date silently. An undated leaf under an undated parent
   // has nothing to infer from and was already reported when its date was found missing.
-  let is_dateable = !is_leaf || node.date_constraint.is_some();
+  let is_dateable = !is_leaf || date_constraint.is_some();
   if set_likely_time(node, parent_time).is_none() && is_dateable {
     let name = node_name(names, key);
     let name = name.as_deref().unwrap_or("<unnamed>");
@@ -174,8 +180,8 @@ fn commit_node_time(
 ///
 /// Anything else -- an uncertain or ranged date, or no date at all -- leaves the node's time to be
 /// inferred, and so to be refined by the message coming down from its parent.
-fn has_exact_date(node: &DateNodeState) -> bool {
-  node.date_constraint.as_ref().is_some_and(|dist| dist.is_point())
+fn has_exact_date(date_constraint: Option<&Arc<Distribution<NegLog>>>) -> bool {
+  date_constraint.is_some_and(|dist| dist.is_point())
 }
 
 /// Committed time of the node's parent, if it has one and it is set.
@@ -229,7 +235,7 @@ fn log_refinement(
 fn log_kept_given_date(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
-  node: &DateNodeState,
+  date_constraint: Option<&Arc<Distribution<NegLog>>>,
   dist_from_parent: &Distribution<NegLog>,
 ) {
   if !log_enabled!(Level::Debug) {
@@ -237,10 +243,7 @@ fn log_kept_given_date(
   }
   let name = node_name(names, key);
   let name = name.as_deref().unwrap_or("<unnamed>");
-  let given = node
-    .date_constraint
-    .as_ref()
-    .map_or_else(|| "none".to_owned(), |constraint| describe_grid(constraint.as_ref()));
+  let given = date_constraint.map_or_else(|| "none".to_owned(), |constraint| describe_grid(constraint.as_ref()));
   debug!(
     "Timetree forward pass: node '{name}' keeps the date it was given, {given}: the rest of the \
      tree puts it at {}, which leaves no probability on that date",

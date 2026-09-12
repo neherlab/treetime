@@ -1,5 +1,6 @@
 use crate::clock::clock_model::{ClockModel, ClockModelStats};
 use crate::clock::clock_state::ClockState;
+use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::make_error;
 use crate::partition::timetree::partition::PartitionTimetree;
@@ -56,8 +57,10 @@ const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5; // 0.95
 /// Returns the per-node sorted date triples keyed by node, for nodes dated at all three rates. The
 /// caller threads these into confidence extraction and the output gather; they are not written back
 /// onto the graph.
+#[allow(clippy::too_many_arguments)]
 pub fn compute_rate_susceptibility(
   graph: &mut Graph,
+  constraints: &DateConstraints,
   partitions: &[PartitionTimetree],
   clock_model: &ClockModel,
   coalescent: Option<&CoalescentModel>,
@@ -95,15 +98,16 @@ pub fn compute_rate_susceptibility(
   // Run 1: upper rate bound
   scale_gammas(state, &original_gammas, upper_rate / current_rate);
   info!("Rate susceptibility: running with upper rate {upper_rate:.6e}");
-  run_timetree(
+  *state = run_timetree(
     graph,
+    constraints,
     partitions,
     run_branch_lengths,
     run_names,
     clock_model,
     coalescent,
     no_indels,
-    state,
+    std::mem::take(state),
     clock_state,
   )
   .wrap_err("Rate susceptibility: timetree at upper rate failed")?;
@@ -112,15 +116,16 @@ pub fn compute_rate_susceptibility(
   // Run 2: lower rate bound
   scale_gammas(state, &original_gammas, lower_rate / current_rate);
   info!("Rate susceptibility: running with lower rate {lower_rate:.6e}");
-  run_timetree(
+  *state = run_timetree(
     graph,
+    constraints,
     partitions,
     run_branch_lengths,
     run_names,
     clock_model,
     coalescent,
     no_indels,
-    state,
+    std::mem::take(state),
     clock_state,
   )
   .wrap_err("Rate susceptibility: timetree at lower rate failed")?;
@@ -129,15 +134,16 @@ pub fn compute_rate_susceptibility(
   // Run 3: central rate (restores the pre-call gammas)
   scale_gammas(state, &original_gammas, 1.0);
   info!("Rate susceptibility: running with central rate {current_rate:.6e}");
-  run_timetree(
+  *state = run_timetree(
     graph,
+    constraints,
     partitions,
     run_branch_lengths,
     run_names,
     clock_model,
     coalescent,
     no_indels,
-    state,
+    std::mem::take(state),
     clock_state,
   )
   .wrap_err("Rate susceptibility: timetree at central rate failed")?;

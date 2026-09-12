@@ -6,7 +6,7 @@ mod tests {
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::{ClockInputs, ClockState};
-  use crate::clock::date_constraints::load_date_constraints;
+  use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::RerootParams;
   use crate::coalescent::coalescent::CoalescentModel;
@@ -47,12 +47,13 @@ mod tests {
   #[test]
   #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_refinement_rebuilds_complete_coalescent_state_after_topology_change() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths) = create_polytomy_state()?;
+    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) = create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
 
     let outcome = refine(
       &mut graph,
       &names,
+      &constraints,
       &mut partitions,
       &mut clock_model,
       Some(&tc),
@@ -99,6 +100,7 @@ mod tests {
     let outcome = refine(
       &mut graph,
       &names,
+      &constraints,
       &mut partitions,
       &mut clock_model,
       Some(&tc),
@@ -112,7 +114,7 @@ mod tests {
 
   #[test]
   fn test_refinement_missing_time_preserves_inference_state() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths) = create_polytomy_state()?;
+    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) = create_polytomy_state()?;
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     state.node_mut(root_key).time = None;
     let expected_error = format!(
@@ -124,6 +126,7 @@ mod tests {
       refine(
         &mut graph,
         &names,
+        &constraints,
         &mut partitions,
         &mut clock_model,
         Some(&Distribution::constant(10.0)),
@@ -141,7 +144,7 @@ mod tests {
 
   #[test]
   fn test_refinement_non_finite_time_preserves_inference_state() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths) = create_polytomy_state()?;
+    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) = create_polytomy_state()?;
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     state.node_mut(root_key).time = Some(f64::NAN);
     let before = serialize_state(&graph, &partitions, &clock_model)?;
@@ -150,6 +153,7 @@ mod tests {
       refine(
         &mut graph,
         &names,
+        &constraints,
         &mut partitions,
         &mut clock_model,
         Some(&Distribution::constant(10.0)),
@@ -178,11 +182,12 @@ mod tests {
   #[test]
   #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_refinement_unchanged_topology_recomputes_missing_time() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths) = create_polytomy_state()?;
+    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) = create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
     refine(
       &mut graph,
       &names,
+      &constraints,
       &mut partitions,
       &mut clock_model,
       Some(&tc),
@@ -195,6 +200,7 @@ mod tests {
     let outcome = refine(
       &mut graph,
       &names,
+      &constraints,
       &mut partitions,
       &mut clock_model,
       None,
@@ -215,6 +221,7 @@ mod tests {
     ClockModel,
     TimetreeState,
     BTreeMap<GraphEdgeKey, Option<f64>>,
+    DateConstraints,
   );
 
   fn create_polytomy_state() -> Result<PolytomyStateSetup, Report> {
@@ -261,7 +268,7 @@ mod tests {
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
-    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times();
+    let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints);
     let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);
     let names_tt_1 = names.clone();
     let clock_estimate_state = ClockState::new(&graph);
@@ -282,19 +289,20 @@ mod tests {
     let mut state = TimetreeState::seed_from_values(&graph, &constraints);
     let run_branch_lengths = branch_lengths;
     let run_names = names.clone();
-    run_timetree(
+    state = run_timetree(
       &mut graph,
+      &constraints,
       &partitions,
       &run_branch_lengths,
       &run_names,
       &clock_model,
       None,
       false,
-      &mut state,
+      state,
       &mut clock_state,
     )?;
 
-    Ok((graph, names, partitions, clock_model, state, run_branch_lengths))
+    Ok((graph, names, partitions, clock_model, state, run_branch_lengths, constraints))
   }
 
   fn serialize_state(
@@ -326,6 +334,7 @@ mod tests {
   fn refine(
     graph: &mut Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
+    constraints: &DateConstraints,
     partitions: &mut [PartitionTimetree],
     clock_model: &mut ClockModel,
     coalescent_tc: Option<&Distribution>,
@@ -344,7 +353,7 @@ mod tests {
     let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
     let mut names = names.clone();
 
-    Refinement {
+    let (new_state, outcome) = Refinement {
       graph,
       partitions,
       clock_model,
@@ -354,13 +363,18 @@ mod tests {
       prior: coalescent_tc.is_some().then_some(&coalescent),
       rng: &mut get_random_number_generator(Some(REFINEMENT_TEST_SEED)),
       options: &refinement_options(),
-      state,
+      constraints,
+      // Clone so a failed round leaves the caller's accepted state intact (A5): the refined result is
+      // written back only on success.
+      state: state.clone(),
       clock_state: &mut clock_state,
       clock_branch_lengths: &mut clock_branch_lengths,
       branch_lengths,
       names: &mut names,
     }
-    .run()
+    .run()?;
+    *state = new_state;
+    Ok(outcome)
   }
 
   fn refinement_options() -> RefinementOptions {

@@ -2,6 +2,7 @@
 mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
+  use crate::clock::date_constraints::DateConstraints;
   use crate::timetree::inference::forward_pass::{propagate_distributions_forward, set_likely_time};
   use crate::timetree::timetree_state::{DateNodeState, TimetreeState};
   use eyre::Report;
@@ -59,12 +60,13 @@ mod tests {
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
+    let mut constraints = DateConstraints::default();
     let mut state = TimetreeState::new(&graph);
     // Internal root carries an empty (irreconcilable) time distribution; the leaf carries a date.
     state.node_mut(root_key).time_distribution = Some(Arc::new(Distribution::empty()));
-    set_date(&mut state, leaf_key, Distribution::point(2013.0, 0.0));
+    set_date(&mut constraints, &mut state, leaf_key, Distribution::point(2013.0, 0.0));
 
-    let state = run_forward_pass(&graph, &names, state)?;
+    let state = run_forward_pass(&graph, &constraints, &names, state)?;
 
     let root_time = node_time(&state, root_key);
 
@@ -85,12 +87,13 @@ mod tests {
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
+    let mut constraints = DateConstraints::default();
     let mut state = TimetreeState::new(&graph);
     set_time_distribution(&mut state, root_key, Distribution::point(2009.0, 0.0));
-    set_date(&mut state, leaf_key, Distribution::range((2009.5, 2013.5), 0.0));
+    set_date(&mut constraints, &mut state, leaf_key, Distribution::range((2009.5, 2013.5), 0.0));
     set_branch_length_distribution(&graph, &mut state, leaf_key, 1.0);
 
-    let state = run_forward_pass(&graph, &names, state)?;
+    let state = run_forward_pass(&graph, &constraints, &names, state)?;
 
     let leaf_time = node_time(&state, leaf_key).expect("leaf A should be dated");
     pretty_assert_ulps_eq!(leaf_time, 2010.0, max_ulps = 4);
@@ -112,12 +115,13 @@ mod tests {
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
+    let mut constraints = DateConstraints::default();
     let mut state = TimetreeState::new(&graph);
     set_time_distribution(&mut state, root_key, Distribution::point(2009.0, 0.0));
-    set_date(&mut state, leaf_key, Distribution::point(2008.0, 0.0));
+    set_date(&mut constraints, &mut state, leaf_key, Distribution::point(2008.0, 0.0));
     set_branch_length_distribution(&graph, &mut state, leaf_key, 1.0);
 
-    let state = run_forward_pass(&graph, &names, state)?;
+    let state = run_forward_pass(&graph, &constraints, &names, state)?;
 
     let leaf_time = node_time(&state, leaf_key).expect("leaf A should keep its observed date");
     pretty_assert_ulps_eq!(leaf_time, 2008.0, max_ulps = 4);
@@ -137,11 +141,12 @@ mod tests {
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
+    let mut constraints = DateConstraints::default();
     let mut state = TimetreeState::new(&graph);
     set_time_distribution(&mut state, root_key, Distribution::point(2009.0, 0.0));
-    set_date(&mut state, leaf_key, Distribution::range((2005.0, 2007.0), 0.0));
+    set_date(&mut constraints, &mut state, leaf_key, Distribution::range((2005.0, 2007.0), 0.0));
 
-    let state = run_forward_pass(&graph, &names, state)?;
+    let state = run_forward_pass(&graph, &constraints, &names, state)?;
 
     let leaf_time = node_time(&state, leaf_key).expect("leaf A should be dated");
     pretty_assert_ulps_eq!(leaf_time, 2009.0, max_ulps = 4);
@@ -159,13 +164,14 @@ mod tests {
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
+    let mut constraints = DateConstraints::default();
     let mut state = TimetreeState::new(&graph);
     set_time_distribution(&mut state, root_key, Distribution::point(2009.0, 0.0));
     let given = Distribution::range((2005.0, 2007.0), 0.0);
-    set_date(&mut state, leaf_key, given.clone());
+    set_date(&mut constraints, &mut state, leaf_key, given.clone());
     set_branch_length_distribution(&graph, &mut state, leaf_key, 1.0);
 
-    let state = run_forward_pass(&graph, &names, state)?;
+    let state = run_forward_pass(&graph, &constraints, &names, state)?;
 
     let leaf_dist = leaf_time_distribution(&state, leaf_key).expect("leaf A should keep its given date");
     assert_eq!(given, leaf_dist);
@@ -195,11 +201,12 @@ mod tests {
       let NwkParse { graph, names, .. } = nwk_read_str("(A:1.0)root;")?;
       let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
       let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
-      let mut state = TimetreeState::new(&graph);
+      let mut constraints = DateConstraints::default();
+    let mut state = TimetreeState::new(&graph);
       set_time_distribution(&mut state, root_key, parent);
-      set_date(&mut state, leaf_key, Distribution::range((2010.5, 2010.6), 0.0));
+      set_date(&mut constraints, &mut state, leaf_key, Distribution::range((2010.5, 2010.6), 0.0));
       set_branch_length_distribution(&graph, &mut state, leaf_key, 1.0);
-      let state = run_forward_pass(&graph, &names, state)?;
+      let state = run_forward_pass(&graph, &constraints, &names, state)?;
       node_time(&state, leaf_key).ok_or_else(|| eyre::eyre!("leaf A should be dated"))
     };
 
@@ -230,12 +237,13 @@ mod tests {
       let y = t.mapv(|t: f64| 0.5 * ((t - 2009.0) / 5.0).powi(2));
       Distribution::function(t, y)?
     };
+    let mut constraints = DateConstraints::default();
     let mut state = TimetreeState::new(&graph);
     set_time_distribution(&mut state, root_key, coarse_parent);
-    set_date(&mut state, leaf_key, Distribution::range((2010.500, 2010.503), 0.0));
+    set_date(&mut constraints, &mut state, leaf_key, Distribution::range((2010.500, 2010.503), 0.0));
     set_branch_length_distribution(&graph, &mut state, leaf_key, 1.0);
 
-    let state = run_forward_pass(&graph, &names, state)?;
+    let state = run_forward_pass(&graph, &constraints, &names, state)?;
 
     let leaf_time = node_time(&state, leaf_key).expect("leaf A should be dated");
     assert!(
@@ -253,10 +261,11 @@ mod tests {
     /// refined posteriors and committed times from the value.
     pub(super) fn run_forward_pass(
       graph: &TestGraph,
+      constraints: &DateConstraints,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       mut state: TimetreeState,
     ) -> Result<TimetreeState, Report> {
-      propagate_distributions_forward(graph, names, &mut state)?;
+      propagate_distributions_forward(graph, constraints, names, &mut state)?;
       Ok(state)
     }
 
@@ -269,11 +278,15 @@ mod tests {
 
     /// Give a node a date, as loading date constraints from the input does: the fixed constraint
     /// and the time distribution it seeds.
-    pub(super) fn set_date(state: &mut TimetreeState, key: GraphNodeKey, dist: Distribution<NegLog>) {
+    pub(super) fn set_date(
+      constraints: &mut DateConstraints,
+      state: &mut TimetreeState,
+      key: GraphNodeKey,
+      dist: Distribution<NegLog>,
+    ) {
       let dist = Arc::new(dist);
-      let node = state.node_mut(key);
-      node.date_constraint = Some(Arc::clone(&dist));
-      node.time_distribution = Some(dist);
+      constraints.date_constraints.insert(key, Some(Arc::clone(&dist)));
+      state.node_mut(key).time_distribution = Some(dist);
     }
 
     pub(super) fn set_time_distribution(state: &mut TimetreeState, key: GraphNodeKey, dist: Distribution<NegLog>) {

@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::clock::date_constraints::DateConstraints;
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::find_node_key_by_name;
@@ -30,7 +31,7 @@ mod tests {
     set_edge_branch_dist(&graph, &mut state, leaf_key, 2.5);
 
     // Run backward pass
-    let state = run_backward_pass(&graph, state, None)?;
+    let state = run_backward_pass(&graph, &DateConstraints::default(), state, None)?;
 
     // Check internal node I has time distribution centered at 2013.0 - 2.5 = 2010.5
     let internal_key = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
@@ -66,7 +67,7 @@ mod tests {
     set_edge_branch_dist(&graph, &mut state, leaf_a_key, 3.0);
     set_edge_branch_dist(&graph, &mut state, leaf_b_key, 2.0);
 
-    let state = run_backward_pass(&graph, state, None)?;
+    let state = run_backward_pass(&graph, &DateConstraints::default(), state, None)?;
 
     // Internal node I should have time at 2012.0 (both children agree)
     let internal_key = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
@@ -105,8 +106,8 @@ mod tests {
 
     // Two passes on one threaded state, as the pipeline runs them: the second pass starts from the
     // first pass's refined posteriors.
-    propagate_distributions_backward(&graph, Some(&coalescent_model), &mut state)?;
-    propagate_distributions_backward(&graph, Some(&coalescent_model), &mut state)?;
+    propagate_distributions_backward(&graph, &DateConstraints::default(), Some(&coalescent_model), &mut state)?;
+    propagate_distributions_backward(&graph, &DateConstraints::default(), Some(&coalescent_model), &mut state)?;
 
     // Verify leaf A still has its original date
     {
@@ -143,7 +144,7 @@ mod tests {
 
     let coalescent_model = coalescent_model(1e-6)?;
 
-    let state = run_backward_pass(&graph, state, Some(&coalescent_model))?;
+    let state = run_backward_pass(&graph, &DateConstraints::default(), state, Some(&coalescent_model))?;
 
     let actual = node_time_distribution(&state, internal_key).and_then(|distribution| distribution.likely_time());
     let expected = Some(2012.0);
@@ -162,16 +163,19 @@ mod tests {
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
     let constraint = Distribution::range((2014.0, 2015.0), 0.0);
+    let mut constraints = DateConstraints::default();
+    constraints
+      .date_constraints
+      .insert(leaf_key, Some(Arc::new(constraint.clone())));
     let mut state = TimetreeState::new(&graph);
     {
       let node = state.node_mut(leaf_key);
-      node.date_constraint = Some(Arc::new(constraint.clone()));
       // What a forward pass leaves behind: the range narrowed down by the rest of the tree.
       node.time_distribution = Some(Arc::new(Distribution::point(2014.2, 0.0)));
     }
     set_edge_branch_dist(&graph, &mut state, leaf_key, 3.0);
 
-    let state = run_backward_pass(&graph, state, None)?;
+    let state = run_backward_pass(&graph, &constraints, state, None)?;
 
     let actual = node_time_distribution(&state, leaf_key).expect("leaf A should have a time distribution");
     assert_eq!(&constraint, actual.as_ref());
@@ -189,14 +193,15 @@ mod tests {
     let leaf_b_key = find_node_key_by_name(&graph, &names, "B").expect("leaf B not found");
     let internal_key = find_node_key_by_name(&graph, &names, "I").expect("internal I not found");
 
+    let mut constraints = DateConstraints::default();
+    set_date_constraint(&mut constraints, leaf_a_key, Distribution::range((2014.0, 2016.0), 0.0));
+    set_date_constraint(&mut constraints, leaf_b_key, Distribution::range((2013.0, 2015.0), 0.0));
+    set_date_constraint(&mut constraints, internal_key, Distribution::range((2012.0, 2014.0), 0.0));
     let mut state = TimetreeState::new(&graph);
-    set_date_constraint(&mut state, leaf_a_key, Distribution::range((2014.0, 2016.0), 0.0));
-    set_date_constraint(&mut state, leaf_b_key, Distribution::range((2013.0, 2015.0), 0.0));
-    set_date_constraint(&mut state, internal_key, Distribution::range((2012.0, 2014.0), 0.0));
     set_edge_branch_dist(&graph, &mut state, leaf_a_key, 3.0);
     set_edge_branch_dist(&graph, &mut state, leaf_b_key, 2.0);
 
-    let state = run_backward_pass(&graph, state, None)?;
+    let state = run_backward_pass(&graph, &constraints, state, None)?;
 
     let actual = node_time_distribution(&state, internal_key).expect("internal node should have a time distribution");
     let expected = Distribution::range((2012.0, 2013.0), 0.0);
@@ -219,7 +224,7 @@ mod tests {
     set_edge_branch_dist(&graph, &mut state, leaf_key, 2.5);
 
     // The backward message stays in the value, so run on a state and read it back off that state.
-    propagate_distributions_backward(&graph, None, &mut state)?;
+    propagate_distributions_backward(&graph, &DateConstraints::default(), None, &mut state)?;
 
     // Check edge from I to A has msg_to_parent set
     for edge in graph.get_edges() {
@@ -262,7 +267,7 @@ mod tests {
     set_edge_branch_dist(&graph, &mut state, leaf_a_key, 3.0);
     set_edge_branch_dist(&graph, &mut state, leaf_b_key, 2.0);
 
-    let state = run_backward_pass(&graph, state, None)?;
+    let state = run_backward_pass(&graph, &DateConstraints::default(), state, None)?;
 
     // I should get time only from A: 2015.0 - 3.0 = 2012.0
     let internal_key = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
@@ -290,7 +295,7 @@ mod tests {
     let mut ref_state = TimetreeState::new(&ref_graph);
     set_leaf_time(&mut ref_state, ref_a_key, 2015.0);
     set_edge_branch_dist(&ref_graph, &mut ref_state, ref_a_key, 3.0);
-    let ref_state = run_backward_pass(&ref_graph, ref_state, None)?;
+    let ref_state = run_backward_pass(&ref_graph, &DateConstraints::default(), ref_state, None)?;
 
     let ref_internal_key = find_node_key_by_name(&ref_graph, &ref_names, "I").expect("internal I not found");
     let ref_time = node_time_distribution(&ref_state, ref_internal_key)
@@ -315,7 +320,7 @@ mod tests {
     // Mark B as bad
     test_state.node_mut(test_b_key).bad_branch = true;
 
-    let test_state = run_backward_pass(&test_graph, test_state, None)?;
+    let test_state = run_backward_pass(&test_graph, &DateConstraints::default(), test_state, None)?;
 
     let test_internal_key = find_node_key_by_name(&test_graph, &test_names, "I").expect("internal I not found");
     let test_time = node_time_distribution(&test_state, test_internal_key)
@@ -356,7 +361,7 @@ mod tests {
     set_edge_branch_dist(&graph, &mut state, b, 0.0);
     set_edge_branch_dist(&graph, &mut state, c, 0.0);
 
-    let state = run_backward_pass(&graph, state, None)?;
+    let state = run_backward_pass(&graph, &DateConstraints::default(), state, None)?;
 
     let internal = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
     let dist = node_time_distribution(&state, internal).expect("internal node should have a time distribution");
@@ -396,7 +401,7 @@ mod tests {
         set_leaf_function(&mut state, key, &x, y.clone())?;
         set_edge_branch_dist(&graph, &mut state, key, 0.0);
       }
-      let state = run_backward_pass(&graph, state, None)?;
+      let state = run_backward_pass(&graph, &DateConstraints::default(), state, None)?;
       let internal = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
       let dist = node_time_distribution(&state, internal).expect("internal node should have a time distribution");
       Ok((
@@ -440,7 +445,7 @@ mod tests {
     set_edge_branch_dist(&graph, &mut state, b, 0.0);
     set_edge_branch_dist(&graph, &mut state, c, 0.0);
 
-    let state = run_backward_pass(&graph, state, None)?;
+    let state = run_backward_pass(&graph, &DateConstraints::default(), state, None)?;
 
     let internal = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
     let dist = node_time_distribution(&state, internal).expect("internal node should have a time distribution");
@@ -463,10 +468,11 @@ mod tests {
     /// refined node posteriors and backward messages from the value.
     pub(super) fn run_backward_pass(
       graph: &Graph,
+      constraints: &DateConstraints,
       mut state: TimetreeState,
       coalescent_model: Option<&CoalescentModel>,
     ) -> Result<TimetreeState, Report> {
-      propagate_distributions_backward(graph, coalescent_model, &mut state)?;
+      propagate_distributions_backward(graph, constraints, coalescent_model, &mut state)?;
       Ok(state)
     }
 
@@ -480,8 +486,8 @@ mod tests {
 
     /// Give a node the date it was loaded with, and nothing else: the backward pass is what lifts
     /// it into the node's time distribution.
-    pub(super) fn set_date_constraint(state: &mut TimetreeState, key: GraphNodeKey, dist: Distribution<NegLog>) {
-      state.node_mut(key).date_constraint = Some(Arc::new(dist));
+    pub(super) fn set_date_constraint(constraints: &mut DateConstraints, key: GraphNodeKey, dist: Distribution<NegLog>) {
+      constraints.date_constraints.insert(key, Some(Arc::new(dist)));
     }
 
     pub(super) fn set_leaf_time(state: &mut TimetreeState, key: GraphNodeKey, time: f64) {

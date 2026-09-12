@@ -230,7 +230,7 @@ pub fn run(
   // value-resident divergence and outlier flag on the clock results. The estimate's clock outputs are
   // not read by timetree's own downstream, so no repopulation is needed after this call.
   clock_state.reseed_transitional(&input.graph);
-  let mut clock_inputs = ClockInputs::seed_from_times(&input.graph, &timetree_state.likely_times());
+  let mut clock_inputs = ClockInputs::seed_from_times(&input.graph, &timetree_state.likely_times(&date_constraints));
   let (new_clock_state, clock_reroot) = estimate_clock_model_with_reroot_policy(
     &mut input.graph,
     &mut clock_inputs,
@@ -290,6 +290,7 @@ pub fn run(
     info!("First reroot (pre-ancestral)");
     clock_model = reroot_tree(
       &mut input.graph,
+      &date_constraints,
       &mut clock_state,
       &timetree_state,
       &mut partitions,
@@ -315,7 +316,7 @@ pub fn run(
     // outlier flag, then run the filter on the state: it recomputes the divergence and marks outliers
     // into the value. Timetree's own downstream (outlier bad-branch propagation, confidence intervals,
     // tree writers) reads the divergence and outlier flag from the threaded state.
-    let given_dates = timetree_state.likely_times();
+    let given_dates = timetree_state.likely_times(&date_constraints);
     clock_state.reseed_transitional(&input.graph);
     let clock_inputs = ClockInputs::seed_from_times(&input.graph, &given_dates);
     let result = clock_filter_inplace(
@@ -362,6 +363,7 @@ pub fn run(
     info!("Reroot (post-ancestral)");
     clock_model = reroot_tree(
       &mut input.graph,
+      &date_constraints,
       &mut clock_state,
       &timetree_state,
       &mut partitions,
@@ -397,15 +399,16 @@ pub fn run(
 
   // Initial time tree. Snapshot the current per-edge lengths for this pass; the branch-distribution
   // construction and forward pass read them and the names map.
-  run_timetree(
+  timetree_state = run_timetree(
     &mut input.graph,
+    &date_constraints,
     &partitions,
     &branch_lengths,
     &names,
     &clock_model,
     None,
     params.no_indels,
-    &mut timetree_state,
+    timetree_state,
     &mut clock_state,
   )?;
 
@@ -447,15 +450,16 @@ pub fn run(
 
   if prior_wanted {
     let prior = CoalescentModel::new(&lineage_counts, &coalescent_tc.distribution)?;
-    run_timetree(
+    timetree_state = run_timetree(
       &mut input.graph,
+      &date_constraints,
       &partitions,
       &branch_lengths,
       &names,
       &clock_model,
       Some(&prior),
       params.no_indels,
-      &mut timetree_state,
+      timetree_state,
       &mut clock_state,
     )?;
   }
@@ -523,7 +527,7 @@ pub fn run(
     // Preserve every k(t) and Tc(t) discontinuity for event-sampler boundaries.
     let merger_rate = coalescent_model.branch_merger_rate_schedule(&coalescent_tc.schedule)?;
 
-    let outcome = Refinement {
+    let (new_timetree_state, outcome) = Refinement {
       graph: &mut input.graph,
       partitions: &mut partitions,
       clock_model: &mut clock_model,
@@ -533,7 +537,8 @@ pub fn run(
       prior: prior_wanted.then_some(&coalescent_model),
       rng: &mut rng,
       options: &refinement_options,
-      state: &mut timetree_state,
+      constraints: &date_constraints,
+      state: timetree_state,
       clock_state: &mut clock_state,
       clock_branch_lengths: &mut clock_branch_lengths,
       branch_lengths: &mut branch_lengths,
@@ -541,6 +546,7 @@ pub fn run(
     }
     .run()
     .wrap_err_with(|| format!("When running round {i}"))?;
+    timetree_state = new_timetree_state;
 
     optimizer
       .record(
@@ -596,6 +602,7 @@ pub fn run(
     info!("### Rate susceptibility analysis (rate_std={rate_std:.6e})");
     compute_rate_susceptibility(
       &mut input.graph,
+      &date_constraints,
       &partitions,
       &clock_model,
       final_prior,
@@ -613,15 +620,16 @@ pub fn run(
 
   if time_marginal == TimeMarginalMode::OnlyFinal {
     info!("### Final round: marginal reconstruction for confidence intervals");
-    run_timetree(
+    timetree_state = run_timetree(
       &mut input.graph,
+      &date_constraints,
       &partitions,
       &branch_lengths,
       &names,
       &clock_model,
       final_prior,
       params.no_indels,
-      &mut timetree_state,
+      timetree_state,
       &mut clock_state,
     )
     .wrap_err("Final timetree inference failed")?;

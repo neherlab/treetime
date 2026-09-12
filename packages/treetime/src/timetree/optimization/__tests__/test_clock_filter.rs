@@ -45,7 +45,7 @@ mod tests {
   /// state starts from those dates with default divergence and outlier flags.
   fn seed_clock_state(graph: &Graph, constraints: &DateConstraints) -> (ClockInputs, ClockState) {
     let date_state = TimetreeState::seed_from_values(graph, constraints);
-    let inputs = ClockInputs::seed_from_times(graph, &date_state.likely_times());
+    let inputs = ClockInputs::seed_from_times(graph, &date_state.likely_times(&constraints));
     (inputs, ClockState::new(graph))
   }
 
