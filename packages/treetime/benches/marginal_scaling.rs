@@ -6,8 +6,10 @@ use std::hint::black_box;
 use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::fitch::create_fitch_partition;
-use treetime::ancestral::marginal::{marginal_update, profile_branch_lengths};
+use treetime::ancestral::marginal::profile_branch_lengths;
+use treetime::ancestral::pipeline::SparseReconstruction;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
+use treetime::optimize::run_loop::marginal_update_sparse;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_io::fasta::read_many_fasta;
@@ -31,7 +33,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
       bencher.iter(|| {
         pool
           .install(|| {
-            marginal_update(
+            marginal_update_sparse(
               black_box(&graph),
               &profile_branch_lengths(black_box(&branch_lengths)),
               black_box(&mut partitions),
@@ -44,11 +46,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
   group.finish();
 }
 
-fn setup() -> (
-  Graph,
-  [treetime::partition::marginal::sparse::partition::PartitionMarginalSparse; 1],
-  BTreeMap<GraphEdgeKey, Option<f64>>,
-) {
+fn setup() -> (Graph, [SparseReconstruction; 1], BTreeMap<GraphEdgeKey, Option<f64>>) {
   ThreadPoolBuilder::new()
     .num_threads(1)
     .build()
@@ -56,11 +54,7 @@ fn setup() -> (
     .install(setup_inner)
 }
 
-fn setup_inner() -> (
-  Graph,
-  [treetime::partition::marginal::sparse::partition::PartitionMarginalSparse; 1],
-  BTreeMap<GraphEdgeKey, Option<f64>>,
-) {
+fn setup_inner() -> (Graph, [SparseReconstruction; 1], BTreeMap<GraphEdgeKey, Option<f64>>) {
   let alphabet = Alphabet::default();
   let project_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
   let NwkParse {
@@ -72,9 +66,18 @@ fn setup_inner() -> (
   let alignment = read_many_fasta(&[project_root.join("data/flu/h3n2/200/aln.fasta.xz")], &alphabet).unwrap();
   let fitch = create_fitch_partition(&graph, 0, alphabet, &alignment, &names).unwrap();
   let gtr = jc69(JC69Params::default()).unwrap();
-  let partition = fitch.into_marginal_sparse(gtr, &graph).unwrap();
-  let mut partitions = [partition];
-  marginal_update(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions).unwrap();
+  let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph).unwrap();
+  let mut recon = SparseReconstruction {
+    partition,
+    node_states,
+    backward: BTreeMap::new(),
+    forward: BTreeMap::new(),
+    estimates: BTreeMap::new(),
+  };
+  recon
+    .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
+    .unwrap();
+  let partitions = [recon];
   (graph, partitions, branch_lengths)
 }
 
