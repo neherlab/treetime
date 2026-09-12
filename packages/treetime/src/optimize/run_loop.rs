@@ -501,7 +501,7 @@ pub fn prune_and_merge_in_loop(
 /// Reconcile a sparse family's evolving maps to the current graph after a topology change: seed a
 /// placeholder node state for every current node absent from the map, drop states for removed nodes,
 /// and drop the stale edge messages and estimates. Leaf seeds are preserved.
-fn reconcile_sparse_family(graph: &Graph, family: &mut SparseReconstruction) {
+pub(crate) fn reconcile_sparse_family(graph: &Graph, family: &mut SparseReconstruction) {
   let node_keys: Vec<GraphNodeKey> = graph.get_nodes().iter().map(|node| node.read_arc().key()).collect();
   for &key in &node_keys {
     family.node_states.entry(key).or_insert_with(SparseNodeState::empty);

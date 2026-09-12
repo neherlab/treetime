@@ -10,7 +10,7 @@ mod tests {
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{
     OptimizeReadouts, find_zero_optimal_internal_edges, marginal_update_dense, marginal_update_sparse,
-    prune_and_merge_in_loop, run_optimize_loop,
+    prune_and_merge_in_loop, reconcile_sparse_family, run_optimize_loop,
   };
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -466,6 +466,14 @@ mod tests {
       graph.get_nodes().len() > initial_node_count,
       "merge should have created new internal nodes"
     );
+
+    // New caller contract: the topology mutator updates the sparse observations in place but leaves
+    // the evolving node-state map keyed to the pre-merge topology. Reconcile the node states to the
+    // current node set (seeding placeholders for merge-created nodes) before the next marginal pass,
+    // exactly as the production optimize loop does after a topology batch.
+    for family in sparse_partitions.iter_mut() {
+      reconcile_sparse_family(&graph, family);
+    }
 
     // The critical test: marginal_update after merge must produce finite log-likelihood.
     // Before the composition fix, the merge-created node had zero composition,
