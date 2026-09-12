@@ -7,12 +7,11 @@ mod tests {
   //! Golden outputs captured via `gm_infer_gtr_dense_capture` script.
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::initialize_marginal;
   use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::traits::TransitionCounting;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
@@ -41,9 +40,12 @@ mod tests {
 
     let fasta_str = alignment_to_fasta(&case.alignment);
     let aln = read_many_fasta_str(&fasta_str, &*NUC_ALPHABET)?;
-    let (graph, partition, branch_lengths) = setup_dense_partition(&case.tree, &aln)?;
+    let (graph, recon, branch_lengths) = setup_dense_partition(&case.tree, &aln)?;
 
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let counts =
+      recon
+        .partition
+        .count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     // Short synthetic sequences: limited floating-point accumulation, tight tolerance
@@ -66,8 +68,11 @@ mod tests {
     let case = &INPUTS.real[case_name];
     let expected = &OUTPUTS.real[case_name];
 
-    let (graph, partition, branch_lengths) = setup_dense_partition_from_files(&case.tree_path, &case.alignment_path)?;
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let (graph, recon, branch_lengths) = setup_dense_partition_from_files(&case.tree_path, &case.alignment_path)?;
+    let counts =
+      recon
+        .partition
+        .count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
     // BLAS drift between NumPy and ndarray scales with sequence length. mpox_clade_ii_20
@@ -128,7 +133,7 @@ mod tests {
   fn setup_dense_partition(
     tree_nwk: &str,
     aln: &[FastaRecord],
-  ) -> Result<(Graph, PartitionMarginalDense, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+  ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let NwkParse {
       graph,
       names,
@@ -142,23 +147,23 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let mut partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
-
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      std::slice::from_mut(&mut partition),
-      aln,
-      &names,
-    )?
-    .value();
-    Ok((graph, partition, branch_lengths))
+    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
+    let node_states = partition.attach_sequences(&graph, aln, &names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    Ok((graph, recon, branch_lengths))
   }
 
   fn setup_dense_partition_from_files(
     tree_path: impl AsRef<Path>,
     alignment_path: impl AsRef<Path>,
-  ) -> Result<(Graph, PartitionMarginalDense, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+  ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let tree_path = PROJECT_ROOT.join(tree_path);
     let alignment_path = PROJECT_ROOT.join(alignment_path);
 
@@ -177,17 +182,17 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let mut partition = PartitionMarginalDense::new(0, gtr, NUC_ALPHABET.clone(), get_common_length(&aln)?);
-
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      std::slice::from_mut(&mut partition),
-      &aln,
-      &names,
-    )?
-    .value();
-    Ok((graph, partition, branch_lengths))
+    let partition = PartitionMarginalDense::new(0, gtr, NUC_ALPHABET.clone(), get_common_length(&aln)?);
+    let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    Ok((graph, recon, branch_lengths))
   }
 
   fn alignment_to_fasta(aln: &BTreeMap<String, String>) -> String {

@@ -15,12 +15,11 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
-  use crate::ancestral::marginal::initialize_marginal;
   use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::traits::TransitionCounting;
   use crate::seq::alignment::get_common_length;
   use pretty_assertions::assert_eq;
 
@@ -51,7 +50,7 @@ mod tests {
   fn setup_dense(
     tree_nwk: &str,
     aln: &[FastaRecord],
-  ) -> Result<(Graph, PartitionMarginalDense, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+  ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let NwkParse {
       graph,
       names,
@@ -64,16 +63,17 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    let mut partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
-    initialize_marginal(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      std::slice::from_mut(&mut partition),
-      aln,
-      &names,
-    )?
-    .value();
-    Ok((graph, partition, branch_lengths))
+    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
+    let node_states = partition.attach_sequences(&graph, aln, &names)?;
+    let mut recon = DenseReconstruction {
+      partition,
+      node_states,
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    };
+    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    Ok((graph, recon, branch_lengths))
   }
 
   fn setup_sparse(
@@ -117,7 +117,7 @@ mod tests {
       "((ref1:0.1,ref2:0.1)R12:0.05,(ref3:0.1,mut1:0.1)R3M:0.05)root:0.0;",
       &aln,
     )?;
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.partition.count_transitions(&graph, &branch_lengths, &partition.node_states, &partition.backward, &partition.forward)?;
 
     // nij[C, A] should dominate: mutation from parent=A to child=C
     assert!(
@@ -235,8 +235,8 @@ mod tests {
     let (graph1, partition1, branch_lengths1) = setup_dense(&tree1, &aln)?;
     let (graph2, partition2, branch_lengths2) = setup_dense(&tree2, &aln)?;
 
-    let counts1 = partition1.count_transitions(&graph1, &branch_lengths1)?;
-    let counts2 = partition2.count_transitions(&graph2, &branch_lengths2)?;
+    let counts1 = partition1.partition.count_transitions(&graph1, &branch_lengths1, &partition1.node_states, &partition1.backward, &partition1.forward)?;
+    let counts2 = partition2.partition.count_transitions(&graph2, &branch_lengths2, &partition2.node_states, &partition2.backward, &partition2.forward)?;
 
     // Measured max diff: 8.94e-8 (case small_vs_large, Ti[0])
     let ratio = bl2 / bl1;
@@ -274,7 +274,7 @@ mod tests {
     let (graph_d, partition_d, branch_lengths_d) = setup_dense(tree_nwk, &aln)?;
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
-    let dense = partition_d.count_transitions(&graph_d, &branch_lengths_d)?;
+    let dense = partition_d.partition.count_transitions(&graph_d, &branch_lengths_d, &partition_d.node_states, &partition_d.backward, &partition_d.forward)?;
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &branch_lengths_s)?;
 
     // nij: dense fractional counts should approximate sparse integer counts.
@@ -341,7 +341,7 @@ mod tests {
     )?;
 
     let (graph, partition, branch_lengths) = setup_dense("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;", &aln)?;
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.partition.count_transitions(&graph, &branch_lengths, &partition.node_states, &partition.backward, &partition.forward)?;
 
     // root_state[A] should dominate: 8 positions, root reconstructed as mostly A
     assert!(
@@ -473,7 +473,7 @@ mod tests {
 
     let tree_nwk = "((a1:0.1,a2:0.1,t1:0.1)left:0.05,(a3:0.1,a4:0.1,t2:0.1)right:0.05)root:0.0;";
     let (graph, partition, branch_lengths) = setup_dense(tree_nwk, &aln)?;
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.partition.count_transitions(&graph, &branch_lengths, &partition.node_states, &partition.backward, &partition.forward)?;
 
     // nij[T, A] should reflect two A->T mutations (one per subtree)
     assert!(
@@ -555,7 +555,7 @@ mod tests {
     let (graph_d, partition_d, branch_lengths_d) = setup_dense(tree_nwk, &aln)?;
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
-    let dense = partition_d.count_transitions(&graph_d, &branch_lengths_d)?;
+    let dense = partition_d.partition.count_transitions(&graph_d, &branch_lengths_d, &partition_d.node_states, &partition_d.backward, &partition_d.forward)?;
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &branch_lengths_s)?;
 
     // Both should have their largest off-diagonal nij entry in the same cell
@@ -600,7 +600,7 @@ mod tests {
 
     let (graph, partition, branch_lengths) =
       setup_dense("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
-    let counts = partition.count_transitions(&graph, &branch_lengths)?;
+    let counts = partition.partition.count_transitions(&graph, &branch_lengths, &partition.node_states, &partition.backward, &partition.forward)?;
 
     // root_state sums to alignment length (one count per position)
     assert_eq!(14.0, counts.root_state.sum());
@@ -633,7 +633,7 @@ mod tests {
     let (graph_d, partition_d, branch_lengths_d) = setup_dense(tree_nwk, &aln)?;
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
-    let dense = partition_d.count_transitions(&graph_d, &branch_lengths_d)?;
+    let dense = partition_d.partition.count_transitions(&graph_d, &branch_lengths_d, &partition_d.node_states, &partition_d.backward, &partition_d.forward)?;
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &branch_lengths_s)?;
 
     pretty_assert_array_diag_abs!(dense.nij, epsilon = 1e-15);
@@ -664,7 +664,7 @@ mod tests {
     let (graph_d, partition_d, branch_lengths_d) = setup_dense(tree_nwk, &aln)?;
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
-    let dense = partition_d.count_transitions(&graph_d, &branch_lengths_d)?;
+    let dense = partition_d.partition.count_transitions(&graph_d, &branch_lengths_d, &partition_d.node_states, &partition_d.backward, &partition_d.forward)?;
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &branch_lengths_s)?;
 
     pretty_assert_array_nonneg!(dense.nij);
@@ -695,7 +695,7 @@ mod tests {
     let (graph_d, partition_d, branch_lengths_d) = setup_dense(tree_nwk, &aln)?;
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
-    let dense = partition_d.count_transitions(&graph_d, &branch_lengths_d)?;
+    let dense = partition_d.partition.count_transitions(&graph_d, &branch_lengths_d, &partition_d.node_states, &partition_d.backward, &partition_d.forward)?;
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &branch_lengths_s)?;
 
     pretty_assert_array_nonneg!(dense.Ti);

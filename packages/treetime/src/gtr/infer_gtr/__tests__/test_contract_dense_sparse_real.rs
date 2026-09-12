@@ -34,13 +34,12 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::infer_gtr_fitch;
-  use crate::ancestral::marginal::initialize_marginal;
   use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::traits::TransitionCounting;
   use crate::seq::alignment::get_common_length;
 
   use eyre::Report;
@@ -48,6 +47,7 @@ mod tests {
   use treetime_graph::graph::Graph;
 
   use ndarray::{Array1, Array2};
+  use std::collections::BTreeMap;
   use rstest::rstest;
   use std::path::PathBuf;
   use treetime_io::fasta::read_many_fasta;
@@ -126,7 +126,7 @@ mod tests {
         ..
       } = nwk_read_file(&tree_path)?;
       let graph: Graph = graph;
-      let mut partition = PartitionMarginalDense::new(
+      let partition = PartitionMarginalDense::new(
         0,
         jc69(JC69Params {
           alphabet: AlphabetName::Nuc,
@@ -135,17 +135,21 @@ mod tests {
         DENSE_NUC_ALPHABET.clone(),
         get_common_length(&aln)?,
       );
-      initialize_marginal(
-        &graph,
-        &profile_branch_lengths(&branch_lengths),
-        std::slice::from_mut(&mut partition),
-        &aln,
-        &names,
-      )?
-      .value();
-      let counts = partition.count_transitions(&graph, &branch_lengths)?;
+      let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+      let mut recon = DenseReconstruction {
+        partition,
+        node_states,
+        backward: BTreeMap::new(),
+        forward: BTreeMap::new(),
+        estimates: BTreeMap::new(),
+      };
+      recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+      let counts =
+        recon
+          .partition
+          .count_transitions(&graph, &branch_lengths, &recon.node_states, &recon.backward, &recon.forward)?;
       let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
-      let n_states = partition.alphabet.n_canonical();
+      let n_states = recon.partition.alphabet.n_canonical();
       GTR::new(GTRParams {
         n_states,
         mu,
