@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::{marginal_update, profile_branch_lengths};
+  use crate::ancestral::marginal::profile_branch_lengths;
   use crate::o;
-  use crate::partition::marginal::shared::pass::{marginal_process_backward_indexed, marginal_process_forward_indexed};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -15,23 +14,21 @@ mod tests {
   fn test_discrete_marginal_attach_traits_maps_observed_and_missing_profiles() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let graph: Graph = graph;
-    let mut partition = helpers::make_partition(["usa", "germany"])?;
+    let partition = helpers::make_partition(["usa", "germany"])?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("?"),
     };
 
-    partition.attach_traits(&graph, &traits, &names)?;
+    let node_states = partition.attach_traits(&graph, &traits, &names)?;
 
-    let node_a_profile = helpers::get_node_profile(&graph, &names, &partition, "A");
+    let node_a_profile = helpers::get_node_profile(&graph, &names, &node_states, "A");
     assert_abs_diff_eq!(node_a_profile[0], 0.0, epsilon = 1e-10);
     assert_abs_diff_eq!(node_a_profile[1], 1.0, epsilon = 1e-10);
 
-    let node_b_profile = helpers::get_node_profile(&graph, &names, &partition, "B");
+    let node_b_profile = helpers::get_node_profile(&graph, &names, &node_states, "B");
     assert_abs_diff_eq!(node_b_profile[0], 0.5, epsilon = 1e-10);
     assert_abs_diff_eq!(node_b_profile[1], 0.5, epsilon = 1e-10);
-
-    assert_eq!(graph.get_edges().len(), partition.data.edges.len());
 
     Ok(())
   }
@@ -40,7 +37,7 @@ mod tests {
   fn test_discrete_marginal_attach_traits_rejects_tree_leaf_missing_from_metadata() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let graph: Graph = graph;
-    let mut partition = helpers::make_partition(["usa", "germany"])?;
+    let partition = helpers::make_partition(["usa", "germany"])?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
     };
@@ -55,7 +52,7 @@ mod tests {
   fn test_discrete_marginal_attach_traits_accepts_metadata_name_missing_from_tree() -> Result<(), Report> {
     let NwkParse { graph, names, .. } = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let graph: Graph = graph;
-    let mut partition = helpers::make_partition(["usa", "germany"])?;
+    let partition = helpers::make_partition(["usa", "germany"])?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
@@ -63,13 +60,13 @@ mod tests {
     };
 
     // "C" has no matching tree leaf. Attachment warns and proceeds; matched leaves are unaffected.
-    partition.attach_traits(&graph, &traits, &names)?;
+    let node_states = partition.attach_traits(&graph, &traits, &names)?;
 
-    let node_a_profile = helpers::get_node_profile(&graph, &names, &partition, "A");
+    let node_a_profile = helpers::get_node_profile(&graph, &names, &node_states, "A");
     assert_abs_diff_eq!(node_a_profile[0], 0.0, epsilon = 1e-10);
     assert_abs_diff_eq!(node_a_profile[1], 1.0, epsilon = 1e-10);
 
-    let node_b_profile = helpers::get_node_profile(&graph, &names, &partition, "B");
+    let node_b_profile = helpers::get_node_profile(&graph, &names, &node_states, "B");
     assert_abs_diff_eq!(node_b_profile[0], 1.0, epsilon = 1e-10);
     assert_abs_diff_eq!(node_b_profile[1], 0.0, epsilon = 1e-10);
 
@@ -79,35 +76,36 @@ mod tests {
   #[test]
   fn test_discrete_marginal_passes_normalize_backward_and_forward_profiles() -> Result<(), Report> {
     let (graph, names, raw_branch_lengths) = helpers::make_fixture_graph()?;
-    let mut partition = helpers::make_partition(["usa", "germany"])?;
+    let partition = helpers::make_partition(["usa", "germany"])?;
     let traits = helpers::make_fixture_traits();
 
-    partition.attach_traits(&graph, &traits, &names)?;
+    let node_states = partition.attach_traits(&graph, &traits, &names)?;
 
     let branch_lengths = profile_branch_lengths(&raw_branch_lengths);
-    marginal_process_backward_indexed(&mut partition, &graph, &branch_lengths)?;
+    let (node_states, backward) = partition.marginal_backward(&graph, &branch_lengths, &node_states)?;
 
-    let root_profile = helpers::get_node_profile(&graph, &names, &partition, "root");
+    let root_profile = helpers::get_node_profile(&graph, &names, &node_states, "root");
     helpers::assert_profile_normalized(&root_profile);
 
-    let inner_to_root_msg = helpers::get_edge_msg_from_child(&graph, &names, &partition, "root", "inner");
+    let inner_to_root_msg = helpers::get_edge_msg_from_child(&graph, &names, &backward, "root", "inner");
     helpers::assert_profile_normalized(&inner_to_root_msg);
 
-    let leaf_to_inner_msg = helpers::get_edge_msg_from_child(&graph, &names, &partition, "inner", "A");
+    let leaf_to_inner_msg = helpers::get_edge_msg_from_child(&graph, &names, &backward, "inner", "A");
     helpers::assert_profile_normalized(&leaf_to_inner_msg);
 
-    marginal_process_forward_indexed(&mut partition, &graph, &branch_lengths)?;
+    let (node_states, forward, _estimates) =
+      partition.marginal_forward(&graph, &branch_lengths, &node_states, &backward)?;
 
-    let root_profile = helpers::get_node_profile(&graph, &names, &partition, "root");
+    let root_profile = helpers::get_node_profile(&graph, &names, &node_states, "root");
     helpers::assert_profile_normalized(&root_profile);
 
-    let inner_profile = helpers::get_node_profile(&graph, &names, &partition, "inner");
+    let inner_profile = helpers::get_node_profile(&graph, &names, &node_states, "inner");
     helpers::assert_profile_normalized(&inner_profile);
 
-    let root_to_c_msg = helpers::get_edge_msg_to_child(&graph, &names, &partition, "root", "C");
+    let root_to_c_msg = helpers::get_edge_msg_to_child(&graph, &names, &forward, "root", "C");
     helpers::assert_profile_normalized(&root_to_c_msg);
 
-    let inner_to_b_msg = helpers::get_edge_msg_to_child(&graph, &names, &partition, "inner", "B");
+    let inner_to_b_msg = helpers::get_edge_msg_to_child(&graph, &names, &forward, "inner", "B");
     helpers::assert_profile_normalized(&inner_to_b_msg);
 
     Ok(())
@@ -116,18 +114,14 @@ mod tests {
   #[test]
   fn test_discrete_marginal_run_returns_finite_log_lh_and_reconstructs_internal_trait() -> Result<(), Report> {
     let (graph, names, raw_branch_lengths) = helpers::make_fixture_graph()?;
-    let mut partition = helpers::make_partition(["usa", "germany"])?;
+    let partition = helpers::make_partition(["usa", "germany"])?;
     let traits = helpers::make_fixture_traits();
 
-    partition.attach_traits(&graph, &traits, &names)?;
+    let node_states = partition.attach_traits(&graph, &traits, &names)?;
 
-    let mut partition = partition;
-    let actual_log_lh = marginal_update(
-      &graph,
-      &profile_branch_lengths(&raw_branch_lengths),
-      std::slice::from_mut(&mut partition),
-    )?
-    .value();
+    let (node_states, _backward, _forward, _estimates, log_lh) =
+      partition.marginal_update(&graph, &profile_branch_lengths(&raw_branch_lengths), node_states)?;
+    let actual_log_lh = log_lh.value();
 
     assert!(actual_log_lh.is_finite());
     assert!(
@@ -135,13 +129,12 @@ mod tests {
       "Log-likelihood must be non-positive: {actual_log_lh}"
     );
 
-    let partition = &partition;
-    let inner_profile = helpers::get_node_profile(&graph, &names, partition, "inner");
+    let inner_profile = helpers::get_node_profile(&graph, &names, &node_states, "inner");
     helpers::assert_profile_normalized(&inner_profile);
 
     let inner_key = helpers::get_node_key(&graph, &names, "inner");
     let expected_trait = Some(o!("usa"));
-    let actual_trait = partition.get_reconstructed_trait(inner_key);
+    let actual_trait = partition.get_reconstructed_trait(&node_states, inner_key);
     assert_eq!(expected_trait, actual_trait);
 
     Ok(())
@@ -152,6 +145,7 @@ mod tests {
     use crate::gtr::gtr::{GTR, GTRParams};
     use crate::o;
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
+    use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward, DenseNodeState};
     use crate::partition::storage::discrete::DiscreteStates;
     use crate::test_utils::{find_edge_key, find_node_key_by_name};
     use eyre::Report;
@@ -225,13 +219,11 @@ mod tests {
     pub(super) fn get_node_profile(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      partition: &PartitionMarginalDiscrete,
+      node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
       name: &str,
     ) -> Array1<f64> {
       let node_key = get_node_key(graph, names, name);
-      let node = partition
-        .data
-        .nodes
+      let node = node_states
         .get(&node_key)
         .unwrap_or_else(|| panic!("Missing discrete node data for '{name}'"));
       node.profile.dis.row(0).to_owned()
@@ -240,15 +232,13 @@ mod tests {
     pub(super) fn get_edge_msg_from_child(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      partition: &PartitionMarginalDiscrete,
+      backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
       source_name: &str,
       target_name: &str,
     ) -> Array1<f64> {
       let edge_key = find_edge_key(graph, names, source_name, target_name)
         .unwrap_or_else(|| panic!("Missing test edge '{source_name}' -> '{target_name}'"));
-      let edge = partition
-        .data
-        .edges
+      let edge = backward
         .get(&edge_key)
         .unwrap_or_else(|| panic!("Missing discrete edge data for '{source_name}' -> '{target_name}'"));
       edge.msg_from_child.dis.row(0).to_owned()
@@ -257,15 +247,13 @@ mod tests {
     pub(super) fn get_edge_msg_to_child(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      partition: &PartitionMarginalDiscrete,
+      forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
       source_name: &str,
       target_name: &str,
     ) -> Array1<f64> {
       let edge_key = find_edge_key(graph, names, source_name, target_name)
         .unwrap_or_else(|| panic!("Missing test edge '{source_name}' -> '{target_name}'"));
-      let edge = partition
-        .data
-        .edges
+      let edge = forward
         .get(&edge_key)
         .unwrap_or_else(|| panic!("Missing discrete edge data for '{source_name}' -> '{target_name}'"));
       edge.msg_to_child.dis.row(0).to_owned()
