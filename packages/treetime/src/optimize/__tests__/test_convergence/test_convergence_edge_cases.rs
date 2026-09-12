@@ -2,7 +2,7 @@
 mod tests {
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
+  use crate::optimize::run_loop::OptimizeReadouts;
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::graph::Graph;

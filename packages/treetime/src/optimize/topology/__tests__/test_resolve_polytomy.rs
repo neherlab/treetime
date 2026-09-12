@@ -2,7 +2,6 @@
 mod tests {
   use crate::optimize::params::TopologyOps;
   use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
-  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
@@ -12,7 +11,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
 
-  use helpers::{no_dense, reversion_present, sub, total_subs};
+  use helpers::{reversion_present, sub, total_subs};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
   // root -> U -> V -> {C1, C2, C3}. V is the polytomy under test.
@@ -48,7 +47,6 @@ mod tests {
     let changed = resolve_polytomies(
       &mut graph,
       &mut sparse,
-      &mut no_dense(),
       TopologyOps::default(),
       &mut branch_lengths,
     )?;
@@ -102,7 +100,6 @@ mod tests {
     resolve_polytomies(
       &mut graph,
       &mut sparse,
-      &mut no_dense(),
       TopologyOps::default(),
       &mut branch_lengths,
     )?;
@@ -153,7 +150,6 @@ mod tests {
     let changed = resolve_polytomies(
       &mut graph,
       &mut sparse,
-      &mut no_dense(),
       TopologyOps::default(),
       &mut branch_lengths,
     )?;
@@ -202,7 +198,6 @@ mod tests {
     resolve_polytomies(
       &mut graph,
       &mut sparse,
-      &mut no_dense(),
       TopologyOps::default(),
       &mut branch_lengths,
     )?;
@@ -252,7 +247,6 @@ mod tests {
     let changed = resolve_polytomies(
       &mut graph,
       &mut sparse,
-      &mut no_dense(),
       TopologyOps::default(),
       &mut branch_lengths,
     )?;
@@ -292,7 +286,6 @@ mod tests {
     let changed = resolve_polytomies(
       &mut graph,
       &mut sparse,
-      &mut no_dense(),
       TopologyOps::default(),
       &mut branch_lengths,
     )?;
@@ -306,11 +299,12 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+    use crate::ancestral::pipeline::SparseReconstruction;
     use crate::gtr::get_gtr::{JC69Params, jc69};
-    use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
+    use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
     use crate::test_utils::find_edge_key;
     use maplit::btreemap;
-    use treetime_primitives::{AsciiChar, Seq, seq};
+    use treetime_primitives::{AsciiChar, Seq};
 
     pub fn c(b: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(b)
@@ -320,24 +314,20 @@ mod tests {
       Sub::new(c(reff), pos, c(qry)).unwrap()
     }
 
-    pub fn no_dense() -> Vec<PartitionMarginalDense> {
-      vec![]
-    }
-
-    pub fn total_subs(graph: &Graph, partition: &PartitionMarginalSparse) -> usize {
+    pub fn total_subs(graph: &Graph, recon: &SparseReconstruction) -> usize {
       graph
         .get_edges()
         .iter()
-        .filter_map(|e| partition.edges.get(&e.read_arc().key()))
+        .filter_map(|e| recon.partition.obs_edges.get(&e.read_arc().key()))
         .map(|e| e.fitch_subs().len())
         .sum()
     }
 
-    pub fn reversion_present(graph: &Graph, partition: &PartitionMarginalSparse, needle: &Sub) -> bool {
+    pub fn reversion_present(graph: &Graph, recon: &SparseReconstruction, needle: &Sub) -> bool {
       graph
         .get_edges()
         .iter()
-        .filter_map(|e| partition.edges.get(&e.read_arc().key()))
+        .filter_map(|e| recon.partition.obs_edges.get(&e.read_arc().key()))
         .any(|e| e.fitch_subs().contains(needle))
     }
 
@@ -347,16 +337,8 @@ mod tests {
       index: usize,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
-    ) -> PartitionMarginalSparse {
-      let mut partition = PartitionMarginalSparse {
-        index,
-        gtr: jc69(JC69Params::default()).unwrap(),
-        alphabet: Alphabet::new(AlphabetName::Nuc).unwrap(),
-        length,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-        root_sequence: seq![],
-      };
+    ) -> SparseReconstruction {
+      let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
       let mut ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
       for (_, _, subs) in edge_mutations {
@@ -366,24 +348,39 @@ mod tests {
           }
         }
       }
-      partition.root_sequence = ref_seq.clone();
 
+      let mut obs_nodes = btreemap! {};
+      let mut node_states = btreemap! {};
       for node in graph.get_nodes() {
         let key = node.read_arc().key();
-        let mut node_part = SparseNodePartition::empty(&partition.alphabet);
-        node_part.seq.sequence = ref_seq.clone();
-        partition.nodes.insert(key, node_part);
+        obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
+        node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }
 
+      let mut obs_edges = btreemap! {};
       for (source, target, subs) in edge_mutations {
         let edge_key =
           find_edge_key(graph, names, source, target).unwrap_or_else(|| panic!("edge {source}->{target} missing"));
-        partition
-          .edges
-          .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
+        obs_edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs.clone()));
       }
 
-      partition
+      let partition = PartitionMarginalSparse {
+        index,
+        gtr: jc69(JC69Params::default()).unwrap(),
+        alphabet,
+        length,
+        root_sequence: ref_seq,
+        obs_nodes,
+        obs_edges,
+      };
+
+      SparseReconstruction {
+        partition,
+        node_states,
+        backward: btreemap! {},
+        forward: btreemap! {},
+        estimates: btreemap! {},
+      }
     }
   }
 }

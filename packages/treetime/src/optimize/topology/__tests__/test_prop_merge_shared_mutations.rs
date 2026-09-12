@@ -2,9 +2,10 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::ancestral::pipeline::SparseReconstruction;
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
+  use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_edge_key;
@@ -19,7 +20,6 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
-  use treetime_primitives::seq;
   use treetime_primitives::{AsciiChar, Seq};
 
   fn c(b: u8) -> AsciiChar {
@@ -57,7 +57,7 @@ mod tests {
       let total_after: usize = graph
         .get_edges()
         .iter()
-        .filter_map(|e| p.edges.get(&e.read_arc().key()))
+        .filter_map(|e| p.partition.obs_edges.get(&e.read_arc().key()))
         .map(|e| e.fitch_subs().len())
         .sum();
 
@@ -178,7 +178,7 @@ mod tests {
 
         let child_sub_sets: Vec<BTreeSet<Sub>> = outbound
           .iter()
-          .filter_map(|ek| p.edges.get(ek))
+          .filter_map(|ek| p.partition.obs_edges.get(ek))
           .map(|e| e.fitch_subs().iter().cloned().collect::<BTreeSet<_>>())
           .collect();
 
@@ -367,8 +367,8 @@ mod tests {
       let p = &mut partition;
       let edge_c = find_edge_key(&graph, &names, "root", "C").expect("edge root->C");
       let edge_d = find_edge_key(&graph, &names, "root", "D").expect("edge root->D");
-      p.edges.get_mut(&edge_c).expect("partition edge C").indels = vec![shared_indel.clone()];
-      p.edges.get_mut(&edge_d).expect("partition edge D").indels = vec![shared_indel];
+      p.partition.obs_edges.get_mut(&edge_c).expect("partition edge C").indels = vec![shared_indel.clone()];
+      p.partition.obs_edges.get_mut(&edge_d).expect("partition edge D").indels = vec![shared_indel];
     }
 
     let mut partitions = vec![partition];
@@ -487,7 +487,7 @@ mod tests {
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
       edge_mutations: &[(String, String, Vec<Sub>)],
-    ) -> PartitionMarginalSparse {
+    ) -> SparseReconstruction {
       let refs: Vec<(&str, &str, Vec<Sub>)> = edge_mutations
         .iter()
         .map(|(src, tgt, subs)| (src.as_str(), tgt.as_str(), subs.clone()))
@@ -500,7 +500,7 @@ mod tests {
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
-    ) -> Result<PartitionMarginalSparse, Report> {
+    ) -> Result<SparseReconstruction, Report> {
       make_partition_from_static_indexed(graph, names, 0, length, edge_mutations)
     }
 
@@ -510,16 +510,8 @@ mod tests {
       index: usize,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
-    ) -> Result<PartitionMarginalSparse, Report> {
-      let mut partition = PartitionMarginalSparse {
-        index,
-        gtr: jc69(JC69Params::default())?,
-        alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
-        length,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-        root_sequence: seq![],
-      };
+    ) -> Result<SparseReconstruction, Report> {
+      let alphabet = Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?;
 
       let mut ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
       for (_, _, subs) in edge_mutations {
@@ -529,24 +521,39 @@ mod tests {
           }
         }
       }
-      partition.root_sequence = ref_seq.clone();
 
+      let mut obs_nodes = btreemap! {};
+      let mut node_states = btreemap! {};
       for node in graph.get_nodes() {
         let key = node.read_arc().key();
-        let mut node_part = SparseNodePartition::empty(&partition.alphabet);
-        node_part.seq.sequence = ref_seq.clone();
-        partition.nodes.insert(key, node_part);
+        obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
+        node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }
 
+      let mut obs_edges = btreemap! {};
       for (source, target, subs) in edge_mutations {
         let edge_key =
           find_edge_key(graph, names, source, target).unwrap_or_else(|| panic!("edge {source}->{target} not found"));
-        partition
-          .edges
-          .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
+        obs_edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs.clone()));
       }
 
-      Ok(partition)
+      let partition = PartitionMarginalSparse {
+        index,
+        gtr: jc69(JC69Params::default())?,
+        alphabet,
+        length,
+        root_sequence: ref_seq,
+        obs_nodes,
+        obs_edges,
+      };
+
+      Ok(SparseReconstruction {
+        partition,
+        node_states,
+        backward: btreemap! {},
+        forward: btreemap! {},
+        estimates: btreemap! {},
+      })
     }
   }
 }

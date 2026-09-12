@@ -7,7 +7,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse, run_optimize_loop};
+  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_sparse, run_optimize_loop};
 
   use eyre::Report;
 

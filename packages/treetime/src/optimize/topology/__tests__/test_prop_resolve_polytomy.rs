@@ -25,7 +25,7 @@ mod tests {
       let (mut graph, names, partition, before, mut branch_lengths) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
       let mut sparse = vec![partition];
 
-      let changed = resolve_polytomies(&mut graph, &mut sparse, &mut [], TopologyOps::default(), &mut branch_lengths).unwrap();
+      let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths).unwrap();
       let after = helpers::total_subs(&graph, &sparse[0]);
 
       prop_assert!(after <= before, "mutation count increased: before={before} after={after}");
@@ -48,7 +48,7 @@ mod tests {
       let leaves_before = helpers::leaf_names(&names, &graph);
       let mut sparse = vec![partition];
 
-      resolve_polytomies(&mut graph, &mut sparse, &mut [], TopologyOps::default(), &mut branch_lengths).unwrap();
+      resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths).unwrap();
 
       prop_assert_eq!(helpers::leaf_names(&names, &graph), leaves_before);
 
@@ -85,7 +85,7 @@ mod tests {
         helpers::build_bifurcating_case(g, a, &own_counts);
       let mut sparse = vec![partition];
 
-      let changed = resolve_polytomies(&mut graph, &mut sparse, &mut [], TopologyOps::default(), &mut branch_lengths).unwrap();
+      let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths).unwrap();
       let after = helpers::total_subs(&graph, &sparse[0]);
 
       prop_assert_eq!(after, expected_after, "did not reach the bipartition cost");
@@ -99,14 +99,15 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+    use crate::ancestral::pipeline::SparseReconstruction;
     use crate::gtr::get_gtr::{JC69Params, jc69};
-    use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
+    use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
     use crate::test_utils::find_edge_key;
     use itertools::Itertools;
     use maplit::btreemap;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_io::nwk::{NwkParse, nwk_read_str};
-    use treetime_primitives::{AsciiChar, Seq, seq};
+    use treetime_primitives::{AsciiChar, Seq};
 
     fn c(b: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(b)
@@ -121,11 +122,11 @@ mod tests {
         .collect()
     }
 
-    pub fn total_subs(graph: &Graph, partition: &PartitionMarginalSparse) -> usize {
+    pub fn total_subs(graph: &Graph, recon: &SparseReconstruction) -> usize {
       graph
         .get_edges()
         .iter()
-        .filter_map(|e| partition.edges.get(&e.read_arc().key()))
+        .filter_map(|e| recon.partition.obs_edges.get(&e.read_arc().key()))
         .map(|e| e.fitch_subs().len())
         .sum()
     }
@@ -142,7 +143,7 @@ mod tests {
     ) -> (
       Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
-      PartitionMarginalSparse,
+      SparseReconstruction,
       usize,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ) {
@@ -200,7 +201,7 @@ mod tests {
       own_counts: &[usize],
     ) -> (
       Graph,
-      PartitionMarginalSparse,
+      SparseReconstruction,
       usize,
       usize,
       BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -255,36 +256,43 @@ mod tests {
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
       edge_mutations: &[(String, String, Vec<Sub>)],
-    ) -> PartitionMarginalSparse {
-      let mut partition = PartitionMarginalSparse {
-        index: 0,
-        gtr: jc69(JC69Params::default()).unwrap(),
-        alphabet: Alphabet::new(AlphabetName::Nuc).unwrap(),
-        length,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-        root_sequence: seq![],
-      };
+    ) -> SparseReconstruction {
+      let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
       let ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
-      partition.root_sequence = ref_seq.clone();
 
+      let mut obs_nodes = btreemap! {};
+      let mut node_states = btreemap! {};
       for node in graph.get_nodes() {
         let key = node.read_arc().key();
-        let mut node_part = SparseNodePartition::empty(&partition.alphabet);
-        node_part.seq.sequence = ref_seq.clone();
-        partition.nodes.insert(key, node_part);
+        obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
+        node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }
 
+      let mut obs_edges = btreemap! {};
       for (source, target, subs) in edge_mutations {
         let edge_key =
           find_edge_key(graph, names, source, target).unwrap_or_else(|| panic!("edge {source}->{target} missing"));
-        partition
-          .edges
-          .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
+        obs_edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs.clone()));
       }
 
-      partition
+      let partition = PartitionMarginalSparse {
+        index: 0,
+        gtr: jc69(JC69Params::default()).unwrap(),
+        alphabet,
+        length,
+        root_sequence: ref_seq,
+        obs_nodes,
+        obs_edges,
+      };
+
+      SparseReconstruction {
+        partition,
+        node_states,
+        backward: btreemap! {},
+        forward: btreemap! {},
+        estimates: btreemap! {},
+      }
     }
   }
 }

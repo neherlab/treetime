@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::optimize::topology::hoist_reversions::{hoist_reverting_child, slide_bifurcating_root_for_child};
-  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::seq::indel::InDel;
   use crate::seq::indel::InDelKind;
@@ -16,7 +15,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
-  use helpers::{Hoisted, c, edge_indels, edge_subs, make_partition, no_dense, sub};
+  use helpers::{Hoisted, c, edge_indels, edge_subs, make_partition, sub};
 
   // Tree: root -> U -> V -> {A, B, Z}. The hoist inserts N between U and V, grouping V with A.
   const NWK: &str = "(((A:0.1,B:0.1,Z:0.1)V:0.2)U:0.1)root:0.0;";
@@ -53,7 +52,7 @@ mod tests {
     let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0];
@@ -93,7 +92,7 @@ mod tests {
     let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0];
@@ -130,7 +129,7 @@ mod tests {
 
     let before = helpers::total_subs(&graph, &sparse[0]);
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
     let after = helpers::total_subs(&graph, &sparse[0]);
 
     assert_eq!(before, 2);
@@ -175,7 +174,7 @@ mod tests {
     let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let bl = |ek: GraphEdgeKey| branch_lengths[&ek].unwrap_or(0.0);
@@ -224,7 +223,7 @@ mod tests {
     let mut sparse = vec![p0, p1];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let g0 = &sparse[0];
@@ -267,13 +266,13 @@ mod tests {
     let ins = InDel::ins((20, 23), [c(b'A'), c(b'A'), c(b'A')].as_slice())?;
     {
       let p = &mut partition;
-      p.edges.get_mut(&uv).unwrap().indels = vec![del.clone()];
-      p.edges.get_mut(&va).unwrap().indels = vec![ins];
+      p.partition.obs_edges.get_mut(&uv).unwrap().indels = vec![del.clone()];
+      p.partition.obs_edges.get_mut(&va).unwrap().indels = vec![ins];
     }
     let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0];
@@ -311,13 +310,13 @@ mod tests {
     let child_del = InDel::del((22, 28), [c(b'A'); 6].as_slice())?;
     {
       let p = &mut partition;
-      p.edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
-      p.edges.get_mut(&va).unwrap().indels = vec![child_del];
+      p.partition.obs_edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
+      p.partition.obs_edges.get_mut(&va).unwrap().indels = vec![child_del];
     }
     let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0];
@@ -359,13 +358,13 @@ mod tests {
     let child_del = InDel::del((50, 53), [c(b'A'); 3].as_slice())?;
     {
       let p = &mut partition;
-      p.edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
-      p.edges.get_mut(&va).unwrap().indels = vec![child_del.clone()];
+      p.partition.obs_edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
+      p.partition.obs_edges.get_mut(&va).unwrap().indels = vec![child_del.clone()];
     }
     let mut sparse = vec![partition];
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, &mut no_dense(), uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0];
@@ -414,7 +413,7 @@ mod tests {
 
     let p = &sparse[0];
     assert_eq!(p.root_sequence[3], c(b'G'));
-    assert_eq!(p.nodes[&root_key].seq.sequence[3], c(b'G'));
+    assert_eq!(p.node_states[&root_key].sequence[3], c(b'G'));
     assert_eq!(edge_subs(p, root_s), Vec::<Sub>::new());
     assert_eq!(edge_subs(p, root_v), vec![sub(b'G', 3, b'A')]);
     Ok(())
@@ -454,14 +453,7 @@ mod tests {
     slide_bifurcating_root_for_child(&mut sparse, root_key, root_v, root_s, v_c1)?;
     let after_slide = helpers::total_subs(&graph, &sparse[0]);
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(
-      &mut graph,
-      &mut sparse,
-      &mut no_dense(),
-      root_v,
-      v_c1,
-      &mut branch_lengths,
-    )?;
+    hoist_reverting_child(&mut graph, &mut sparse, root_v, v_c1, &mut branch_lengths)?;
     let after_hoist = helpers::total_subs(&graph, &sparse[0]);
 
     assert_eq!(before, 2);
@@ -473,10 +465,11 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+    use crate::ancestral::pipeline::SparseReconstruction;
     use crate::gtr::get_gtr::{JC69Params, jc69};
-    use crate::partition::storage::sparse::{SparseEdgePartition, SparseNodePartition};
+    use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
     use maplit::btreemap;
-    use treetime_primitives::{AsciiChar, Seq, seq};
+    use treetime_primitives::{AsciiChar, Seq};
 
     pub fn c(b: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(b)
@@ -484,10 +477,6 @@ mod tests {
 
     pub fn sub(reff: u8, pos: usize, qry: u8) -> Sub {
       Sub::new(c(reff), pos, c(qry)).unwrap()
-    }
-
-    pub fn no_dense() -> Vec<PartitionMarginalDense> {
-      vec![]
     }
 
     /// Edge keys of the three edges the hoist produces, located by the child/node names.
@@ -519,19 +508,19 @@ mod tests {
       }
     }
 
-    pub fn edge_subs(partition: &PartitionMarginalSparse, edge_key: GraphEdgeKey) -> Vec<Sub> {
-      partition.edges[&edge_key].fitch_subs().to_vec()
+    pub fn edge_subs(recon: &SparseReconstruction, edge_key: GraphEdgeKey) -> Vec<Sub> {
+      recon.partition.obs_edges[&edge_key].fitch_subs().to_vec()
     }
 
-    pub fn edge_indels(partition: &PartitionMarginalSparse, edge_key: GraphEdgeKey) -> Vec<InDel> {
-      partition.edges[&edge_key].indels.clone()
+    pub fn edge_indels(recon: &SparseReconstruction, edge_key: GraphEdgeKey) -> Vec<InDel> {
+      recon.partition.obs_edges[&edge_key].indels.clone()
     }
 
-    pub fn total_subs(graph: &Graph, partition: &PartitionMarginalSparse) -> usize {
+    pub fn total_subs(graph: &Graph, recon: &SparseReconstruction) -> usize {
       graph
         .get_edges()
         .iter()
-        .filter_map(|e| partition.edges.get(&e.read_arc().key()))
+        .filter_map(|e| recon.partition.obs_edges.get(&e.read_arc().key()))
         .map(|e| e.fitch_subs().len())
         .sum()
     }
@@ -542,16 +531,8 @@ mod tests {
       index: usize,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
-    ) -> PartitionMarginalSparse {
-      let mut partition = PartitionMarginalSparse {
-        index,
-        gtr: jc69(JC69Params::default()).unwrap(),
-        alphabet: Alphabet::new(AlphabetName::Nuc).unwrap(),
-        length,
-        nodes: btreemap! {},
-        edges: btreemap! {},
-        root_sequence: seq![],
-      };
+    ) -> SparseReconstruction {
+      let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
       let mut ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
       for (_, _, subs) in edge_mutations {
@@ -561,24 +542,39 @@ mod tests {
           }
         }
       }
-      partition.root_sequence = ref_seq.clone();
 
+      let mut obs_nodes = btreemap! {};
+      let mut node_states = btreemap! {};
       for node in graph.get_nodes() {
         let key = node.read_arc().key();
-        let mut node_part = SparseNodePartition::empty(&partition.alphabet);
-        node_part.seq.sequence = ref_seq.clone();
-        partition.nodes.insert(key, node_part);
+        obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
+        node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }
 
+      let mut obs_edges = btreemap! {};
       for (source, target, subs) in edge_mutations {
         let edge_key =
           find_edge_key(graph, names, source, target).unwrap_or_else(|| panic!("edge {source}->{target} missing"));
-        partition
-          .edges
-          .insert(edge_key, SparseEdgePartition::with_fitch_subs(subs.clone()));
+        obs_edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs.clone()));
       }
 
-      partition
+      let partition = PartitionMarginalSparse {
+        index,
+        gtr: jc69(JC69Params::default()).unwrap(),
+        alphabet,
+        length,
+        root_sequence: ref_seq,
+        obs_nodes,
+        obs_edges,
+      };
+
+      SparseReconstruction {
+        partition,
+        node_states,
+        backward: btreemap! {},
+        forward: btreemap! {},
+        estimates: btreemap! {},
+      }
     }
   }
 }
