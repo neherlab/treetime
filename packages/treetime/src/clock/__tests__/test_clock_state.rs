@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
+  use crate::clock::clock_set::ClockSet;
   use crate::clock::clock_state::{ClockEdgeState, ClockNodeState, ClockState};
-  use crate::payload::clock_set::ClockSet;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;

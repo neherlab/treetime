@@ -1,4 +1,4 @@
-use crate::payload::clock_set::ClockSet;
+use crate::clock::clock_set::ClockSet;
 use eyre::Report;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;

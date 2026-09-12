@@ -1,7 +1,7 @@
 use crate::clock::clock_regression::ClockParams;
+use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::params::RootObjective;
-use crate::payload::clock_set::ClockSet;
 use argmin::core::{CostFunction, Error};
 use eyre::Report;
 use std::collections::BTreeMap;

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::clock_model::{ClockLine, ClockModel, ClockModelStats, ClockRegression, RegressionStats};
-  use crate::payload::clock_set::ClockSet;
+  use crate::clock::clock_set::ClockSet;
   use eyre::Report;
   use indoc::indoc;
   use ndarray::array;

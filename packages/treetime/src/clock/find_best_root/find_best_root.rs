@@ -1,9 +1,9 @@
 use crate::clock::clock_regression::ClockParams;
+use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::ClockState;
 use crate::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::make_error;
-use crate::payload::clock_set::ClockSet;
 use eyre::Report;
 use log::{debug, info};
 use rayon::prelude::*;

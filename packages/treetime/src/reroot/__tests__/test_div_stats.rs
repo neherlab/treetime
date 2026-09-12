@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::payload::clock_set::ClockSet;
+  use crate::clock::clock_set::ClockSet;
   use crate::reroot::div_stats::DivStats;
   use crate::reroot::traits::RootStats;
   use approx::assert_ulps_eq;

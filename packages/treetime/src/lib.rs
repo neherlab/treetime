@@ -10,7 +10,6 @@ pub mod io;
 pub mod mugration;
 pub mod optimize;
 pub mod partition;
-pub mod payload;
 pub mod progress;
 pub mod prune;
 pub mod reroot;

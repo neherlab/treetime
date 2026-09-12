@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::payload::clock_set::ClockSet;
+  use crate::clock::clock_set::ClockSet;
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;

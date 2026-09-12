@@ -467,6 +467,7 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::clock::clock_model::ClockModel;
+    use crate::clock::clock_set::ClockSet;
     use crate::commands::ancestral::result::AncestralOutputMaps;
     use crate::commands::ancestral::run::gather_ancestral_output_maps;
     use crate::commands::clock::run::{ClockGraphData, ClockNodeOut};
@@ -483,7 +484,6 @@ mod tests {
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use crate::partition::storage::dense::{DenseNodePartition, DenseSeqDistribution, DenseSeqInfo};
     use crate::partition::storage::discrete::DiscreteStates;
-    use crate::payload::clock_set::ClockSet;
     use jsonschema::{Retrieve, Uri, Validator};
     use ndarray::array;
     use serde::Serialize;

@@ -28,8 +28,7 @@ Core library for phylogenetic analysis via ancestral sequence reconstruction and
 - `gtr` - GTR substitution model construction and inference
 - `hacks` - Workarounds (branch length fixes)
 - `io` - Integration tests for I/O (implementation in `treetime-io`)
-- `representation` - Partition system and node/edge payloads:
-  - `payload/` - Per-node and per-edge data (ancestral, timetree, dense, sparse)
+- `representation` - Partition system:
   - `partition/` - Partition system: `storage/` (dense, sparse, discrete payloads), `marginal/` (shared pass framework plus dense, sparse, and discrete reconstruction codepaths), `fitch/` (parsimony), `optimize/` (branch-length contributions), `io/` (Augur export), and the shared traits, dispatch, and likelihood modules
   - `algo/` - Inference algorithms (dense reconstruction)
 - `seq` - Sequence utilities (mutations, indels, composition, divergence)

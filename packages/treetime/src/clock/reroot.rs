@@ -1,11 +1,11 @@
 use crate::clock::clock_regression::ClockParams;
+use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockEdgeState, ClockNodeState, ClockState};
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootMethod, RerootSpec, RootObjective};
 use crate::make_error;
-use crate::payload::clock_set::ClockSet;
 use approx::ulps_eq;
 use eyre::Report;
 use itertools::Itertools;
