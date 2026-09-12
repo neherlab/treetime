@@ -24,7 +24,7 @@ pub fn propagate_distributions_forward(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   state: &mut TimetreeState,
 ) -> Result<(), Report> {
-  state.map_forward(graph, |context| propagate_distributions_forward_node(names, context))?;
+  state.map_forward(graph, |context| propagate_distributions_forward_node(names, &context))?;
 
   // Once per pass, not per node: a broken clock or topology makes a whole subtree disagree at once.
   let contradicted = state.nodes.values().filter(|node| node.contradicted).count();
@@ -47,17 +47,17 @@ pub fn propagate_distributions_forward(
 /// is passed through unchanged; the root has no parent edge and yields `None`.
 fn propagate_distributions_forward_node(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  context: GraphPassForwardContext<'_, DateNodeState, DateEdgeState, DateNodeState>,
+  context: &GraphPassForwardContext<'_, DateNodeState, DateEdgeState, DateNodeState>,
 ) -> Result<GraphPassNodeOutput<DateNodeState, DateEdgeState>, Report> {
-  let mut node = context.input;
-  let edge = context.parent_edge.as_ref().map(|(_, edge)| edge);
+  let mut node = context.input.clone();
+  let edge = context.parent_edge.map(|(_, edge)| edge);
   if refine_distribution_from_parent(names, context.key, context.parent, edge, &mut node)?
     == Refinement::ContradictedGivenDate
   {
     node.contradicted = true;
   }
   commit_node_time(names, context.key, context.parent, context.is_leaf, &mut node);
-  let parent_message = context.parent_edge.map(|(_, edge)| edge);
+  let parent_message = context.parent_edge.map(|(_, edge)| edge.clone());
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 

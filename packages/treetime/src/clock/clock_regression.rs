@@ -97,18 +97,17 @@ pub fn clock_regression_backward(
   prev_clock_rate: Option<f64>,
 ) -> Result<(), Report> {
   state.map_backward(graph, |context| {
-    clock_regression_backward_node(graph, options, prev_clock_rate, branch_lengths, context)
+    clock_regression_backward_node(options, prev_clock_rate, branch_lengths, &context)
   })
 }
 
 fn clock_regression_backward_node(
-  graph: &Graph,
   options: &ClockParams,
   prev_clock_rate: Option<f64>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  context: GraphPassBackwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState, ClockEdgeState>,
+  context: &GraphPassBackwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState, ClockEdgeState>,
 ) -> Result<GraphPassNodeOutput<ClockNodeState, ClockEdgeState>, Report> {
-  let mut node = context.input;
+  let mut node = context.input.clone();
   let is_leaf = context.is_leaf;
   let date = node.likely_time();
   let q_to_parent = if is_leaf {
@@ -118,32 +117,19 @@ fn clock_regression_backward_node(
       ClockSet::leaf_contribution(date)
     }
   } else {
-    let graph_node = graph.get_node(context.key).expect("Indexed node must exist");
-    let graph_node = graph_node.read_arc();
-
-    // The value engine hands the completed children in its own topology order, which may differ from
-    // `children_of`. Index the child edge messages by edge key so the moment sums fold in the same
-    // canonical `children_of` order as before, keeping the floating-point result byte-for-byte identical.
-    let child_edges: BTreeMap<_, _> = context
-      .children
-      .iter()
-      .filter_map(|child| child.edge.map(|edge| (child.edge_key, edge)))
-      .collect();
-
-    graph
-      .children_of(&graph_node)
-      .iter()
-      .fold(ClockSet::default(), |mut total, (_, edge)| {
-        let edge_key = edge.read_arc().key();
-        let edge = child_edges
-          .get(&edge_key)
-          .expect("Non-root indexed node must own its parent edge");
-        total += &edge.clock_from_child;
-        total
-      })
+    // Children arrive in the graph's canonical `children_of` order, so the moment sums fold in that
+    // order, keeping the floating-point result byte-for-byte identical.
+    context.children.iter().fold(ClockSet::default(), |mut total, child| {
+      let edge = child
+        .edge
+        .expect("Non-root indexed node must own its parent edge");
+      total += &edge.clock_from_child;
+      total
+    })
   };
 
-  let parent_message = if let Some((edge_key, mut edge)) = context.parent_edge {
+  let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
+    let mut edge = edge.clone();
     edge.clock_to_parent = q_to_parent;
     let edge_len = edge_divergence(branch_lengths[&edge_key], edge.time_length, edge.gamma, prev_clock_rate);
     let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
@@ -174,8 +160,9 @@ pub fn clock_regression_forward(
   prev_clock_rate: Option<f64>,
 ) -> Result<(), Report> {
   state.map_forward(graph, |context| {
-    let mut node = context.input;
-    let parent_message = if let Some((edge_key, mut edge)) = context.parent_edge {
+    let mut node = context.input.clone();
+    let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
+      let mut edge = edge.clone();
       let parent = context.parent.expect("Non-root node must have a parent");
       let mut q_to_child = parent.clock_set.clone();
       q_to_child -= &edge.clock_from_child;

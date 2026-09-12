@@ -1,7 +1,7 @@
 use crossbeam_channel::{Receiver, Sender, select, unbounded};
 use eyre::Report;
-use parking_lot::Mutex;
 use std::collections::VecDeque;
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use treetime_utils::make_internal_report;
 
@@ -17,7 +17,9 @@ pub fn run_dependency_queue(
 
   let remaining = prerequisites.iter().copied().map(AtomicUsize::new).collect::<Vec<_>>();
   let completed = AtomicUsize::new(0);
-  let error = Mutex::new(None);
+  // First-error reporting without a lock: one worker is elected atomically (see `run_worker`) and is
+  // the sole writer of this single-publication cell, so competing errors never contend on it.
+  let error = OnceLock::new();
   let failed = AtomicBool::new(false);
   let workers = rayon::current_num_threads();
   let (work_sender, work_receiver) = unbounded();
@@ -93,7 +95,7 @@ struct DependencyWorkers<'a, F> {
   successors: &'a [Vec<usize>],
   remaining: &'a [AtomicUsize],
   completed: &'a AtomicUsize,
-  error: &'a Mutex<Option<Report>>,
+  error: &'a OnceLock<Report>,
   failed: &'a AtomicBool,
   work_sender: &'a Sender<usize>,
   work_receiver: &'a Receiver<usize>,
@@ -124,10 +126,15 @@ where
             continue;
           }
           if let Err(report) = (self.visit)(index) {
-            let mut error = self.error.lock();
-            if error.is_none() {
-              *error = Some(report);
-              self.failed.store(true, Ordering::Release);
+            // Atomically elect a single error publisher: exactly one worker sees `false` here and
+            // becomes the sole writer of the single-publication `error` cell, then cancels the rest.
+            // Later failures observe `true` and drop their report, so no two workers ever race to
+            // initialize the cell.
+            if !self.failed.swap(true, Ordering::AcqRel) {
+              assert!(
+                self.error.set(report).is_ok(),
+                "The elected error publisher must publish the first error exactly once"
+              );
               self.stop();
             }
             continue;
@@ -161,10 +168,31 @@ where
 
 #[cfg(test)]
 mod tests {
-  use super::run_dependency_queue;
+  use super::{run_dependency_queue, validate_dependency_graph};
   use eyre::Report;
   use std::sync::atomic::{AtomicUsize, Ordering};
   use treetime_utils::{assert_error, make_report};
+
+  #[test]
+  fn test_dependency_queue_validate_accepts_acyclic_graph() -> Result<(), Report> {
+    // A fork: node 0 depends on 1 and 2; both are ready immediately.
+    let prerequisites = [2, 0, 0];
+    let successors = [vec![], vec![0], vec![0]];
+    validate_dependency_graph(&prerequisites, &successors)?;
+    Ok(())
+  }
+
+  #[test]
+  fn test_dependency_queue_validate_rejects_cycle() {
+    // A two-node cycle: each node waits on the other, so neither is ever ready.
+    let prerequisites = [1, 1];
+    let successors = [vec![1], vec![0]];
+    let result = validate_dependency_graph(&prerequisites, &successors);
+    assert_error!(
+      result,
+      "Dependency graph is cyclic: visited 0 of 2 nodes. This is an internal error. Please report it to developers."
+    );
+  }
 
   #[test]
   fn test_dependency_queue_failing_visit_stops_and_returns_error() -> Result<(), Report> {

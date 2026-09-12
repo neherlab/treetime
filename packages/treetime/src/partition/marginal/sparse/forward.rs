@@ -28,36 +28,35 @@ pub fn process_forward_indexed(
   let gtr = partition.gtr.clone();
   let length = partition.length;
   let root_sequence = partition.root_sequence.clone();
-  let (nodes, edges) = (&mut partition.nodes, &mut partition.edges);
-  let pass = GraphPass::new(graph, nodes, edges, |key| {
-    treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass")
-  })?;
-  let outputs = pass.try_map_forward(|context| {
-    process_node_forward_indexed(graph, &alphabet, &gtr, length, &root_sequence, branch_lengths, context)
-  })?;
+  let pass = GraphPass::new(graph)?;
+  let outputs = pass.map_forward(
+    &partition.nodes,
+    &partition.edges,
+    |key| treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass"),
+    |context| process_node_forward_indexed(&alphabet, &gtr, length, &root_sequence, branch_lengths, &context),
+  )?;
   partition.nodes = outputs.nodes;
   partition.edges = outputs.edges;
   Ok(())
 }
 
 fn process_node_forward_indexed(
-  graph: &Graph,
   alphabet: &Alphabet,
   gtr: &GTR,
   length: usize,
   root_sequence: &Seq,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  context: GraphPassForwardContext<'_, SparseNodePartition, SparseEdgePartition, SparseNodePartition>,
+  context: &GraphPassForwardContext<'_, SparseNodePartition, SparseEdgePartition, SparseNodePartition>,
 ) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report> {
-  let mut node = context.input;
+  let mut node = context.input.clone();
 
-  let parent_message = if let Some((edge_key, mut edge_data)) = context.parent_edge {
+  let parent_message = if let Some((edge_key, edge_data)) = context.parent_edge {
+    let mut edge_data = edge_data.clone();
     let parent = context.parent.expect("Non-root node must have a parent");
 
-    // Reuse this node's moved-in parent-edge input and overwrite only the message and ML-subs fields,
-    // exactly as the in-place engine did. The edge already carries `msg_from_child` from the backward
-    // pass and `fitch_subs`/`transmission` from the Fitch pre-pass, and a fresh edge would corrupt the
-    // result.
+    // Clone this node's parent-edge input and overwrite only the message and ML-subs fields. The edge
+    // already carries `msg_from_child` from the backward pass and `fitch_subs`/`transmission` from the
+    // Fitch pre-pass, and a fresh edge would corrupt the result.
     edge_data.msg_to_child = compute_msg_to_child(&node, parent, &edge_data)?;
 
     let mut variable_pos = btreemap! {};
@@ -98,7 +97,7 @@ fn process_node_forward_indexed(
     };
     // Persist the down-message only for tips: reconstruct_node_sequence imputes missing tip states
     // from it and has no branch length to recompute the propagation. Internal nodes never need it.
-    if graph.is_leaf(context.key) {
+    if context.is_leaf {
       edge_data.msg_from_parent = msg_from_parent.clone();
     }
     let profile = combine_messages(
@@ -114,7 +113,7 @@ fn process_node_forward_indexed(
     // Extend the parsimony chain. Leaves already hold their observed sequence, which is their
     // parsimony sequence; rebuilding it from the parent would discard the observed states a leaf
     // shares with its parent under Fitch compression.
-    if !graph.is_leaf(context.key) && !parent.seq.sequence.is_empty() {
+    if !context.is_leaf && !parent.seq.sequence.is_empty() {
       node.seq.sequence = parsimony_seq(&parent.seq.sequence, &edge_data, &node, alphabet);
     }
     edge_data.set_ml_subs(compute_ml_subs_for_nodes(alphabet, parent, &node, &edge_data)?);

@@ -5,35 +5,323 @@ use crate::dependency_queue::{run_dependency_queue, validate_dependency_graph};
 use crate::edge::GraphEdgeKey;
 use crate::graph::Graph;
 use crate::node::GraphNodeKey;
-use crossbeam_utils::atomic::AtomicCell;
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::OnceLock;
 use treetime_utils::make_internal_report;
 
-pub struct GraphPass<N, E> {
-  slots: Vec<GraphPassSlot<N, E>>,
-  node_indices: Vec<Option<usize>>,
-  edge_indices: Vec<Option<usize>>,
+/// Frozen, immutable topology view of a graph, prepared once in the caller before any worker runs.
+///
+/// The view carries every topology fact a parallel worker needs -- node keys, each node's parent edge,
+/// and each node's children in the graph's own `children_of` (outbound) order -- so a worker never
+/// reads the graph (and never takes a graph lock) during a pass. Build it once with [`GraphPass::new`],
+/// then run [`GraphPass::map_backward`] or [`GraphPass::map_forward`] against borrowed input maps as
+/// many times as needed. After a structural change to the graph, rebuild the view.
+pub struct GraphPass {
+  /// Nodes in `graph.get_nodes()` traversal order.
+  nodes: Vec<GraphPassNode>,
+  /// Node key -> index into `nodes`. A map (not a key-indexed vector) so deleted-key gaps in the
+  /// graph's node storage cost nothing.
+  node_index: BTreeMap<GraphNodeKey, usize>,
+  /// Every edge key reachable as some node's parent edge, for input validation.
+  edge_keys: BTreeSet<GraphEdgeKey>,
+  /// Parent node index per node (`None` at a root).
   parents: Vec<Option<usize>>,
+  /// Child node indices per node, in `children_of` (outbound edge) order. This is the canonical
+  /// numerical child order the reductions fold in, so it is thread-count independent.
   children: Vec<Vec<usize>>,
 }
 
-pub struct GraphPassSlot<N, E> {
-  pub key: GraphNodeKey,
-  pub node: N,
-  pub parent_key: Option<GraphNodeKey>,
-  pub parent_edge: Option<(GraphEdgeKey, E)>,
-}
+impl GraphPass {
+  /// Freeze the topology of `graph` into a reusable pass view and validate that it forms an acyclic
+  /// dependency graph (each node has at most one parent, no cycles, no duplicate readiness).
+  pub fn new(graph: &Graph) -> Result<Self, Report> {
+    let safe_nodes = graph.get_nodes();
+    let mut nodes = Vec::with_capacity(safe_nodes.len());
+    for safe in &safe_nodes {
+      let node = safe.read_arc();
+      let key = node.key();
+      let parent_edge = if let Some(edge_key) = graph.parent_inbound_edge(key)? {
+        Some((graph.get_source_node_key(edge_key)?, edge_key))
+      } else {
+        None
+      };
+      nodes.push(GraphPassNode { key, parent_edge });
+    }
 
-pub struct GraphPassDependencies<'a, N, E> {
-  slots: &'a [OnceLock<GraphPassSlot<N, E>>],
-  node_indices: &'a [Option<usize>],
-  edge_indices: &'a [Option<usize>],
+    let node_index = nodes
+      .iter()
+      .enumerate()
+      .map(|(index, node)| (node.key, index))
+      .collect::<BTreeMap<_, _>>();
+
+    let parents = nodes
+      .iter()
+      .map(|node| node.parent_edge.map(|(parent_key, _)| node_index[&parent_key]))
+      .collect::<Vec<_>>();
+
+    // Children in `children_of` (outbound) order, so the value the backward pass hands each visitor
+    // already folds in the same canonical order the graph exposes, without any per-node graph read.
+    let mut children = vec![Vec::new(); nodes.len()];
+    for safe in &safe_nodes {
+      let node = safe.read_arc();
+      let parent_index = node_index[&node.key()];
+      for (child, _edge) in graph.children_of(&node) {
+        let child_key = child.read_arc().key();
+        children[parent_index].push(node_index[&child_key]);
+      }
+    }
+
+    let edge_keys = nodes
+      .iter()
+      .filter_map(|node| node.parent_edge.map(|(_, edge_key)| edge_key))
+      .collect::<BTreeSet<_>>();
+
+    // Validate the backward schedule: a valid rooted forest is acyclic in both traversal directions,
+    // so this single check covers both maps.
+    let prerequisites = children.iter().map(Vec::len).collect::<Vec<_>>();
+    let successors = parents
+      .iter()
+      .map(|parent| parent.iter().copied().collect::<Vec<_>>())
+      .collect::<Vec<_>>();
+    validate_dependency_graph(&prerequisites, &successors)?;
+
+    Ok(Self {
+      nodes,
+      node_index,
+      edge_keys,
+      parents,
+      children,
+    })
+  }
+
+  /// Run a value-returning backward map (children before parent) over borrowed input maps.
+  ///
+  /// Every node is visited exactly once, after all of its children have published their outputs, in a
+  /// thread-count-independent child fold order. The input maps are read immutably and never mutated,
+  /// so a failed visit leaves them intact and the caller may retry from the same inputs. Node keys the
+  /// graph has but `nodes` lacks are filled by `missing_node`; edges must match the graph exactly.
+  pub fn map_backward<N, E, NodeOut, EdgeOut>(
+    &self,
+    nodes: &BTreeMap<GraphNodeKey, N>,
+    edges: &BTreeMap<GraphEdgeKey, E>,
+    missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
+    visit: impl Fn(
+      GraphPassBackwardContext<'_, N, E, NodeOut, EdgeOut>,
+    ) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
+    + Sync
+    + Send,
+  ) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report>
+  where
+    N: Sync,
+    E: Sync,
+    NodeOut: Send + Sync,
+    EdgeOut: Send + Sync,
+  {
+    let created = self.validate_and_create_missing(nodes, edges, missing_node)?;
+
+    // Backward schedule: a node becomes ready once every child has completed, then unblocks its parent.
+    let prerequisites = self.children.iter().map(Vec::len).collect::<Vec<_>>();
+    let successors = self
+      .parents
+      .iter()
+      .map(|parent| parent.iter().copied().collect::<Vec<_>>())
+      .collect::<Vec<_>>();
+
+    let completed = std::iter::repeat_with(OnceLock::<GraphPassNodeOutput<NodeOut, EdgeOut>>::new)
+      .take(self.nodes.len())
+      .collect::<Vec<_>>();
+
+    run_dependency_queue(&prerequisites, &successors, |index| {
+      let node = &self.nodes[index];
+      let input = self.resolve_node(nodes, &created, index);
+      let parent_edge = node.parent_edge.map(|(_, edge_key)| (edge_key, &edges[&edge_key]));
+
+      // Every child has completed before this node is scheduled, so its output is published. Collect
+      // them in the fixed `children_of` order recorded in `self.children[index]` so the reduction the
+      // visitor folds does not depend on thread count.
+      let children = self.children[index]
+        .iter()
+        .map(|&child_index| {
+          let child = &self.nodes[child_index];
+          let (_, edge_key) = child.parent_edge.expect("Backward child must have a parent edge");
+          let output = completed[child_index]
+            .get()
+            .expect("Backward child must complete before its parent");
+          GraphPassChildBackward {
+            node_key: child.key,
+            edge_key,
+            node: &output.node,
+            edge: output.parent_message.as_ref(),
+          }
+        })
+        .collect::<Vec<_>>();
+
+      let context = GraphPassBackwardContext {
+        key: node.key,
+        is_leaf: self.children[index].is_empty(),
+        is_root: self.parents[index].is_none(),
+        input,
+        parent_edge,
+        children: &children,
+      };
+      let output = visit(context)?;
+      assert!(
+        completed[index].set(output).is_ok(),
+        "Dependency queue must publish each indexed slot once"
+      );
+      Ok(())
+    })?;
+
+    self.collect_map_outputs(completed)
+  }
+
+  /// Run a value-returning forward map (parent before children) over borrowed input maps.
+  ///
+  /// Every node is visited exactly once, after its single parent has published its output (roots run
+  /// first). The input maps are read immutably and never mutated, so a failed visit leaves them intact
+  /// and the caller may retry from the same inputs.
+  pub fn map_forward<N, E, NodeOut, EdgeOut>(
+    &self,
+    nodes: &BTreeMap<GraphNodeKey, N>,
+    edges: &BTreeMap<GraphEdgeKey, E>,
+    missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
+    visit: impl Fn(GraphPassForwardContext<'_, N, E, NodeOut>) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
+    + Sync
+    + Send,
+  ) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report>
+  where
+    N: Sync,
+    E: Sync,
+    NodeOut: Send + Sync,
+    EdgeOut: Send + Sync,
+  {
+    let created = self.validate_and_create_missing(nodes, edges, missing_node)?;
+
+    // Forward schedule: a node becomes ready once its parent has completed (roots are ready
+    // immediately), then unblocks its children.
+    let prerequisites = self
+      .parents
+      .iter()
+      .map(|parent| usize::from(parent.is_some()))
+      .collect::<Vec<_>>();
+    let successors = self.children.clone();
+
+    let completed = std::iter::repeat_with(OnceLock::<GraphPassNodeOutput<NodeOut, EdgeOut>>::new)
+      .take(self.nodes.len())
+      .collect::<Vec<_>>();
+
+    run_dependency_queue(&prerequisites, &successors, |index| {
+      let node = &self.nodes[index];
+      let input = self.resolve_node(nodes, &created, index);
+      let parent_edge = node.parent_edge.map(|(_, edge_key)| (edge_key, &edges[&edge_key]));
+
+      // The parent has completed before this node is scheduled, so its output is published.
+      let parent = self.parents[index].map(|parent_index| {
+        &completed[parent_index]
+          .get()
+          .expect("Forward parent must complete before its child")
+          .node
+      });
+
+      let context = GraphPassForwardContext {
+        key: node.key,
+        is_leaf: self.children[index].is_empty(),
+        is_root: self.parents[index].is_none(),
+        input,
+        parent_edge,
+        parent,
+      };
+      let output = visit(context)?;
+      assert!(
+        completed[index].set(output).is_ok(),
+        "Dependency queue must publish each indexed slot once"
+      );
+      Ok(())
+    })?;
+
+    self.collect_map_outputs(completed)
+  }
+
+  /// Validate the input maps against the frozen topology and create inputs for node keys the graph has
+  /// but `nodes` lacks. Stale node/edge keys, or an edge set that does not match the graph exactly, are
+  /// internal errors. Returns the created (missing) node inputs, owned so they can be borrowed by the
+  /// workers alongside `nodes`.
+  fn validate_and_create_missing<N, E>(
+    &self,
+    nodes: &BTreeMap<GraphNodeKey, N>,
+    edges: &BTreeMap<GraphEdgeKey, E>,
+    mut missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
+  ) -> Result<BTreeMap<GraphNodeKey, N>, Report> {
+    if nodes.keys().any(|key| !self.node_index.contains_key(key))
+      || edges.keys().any(|key| !self.edge_keys.contains(key))
+    {
+      return Err(make_internal_report!(
+        "Partition contains stale topology entries while indexing a pass"
+      ));
+    }
+    if edges.len() != self.edge_keys.len() || self.edge_keys.iter().any(|key| !edges.contains_key(key)) {
+      return Err(make_internal_report!(
+        "Partition edge set does not match the graph while indexing a pass"
+      ));
+    }
+    let mut created = BTreeMap::new();
+    for node in &self.nodes {
+      if !nodes.contains_key(&node.key) {
+        created.insert(node.key, missing_node(node.key)?);
+      }
+    }
+    Ok(created)
+  }
+
+  /// Borrow the input for node `index`, from the caller's map when present or from the created
+  /// missing-node inputs otherwise.
+  fn resolve_node<'a, N>(
+    &self,
+    nodes: &'a BTreeMap<GraphNodeKey, N>,
+    created: &'a BTreeMap<GraphNodeKey, N>,
+    index: usize,
+  ) -> &'a N {
+    let key = self.nodes[index].key;
+    nodes
+      .get(&key)
+      .or_else(|| created.get(&key))
+      .expect("Indexed node must have an input")
+  }
+
+  /// Drain the per-index published outputs into key-addressed maps: each node output keyed by its node,
+  /// and each node's optional parent-edge message keyed by that parent edge. Duplicate keys signal a
+  /// scheduling bug, so they are reported as internal errors.
+  fn collect_map_outputs<NodeOut, EdgeOut>(
+    &self,
+    completed: Vec<OnceLock<GraphPassNodeOutput<NodeOut, EdgeOut>>>,
+  ) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report> {
+    let mut nodes = BTreeMap::new();
+    let mut edges = BTreeMap::new();
+    for (index, slot) in completed.into_iter().enumerate() {
+      let output = slot
+        .into_inner()
+        .expect("Every indexed slot must publish an output after a successful map");
+      let key = self.nodes[index].key;
+      if nodes.insert(key, output.node).is_some() {
+        return Err(make_internal_report!("Duplicate node {key} while collecting a graph map"));
+      }
+      if let Some(edge) = output.parent_message {
+        let (_, edge_key) = self.nodes[index]
+          .parent_edge
+          .expect("Parent message must belong to a parent edge");
+        if edges.insert(edge_key, edge).is_some() {
+          return Err(make_internal_report!("Duplicate edge {edge_key} while collecting a graph map"));
+        }
+      }
+    }
+    Ok(GraphMapOutputs { nodes, edges })
+  }
 }
 
 /// One completed child seen by a backward-mapping visitor: the child's returned node output and the
-/// optional message it produced for the edge connecting it to the current (parent) node.
+/// optional message it produced for the edge connecting it to the current (parent) node. Children are
+/// presented in the graph's `children_of` (outbound) order.
 pub struct GraphPassChildBackward<'a, NodeOut, EdgeOut> {
   pub node_key: GraphNodeKey,
   pub edge_key: GraphEdgeKey,
@@ -41,31 +329,31 @@ pub struct GraphPassChildBackward<'a, NodeOut, EdgeOut> {
   pub edge: Option<&'a EdgeOut>,
 }
 
-/// Input handed to a backward-mapping visitor for one node: the node's own moved-in input, its
-/// moved-in parent-edge input, and the already-completed outputs of its children.
+/// Input handed to a backward-mapping visitor for one node: the node's own borrowed input, its borrowed
+/// parent-edge input, and the already-completed outputs of its children (in `children_of` order).
 pub struct GraphPassBackwardContext<'a, N, E, NodeOut, EdgeOut> {
   pub key: GraphNodeKey,
   pub is_leaf: bool,
   pub is_root: bool,
-  pub input: N,
-  pub parent_edge: Option<(GraphEdgeKey, E)>,
+  pub input: &'a N,
+  pub parent_edge: Option<(GraphEdgeKey, &'a E)>,
   pub children: &'a [GraphPassChildBackward<'a, NodeOut, EdgeOut>],
 }
 
-/// Input handed to a forward-mapping visitor for one node: the node's own moved-in input, its
-/// moved-in parent-edge input, and the already-completed forward output of its single parent.
+/// Input handed to a forward-mapping visitor for one node: the node's own borrowed input, its borrowed
+/// parent-edge input, and the already-completed forward output of its single parent.
 pub struct GraphPassForwardContext<'a, N, E, NodeOut> {
   pub key: GraphNodeKey,
   pub is_leaf: bool,
   pub is_root: bool,
-  pub input: N,
-  pub parent_edge: Option<(GraphEdgeKey, E)>,
+  pub input: &'a N,
+  pub parent_edge: Option<(GraphEdgeKey, &'a E)>,
   pub parent: Option<&'a NodeOut>,
 }
 
 /// Output returned by a mapping visitor for one node: the node's output and the optional message it
-/// sends along its own parent edge (`None` at the root, which has no parent edge, or whenever the
-/// node produces no message for that edge).
+/// sends along its own parent edge (`None` at the root, which has no parent edge, or whenever the node
+/// produces no message for that edge).
 pub struct GraphPassNodeOutput<NodeOut, EdgeOut> {
   pub node: NodeOut,
   pub parent_message: Option<EdgeOut>,
@@ -78,468 +366,9 @@ pub struct GraphMapOutputs<NodeOut, EdgeOut> {
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
 }
 
-impl<N, E> GraphPass<N, E> {
-  pub fn new(
-    graph: &Graph,
-    nodes: &mut BTreeMap<GraphNodeKey, N>,
-    edges: &mut BTreeMap<GraphEdgeKey, E>,
-    missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
-  ) -> Result<Self, Report> {
-    let topology = GraphPassTopology::new(graph)?;
-    Self::from_topology(&topology, nodes, edges, missing_node)
-  }
-
-  pub fn try_for_each_backward(
-    &mut self,
-    visit: impl Fn(&GraphPassDependencies<N, E>, &mut GraphPassSlot<N, E>) -> Result<(), Report> + Sync + Send,
-  ) -> Result<(), Report>
-  where
-    N: Send + Sync,
-    E: Send + Sync,
-  {
-    let prerequisites = self.children.iter().map(Vec::len).collect::<Vec<_>>();
-    let successors = self
-      .parents
-      .iter()
-      .map(|parent| parent.iter().copied().collect::<Vec<_>>())
-      .collect::<Vec<_>>();
-    self.try_for_each_ready(&prerequisites, &successors, visit)
-  }
-
-  pub fn try_for_each_forward(
-    &mut self,
-    visit: impl Fn(&GraphPassDependencies<N, E>, &mut GraphPassSlot<N, E>) -> Result<(), Report> + Sync + Send,
-  ) -> Result<(), Report>
-  where
-    N: Send + Sync,
-    E: Send + Sync,
-  {
-    let prerequisites = self
-      .parents
-      .iter()
-      .map(|parent| usize::from(parent.is_some()))
-      .collect::<Vec<_>>();
-    let successors = self.children.clone();
-    self.try_for_each_ready(&prerequisites, &successors, visit)
-  }
-
-  pub fn try_map_backward<NodeOut, EdgeOut>(
-    mut self,
-    visit: impl Fn(
-      GraphPassBackwardContext<'_, N, E, NodeOut, EdgeOut>,
-    ) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
-    + Sync
-    + Send,
-  ) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report>
-  where
-    N: Send + Sync,
-    E: Send + Sync,
-    NodeOut: Send + Sync,
-    EdgeOut: Send + Sync,
-  {
-    // Backward schedule: a node becomes ready once every child has completed, then unblocks its parent.
-    let prerequisites = self.children.iter().map(Vec::len).collect::<Vec<_>>();
-    let successors = self
-      .parents
-      .iter()
-      .map(|parent| parent.iter().copied().collect::<Vec<_>>())
-      .collect::<Vec<_>>();
-
-    // Node keys and the key of each node's own parent edge, captured before the inputs are moved out.
-    let node_keys = self.slots.iter().map(|slot| slot.key).collect::<Vec<_>>();
-    let parent_edge_keys = self
-      .slots
-      .iter()
-      .map(|slot| slot.parent_edge.as_ref().map(|(edge_key, _)| *edge_key))
-      .collect::<Vec<_>>();
-
-    let pending = std::mem::take(&mut self.slots)
-      .into_iter()
-      .map(|slot| AtomicCell::new(Some(slot)))
-      .collect::<Vec<_>>();
-    let completed = std::iter::repeat_with(OnceLock::<GraphPassNodeOutput<NodeOut, EdgeOut>>::new)
-      .take(pending.len())
-      .collect::<Vec<_>>();
-
-    run_dependency_queue(&prerequisites, &successors, |index| {
-      let slot = pending[index]
-        .take()
-        .expect("Dependency queue must schedule each indexed slot once");
-
-      // Every child has completed before this node is scheduled, so its output is published. Fold
-      // children in the fixed, deterministic order of `self.children[index]` so results do not depend
-      // on thread count.
-      let children = self.children[index]
-        .iter()
-        .map(|&child_index| {
-          let child = completed[child_index]
-            .get()
-            .expect("Backward child must complete before its parent");
-          GraphPassChildBackward {
-            node_key: node_keys[child_index],
-            edge_key: parent_edge_keys[child_index].expect("Backward child must have a parent edge"),
-            node: &child.node,
-            edge: child.parent_message.as_ref(),
-          }
-        })
-        .collect::<Vec<_>>();
-
-      let context = GraphPassBackwardContext {
-        key: slot.key,
-        is_leaf: self.children[index].is_empty(),
-        is_root: self.parents[index].is_none(),
-        input: slot.node,
-        parent_edge: slot.parent_edge,
-        children: &children,
-      };
-      let output = visit(context)?;
-      assert!(
-        completed[index].set(output).is_ok(),
-        "Dependency queue must publish each indexed slot once"
-      );
-      Ok(())
-    })?;
-
-    collect_map_outputs(completed, &node_keys, &parent_edge_keys)
-  }
-
-  pub fn try_map_forward<NodeOut, EdgeOut>(
-    mut self,
-    visit: impl Fn(GraphPassForwardContext<'_, N, E, NodeOut>) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
-    + Sync
-    + Send,
-  ) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report>
-  where
-    N: Send + Sync,
-    E: Send + Sync,
-    NodeOut: Send + Sync,
-    EdgeOut: Send + Sync,
-  {
-    // Forward schedule: a node becomes ready once its parent has completed (roots are ready
-    // immediately), then unblocks its children.
-    let prerequisites = self
-      .parents
-      .iter()
-      .map(|parent| usize::from(parent.is_some()))
-      .collect::<Vec<_>>();
-    let successors = self.children.clone();
-
-    // Node keys and the key of each node's own parent edge, captured before the inputs are moved out.
-    let node_keys = self.slots.iter().map(|slot| slot.key).collect::<Vec<_>>();
-    let parent_edge_keys = self
-      .slots
-      .iter()
-      .map(|slot| slot.parent_edge.as_ref().map(|(edge_key, _)| *edge_key))
-      .collect::<Vec<_>>();
-
-    let pending = std::mem::take(&mut self.slots)
-      .into_iter()
-      .map(|slot| AtomicCell::new(Some(slot)))
-      .collect::<Vec<_>>();
-    let completed = std::iter::repeat_with(OnceLock::<GraphPassNodeOutput<NodeOut, EdgeOut>>::new)
-      .take(pending.len())
-      .collect::<Vec<_>>();
-
-    run_dependency_queue(&prerequisites, &successors, |index| {
-      let slot = pending[index]
-        .take()
-        .expect("Dependency queue must schedule each indexed slot once");
-
-      // The parent has completed before this node is scheduled, so its output is published.
-      let parent = self.parents[index].map(|parent_index| {
-        &completed[parent_index]
-          .get()
-          .expect("Forward parent must complete before its child")
-          .node
-      });
-
-      let context = GraphPassForwardContext {
-        key: slot.key,
-        is_leaf: self.children[index].is_empty(),
-        is_root: self.parents[index].is_none(),
-        input: slot.node,
-        parent_edge: slot.parent_edge,
-        parent,
-      };
-      let output = visit(context)?;
-      assert!(
-        completed[index].set(output).is_ok(),
-        "Dependency queue must publish each indexed slot once"
-      );
-      Ok(())
-    })?;
-
-    collect_map_outputs(completed, &node_keys, &parent_edge_keys)
-  }
-
-  pub fn into_maps(self) -> Result<(BTreeMap<GraphNodeKey, N>, BTreeMap<GraphEdgeKey, E>), Report> {
-    let mut nodes = BTreeMap::new();
-    let mut edges = BTreeMap::new();
-    for slot in self.slots {
-      if nodes.insert(slot.key, slot.node).is_some() {
-        return Err(make_internal_report!(
-          "Duplicate partition node {} while restoring a pass",
-          slot.key
-        ));
-      }
-      if let Some((edge_key, edge)) = slot.parent_edge
-        && edges.insert(edge_key, edge).is_some()
-      {
-        return Err(make_internal_report!(
-          "Duplicate partition edge {edge_key} while restoring a pass"
-        ));
-      }
-    }
-    Ok((nodes, edges))
-  }
-
-  fn from_topology(
-    topology: &GraphPassTopology,
-    nodes: &mut BTreeMap<GraphNodeKey, N>,
-    edges: &mut BTreeMap<GraphEdgeKey, E>,
-    mut missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
-  ) -> Result<Self, Report> {
-    let graph_node_keys = topology.nodes.iter().map(|node| node.key).collect::<BTreeSet<_>>();
-    let graph_edge_keys = topology
-      .nodes
-      .iter()
-      .filter_map(|node| node.parent.map(|(_, edge_key)| edge_key))
-      .collect::<BTreeSet<_>>();
-    if nodes.keys().any(|key| !graph_node_keys.contains(key)) || edges.keys().any(|key| !graph_edge_keys.contains(key))
-    {
-      return Err(make_internal_report!(
-        "Partition contains stale topology entries while indexing a pass"
-      ));
-    }
-    let missing_keys = graph_node_keys
-      .iter()
-      .filter(|key| !nodes.contains_key(key))
-      .copied()
-      .collect::<Vec<_>>();
-    for key in missing_keys {
-      nodes.insert(key, missing_node(key)?);
-    }
-    if edges.len() != graph_edge_keys.len() || graph_edge_keys.iter().any(|key| !edges.contains_key(key)) {
-      return Err(make_internal_report!(
-        "Partition edge set does not match the graph while indexing a pass"
-      ));
-    }
-
-    let mut nodes = std::mem::take(nodes);
-    let mut edges = std::mem::take(edges);
-    let node_capacity = topology
-      .nodes
-      .iter()
-      .map(|node| node.key.as_usize())
-      .max()
-      .map_or(0, |index| index + 1);
-    let edge_capacity = graph_edge_keys
-      .iter()
-      .map(|key| key.as_usize())
-      .max()
-      .map_or(0, |index| index + 1);
-    let mut node_indices = vec![None; node_capacity];
-    let mut edge_indices = vec![None; edge_capacity];
-    let mut slots = Vec::with_capacity(topology.nodes.len());
-
-    for node in &topology.nodes {
-      let data = nodes.remove(&node.key).map_or_else(|| missing_node(node.key), Ok)?;
-      let (parent_key, parent_edge) = if let Some((parent_key, edge_key)) = node.parent {
-        let edge = edges.remove(&edge_key).expect("Validated partition edge must exist");
-        (Some(parent_key), Some((edge_key, edge)))
-      } else {
-        (None, None)
-      };
-      let index = slots.len();
-      node_indices[node.key.as_usize()] = Some(index);
-      if let Some((edge_key, _)) = &parent_edge {
-        edge_indices[edge_key.as_usize()] = Some(index);
-      }
-      slots.push(GraphPassSlot {
-        key: node.key,
-        node: data,
-        parent_key,
-        parent_edge,
-      });
-    }
-
-    let parents = topology
-      .nodes
-      .iter()
-      .map(|node| {
-        node
-          .parent
-          .map(|(key, _)| node_indices[key.as_usize()].expect("Indexed parent must exist"))
-      })
-      .collect::<Vec<_>>();
-    let mut children = vec![Vec::new(); slots.len()];
-    for (index, parent) in parents.iter().enumerate() {
-      if let Some(parent) = parent {
-        children[*parent].push(index);
-      }
-    }
-
-    debug_assert!(nodes.is_empty() && edges.is_empty());
-
-    Ok(Self {
-      slots,
-      node_indices,
-      edge_indices,
-      parents,
-      children,
-    })
-  }
-
-  fn try_for_each_ready(
-    &mut self,
-    prerequisites: &[usize],
-    successors: &[Vec<usize>],
-    visit: impl Fn(&GraphPassDependencies<N, E>, &mut GraphPassSlot<N, E>) -> Result<(), Report> + Sync + Send,
-  ) -> Result<(), Report>
-  where
-    N: Send + Sync,
-    E: Send + Sync,
-  {
-    let pending = std::mem::take(&mut self.slots)
-      .into_iter()
-      .map(|slot| AtomicCell::new(Some(slot)))
-      .collect::<Vec<_>>();
-    let completed = std::iter::repeat_with(OnceLock::new)
-      .take(pending.len())
-      .collect::<Vec<_>>();
-    let dependencies = GraphPassDependencies {
-      slots: &completed,
-      node_indices: &self.node_indices,
-      edge_indices: &self.edge_indices,
-    };
-
-    let result = run_dependency_queue(prerequisites, successors, |index| {
-      let mut slot = pending[index]
-        .take()
-        .expect("Dependency queue must schedule each indexed slot once");
-      let result = visit(&dependencies, &mut slot);
-      assert!(
-        completed[index].set(slot).is_ok(),
-        "Dependency queue must publish each indexed slot once"
-      );
-      result
-    });
-
-    self.slots = pending
-      .into_iter()
-      .zip(completed)
-      .map(|(pending, completed)| {
-        completed
-          .into_inner()
-          .or_else(|| pending.into_inner())
-          .expect("Every indexed slot must remain available after traversal")
-      })
-      .collect();
-    result
-  }
-}
-
-/// Drain the per-index completed outputs of a graph map into key-addressed maps: each node output is
-/// keyed by its node, and each node's optional parent-edge message is keyed by that parent edge.
-/// Duplicate keys signal a scheduling bug, so they are reported as internal errors.
-fn collect_map_outputs<NodeOut, EdgeOut>(
-  completed: Vec<OnceLock<GraphPassNodeOutput<NodeOut, EdgeOut>>>,
-  node_keys: &[GraphNodeKey],
-  parent_edge_keys: &[Option<GraphEdgeKey>],
-) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report> {
-  let mut nodes = BTreeMap::new();
-  let mut edges = BTreeMap::new();
-  for (index, slot) in completed.into_iter().enumerate() {
-    let output = slot
-      .into_inner()
-      .expect("Every indexed slot must publish an output after a successful map");
-    if nodes.insert(node_keys[index], output.node).is_some() {
-      return Err(make_internal_report!(
-        "Duplicate node {} while collecting a graph map",
-        node_keys[index]
-      ));
-    }
-    if let Some(edge) = output.parent_message {
-      let edge_key = parent_edge_keys[index].expect("Parent message must belong to a parent edge");
-      if edges.insert(edge_key, edge).is_some() {
-        return Err(make_internal_report!(
-          "Duplicate edge {edge_key} while collecting a graph map"
-        ));
-      }
-    }
-  }
-  Ok(GraphMapOutputs { nodes, edges })
-}
-
-impl<N, E> GraphPassDependencies<'_, N, E> {
-  pub fn slot(&self, key: GraphNodeKey) -> &GraphPassSlot<N, E> {
-    let index = self.node_indices[key.as_usize()].expect("Indexed dependency node must have a slot");
-    self.slots[index]
-      .get()
-      .expect("Indexed dependency must complete before its successor")
-  }
-
-  pub fn node(&self, key: GraphNodeKey) -> &N {
-    &self.slot(key).node
-  }
-
-  pub fn edge(&self, key: GraphEdgeKey) -> &E {
-    let index = self.edge_indices[key.as_usize()].expect("Indexed dependency edge must have a slot");
-    &self.slots[index]
-      .get()
-      .expect("Indexed dependency must complete before its successor")
-      .parent_edge
-      .as_ref()
-      .expect("Indexed edge owner must have a parent edge")
-      .1
-  }
-}
-
-struct GraphPassTopology {
-  nodes: Vec<GraphPassTopologyNode>,
-}
-
-impl GraphPassTopology {
-  fn new(graph: &Graph) -> Result<Self, Report> {
-    let nodes = graph
-      .get_nodes()
-      .iter()
-      .map(|node| {
-        let key = node.read_arc().key();
-        let parent = if let Some(edge_key) = graph.parent_inbound_edge(key)? {
-          Some((graph.get_source_node_key(edge_key)?, edge_key))
-        } else {
-          None
-        };
-        Ok(GraphPassTopologyNode { key, parent })
-      })
-      .collect::<Result<Vec<_>, Report>>()?;
-    let node_indices = nodes
-      .iter()
-      .enumerate()
-      .map(|(index, node)| (node.key, index))
-      .collect::<BTreeMap<_, _>>();
-    let parents = nodes
-      .iter()
-      .map(|node| node.parent.map(|(key, _)| node_indices[&key]))
-      .collect::<Vec<_>>();
-    let mut children = vec![Vec::new(); nodes.len()];
-    for (index, parent) in parents.iter().enumerate() {
-      if let Some(parent) = parent {
-        children[*parent].push(index);
-      }
-    }
-    let prerequisites = children.iter().map(Vec::len).collect::<Vec<_>>();
-    let successors = parents
-      .iter()
-      .map(|parent| parent.iter().copied().collect::<Vec<_>>())
-      .collect::<Vec<_>>();
-    validate_dependency_graph(&prerequisites, &successors)?;
-    Ok(Self { nodes })
-  }
-}
-
-struct GraphPassTopologyNode {
+/// A single node in the frozen pass topology: its key and, for a non-root, the parent node and the edge
+/// connecting them.
+struct GraphPassNode {
   key: GraphNodeKey,
-  parent: Option<(GraphNodeKey, GraphEdgeKey)>,
+  parent_edge: Option<(GraphNodeKey, GraphEdgeKey)>,
 }

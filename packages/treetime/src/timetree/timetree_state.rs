@@ -263,13 +263,9 @@ impl TimetreeState {
       + Sync
       + Send,
   {
-    let pass = GraphPass::new(
-      graph,
-      &mut self.nodes,
-      &mut self.edges,
-      |_| Ok(DateNodeState::default()),
-    )?;
-    let GraphMapOutputs { nodes, edges } = pass.try_map_backward(visit)?;
+    let pass = GraphPass::new(graph)?;
+    let GraphMapOutputs { nodes, edges } =
+      pass.map_backward(&self.nodes, &self.edges, |_| Ok(DateNodeState::default()), visit)?;
     self.nodes = nodes;
     self.edges = edges;
     Ok(())
@@ -286,13 +282,9 @@ impl TimetreeState {
       + Sync
       + Send,
   {
-    let pass = GraphPass::new(
-      graph,
-      &mut self.nodes,
-      &mut self.edges,
-      |_| Ok(DateNodeState::default()),
-    )?;
-    let GraphMapOutputs { nodes, edges } = pass.try_map_forward(visit)?;
+    let pass = GraphPass::new(graph)?;
+    let GraphMapOutputs { nodes, edges } =
+      pass.map_forward(&self.nodes, &self.edges, |_| Ok(DateNodeState::default()), visit)?;
     self.nodes = nodes;
     self.edges = edges;
     Ok(())

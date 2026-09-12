@@ -41,11 +41,11 @@ pub fn clock_filter_inplace(
 
   // Assign divergence to each node: div = parent.div + branch_length, parents before children.
   state.map_forward(graph, |context| {
-    let mut node = context.input;
+    let mut node = context.input.clone();
     let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
       let parent = context.parent.expect("Non-root node must have a parent");
       node.div = parent.div + edge_branch_length(edge_key, branch_lengths);
-      Some(edge)
+      Some(edge.clone())
     } else {
       node.div = 0.0;
       None

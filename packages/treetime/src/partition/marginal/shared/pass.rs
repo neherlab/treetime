@@ -27,11 +27,15 @@ pub fn marginal_process_backward_indexed(
   partition.marginal_data_mut().nodes.append(&mut missing_nodes);
   let gtr = partition.marginal_data().gtr.clone();
   let min_branch_length = partition.marginal_data().min_branch_length;
-  let (nodes, edges) = partition.indexed_storage_mut();
-  let pass = GraphPass::new(graph, nodes, edges, |_| unreachable!("Missing nodes were initialized"))?;
-  let outputs = pass.try_map_backward(|context| {
-    marginal_process_node_backward_indexed(partition, graph, &gtr, min_branch_length, branch_lengths, context)
-  })?;
+  let pass = GraphPass::new(graph)?;
+  let nodes = &partition.marginal_data().nodes;
+  let edges = &partition.marginal_data().edges;
+  let outputs = pass.map_backward(
+    nodes,
+    edges,
+    |_| unreachable!("Missing nodes were initialized"),
+    |context| marginal_process_node_backward_indexed(partition, &gtr, min_branch_length, branch_lengths, &context),
+  )?;
   partition.marginal_data_mut().nodes = outputs.nodes;
   partition.marginal_data_mut().edges = outputs.edges;
   Ok(())
@@ -39,51 +43,26 @@ pub fn marginal_process_backward_indexed(
 
 fn marginal_process_node_backward_indexed(
   partition: &dyn IndexedMarginalPartition,
-  graph: &Graph,
   gtr: &GTR,
   min_branch_length: f64,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  context: GraphPassBackwardContext<'_, DenseNodePartition, DenseEdgePartition, DenseNodePartition, DenseEdgePartition>,
+  context: &GraphPassBackwardContext<'_, DenseNodePartition, DenseEdgePartition, DenseNodePartition, DenseEdgePartition>,
 ) -> Result<GraphPassNodeOutput<DenseNodePartition, DenseEdgePartition>, Report> {
-  let mut node = context.input;
-  let graph_node = graph.get_node(context.key).expect("Indexed node must exist in graph");
-  let graph_node = graph_node.read_arc();
-  let msg_to_parent = if graph_node.is_leaf() {
+  let mut node = context.input.clone();
+  let msg_to_parent = if context.is_leaf {
     partition.indexed_leaf_profile(&node)?
   } else {
-    let child_pairs = graph.children_of(&graph_node);
-
-    // The value engine hands the completed children in its own topology order, which may differ from
-    // `children_of`. Index them by key so the per-child log-space product folds in the same canonical
-    // `children_of` order as before, keeping the floating-point result byte-for-byte identical.
-    let child_nodes: BTreeMap<_, _> = context
-      .children
-      .iter()
-      .map(|child| (child.node_key, child.node))
-      .collect();
-    let child_edge_messages: BTreeMap<_, _> = context
-      .children
-      .iter()
-      .filter_map(|child| child.edge.map(|edge| (child.edge_key, edge)))
-      .collect();
-
-    let children = child_pairs
-      .iter()
-      .map(|(child, _)| {
-        let child_key = child.read_arc().key();
-        *child_nodes
-          .get(&child_key)
-          .expect("Backward child node output must be published before its parent")
-      })
-      .collect_vec();
+    // Children arrive in the graph's canonical `children_of` order, so the per-child log-space product
+    // folds in the same order regardless of thread count, keeping the result byte-for-byte identical.
+    let children = context.children.iter().map(|child| child.node).collect_vec();
     node.seq = partition.indexed_backward_internal(&children)?;
 
-    let child_edges = child_pairs
+    let child_edges = context
+      .children
       .iter()
-      .map(|(_, edge)| {
-        let edge_key = edge.read_arc().key();
-        *child_edge_messages
-          .get(&edge_key)
+      .map(|child| {
+        child
+          .edge
           .expect("Backward child edge message must be published before its parent")
       })
       .collect_vec();
@@ -101,7 +80,7 @@ fn marginal_process_node_backward_indexed(
     DenseSeqDistribution { dis, log_lh }
   };
 
-  let parent_message = if graph_node.is_root() {
+  let parent_message = if context.is_root {
     let mut dis = &msg_to_parent.dis * &gtr.pi;
     let delta_ll = normalize_inplace(&mut dis);
     node.profile = DenseSeqDistribution {
@@ -110,10 +89,11 @@ fn marginal_process_node_backward_indexed(
     };
     None
   } else {
-    // Reuse this node's moved-in parent-edge input and overwrite only the two message fields, exactly
-    // as the in-place engine did. The edge's other fields (indels, transmission, msg_to_child) carry
-    // forward-pass state across timetree iterations and must survive the backward pass unchanged.
-    let (edge_key, mut edge) = context.parent_edge.expect("Non-root node must own its parent edge");
+    // Clone this node's parent-edge input and overwrite only the two message fields, exactly as before.
+    // The edge's other fields (indels, transmission, msg_to_child) carry forward-pass state across
+    // timetree iterations and must survive the backward pass unchanged.
+    let (edge_key, edge) = context.parent_edge.expect("Non-root node must own its parent edge");
+    let mut edge = edge.clone();
     let branch_length = branch_lengths[&edge_key].max(min_branch_length);
     edge.msg_from_child = DenseSeqDistribution {
       dis: gtr.propagate_profile(&msg_to_parent.dis, branch_length, false),
@@ -133,13 +113,15 @@ pub fn marginal_process_forward_indexed(
 ) -> Result<(), Report> {
   let gtr = partition.marginal_data().gtr.clone();
   let min_branch_length = partition.marginal_data().min_branch_length;
-  let (nodes, edges) = partition.indexed_storage_mut();
-  let pass = GraphPass::new(graph, nodes, edges, |key| {
-    treetime_utils::make_internal_error!("Partition node {key} is missing before the marginal forward pass")
-  })?;
-  let outputs = pass.try_map_forward(|context| {
-    marginal_process_node_forward_indexed(partition, graph, &gtr, min_branch_length, branch_lengths, context)
-  })?;
+  let pass = GraphPass::new(graph)?;
+  let nodes = &partition.marginal_data().nodes;
+  let edges = &partition.marginal_data().edges;
+  let outputs = pass.map_forward(
+    nodes,
+    edges,
+    |key| treetime_utils::make_internal_error!("Partition node {key} is missing before the marginal forward pass"),
+    |context| marginal_process_node_forward_indexed(partition, &gtr, min_branch_length, branch_lengths, &context),
+  )?;
   partition.marginal_data_mut().nodes = outputs.nodes;
   partition.marginal_data_mut().edges = outputs.edges;
   Ok(())
@@ -147,18 +129,17 @@ pub fn marginal_process_forward_indexed(
 
 fn marginal_process_node_forward_indexed(
   partition: &dyn IndexedMarginalPartition,
-  graph: &Graph,
   gtr: &GTR,
   min_branch_length: f64,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  context: GraphPassForwardContext<'_, DenseNodePartition, DenseEdgePartition, DenseNodePartition>,
+  context: &GraphPassForwardContext<'_, DenseNodePartition, DenseEdgePartition, DenseNodePartition>,
 ) -> Result<GraphPassNodeOutput<DenseNodePartition, DenseEdgePartition>, Report> {
-  let mut node = context.input;
+  let mut node = context.input.clone();
 
-  // Reuse this node's moved-in parent-edge input and overwrite only `msg_to_child`, exactly as the
-  // in-place engine did. The edge's other fields (indels, msg_from_child, msg_to_parent, transmission)
-  // carry backward-pass state and must survive the forward pass unchanged.
-  let mut parent_edge = context.parent_edge;
+  // Clone this node's parent-edge input and overwrite only `msg_to_child`, exactly as before. The
+  // edge's other fields (indels, msg_from_child, msg_to_parent, transmission) carry backward-pass state
+  // and must survive the forward pass unchanged.
+  let mut parent_edge = context.parent_edge.map(|(edge_key, edge)| (edge_key, edge.clone()));
   if let Some((edge_key, edge)) = parent_edge.as_mut() {
     let parent = context.parent.expect("Non-root node must have a parent");
     let safe_child = edge.msg_from_child.dis.mapv(|value| value.max(f64::MIN_POSITIVE));
@@ -179,7 +160,7 @@ fn marginal_process_node_forward_indexed(
 
   partition.indexed_forward_post(
     context.is_root,
-    graph.is_leaf(context.key),
+    context.is_leaf,
     context.parent,
     &mut node,
     parent_edge.as_mut().map(|(_, edge)| edge),

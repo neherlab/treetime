@@ -35,12 +35,12 @@ pub fn gather_clock_regression_results(
   // Assign divergence to each node: div = parent.div + branch_length, parents before children.
   // `names` and `branch_lengths` are the post-reroot value maps threaded from the pipeline.
   state.map_forward(graph, |context| {
-    let mut node = context.input;
+    let mut node = context.input.clone();
     let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
       let parent = context.parent.expect("Non-root node must have a parent");
       let branch_length = branch_lengths[&edge_key].unwrap_or_default();
       node.div = parent.div + branch_length;
-      Some(edge)
+      Some(edge.clone())
     } else {
       node.div = 0.0;
       None

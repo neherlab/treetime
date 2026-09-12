@@ -1,45 +1,19 @@
 #[cfg(test)]
 mod tests {
+  use crate::graph::Graph;
+  use crate::node::GraphNodeKey;
   use crate::pass::{GraphMapOutputs, GraphPass, GraphPassNodeOutput};
   use eyre::Report;
   use maplit::btreemap;
+  use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
+  use std::collections::{BTreeMap, BTreeSet};
   use treetime_utils::{assert_error, make_report, o};
 
   use self::helpers::{
-    edge_values_by_child_name, fixture_tree, key_indices, own_value_pass_values, pass_values, run_backward_sum,
-    run_forward_sum, values_by_name,
+    child_order_by_parent, edge_values_by_child_name, fixture_chain, fixture_ordering, fixture_tree,
+    own_value_pass_values, run_backward_sum, run_forward_sum, values_by_name,
   };
-
-  #[test]
-  fn test_pass_backward_visits_children_before_parent() -> Result<(), Report> {
-    let (graph, names) = fixture_tree()?;
-    let (mut nodes, mut edges) = pass_values(&graph);
-    let mut pass = GraphPass::new(&graph, &mut nodes, &mut edges, |_| Ok(0))?;
-
-    pass.try_for_each_backward(|dependencies, slot| {
-      let graph_node = graph.get_node(slot.key).expect("Indexed node must exist");
-      slot.node = graph
-        .children_of(&graph_node.read_arc())
-        .iter()
-        .map(|(child, _)| dependencies.node(child.read_arc().key()))
-        .sum::<usize>()
-        + 1;
-      Ok(())
-    })?;
-    let (nodes, _) = pass.into_maps()?;
-    let actual = values_by_name(&names, &nodes);
-    let expected = btreemap! {
-      o!("A") => 1,
-      o!("AB") => 3,
-      o!("B") => 1,
-      o!("C") => 1,
-      o!("root") => 5,
-    };
-
-    assert_eq!(expected, actual);
-    Ok(())
-  }
 
   #[test]
   fn test_pass_map_backward_collects_returned_subtree_sums() -> Result<(), Report> {
@@ -61,12 +35,6 @@ mod tests {
     };
     assert_eq!(expected_nodes, actual_nodes);
 
-    // The root's total (116) and the interior AB subtree sum (13) are the load-bearing checks.
-    assert_eq!(&116, &actual_nodes[&o!("root")]);
-    assert_eq!(&13, &actual_nodes[&o!("AB")]);
-
-    // Each edge carries the child's upward message, equal to that child's NodeOut. The root has no
-    // parent edge, so it contributes no message.
     let actual_edges = edge_values_by_child_name(&graph, &names, &outputs.edges)?;
     let expected_edges = btreemap! {
       o!("A") => 1,
@@ -98,13 +66,13 @@ mod tests {
     // no node emits an upward edge message. The map must complete without panic, collect every node
     // output, and leave the per-edge map empty because no message travelled any edge.
     let (graph, names) = fixture_tree()?;
-    let (mut nodes, mut edges) = own_value_pass_values(&graph, &names);
-    let pass = GraphPass::new(&graph, &mut nodes, &mut edges, |_| Ok(0))?;
+    let (nodes, edges) = own_value_pass_values(&graph, &names);
+    let pass = GraphPass::new(&graph)?;
 
-    let outputs: GraphMapOutputs<usize, ()> = pass.try_map_backward(|context| {
+    let outputs: GraphMapOutputs<usize, ()> = pass.map_backward(&nodes, &edges, |_| Ok(0), |context| {
       let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
       Ok(GraphPassNodeOutput {
-        node: context.input + children_sum,
+        node: *context.input + children_sum,
         parent_message: None,
       })
     })?;
@@ -124,12 +92,8 @@ mod tests {
 
   #[test]
   fn test_pass_map_forward_accumulates_root_to_leaf() -> Result<(), Report> {
-    // Tree `((A,B)AB,C)root` with distinct own-values per node:
-    //   A=1, B=2, C=3, AB=10, root=100.
-    // Each node returns NodeOut = own-value + parent's NodeOut (0 at the root), and sends its own
-    // NodeOut down as the message on its own parent edge. These are root-to-leaf prefix sums,
-    // derived by hand from the tree:
-    //   root=100, AB=100+10=110, A=110+1=111, B=110+2=112, C=100+3=103.
+    // Root-to-leaf prefix sums over `((A,B)AB,C)root` with own-values A=1, B=2, C=3, AB=10, root=100:
+    //   root=100, AB=110, A=111, B=112, C=103.
     let (graph, names) = fixture_tree()?;
     let outputs = run_forward_sum(&graph, &names, 4)?;
 
@@ -143,8 +107,6 @@ mod tests {
     };
     assert_eq!(expected_nodes, actual_nodes);
 
-    // Each edge carries the child's downward message, equal to that child's NodeOut. The root has no
-    // parent edge, so it contributes no message.
     let actual_edges = edge_values_by_child_name(&graph, &names, &outputs.edges)?;
     let expected_edges = btreemap! {
       o!("AB") => 110,
@@ -159,7 +121,6 @@ mod tests {
 
   #[test]
   fn test_pass_map_forward_is_thread_count_independent() -> Result<(), Report> {
-    // Publication must be race-free: identical outputs under a 1-thread and a 4-thread rayon pool.
     let (graph, names) = fixture_tree()?;
 
     let single = run_forward_sum(&graph, &names, 1)?;
@@ -171,63 +132,204 @@ mod tests {
   }
 
   #[test]
-  fn test_pass_forward_visits_parent_before_children() -> Result<(), Report> {
-    let (graph, names) = fixture_tree()?;
-    let (mut nodes, mut edges) = pass_values(&graph);
-    let mut pass = GraphPass::new(&graph, &mut nodes, &mut edges, |_| Ok(0))?;
+  fn test_pass_map_backward_children_arrive_in_children_of_order() -> Result<(), Report> {
+    // The value engine must hand each visitor its children in the graph's canonical `children_of`
+    // (outbound-edge) order, which the ordered reductions depend on. The fixture is built so that
+    // outbound order differs from node-key order, so a pass that sorted children by key would fail.
+    let (graph, parent_key) = fixture_ordering()?;
+    let (nodes, edges) = pass_zeros(&graph);
 
-    pass.try_for_each_forward(|dependencies, slot| {
-      slot.node = slot.parent_key.map_or(0, |parent| dependencies.node(parent) + 1);
-      Ok(())
+    let seen: Mutex<BTreeMap<GraphNodeKey, Vec<GraphNodeKey>>> = Mutex::new(BTreeMap::new());
+    let _outputs: GraphMapOutputs<usize, ()> = GraphPass::new(&graph)?.map_backward(&nodes, &edges, |_| Ok(0), |context| {
+      let order = context.children.iter().map(|child| child.node_key).collect::<Vec<_>>();
+      seen.lock().insert(context.key, order);
+      Ok(GraphPassNodeOutput { node: 0, parent_message: None })
     })?;
-    let (nodes, _) = pass.into_maps()?;
-    let actual = values_by_name(&names, &nodes);
-    let expected = btreemap! {
-      o!("A") => 2,
-      o!("AB") => 1,
-      o!("B") => 2,
-      o!("C") => 1,
-      o!("root") => 0,
-    };
 
+    let actual = seen.lock().get(&parent_key).cloned().expect("Parent must be visited");
+    let expected = child_order_by_parent(&graph, parent_key);
     assert_eq!(expected, actual);
+    // The two children are not in ascending key order, so the check is not vacuous.
+    assert_ne!(expected, {
+      let mut sorted = expected.clone();
+      sorted.sort_unstable();
+      sorted
+    });
     Ok(())
   }
 
   #[test]
-  fn test_pass_roundtrip_preserves_all_values() -> Result<(), Report> {
-    let (graph, _names) = fixture_tree()?;
-    let (mut nodes, mut edges) = key_indices(&graph);
-    let expected_nodes = nodes.clone();
-    let expected_edges = edges.clone();
+  fn test_pass_map_backward_chain_propagates_leaf_to_root() -> Result<(), Report> {
+    // A linear chain `root -> mid -> leaf`. Backward subtree sums with own-values leaf=1, mid=10,
+    // root=100 give leaf=1, mid=11, root=111.
+    let (graph, keys) = fixture_chain()?;
+    let nodes = keys.iter().copied().zip([100, 10, 1]).collect::<BTreeMap<_, _>>();
+    let edges = zero_edges(&graph);
 
-    let pass = GraphPass::new(&graph, &mut nodes, &mut edges, |_| {
-      unreachable!("all graph nodes are present")
+    let outputs: GraphMapOutputs<usize, usize> = GraphPass::new(&graph)?.map_backward(&nodes, &edges, |_| Ok(0), |context| {
+      let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
+      let node = *context.input + children_sum;
+      let parent_message = (!context.is_root).then_some(node);
+      Ok(GraphPassNodeOutput { node, parent_message })
     })?;
-    let (actual_nodes, actual_edges) = pass.into_maps()?;
 
-    assert_eq!(expected_nodes, actual_nodes);
-    assert_eq!(expected_edges, actual_edges);
+    let expected = btreemap! { keys[0] => 111, keys[1] => 11, keys[2] => 1 };
+    assert_eq!(expected, outputs.nodes);
     Ok(())
   }
 
   #[test]
-  fn test_pass_error_restores_all_values() -> Result<(), Report> {
-    let (graph, _names) = fixture_tree()?;
-    let (mut nodes, mut edges) = key_indices(&graph);
-    let expected_nodes = nodes.clone();
-    let expected_edges = edges.clone();
-    let mut pass = GraphPass::new(&graph, &mut nodes, &mut edges, |_| {
-      unreachable!("all graph nodes are present")
+  fn test_pass_map_backward_single_root_only_node() -> Result<(), Report> {
+    // A single node that is both root and leaf: no children, no parent edge, no messages.
+    let mut graph = Graph::new();
+    let root = graph.add_node();
+    graph.build()?;
+    let nodes = btreemap! { root => 7 };
+    let edges = zero_edges(&graph);
+
+    let outputs: GraphMapOutputs<usize, usize> = GraphPass::new(&graph)?.map_backward(&nodes, &edges, |_| Ok(0), |context| {
+      assert!(context.is_root && context.is_leaf && context.children.is_empty() && context.parent_edge.is_none());
+      Ok(GraphPassNodeOutput { node: *context.input, parent_message: None })
     })?;
 
-    let result = pass.try_for_each_backward(|_, _| Err(make_report!("injected pass failure")));
-    assert_error!(result, "injected pass failure");
-    let (actual_nodes, actual_edges) = pass.into_maps()?;
-
-    assert_eq!(expected_nodes, actual_nodes);
-    assert_eq!(expected_edges, actual_edges);
+    assert_eq!(btreemap! { root => 7 }, outputs.nodes);
+    assert!(outputs.edges.is_empty());
     Ok(())
+  }
+
+  #[test]
+  fn test_pass_map_backward_handles_deleted_key_gaps() -> Result<(), Report> {
+    // A removed node leaves a gap in the graph's node-key space (keys are never reused). The pass keys
+    // its topology by actual node key, so a non-contiguous key set must still map correctly.
+    let mut graph = Graph::new();
+    let root = graph.add_node();
+    let child = graph.add_node();
+    let removed = graph.add_node(); // takes a key in the middle
+    graph.add_edge(root, child)?;
+    graph.remove_node(removed)?; // leaves a gap at the removed node's key
+    graph.build()?;
+
+    assert!(removed.as_usize() > child.as_usize(), "the removed key sits between live keys");
+    let nodes = btreemap! { root => 100, child => 1 };
+    let edges = zero_edges(&graph);
+
+    let outputs: GraphMapOutputs<usize, usize> = GraphPass::new(&graph)?.map_backward(&nodes, &edges, |_| Ok(0), |context| {
+      let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
+      let node = *context.input + children_sum;
+      let parent_message = (!context.is_root).then_some(node);
+      Ok(GraphPassNodeOutput { node, parent_message })
+    })?;
+
+    assert_eq!(btreemap! { root => 101, child => 1 }, outputs.nodes);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pass_map_identity_preserves_all_inputs() -> Result<(), Report> {
+    // A map whose visitor returns its input unchanged and its parent edge unchanged reproduces the
+    // input maps exactly (a value round-trip, replacing the in-place engine's restore round-trip).
+    let (graph, _names) = fixture_tree()?;
+    let (nodes, edges) = key_indices(&graph);
+
+    let outputs: GraphMapOutputs<usize, usize> = GraphPass::new(&graph)?.map_backward(&nodes, &edges, |_| Ok(0), |context| {
+      let parent_message = context.parent_edge.map(|(_, edge)| *edge);
+      Ok(GraphPassNodeOutput { node: *context.input, parent_message })
+    })?;
+
+    assert_eq!(nodes, outputs.nodes);
+    assert_eq!(edges, outputs.edges);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pass_map_backward_failure_leaves_inputs_unchanged_and_retries() -> Result<(), Report> {
+    // A failing visitor returns the error, publishes no partial result, and leaves the borrowed input
+    // maps untouched, so the caller can retry from the same inputs and succeed.
+    let (graph, names) = fixture_tree()?;
+    let (nodes, edges) = own_value_pass_values(&graph, &names);
+    let nodes_before = nodes.clone();
+    let edges_before = edges.clone();
+    let pass = GraphPass::new(&graph)?;
+
+    let failed: Result<GraphMapOutputs<usize, usize>, Report> =
+      pass.map_backward(&nodes, &edges, |_| Ok(0), |_| Err(make_report!("injected pass failure")));
+    assert_error!(failed, "injected pass failure");
+
+    // Borrowed inputs are never mutated by a pass, so a failure leaves them exactly as supplied.
+    assert_eq!(nodes_before, nodes);
+    assert_eq!(edges_before, edges);
+
+    // Retry from the same inputs succeeds and produces the expected subtree sums.
+    let outputs = pass.map_backward(&nodes, &edges, |_| Ok(0), |context| {
+      let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
+      let node = *context.input + children_sum;
+      let parent_message = (!context.is_root).then_some(node);
+      Ok(GraphPassNodeOutput { node, parent_message })
+    })?;
+    let actual_nodes = values_by_name(&names, &outputs.nodes);
+    assert_eq!(&116, &actual_nodes[&o!("root")]);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pass_map_backward_failing_child_blocks_ancestors_not_sibling() -> Result<(), Report> {
+    // Tree `((A,B)AB,C)root`. Leaf B fails. Its parent AB depends on B, so AB never becomes ready and
+    // is never visited; root depends on AB, so it is never visited either. The ready sibling A and the
+    // independent leaf C may run. The error is returned and the inputs are left unchanged.
+    let (graph, names) = fixture_tree()?;
+    let (nodes, edges) = own_value_pass_values(&graph, &names);
+    let nodes_before = nodes.clone();
+    let edges_before = edges.clone();
+    let key_by_name = names.iter().map(|(key, name)| (name.clone(), *key)).collect::<BTreeMap<_, _>>();
+
+    let visited: Mutex<BTreeSet<GraphNodeKey>> = Mutex::new(BTreeSet::new());
+    let failed: Result<GraphMapOutputs<usize, usize>, Report> =
+      GraphPass::new(&graph)?.map_backward(&nodes, &edges, |_| Ok(0), |context| {
+        visited.lock().insert(context.key);
+        if context.key == key_by_name[&o!("B")] {
+          return Err(make_report!("injected child failure"));
+        }
+        Ok(GraphPassNodeOutput { node: *context.input, parent_message: (!context.is_root).then_some(0) })
+      });
+    assert_error!(failed, "injected child failure");
+
+    let visited = visited.lock();
+    assert!(!visited.contains(&key_by_name[&o!("AB")]), "the failing child's parent must not run");
+    assert!(!visited.contains(&key_by_name[&o!("root")]), "an ancestor of the failing child must not run");
+    assert_eq!(nodes_before, nodes);
+    assert_eq!(edges_before, edges);
+    Ok(())
+  }
+
+  fn pass_zeros(graph: &Graph) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<crate::edge::GraphEdgeKey, usize>) {
+    (
+      graph.get_nodes().iter().map(|node| (node.read_arc().key(), 0)).collect(),
+      zero_edges(graph),
+    )
+  }
+
+  fn zero_edges(graph: &Graph) -> BTreeMap<crate::edge::GraphEdgeKey, usize> {
+    graph.get_edges().iter().map(|edge| (edge.read_arc().key(), 0)).collect()
+  }
+
+  fn key_indices(graph: &Graph) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<crate::edge::GraphEdgeKey, usize>) {
+    let nodes = graph
+      .get_nodes()
+      .iter()
+      .map(|node| {
+        let key = node.read_arc().key();
+        (key, key.as_usize())
+      })
+      .collect();
+    let edges = graph
+      .get_edges()
+      .iter()
+      .map(|edge| {
+        let key = edge.read_arc().key();
+        (key, key.as_usize())
+      })
+      .collect();
+    (nodes, edges)
   }
 
   mod helpers {
@@ -271,19 +373,41 @@ mod tests {
       Ok((graph, names))
     }
 
-    /// Zero-initialized pass inputs for every node and edge.
-    pub fn pass_values(graph: &Graph) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<GraphEdgeKey, usize>) {
-      let nodes = graph
-        .get_nodes()
+    /// Linear chain `root -> mid -> leaf`. Returns the graph and keys `[root, mid, leaf]`.
+    pub fn fixture_chain() -> Result<(Graph, Vec<GraphNodeKey>), Report> {
+      let mut graph = Graph::new();
+      let root = graph.add_node();
+      let mid = graph.add_node();
+      let leaf = graph.add_node();
+      graph.add_edge(root, mid)?;
+      graph.add_edge(mid, leaf)?;
+      graph.build()?;
+      Ok((graph, vec![root, mid, leaf]))
+    }
+
+    /// A single parent with two children whose outbound-edge order is the reverse of their key order:
+    /// the parent's second-added child has the lower key. Returns the graph and the parent key.
+    pub fn fixture_ordering() -> Result<(Graph, GraphNodeKey), Report> {
+      let mut graph = Graph::new();
+      let parent = graph.add_node();
+      let first_child = graph.add_node();
+      let second_child = graph.add_node();
+      // Add the higher-key child's edge first, then the lower-key child's, so `children_of` order
+      // (outbound order: [second_child, first_child]) differs from ascending key order.
+      graph.add_edge(parent, second_child)?;
+      graph.add_edge(parent, first_child)?;
+      graph.build()?;
+      Ok((graph, parent))
+    }
+
+    /// The child node keys of `parent` in the graph's `children_of` (outbound-edge) order.
+    pub fn child_order_by_parent(graph: &Graph, parent: GraphNodeKey) -> Vec<GraphNodeKey> {
+      let node = graph.get_node(parent).expect("Parent must exist");
+      graph
+        .children_of(&node.read_arc())
         .iter()
-        .map(|node| (node.read_arc().key(), 0))
-        .collect();
-      let edges = graph
-        .get_edges()
-        .iter()
-        .map(|edge| (edge.read_arc().key(), 0))
-        .collect();
-      (nodes, edges)
+        .map(|(child, _)| child.read_arc().key())
+        .collect()
     }
 
     /// Pass inputs with a distinct own-value per node (by name) and zero edge inputs.
@@ -321,13 +445,13 @@ mod tests {
       names: &Names,
       threads: usize,
     ) -> Result<GraphMapOutputs<usize, usize>, Report> {
-      let (mut nodes, mut edges) = own_value_pass_values(graph, names);
-      let pass = GraphPass::new(graph, &mut nodes, &mut edges, |_| Ok(0))?;
+      let (nodes, edges) = own_value_pass_values(graph, names);
+      let pass = GraphPass::new(graph)?;
       let pool = ThreadPoolBuilder::new().num_threads(threads).build()?;
       pool.install(|| {
-        pass.try_map_backward(|context| {
+        pass.map_backward(&nodes, &edges, |_| Ok(0), |context| {
           let children_sum = context.children.iter().map(|child| *child.node).sum::<usize>();
-          let node = context.input + children_sum;
+          let node = *context.input + children_sum;
           let parent_message = (!context.is_root).then_some(node);
           Ok(GraphPassNodeOutput { node, parent_message })
         })
@@ -341,13 +465,13 @@ mod tests {
       names: &Names,
       threads: usize,
     ) -> Result<GraphMapOutputs<usize, usize>, Report> {
-      let (mut nodes, mut edges) = own_value_pass_values(graph, names);
-      let pass = GraphPass::new(graph, &mut nodes, &mut edges, |_| Ok(0))?;
+      let (nodes, edges) = own_value_pass_values(graph, names);
+      let pass = GraphPass::new(graph)?;
       let pool = ThreadPoolBuilder::new().num_threads(threads).build()?;
       pool.install(|| {
-        pass.try_map_forward(|context| {
+        pass.map_forward(&nodes, &edges, |_| Ok(0), |context| {
           let parent_sum = context.parent.copied().unwrap_or(0);
-          let node = context.input + parent_sum;
+          let node = *context.input + parent_sum;
           let parent_message = (!context.is_root).then_some(node);
           Ok(GraphPassNodeOutput { node, parent_message })
         })
@@ -367,27 +491,6 @@ mod tests {
           Ok((names[&child_key].clone(), *value))
         })
         .collect()
-    }
-
-    /// Pass inputs keyed and valued by the underlying key index, for round-trip checks.
-    pub fn key_indices(graph: &Graph) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<GraphEdgeKey, usize>) {
-      let nodes = graph
-        .get_nodes()
-        .iter()
-        .map(|node| {
-          let key = node.read_arc().key();
-          (key, key.as_usize())
-        })
-        .collect();
-      let edges = graph
-        .get_edges()
-        .iter()
-        .map(|edge| {
-          let key = edge.read_arc().key();
-          (key, key.as_usize())
-        })
-        .collect();
-      (nodes, edges)
     }
 
     pub fn values_by_name(names: &Names, values: &BTreeMap<GraphNodeKey, usize>) -> BTreeMap<String, usize> {

@@ -92,20 +92,22 @@ pub(crate) fn attach_seqs_to_graph(
 pub(crate) fn fitch_backward(graph: &Graph, partition: &mut PartitionFitch) -> Result<(), Report> {
   let alphabet = partition.alphabet.clone();
   let length = partition.length;
-  let pass = GraphPass::new(graph, &mut partition.nodes, &mut partition.edges, |_| {
-    Ok(SparseNodePartition::empty(&alphabet))
-  })?;
-  let outputs = pass.try_map_backward(|context| run_fitch_backward_indexed(graph, &alphabet, length, context))?;
+  let pass = GraphPass::new(graph)?;
+  let outputs = pass.map_backward(
+    &partition.nodes,
+    &partition.edges,
+    |_| Ok(SparseNodePartition::empty(&alphabet)),
+    |context| run_fitch_backward_indexed(&alphabet, length, &context),
+  )?;
   partition.nodes = outputs.nodes;
   partition.edges = outputs.edges;
   Ok(())
 }
 
 fn run_fitch_backward_indexed(
-  graph: &Graph,
   alphabet: &Alphabet,
   length: usize,
-  context: GraphPassBackwardContext<
+  context: &GraphPassBackwardContext<
     '_,
     SparseNodePartition,
     SparseEdgePartition,
@@ -113,45 +115,25 @@ fn run_fitch_backward_indexed(
     SparseEdgePartition,
   >,
 ) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report> {
-  let mut node = context.input;
-  let graph_node = graph.get_node(context.key).expect("Indexed node must exist in graph");
-  let graph_node = graph_node.read_arc();
-
   if context.is_leaf {
-    // A leaf keeps its attached Fitch data unchanged and returns its moved-in parent edge untouched
-    // so the forward pass keeps the edge entries it depends on. A single-node tree, where the leaf is
-    // also the root, has no parent edge and returns no message.
-    let parent_message = context.parent_edge.map(|(_, edge)| edge);
+    // A leaf keeps its attached Fitch data unchanged and returns its parent edge untouched so the
+    // forward pass keeps the edge entries it depends on. A single-node tree, where the leaf is also the
+    // root, has no parent edge and returns no message.
+    let node = context.input.clone();
+    let parent_message = context.parent_edge.map(|(_, edge)| edge.clone());
     return Ok(GraphPassNodeOutput { node, parent_message });
   }
 
-  // The value engine hands the completed children in its own topology order, which may differ from
-  // `children_of`. Index them by key so every child is fetched, and folded, in the same canonical
-  // `children_of` order as before, keeping the parsimony result byte-for-byte identical.
-  let child_nodes: BTreeMap<_, _> = context
+  // Children arrive in the graph's canonical `children_of` order, so every child is fetched and folded
+  // in that order, keeping the parsimony result byte-for-byte identical.
+  let children = context
     .children
     .iter()
-    .map(|child| (child.node_key, child.node))
-    .collect();
-  let child_edges: BTreeMap<_, _> = context
-    .children
-    .iter()
-    .filter_map(|child| child.edge.map(|edge| (child.edge_key, edge)))
-    .collect();
-
-  let child_keys = graph.children_of(&graph_node);
-  let children = child_keys
-    .iter()
-    .map(|(child, edge)| {
-      let child_key = child.read_arc().key();
-      let edge_key = edge.read_arc().key();
-      let child_node = *child_nodes
-        .get(&child_key)
-        .expect("Backward child node output must be published before its parent");
-      let edge_data = *child_edges
-        .get(&edge_key)
+    .map(|child| {
+      let edge_data = child
+        .edge
         .expect("Backward child edge message must be published before its parent");
-      (&child_node.seq, edge_data)
+      (&child.node.seq, edge_data)
     })
     .collect_vec();
 
@@ -189,7 +171,7 @@ fn run_fitch_backward_indexed(
   let discovered = discover_fixed_disagreements_backward(&children, alphabet, &mut sequence);
   let variable = resolve_variable_positions_backward(&children, &discovered, &non_char, &mut sequence);
 
-  node = SparseNodePartition {
+  let node = SparseNodePartition {
     seq: SparseSeqInfo {
       gaps: indels_bw.resolved_gaps,
       unknown,
@@ -212,20 +194,25 @@ fn run_fitch_backward_indexed(
     emitted: None,
   };
 
-  // Fitch backward computes only node data. A non-root node returns its moved-in parent edge
-  // unchanged so the forward pass keeps its edge entries; the root has no parent edge.
-  let parent_message = context.parent_edge.map(|(_, edge)| edge);
+  // Fitch backward computes only node data. A non-root node returns its parent edge unchanged so the
+  // forward pass keeps its edge entries; the root has no parent edge.
+  let parent_message = context.parent_edge.map(|(_, edge)| edge.clone());
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
 pub(crate) fn fitch_forward(graph: &Graph, partition: &mut PartitionFitch) -> Result<(), Report> {
   let alphabet = partition.alphabet.clone();
-  let pass = GraphPass::new(graph, &mut partition.nodes, &mut partition.edges, |key| {
-    Err(make_report!(
-      "Partition node {key} is missing before the Fitch forward pass"
-    ))
-  })?;
-  let outputs = pass.try_map_forward(|context| run_fitch_forward_indexed(&alphabet, context))?;
+  let pass = GraphPass::new(graph)?;
+  let outputs = pass.map_forward(
+    &partition.nodes,
+    &partition.edges,
+    |key| {
+      Err(make_report!(
+        "Partition node {key} is missing before the Fitch forward pass"
+      ))
+    },
+    |context| run_fitch_forward_indexed(&alphabet, &context),
+  )?;
   partition.nodes = outputs.nodes;
   partition.edges = outputs.edges;
   Ok(())
@@ -233,14 +220,15 @@ pub(crate) fn fitch_forward(graph: &Graph, partition: &mut PartitionFitch) -> Re
 
 fn run_fitch_forward_indexed(
   alphabet: &Alphabet,
-  context: GraphPassForwardContext<'_, SparseNodePartition, SparseEdgePartition, SparseNodePartition>,
+  context: &GraphPassForwardContext<'_, SparseNodePartition, SparseEdgePartition, SparseNodePartition>,
 ) -> Result<GraphPassNodeOutput<SparseNodePartition, SparseEdgePartition>, Report> {
-  let mut node = context.input;
+  let mut node = context.input.clone();
 
   // The forward pass produces the durable edge data for the asymmetric Fitch case, so a non-root
-  // node reuses and extends its moved-in parent edge rather than building a fresh one: the edge
-  // arrived through the backward pass carrying fields that must survive here.
-  let parent_message = if let Some((_, mut edge)) = context.parent_edge {
+  // node clones and extends its parent edge rather than building a fresh one: the edge arrived through
+  // the backward pass carrying fields that must survive here.
+  let parent_message = if let Some((_, edge)) = context.parent_edge {
+    let mut edge = edge.clone();
     let parent = &context.parent.expect("Non-root node must have a parent").seq;
     let seq = &mut node.seq;
     seq.composition = parent.composition.clone();
