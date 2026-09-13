@@ -1,17 +1,10 @@
 use crate::ancestral::marginal::profile_branch_lengths;
 use crate::gtr::brent_bracketed::BrentBracketed;
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
 use crate::make_internal_report;
-use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
-use crate::partition::marginal::shared::update::MarginalUpdate;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState};
-use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseNodeState};
+use crate::partition::marginal::shared::update::{MarginalUpdate, PartitionMarginalOps};
 use crate::partition::traits::HasGtr;
-use crate::seq::mutation::Sub;
 use argmin::core::{CostFunction, Error, Executor};
 use eyre::Report;
 use log::{debug, info, warn};
@@ -20,241 +13,36 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::LogLh;
-
-/// A marginal representation the GTR refinement can drive generically: it exposes the pass operations
-/// over its own role-typed result maps as associated types. The refinement borrows stable inputs and
-/// threads the returned maps as values; each rate candidate evaluates on an independent clone.
-pub trait MarginalRefine: HasGtr + Clone {
-  type Nodes: Clone;
-  type Backward;
-  type Forward;
-  type Estimates;
-
-  fn refine_marginal_backward(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    nodes: &Self::Nodes,
-  ) -> Result<(Self::Nodes, Self::Backward), Report>;
-
-  #[allow(clippy::type_complexity)]
-  fn refine_marginal_update(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    nodes: Self::Nodes,
-  ) -> Result<(Self::Nodes, Self::Backward, Self::Forward, Self::Estimates, LogLh), Report>;
-
-  fn refine_count_transitions(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    nodes: &Self::Nodes,
-    backward: &Self::Backward,
-    forward: &Self::Forward,
-  ) -> Result<MutationCounts, Report>;
-
-  fn refine_root_log_lh(&self, graph: &Graph, nodes: &Self::Nodes) -> Result<LogLh, Report>;
-
-  /// Zero every node's profile log likelihood before a rate-candidate backward pass.
-  ///
-  /// The backward pass reads a leaf's profile log likelihood as its message to the parent and folds
-  /// it up the tree into the root log likelihood the cost function returns. A leaf profile carried
-  /// over from an earlier forward pass holds that pass's posterior log likelihood, which adds a large
-  /// mu-independent constant to every candidate's cost. That constant does not move the optimum in
-  /// exact arithmetic, but its magnitude erodes precision in Brent's parabolic interpolation and
-  /// shifts the selected rate. Clearing the log likelihoods first evaluates each candidate on the
-  /// backward likelihood alone, as the rate search did before the value-threaded refactor.
-  fn refine_reset_node_log_lh(&self, nodes: &mut Self::Nodes);
-}
-
-impl MarginalRefine for PartitionMarginalDense {
-  type Nodes = BTreeMap<GraphNodeKey, DenseNodeState>;
-  type Backward = BTreeMap<GraphEdgeKey, DenseEdgeBackward>;
-  type Forward = BTreeMap<GraphEdgeKey, DenseEdgeForward>;
-  type Estimates = BTreeMap<GraphEdgeKey, DenseEdgeEstimate>;
-
-  fn refine_marginal_backward(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    nodes: &Self::Nodes,
-  ) -> Result<(Self::Nodes, Self::Backward), Report> {
-    self.marginal_backward(graph, branch_lengths, nodes)
-  }
-
-  fn refine_marginal_update(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    nodes: Self::Nodes,
-  ) -> Result<(Self::Nodes, Self::Backward, Self::Forward, Self::Estimates, LogLh), Report> {
-    let MarginalUpdate {
-      node_states,
-      backward,
-      forward,
-      estimates,
-      log_lh,
-    } = self.marginal_update(graph, branch_lengths, nodes)?;
-    Ok((node_states, backward, forward, estimates, log_lh))
-  }
-
-  fn refine_count_transitions(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    nodes: &Self::Nodes,
-    backward: &Self::Backward,
-    forward: &Self::Forward,
-  ) -> Result<MutationCounts, Report> {
-    self.count_transitions(graph, branch_lengths, nodes, backward, forward)
-  }
-
-  fn refine_root_log_lh(&self, graph: &Graph, nodes: &Self::Nodes) -> Result<LogLh, Report> {
-    let root_key = graph.get_exactly_one_root()?.read_arc().key();
-    Ok(self.get_log_lh(nodes, root_key))
-  }
-
-  fn refine_reset_node_log_lh(&self, nodes: &mut Self::Nodes) {
-    for node in nodes.values_mut() {
-      node.profile.log_lh = LogLh::ZERO;
-    }
-  }
-}
-
-impl MarginalRefine for PartitionMarginalDiscrete {
-  type Nodes = BTreeMap<GraphNodeKey, DenseNodeState>;
-  type Backward = BTreeMap<GraphEdgeKey, DenseEdgeBackward>;
-  type Forward = BTreeMap<GraphEdgeKey, DenseEdgeForward>;
-  type Estimates = BTreeMap<GraphEdgeKey, DenseEdgeEstimate>;
-
-  fn refine_marginal_backward(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    nodes: &Self::Nodes,
-  ) -> Result<(Self::Nodes, Self::Backward), Report> {
-    self.marginal_backward(graph, branch_lengths, nodes)
-  }
-
-  fn refine_marginal_update(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    nodes: Self::Nodes,
-  ) -> Result<(Self::Nodes, Self::Backward, Self::Forward, Self::Estimates, LogLh), Report> {
-    let MarginalUpdate {
-      node_states,
-      backward,
-      forward,
-      estimates,
-      log_lh,
-    } = self.marginal_update(graph, branch_lengths, nodes)?;
-    Ok((node_states, backward, forward, estimates, log_lh))
-  }
-
-  fn refine_count_transitions(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    nodes: &Self::Nodes,
-    backward: &Self::Backward,
-    forward: &Self::Forward,
-  ) -> Result<MutationCounts, Report> {
-    self.count_transitions(graph, branch_lengths, nodes, backward, forward)
-  }
-
-  fn refine_root_log_lh(&self, graph: &Graph, nodes: &Self::Nodes) -> Result<LogLh, Report> {
-    let root_key = graph.get_exactly_one_root()?.read_arc().key();
-    Ok(self.get_log_lh(nodes, root_key))
-  }
-
-  fn refine_reset_node_log_lh(&self, nodes: &mut Self::Nodes) {
-    for node in nodes.values_mut() {
-      node.profile.log_lh = LogLh::ZERO;
-    }
-  }
-}
-
-impl MarginalRefine for PartitionMarginalSparse {
-  type Nodes = BTreeMap<GraphNodeKey, SparseNodeState>;
-  type Backward = BTreeMap<GraphEdgeKey, SparseEdgeBackward>;
-  type Forward = BTreeMap<GraphEdgeKey, SparseEdgeForward>;
-  type Estimates = BTreeMap<GraphEdgeKey, Vec<Sub>>;
-
-  fn refine_marginal_backward(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    nodes: &Self::Nodes,
-  ) -> Result<(Self::Nodes, Self::Backward), Report> {
-    self.marginal_backward(graph, branch_lengths, nodes)
-  }
-
-  fn refine_marginal_update(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    nodes: Self::Nodes,
-  ) -> Result<(Self::Nodes, Self::Backward, Self::Forward, Self::Estimates, LogLh), Report> {
-    let MarginalUpdate {
-      node_states,
-      backward,
-      forward,
-      estimates,
-      log_lh,
-    } = self.marginal_update(graph, branch_lengths, nodes)?;
-    Ok((node_states, backward, forward, estimates, log_lh))
-  }
-
-  fn refine_count_transitions(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    nodes: &Self::Nodes,
-    backward: &Self::Backward,
-    forward: &Self::Forward,
-  ) -> Result<MutationCounts, Report> {
-    self.count_transitions(graph, branch_lengths, nodes, backward, forward)
-  }
-
-  fn refine_root_log_lh(&self, graph: &Graph, nodes: &Self::Nodes) -> Result<LogLh, Report> {
-    let root_key = graph.get_exactly_one_root()?.read_arc().key();
-    Ok(self.get_log_lh(nodes, root_key))
-  }
-
-  fn refine_reset_node_log_lh(&self, nodes: &mut Self::Nodes) {
-    for node in nodes.values_mut() {
-      node.profile.log_lh = LogLh::ZERO;
-    }
-  }
-}
 
 /// Refine the GTR model by alternating inference from posterior-weighted transition counts with
-/// optional substitution-rate optimization, returning the refined partition and its final result maps
-/// and substitution log likelihood.
+/// optional substitution-rate optimization, returning the refined partition together with the marginal
+/// update its final model produces.
 ///
-/// Stable inputs (`graph`, `branch_lengths`) are borrowed; the node states and messages are threaded as
-/// values. Each rate candidate builds its own model and reconstruction on an independent clone, so no
-/// candidate observes state left behind by an earlier one.
-#[allow(clippy::type_complexity, clippy::too_many_arguments)]
+/// Stable inputs (`graph`, `branch_lengths`) are borrowed; the previous marginal update is consumed and
+/// a new one returned. Each rate candidate builds its own model and reconstruction on an independent
+/// clone, so no candidate observes state left behind by an earlier one.
+#[allow(clippy::too_many_arguments)]
 pub fn refine_gtr_iterative<P>(
   graph: &Graph,
   mut partition: P,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  nodes: P::Nodes,
-  backward: P::Backward,
-  forward: P::Forward,
+  update: MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>,
   iterations: usize,
   fixed_pi: Option<&Array1<f64>>,
   pc: f64,
   sampling_bias_correction: Option<f64>,
   optimize_rate: bool,
-) -> Result<(P, P::Nodes, P::Backward, P::Forward, P::Estimates, LogLh), Report>
+) -> Result<(P, MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>), Report>
 where
-  P: MarginalRefine,
+  P: PartitionMarginalOps + HasGtr + Clone,
+  P::Node: Clone,
 {
+  let MarginalUpdate {
+    node_states: nodes,
+    backward,
+    forward,
+    ..
+  } = update;
   let n_states = partition.gtr().pi.len();
   let options = InferGtrOptions {
     fixed_pi: fixed_pi.cloned(),
@@ -269,7 +57,7 @@ where
   let mut nodes = nodes;
   let mut backward = backward;
 
-  let counts = partition.refine_count_transitions(graph, branch_lengths, &nodes, &backward, &forward)?;
+  let counts = partition.count_transitions(graph, branch_lengths, &nodes, &backward, &forward)?;
   let result = infer_gtr_impl(&counts, &options)?;
   *partition.gtr_mut() = build_gtr_from_inference(n_states, &result)?;
   debug!("GTR refinement: initial inference, mu = {:.6}", partition.gtr().mu);
@@ -283,7 +71,7 @@ where
   }
 
   for i in 0..iterations {
-    let counts = partition.refine_count_transitions(graph, branch_lengths, &nodes, &backward, &forward)?;
+    let counts = partition.count_transitions(graph, branch_lengths, &nodes, &backward, &forward)?;
     let result = infer_gtr_impl(&counts, &options)?;
     *partition.gtr_mut() = build_gtr_from_inference(n_states, &result)?;
 
@@ -301,18 +89,17 @@ where
     );
   }
 
-  let (nodes, backward, forward, estimates, log_lh) =
-    partition.refine_marginal_update(graph, &profile_branch_lengths(branch_lengths), nodes)?;
+  let update = partition.marginal_update(graph, &profile_branch_lengths(branch_lengths), nodes)?;
 
   let gtr = partition.gtr();
   info!(
     "GTR refinement: final log likelihood = {:.4}, mu = {:.6}, pi = {:?}",
-    log_lh.value(),
+    update.log_lh.value(),
     gtr.mu,
     gtr.pi
   );
 
-  Ok((partition, nodes, backward, forward, estimates, log_lh))
+  Ok((partition, update))
 }
 
 fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<GTR, Report> {
@@ -336,10 +123,11 @@ fn optimize_gtr_rate<P>(
   graph: &Graph,
   partition: P,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  nodes: P::Nodes,
-) -> Result<(P, P::Nodes, P::Backward), Report>
+  nodes: BTreeMap<GraphNodeKey, P::Node>,
+) -> Result<(P, BTreeMap<GraphNodeKey, P::Node>, BTreeMap<GraphEdgeKey, P::Backward>), Report>
 where
-  P: MarginalRefine,
+  P: PartitionMarginalOps + HasGtr + Clone,
+  P::Node: Clone,
 {
   let old_mu = partition.gtr().mu;
   let sqrt_old_mu = old_mu.sqrt();
@@ -395,7 +183,7 @@ where
     let (mut restored_partition, restored_nodes, restored_backward) = if let Some((p, n, b)) = at_hi {
       (p, n, b)
     } else {
-      let (n, b) = partition.refine_marginal_backward(graph, &branch_lengths, &nodes)?;
+      let (n, b) = partition.marginal_backward(graph, &branch_lengths, &nodes)?;
       (partition, n, b)
     };
     restored_partition.gtr_mut().mu = old_mu;
@@ -404,16 +192,17 @@ where
   }
 }
 
-struct GtrRateCostFn<'a, P: MarginalRefine> {
+struct GtrRateCostFn<'a, P: PartitionMarginalOps> {
   graph: &'a Graph,
   partition: &'a P,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
-  nodes: &'a P::Nodes,
+  nodes: &'a BTreeMap<GraphNodeKey, P::Node>,
 }
 
 impl<P> GtrRateCostFn<'_, P>
 where
-  P: MarginalRefine,
+  P: PartitionMarginalOps + HasGtr + Clone,
+  P::Node: Clone,
 {
   /// Evaluate one candidate `sqrt_mu` on an independent clone of the partition and node states: set the
   /// rate, clear the carried-over profile log likelihoods, run the backward pass, and return the
@@ -421,13 +210,19 @@ where
   /// messages. Clearing the log likelihoods keeps the cost the backward likelihood alone, so a forward
   /// pass's posterior log likelihood does not enter the rate search. A failed backward pass yields an
   /// infinite cost and no state, leaving the borrowed base observations intact for the next candidate.
-  fn evaluate(&self, sqrt_mu: f64) -> (f64, Option<(P, P::Nodes, P::Backward)>) {
+  fn evaluate(
+    &self,
+    sqrt_mu: f64,
+  ) -> (
+    f64,
+    Option<(P, BTreeMap<GraphNodeKey, P::Node>, BTreeMap<GraphEdgeKey, P::Backward>)>,
+  ) {
     let mut partition = self.partition.clone();
     partition.gtr_mut().mu = sqrt_mu * sqrt_mu;
     let mut nodes = self.nodes.clone();
-    partition.refine_reset_node_log_lh(&mut nodes);
-    match partition.refine_marginal_backward(self.graph, self.branch_lengths, &nodes) {
-      Ok((nodes, backward)) => match partition.refine_root_log_lh(self.graph, &nodes) {
+    partition.reset_node_log_lh(&mut nodes);
+    match partition.marginal_backward(self.graph, self.branch_lengths, &nodes) {
+      Ok((nodes, backward)) => match partition.root_log_lh(self.graph, &nodes) {
         Ok(log_lh) => (-log_lh.value(), Some((partition, nodes, backward))),
         Err(e) => {
           warn!(
@@ -454,7 +249,8 @@ where
 
 impl<P> CostFunction for &GtrRateCostFn<'_, P>
 where
-  P: MarginalRefine,
+  P: PartitionMarginalOps + HasGtr + Clone,
+  P::Node: Clone,
 {
   type Param = f64;
   type Output = f64;

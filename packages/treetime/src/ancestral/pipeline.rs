@@ -11,11 +11,10 @@ use crate::gtr::refinement::refine_gtr_iterative;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::dense::partition::{DenseReadout, PartitionMarginalDense};
-use crate::partition::marginal::shared::update::MarginalUpdate;
+use crate::partition::marginal::shared::update::{MarginalUpdate, PartitionMarginalOps};
 use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseReadout};
 use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState};
 use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseNodeState};
-use crate::partition::traits::HasGtr;
 use crate::progress::ProgressSink;
 use crate::seq::alignment::get_common_length;
 use crate::seq::mutation::Sub;
@@ -273,32 +272,30 @@ where
         MarginalPartition::Sparse(partition, node_states) => {
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          let MarginalUpdate {
-            node_states,
-            backward,
-            forward,
-            estimates,
-            log_lh: _,
-          } = partition.marginal_update(&graph, &profile_lengths, node_states)?;
+          let update = partition.marginal_update(&graph, &profile_lengths, node_states)?;
 
-          let (partition, mut node_states, backward, forward, estimates) = if refine {
+          let (partition, update) = if refine {
             refine_gtr_iterative(
               &graph,
               partition,
               branch_lengths,
-              node_states,
-              backward,
-              forward,
+              update,
               params.gtr_iterations,
               None,
               1.0,
               None,
               false,
-            )
-            .map(|(p, n, b, f, e, _lh)| (p, n, b, f, e))?
+            )?
           } else {
-            (partition, node_states, backward, forward, estimates)
+            (partition, update)
           };
+          let MarginalUpdate {
+            mut node_states,
+            backward,
+            forward,
+            estimates,
+            ..
+          } = update;
 
           progress.check_cancelled()?;
           progress.report("Reconstructing sequences", 0.6, "");
@@ -346,32 +343,30 @@ where
           // `marginal_update` ran again) before GTR refinement. Pass the node states through both
           // passes so internal-node gap states settle exactly as they did before.
           let MarginalUpdate { node_states, .. } = partition.marginal_update(&graph, &profile_lengths, node_states)?;
-          let MarginalUpdate {
-            node_states,
-            backward,
-            forward,
-            estimates,
-            log_lh: _,
-          } = partition.marginal_update(&graph, &profile_lengths, node_states)?;
+          let update = partition.marginal_update(&graph, &profile_lengths, node_states)?;
 
-          let (partition, mut node_states, backward, forward, estimates) = if refine {
+          let (partition, update) = if refine {
             refine_gtr_iterative(
               &graph,
               partition,
               branch_lengths,
-              node_states,
-              backward,
-              forward,
+              update,
               params.gtr_iterations,
               None,
               1.0,
               None,
               false,
-            )
-            .map(|(p, n, b, f, e, _lh)| (p, n, b, f, e))?
+            )?
           } else {
-            (partition, node_states, backward, forward, estimates)
+            (partition, update)
           };
+          let MarginalUpdate {
+            mut node_states,
+            backward,
+            forward,
+            estimates,
+            ..
+          } = update;
 
           progress.check_cancelled()?;
           progress.report("Reconstructing sequences", 0.6, "");

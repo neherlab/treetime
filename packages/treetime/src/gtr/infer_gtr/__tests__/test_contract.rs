@@ -20,6 +20,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::shared::update::PartitionMarginalOps;
   use crate::seq::alignment::get_common_length;
   use pretty_assertions::assert_eq;
 

@@ -6,7 +6,7 @@ use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::io::augur::AugurNodeDataJsonAncestralPartition;
-use crate::partition::marginal::shared::update::MarginalUpdate;
+use crate::partition::marginal::shared::update::{MarginalUpdate, PartitionMarginalOps};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -97,7 +97,7 @@ pub fn reconstruct_marginal_partition(
         backward,
         forward,
         estimates,
-        log_lh: _,
+        ..
       } = partition.marginal_update(graph, &profile_lengths, node_states)?;
       ancestral_reconstruction(
         graph,
@@ -129,7 +129,7 @@ pub fn reconstruct_marginal_partition(
         backward,
         forward,
         estimates,
-        log_lh: _,
+        ..
       } = partition.marginal_update(graph, &profile_lengths, node_states)?;
       ancestral_reconstruction(
         graph,

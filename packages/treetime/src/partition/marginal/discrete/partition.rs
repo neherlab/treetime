@@ -3,7 +3,7 @@ use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::partition::marginal::discrete::input::{one_hot_profile, uniform_profile, validate_trait_names};
 use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, indexed_forward};
-use crate::partition::marginal::shared::update::MarginalUpdate;
+use crate::partition::marginal::shared::update::PartitionMarginalOps;
 use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
 };
@@ -121,8 +121,15 @@ impl PartitionMarginalDiscrete {
     let node = node_states.get(&node_key)?;
     Some(node.profile.dis.row(0).to_owned())
   }
+}
 
-  pub fn marginal_backward(
+impl PartitionMarginalOps for PartitionMarginalDiscrete {
+  type Node = DenseNodeState;
+  type Backward = DenseEdgeBackward;
+  type Forward = DenseEdgeForward;
+  type Estimate = DenseEdgeEstimate;
+
+  fn marginal_backward(
     &self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -147,7 +154,7 @@ impl PartitionMarginalDiscrete {
     )
   }
 
-  pub fn marginal_forward(
+  fn marginal_forward(
     &self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -172,29 +179,7 @@ impl PartitionMarginalDiscrete {
     )
   }
 
-  /// Run a full marginal update (backward, then forward) over the discrete representation, returning the
-  /// updated node states, the per-edge backward messages, forward messages, and estimates as distinct
-  /// owned values, plus the substitution log likelihood (root node likelihood after the backward pass).
-  pub fn marginal_update(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
-  ) -> Result<MarginalUpdate<DenseNodeState, DenseEdgeBackward, DenseEdgeForward, DenseEdgeEstimate>, Report> {
-    let (node_states, backward) = self.marginal_backward(graph, branch_lengths, &node_states)?;
-    let root_key = graph.get_exactly_one_root()?.read_arc().key();
-    let log_lh = self.get_log_lh(&node_states, root_key);
-    let (node_states, forward, estimates) = self.marginal_forward(graph, branch_lengths, &node_states, &backward)?;
-    Ok(MarginalUpdate {
-      node_states,
-      backward,
-      forward,
-      estimates,
-      log_lh,
-    })
-  }
-
-  pub fn count_transitions(
+  fn count_transitions(
     &self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -203,12 +188,6 @@ impl PartitionMarginalDiscrete {
     forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
   ) -> Result<MutationCounts, Report> {
     count_transitions_dense(&self.inputs, graph, branch_lengths, node_states, backward, forward)
-  }
-
-  pub fn get_log_lh(&self, node_states: &BTreeMap<GraphNodeKey, DenseNodeState>, node_key: GraphNodeKey) -> LogLh {
-    node_states
-      .get(&node_key)
-      .map_or(LogLh::ZERO, |node| node.profile.log_lh)
   }
 }
 
