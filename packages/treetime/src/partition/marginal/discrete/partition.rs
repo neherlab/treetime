@@ -3,6 +3,7 @@ use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::partition::marginal::discrete::input::{one_hot_profile, uniform_profile, validate_trait_names};
 use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, indexed_forward};
+use crate::partition::marginal::shared::update::MarginalUpdate;
 use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
 };
@@ -174,27 +175,23 @@ impl PartitionMarginalDiscrete {
   /// Run a full marginal update (backward, then forward) over the discrete representation, returning the
   /// updated node states, the per-edge backward messages, forward messages, and estimates as distinct
   /// owned values, plus the substitution log likelihood (root node likelihood after the backward pass).
-  #[allow(clippy::type_complexity)]
   pub fn marginal_update(
     &self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
-  ) -> Result<
-    (
-      BTreeMap<GraphNodeKey, DenseNodeState>,
-      BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
-      BTreeMap<GraphEdgeKey, DenseEdgeForward>,
-      BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
-      LogLh,
-    ),
-    Report,
-  > {
+  ) -> Result<MarginalUpdate<DenseNodeState, DenseEdgeBackward, DenseEdgeForward, DenseEdgeEstimate>, Report> {
     let (node_states, backward) = self.marginal_backward(graph, branch_lengths, &node_states)?;
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     let log_lh = self.get_log_lh(&node_states, root_key);
     let (node_states, forward, estimates) = self.marginal_forward(graph, branch_lengths, &node_states, &backward)?;
-    Ok((node_states, backward, forward, estimates, log_lh))
+    Ok(MarginalUpdate {
+      node_states,
+      backward,
+      forward,
+      estimates,
+      log_lh,
+    })
   }
 
   pub fn count_transitions(

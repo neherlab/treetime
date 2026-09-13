@@ -2,6 +2,7 @@
 mod tests {
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::o;
+  use crate::partition::marginal::shared::update::MarginalUpdate;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -119,8 +120,9 @@ mod tests {
 
     let node_states = partition.attach_traits(&graph, &traits, &names)?;
 
-    let (node_states, _backward, _forward, _estimates, log_lh) =
-      partition.marginal_update(&graph, &profile_branch_lengths(&raw_branch_lengths), node_states)?;
+    let MarginalUpdate {
+      node_states, log_lh, ..
+    } = partition.marginal_update(&graph, &profile_branch_lengths(&raw_branch_lengths), node_states)?;
     let actual_log_lh = log_lh.value();
 
     assert!(actual_log_lh.is_finite());

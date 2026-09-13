@@ -11,6 +11,7 @@ use crate::gtr::refinement::refine_gtr_iterative;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::dense::partition::{DenseReadout, PartitionMarginalDense};
+use crate::partition::marginal::shared::update::MarginalUpdate;
 use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseReadout};
 use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState};
 use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseNodeState};
@@ -85,8 +86,13 @@ impl SparseReconstruction {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   ) -> Result<LogLh, Report> {
     let node_states = std::mem::take(&mut self.node_states);
-    let (node_states, backward, forward, estimates, log_lh) =
-      self.partition.marginal_update(graph, branch_lengths, node_states)?;
+    let MarginalUpdate {
+      node_states,
+      backward,
+      forward,
+      estimates,
+      log_lh,
+    } = self.partition.marginal_update(graph, branch_lengths, node_states)?;
     self.node_states = node_states;
     self.backward = backward;
     self.forward = forward;
@@ -126,8 +132,13 @@ impl DenseReconstruction {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   ) -> Result<LogLh, Report> {
     let node_states = std::mem::take(&mut self.node_states);
-    let (node_states, backward, forward, estimates, log_lh) =
-      self.partition.marginal_update(graph, branch_lengths, node_states)?;
+    let MarginalUpdate {
+      node_states,
+      backward,
+      forward,
+      estimates,
+      log_lh,
+    } = self.partition.marginal_update(graph, branch_lengths, node_states)?;
     self.node_states = node_states;
     self.backward = backward;
     self.forward = forward;
@@ -262,8 +273,13 @@ where
         MarginalPartition::Sparse(partition, node_states) => {
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          let (node_states, backward, forward, estimates, _log_lh) =
-            partition.marginal_update(&graph, &profile_lengths, node_states)?;
+          let MarginalUpdate {
+            node_states,
+            backward,
+            forward,
+            estimates,
+            log_lh: _,
+          } = partition.marginal_update(&graph, &profile_lengths, node_states)?;
 
           let (partition, mut node_states, backward, forward, estimates) = if refine {
             refine_gtr_iterative(
@@ -329,10 +345,14 @@ where
           // after attachment (its `initialize_marginal` attached and updated once, then a separate
           // `marginal_update` ran again) before GTR refinement. Pass the node states through both
           // passes so internal-node gap states settle exactly as they did before.
-          let (node_states, _backward, _forward, _estimates, _log_lh) =
-            partition.marginal_update(&graph, &profile_lengths, node_states)?;
-          let (node_states, backward, forward, estimates, _log_lh) =
-            partition.marginal_update(&graph, &profile_lengths, node_states)?;
+          let MarginalUpdate { node_states, .. } = partition.marginal_update(&graph, &profile_lengths, node_states)?;
+          let MarginalUpdate {
+            node_states,
+            backward,
+            forward,
+            estimates,
+            log_lh: _,
+          } = partition.marginal_update(&graph, &profile_lengths, node_states)?;
 
           let (partition, mut node_states, backward, forward, estimates) = if refine {
             refine_gtr_iterative(

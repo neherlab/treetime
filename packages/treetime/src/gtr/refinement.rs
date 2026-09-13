@@ -6,6 +6,7 @@ use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_i
 use crate::make_internal_report;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
+use crate::partition::marginal::shared::update::MarginalUpdate;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState};
 use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseNodeState};
@@ -89,7 +90,14 @@ impl MarginalRefine for PartitionMarginalDense {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     nodes: Self::Nodes,
   ) -> Result<(Self::Nodes, Self::Backward, Self::Forward, Self::Estimates, LogLh), Report> {
-    self.marginal_update(graph, branch_lengths, nodes)
+    let MarginalUpdate {
+      node_states,
+      backward,
+      forward,
+      estimates,
+      log_lh,
+    } = self.marginal_update(graph, branch_lengths, nodes)?;
+    Ok((node_states, backward, forward, estimates, log_lh))
   }
 
   fn refine_count_transitions(
@@ -136,7 +144,14 @@ impl MarginalRefine for PartitionMarginalDiscrete {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     nodes: Self::Nodes,
   ) -> Result<(Self::Nodes, Self::Backward, Self::Forward, Self::Estimates, LogLh), Report> {
-    self.marginal_update(graph, branch_lengths, nodes)
+    let MarginalUpdate {
+      node_states,
+      backward,
+      forward,
+      estimates,
+      log_lh,
+    } = self.marginal_update(graph, branch_lengths, nodes)?;
+    Ok((node_states, backward, forward, estimates, log_lh))
   }
 
   fn refine_count_transitions(
@@ -183,7 +198,14 @@ impl MarginalRefine for PartitionMarginalSparse {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     nodes: Self::Nodes,
   ) -> Result<(Self::Nodes, Self::Backward, Self::Forward, Self::Estimates, LogLh), Report> {
-    self.marginal_update(graph, branch_lengths, nodes)
+    let MarginalUpdate {
+      node_states,
+      backward,
+      forward,
+      estimates,
+      log_lh,
+    } = self.marginal_update(graph, branch_lengths, nodes)?;
+    Ok((node_states, backward, forward, estimates, log_lh))
   }
 
   fn refine_count_transitions(

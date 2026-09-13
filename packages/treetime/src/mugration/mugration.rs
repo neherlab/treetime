@@ -5,6 +5,7 @@ use crate::gtr::refinement::refine_gtr_iterative;
 use crate::make_error;
 use crate::mugration::result::{MugrationOutputMaps, MugrationResult, gather_mugration_output_maps};
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
+use crate::partition::marginal::shared::update::MarginalUpdate;
 use crate::partition::storage::discrete::DiscreteStates;
 use eyre::Report;
 use indexmap::IndexSet;
@@ -162,8 +163,13 @@ pub fn execute_mugration(
   );
   let node_states = partition.attach_traits(&graph, traits, names)?;
 
-  let (node_states, backward, forward, _estimates, log_lh) =
-    partition.marginal_update(&graph, &profile_branch_lengths(branch_lengths), node_states)?;
+  let MarginalUpdate {
+    node_states,
+    backward,
+    forward,
+    estimates: _,
+    log_lh,
+  } = partition.marginal_update(&graph, &profile_branch_lengths(branch_lengths), node_states)?;
   info!("Mugration: initial log likelihood = {:.4}", log_lh.value());
 
   // GTR refinement borrows stable inputs and returns the refined model with its own reconstruction
