@@ -122,16 +122,14 @@ mod tests {
     let expected_error = format!(
       "Polytomy resolution failed: Polytomy resolution requires an inferred time for node {root_key}, but it has none"
     );
-    let before = serialize_state(&graph, &partitions, &clock_model)?;
+    let before = serialize_state(&graph, &clock_model)?;
 
     assert_error!(
       refine(
         &mut graph,
         &names,
         &constraints,
-        // Clone for the failing call: the round consumes the partitions it is given, so the caller's
-        // copy is what the preservation assertion reads afterwards.
-        partitions.clone(),
+        partitions,
         &mut clock_model,
         Some(&Distribution::constant(10.0)),
         &mut state,
@@ -140,7 +138,7 @@ mod tests {
       expected_error
     );
 
-    let after = serialize_state(&graph, &partitions, &clock_model)?;
+    let after = serialize_state(&graph, &clock_model)?;
     assert_eq!(before, after);
 
     Ok(())
@@ -152,16 +150,14 @@ mod tests {
       create_polytomy_state()?;
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     state.node_mut(root_key).time = Some(f64::NAN);
-    let before = serialize_state(&graph, &partitions, &clock_model)?;
+    let before = serialize_state(&graph, &clock_model)?;
 
     assert_error!(
       refine(
         &mut graph,
         &names,
         &constraints,
-        // Clone for the failing call: the round consumes the partitions it is given, so the caller's
-        // copy is what the preservation assertion reads afterwards.
-        partitions.clone(),
+        partitions,
         &mut clock_model,
         Some(&Distribution::constant(10.0)),
         &mut state,
@@ -172,7 +168,7 @@ mod tests {
       )
     );
 
-    let after = serialize_state(&graph, &partitions, &clock_model)?;
+    let after = serialize_state(&graph, &clock_model)?;
     assert_eq!(before, after);
     assert_eq!(
       f64::NAN.to_bits(),
@@ -321,22 +317,13 @@ mod tests {
     ))
   }
 
-  fn serialize_state(
-    graph: &Graph,
-    partitions: &[PartitionTimetree],
-    clock_model: &ClockModel,
-  ) -> Result<SerializedState, Report> {
+  /// The state a failed round must leave untouched: the tree it borrows and the clock model it
+  /// refines. The partitions are not part of it because a round consumes them, so a failed round
+  /// returns none at all rather than returning them half-updated.
+  fn serialize_state(graph: &Graph, clock_model: &ClockModel) -> Result<SerializedState, Report> {
     let graph = json_write_str(graph, JsonPretty(false))?;
-    let partitions = partitions
-      .iter()
-      .map(|partition| json_write_str(&partition, JsonPretty(false)))
-      .collect::<Result<Vec<_>, _>>()?;
     let clock_model = json_write_str(clock_model, JsonPretty(false))?;
-    Ok(SerializedState {
-      graph,
-      partitions,
-      clock_model,
-    })
+    Ok(SerializedState { graph, clock_model })
   }
 
   /// Polytomy resolution samples; pin the stream so refinement tests stay deterministic.
@@ -405,7 +392,6 @@ mod tests {
   #[derive(Debug, PartialEq)]
   struct SerializedState {
     graph: String,
-    partitions: Vec<String>,
     clock_model: String,
   }
 }
