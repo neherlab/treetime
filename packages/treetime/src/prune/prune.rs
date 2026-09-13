@@ -1,5 +1,5 @@
-use crate::ancestral::pipeline::SparseReconstruction;
 use crate::optimize::topology::collapse::collapse_edge;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
@@ -10,7 +10,7 @@ use treetime_graph::node::GraphNodeKey;
 
 pub fn prune_nodes(
   graph: &mut Graph,
-  partitions: &mut [SparseReconstruction],
+  partitions: &mut [PartitionMarginalSparse],
   prune_short: Option<f64>,
   prune_empty: bool,
   node_names: &BTreeSet<String>,
@@ -37,12 +37,15 @@ pub fn prune_nodes(
 }
 
 /// Count current nucleotide mutations on one edge across all partitions.
-pub fn get_edge_num_muts(partitions: &[SparseReconstruction], edge_key: GraphEdgeKey) -> Result<Option<usize>, Report> {
+pub fn get_edge_num_muts(
+  partitions: &[PartitionMarginalSparse],
+  edge_key: GraphEdgeKey,
+) -> Result<Option<usize>, Report> {
   let mut total_muts = 0;
   let mut found_any = false;
 
   for partition in partitions {
-    if let Some(edge) = partition.partition.obs_edges.get(&edge_key) {
+    if let Some(edge) = partition.obs_edges.get(&edge_key) {
       total_muts += edge.fitch_subs().len();
       found_any = true;
     }
@@ -53,7 +56,7 @@ pub fn get_edge_num_muts(partitions: &[SparseReconstruction], edge_key: GraphEdg
 
 pub fn collapse_sparse_edges_from_leaf_recursive(
   graph: &mut Graph,
-  partitions: &mut [SparseReconstruction],
+  partitions: &mut [PartitionMarginalSparse],
   edge_key: GraphEdgeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
@@ -81,7 +84,7 @@ pub fn collapse_sparse_edges_from_leaf_recursive(
 
 fn prune_internal_nodes(
   graph: &mut Graph,
-  partitions: &mut [SparseReconstruction],
+  partitions: &mut [PartitionMarginalSparse],
   prune_short: Option<f64>,
   prune_empty: bool,
   node_names: &BTreeSet<String>,
@@ -125,7 +128,7 @@ fn prune_internal_nodes(
 
 fn prune_leaves(
   graph: &mut Graph,
-  partitions: &mut [SparseReconstruction],
+  partitions: &mut [PartitionMarginalSparse],
   node_names: &BTreeSet<String>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,

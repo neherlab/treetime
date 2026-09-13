@@ -13,7 +13,7 @@ mod tests {
 
   use eyre::Report;
   use indoc::indoc;
-  use std::collections::BTreeMap;
+
   use treetime_graph::graph::Graph;
 
   use treetime_io::fasta::read_many_fasta_str;
@@ -61,23 +61,11 @@ mod tests {
       get_common_length(&aln)?,
     );
     let dense_node_states = dense_partition.attach_sequences(&graph, &aln, &names)?;
-    let dense_partitions = vec![DenseReconstruction {
-      partition: dense_partition,
-      node_states: dense_node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    }];
+    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, dense_node_states)];
 
     let fitch = create_fitch_partition(&graph, 1, alphabet_sparse, &aln, &names)?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let sparse_partitions = vec![SparseReconstruction {
-      partition: sparse_partition,
-      node_states: sparse_node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    }];
+    let sparse_partitions = vec![SparseReconstruction::seeded(sparse_partition, sparse_node_states)];
 
     let (dense_partitions, _) =
       marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;

@@ -13,9 +13,7 @@ mod tests {
   use crate::o;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
-  use crate::partition::storage::sparse::{
-    SparseEdgeBackward, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution,
-  };
+  use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
   use crate::partition::timetree::marginal::marginal_update_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::seq::indel::InDel;
@@ -35,7 +33,7 @@ mod tests {
   use treetime_graph::reroot::RerootChanges;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_str};
-  use treetime_primitives::{AsciiChar, LogLh, Seq, seq};
+  use treetime_primitives::{AsciiChar, Seq, seq};
   use treetime_utils::make_report;
 
   fn c(b: u8) -> AsciiChar {
@@ -107,13 +105,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    });
+    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, node_states));
 
     let clock_params = ClockParams::default();
     let timetree_state = TimetreeState::seed_from_values(&graph, &constraints);
@@ -232,37 +224,23 @@ mod tests {
       ],
     )?; // deletion=true
 
-    let mut recon = SparseReconstruction {
-      partition: PartitionMarginalSparse {
-        index: 0,
-        gtr,
-        alphabet: alphabet.clone(),
-        length: 16,
-        root_sequence: seq![AsciiChar::from_byte_unchecked(b'A'); 16],
-        obs_nodes: btreemap! {
-          root_key => SparseNodeObs::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 16], &alphabet),
-          a_key => SparseNodeObs::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 16], &alphabet),
-        },
-        obs_edges: btreemap! {
-          edge_to_a_key => SparseEdgeObs::with_fitch_subs_and_indels(vec![sub_original], vec![indel_original]),
-        },
+    let partition = PartitionMarginalSparse {
+      index: 0,
+      gtr,
+      alphabet: alphabet.clone(),
+      length: 16,
+      root_sequence: seq![AsciiChar::from_byte_unchecked(b'A'); 16],
+      obs_nodes: btreemap! {
+        root_key => SparseNodeObs::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 16], &alphabet),
+        a_key => SparseNodeObs::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 16], &alphabet),
       },
-      node_states: btreemap! {
-        root_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 16]),
-        a_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 16]),
+      obs_edges: btreemap! {
+        edge_to_a_key => SparseEdgeObs::with_fitch_subs_and_indels(vec![sub_original], vec![indel_original]),
       },
-      backward: btreemap! {
-        // Seed a non-default backward message so its clearing by the reroot is observable.
-        edge_to_a_key => SparseEdgeBackward {
-          msg_from_child: SparseSeqDistribution {
-            log_lh: LogLh::new(1.0),
-            ..SparseSeqDistribution::default()
-          },
-          ..SparseEdgeBackward::default()
-        },
-      },
-      forward: btreemap! {},
-      estimates: btreemap! {},
+    };
+    let node_states = btreemap! {
+      root_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 16]),
+      a_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 16]),
     };
 
     // Build RerootChanges with inverted edge keys (simulating reroot from root to A)
@@ -271,7 +249,7 @@ mod tests {
       ..RerootChanges::default()
     };
 
-    reroot_sparse(&mut recon, &changes)?;
+    let recon = reroot_sparse(partition, node_states, &changes)?;
 
     // Verify substitution is inverted
     let edge_data = &recon.partition.obs_edges[&edge_to_a_key];
@@ -283,11 +261,11 @@ mod tests {
     let indel_after = &edge_data.indels[0];
     assert!(!indel_after.is_deletion(), "Indel direction should be toggled");
 
-    // Verify the stale backward message is cleared: the reroot drops the per-edge backward messages
-    // (they are rebuilt by the next marginal update), so the seeded msg_from_child no longer exists.
+    // The reroot returns a reconstruction with no per-edge results: the messages and estimates of the
+    // previous update describe the pre-reroot topology, and the next marginal update rebuilds them.
     assert!(
-      recon.backward.get(&edge_to_a_key).is_none(),
-      "backward message should be cleared after reroot"
+      recon.edges.backward.is_empty() && recon.edges.forward.is_empty() && recon.edges.estimates.is_empty(),
+      "a reroot carries no per-edge results across"
     );
 
     Ok(())
@@ -328,28 +306,23 @@ mod tests {
     // Edge has substitution at position 2: root has G, child has T (G->T in parent->child direction)
     let sub = Sub::new(c(b'G'), 2_usize, c(b'T'))?;
 
-    let mut recon = SparseReconstruction {
-      partition: PartitionMarginalSparse {
-        index: 0,
-        gtr,
-        alphabet: alphabet.clone(),
-        length: 8,
-        root_sequence: root_seq.clone(),
-        obs_nodes: btreemap! {
-          root_key => SparseNodeObs::new(&root_seq, &alphabet),
-          a_key => SparseNodeObs::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 8], &alphabet),
-        },
-        obs_edges: btreemap! {
-          edge_to_a_key => SparseEdgeObs::with_fitch_subs(vec![sub]),
-        },
+    let partition = PartitionMarginalSparse {
+      index: 0,
+      gtr,
+      alphabet: alphabet.clone(),
+      length: 8,
+      root_sequence: root_seq.clone(),
+      obs_nodes: btreemap! {
+        root_key => SparseNodeObs::new(&root_seq, &alphabet),
+        a_key => SparseNodeObs::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 8], &alphabet),
       },
-      node_states: btreemap! {
-        root_key => SparseNodeState::leaf(&root_seq),
-        a_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 8]),
+      obs_edges: btreemap! {
+        edge_to_a_key => SparseEdgeObs::with_fitch_subs(vec![sub]),
       },
-      backward: btreemap! {},
-      forward: btreemap! {},
-      estimates: btreemap! {},
+    };
+    let node_states = btreemap! {
+      root_key => SparseNodeState::leaf(&root_seq),
+      a_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 8]),
     };
 
     // Build RerootChanges with inverted edge keys (simulating reroot from root to A)
@@ -358,7 +331,7 @@ mod tests {
       ..RerootChanges::default()
     };
 
-    reroot_sparse(&mut recon, &changes)?;
+    let recon = reroot_sparse(partition, node_states, &changes)?;
 
     // Verify edge mutation is inverted: was G->T, now should be T->G
     let edge_data = &recon.partition.obs_edges[&edge_to_a_key];
@@ -413,28 +386,23 @@ mod tests {
     let root_seq = Seq::try_from_slice(b"ACGTACGT")?;
     let indel = InDel::del((2, 4), seq![c(b'G'), c(b'T')])?;
 
-    let mut recon = SparseReconstruction {
-      partition: PartitionMarginalSparse {
-        index: 0,
-        gtr,
-        alphabet: alphabet.clone(),
-        length: 8,
-        root_sequence: root_seq.clone(),
-        obs_nodes: btreemap! {
-          root_key => SparseNodeObs::new(&root_seq, &alphabet),
-          a_key => SparseNodeObs::new(&seq![c(b'A'); 8], &alphabet),
-        },
-        obs_edges: btreemap! {
-          edge_to_a_key => SparseEdgeObs::with_fitch_subs_and_indels(vec![], vec![indel]),
-        },
+    let partition = PartitionMarginalSparse {
+      index: 0,
+      gtr,
+      alphabet: alphabet.clone(),
+      length: 8,
+      root_sequence: root_seq.clone(),
+      obs_nodes: btreemap! {
+        root_key => SparseNodeObs::new(&root_seq, &alphabet),
+        a_key => SparseNodeObs::new(&seq![c(b'A'); 8], &alphabet),
       },
-      node_states: btreemap! {
-        root_key => SparseNodeState::leaf(&root_seq),
-        a_key => SparseNodeState::leaf(&seq![c(b'A'); 8]),
+      obs_edges: btreemap! {
+        edge_to_a_key => SparseEdgeObs::with_fitch_subs_and_indels(vec![], vec![indel]),
       },
-      backward: btreemap! {},
-      forward: btreemap! {},
-      estimates: btreemap! {},
+    };
+    let node_states = btreemap! {
+      root_key => SparseNodeState::leaf(&root_seq),
+      a_key => SparseNodeState::leaf(&seq![c(b'A'); 8]),
     };
 
     let changes = RerootChanges {
@@ -442,7 +410,7 @@ mod tests {
       ..RerootChanges::default()
     };
 
-    reroot_sparse(&mut recon, &changes)?;
+    let recon = reroot_sparse(partition, node_states, &changes)?;
 
     // Original: root has "ACGTACGT", edge to A has deletion at [2,4) (G,T -> gap).
     // After inversion the indel becomes an insertion. Going from old root to new
@@ -493,31 +461,26 @@ mod tests {
     let sub2 = Sub::new(c(b'G'), 0_usize, c(b'T'))?; // AB->A: G0T (cumulative at pos 0)
     let sub3 = Sub::new(c(b'C'), 1_usize, c(b'A'))?; // AB->A: C1A
 
-    let mut recon = SparseReconstruction {
-      partition: PartitionMarginalSparse {
-        index: 0,
-        gtr,
-        alphabet: alphabet.clone(),
-        length: 8,
-        root_sequence: root_seq.clone(),
-        obs_nodes: btreemap! {
-          root_key => SparseNodeObs::new(&root_seq, &alphabet),
-          ab_key => SparseNodeObs::new(&seq![c(b'A'); 8], &alphabet),
-          a_key => SparseNodeObs::new(&seq![c(b'A'); 8], &alphabet),
-        },
-        obs_edges: btreemap! {
-          edge_root_ab => SparseEdgeObs::with_fitch_subs(vec![sub1]),
-          edge_ab_a => SparseEdgeObs::with_fitch_subs(vec![sub2, sub3]),
-        },
+    let partition = PartitionMarginalSparse {
+      index: 0,
+      gtr,
+      alphabet: alphabet.clone(),
+      length: 8,
+      root_sequence: root_seq.clone(),
+      obs_nodes: btreemap! {
+        root_key => SparseNodeObs::new(&root_seq, &alphabet),
+        ab_key => SparseNodeObs::new(&seq![c(b'A'); 8], &alphabet),
+        a_key => SparseNodeObs::new(&seq![c(b'A'); 8], &alphabet),
       },
-      node_states: btreemap! {
-        root_key => SparseNodeState::leaf(&root_seq),
-        ab_key => SparseNodeState::leaf(&seq![c(b'A'); 8]),
-        a_key => SparseNodeState::leaf(&seq![c(b'A'); 8]),
+      obs_edges: btreemap! {
+        edge_root_ab => SparseEdgeObs::with_fitch_subs(vec![sub1]),
+        edge_ab_a => SparseEdgeObs::with_fitch_subs(vec![sub2, sub3]),
       },
-      backward: btreemap! {},
-      forward: btreemap! {},
-      estimates: btreemap! {},
+    };
+    let node_states = btreemap! {
+      root_key => SparseNodeState::leaf(&root_seq),
+      ab_key => SparseNodeState::leaf(&seq![c(b'A'); 8]),
+      a_key => SparseNodeState::leaf(&seq![c(b'A'); 8]),
     };
 
     // Reroot from root through AB to A: two inverted edges
@@ -526,7 +489,7 @@ mod tests {
       ..RerootChanges::default()
     };
 
-    reroot_sparse(&mut recon, &changes)?;
+    let recon = reroot_sparse(partition, node_states, &changes)?;
 
     // Original path: root(ACGTACGT) -> AB (pos0: A->G) -> A (pos0: G->T, pos1: C->A)
     // New root = A: pos0 = T, pos1 = A, rest unchanged from root
@@ -563,13 +526,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    });
+    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, node_states));
 
     let clock_params = ClockParams::default();
     let timetree_state_1 = TimetreeState::seed_from_values(&graph, &constraints);

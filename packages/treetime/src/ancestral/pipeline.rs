@@ -10,14 +10,13 @@ use crate::gtr::gtr::GTR;
 use crate::gtr::refinement::refine_gtr_iterative;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::fitch::partition::PartitionFitch;
-use crate::partition::marginal::dense::partition::{DenseReadout, PartitionMarginalDense};
-use crate::partition::marginal::shared::update::{MarginalUpdate, PartitionMarginalOps};
-use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseReadout};
-use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState};
-use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseNodeState};
+use crate::partition::marginal::dense::partition::{DenseMarginalEdges, DenseReadout, PartitionMarginalDense};
+use crate::partition::marginal::shared::update::{MarginalStates, MarginalUpdate, PartitionMarginalOps};
+use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges, SparseReadout};
+use crate::partition::storage::dense::DenseNodeState;
+use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::ProgressSink;
 use crate::seq::alignment::get_common_length;
-use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -53,32 +52,38 @@ pub struct AncestralInput {
   pub sequences: Vec<FastaRecord>,
 }
 
-/// A completed sparse reconstruction: the durable partition inputs together with the node states and
-/// per-edge messages/estimates the passes returned, kept as distinct owned maps. The output writers
-/// build a short-lived read view over these.
+/// A sparse reconstruction: the durable partition inputs, the node states carried between passes, and
+/// the per-edge results of the last pass, as distinct owned values. The output writers build a
+/// short-lived read view over these.
 #[derive(Clone, Debug, Serialize)]
 pub struct SparseReconstruction {
   pub partition: PartitionMarginalSparse,
   pub node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
-  pub backward: BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
-  pub forward: BTreeMap<GraphEdgeKey, SparseEdgeForward>,
-  pub estimates: BTreeMap<GraphEdgeKey, Vec<Sub>>,
+  pub edges: SparseMarginalEdges,
 }
 
 impl SparseReconstruction {
+  /// A reconstruction seeded from the Fitch handoff, before any marginal pass has run: durable
+  /// observations and leaf node states, with no per-edge results yet.
+  pub fn seeded(partition: PartitionMarginalSparse, node_states: BTreeMap<GraphNodeKey, SparseNodeState>) -> Self {
+    Self {
+      partition,
+      node_states,
+      edges: SparseMarginalEdges::default(),
+    }
+  }
+
   /// Build a short-lived read view over the borrowed inputs and result maps.
   pub fn readout(&self) -> SparseReadout<'_> {
     SparseReadout {
       partition: &self.partition,
       node_states: &self.node_states,
-      backward: &self.backward,
-      forward: &self.forward,
-      estimates: &self.estimates,
+      edges: &self.edges,
     }
   }
 
-  /// Run a full marginal update, returning the reconstruction at the refreshed node states, messages,
-  /// and estimates together with the substitution log likelihood.
+  /// Run a full marginal update, returning the reconstruction at the refreshed node states and per-edge
+  /// results together with the substitution log likelihood.
   ///
   /// The reconstruction is consumed and a new one returned, so a failed pass produces no reconstruction
   /// at all rather than one whose maps come from different passes.
@@ -92,49 +97,51 @@ impl SparseReconstruction {
     } = self;
     let MarginalUpdate {
       node_states,
-      backward,
-      forward,
-      estimates,
+      edges,
       log_lh,
     } = partition.marginal_update(graph, branch_lengths, node_states)?;
     Ok((
       Self {
         partition,
         node_states,
-        backward,
-        forward,
-        estimates,
+        edges,
       },
       log_lh,
     ))
   }
 }
 
-/// A completed dense reconstruction: the durable partition inputs together with the node states and
-/// per-edge messages/estimates the passes returned, kept as distinct owned maps.
+/// A dense reconstruction: the durable partition inputs, the node states carried between passes, and
+/// the per-edge results of the last pass, as distinct owned values.
 #[derive(Clone, Debug, Serialize)]
 pub struct DenseReconstruction {
   pub partition: PartitionMarginalDense,
   pub node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
-  pub backward: BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
-  pub forward: BTreeMap<GraphEdgeKey, DenseEdgeForward>,
-  pub estimates: BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
+  pub edges: DenseMarginalEdges,
 }
 
 impl DenseReconstruction {
+  /// A reconstruction seeded from the alignment, before any marginal pass has run: durable inputs and
+  /// leaf node states, with no per-edge results yet.
+  pub fn seeded(partition: PartitionMarginalDense, node_states: BTreeMap<GraphNodeKey, DenseNodeState>) -> Self {
+    Self {
+      partition,
+      node_states,
+      edges: DenseMarginalEdges::default(),
+    }
+  }
+
   /// Build a short-lived read view over the borrowed inputs and result maps.
   pub fn readout(&self) -> DenseReadout<'_> {
     DenseReadout {
       partition: &self.partition,
       node_states: &self.node_states,
-      backward: &self.backward,
-      forward: &self.forward,
-      estimates: &self.estimates,
+      edges: &self.edges,
     }
   }
 
-  /// Run a full marginal update, returning the reconstruction at the refreshed node states, messages,
-  /// and estimates together with the substitution log likelihood.
+  /// Run a full marginal update, returning the reconstruction at the refreshed node states and per-edge
+  /// results together with the substitution log likelihood.
   ///
   /// The reconstruction is consumed and a new one returned, so a failed pass produces no reconstruction
   /// at all rather than one whose maps come from different passes.
@@ -148,18 +155,14 @@ impl DenseReconstruction {
     } = self;
     let MarginalUpdate {
       node_states,
-      backward,
-      forward,
-      estimates,
+      edges,
       log_lh,
     } = partition.marginal_update(graph, branch_lengths, node_states)?;
     Ok((
       Self {
         partition,
         node_states,
-        backward,
-        forward,
-        estimates,
+        edges,
       },
       log_lh,
     ))
@@ -310,11 +313,7 @@ where
             (partition, update)
           };
           let MarginalUpdate {
-            mut node_states,
-            backward,
-            forward,
-            estimates,
-            ..
+            mut node_states, edges, ..
           } = update;
 
           progress.check_cancelled()?;
@@ -324,7 +323,7 @@ where
             |node| {
               partition.reconstruct_node_sequence(
                 &mut node_states,
-                &forward,
+                &edges.forward,
                 node,
                 params.include_leaves,
                 params.impute_missing_data,
@@ -348,9 +347,7 @@ where
             partition: Some(AncestralPartition::Sparse(SparseReconstruction {
               partition,
               node_states,
-              backward,
-              forward,
-              estimates,
+              edges,
             })),
           })
         },
@@ -362,7 +359,7 @@ where
           // after attachment (its `initialize_marginal` attached and updated once, then a separate
           // `marginal_update` ran again) before GTR refinement. Pass the node states through both
           // passes so internal-node gap states settle exactly as they did before.
-          let MarginalUpdate { node_states, .. } = partition.marginal_update(&graph, &profile_lengths, node_states)?;
+          let MarginalStates { node_states, .. } = partition.marginal_states(&graph, &profile_lengths, node_states)?;
           let update = partition.marginal_update(&graph, &profile_lengths, node_states)?;
 
           let (partition, update) = if refine {
@@ -381,11 +378,7 @@ where
             (partition, update)
           };
           let MarginalUpdate {
-            mut node_states,
-            backward,
-            forward,
-            estimates,
-            ..
+            mut node_states, edges, ..
           } = update;
 
           progress.check_cancelled()?;
@@ -418,9 +411,7 @@ where
             partition: Some(AncestralPartition::Dense(DenseReconstruction {
               partition,
               node_states,
-              backward,
-              forward,
-              estimates,
+              edges,
             })),
           })
         },

@@ -8,13 +8,14 @@ use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
-use crate::partition::marginal::dense::partition::DenseReadout;
-use crate::partition::marginal::sparse::partition::SparseReadout;
+use crate::partition::marginal::dense::partition::{DenseMarginalEdges, DenseReadout, PartitionMarginalDense};
+use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
+use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges, SparseReadout};
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::partition::traits::{HasGtr, PartitionOptimizeOps};
 use eyre::Report;
-use itertools::{Itertools, chain};
+use itertools::{Itertools, chain, izip};
 use log::{debug, warn};
 use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::assign_node_names;
@@ -263,16 +264,18 @@ pub fn run_optimize_loop(
 
     apply_damping(&mut branch_lengths, &old_branch_lengths, damping, i);
 
-    let topology_changed = prune_and_merge_in_loop(
+    let cleanup = prune_and_merge_in_loop(
       graph,
-      &mut sparse_partitions,
-      &mut dense_partitions,
+      sparse_partitions,
+      dense_partitions,
       &zero_optimal_edges,
       topology_ops,
       &mut branch_lengths,
       &mut names,
     )?;
-    if topology_changed {
+    sparse_partitions = cleanup.sparse_partitions;
+    dense_partitions = cleanup.dense_partitions;
+    if cleanup.topology_changed {
       best_lh = LogLh::IMPOSSIBLE;
       best_branch_lengths = None;
     }
@@ -466,13 +469,28 @@ pub fn find_zero_optimal_internal_edges(
 /// Returns true if any topology change occurred.
 pub fn prune_and_merge_in_loop(
   graph: &mut Graph,
-  sparse_partitions: &mut [SparseReconstruction],
-  dense_partitions: &mut [DenseReconstruction],
+  sparse_partitions: Vec<SparseReconstruction>,
+  dense_partitions: Vec<DenseReconstruction>,
   zero_optimal_edges: &[GraphEdgeKey],
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &mut BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<bool, Report> {
+) -> Result<TopologyCleanup, Report> {
+  // The topology moves read and rewrite the sparse observations, and one of them (the
+  // bifurcating-root slide) keeps the root node state in step with them, so each reconstruction is
+  // split here into the values a structural change carries across -- observations and node states --
+  // and the per-edge results of the last update, which it does not. With no change both parts go back
+  // together unchanged. With a change the node states are reconciled to the new node set and the
+  // per-edge results are left behind, because they describe the superseded topology.
+  let (mut sparse_obs, mut sparse_node_states, sparse_edges): (Vec<_>, Vec<_>, Vec<_>) = sparse_partitions
+    .into_iter()
+    .map(|family| (family.partition, family.node_states, family.edges))
+    .multiunzip();
+  let (dense_obs, dense_node_states, dense_edges): (Vec<_>, Vec<_>, Vec<_>) = dense_partitions
+    .into_iter()
+    .map(|family| (family.partition, family.node_states, family.edges))
+    .multiunzip();
+
   let mut topology_changed = false;
 
   if !zero_optimal_edges.is_empty() {
@@ -492,7 +510,7 @@ pub fn prune_and_merge_in_loop(
       if graph.get_edge(edge_key).is_none() {
         continue;
       }
-      collapse_edge(graph, sparse_partitions, edge_key, branch_lengths)?;
+      collapse_edge(graph, &mut sparse_obs, edge_key, branch_lengths)?;
       collapsed += 1;
     }
 
@@ -502,57 +520,93 @@ pub fn prune_and_merge_in_loop(
     }
   }
 
-  if resolve_polytomies(graph, sparse_partitions, topology_ops, branch_lengths)? > 0 {
+  if resolve_polytomies(
+    graph,
+    &mut sparse_obs,
+    &mut sparse_node_states,
+    topology_ops,
+    branch_lengths,
+  )? > 0
+  {
     topology_changed = true;
   }
 
-  if topology_changed {
-    graph.build()?;
-    *names = assign_node_names(std::mem::take(names), graph)?;
-    // One complete remap at the structural-operation boundary: the topology mutators kept the sparse
-    // observations precise, but the evolving node-state maps and message/estimate maps still key to
-    // the pre-change topology. Reconcile the node states to the current node set (dropping removed
-    // nodes, seeding placeholders for created ones) and drop the stale messages and estimates; the
-    // next marginal update rebuilds a complete set over the new topology.
-    for family in sparse_partitions.iter_mut() {
-      reconcile_sparse_family(graph, family);
-    }
-    for family in dense_partitions.iter_mut() {
-      reconcile_dense_family(graph, family);
-    }
+  if !topology_changed {
+    return Ok(TopologyCleanup {
+      sparse_partitions: join_sparse(sparse_obs, sparse_node_states, sparse_edges),
+      dense_partitions: join_dense(dense_obs, dense_node_states, dense_edges),
+      topology_changed,
+    });
   }
 
-  Ok(topology_changed)
+  graph.build()?;
+  *names = assign_node_names(std::mem::take(names), graph)?;
+  // One complete remap at the structural-operation boundary: the topology moves kept the sparse
+  // observations precise, but the node-state maps still key to the pre-change topology. Reconcile them
+  // to the current node set (dropping removed nodes, seeding placeholders for created ones); the next
+  // marginal update rebuilds a complete set of per-edge results over the new topology.
+  let live_nodes = live_node_keys(graph);
+  let sparse_partitions = izip!(sparse_obs, sparse_node_states)
+    .map(|(partition, node_states)| {
+      SparseReconstruction::seeded(
+        partition,
+        reconcile_node_states(node_states, &live_nodes, SparseNodeState::empty),
+      )
+    })
+    .collect_vec();
+  let dense_partitions = izip!(dense_obs, dense_node_states)
+    .map(|(partition, node_states)| {
+      DenseReconstruction::seeded(
+        partition,
+        reconcile_node_states(node_states, &live_nodes, DenseNodeState::empty),
+      )
+    })
+    .collect_vec();
+
+  Ok(TopologyCleanup {
+    sparse_partitions,
+    dense_partitions,
+    topology_changed,
+  })
 }
 
-/// Reconcile a sparse family's evolving maps to the current graph after a topology change: seed a
-/// placeholder node state for every current node absent from the map, drop states for removed nodes,
-/// and drop the stale edge messages and estimates. Leaf seeds are preserved.
-pub fn reconcile_sparse_family(graph: &Graph, family: &mut SparseReconstruction) {
-  let node_keys: Vec<GraphNodeKey> = graph.get_nodes().iter().map(|node| node.read_arc().key()).collect();
-  for &key in &node_keys {
-    family.node_states.entry(key).or_insert_with(SparseNodeState::empty);
-  }
-  let live: std::collections::BTreeSet<GraphNodeKey> = node_keys.into_iter().collect();
-  family.node_states.retain(|key, _| live.contains(key));
-  family.backward.clear();
-  family.forward.clear();
-  family.estimates.clear();
+/// The reconstructions a topology cleanup returns, together with whether it changed the topology.
+pub struct TopologyCleanup {
+  pub sparse_partitions: Vec<SparseReconstruction>,
+  pub dense_partitions: Vec<DenseReconstruction>,
+  pub topology_changed: bool,
 }
 
-/// Reconcile a dense family's evolving maps to the current graph after a topology change: seed a
-/// placeholder node state for every current node absent from the map, drop states for removed nodes,
-/// and drop the stale edge messages and estimates. Leaf seeds are preserved.
-fn reconcile_dense_family(graph: &Graph, family: &mut DenseReconstruction) {
-  let node_keys: Vec<GraphNodeKey> = graph.get_nodes().iter().map(|node| node.read_arc().key()).collect();
-  for &key in &node_keys {
-    family.node_states.entry(key).or_insert_with(DenseNodeState::empty);
-  }
-  let live: std::collections::BTreeSet<GraphNodeKey> = node_keys.into_iter().collect();
-  family.node_states.retain(|key, _| live.contains(key));
-  family.backward.clear();
-  family.forward.clear();
-  family.estimates.clear();
+/// Put the split sparse reconstructions back together unchanged, for the case where the topology
+/// moves changed nothing.
+fn join_sparse(
+  partitions: Vec<PartitionMarginalSparse>,
+  node_states: Vec<BTreeMap<GraphNodeKey, SparseNodeState>>,
+  edges: Vec<SparseMarginalEdges>,
+) -> Vec<SparseReconstruction> {
+  izip!(partitions, node_states, edges)
+    .map(|(partition, node_states, edges)| SparseReconstruction {
+      partition,
+      node_states,
+      edges,
+    })
+    .collect_vec()
+}
+
+/// Put the split dense reconstructions back together unchanged, for the case where the topology moves
+/// changed nothing.
+fn join_dense(
+  partitions: Vec<PartitionMarginalDense>,
+  node_states: Vec<BTreeMap<GraphNodeKey, DenseNodeState>>,
+  edges: Vec<DenseMarginalEdges>,
+) -> Vec<DenseReconstruction> {
+  izip!(partitions, node_states, edges)
+    .map(|(partition, node_states, edges)| DenseReconstruction {
+      partition,
+      node_states,
+      edges,
+    })
+    .collect_vec()
 }
 
 /// Whether any edge that carries indels has a zero branch length.

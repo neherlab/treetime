@@ -125,13 +125,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, graph)?;
-    let recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
@@ -209,13 +203,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
 
     let (mut recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let log_lh = log_lh.value();
@@ -226,14 +214,21 @@ mod tests {
       let SparseReconstruction {
         partition,
         node_states,
-        forward,
-        ..
+        edges,
       } = &mut recon;
       let mut rng = rand::thread_rng();
       ancestral_reconstruction(
         &graph,
         |node| {
-          partition.reconstruct_node_sequence(node_states, forward, node, false, false, SampleMode::Argmax, &mut rng)
+          partition.reconstruct_node_sequence(
+            node_states,
+            &edges.forward,
+            node,
+            false,
+            false,
+            SampleMode::Argmax,
+            &mut rng,
+          )
         },
         |key, seq| {
           actual.insert(names[&key].clone(), seq.to_string());
@@ -311,7 +306,7 @@ mod tests {
       assert_sparse_profile_normalized(&node_data.profile, 4);
     }
 
-    for edge_data in recon.forward.values() {
+    for edge_data in recon.edges.forward.values() {
       assert_sparse_profile_normalized(&edge_data.msg_to_child, 4);
     }
 
@@ -354,13 +349,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
 
     let (recon, log_lh_first) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let log_lh_first = log_lh_first.value();
@@ -537,13 +526,7 @@ mod tests {
 
           let fitch = create_fitch_partition(&graph, 0, alphabet.clone(), &aln, &names)?;
           let (partition, node_states) = fitch.into_marginal_sparse(gtr.clone(), &graph)?;
-          let recon = SparseReconstruction {
-            partition,
-            node_states,
-            backward: BTreeMap::new(),
-            forward: BTreeMap::new(),
-            estimates: BTreeMap::new(),
-          };
+          let recon = SparseReconstruction::seeded(partition, node_states);
 
           let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
           let log_lh = log_lh.value();
@@ -591,13 +574,7 @@ mod tests {
     let graph: Graph = graph;
     let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?;
-    let recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
     let (mut recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
     let actual_by_edge = {
@@ -620,14 +597,21 @@ mod tests {
       let SparseReconstruction {
         partition,
         node_states,
-        forward,
-        ..
+        edges,
       } = &mut recon;
       let mut rng = rand::thread_rng();
       ancestral_reconstruction(
         &graph,
         |node| {
-          partition.reconstruct_node_sequence(node_states, forward, node, true, false, SampleMode::Argmax, &mut rng)
+          partition.reconstruct_node_sequence(
+            node_states,
+            &edges.forward,
+            node,
+            true,
+            false,
+            SampleMode::Argmax,
+            &mut rng,
+          )
         },
         |key, seq| {
           seqs_by_name.insert(
@@ -695,7 +679,10 @@ mod tests {
             .value()
             .to_bits(),
           json_write_str(&recon.node_states, JsonPretty(false))?,
-          json_write_str(&(&recon.backward, &recon.forward, &recon.estimates), JsonPretty(false))?,
+          json_write_str(
+            &(&recon.edges.backward, &recon.edges.forward, &recon.edges.estimates),
+            JsonPretty(false),
+          )?,
         ))
       })
     }

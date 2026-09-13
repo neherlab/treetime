@@ -136,13 +136,7 @@ mod tests {
       get_common_length(&aln)?,
     );
     let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
@@ -260,13 +254,7 @@ mod tests {
       get_common_length(&aln)?,
     );
     let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     for edge_ref in graph.get_edges() {

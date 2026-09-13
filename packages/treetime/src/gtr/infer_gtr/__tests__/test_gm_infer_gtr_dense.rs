@@ -47,8 +47,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &recon.node_states,
-      &recon.backward,
-      &recon.forward,
+      &recon.edges.backward,
+      &recon.edges.forward,
     )?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
@@ -77,8 +77,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &recon.node_states,
-      &recon.backward,
-      &recon.forward,
+      &recon.edges.backward,
+      &recon.edges.forward,
     )?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 
@@ -156,13 +156,7 @@ mod tests {
 
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(&graph, aln, &names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }
@@ -191,13 +185,7 @@ mod tests {
 
     let partition = PartitionMarginalDense::new(0, gtr, NUC_ALPHABET.clone(), get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }

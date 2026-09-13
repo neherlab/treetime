@@ -5,6 +5,7 @@ mod tests {
   use crate::commands::shared::mutation_comment::EdgeMutationCommentProvider;
   use crate::commands::timetree::output::date_comment::DateCommentProvider;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
   use crate::partition::traits::PartitionBranchOps;
@@ -91,9 +92,10 @@ mod tests {
     Ok(SparseReconstruction {
       partition,
       node_states,
-      backward: btreemap! {},
-      forward: btreemap! {},
-      estimates,
+      edges: MarginalEdges {
+        estimates,
+        ..MarginalEdges::default()
+      },
     })
   }
 

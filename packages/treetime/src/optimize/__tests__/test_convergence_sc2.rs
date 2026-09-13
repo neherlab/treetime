@@ -12,7 +12,6 @@ mod tests {
 
   use eyre::Report;
 
-  use std::collections::BTreeMap;
   use std::path::Path;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -44,13 +43,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let sparse_partitions = vec![SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    }];
+    let sparse_partitions = vec![SparseReconstruction::seeded(partition, node_states)];
     let (sparse_partitions, _) =
       marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 
@@ -110,13 +103,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let sparse_partitions = vec![SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    }];
+    let sparse_partitions = vec![SparseReconstruction::seeded(partition, node_states)];
     let (sparse_partitions, _) =
       marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 

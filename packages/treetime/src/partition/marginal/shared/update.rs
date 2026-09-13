@@ -67,11 +67,31 @@ pub trait PartitionMarginalOps {
     } = self.marginal_forward(graph, branch_lengths, &node_states, &backward)?;
     Ok(MarginalUpdate {
       node_states,
-      backward,
-      forward,
-      estimates,
+      edges: MarginalEdges {
+        backward,
+        forward,
+        estimates,
+      },
       log_lh,
     })
+  }
+
+  /// Run a full marginal update and return only the refreshed node states and the substitution log
+  /// likelihood.
+  ///
+  /// For callers that read no per-edge value: the passes are identical to [`Self::marginal_update`], and
+  /// the per-edge messages and estimates are dropped as the update returns instead of travelling
+  /// through the caller.
+  fn marginal_states(
+    &self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    node_states: BTreeMap<GraphNodeKey, Self::Node>,
+  ) -> Result<MarginalStates<Self::Node>, Report> {
+    let MarginalUpdate {
+      node_states, log_lh, ..
+    } = self.marginal_update(graph, branch_lengths, node_states)?;
+    Ok(MarginalStates { node_states, log_lh })
   }
 
   /// The profile log likelihood recorded for one node, or zero when the node has no state.
@@ -103,8 +123,8 @@ pub trait PartitionMarginalOps {
 }
 
 /// The result of one full marginal update (backward pass then forward pass): the refreshed per-node
-/// states, the per-edge backward and forward messages, the per-edge estimates, and the substitution
-/// log likelihood (the root node likelihood after the backward pass), as distinct owned values.
+/// states, the per-edge results of that update, and the substitution log likelihood (the root node
+/// likelihood after the backward pass), as distinct owned values.
 ///
 /// Generic over the backend element types. Sparse, dense, and discrete representations fill the same
 /// map shape (one node map, three edge maps, one scalar) with their own node-state, message, and
@@ -113,9 +133,41 @@ pub trait PartitionMarginalOps {
 #[derive(Clone, Debug, Serialize)]
 pub struct MarginalUpdate<Node, Backward, Forward, Estimate> {
   pub node_states: BTreeMap<GraphNodeKey, Node>,
+  pub edges: MarginalEdges<Backward, Forward, Estimate>,
+  pub log_lh: LogLh,
+}
+
+/// The per-edge results of one marginal update: the backward messages toward the parent, the forward
+/// messages toward the child, and the estimates derived during the forward pass.
+///
+/// Grouped because they share one lifetime. All three are produced by a single update, read by the
+/// consumers of that update, and invalidated together by any change of topology or branch length. The
+/// node states, in contrast, survive a structural change and seed the next update, so a caller that
+/// keeps inference state across stages keeps the node states and drops this value.
+#[derive(Clone, Debug, Serialize)]
+pub struct MarginalEdges<Backward, Forward, Estimate> {
   pub backward: BTreeMap<GraphEdgeKey, Backward>,
   pub forward: BTreeMap<GraphEdgeKey, Forward>,
   pub estimates: BTreeMap<GraphEdgeKey, Estimate>,
+}
+
+impl<Backward, Forward, Estimate> Default for MarginalEdges<Backward, Forward, Estimate> {
+  /// The empty per-edge result set: what a representation holds before its first update, and after a
+  /// structural change has invalidated the previous update's edge results.
+  fn default() -> Self {
+    Self {
+      backward: BTreeMap::new(),
+      forward: BTreeMap::new(),
+      estimates: BTreeMap::new(),
+    }
+  }
+}
+
+/// The result of a marginal update read for its node states alone: the refreshed per-node states and
+/// the substitution log likelihood.
+#[derive(Clone, Debug, Serialize)]
+pub struct MarginalStates<Node> {
+  pub node_states: BTreeMap<GraphNodeKey, Node>,
   pub log_lh: LogLh,
 }
 

@@ -35,7 +35,7 @@ mod tests {
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
-    let partition = make_partition(
+    let (partition, _) = make_partition(
       &graph,
       &names,
       0,
@@ -79,7 +79,7 @@ mod tests {
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
-    let partition = make_partition(
+    let (partition, _) = make_partition(
       &graph,
       &names,
       0,
@@ -115,7 +115,7 @@ mod tests {
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
-    let partition = make_partition(
+    let (partition, _) = make_partition(
       &graph,
       &names,
       0,
@@ -157,7 +157,7 @@ mod tests {
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
     let ru = find_edge_key(&graph, &names, "root", "U").unwrap();
 
-    let partition = make_partition(
+    let (partition, _) = make_partition(
       &graph,
       &names,
       0,
@@ -200,7 +200,7 @@ mod tests {
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
-    let p0 = make_partition(
+    let (p0, _) = make_partition(
       &graph,
       &names,
       0,
@@ -210,7 +210,7 @@ mod tests {
         ("V", "A", vec![sub(b'T', 0, b'A')]),
       ],
     );
-    let p1 = make_partition(
+    let (p1, _) = make_partition(
       &graph,
       &names,
       1,
@@ -252,7 +252,7 @@ mod tests {
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
-    let mut partition = make_partition(
+    let (mut partition, _) = make_partition(
       &graph,
       &names,
       0,
@@ -266,8 +266,8 @@ mod tests {
     let ins = InDel::ins((20, 23), [c(b'A'), c(b'A'), c(b'A')].as_slice())?;
     {
       let p = &mut partition;
-      p.partition.obs_edges.get_mut(&uv).unwrap().indels = vec![del.clone()];
-      p.partition.obs_edges.get_mut(&va).unwrap().indels = vec![ins];
+      p.obs_edges.get_mut(&uv).unwrap().indels = vec![del.clone()];
+      p.obs_edges.get_mut(&va).unwrap().indels = vec![ins];
     }
     let mut sparse = vec![partition];
 
@@ -296,7 +296,7 @@ mod tests {
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
-    let mut partition = make_partition(
+    let (mut partition, _) = make_partition(
       &graph,
       &names,
       0,
@@ -310,8 +310,8 @@ mod tests {
     let child_del = InDel::del((22, 28), [c(b'A'); 6].as_slice())?;
     {
       let p = &mut partition;
-      p.partition.obs_edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
-      p.partition.obs_edges.get_mut(&va).unwrap().indels = vec![child_del];
+      p.obs_edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
+      p.obs_edges.get_mut(&va).unwrap().indels = vec![child_del];
     }
     let mut sparse = vec![partition];
 
@@ -344,7 +344,7 @@ mod tests {
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
-    let mut partition = make_partition(
+    let (mut partition, _) = make_partition(
       &graph,
       &names,
       0,
@@ -358,8 +358,8 @@ mod tests {
     let child_del = InDel::del((50, 53), [c(b'A'); 3].as_slice())?;
     {
       let p = &mut partition;
-      p.partition.obs_edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
-      p.partition.obs_edges.get_mut(&va).unwrap().indels = vec![child_del.clone()];
+      p.obs_edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
+      p.obs_edges.get_mut(&va).unwrap().indels = vec![child_del.clone()];
     }
     let mut sparse = vec![partition];
 
@@ -397,7 +397,7 @@ mod tests {
     let root_s = find_edge_key(&graph, &names, "root", "S").unwrap();
     let v_c1 = find_edge_key(&graph, &names, "V", "C1").unwrap();
 
-    let partition = make_partition(
+    let (partition, node_states) = make_partition(
       &graph,
       &names,
       0,
@@ -408,12 +408,13 @@ mod tests {
       ],
     );
     let mut sparse = vec![partition];
+    let mut node_states = vec![node_states];
 
-    slide_bifurcating_root_for_child(&mut sparse, root_key, root_v, root_s, v_c1)?;
+    slide_bifurcating_root_for_child(&mut sparse, &mut node_states, root_key, root_v, root_s, v_c1)?;
 
     let p = &sparse[0];
-    assert_eq!(p.partition.root_sequence[3], c(b'G'));
-    assert_eq!(p.node_states[&root_key].sequence[3], c(b'G'));
+    assert_eq!(p.root_sequence[3], c(b'G'));
+    assert_eq!(node_states[0][&root_key].sequence[3], c(b'G'));
     assert_eq!(edge_subs(p, root_s), Vec::<Sub>::new());
     assert_eq!(edge_subs(p, root_v), vec![sub(b'G', 3, b'A')]);
     Ok(())
@@ -437,7 +438,7 @@ mod tests {
     let root_s = find_edge_key(&graph, &names, "root", "S").unwrap();
     let v_c1 = find_edge_key(&graph, &names, "V", "C1").unwrap();
 
-    let partition = make_partition(
+    let (partition, node_states) = make_partition(
       &graph,
       &names,
       0,
@@ -448,9 +449,10 @@ mod tests {
       ],
     );
     let mut sparse = vec![partition];
+    let mut node_states = vec![node_states];
 
     let before = helpers::total_subs(&graph, &sparse[0]);
-    slide_bifurcating_root_for_child(&mut sparse, root_key, root_v, root_s, v_c1)?;
+    slide_bifurcating_root_for_child(&mut sparse, &mut node_states, root_key, root_v, root_s, v_c1)?;
     let after_slide = helpers::total_subs(&graph, &sparse[0]);
     let mut branch_lengths = branch_lengths;
     hoist_reverting_child(&mut graph, &mut sparse, root_v, v_c1, &mut branch_lengths)?;
@@ -465,7 +467,6 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-    use crate::ancestral::pipeline::SparseReconstruction;
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
     use maplit::btreemap;
@@ -508,19 +509,19 @@ mod tests {
       }
     }
 
-    pub fn edge_subs(recon: &SparseReconstruction, edge_key: GraphEdgeKey) -> Vec<Sub> {
-      recon.partition.obs_edges[&edge_key].fitch_subs().to_vec()
+    pub fn edge_subs(recon: &PartitionMarginalSparse, edge_key: GraphEdgeKey) -> Vec<Sub> {
+      recon.obs_edges[&edge_key].fitch_subs().to_vec()
     }
 
-    pub fn edge_indels(recon: &SparseReconstruction, edge_key: GraphEdgeKey) -> Vec<InDel> {
-      recon.partition.obs_edges[&edge_key].indels.clone()
+    pub fn edge_indels(recon: &PartitionMarginalSparse, edge_key: GraphEdgeKey) -> Vec<InDel> {
+      recon.obs_edges[&edge_key].indels.clone()
     }
 
-    pub fn total_subs(graph: &Graph, recon: &SparseReconstruction) -> usize {
+    pub fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
         .iter()
-        .filter_map(|e| recon.partition.obs_edges.get(&e.read_arc().key()))
+        .filter_map(|e| recon.obs_edges.get(&e.read_arc().key()))
         .map(|e| e.fitch_subs().len())
         .sum()
     }
@@ -531,7 +532,7 @@ mod tests {
       index: usize,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
-    ) -> SparseReconstruction {
+    ) -> (PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>) {
       let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
       let mut ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
@@ -568,13 +569,7 @@ mod tests {
         obs_edges,
       };
 
-      SparseReconstruction {
-        partition,
-        node_states,
-        backward: btreemap! {},
-        forward: btreemap! {},
-        estimates: btreemap! {},
-      }
+      (partition, node_states)
     }
   }
 }

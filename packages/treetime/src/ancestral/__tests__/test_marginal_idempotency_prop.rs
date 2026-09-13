@@ -103,12 +103,12 @@ mod tests {
         let SparseReconstruction {
           partition,
           node_states,
-          forward,
-          ..
+          edges,
+
         } = &mut recon;
         ancestral_reconstruction(
           &graph,
-          |node| partition.reconstruct_node_sequence(node_states, forward, node, true, false, SampleMode::Argmax, &mut rng),
+          |node| partition.reconstruct_node_sequence(node_states, &edges.forward, node, true, false, SampleMode::Argmax, &mut rng),
           |_, _| Ok(()),
         )
         .unwrap();

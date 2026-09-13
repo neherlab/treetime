@@ -441,7 +441,8 @@ pub mod tests {
     pub fn inject_indel_on_first_edge(graph: &Graph, partitions: &mut [DenseReconstruction]) -> Result<(), Report> {
       let edge_key = graph.get_edges()[0].read_arc().key();
       for partition in partitions.iter_mut() {
-        partition.estimates.get_mut(&edge_key).unwrap().indels = vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)?];
+        partition.edges.estimates.get_mut(&edge_key).unwrap().indels =
+          vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)?];
       }
       Ok(())
     }
@@ -469,13 +470,7 @@ pub mod tests {
 
       let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?);
       let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-      let partitions = vec![DenseReconstruction {
-        partition,
-        node_states,
-        backward: BTreeMap::new(),
-        forward: BTreeMap::new(),
-        estimates: BTreeMap::new(),
-      }];
+      let partitions = vec![DenseReconstruction::seeded(partition, node_states)];
 
       let (partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
 

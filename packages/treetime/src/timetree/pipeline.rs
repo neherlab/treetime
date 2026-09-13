@@ -953,21 +953,13 @@ fn initialize_partitions_from_params(
   };
 
   let partition = match created.partition {
-    MarginalPartition::Sparse(partition, node_states) => PartitionTimetree::Sparse(SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    }),
+    MarginalPartition::Sparse(partition, node_states) => {
+      PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, node_states))
+    },
     // Dense leaf states are attached later by `initialize_marginal_timetree`.
-    MarginalPartition::Dense(partition) => PartitionTimetree::Dense(DenseReconstruction {
-      partition,
-      node_states: BTreeMap::new(),
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    }),
+    MarginalPartition::Dense(partition) => {
+      PartitionTimetree::Dense(DenseReconstruction::seeded(partition, BTreeMap::new()))
+    },
   };
 
   Ok(PartitionInitResult {

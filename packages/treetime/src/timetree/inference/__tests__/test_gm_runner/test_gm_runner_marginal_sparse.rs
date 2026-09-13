@@ -17,7 +17,6 @@ mod tests {
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
-  use std::collections::BTreeMap;
 
   use crate::partition::timetree::partition::PartitionTimetree;
   use eyre::Report;
@@ -61,13 +60,7 @@ mod tests {
     let aln = load_alignment_for_dataset(dataset)?;
     let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    });
+    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, node_states));
 
     let partitions: Vec<PartitionTimetree> = vec![sparse_partition];
     let (partitions, _) = initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions, &aln, &names)?;

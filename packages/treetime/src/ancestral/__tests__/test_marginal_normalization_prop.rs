@@ -108,7 +108,7 @@ mod tests {
           assert_dense_rows_normalized(&node_data.profile.dis)?;
         }
       }
-      for edge_data in partition.forward.values() {
+      for edge_data in partition.edges.forward.values() {
         if !edge_data.msg_to_child.dis.is_empty() {
           assert_dense_rows_normalized(&edge_data.msg_to_child.dis)?;
         }
@@ -138,7 +138,7 @@ mod tests {
       for node_data in partition.node_states.values() {
         assert_sparse_profile_normalized(&node_data.profile)?;
       }
-      for edge_data in partition.forward.values() {
+      for edge_data in partition.edges.forward.values() {
         assert_sparse_profile_normalized(&edge_data.msg_to_child)?;
       }
     }

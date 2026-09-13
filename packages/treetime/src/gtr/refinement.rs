@@ -3,7 +3,9 @@ use crate::gtr::brent_bracketed::BrentBracketed;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
 use crate::make_internal_report;
-use crate::partition::marginal::shared::update::{MarginalBackward, MarginalUpdate, PartitionMarginalOps};
+use crate::partition::marginal::shared::update::{
+  MarginalBackward, MarginalEdges, MarginalUpdate, PartitionMarginalOps,
+};
 use crate::partition::traits::HasGtr;
 use argmin::core::{CostFunction, Error, Executor};
 use eyre::Report;
@@ -39,8 +41,7 @@ where
 {
   let MarginalUpdate {
     node_states: nodes,
-    backward,
-    forward,
+    edges: MarginalEdges { backward, forward, .. },
     ..
   } = update;
   let n_states = partition.gtr().pi.len();

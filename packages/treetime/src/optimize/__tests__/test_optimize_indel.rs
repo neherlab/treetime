@@ -42,7 +42,7 @@ pub mod tests {
   ) -> GraphEdgeKey {
     let first_edge_key = graph.get_edges()[0].read_arc().key();
     for partition in dense_partitions.iter_mut() {
-      partition.estimates.get_mut(&first_edge_key).unwrap().indels = indels.to_vec();
+      partition.edges.estimates.get_mut(&first_edge_key).unwrap().indels = indels.to_vec();
     }
     for partition in sparse_partitions.iter_mut() {
       partition.partition.obs_edges.get_mut(&first_edge_key).unwrap().indels = indels.to_vec();
@@ -76,23 +76,11 @@ pub mod tests {
       get_common_length(&aln)?,
     );
     let dense_node_states = dense_partition.attach_sequences(graph, &aln, names)?;
-    let dense_partitions = vec![DenseReconstruction {
-      partition: dense_partition,
-      node_states: dense_node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    }];
+    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, dense_node_states)];
 
     let fitch = create_fitch_partition(graph, 1, alphabet_sparse, &aln, names)?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
-    let sparse_partitions = vec![SparseReconstruction {
-      partition: sparse_partition,
-      node_states: sparse_node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    }];
+    let sparse_partitions = vec![SparseReconstruction::seeded(sparse_partition, sparse_node_states)];
     let (dense_partitions, _) =
       marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;
     let (sparse_partitions, _) =

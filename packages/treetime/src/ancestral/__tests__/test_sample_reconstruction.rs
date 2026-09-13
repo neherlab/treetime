@@ -105,13 +105,7 @@ mod tests {
       let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
       let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-      let recon = SparseReconstruction {
-        partition,
-        node_states,
-        backward: BTreeMap::new(),
-        forward: BTreeMap::new(),
-        estimates: BTreeMap::new(),
-      };
+      let recon = SparseReconstruction::seeded(partition, node_states);
 
       let (mut recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
@@ -121,12 +115,11 @@ mod tests {
         let SparseReconstruction {
           partition,
           node_states,
-          forward,
-          ..
+          edges,
         } = &mut recon;
         ancestral_reconstruction(
           &graph,
-          |node| partition.reconstruct_node_sequence(node_states, forward, node, false, false, mode, &mut rng),
+          |node| partition.reconstruct_node_sequence(node_states, &edges.forward, node, false, false, mode, &mut rng),
           |key, seq| {
             out.insert(names[&key].clone().unwrap_or_default(), seq.to_string());
             Ok(())

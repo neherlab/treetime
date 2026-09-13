@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::pipeline::SparseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::topology::collapse::collapse_edge;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -12,7 +11,7 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
   use treetime_primitives::AsciiChar;
@@ -26,25 +25,22 @@ mod tests {
     Sub::new(c(reff), pos, c(qry)).unwrap()
   }
 
-  fn populate_test_nodes(recon: &mut SparseReconstruction, graph: &Graph) {
-    let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A'))
-      .take(recon.partition.length)
-      .collect();
-    if recon.partition.root_sequence.is_empty() {
-      recon.partition.root_sequence = ref_seq;
+  fn populate_test_nodes(recon: &mut PartitionMarginalSparse, graph: &Graph) {
+    let ref_seq: treetime_primitives::Seq = std::iter::repeat_with(|| c(b'A')).take(recon.length).collect();
+    if recon.root_sequence.is_empty() {
+      recon.root_sequence = ref_seq;
     }
-    let alphabet = recon.partition.alphabet.clone();
+    let alphabet = recon.alphabet.clone();
     for node in graph.get_nodes() {
       let key = node.read_arc().key();
       recon
-        .partition
         .obs_nodes
         .entry(key)
         .or_insert_with(|| SparseNodeObs::empty(&alphabet));
     }
   }
 
-  fn make_sparse_reconstruction(length: usize) -> Result<SparseReconstruction, Report> {
+  fn make_sparse_reconstruction(length: usize) -> Result<PartitionMarginalSparse, Report> {
     let partition = PartitionMarginalSparse {
       index: 0,
       gtr: jc69(JC69Params::default())?,
@@ -54,13 +50,7 @@ mod tests {
       obs_edges: btreemap! {},
       root_sequence: seq![],
     };
-    Ok(SparseReconstruction {
-      partition,
-      node_states: BTreeMap::new(),
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    })
+    Ok(partition)
   }
 
   #[test]
@@ -84,14 +74,12 @@ mod tests {
     populate_test_nodes(&mut recon, &graph);
 
     recon
-      .partition
       .obs_edges
       .insert(ri_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
     recon
-      .partition
       .obs_edges
       .insert(ia_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
-    recon.partition.obs_edges.insert(ib_key, SparseEdgeObs::default());
+    recon.obs_edges.insert(ib_key, SparseEdgeObs::default());
 
     let mut sparse = vec![recon];
 
@@ -104,7 +92,7 @@ mod tests {
     assert_eq!(graph.get_nodes().len(), 3); // root, A, B
     assert_eq!(graph.get_edges().len(), 2);
 
-    let p = &sparse[0].partition;
+    let p = &sparse[0];
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
@@ -144,7 +132,7 @@ mod tests {
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let i_key = find_node_key_by_name(&graph, &names, "I").unwrap();
 
-    let mut sparse: Vec<SparseReconstruction> = vec![];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
 
     let mut branch_lengths = branch_lengths;
     collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
@@ -176,7 +164,7 @@ mod tests {
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
-    let mut sparse: Vec<SparseReconstruction> = vec![];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
 
     let mut branch_lengths = branch_lengths;
     collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
@@ -211,7 +199,7 @@ mod tests {
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
-    let mut sparse: Vec<SparseReconstruction> = vec![];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
 
     let mut branch_lengths = branch_lengths;
     collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
@@ -248,7 +236,7 @@ mod tests {
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
 
-    let mut sparse: Vec<SparseReconstruction> = vec![];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
 
     let mut branch_lengths = branch_lengths;
     branch_lengths.insert(ia_key, None);
@@ -282,7 +270,7 @@ mod tests {
     let mut graph: Graph = graph;
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
-    let mut sparse: Vec<SparseReconstruction> = vec![];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
 
     let mut branch_lengths = branch_lengths;
     branch_lengths.insert(ri_key, None);
@@ -328,15 +316,15 @@ mod tests {
     let collapsed_indel = InDel::ins((0, 3), [c(b'A'), c(b'C'), c(b'G')].as_slice()).unwrap();
     let child_a_indel = InDel::del((10, 12), [c(b'T'), c(b'T')].as_slice()).unwrap();
 
-    recon.partition.obs_edges.insert(
+    recon.obs_edges.insert(
       ri_key,
       SparseEdgeObs::with_fitch_subs_and_indels(vec![], vec![collapsed_indel.clone()]),
     );
-    recon.partition.obs_edges.insert(
+    recon.obs_edges.insert(
       ia_key,
       SparseEdgeObs::with_fitch_subs_and_indels(vec![], vec![child_a_indel.clone()]),
     );
-    recon.partition.obs_edges.insert(ib_key, SparseEdgeObs::default());
+    recon.obs_edges.insert(ib_key, SparseEdgeObs::default());
 
     let mut sparse = vec![recon];
 
@@ -344,7 +332,7 @@ mod tests {
     collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
-    let p = &sparse[0].partition;
+    let p = &sparse[0];
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
@@ -382,11 +370,9 @@ mod tests {
     populate_test_nodes(&mut recon, &graph);
 
     recon
-      .partition
       .obs_edges
       .insert(ri_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
     recon
-      .partition
       .obs_edges
       .insert(ia_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
 
@@ -396,7 +382,7 @@ mod tests {
     collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
-    let p = &sparse[0].partition;
+    let p = &sparse[0];
     let root_to_a_edge = graph
       .get_edges()
       .iter()
@@ -430,7 +416,7 @@ mod tests {
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let i_node_key = find_node_key_by_name(&graph, &names, "I").unwrap();
 
-    let mut sparse: Vec<SparseReconstruction> = vec![];
+    let mut sparse: Vec<PartitionMarginalSparse> = vec![];
 
     let mut branch_lengths = branch_lengths;
     collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
@@ -461,21 +447,19 @@ mod tests {
     let mut recon_a = make_sparse_reconstruction(100)?;
     populate_test_nodes(&mut recon_a, &graph);
     recon_a
-      .partition
       .obs_edges
       .insert(ri_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
-    recon_a.partition.obs_edges.insert(ia_key, SparseEdgeObs::default());
-    recon_a.partition.obs_edges.insert(ib_key, SparseEdgeObs::default());
+    recon_a.obs_edges.insert(ia_key, SparseEdgeObs::default());
+    recon_a.obs_edges.insert(ib_key, SparseEdgeObs::default());
 
     let mut recon_b = make_sparse_reconstruction(100)?;
-    recon_b.partition.index = 1;
+    recon_b.index = 1;
     populate_test_nodes(&mut recon_b, &graph);
     recon_b
-      .partition
       .obs_edges
       .insert(ri_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
-    recon_b.partition.obs_edges.insert(ia_key, SparseEdgeObs::default());
-    recon_b.partition.obs_edges.insert(ib_key, SparseEdgeObs::default());
+    recon_b.obs_edges.insert(ia_key, SparseEdgeObs::default());
+    recon_b.obs_edges.insert(ib_key, SparseEdgeObs::default());
 
     let mut sparse = vec![recon_a, recon_b];
 
@@ -483,7 +467,7 @@ mod tests {
     collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
-    let p0 = &sparse[0].partition;
+    let p0 = &sparse[0];
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let data = &p0.obs_edges[&edge.key()];
@@ -494,7 +478,7 @@ mod tests {
       );
     }
 
-    let p1 = &sparse[1].partition;
+    let p1 = &sparse[1];
     for edge in graph.get_edges() {
       let edge = edge.read_arc();
       let data = &p1.obs_edges[&edge.key()];

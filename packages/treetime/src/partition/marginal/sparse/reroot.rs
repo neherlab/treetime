@@ -4,34 +4,35 @@ use crate::make_internal_report;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
 use eyre::Report;
+use std::collections::BTreeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::{EdgeMergeInfo, RerootChanges};
 use treetime_primitives::Seq;
 
-/// Apply a reroot to a completed sparse reconstruction: rewrite the durable observations (Fitch
-/// substitutions, indels, root sequence, and the split node's observations) in place at the structural
-/// operation, then reconcile the node-state map so the next marginal update sees exactly the current
-/// node set. The edge messages and estimates are cleared here; the next marginal update rebuilds them.
+/// Apply a reroot to the sparse inference state that survives it: rewrite the durable observations
+/// (Fitch substitutions, indels, root sequence, and the split node's observations), then reconcile the
+/// node-state map so the next marginal update sees exactly the current node set.
 ///
-/// This is the value-style successor of the retired `PartitionRerootOps::apply_reroot`: the reroot is a
-/// pure edit of the external observation and result maps at the one structural operation.
-pub fn reroot_sparse(family: &mut SparseReconstruction, changes: &RerootChanges) -> Result<(), Report> {
-  apply_reroot_changes(family, changes)?;
+/// Takes the two values a reroot carries across and returns a reconstruction with no per-edge results:
+/// the messages and estimates of the previous update describe the pre-reroot topology, and the next
+/// marginal update rebuilds a complete set. The node states keep the leaf seeds and the derived root
+/// sequence, so they are reconciled rather than dropped.
+pub fn reroot_sparse(
+  partition: PartitionMarginalSparse,
+  node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
+  changes: &RerootChanges,
+) -> Result<SparseReconstruction, Report> {
+  let mut partition = partition;
+  let mut node_states = node_states;
+
+  apply_reroot_changes(&mut partition, &mut node_states, changes)?;
 
   if let Some(info) = &changes.edge_merge {
-    remove_trivial_root(family, info)?;
+    remove_trivial_root(&mut partition, &mut node_states, info)?;
   }
 
-  // The reroot moved, split, and merged edges and nodes. The messages and estimates keyed to the
-  // pre-reroot topology are now stale; drop them wholesale and let the next marginal update rebuild a
-  // complete set. The node-state map keeps the leaf seeds and the derived root sequence, so reconcile
-  // it to the current node set rather than clearing it.
-  reconcile_node_states(family);
-  family.backward.clear();
-  family.forward.clear();
-  family.estimates.clear();
-
-  Ok(())
+  let node_states = reconcile_node_states(&partition, node_states);
+  Ok(SparseReconstruction::seeded(partition, node_states))
 }
 
 // Phase 1: topology changes + root_sequence derivation + new node init.
@@ -41,9 +42,11 @@ pub fn reroot_sparse(family: &mut SparseReconstruction, changes: &RerootChanges)
 // Note: root_composition + child-side fitch_subs + indels != child_composition. Non-char (N, gap)
 // differences between nodes are not encoded as Fitch subs - they are tracked through non_char ranges
 // on each node instead.
-fn apply_reroot_changes(family: &mut SparseReconstruction, changes: &RerootChanges) -> Result<(), Report> {
-  let partition = &mut family.partition;
-
+fn apply_reroot_changes(
+  partition: &mut PartitionMarginalSparse,
+  node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
+  changes: &RerootChanges,
+) -> Result<(), Report> {
   // Split edge: child-side gets all mutations, parent-side is empty
   if let Some(info) = &changes.edge_split {
     let old_edge_data = partition
@@ -77,16 +80,17 @@ fn apply_reroot_changes(family: &mut SparseReconstruction, changes: &RerootChang
       info.new_node_key,
       SparseNodeObs::new(&partition.root_sequence, &partition.alphabet),
     );
-    family
-      .node_states
-      .insert(info.new_node_key, SparseNodeState::leaf(&partition.root_sequence));
+    node_states.insert(info.new_node_key, SparseNodeState::leaf(&partition.root_sequence));
   }
 
   Ok(())
 }
 
-fn remove_trivial_root(family: &mut SparseReconstruction, info: &EdgeMergeInfo) -> Result<(), Report> {
-  let partition = &mut family.partition;
+fn remove_trivial_root(
+  partition: &mut PartitionMarginalSparse,
+  node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
+  info: &EdgeMergeInfo,
+) -> Result<(), Report> {
   let parent_edge = partition
     .obs_edges
     .remove(&info.parent_edge_key)
@@ -97,7 +101,7 @@ fn remove_trivial_root(family: &mut SparseReconstruction, info: &EdgeMergeInfo) 
     .ok_or_else(|| make_internal_report!("Child edge {:?} must exist for merge", info.child_edge_key))?;
 
   partition.obs_nodes.remove(&info.removed_node_key);
-  family.node_states.remove(&info.removed_node_key);
+  node_states.remove(&info.removed_node_key);
 
   let merged_subs = parent_edge.chain_fitch_subs(child_edge.fitch_subs())?;
   let merged_indels = parent_edge.chain_fitch_indels(&child_edge.indels);
@@ -147,12 +151,14 @@ fn apply_edge_to_sequence(seq: &mut Seq, edge: &SparseEdgeObs, alphabet: &Alphab
 /// Reconcile the node-state map to the partition's current node observations: seed a placeholder state
 /// for every node introduced by the reroot and drop the state of any node it removed. Leaf seeds and the
 /// derived root sequence are preserved; the marginal passes rebuild the evolving internal state.
-fn reconcile_node_states(family: &mut SparseReconstruction) {
-  let node_keys: Vec<GraphNodeKey> = family.partition.obs_nodes.keys().copied().collect();
-  for key in node_keys {
-    family.node_states.entry(key).or_insert_with(SparseNodeState::empty);
+fn reconcile_node_states(
+  partition: &PartitionMarginalSparse,
+  node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
+) -> BTreeMap<GraphNodeKey, SparseNodeState> {
+  let mut node_states = node_states;
+  for key in partition.obs_nodes.keys().copied() {
+    node_states.entry(key).or_insert_with(SparseNodeState::empty);
   }
-  family
-    .node_states
-    .retain(|key, _| family.partition.obs_nodes.contains_key(key));
+  node_states.retain(|key, _| partition.obs_nodes.contains_key(key));
+  node_states
 }

@@ -17,6 +17,7 @@ use crate::timetree::optimization::polytomy::{prepare_tree_after_topology_change
 use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
 use crate::timetree::timetree_state::TimetreeState;
 use eyre::{Report, WrapErr};
+use itertools::Itertools;
 use log::info;
 use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::assign_node_names;
@@ -165,9 +166,12 @@ impl Refinement<'_> {
     // Reset the value-resident edge fields for the new topology, the counterpart of the reset
     // `prepare_tree_after_topology_change` performs on the transitional fields.
     self.state.reset_date_edges_for_topology_change(self.graph);
-    for partition in &mut self.partitions {
-      partition.reconcile_topology(self.graph);
-    }
+    let graph = &*self.graph;
+    let partitions = std::mem::take(&mut self.partitions)
+      .into_iter()
+      .map(|partition| partition.reconcile_topology(graph))
+      .collect_vec();
+    self.partitions = partitions;
 
     // Re-parenting invalidates the committed lengths, which describe a parent-child pair that no
     // longer exists. The sampled subtree dates every node it creates, so recommit from those

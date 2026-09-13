@@ -1122,7 +1122,7 @@ mod tests {
         .collect();
 
       for p in &mut dense_partitions {
-        p.estimates.get_mut(&first_edge_key).unwrap().indels = indels.clone();
+        p.edges.estimates.get_mut(&first_edge_key).unwrap().indels = indels.clone();
       }
       for p in &mut sparse_partitions {
         p.partition.obs_edges.get_mut(&first_edge_key).unwrap().indels = indels.clone();

@@ -66,13 +66,7 @@ mod tests {
     })?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(&graph, aln, &names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }
@@ -122,8 +116,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &partition.node_states,
-      &partition.backward,
-      &partition.forward,
+      &partition.edges.backward,
+      &partition.edges.forward,
     )?;
 
     // nij[C, A] should dominate: mutation from parent=A to child=C
@@ -242,8 +236,8 @@ mod tests {
     let (graph1, partition1, branch_lengths1) = setup_dense(&tree1, &aln)?;
     let (graph2, partition2, branch_lengths2) = setup_dense(&tree2, &aln)?;
 
-    let counts1 = partition1.partition.count_transitions(&graph1, &branch_lengths1, &partition1.node_states, &partition1.backward, &partition1.forward)?;
-    let counts2 = partition2.partition.count_transitions(&graph2, &branch_lengths2, &partition2.node_states, &partition2.backward, &partition2.forward)?;
+    let counts1 = partition1.partition.count_transitions(&graph1, &branch_lengths1, &partition1.node_states, &partition1.edges.backward, &partition1.edges.forward)?;
+    let counts2 = partition2.partition.count_transitions(&graph2, &branch_lengths2, &partition2.node_states, &partition2.edges.backward, &partition2.edges.forward)?;
 
     // Measured max diff: 8.94e-8 (case small_vs_large, Ti[0])
     let ratio = bl2 / bl1;
@@ -285,8 +279,8 @@ mod tests {
       &graph_d,
       &branch_lengths_d,
       &partition_d.node_states,
-      &partition_d.backward,
-      &partition_d.forward,
+      &partition_d.edges.backward,
+      &partition_d.edges.forward,
     )?;
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &branch_lengths_s)?;
 
@@ -358,8 +352,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &partition.node_states,
-      &partition.backward,
-      &partition.forward,
+      &partition.edges.backward,
+      &partition.edges.forward,
     )?;
 
     // root_state[A] should dominate: 8 positions, root reconstructed as mostly A
@@ -496,8 +490,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &partition.node_states,
-      &partition.backward,
-      &partition.forward,
+      &partition.edges.backward,
+      &partition.edges.forward,
     )?;
 
     // nij[T, A] should reflect two A->T mutations (one per subtree)
@@ -584,8 +578,8 @@ mod tests {
       &graph_d,
       &branch_lengths_d,
       &partition_d.node_states,
-      &partition_d.backward,
-      &partition_d.forward,
+      &partition_d.edges.backward,
+      &partition_d.edges.forward,
     )?;
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &branch_lengths_s)?;
 
@@ -635,8 +629,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &partition.node_states,
-      &partition.backward,
-      &partition.forward,
+      &partition.edges.backward,
+      &partition.edges.forward,
     )?;
 
     // root_state sums to alignment length (one count per position)
@@ -674,8 +668,8 @@ mod tests {
       &graph_d,
       &branch_lengths_d,
       &partition_d.node_states,
-      &partition_d.backward,
-      &partition_d.forward,
+      &partition_d.edges.backward,
+      &partition_d.edges.forward,
     )?;
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &branch_lengths_s)?;
 
@@ -711,8 +705,8 @@ mod tests {
       &graph_d,
       &branch_lengths_d,
       &partition_d.node_states,
-      &partition_d.backward,
-      &partition_d.forward,
+      &partition_d.edges.backward,
+      &partition_d.edges.forward,
     )?;
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &branch_lengths_s)?;
 
@@ -748,8 +742,8 @@ mod tests {
       &graph_d,
       &branch_lengths_d,
       &partition_d.node_states,
-      &partition_d.backward,
-      &partition_d.forward,
+      &partition_d.edges.backward,
+      &partition_d.edges.forward,
     )?;
     let sparse = get_mutation_counts_fitch(&graph_s, &fitch_s, &branch_lengths_s)?;
 

@@ -29,7 +29,7 @@ mod tests {
       ..
     } = nwk_read_str(NWK)?;
     let mut graph: Graph = graph;
-    let partition = helpers::make_partition(
+    let (partition, node_states) = helpers::make_partition(
       &graph,
       &names,
       0,
@@ -42,9 +42,16 @@ mod tests {
       ],
     );
     let mut sparse = vec![partition];
+    let mut node_states = vec![node_states];
 
     let mut branch_lengths = branch_lengths;
-    let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths)?;
+    let changed = resolve_polytomies(
+      &mut graph,
+      &mut sparse,
+      &mut node_states,
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
     assert!(changed > 0);
 
     let p = &sparse[0];
@@ -72,7 +79,7 @@ mod tests {
       ..
     } = nwk_read_str(NWK)?;
     let mut graph: Graph = graph;
-    let partition = helpers::make_partition(
+    let (partition, node_states) = helpers::make_partition(
       &graph,
       &names,
       0,
@@ -89,10 +96,17 @@ mod tests {
       ],
     );
     let mut sparse = vec![partition];
+    let mut node_states = vec![node_states];
 
     let before = total_subs(&graph, &sparse[0]);
     let mut branch_lengths = branch_lengths;
-    resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths)?;
+    resolve_polytomies(
+      &mut graph,
+      &mut sparse,
+      &mut node_states,
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
     let after = total_subs(&graph, &sparse[0]);
 
     assert_eq!(before, 5);
@@ -120,7 +134,7 @@ mod tests {
       ..
     } = nwk_read_str("((G1:0.1,G2:0.1,A1:0.1,A2:0.1)V:0.1,S:0.1)root:0.0;")?;
     let mut graph: Graph = graph;
-    let partition = helpers::make_partition(
+    let (partition, node_states) = helpers::make_partition(
       &graph,
       &names,
       0,
@@ -134,10 +148,17 @@ mod tests {
       ],
     );
     let mut sparse = vec![partition];
+    let mut node_states = vec![node_states];
 
     let before = total_subs(&graph, &sparse[0]);
     let mut branch_lengths = branch_lengths;
-    let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths)?;
+    let changed = resolve_polytomies(
+      &mut graph,
+      &mut sparse,
+      &mut node_states,
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
     let after = total_subs(&graph, &sparse[0]);
 
     assert_eq!(before, 3);
@@ -165,7 +186,7 @@ mod tests {
       ..
     } = nwk_read_str("((((X1:0.1,X2:0.1)W:0.0,C1:0.1,C2:0.1)V:0.2)U:0.1)root:0.0;")?;
     let mut graph: Graph = graph;
-    let partition = helpers::make_partition(
+    let (partition, node_states) = helpers::make_partition(
       &graph,
       &names,
       0,
@@ -178,9 +199,16 @@ mod tests {
       ],
     );
     let mut sparse = vec![partition];
+    let mut node_states = vec![node_states];
 
     let mut branch_lengths = branch_lengths;
-    resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths)?;
+    resolve_polytomies(
+      &mut graph,
+      &mut sparse,
+      &mut node_states,
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
 
     assert!(
       find_node_key_by_name(&graph, &names, "W").is_some(),
@@ -209,7 +237,7 @@ mod tests {
       ..
     } = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
     let mut graph: Graph = graph;
-    let partition = helpers::make_partition(
+    let (partition, node_states) = helpers::make_partition(
       &graph,
       &names,
       0,
@@ -221,10 +249,17 @@ mod tests {
       ],
     );
     let mut sparse = vec![partition];
+    let mut node_states = vec![node_states];
     let nodes_before = graph.get_nodes().len();
 
     let mut branch_lengths = branch_lengths;
-    let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths)?;
+    let changed = resolve_polytomies(
+      &mut graph,
+      &mut sparse,
+      &mut node_states,
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
 
     assert_eq!(changed, 0);
     assert_eq!(graph.get_nodes().len(), nodes_before);
@@ -242,7 +277,7 @@ mod tests {
       ..
     } = nwk_read_str(NWK)?;
     let mut graph: Graph = graph;
-    let partition = helpers::make_partition(
+    let (partition, node_states) = helpers::make_partition(
       &graph,
       &names,
       0,
@@ -255,10 +290,17 @@ mod tests {
       ],
     );
     let mut sparse = vec![partition];
+    let mut node_states = vec![node_states];
     let nodes_before = graph.get_nodes().len();
 
     let mut branch_lengths = branch_lengths;
-    let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths)?;
+    let changed = resolve_polytomies(
+      &mut graph,
+      &mut sparse,
+      &mut node_states,
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
 
     assert_eq!(changed, 0);
     assert_eq!(graph.get_nodes().len(), nodes_before);
@@ -269,7 +311,6 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-    use crate::ancestral::pipeline::SparseReconstruction;
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
     use crate::test_utils::find_edge_key;
@@ -284,20 +325,20 @@ mod tests {
       Sub::new(c(reff), pos, c(qry)).unwrap()
     }
 
-    pub fn total_subs(graph: &Graph, recon: &SparseReconstruction) -> usize {
+    pub fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
         .iter()
-        .filter_map(|e| recon.partition.obs_edges.get(&e.read_arc().key()))
+        .filter_map(|e| recon.obs_edges.get(&e.read_arc().key()))
         .map(|e| e.fitch_subs().len())
         .sum()
     }
 
-    pub fn reversion_present(graph: &Graph, recon: &SparseReconstruction, needle: &Sub) -> bool {
+    pub fn reversion_present(graph: &Graph, recon: &PartitionMarginalSparse, needle: &Sub) -> bool {
       graph
         .get_edges()
         .iter()
-        .filter_map(|e| recon.partition.obs_edges.get(&e.read_arc().key()))
+        .filter_map(|e| recon.obs_edges.get(&e.read_arc().key()))
         .any(|e| e.fitch_subs().contains(needle))
     }
 
@@ -307,7 +348,7 @@ mod tests {
       index: usize,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
-    ) -> SparseReconstruction {
+    ) -> (PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>) {
       let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
       let mut ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
@@ -344,13 +385,7 @@ mod tests {
         obs_edges,
       };
 
-      SparseReconstruction {
-        partition,
-        node_states,
-        backward: btreemap! {},
-        forward: btreemap! {},
-        estimates: btreemap! {},
-      }
+      (partition, node_states)
     }
   }
 }

@@ -22,10 +22,11 @@ mod tests {
       revert_masks in prop::collection::vec(0_u32..32, 3..7),
       own_counts in prop::collection::vec(0_usize..3, 3..7),
     ) {
-      let (mut graph, names, partition, before, mut branch_lengths) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
+      let (mut graph, names, partition, node_states, before, mut branch_lengths) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
       let mut sparse = vec![partition];
+    let mut node_states = vec![node_states];
 
-      let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths).unwrap();
+      let changed = resolve_polytomies(&mut graph, &mut sparse, &mut node_states, TopologyOps::default(), &mut branch_lengths).unwrap();
       let after = helpers::total_subs(&graph, &sparse[0]);
 
       prop_assert!(after <= before, "mutation count increased: before={before} after={after}");
@@ -44,11 +45,12 @@ mod tests {
       revert_masks in prop::collection::vec(0_u32..32, 3..7),
       own_counts in prop::collection::vec(0_usize..3, 3..7),
     ) {
-      let (mut graph, names, partition, _before, mut branch_lengths) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
+      let (mut graph, names, partition, node_states, _before, mut branch_lengths) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
       let leaves_before = helpers::leaf_names(&names, &graph);
       let mut sparse = vec![partition];
+    let mut node_states = vec![node_states];
 
-      resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths).unwrap();
+      resolve_polytomies(&mut graph, &mut sparse, &mut node_states, TopologyOps::default(), &mut branch_lengths).unwrap();
 
       prop_assert_eq!(helpers::leaf_names(&names, &graph), leaves_before);
 
@@ -81,11 +83,12 @@ mod tests {
       a in 2_usize..5,
       own_counts in prop::collection::vec(0_usize..3, 9),
     ) {
-      let (mut graph, partition, before, expected_after, mut branch_lengths) =
+      let (mut graph, partition, node_states, before, expected_after, mut branch_lengths) =
         helpers::build_bifurcating_case(g, a, &own_counts);
       let mut sparse = vec![partition];
+    let mut node_states = vec![node_states];
 
-      let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths).unwrap();
+      let changed = resolve_polytomies(&mut graph, &mut sparse, &mut node_states, TopologyOps::default(), &mut branch_lengths).unwrap();
       let after = helpers::total_subs(&graph, &sparse[0]);
 
       prop_assert_eq!(after, expected_after, "did not reach the bipartition cost");
@@ -99,7 +102,6 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-    use crate::ancestral::pipeline::SparseReconstruction;
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
     use crate::test_utils::find_edge_key;
@@ -122,11 +124,11 @@ mod tests {
         .collect()
     }
 
-    pub fn total_subs(graph: &Graph, recon: &SparseReconstruction) -> usize {
+    pub fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
         .iter()
-        .filter_map(|e| recon.partition.obs_edges.get(&e.read_arc().key()))
+        .filter_map(|e| recon.obs_edges.get(&e.read_arc().key()))
         .map(|e| e.fitch_subs().len())
         .sum()
     }
@@ -143,7 +145,8 @@ mod tests {
     ) -> (
       Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
-      SparseReconstruction,
+      PartitionMarginalSparse,
+      BTreeMap<GraphNodeKey, SparseNodeState>,
       usize,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     ) {
@@ -185,8 +188,8 @@ mod tests {
       }
 
       let total: usize = edge_mutations.iter().map(|(_, _, subs)| subs.len()).sum();
-      let partition = make_partition(&graph, &node_names, length, &edge_mutations);
-      (graph, node_names, partition, total, branch_lengths)
+      let (partition, node_states) = make_partition(&graph, &node_names, length, &edge_mutations);
+      (graph, node_names, partition, node_states, total, branch_lengths)
     }
 
     /// Build a bifurcating-root case `root -> {V, S}`. V has `g` children in the sibling's G
@@ -201,7 +204,8 @@ mod tests {
       own_counts: &[usize],
     ) -> (
       Graph,
-      SparseReconstruction,
+      PartitionMarginalSparse,
+      BTreeMap<GraphNodeKey, SparseNodeState>,
       usize,
       usize,
       BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -247,8 +251,8 @@ mod tests {
       }
 
       let before: usize = edge_mutations.iter().map(|(_, _, subs)| subs.len()).sum();
-      let partition = make_partition(&graph, &node_names, length, &edge_mutations);
-      (graph, partition, before, 1 + own_total, branch_lengths)
+      let (partition, node_states) = make_partition(&graph, &node_names, length, &edge_mutations);
+      (graph, partition, node_states, before, 1 + own_total, branch_lengths)
     }
 
     fn make_partition(
@@ -256,7 +260,7 @@ mod tests {
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       length: usize,
       edge_mutations: &[(String, String, Vec<Sub>)],
-    ) -> SparseReconstruction {
+    ) -> (PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>) {
       let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
       let ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
@@ -286,13 +290,7 @@ mod tests {
         obs_edges,
       };
 
-      SparseReconstruction {
-        partition,
-        node_states,
-        backward: btreemap! {},
-        forward: btreemap! {},
-        estimates: btreemap! {},
-      }
+      (partition, node_states)
     }
   }
 }

@@ -22,6 +22,7 @@ use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_in
 use crate::reroot::params::BrentParams;
 use crate::reroot::variance::VarianceModel;
 use eyre::Report;
+use itertools::Itertools;
 use log::{info, warn};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -113,25 +114,13 @@ pub fn run(
 
   match created.partition {
     MarginalPartition::Sparse(partition, node_states) => {
-      sparse_partitions = vec![SparseReconstruction {
-        partition,
-        node_states,
-        backward: BTreeMap::new(),
-        forward: BTreeMap::new(),
-        estimates: BTreeMap::new(),
-      }];
+      sparse_partitions = vec![SparseReconstruction::seeded(partition, node_states)];
       dense_partitions = vec![];
     },
     MarginalPartition::Dense(partition) => {
       // Dense leaf states are attached up front; the marginal passes then populate internal states.
       let node_states = partition.attach_sequences(&input.graph, &input.sequences, names)?;
-      dense_partitions = vec![DenseReconstruction {
-        partition,
-        node_states,
-        backward: BTreeMap::new(),
-        forward: BTreeMap::new(),
-        estimates: BTreeMap::new(),
-      }];
+      dense_partitions = vec![DenseReconstruction::seeded(partition, node_states)];
       sparse_partitions = vec![];
     },
   }
@@ -302,8 +291,8 @@ fn pre_reroot_optimize(
 fn reroot_optimize(
   graph: &mut Graph,
   spec: &RerootSpec,
-  mut sparse_partitions: Vec<SparseReconstruction>,
-  mut dense_partitions: Vec<DenseReconstruction>,
+  sparse_partitions: Vec<SparseReconstruction>,
+  dense_partitions: Vec<DenseReconstruction>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(Vec<SparseReconstruction>, Vec<DenseReconstruction>), Report> {
@@ -341,12 +330,14 @@ fn reroot_optimize(
     inverted_edge_keys: reroot_result.inverted_edge_keys,
   };
 
-  for family in &mut sparse_partitions {
-    reroot_sparse(family, &changes)?;
-  }
-  for family in &mut dense_partitions {
-    reroot_dense(family, &changes)?;
-  }
+  let sparse_partitions: Vec<_> = sparse_partitions
+    .into_iter()
+    .map(|family| reroot_sparse(family.partition, family.node_states, &changes))
+    .try_collect()?;
+  let dense_partitions: Vec<_> = dense_partitions
+    .into_iter()
+    .map(|family| reroot_dense(family.partition, family.node_states, &changes))
+    .collect();
 
   let profile_lengths = profile_branch_lengths(branch_lengths);
   let (sparse_partitions, _) = marginal_update_sparse(graph, &profile_lengths, sparse_partitions)?;

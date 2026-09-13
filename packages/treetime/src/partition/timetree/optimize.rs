@@ -1,4 +1,6 @@
+use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::partition::marginal::dense::reroot::reroot_dense;
+use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
 use crate::partition::marginal::sparse::reroot::reroot_sparse;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
@@ -8,7 +10,6 @@ use crate::partition::traits::PartitionOptimizeOps;
 use eyre::Report;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
 
 impl PartitionOptimizeOps for PartitionTimetree {
@@ -28,40 +29,35 @@ impl PartitionOptimizeOps for PartitionTimetree {
 }
 
 impl PartitionTimetree {
-  /// Apply a reroot to this partition's observations and result maps at the structural operation.
-  pub fn apply_reroot(&mut self, changes: &RerootChanges) -> Result<(), Report> {
-    match self {
-      Self::Dense(family) => reroot_dense(family, changes),
-      Self::Sparse(family) => reroot_sparse(family, changes),
-    }
+  /// Apply a reroot at the structural operation, returning the partition over the rerooted topology.
+  ///
+  /// The partition is consumed: the reroot rewrites the durable observations and carries the node
+  /// states across, and the per-edge results of the previous update do not survive it.
+  pub fn apply_reroot(self, changes: &RerootChanges) -> Result<Self, Report> {
+    Ok(match self {
+      Self::Dense(family) => Self::Dense(reroot_dense(family.partition, family.node_states, changes)),
+      Self::Sparse(family) => Self::Sparse(reroot_sparse(family.partition, family.node_states, changes)?),
+    })
   }
 
-  /// Ensure the partition observations and node states have entries for all nodes and edges in the
-  /// graph after a topology change (polytomy resolution), and drop entries no longer in the graph.
-  /// The subsequent marginal update pass recomputes values; the stale messages and estimates are
-  /// dropped here.
-  pub fn reconcile_topology(&mut self, graph: &Graph) {
+  /// Reconcile the partition to the graph after a topology change (polytomy resolution): give the
+  /// observations and node states an entry for every current node, drop entries for nodes that are
+  /// gone, and carry no per-edge results across. The next marginal update recomputes the values.
+  #[must_use]
+  pub fn reconcile_topology(self, graph: &Graph) -> Self {
+    let live_nodes = live_node_keys(graph);
     match self {
-      Self::Dense(family) => {
-        let node_keys: Vec<GraphNodeKey> = graph.get_nodes().iter().map(|node| node.read_arc().key()).collect();
-        for &key in &node_keys {
-          family.node_states.entry(key).or_insert_with(DenseNodeState::empty);
-        }
-        family.node_states.retain(|key, _| node_keys.contains(key));
-        family.backward.clear();
-        family.forward.clear();
-        family.estimates.clear();
-      },
+      Self::Dense(family) => Self::Dense(DenseReconstruction::seeded(
+        family.partition,
+        reconcile_node_states(family.node_states, &live_nodes, DenseNodeState::empty),
+      )),
       Self::Sparse(family) => {
-        family.partition.reconcile_topology(graph);
-        let node_keys: Vec<GraphNodeKey> = graph.get_nodes().iter().map(|node| node.read_arc().key()).collect();
-        for &key in &node_keys {
-          family.node_states.entry(key).or_insert_with(SparseNodeState::empty);
-        }
-        family.node_states.retain(|key, _| node_keys.contains(key));
-        family.backward.clear();
-        family.forward.clear();
-        family.estimates.clear();
+        let mut partition = family.partition;
+        partition.reconcile_topology(graph);
+        Self::Sparse(SparseReconstruction::seeded(
+          partition,
+          reconcile_node_states(family.node_states, &live_nodes, SparseNodeState::empty),
+        ))
       },
     }
   }

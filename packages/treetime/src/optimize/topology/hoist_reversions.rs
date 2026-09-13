@@ -1,8 +1,9 @@
-use crate::ancestral::pipeline::SparseReconstruction;
-use crate::partition::storage::sparse::SparseNodeObs;
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
 use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::Sub;
 use eyre::Report;
+use itertools::izip;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
@@ -24,7 +25,7 @@ use treetime_primitives::AsciiChar;
 /// the root is counted. The augmentation is scoring only; [`slide_bifurcating_root_for_child`]
 /// materializes it before the hoist.
 pub(crate) fn count_child_reversions(
-  sparse: &[SparseReconstruction],
+  sparse: &[PartitionMarginalSparse],
   parent_edge_key: GraphEdgeKey,
   sibling_edge_key: Option<GraphEdgeKey>,
   child_edge_key: GraphEdgeKey,
@@ -33,19 +34,13 @@ pub(crate) fn count_child_reversions(
     .iter()
     .map(|partition| {
       let parent_subs: &[Sub] = partition
-        .partition
         .obs_edges
         .get(&parent_edge_key)
         .map_or(&[], |e| e.fitch_subs());
-      let child_subs: &[Sub] = partition
-        .partition
-        .obs_edges
-        .get(&child_edge_key)
-        .map_or(&[], |e| e.fitch_subs());
+      let child_subs: &[Sub] = partition.obs_edges.get(&child_edge_key).map_or(&[], |e| e.fitch_subs());
       match sibling_edge_key {
         Some(sibling_edge_key) => {
           let sibling_subs: &[Sub] = partition
-            .partition
             .obs_edges
             .get(&sibling_edge_key)
             .map_or(&[], |e| e.fitch_subs());
@@ -107,25 +102,23 @@ fn augment_parent_with_sibling(parent_subs: &[Sub], sibling_subs: &[Sub]) -> (Ve
 /// lock-step, so the marginal pass that reads it on the next optimizer iteration stays consistent
 /// with the rewritten edges.
 pub(crate) fn slide_bifurcating_root_for_child(
-  sparse: &mut [SparseReconstruction],
+  sparse: &mut [PartitionMarginalSparse],
+  node_states: &mut [BTreeMap<GraphNodeKey, SparseNodeState>],
   root_key: GraphNodeKey,
   parent_edge_key: GraphEdgeKey,
   sibling_edge_key: GraphEdgeKey,
   child_edge_key: GraphEdgeKey,
 ) -> Result<(), Report> {
-  for partition in sparse.iter_mut() {
+  for (partition, node_states) in izip!(sparse.iter_mut(), node_states.iter_mut()) {
     let parent_subs = partition
-      .partition
       .obs_edges
       .get(&parent_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
     let sibling_subs = partition
-      .partition
       .obs_edges
       .get(&sibling_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
     let child_by_pos: BTreeMap<usize, (AsciiChar, AsciiChar)> = partition
-      .partition
       .obs_edges
       .get(&child_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec())
@@ -143,11 +136,11 @@ pub(crate) fn slide_bifurcating_root_for_child(
         .is_some_and(|&(reff, qry)| reff == sibling_sub.reff() && qry == sibling_sub.qry());
       if !parent_positions.contains(&sibling_sub.pos()) && reverted_by_child {
         let pos = sibling_sub.pos();
-        partition.partition.root_sequence[pos] = sibling_sub.qry();
+        partition.root_sequence[pos] = sibling_sub.qry();
         // Keep the root node's parsimony sequence in step with `root_sequence`. The forward pass
         // only seeds the root from `root_sequence` when it is empty, so a bare `root_sequence` edit
         // would leave the populated root stale for the next iteration's marginal reconstruction.
-        if let Some(root_node) = partition.node_states.get_mut(&root_key) {
+        if let Some(root_node) = node_states.get_mut(&root_key) {
           if pos < root_node.sequence.len() {
             root_node.sequence[pos] = sibling_sub.qry();
           }
@@ -166,11 +159,10 @@ pub(crate) fn slide_bifurcating_root_for_child(
     }
     hoisted_parent.sort_by_key(Sub::pos);
 
-    if let Some(sibling_edge) = partition.partition.obs_edges.get_mut(&sibling_edge_key) {
+    if let Some(sibling_edge) = partition.obs_edges.get_mut(&sibling_edge_key) {
       sibling_edge.set_fitch_subs(remaining_sibling);
     }
     partition
-      .partition
       .obs_edges
       .entry(parent_edge_key)
       .or_default()
@@ -217,7 +209,7 @@ pub(crate) fn slide_bifurcating_root_for_child(
 /// Returns the key of the new node $N$.
 pub(crate) fn hoist_reverting_child(
   graph: &mut Graph,
-  sparse: &mut [SparseReconstruction],
+  sparse: &mut [PartitionMarginalSparse],
   parent_edge_key: GraphEdgeKey,
   child_edge_key: GraphEdgeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -230,7 +222,7 @@ pub(crate) fn hoist_reverting_child(
   let mut total_parent_subs = 0_usize;
   let mut total_hoisted_subs = 0_usize;
   for family in sparse.iter() {
-    let obs_edges = &family.partition.obs_edges;
+    let obs_edges = &family.obs_edges;
     let parent_subs = obs_edges
       .get(&parent_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
@@ -282,8 +274,7 @@ pub(crate) fn hoist_reverting_child(
   // parent's residue composition; the marginal passes rebuild its evolving state and the caller
   // reconciles the node-state map after the topology batch. Dense partitions carry no per-edge
   // mutation lists and learn about the new node/edge through that same reconciliation.
-  for (family, split) in sparse.iter_mut().zip(splits) {
-    let partition = &mut family.partition;
+  for (partition, split) in sparse.iter_mut().zip(splits) {
     let mut node_n = SparseNodeObs::empty(&partition.alphabet);
     node_n.composition = partition.obs_nodes[&u_key].composition.clone();
     partition.obs_nodes.entry(n_key).or_insert(node_n);

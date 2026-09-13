@@ -261,24 +261,12 @@ mod tests {
 
       let fitch = create_fitch_partition(&graph, 0, alphabet_sparse, &aln, &names)?;
       let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-      let sparse_partitions = vec![SparseReconstruction {
-        partition,
-        node_states,
-        backward: BTreeMap::new(),
-        forward: BTreeMap::new(),
-        estimates: BTreeMap::new(),
-      }];
+      let sparse_partitions = vec![SparseReconstruction::seeded(partition, node_states)];
 
       let length = get_common_length(&aln)?;
       let dense_partition = PartitionMarginalDense::new(1, jc69(JC69Params::default())?, alphabet_dense, length);
       let dense_node_states = dense_partition.attach_sequences(&graph, &aln, &names)?;
-      let dense_partitions = vec![DenseReconstruction {
-        partition: dense_partition,
-        node_states: dense_node_states,
-        backward: BTreeMap::new(),
-        forward: BTreeMap::new(),
-        estimates: BTreeMap::new(),
-      }];
+      let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, dense_node_states)];
 
       let (sparse_partitions, _) =
         marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;

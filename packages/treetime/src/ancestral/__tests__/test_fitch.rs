@@ -793,13 +793,7 @@ mod tests {
       ..JC69Params::default()
     })?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let mut recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
 
     // Find relevant node keys and the AB->A edge key
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
@@ -866,7 +860,7 @@ mod tests {
       inverted_edge_keys,
     };
 
-    reroot_sparse(&mut recon, &changes)?;
+    let recon = reroot_sparse(recon.partition, recon.node_states, &changes)?;
 
     // --- Verify root_sequence ---
     // New root sits on AB->A (closer to AB side, split at 0.5 with empty parent-side).
@@ -1044,13 +1038,7 @@ mod tests {
       ..JC69Params::default()
     })?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let mut recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
 
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
     let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB node not found");
@@ -1119,7 +1107,7 @@ mod tests {
       inverted_edge_keys,
     };
 
-    reroot_sparse(&mut recon, &changes)?;
+    let recon = reroot_sparse(recon.partition, recon.node_states, &changes)?;
 
     // Root sequence should be AB's ancestral state (derived from inverted edges)
     assert_eq!(
@@ -1204,16 +1192,10 @@ mod tests {
       ..JC69Params::default()
     })?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
 
     // Run initial marginal pass before reroot
-    let (mut recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
     // Reroot on AB->A
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
@@ -1242,7 +1224,7 @@ mod tests {
       inverted_edge_keys,
     };
 
-    reroot_sparse(&mut recon, &changes)?;
+    let recon = reroot_sparse(recon.partition, recon.node_states, &changes)?;
 
     // Run marginal pass after reroot
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
@@ -1253,7 +1235,7 @@ mod tests {
       .filter_map(|edge_ref| {
         let edge = edge_ref.read_arc();
         (edge.source() == new_root_key).then(|| {
-          let edge_data = &recon.forward[&edge.key()];
+          let edge_data = &recon.edges.forward[&edge.key()];
           let total: usize = edge_data.msg_to_child.fixed_counts.counts().values().sum();
           (edge.target(), total)
         })

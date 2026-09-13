@@ -40,13 +40,7 @@ mod tests {
   ) -> Result<DenseReconstruction, Report> {
     let partition = PartitionMarginalDense::new(index, gtr, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(graph, aln, names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
     Ok(recon)
   }
@@ -498,26 +492,14 @@ mod tests {
     // Dense partition
     let dense_partition = PartitionMarginalDense::new(0, gtr.clone(), alphabet.clone(), length);
     let dense_node_states = dense_partition.attach_sequences(&graph, &aln, &names)?;
-    let dense_recon = DenseReconstruction {
-      partition: dense_partition,
-      node_states: dense_node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let dense_recon = DenseReconstruction::seeded(dense_partition, dense_node_states);
     let (dense_recon, dense_log_lh) = dense_recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let dense_log_lh = dense_log_lh.value();
 
     // Sparse partition
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let sparse_recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let sparse_recon = SparseReconstruction::seeded(partition, node_states);
     let (sparse_recon, sparse_log_lh) =
       sparse_recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let sparse_log_lh = sparse_log_lh.value();

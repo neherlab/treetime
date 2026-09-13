@@ -69,23 +69,11 @@ mod tests {
       get_common_length(&aln)?,
     );
     let dense_node_states = dense_partition.attach_sequences(graph, &aln, names)?;
-    let dense_partitions = vec![DenseReconstruction {
-      partition: dense_partition,
-      node_states: dense_node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    }];
+    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, dense_node_states)];
 
     let fitch = create_fitch_partition(graph, 1, Alphabet::new(AlphabetName::Nuc)?, &aln, names)?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(get_gtr_by_name(model)?, graph)?;
-    let sparse_partitions = vec![SparseReconstruction {
-      partition: sparse_partition,
-      node_states: sparse_node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    }];
+    let sparse_partitions = vec![SparseReconstruction::seeded(sparse_partition, sparse_node_states)];
 
     let (dense_partitions, _) =
       marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;

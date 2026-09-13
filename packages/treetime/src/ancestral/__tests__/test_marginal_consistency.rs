@@ -95,13 +95,7 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(graph, aln, names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
@@ -130,13 +124,7 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, graph)?;
-    let recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
@@ -395,14 +383,21 @@ mod tests {
     let SparseReconstruction {
       partition,
       node_states,
-      forward,
-      ..
+      edges,
     } = recon;
     let mut rng = rand::thread_rng();
     ancestral_reconstruction(
       graph,
       |node| {
-        partition.reconstruct_node_sequence(node_states, forward, node, false, false, SampleMode::Argmax, &mut rng)
+        partition.reconstruct_node_sequence(
+          node_states,
+          &edges.forward,
+          node,
+          false,
+          false,
+          SampleMode::Argmax,
+          &mut rng,
+        )
       },
       |key, seq| {
         actual.insert(names[&key].clone().expect("all test nodes are named"), seq.to_string());
@@ -496,13 +491,7 @@ mod tests {
 
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
 
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 

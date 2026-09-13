@@ -93,18 +93,14 @@ pub fn reconstruct_marginal_partition(
   let partition: Box<dyn AugurNodeDataJsonAncestralPartition> = match created.partition {
     MarginalPartition::Sparse(partition, node_states) => {
       let MarginalUpdate {
-        mut node_states,
-        backward,
-        forward,
-        estimates,
-        ..
+        mut node_states, edges, ..
       } = partition.marginal_update(graph, &profile_lengths, node_states)?;
       ancestral_reconstruction(
         graph,
         |node| {
           partition.reconstruct_node_sequence(
             &mut node_states,
-            &forward,
+            &edges.forward,
             node,
             params.include_leaves,
             params.impute_missing_data,
@@ -117,19 +113,13 @@ pub fn reconstruct_marginal_partition(
       Box::new(SparseReconstruction {
         partition,
         node_states,
-        backward,
-        forward,
-        estimates,
+        edges,
       })
     },
     MarginalPartition::Dense(partition) => {
       let node_states = partition.attach_sequences(graph, &sequences, names)?;
       let MarginalUpdate {
-        mut node_states,
-        backward,
-        forward,
-        estimates,
-        ..
+        mut node_states, edges, ..
       } = partition.marginal_update(graph, &profile_lengths, node_states)?;
       ancestral_reconstruction(
         graph,
@@ -148,9 +138,7 @@ pub fn reconstruct_marginal_partition(
       Box::new(DenseReconstruction {
         partition,
         node_states,
-        backward,
-        forward,
-        estimates,
+        edges,
       })
     },
   };

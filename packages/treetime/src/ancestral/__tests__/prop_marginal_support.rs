@@ -8,7 +8,7 @@ pub mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
-  use std::collections::BTreeMap;
+
   use treetime_graph::graph::Graph;
 
   use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -48,13 +48,7 @@ pub mod tests {
 
     let partition = PartitionMarginalDense::new(0, input.gtr.clone(), alphabet, length);
     let node_states = partition.attach_sequences(&graph, &input.alignment, &names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
@@ -91,13 +85,7 @@ pub mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &input.alignment, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(input.gtr.clone(), &graph)?;
-    let recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
     let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))

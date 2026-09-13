@@ -51,13 +51,7 @@ mod tests {
 
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(&graph, aln, &names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }
@@ -91,8 +85,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &recon.node_states,
-      &recon.backward,
-      &recon.forward,
+      &recon.edges.backward,
+      &recon.edges.forward,
     )?;
 
     // With fractional counts, identical sequences still have small probability
@@ -127,8 +121,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &recon.node_states,
-      &recon.backward,
-      &recon.forward,
+      &recon.edges.backward,
+      &recon.edges.forward,
     )?;
 
     // The root should be reconstructed with some state at position 0.
@@ -198,8 +192,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &recon.node_states,
-      &recon.backward,
-      &recon.forward,
+      &recon.edges.backward,
+      &recon.edges.forward,
     )?;
 
     // Ti proportional to clamped BL (~2.5e-4), bounded well below 1e-2
@@ -285,8 +279,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &recon.node_states,
-      &recon.backward,
-      &recon.forward,
+      &recon.edges.backward,
+      &recon.edges.forward,
     )?;
     let result = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
 

@@ -49,7 +49,7 @@ mod tests {
 
   use ndarray::{Array1, Array2};
   use rstest::rstest;
-  use std::collections::BTreeMap;
+
   use std::path::PathBuf;
   use treetime_io::fasta::read_many_fasta;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -137,20 +137,14 @@ mod tests {
         get_common_length(&aln)?,
       );
       let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-      let recon = DenseReconstruction {
-        partition,
-        node_states,
-        backward: BTreeMap::new(),
-        forward: BTreeMap::new(),
-        estimates: BTreeMap::new(),
-      };
+      let recon = DenseReconstruction::seeded(partition, node_states);
       let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
       let counts = recon.partition.count_transitions(
         &graph,
         &branch_lengths,
         &recon.node_states,
-        &recon.backward,
-        &recon.forward,
+        &recon.edges.backward,
+        &recon.edges.forward,
       )?;
       let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
       let n_states = recon.partition.alphabet.n_canonical();

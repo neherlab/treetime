@@ -6,7 +6,9 @@ use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_report;
 use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, indexed_forward};
-use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, PartitionMarginalOps};
+use crate::partition::marginal::shared::update::{
+  MarginalBackward, MarginalEdges, MarginalForward, PartitionMarginalOps,
+};
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
@@ -349,15 +351,16 @@ fn prof2seq_sampled(
   seq
 }
 
+/// The per-edge results one dense marginal update returns.
+pub type DenseMarginalEdges = MarginalEdges<DenseEdgeBackward, DenseEdgeForward, DenseEdgeEstimate>;
+
 /// Short-lived read view over a completed dense reconstruction: borrows the durable partition inputs
-/// together with the node states, edge messages, and estimates the passes returned. Assembled at a
+/// together with the node states and the per-edge results the passes returned. Assembled at a
 /// consumer boundary purely to read; never stored.
 pub struct DenseReadout<'a> {
   pub partition: &'a PartitionMarginalDense,
   pub node_states: &'a BTreeMap<GraphNodeKey, DenseNodeState>,
-  pub backward: &'a BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
-  pub forward: &'a BTreeMap<GraphEdgeKey, DenseEdgeForward>,
-  pub estimates: &'a BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
+  pub edges: &'a DenseMarginalEdges,
 }
 
 impl PartitionBranchOps for DenseReadout<'_> {
@@ -370,7 +373,7 @@ impl PartitionBranchOps for DenseReadout<'_> {
   }
 
   fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
-    self.partition.edge_indels(self.estimates, edge_key)
+    self.partition.edge_indels(&self.edges.estimates, edge_key)
   }
 
   fn root_sequence(&self, graph: &dyn BranchTopology) -> Result<Seq, Report> {
@@ -391,12 +394,12 @@ impl PartitionOptimizeOps for DenseReadout<'_> {
     Ok(
       self
         .partition
-        .create_edge_contribution(self.backward, self.forward, edge_key),
+        .create_edge_contribution(&self.edges.backward, &self.edges.forward, edge_key),
     )
   }
 
   fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
-    self.partition.edge_indel_count(self.estimates, edge_key)
+    self.partition.edge_indel_count(&self.edges.estimates, edge_key)
   }
 }
 

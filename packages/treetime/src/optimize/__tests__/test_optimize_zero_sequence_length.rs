@@ -7,6 +7,7 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::OptimizeReadouts;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::shared::update::MarginalEdges;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
 
@@ -22,9 +23,7 @@ mod tests {
         0,
       ),
       node_states: BTreeMap::new(),
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
+      edges: MarginalEdges::default(),
     }];
     let sparse: Vec<SparseReconstruction> = vec![];
     (dense, sparse)

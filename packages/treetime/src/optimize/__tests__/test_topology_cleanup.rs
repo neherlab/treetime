@@ -10,10 +10,12 @@ mod tests {
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{
     OptimizeReadouts, find_zero_optimal_internal_edges, marginal_update_dense, marginal_update_sparse,
-    prune_and_merge_in_loop, reconcile_sparse_family, run_optimize_loop,
+    prune_and_merge_in_loop, run_optimize_loop,
   };
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
+  use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
   use crate::seq::alignment::get_common_length;
@@ -21,6 +23,7 @@ mod tests {
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use eyre::Report;
   use indoc::indoc;
+  use itertools::{Itertools, izip};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -51,9 +54,7 @@ mod tests {
         obs_edges: btreemap! {},
       },
       node_states: btreemap! {},
-      backward: btreemap! {},
-      forward: btreemap! {},
-      estimates: btreemap! {},
+      edges: MarginalEdges::default(),
     })
   }
 
@@ -167,19 +168,22 @@ mod tests {
       ..
     } = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let mut graph: Graph = graph;
-    let mut sparse: Vec<SparseReconstruction> = vec![];
-    let mut dense: Vec<DenseReconstruction> = vec![];
+    let sparse: Vec<SparseReconstruction> = vec![];
+    let dense: Vec<DenseReconstruction> = vec![];
 
     let mut names_tt_13 = names;
-    let changed = prune_and_merge_in_loop(
+    let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      &mut sparse,
-      &mut dense,
+      sparse,
+      dense,
       &[],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_13,
     )?;
+    let sparse = cleanup.sparse_partitions;
+    let dense = cleanup.dense_partitions;
+    let changed = cleanup.topology_changed;
     assert!(!changed);
     assert_eq!(graph.get_nodes().len(), 4);
     Ok(())
@@ -231,22 +235,25 @@ mod tests {
       .obs_edges
       .insert(rd_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
 
-    let mut sparse = vec![partition];
-    let mut dense: Vec<DenseReconstruction> = vec![];
+    let sparse = vec![partition];
+    let dense: Vec<DenseReconstruction> = vec![];
 
     // Set bl to 0.0 and pass damped value (simulating damping override in prune_and_merge_in_loop)
     branch_lengths.insert(ri_key, Some(0.0));
 
     let mut names_tt_12 = names.clone();
-    let changed = prune_and_merge_in_loop(
+    let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      &mut sparse,
-      &mut dense,
+      sparse,
+      dense,
       &[ri_key],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_12,
     )?;
+    let sparse = cleanup.sparse_partitions;
+    let dense = cleanup.dense_partitions;
+    let changed = cleanup.topology_changed;
     assert!(changed);
 
     // I should be gone
@@ -297,7 +304,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let sparse_partitions = vec![SparseReconstruction { partition: sp_partition, node_states: sp_node_states, backward: btreemap!{}, forward: btreemap!{}, estimates: btreemap!{} }];
+    let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, sp_node_states)];
     let (mut sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 
     let mut dense_partitions: Vec<DenseReconstruction> = vec![];
@@ -323,7 +330,9 @@ mod tests {
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_11 = names.clone();
-      prune_and_merge_in_loop(&mut graph, &mut sparse_partitions, &mut dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_11)?;
+      let cleanup = prune_and_merge_in_loop(&mut graph, sparse_partitions, dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_11)?;
+      sparse_partitions = cleanup.sparse_partitions;
+      dense_partitions = cleanup.dense_partitions;
 
       lh_prev = total_lh;
     }
@@ -377,7 +386,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let sparse_partitions = vec![SparseReconstruction { partition: sp_partition, node_states: sp_node_states, backward: btreemap!{}, forward: btreemap!{}, estimates: btreemap!{} }];
+    let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, sp_node_states)];
     let (mut sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 
     let mut dense_partitions: Vec<DenseReconstruction> = vec![];
@@ -400,7 +409,9 @@ mod tests {
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_10 = names.clone();
-      prune_and_merge_in_loop(&mut graph, &mut sparse_partitions, &mut dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_10)?;
+      let cleanup = prune_and_merge_in_loop(&mut graph, sparse_partitions, dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_10)?;
+      sparse_partitions = cleanup.sparse_partitions;
+      dense_partitions = cleanup.dense_partitions;
 
       lh_prev = total_lh;
     }
@@ -450,20 +461,19 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let sparse_partitions = vec![SparseReconstruction {
-      partition: sp_partition,
-      node_states: sp_node_states,
-      backward: btreemap! {},
-      forward: btreemap! {},
-      estimates: btreemap! {},
-    }];
-    let (mut sparse_partitions, _) =
+    let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, sp_node_states)];
+    let (sparse_partitions, _) =
       marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 
     let initial_node_count = graph.get_nodes().len();
 
-    // A and B share mutation A->T at pos 0 (root MAP = A due to 3-vs-2 majority)
-    let merged = merge_shared_mutation_branches(&mut graph, &mut sparse_partitions, &mut branch_lengths)?;
+    // A and B share mutation A->T at pos 0 (root MAP = A due to 3-vs-2 majority). The merge rewrites
+    // the durable observations alone, so the reconstructions are split around it.
+    let (mut sparse_obs, sparse_node_states): (Vec<_>, Vec<_>) = sparse_partitions
+      .into_iter()
+      .map(|family| (family.partition, family.node_states))
+      .unzip();
+    let merged = merge_shared_mutation_branches(&mut graph, &mut sparse_obs, &mut branch_lengths)?;
     assert!(merged > 0, "A and B should share mutation A->T, triggering merge");
     graph.build()?;
 
@@ -472,13 +482,19 @@ mod tests {
       "merge should have created new internal nodes"
     );
 
-    // New caller contract: the topology mutator updates the sparse observations in place but leaves
-    // the evolving node-state map keyed to the pre-merge topology. Reconcile the node states to the
-    // current node set (seeding placeholders for merge-created nodes) before the next marginal pass,
-    // exactly as the production optimize loop does after a topology batch.
-    for family in &mut sparse_partitions {
-      reconcile_sparse_family(&graph, family);
-    }
+    // New caller contract: the topology mutator rewrites the sparse observations but leaves the node
+    // states keyed to the pre-merge topology. Reconcile them to the current node set (seeding
+    // placeholders for merge-created nodes) before the next marginal pass, exactly as the production
+    // optimize loop does after a topology batch.
+    let live_nodes = live_node_keys(&graph);
+    let sparse_partitions = izip!(sparse_obs, sparse_node_states)
+      .map(|(partition, node_states)| {
+        SparseReconstruction::seeded(
+          partition,
+          reconcile_node_states(node_states, &live_nodes, SparseNodeState::empty),
+        )
+      })
+      .collect_vec();
 
     // The critical test: marginal_update after merge must produce finite log-likelihood.
     // Before the composition fix, the merge-created node had zero composition,
@@ -527,20 +543,23 @@ mod tests {
       .insert(vc2, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
     partition.partition.obs_edges.insert(vc3, SparseEdgeObs::default());
 
-    let mut sparse = vec![partition];
-    let mut dense: Vec<DenseReconstruction> = vec![];
+    let sparse = vec![partition];
+    let dense: Vec<DenseReconstruction> = vec![];
 
     // Empty zero-optimal list: the old loop was a no-op here. The hoist must still fire.
     let mut names_tt_9 = names;
-    let changed = prune_and_merge_in_loop(
+    let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      &mut sparse,
-      &mut dense,
+      sparse,
+      dense,
       &[],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_9,
     )?;
+    let sparse = cleanup.sparse_partitions;
+    let dense = cleanup.dense_partitions;
+    let changed = cleanup.topology_changed;
     assert!(changed, "reversion polytomy must be resolved even without a collapse");
 
     let p = &sparse[0];
@@ -581,19 +600,22 @@ mod tests {
     let ri1_key = find_edge_key(&graph, &names, "root", "I1").unwrap();
     let i1i2_key = find_edge_key(&graph, &names, "I1", "I2").unwrap();
 
-    let mut sparse: Vec<SparseReconstruction> = vec![];
-    let mut dense: Vec<DenseReconstruction> = vec![];
+    let sparse: Vec<SparseReconstruction> = vec![];
+    let dense: Vec<DenseReconstruction> = vec![];
 
     let mut names_tt_8 = names.clone();
-    let changed = prune_and_merge_in_loop(
+    let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      &mut sparse,
-      &mut dense,
+      sparse,
+      dense,
       &[ri1_key, i1i2_key],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_8,
     )?;
+    let sparse = cleanup.sparse_partitions;
+    let dense = cleanup.dense_partitions;
+    let changed = cleanup.topology_changed;
     assert!(changed);
 
     // Both I1 and I2 should be gone. A, B become children of root.
@@ -641,13 +663,7 @@ mod tests {
 
     let dense_partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, nuc, get_common_length(&aln)?);
     let dense_node_states = dense_partition.attach_sequences(&graph, &aln, &names)?;
-    let dense_partitions = vec![DenseReconstruction {
-      partition: dense_partition,
-      node_states: dense_node_states,
-      backward: btreemap! {},
-      forward: btreemap! {},
-      estimates: btreemap! {},
-    }];
+    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, dense_node_states)];
 
     let (mut dense_partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
 
@@ -671,7 +687,9 @@ mod tests {
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_7 = names.clone();
-      prune_and_merge_in_loop(&mut graph, &mut sparse_partitions, &mut dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_7)?;
+      let cleanup = prune_and_merge_in_loop(&mut graph, sparse_partitions, dense_partitions, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_7)?;
+      sparse_partitions = cleanup.sparse_partitions;
+      dense_partitions = cleanup.dense_partitions;
 
       lh_prev = dense_lh;
     }
@@ -734,21 +752,24 @@ mod tests {
       .obs_edges
       .insert(rd_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
 
-    let mut sparse = vec![partition];
-    let mut dense: Vec<DenseReconstruction> = vec![];
+    let sparse = vec![partition];
+    let dense: Vec<DenseReconstruction> = vec![];
 
     branch_lengths.insert(ri_key, Some(0.0));
 
     let mut names_tt_6 = names;
-    let changed = prune_and_merge_in_loop(
+    let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      &mut sparse,
-      &mut dense,
+      sparse,
+      dense,
       &[ri_key],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_6,
     )?;
+    let sparse = cleanup.sparse_partitions;
+    let dense = cleanup.dense_partitions;
+    let changed = cleanup.topology_changed;
     assert!(changed);
 
     let mut names: Vec<String> = graph
@@ -804,8 +825,8 @@ mod tests {
       .obs_edges
       .insert(rd_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
 
-    let mut sparse = vec![partition];
-    let mut dense: Vec<DenseReconstruction> = vec![];
+    let sparse = vec![partition];
+    let dense: Vec<DenseReconstruction> = vec![];
 
     branch_lengths.insert(ri_key, Some(0.0));
 
@@ -814,15 +835,18 @@ mod tests {
       ..TopologyOps::default()
     };
     let mut names_tt_5 = names.clone();
-    let changed = prune_and_merge_in_loop(
+    let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      &mut sparse,
-      &mut dense,
+      sparse,
+      dense,
       &[ri_key],
       ops,
       &mut branch_lengths,
       &mut names_tt_5,
     )?;
+    let sparse = cleanup.sparse_partitions;
+    let dense = cleanup.dense_partitions;
+    let changed = cleanup.topology_changed;
     assert!(changed, "collapse still fires even with merge disabled");
 
     // I collapsed away.
@@ -869,23 +893,26 @@ mod tests {
       .insert(vc2, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
     partition.partition.obs_edges.insert(vc3, SparseEdgeObs::default());
 
-    let mut sparse = vec![partition];
-    let mut dense: Vec<DenseReconstruction> = vec![];
+    let sparse = vec![partition];
+    let dense: Vec<DenseReconstruction> = vec![];
 
     let ops = TopologyOps {
       flip_parent_child: false,
       ..TopologyOps::default()
     };
     let mut names_tt_4 = names;
-    let changed = prune_and_merge_in_loop(
+    let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      &mut sparse,
-      &mut dense,
+      sparse,
+      dense,
       &[],
       ops,
       &mut branch_lengths,
       &mut names_tt_4,
     )?;
+    let sparse = cleanup.sparse_partitions;
+    let dense = cleanup.dense_partitions;
+    let changed = cleanup.topology_changed;
     assert!(changed, "merge still groups the reverting siblings");
 
     let p = &sparse[0];
@@ -935,8 +962,8 @@ mod tests {
       .insert(vc2, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
     partition.partition.obs_edges.insert(vc3, SparseEdgeObs::default());
 
-    let mut sparse = vec![partition];
-    let mut dense: Vec<DenseReconstruction> = vec![];
+    let sparse = vec![partition];
+    let dense: Vec<DenseReconstruction> = vec![];
 
     let node_count_before = graph.get_nodes().len();
     let ops = TopologyOps {
@@ -945,15 +972,18 @@ mod tests {
       flip_parent_child: false,
     };
     let mut names_tt_3 = names;
-    let changed = prune_and_merge_in_loop(
+    let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      &mut sparse,
-      &mut dense,
+      sparse,
+      dense,
       &[],
       ops,
       &mut branch_lengths,
       &mut names_tt_3,
     )?;
+    let sparse = cleanup.sparse_partitions;
+    let dense = cleanup.dense_partitions;
+    let changed = cleanup.topology_changed;
     assert!(!changed, "no topology step runs when all are disabled");
     assert_eq!(graph.get_nodes().len(), node_count_before);
 
@@ -998,7 +1028,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let sparse_partitions = vec![SparseReconstruction { partition: sp_partition, node_states: sp_node_states, backward: btreemap!{}, forward: btreemap!{}, estimates: btreemap!{} }];
+    let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, sp_node_states)];
     let (sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 
     let dense_partitions: Vec<DenseReconstruction> = vec![];
@@ -1068,13 +1098,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let sparse_partitions = vec![SparseReconstruction {
-      partition: sp_partition,
-      node_states: sp_node_states,
-      backward: btreemap! {},
-      forward: btreemap! {},
-      estimates: btreemap! {},
-    }];
+    let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, sp_node_states)];
     let (sparse_partitions, _) =
       marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 

@@ -75,13 +75,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
     let (mut recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
     let seqs = reconstruct_named_sparse(&graph, &names, &mut recon, false)?;
@@ -187,14 +181,21 @@ mod tests {
     let SparseReconstruction {
       partition,
       node_states,
-      forward,
-      ..
+      edges,
     } = recon;
     let mut rng = rand::thread_rng();
     ancestral_reconstruction(
       graph,
       |node| {
-        partition.reconstruct_node_sequence(node_states, forward, node, true, impute, SampleMode::Argmax, &mut rng)
+        partition.reconstruct_node_sequence(
+          node_states,
+          &edges.forward,
+          node,
+          true,
+          impute,
+          SampleMode::Argmax,
+          &mut rng,
+        )
       },
       |key, seq| {
         out.insert(names[&key].clone().expect("named node"), seq.clone());
@@ -235,13 +236,7 @@ mod tests {
   ) -> Result<BTreeMap<String, String>, Report> {
     let fitch = create_fitch_partition(graph, 0, Alphabet::default(), aln, names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
-    let recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
     let (mut recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
     Ok(to_strings(reconstruct_named_sparse(graph, names, &mut recon, impute)?))
   }
@@ -260,13 +255,7 @@ mod tests {
       get_common_length(aln)?,
     );
     let node_states = partition.attach_sequences(graph, aln, names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
     let (mut recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
     Ok(to_strings(reconstruct_named_dense(graph, names, &mut recon, impute)?))
   }

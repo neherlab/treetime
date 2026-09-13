@@ -52,13 +52,10 @@ mod tests {
     let constraints = load_date_constraints(&dates, &graph, &names)?;
 
     let aln = load_alignment_for_dataset(dataset)?;
-    let dense_partition = PartitionTimetree::Dense(DenseReconstruction {
-      partition: PartitionMarginalDense::new(0, jc69(JC69Params::default())?, ALPHABET.clone(), case.sequence_length()),
-      node_states: std::collections::BTreeMap::new(),
-      backward: std::collections::BTreeMap::new(),
-      forward: std::collections::BTreeMap::new(),
-      estimates: std::collections::BTreeMap::new(),
-    });
+    let dense_partition = PartitionTimetree::Dense(DenseReconstruction::seeded(
+      PartitionMarginalDense::new(0, jc69(JC69Params::default())?, ALPHABET.clone(), case.sequence_length()),
+      std::collections::BTreeMap::new(),
+    ));
 
     let partitions: Vec<PartitionTimetree> = vec![dense_partition];
     let (partitions, _) = initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions, &aln, &names)?;

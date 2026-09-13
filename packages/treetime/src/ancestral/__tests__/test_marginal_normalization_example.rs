@@ -106,7 +106,7 @@ ACGTACGC
         assert_abs_diff_eq!(1.0, row.sum(), epsilon = 1e-8);
       }
     }
-    for edge_data in partition.forward.values() {
+    for edge_data in partition.edges.forward.values() {
       if edge_data.msg_to_child.dis.is_empty() {
         continue;
       }
@@ -167,7 +167,7 @@ ACGTACGC
         assert_abs_diff_eq!(1.0, fixed_dis.sum(), epsilon = 1e-8);
       }
     }
-    for edge_data in partition.forward.values() {
+    for edge_data in partition.edges.forward.values() {
       let profile = &edge_data.msg_to_child;
       assert!(
         profile.log_lh.value().is_finite(),

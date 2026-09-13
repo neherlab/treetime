@@ -3,7 +3,9 @@ use crate::ancestral::sample::SampleMode;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_error;
-use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, PartitionMarginalOps};
+use crate::partition::marginal::shared::update::{
+  MarginalBackward, MarginalEdges, MarginalForward, PartitionMarginalOps,
+};
 use crate::partition::marginal::sparse::count::count_transitions_sparse;
 use crate::partition::marginal::sparse::reconstruct::{map_seq, map_seq_sampled, reconstruct_leaf_sequence};
 use crate::partition::marginal::sparse::{backward, forward};
@@ -246,15 +248,16 @@ impl PartitionMarginalOps for PartitionMarginalSparse {
   }
 }
 
+/// The per-edge results one sparse marginal update returns.
+pub type SparseMarginalEdges = MarginalEdges<SparseEdgeBackward, SparseEdgeForward, Vec<Sub>>;
+
 /// Short-lived read view over a completed sparse reconstruction: borrows the durable partition inputs
-/// (including the Fitch observations) together with the node states and edge messages/estimates the
+/// (including the Fitch observations) together with the node states and the per-edge results the
 /// passes returned. Assembled at a consumer boundary purely to read; never stored.
 pub struct SparseReadout<'a> {
   pub partition: &'a PartitionMarginalSparse,
   pub node_states: &'a BTreeMap<GraphNodeKey, SparseNodeState>,
-  pub backward: &'a BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
-  pub forward: &'a BTreeMap<GraphEdgeKey, SparseEdgeForward>,
-  pub estimates: &'a BTreeMap<GraphEdgeKey, Vec<Sub>>,
+  pub edges: &'a SparseMarginalEdges,
 }
 
 impl PartitionBranchOps for SparseReadout<'_> {
@@ -263,7 +266,7 @@ impl PartitionBranchOps for SparseReadout<'_> {
   }
 
   fn edge_subs(&self, _graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    self.partition.edge_subs(self.estimates, edge_key)
+    self.partition.edge_subs(&self.edges.estimates, edge_key)
   }
 
   fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
@@ -287,7 +290,7 @@ impl PartitionOptimizeOps for SparseReadout<'_> {
   fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
     self
       .partition
-      .create_edge_contribution(self.backward, self.forward, edge_key)
+      .create_edge_contribution(&self.edges.backward, &self.edges.forward, edge_key)
   }
 
   fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {

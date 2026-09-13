@@ -94,7 +94,7 @@ impl PartitionTimetree {
       ),
       Self::Sparse(family) => family.partition.reconstruct_node_sequence(
         &mut family.node_states,
-        &family.forward,
+        &family.edges.forward,
         node,
         include_leaves,
         impute,

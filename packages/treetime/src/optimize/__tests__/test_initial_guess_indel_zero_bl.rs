@@ -51,11 +51,17 @@ mod tests {
     let edge_key = graph.get_edges()[0].read_arc().key();
     {
       let partition = &mut partitions[0];
-      partition.estimates.entry(edge_key).or_default().indels.push(InDel {
-        range: (4, 7),
-        seq: Seq::try_from_str("ACG")?,
-        kind: crate::seq::indel::InDelKind::Deletion,
-      });
+      partition
+        .edges
+        .estimates
+        .entry(edge_key)
+        .or_default()
+        .indels
+        .push(InDel {
+          range: (4, 7),
+          seq: Seq::try_from_str("ACG")?,
+          kind: crate::seq::indel::InDelKind::Deletion,
+        });
     }
 
     initial_guess_mixed(
@@ -109,13 +115,7 @@ mod tests {
 
       let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?);
       let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-      let partitions = vec![DenseReconstruction {
-        partition,
-        node_states,
-        backward: BTreeMap::new(),
-        forward: BTreeMap::new(),
-        estimates: BTreeMap::new(),
-      }];
+      let partitions = vec![DenseReconstruction::seeded(partition, node_states)];
 
       let (partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
 

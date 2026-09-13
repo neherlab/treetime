@@ -39,13 +39,7 @@ mod tests {
       ..JC69Params::default()
     })?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }
@@ -70,8 +64,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &recon.node_states,
-      &recon.backward,
-      &recon.forward,
+      &recon.edges.backward,
+      &recon.edges.forward,
     )?;
 
     pretty_assert_array_nonneg!(counts.nij);
@@ -100,8 +94,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &recon.node_states,
-      &recon.backward,
-      &recon.forward,
+      &recon.edges.backward,
+      &recon.edges.forward,
     )?;
 
     pretty_assert_array_positive!(counts.Ti);
@@ -129,8 +123,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &recon.node_states,
-      &recon.backward,
-      &recon.forward,
+      &recon.edges.backward,
+      &recon.edges.forward,
     )?;
 
     for i in 0..counts.nij.nrows() {
@@ -163,8 +157,8 @@ mod tests {
       &graph,
       &branch_lengths,
       &recon.node_states,
-      &recon.backward,
-      &recon.forward,
+      &recon.edges.backward,
+      &recon.edges.forward,
     )?;
 
     assert!(counts.root_state.sum() > 0.0, "root_state should be populated");

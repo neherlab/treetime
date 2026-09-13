@@ -14,6 +14,7 @@ mod tests {
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::pretty_assert_abs_diff_eq;
@@ -251,9 +252,7 @@ mod tests {
     let partitions = vec![PartitionTimetree::Dense(DenseReconstruction {
       partition: PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?),
       node_states: BTreeMap::new(),
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
+      edges: MarginalEdges::default(),
     })];
     let (partitions, _) = initialize_marginal_timetree(
       &graph,

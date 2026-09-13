@@ -6,6 +6,7 @@ use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_bra
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::prune::prune::prune_nodes;
 use eyre::Report;
+use itertools::{Itertools, izip};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::assign_node_names::assign_node_names;
@@ -58,8 +59,11 @@ pub fn run(
   let mut names = names.clone();
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
 
+  // Prune is a Fitch/parsimony operation over the durable observations alone: it never runs a marginal
+  // pass, so the topology moves take the observations and the node states the Fitch handoff seeded wait
+  // beside them until the output reconstructions are assembled.
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
-  let mut partitions: Vec<SparseReconstruction> = if needs_sequences {
+  let (mut partitions, node_states): (Vec<_>, Vec<_>) = if needs_sequences {
     let sequences = input
       .sequences
       .as_ref()
@@ -74,8 +78,6 @@ pub fn run(
       &branch_lengths,
       &names,
     )?;
-    // Prune is a Fitch/parsimony operation over the durable observations; it never runs a marginal
-    // pass, so the reconstruction bundle carries empty node-state, message, and estimate maps.
     let (partition, node_states) = match created.partition {
       MarginalPartition::Sparse(partition, node_states) => (partition, node_states),
       MarginalPartition::Dense(_) => {
@@ -86,15 +88,9 @@ pub fn run(
         fitch.into_marginal_sparse(gtr, &input.graph)?
       },
     };
-    vec![SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    }]
+    (vec![partition], vec![node_states])
   } else {
-    vec![]
+    (vec![], vec![])
   };
 
   prune_nodes(
@@ -115,7 +111,10 @@ pub fn run(
     names = assign_node_names(names, &input.graph)?;
   }
 
-  let gtr = (!partitions.is_empty()).then(|| partitions[0].partition.gtr.clone());
+  let gtr = partitions.first().map(|partition| partition.gtr.clone());
+  let partitions = izip!(partitions, node_states)
+    .map(|(partition, node_states)| SparseReconstruction::seeded(partition, node_states))
+    .collect_vec();
 
   Ok(PruneOutput {
     graph: input.graph,

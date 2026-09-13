@@ -77,11 +77,11 @@ pub fn reroot_tree(
       };
 
       info!("Applying reroot changes to {} partitions", partitions.len());
-      for partition in &mut partitions {
-        partition
-          .apply_reroot(&changes)
-          .wrap_err("Failed to apply reroot changes to partition")?;
-      }
+      partitions = partitions
+        .into_iter()
+        .map(|partition| partition.apply_reroot(&changes))
+        .collect::<Result<Vec<_>, Report>>()
+        .wrap_err("Failed to apply reroot changes to partition")?;
 
       (partitions, _) = marginal_update_timetree(graph, &profile_branch_lengths(branch_lengths), partitions)
         .wrap_err("Failed to update marginal after reroot")?;

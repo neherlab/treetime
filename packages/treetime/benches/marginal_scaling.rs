@@ -67,13 +67,7 @@ fn setup_inner() -> (Graph, SparseReconstruction, BTreeMap<GraphEdgeKey, Option<
   let fitch = create_fitch_partition(&graph, 0, alphabet, &alignment, &names).unwrap();
   let gtr = jc69(JC69Params::default()).unwrap();
   let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph).unwrap();
-  let recon = SparseReconstruction {
-    partition,
-    node_states,
-    backward: BTreeMap::new(),
-    forward: BTreeMap::new(),
-    estimates: BTreeMap::new(),
-  };
+  let recon = SparseReconstruction::seeded(partition, node_states);
   let (recon, _) = recon
     .marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
     .unwrap();

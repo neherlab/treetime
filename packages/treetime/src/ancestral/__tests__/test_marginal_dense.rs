@@ -88,13 +88,7 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(graph, aln, names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
@@ -257,7 +251,7 @@ mod tests {
     }
 
     // Edge messages: outgroup message from parent toward child subtree
-    for edge_data in recon.forward.values() {
+    for edge_data in recon.edges.forward.values() {
       if !edge_data.msg_to_child.dis.is_empty() {
         assert_dense_rows_normalized(&edge_data.msg_to_child.dis, max_ulps);
       }

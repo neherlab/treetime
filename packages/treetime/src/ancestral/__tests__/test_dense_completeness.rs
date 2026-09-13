@@ -12,7 +12,7 @@ mod tests {
   use treetime_graph::graph::Graph;
 
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::{NwkParse, nwk_read_str};
 
@@ -41,13 +41,7 @@ NNGTACGTAC
 
     let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length);
     let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon))
   }
@@ -77,13 +71,7 @@ NNGTACGTAC
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon))
   }
@@ -186,13 +174,7 @@ ACGTACGTAC
 
     let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length);
     let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-    let recon = DenseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon))
   }
@@ -204,7 +186,7 @@ ACGTACGTAC
     // Alignment: A=ACGT--ACGT, B=ACGTACACGT, C=AC--ACGTAC, D=ACGTACGTAC
     // A has gap at (4,6), C has gap at (2,4). B and D have no gaps.
     // Indels should appear on edges connecting to A and C.
-    let total_indels: usize = recon.estimates.values().map(|e| e.indels.len()).sum();
+    let total_indels: usize = recon.edges.estimates.values().map(|e| e.indels.len()).sum();
     assert!(
       total_indels >= 2,
       "Expected at least 2 indels (one for A's gap, one for C's gap), got {total_indels}"
@@ -212,6 +194,7 @@ ACGTACGTAC
 
     // Verify indel directions exist (at least one deletion)
     let has_deletion = recon
+      .edges
       .estimates
       .values()
       .any(|e| e.indels.iter().any(InDel::is_deletion));
@@ -229,7 +212,11 @@ ACGTACGTAC
     let total: usize = graph
       .get_edges()
       .iter()
-      .map(|e| recon.partition.edge_indel_count(&recon.estimates, e.read_arc().key()))
+      .map(|e| {
+        recon
+          .partition
+          .edge_indel_count(&recon.edges.estimates, e.read_arc().key())
+      })
       .sum();
 
     assert!(
@@ -264,13 +251,7 @@ ACGTACGTAC
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let recon = SparseReconstruction {
-      partition,
-      node_states,
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
-    };
+    let recon = SparseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon))
   }
@@ -286,7 +267,7 @@ ACGTACGTAC
       .map(|e| {
         recon_d
           .partition
-          .edge_indel_count(&recon_d.estimates, e.read_arc().key())
+          .edge_indel_count(&recon_d.edges.estimates, e.read_arc().key())
       })
       .sum();
 

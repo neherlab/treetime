@@ -15,6 +15,7 @@ mod tests {
   use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::timetree::marginal::initialize_marginal_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::timetree::inference::runner::run_timetree;
@@ -113,9 +114,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
         case.sequence_length(),
       ),
       node_states: BTreeMap::new(),
-      backward: BTreeMap::new(),
-      forward: BTreeMap::new(),
-      estimates: BTreeMap::new(),
+      edges: MarginalEdges::default(),
     });
 
     let partitions: Vec<PartitionTimetree> = vec![dense_partition];

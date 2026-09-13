@@ -154,13 +154,10 @@ mod tests {
           profile: DenseSeqDistribution::new(array![[1.0, 0.0, 0.0, 0.0]], LogLh::new(log_lh)),
         },
       );
-      Ok(PartitionTimetree::Dense(DenseReconstruction {
+      Ok(PartitionTimetree::Dense(DenseReconstruction::seeded(
         partition,
         node_states,
-        backward: BTreeMap::new(),
-        forward: BTreeMap::new(),
-        estimates: BTreeMap::new(),
-      }))
+      )))
     }
 
     pub fn positional_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
