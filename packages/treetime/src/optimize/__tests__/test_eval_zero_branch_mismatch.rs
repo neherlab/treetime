@@ -7,7 +7,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::OptimizeReadouts;
+  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
 
@@ -61,7 +61,7 @@ mod tests {
       get_common_length(&aln)?,
     );
     let dense_node_states = dense_partition.attach_sequences(&graph, &aln, &names)?;
-    let mut dense_partitions = vec![DenseReconstruction {
+    let dense_partitions = vec![DenseReconstruction {
       partition: dense_partition,
       node_states: dense_node_states,
       backward: BTreeMap::new(),
@@ -71,7 +71,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 1, alphabet_sparse, &aln, &names)?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let mut sparse_partitions = vec![SparseReconstruction {
+    let sparse_partitions = vec![SparseReconstruction {
       partition: sparse_partition,
       node_states: sparse_node_states,
       backward: BTreeMap::new(),
@@ -79,12 +79,10 @@ mod tests {
       estimates: BTreeMap::new(),
     }];
 
-    for family in &mut dense_partitions {
-      family.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
-    }
-    for family in &mut sparse_partitions {
-      family.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
-    }
+    let (dense_partitions, _) =
+      marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
+    let (sparse_partitions, _) =
+      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 
     let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
     let mixed_partitions = readouts.view();

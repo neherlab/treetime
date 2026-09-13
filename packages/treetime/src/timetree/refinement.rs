@@ -27,7 +27,10 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 
 pub(crate) struct Refinement<'a> {
   pub graph: &'a mut Graph,
-  pub partitions: &'a mut [PartitionTimetree],
+  /// The sequence partitions this round starts from, taken by value like `state`. A successful round
+  /// returns them at their refreshed marginal reconstruction; a failed round returns an error and the
+  /// partitions die with the round rather than surviving half-updated.
+  pub partitions: Vec<PartitionTimetree>,
   pub clock_model: &'a mut ClockModel,
   pub clock_params: &'a ClockParams,
   pub branch_params: &'a BranchPointOptimizationParams,
@@ -64,7 +67,7 @@ pub(crate) struct Refinement<'a> {
 }
 
 impl Refinement<'_> {
-  pub fn run(mut self) -> Result<(TimetreeState, RefinementOutcome), Report> {
+  pub fn run(mut self) -> Result<(TimetreeState, Vec<PartitionTimetree>, RefinementOutcome), Report> {
     let total_length = self.total_sequence_length();
     self.apply_relaxed_clock(total_length)?;
 
@@ -72,7 +75,7 @@ impl Refinement<'_> {
     // ancestral-state comparison is a hold-over from early v0, where internal node states were
     // fixed; it survives only as the fallback for a tree with no comparable dated nodes.
     let previous_times = capture_node_times(self.graph, &self.state);
-    let previous_states = capture_ancestral_states(self.graph, self.partitions);
+    let previous_states = capture_ancestral_states(self.graph, &self.partitions);
     let topology = self.refine_topology(total_length)?;
     self.rebuild_inference(topology.changed())?;
 
@@ -86,7 +89,7 @@ impl Refinement<'_> {
       &self.state,
     );
 
-    let current_states = capture_ancestral_states(self.graph, self.partitions);
+    let current_states = capture_ancestral_states(self.graph, &self.partitions);
     let time_change = measure_node_time_change(&previous_times, &capture_node_times(self.graph, &self.state));
 
     self.update_clock_model()?;
@@ -96,7 +99,7 @@ impl Refinement<'_> {
       time_change,
       topology,
     };
-    Ok((self.state, outcome))
+    Ok((self.state, self.partitions, outcome))
   }
 
   fn total_sequence_length(&self) -> usize {
@@ -141,7 +144,7 @@ impl Refinement<'_> {
 
     let resolved_nodes = resolve_polytomies(
       self.graph,
-      self.partitions,
+      &self.partitions,
       total_mutation_rate,
       total_length,
       self.merger_rate,
@@ -162,7 +165,7 @@ impl Refinement<'_> {
     // Reset the value-resident edge fields for the new topology, the counterpart of the reset
     // `prepare_tree_after_topology_change` performs on the transitional fields.
     self.state.reset_date_edges_for_topology_change(self.graph);
-    for partition in self.partitions.iter_mut() {
+    for partition in &mut self.partitions {
       partition.reconcile_topology(self.graph);
     }
 
@@ -191,11 +194,9 @@ impl Refinement<'_> {
 
     if !self.partitions.is_empty() {
       info!("Updating ancestral sequences via marginal reconstruction");
-      marginal_update_timetree(
-        self.graph,
-        &timetree_branch_lengths(self.graph, run_branch_lengths, self.clock_branch_lengths),
-        self.partitions,
-      )?;
+      let branch_lengths = timetree_branch_lengths(self.graph, run_branch_lengths, self.clock_branch_lengths);
+      (self.partitions, _) =
+        marginal_update_timetree(self.graph, &branch_lengths, std::mem::take(&mut self.partitions))?;
     }
 
     if topology_changed {
@@ -203,7 +204,7 @@ impl Refinement<'_> {
       self.state = run_timetree(
         self.graph,
         self.constraints,
-        self.partitions,
+        &self.partitions,
         run_branch_lengths,
         run_names,
         self.clock_model,
@@ -223,7 +224,7 @@ impl Refinement<'_> {
     self.state = run_timetree(
       self.graph,
       self.constraints,
-      self.partitions,
+      &self.partitions,
       run_branch_lengths,
       run_names,
       self.clock_model,

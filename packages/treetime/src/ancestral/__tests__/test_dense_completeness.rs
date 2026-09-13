@@ -41,14 +41,14 @@ NNGTACGTAC
 
     let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length);
     let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-    let mut recon = DenseReconstruction {
+    let recon = DenseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon))
   }
 
@@ -77,14 +77,14 @@ NNGTACGTAC
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let mut recon = SparseReconstruction {
+    let recon = SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon))
   }
 
@@ -186,14 +186,14 @@ ACGTACGTAC
 
     let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length);
     let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-    let mut recon = DenseReconstruction {
+    let recon = DenseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon))
   }
 
@@ -264,14 +264,14 @@ ACGTACGTAC
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let mut recon = SparseReconstruction {
+    let recon = SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon))
   }
 

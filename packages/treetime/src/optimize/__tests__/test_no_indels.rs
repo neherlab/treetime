@@ -33,7 +33,7 @@ mod tests {
       branch_lengths: mut branch_lengths_with,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let (mut dense_with, mut sparse_with) =
+    let (dense_with, mut sparse_with) =
       setup_partitions(&graph_with, &graph_with_names, &aln, &mut branch_lengths_with)?;
 
     let NwkParse {
@@ -42,7 +42,7 @@ mod tests {
       branch_lengths: mut branch_lengths_without,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let (mut dense_without, mut sparse_without) =
+    let (dense_without, mut sparse_without) =
       setup_partitions(&graph_without, &graph_without_names, &aln, &mut branch_lengths_without)?;
 
     let first_edge_key = graph_with.get_edges()[0].read_arc().key();
@@ -66,8 +66,8 @@ mod tests {
     let names_tt_4 = graph_with_names.clone();
     let result_with = run_optimize_loop(
       &mut graph_with,
-      &mut sparse_with,
-      &mut dense_with,
+      sparse_with,
+      dense_with,
       1,
       0.0,
       0.75,
@@ -77,12 +77,14 @@ mod tests {
       branch_lengths_with,
       &names_tt_4,
     )?;
+    let sparse_partitions = result_with.sparse_partitions;
+    let dense_partitions = result_with.dense_partitions;
 
     let names_tt_3 = graph_without_names.clone();
     let result_without = run_optimize_loop(
       &mut graph_without,
-      &mut sparse_without,
-      &mut dense_without,
+      sparse_without,
+      dense_without,
       1,
       0.0,
       0.75,
@@ -92,6 +94,8 @@ mod tests {
       branch_lengths_without,
       &names_tt_3,
     )?;
+    let sparse_partitions = result_without.sparse_partitions;
+    let dense_partitions = result_without.dense_partitions;
 
     assert!(
       result_without.lh_history[0] > result_with.lh_history[0],
@@ -123,7 +127,8 @@ mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
-    marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?;
+    let (sparse_partitions, _) =
+      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 
     let bl_before = branch_lengths.clone();
 
@@ -149,8 +154,7 @@ mod tests {
       branch_lengths: mut branch_lengths_nf,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let (mut dense_nf, mut sparse_nf) =
-      setup_partitions(&graph_no_flag, &graph_no_flag_names, &aln, &mut branch_lengths_nf)?;
+    let (dense_nf, sparse_nf) = setup_partitions(&graph_no_flag, &graph_no_flag_names, &aln, &mut branch_lengths_nf)?;
 
     let NwkParse {
       graph: mut graph_flag,
@@ -158,13 +162,13 @@ mod tests {
       branch_lengths: mut branch_lengths_f,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let (mut dense_f, mut sparse_f) = setup_partitions(&graph_flag, &graph_flag_names, &aln, &mut branch_lengths_f)?;
+    let (dense_f, sparse_f) = setup_partitions(&graph_flag, &graph_flag_names, &aln, &mut branch_lengths_f)?;
 
     let names_tt_2 = graph_no_flag_names.clone();
     let result_no_flag = run_optimize_loop(
       &mut graph_no_flag,
-      &mut sparse_nf,
-      &mut dense_nf,
+      sparse_nf,
+      dense_nf,
       3,
       0.1,
       0.75,
@@ -174,12 +178,14 @@ mod tests {
       branch_lengths_nf,
       &names_tt_2,
     )?;
+    let sparse_partitions = result_no_flag.sparse_partitions;
+    let dense_partitions = result_no_flag.dense_partitions;
 
     let names_tt_1 = graph_flag_names.clone();
     let result_flag = run_optimize_loop(
       &mut graph_flag,
-      &mut sparse_f,
-      &mut dense_f,
+      sparse_f,
+      dense_f,
       3,
       0.1,
       0.75,
@@ -189,6 +195,8 @@ mod tests {
       branch_lengths_f,
       &names_tt_1,
     )?;
+    let sparse_partitions = result_flag.sparse_partitions;
+    let dense_partitions = result_flag.dense_partitions;
 
     assert_eq!(
       result_no_flag.lh_history.len(),

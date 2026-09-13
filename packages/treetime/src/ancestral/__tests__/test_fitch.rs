@@ -1204,7 +1204,7 @@ mod tests {
       ..JC69Params::default()
     })?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let mut recon = SparseReconstruction {
+    let recon = SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
@@ -1213,7 +1213,7 @@ mod tests {
     };
 
     // Run initial marginal pass before reroot
-    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (mut recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
     // Reroot on AB->A
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
@@ -1245,7 +1245,7 @@ mod tests {
     reroot_sparse(&mut recon, &changes)?;
 
     // Run marginal pass after reroot
-    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
     let root_edge_totals: Vec<(_, usize)> = graph
       .get_edges()

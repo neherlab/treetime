@@ -86,13 +86,13 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: Graph = graph;
-    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_6 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &mut sparse_partitions,
-      &mut dense_partitions,
+      sparse_partitions,
+      dense_partitions,
       20,
       0.1,
       0.75,
@@ -102,6 +102,8 @@ mod tests {
       branch_lengths,
       &names_tt_6,
     )?;
+    let sparse_partitions = result.sparse_partitions;
+    let dense_partitions = result.dense_partitions;
 
     let (iter, reason) = result.stopped_at.expect("loop should have stopped");
     assert!(
@@ -123,15 +125,15 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: Graph = graph;
-    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     // Undamped with dp=0 (convergence/oscillation checks never fire) forces the
     // worsened condition to be the only active stopping criterion.
     let names_tt_5 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &mut sparse_partitions,
-      &mut dense_partitions,
+      sparse_partitions,
+      dense_partitions,
       50,
       0.0,
       0.0,
@@ -141,6 +143,8 @@ mod tests {
       branch_lengths,
       &names_tt_5,
     )?;
+    let sparse_partitions = result.sparse_partitions;
+    let dense_partitions = result.dense_partitions;
 
     match result.stopped_at {
       Some((iter, ConvergenceReason::Worsened)) => {
@@ -180,13 +184,13 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: Graph = graph;
-    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_4 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &mut sparse_partitions,
-      &mut dense_partitions,
+      sparse_partitions,
+      dense_partitions,
       50,
       0.0,
       0.0,
@@ -196,6 +200,8 @@ mod tests {
       branch_lengths,
       &names_tt_4,
     )?;
+    let sparse_partitions = result.sparse_partitions;
+    let dense_partitions = result.dense_partitions;
 
     let (_iter, reason) = result.stopped_at.expect("loop should stop");
     assert_eq!(reason, ConvergenceReason::Worsened);
@@ -208,8 +214,10 @@ mod tests {
 
     // Recompute the marginal likelihood from the returned (rolled-back) branch-length map.
     let marginal_bl = profile_branch_lengths(&result.branch_lengths);
-    let sparse_lh = marginal_update_sparse(&graph, &marginal_bl, &mut sparse_partitions)?.value();
-    let dense_lh = marginal_update_dense(&graph, &marginal_bl, &mut dense_partitions)?.value();
+    let (sparse_partitions, sparse_lh) = marginal_update_sparse(&graph, &marginal_bl, sparse_partitions)?;
+    let sparse_lh = sparse_lh.value();
+    let (dense_partitions, dense_lh) = marginal_update_dense(&graph, &marginal_bl, dense_partitions)?;
+    let dense_lh = dense_lh.value();
     assert_abs_diff_eq!(sparse_lh + dense_lh, best_lh, epsilon = 1e-9);
     Ok(())
   }
@@ -226,15 +234,15 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: Graph = graph;
-    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     // Use damping to prevent the worsened condition from firing, but set dp
     // large enough that the oscillation check catches the 2-cycle.
     let names_tt_3 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &mut sparse_partitions,
-      &mut dense_partitions,
+      sparse_partitions,
+      dense_partitions,
       50,
       1.0,
       0.75,
@@ -244,6 +252,8 @@ mod tests {
       branch_lengths,
       &names_tt_3,
     )?;
+    let sparse_partitions = result.sparse_partitions;
+    let dense_partitions = result.dense_partitions;
 
     let (iter, reason) = result.stopped_at.expect("loop should have stopped");
     // With dp=1.0, either convergence or oscillation should fire early.
@@ -267,15 +277,15 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: Graph = graph;
-    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     // Only 2 iterations with dp=0 and damping. The worsened condition requires
     // i >= 2, so with max_iter=2 (iterations 0 and 1) it cannot fire.
     let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &mut sparse_partitions,
-      &mut dense_partitions,
+      sparse_partitions,
+      dense_partitions,
       2,
       0.0,
       0.75,
@@ -285,6 +295,8 @@ mod tests {
       branch_lengths,
       &names_tt_2,
     )?;
+    let sparse_partitions = result.sparse_partitions;
+    let dense_partitions = result.dense_partitions;
 
     assert_eq!(result.lh_history.len(), 2);
     assert!(
@@ -307,15 +319,15 @@ mod tests {
     let mut graph: Graph = graph;
 
     // Use the setup but only dense partitions (sparse empty)
-    let (mut dense_partitions, _sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (dense_partitions, _sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let mut empty_sparse = vec![];
+    let empty_sparse = vec![];
 
     let names_tt_1 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &mut empty_sparse,
-      &mut dense_partitions,
+      empty_sparse,
+      dense_partitions,
       10,
       0.1,
       0.75,
@@ -325,6 +337,8 @@ mod tests {
       branch_lengths,
       &names_tt_1,
     )?;
+    let sparse_partitions = result.sparse_partitions;
+    let dense_partitions = result.dense_partitions;
 
     assert!(
       result.stopped_at.is_some(),

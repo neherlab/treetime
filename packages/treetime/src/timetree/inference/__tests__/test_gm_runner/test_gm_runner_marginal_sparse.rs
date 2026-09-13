@@ -69,8 +69,8 @@ mod tests {
       estimates: BTreeMap::new(),
     });
 
-    let mut partitions: Vec<PartitionTimetree> = vec![sparse_partition];
-    initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions, &aln, &names)?.value();
+    let partitions: Vec<PartitionTimetree> = vec![sparse_partition];
+    let (partitions, _) = initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions, &aln, &names)?;
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 

@@ -2,7 +2,9 @@
 mod tests {
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::o;
-  use crate::partition::marginal::shared::update::{MarginalUpdate, PartitionMarginalOps};
+  use crate::partition::marginal::shared::update::{
+    MarginalBackward, MarginalForward, MarginalUpdate, PartitionMarginalOps,
+  };
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -83,7 +85,8 @@ mod tests {
     let node_states = partition.attach_traits(&graph, &traits, &names)?;
 
     let branch_lengths = profile_branch_lengths(&raw_branch_lengths);
-    let (node_states, backward) = partition.marginal_backward(&graph, &branch_lengths, &node_states)?;
+    let MarginalBackward { node_states, backward } =
+      partition.marginal_backward(&graph, &branch_lengths, &node_states)?;
 
     let root_profile = helpers::get_node_profile(&graph, &names, &node_states, "root");
     helpers::assert_profile_normalized(&root_profile);
@@ -94,8 +97,9 @@ mod tests {
     let leaf_to_inner_msg = helpers::get_edge_msg_from_child(&graph, &names, &backward, "inner", "A");
     helpers::assert_profile_normalized(&leaf_to_inner_msg);
 
-    let (node_states, forward, _estimates) =
-      partition.marginal_forward(&graph, &branch_lengths, &node_states, &backward)?;
+    let MarginalForward {
+      node_states, forward, ..
+    } = partition.marginal_forward(&graph, &branch_lengths, &node_states, &backward)?;
 
     let root_profile = helpers::get_node_profile(&graph, &names, &node_states, "root");
     helpers::assert_profile_normalized(&root_profile);

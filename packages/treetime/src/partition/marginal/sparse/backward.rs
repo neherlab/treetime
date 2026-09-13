@@ -1,4 +1,5 @@
 use crate::hacks::fix_branch_length::fix_branch_length;
+use crate::partition::marginal::shared::update::MarginalBackward;
 use crate::partition::marginal::sparse::message::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::{
@@ -21,13 +22,7 @@ pub fn process_backward_indexed(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
-) -> Result<
-  (
-    BTreeMap<GraphNodeKey, SparseNodeState>,
-    BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
-  ),
-  Report,
-> {
+) -> Result<MarginalBackward<SparseNodeState, SparseEdgeBackward>, Report> {
   let pass = GraphPass::new(graph)?;
   let outputs = pass.map_backward(
     node_states,
@@ -35,7 +30,10 @@ pub fn process_backward_indexed(
     |key| treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass"),
     |context| process_node_backward_indexed(partition, branch_lengths, &context),
   )?;
-  Ok((outputs.nodes, outputs.edges))
+  Ok(MarginalBackward {
+    node_states: outputs.nodes,
+    backward: outputs.edges,
+  })
 }
 
 fn process_node_backward_indexed(

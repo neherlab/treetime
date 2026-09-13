@@ -26,7 +26,7 @@ pub fn reroot_tree(
   constraints: &DateConstraints,
   clock_state: &mut ClockState,
   timetree_state: &TimetreeState,
-  partitions: &mut [PartitionTimetree],
+  mut partitions: Vec<PartitionTimetree>,
   clock_params: &ClockParams,
   clock_rate: Option<f64>,
   branch_params: &BranchPointOptimizationParams,
@@ -34,7 +34,7 @@ pub fn reroot_tree(
   force_positive_rate: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<ClockModel, Report> {
+) -> Result<(ClockModel, Vec<PartitionTimetree>), Report> {
   let reroot_params = RerootParams {
     spec: reroot_spec.clone(),
     force_positive_rate,
@@ -77,16 +77,16 @@ pub fn reroot_tree(
       };
 
       info!("Applying reroot changes to {} partitions", partitions.len());
-      for partition in partitions.iter_mut() {
+      for partition in &mut partitions {
         partition
           .apply_reroot(&changes)
           .wrap_err("Failed to apply reroot changes to partition")?;
       }
 
-      marginal_update_timetree(graph, &profile_branch_lengths(branch_lengths), partitions)
+      (partitions, _) = marginal_update_timetree(graph, &profile_branch_lengths(branch_lengths), partitions)
         .wrap_err("Failed to update marginal after reroot")?;
     }
   }
 
-  clock_reroot_result.into_clock_model()
+  Ok((clock_reroot_result.into_clock_model()?, partitions))
 }

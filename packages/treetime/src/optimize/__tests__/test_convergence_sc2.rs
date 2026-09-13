@@ -44,16 +44,17 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let mut sparse_partitions = vec![SparseReconstruction {
+    let sparse_partitions = vec![SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     }];
-    marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
+    let (sparse_partitions, _) =
+      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 
-    let mut dense_partitions = vec![];
+    let dense_partitions = vec![];
     let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
     let mixed_partitions = readouts.view();
     initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
@@ -62,8 +63,8 @@ mod tests {
     let names_tt_2 = names;
     let result = run_optimize_loop(
       &mut graph,
-      &mut sparse_partitions,
-      &mut dense_partitions,
+      sparse_partitions,
+      dense_partitions,
       max_iter,
       0.1,
       0.75,
@@ -73,6 +74,8 @@ mod tests {
       branch_lengths,
       &names_tt_2,
     )?;
+    let sparse_partitions = result.sparse_partitions;
+    let dense_partitions = result.dense_partitions;
 
     assert!(
       result.stopped_at.is_some(),
@@ -107,16 +110,17 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let mut sparse_partitions = vec![SparseReconstruction {
+    let sparse_partitions = vec![SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     }];
-    marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
+    let (sparse_partitions, _) =
+      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 
-    let mut dense_partitions = vec![];
+    let dense_partitions = vec![];
     let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
     let mixed_partitions = readouts.view();
     initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
@@ -124,8 +128,8 @@ mod tests {
     let names_tt_1 = names;
     let result = run_optimize_loop(
       &mut graph,
-      &mut sparse_partitions,
-      &mut dense_partitions,
+      sparse_partitions,
+      dense_partitions,
       10,
       0.1,
       0.75,
@@ -135,6 +139,8 @@ mod tests {
       branch_lengths,
       &names_tt_1,
     )?;
+    let sparse_partitions = result.sparse_partitions;
+    let dense_partitions = result.dense_partitions;
 
     assert!(
       result.stopped_at.is_some(),

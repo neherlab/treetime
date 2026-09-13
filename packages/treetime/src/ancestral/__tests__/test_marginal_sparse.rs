@@ -125,16 +125,15 @@ mod tests {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, graph)?;
-    let mut recon = SparseReconstruction {
+    let recon = SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    let log_lh = recon
-      .run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?
-      .value();
+    let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }
 
@@ -210,7 +209,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let mut recon = SparseReconstruction {
+    let recon = SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
@@ -218,9 +217,8 @@ mod tests {
       estimates: BTreeMap::new(),
     };
 
-    let log_lh = recon
-      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
-      .value();
+    let (mut recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let log_lh = log_lh.value();
 
     // generate ancestral reconstruction and test against expectation
     let mut actual = BTreeMap::new();
@@ -356,7 +354,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let mut recon = SparseReconstruction {
+    let recon = SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
@@ -364,12 +362,10 @@ mod tests {
       estimates: BTreeMap::new(),
     };
 
-    let log_lh_first = recon
-      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
-      .value();
-    let log_lh_second = recon
-      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
-      .value();
+    let (recon, log_lh_first) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let log_lh_first = log_lh_first.value();
+    let (recon, log_lh_second) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let log_lh_second = log_lh_second.value();
 
     // Verify log-likelihood value matches expected (same tree/alignment as normalization test)
     pretty_assert_ulps_eq!(-55.33813399214274, log_lh_first, epsilon = 1e-6);
@@ -541,7 +537,7 @@ mod tests {
 
           let fitch = create_fitch_partition(&graph, 0, alphabet.clone(), &aln, &names)?;
           let (partition, node_states) = fitch.into_marginal_sparse(gtr.clone(), &graph)?;
-          let mut recon = SparseReconstruction {
+          let recon = SparseReconstruction {
             partition,
             node_states,
             backward: BTreeMap::new(),
@@ -549,9 +545,8 @@ mod tests {
             estimates: BTreeMap::new(),
           };
 
-          let log_lh = recon
-            .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
-            .value();
+          let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+          let log_lh = log_lh.value();
           total_lh += log_lh.exp();
         }
       }
@@ -596,16 +591,14 @@ mod tests {
     let graph: Graph = graph;
     let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?;
-    let mut recon = SparseReconstruction {
+    let recon = SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon
-      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
-      .value();
+    let (mut recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
     let actual_by_edge = {
       let readout = recon.readout();

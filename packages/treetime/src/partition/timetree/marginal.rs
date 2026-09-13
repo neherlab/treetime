@@ -42,16 +42,22 @@ impl PartitionTimetree {
     Ok(())
   }
 
-  /// Run a full marginal update in place, replacing the result maps and returning the substitution
-  /// log likelihood.
-  pub fn run_marginal_update(
-    &mut self,
+  /// Run a full marginal update, returning the partition at the refreshed node states, messages, and
+  /// estimates together with the substitution log likelihood.
+  pub fn marginal_update(
+    self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  ) -> Result<LogLh, Report> {
+  ) -> Result<(Self, LogLh), Report> {
     match self {
-      Self::Dense(family) => family.run_marginal_update(graph, branch_lengths),
-      Self::Sparse(family) => family.run_marginal_update(graph, branch_lengths),
+      Self::Dense(family) => {
+        let (family, log_lh) = family.marginal_update(graph, branch_lengths)?;
+        Ok((Self::Dense(family), log_lh))
+      },
+      Self::Sparse(family) => {
+        let (family, log_lh) = family.marginal_update(graph, branch_lengths)?;
+        Ok((Self::Sparse(family), log_lh))
+      },
     }
   }
 
@@ -111,29 +117,31 @@ pub fn graph_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Result<L
   Ok(log_lh)
 }
 
-/// Run a marginal update over each timetree partition in place and return the summed substitution log
-/// likelihood.
+/// Run a marginal update over every timetree partition, returning the updated partitions and the
+/// summed substitution log likelihood.
 pub fn marginal_update_timetree(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  partitions: &mut [PartitionTimetree],
-) -> Result<LogLh, Report> {
-  let mut total = LogLh::ZERO;
-  for partition in partitions.iter_mut() {
-    total += partition.run_marginal_update(graph, branch_lengths)?;
-  }
-  Ok(total)
+  partitions: Vec<PartitionTimetree>,
+) -> Result<(Vec<PartitionTimetree>, LogLh), Report> {
+  partitions
+    .into_iter()
+    .try_fold((Vec::new(), LogLh::ZERO), |(mut updated, total), partition| {
+      let (partition, log_lh) = partition.marginal_update(graph, branch_lengths)?;
+      updated.push(partition);
+      Ok((updated, total + log_lh))
+    })
 }
 
 /// Attach leaf sequences (dense) then run the initial marginal update over every timetree partition.
 pub fn initialize_marginal_timetree(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  partitions: &mut [PartitionTimetree],
+  mut partitions: Vec<PartitionTimetree>,
   aln: &[FastaRecord],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<LogLh, Report> {
-  for partition in partitions.iter_mut() {
+) -> Result<(Vec<PartitionTimetree>, LogLh), Report> {
+  for partition in &mut partitions {
     partition.attach_sequences(graph, aln, names)?;
   }
   marginal_update_timetree(graph, branch_lengths, partitions)

@@ -95,16 +95,15 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(graph, aln, names)?;
-    let mut recon = DenseReconstruction {
+    let recon = DenseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    let log_lh = recon
-      .run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?
-      .value();
+    let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }
 
@@ -131,16 +130,15 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, graph)?;
-    let mut recon = SparseReconstruction {
+    let recon = SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    let log_lh = recon
-      .run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?
-      .value();
+    let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }
 
@@ -498,7 +496,7 @@ mod tests {
 
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-    let mut recon = DenseReconstruction {
+    let recon = DenseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
@@ -506,9 +504,7 @@ mod tests {
       estimates: BTreeMap::new(),
     };
 
-    recon
-      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
-      .value();
+    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
     // Verify all marginal posterior rows sum to 1.0
     for (node_key, node_data) in &recon.node_states {

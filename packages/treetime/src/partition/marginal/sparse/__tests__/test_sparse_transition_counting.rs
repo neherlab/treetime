@@ -39,16 +39,14 @@ mod tests {
       ..JC69Params::default()
     })?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let mut recon = SparseReconstruction {
+    let recon = SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon
-      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
-      .value();
+    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }
 

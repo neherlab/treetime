@@ -261,7 +261,7 @@ mod tests {
 
       let fitch = create_fitch_partition(&graph, 0, alphabet_sparse, &aln, &names)?;
       let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-      let mut sparse_partitions = vec![SparseReconstruction {
+      let sparse_partitions = vec![SparseReconstruction {
         partition,
         node_states,
         backward: BTreeMap::new(),
@@ -272,7 +272,7 @@ mod tests {
       let length = get_common_length(&aln)?;
       let dense_partition = PartitionMarginalDense::new(1, jc69(JC69Params::default())?, alphabet_dense, length);
       let dense_node_states = dense_partition.attach_sequences(&graph, &aln, &names)?;
-      let mut dense_partitions = vec![DenseReconstruction {
+      let dense_partitions = vec![DenseReconstruction {
         partition: dense_partition,
         node_states: dense_node_states,
         backward: BTreeMap::new(),
@@ -280,8 +280,10 @@ mod tests {
         estimates: BTreeMap::new(),
       }];
 
-      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?;
-      marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?;
+      let (sparse_partitions, _) =
+        marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      let (dense_partitions, _) =
+        marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
 
       {
         let ro = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
@@ -292,8 +294,8 @@ mod tests {
       let names_tt_1 = names.clone();
       let result = run_optimize_loop(
         &mut graph,
-        &mut sparse_partitions,
-        &mut dense_partitions,
+        sparse_partitions,
+        dense_partitions,
         case.max_iter,
         dp,
         case.damping,
@@ -303,16 +305,20 @@ mod tests {
         branch_lengths,
         &names_tt_1,
       )?;
+      let sparse_partitions = result.sparse_partitions;
+      let dense_partitions = result.dense_partitions;
       let branch_lengths = result.branch_lengths;
 
       // Append a trailing likelihood measurement so `lh_history.last()` reflects the state
       // AFTER the final in-loop branch-length update (`run_optimize_loop` records the LH
       // at the START of each iteration, before that iteration's update).
       let mut lh_history = result.lh_history.into_iter().map(LogLh::value).collect_vec();
-      let sparse_lh =
-        marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
-      let dense_lh =
-        marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?.value();
+      let (sparse_partitions, sparse_lh) =
+        marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      let sparse_lh = sparse_lh.value();
+      let (dense_partitions, dense_lh) =
+        marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
+      let dense_lh = dense_lh.value();
       lh_history.push(sparse_lh + dense_lh);
 
       Ok(OptimizeResult {

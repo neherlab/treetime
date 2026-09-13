@@ -50,14 +50,14 @@ mod tests {
     let alphabet = Alphabet::default();
     let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(graph, aln, names)?;
-    let mut partitions = vec![DenseReconstruction {
+    let partitions = vec![DenseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     }];
-    marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?;
+    let (partitions, _) = marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), partitions)?;
     Ok(partitions)
   }
 
@@ -89,11 +89,11 @@ mod tests {
       branch_lengths: mut branch_lengths_stale,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut partitions_stale = setup_dense_jc69(&graph_stale, &graph_stale_names, &aln, &branch_lengths_stale)?;
-    marginal_update_dense(
+    let partitions_stale = setup_dense_jc69(&graph_stale, &graph_stale_names, &aln, &branch_lengths_stale)?;
+    let (mut partitions_stale, _) = marginal_update_dense(
       &graph_stale,
       &profile_branch_lengths(&branch_lengths_stale),
-      &mut partitions_stale,
+      partitions_stale,
     )?;
     *partitions_stale[0].partition.gtr_mut() = f81_gtr.clone();
     {
@@ -110,17 +110,17 @@ mod tests {
       branch_lengths: mut branch_lengths_fresh,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut partitions_fresh = setup_dense_jc69(&graph_fresh, &graph_fresh_names, &aln, &branch_lengths_fresh)?;
-    marginal_update_dense(
+    let partitions_fresh = setup_dense_jc69(&graph_fresh, &graph_fresh_names, &aln, &branch_lengths_fresh)?;
+    let (mut partitions_fresh, _) = marginal_update_dense(
       &graph_fresh,
       &profile_branch_lengths(&branch_lengths_fresh),
-      &mut partitions_fresh,
+      partitions_fresh,
     )?;
     *partitions_fresh[0].partition.gtr_mut() = f81_gtr;
-    marginal_update_dense(
+    let (partitions_fresh, _) = marginal_update_dense(
       &graph_fresh,
       &profile_branch_lengths(&branch_lengths_fresh),
-      &mut partitions_fresh,
+      partitions_fresh,
     )?;
     {
       let ro = OptimizeReadouts::new(&partitions_fresh, &[]);
@@ -155,10 +155,10 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let graph: Graph = graph;
-    let mut partitions = setup_dense_jc69(&graph, &names, &aln, &branch_lengths)?;
-    marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
+    let partitions = setup_dense_jc69(&graph, &names, &aln, &branch_lengths)?;
+    let (mut partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
     *partitions[0].partition.gtr_mut() = f81_gtr.clone();
-    marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
+    let (partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
     {
       let ro = OptimizeReadouts::new(&partitions, &[]);
       initial_guess_mixed(&graph, &ro.view(), true, false, &mut branch_lengths)?;
@@ -177,10 +177,10 @@ mod tests {
       branch_lengths: mut branch_lengths2,
       ..
     } = nwk_read_str(TREE_NEWICK)?;
-    let mut partitions2 = setup_dense_jc69(&graph2, &graph2_names, &aln, &branch_lengths2)?;
-    marginal_update_dense(&graph2, &profile_branch_lengths(&branch_lengths2), &mut partitions2)?;
+    let partitions2 = setup_dense_jc69(&graph2, &graph2_names, &aln, &branch_lengths2)?;
+    let (mut partitions2, _) = marginal_update_dense(&graph2, &profile_branch_lengths(&branch_lengths2), partitions2)?;
     *partitions2[0].partition.gtr_mut() = f81_gtr;
-    marginal_update_dense(&graph2, &profile_branch_lengths(&branch_lengths2), &mut partitions2)?;
+    let (partitions2, _) = marginal_update_dense(&graph2, &profile_branch_lengths(&branch_lengths2), partitions2)?;
     {
       let ro = OptimizeReadouts::new(&partitions2, &[]);
       initial_guess_mixed(&graph2, &ro.view(), true, false, &mut branch_lengths2)?;

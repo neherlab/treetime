@@ -66,8 +66,8 @@ mod tests {
       estimates: BTreeMap::new(),
     });
 
-    let mut partitions: Vec<PartitionTimetree> = vec![sparse_partition];
-    initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions, &aln, &names)?.value();
+    let partitions: Vec<PartitionTimetree> = vec![sparse_partition];
+    let (partitions, _) = initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions, &aln, &names)?;
 
     let before = extract_branch_lengths(&graph, &branch_lengths);
 
@@ -122,8 +122,8 @@ mod tests {
       estimates: BTreeMap::new(),
     });
 
-    let mut partitions: Vec<PartitionTimetree> = vec![sparse_partition];
-    initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions, &aln, &names)?.value();
+    let partitions: Vec<PartitionTimetree> = vec![sparse_partition];
+    let (partitions, _) = initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions, &aln, &names)?;
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
@@ -131,7 +131,7 @@ mod tests {
     #[allow(trivial_casts)]
     let opt_partitions: Vec<&dyn PartitionOptimizeOps> = partitions.iter().map(|p| p as &dyn PartitionOptimizeOps).collect();
     run_optimize_mixed(&graph, &opt_partitions, BranchOptMethod::BrentSqrt, &mut branch_lengths)?;
-    marginal_update_timetree(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
+    let (partitions, _) = marginal_update_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
 
     let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints);
     let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);

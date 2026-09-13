@@ -34,14 +34,14 @@ mod tests {
     let gtr = jc69(JC69Params::default())?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-    let mut partitions = vec![DenseReconstruction {
+    let partitions = vec![DenseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     }];
-    marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
+    let (partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
     Ok((graph, partitions, branch_lengths))
   }
 

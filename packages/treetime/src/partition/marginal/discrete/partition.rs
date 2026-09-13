@@ -3,7 +3,7 @@ use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::partition::marginal::discrete::input::{one_hot_profile, uniform_profile, validate_trait_names};
 use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, indexed_forward};
-use crate::partition::marginal::shared::update::PartitionMarginalOps;
+use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, PartitionMarginalOps};
 use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
 };
@@ -134,13 +134,7 @@ impl PartitionMarginalOps for PartitionMarginalDiscrete {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-  ) -> Result<
-    (
-      BTreeMap<GraphNodeKey, DenseNodeState>,
-      BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
-    ),
-    Report,
-  > {
+  ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
     indexed_backward(
       &self.inputs,
       // discrete carries no residue alphabet; the indexed driver only uses the alphabet on the dense
@@ -160,14 +154,7 @@ impl PartitionMarginalOps for PartitionMarginalDiscrete {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
-  ) -> Result<
-    (
-      BTreeMap<GraphNodeKey, DenseNodeState>,
-      BTreeMap<GraphEdgeKey, DenseEdgeForward>,
-      BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
-    ),
-    Report,
-  > {
+  ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
     indexed_forward(
       &self.inputs,
       None,

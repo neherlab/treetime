@@ -20,37 +20,22 @@ pub trait PartitionMarginalOps {
   type Forward;
   type Estimate;
 
-  /// Run the marginal backward pass (children before parent), returning the updated node states and
-  /// the per-edge messages toward the parent.
+  /// Run the marginal backward pass (children before parent).
   fn marginal_backward(
     &self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, Self::Node>,
-  ) -> Result<
-    (
-      BTreeMap<GraphNodeKey, Self::Node>,
-      BTreeMap<GraphEdgeKey, Self::Backward>,
-    ),
-    Report,
-  >;
+  ) -> Result<MarginalBackward<Self::Node, Self::Backward>, Report>;
 
-  /// Run the marginal forward pass (parent before children) over the backward messages, returning the
-  /// updated node states, the per-edge messages toward the child, and the per-edge estimates.
+  /// Run the marginal forward pass (parent before children) over the backward messages.
   fn marginal_forward(
     &self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, Self::Node>,
     backward: &BTreeMap<GraphEdgeKey, Self::Backward>,
-  ) -> Result<
-    (
-      BTreeMap<GraphNodeKey, Self::Node>,
-      BTreeMap<GraphEdgeKey, Self::Forward>,
-      BTreeMap<GraphEdgeKey, Self::Estimate>,
-    ),
-    Report,
-  >;
+  ) -> Result<MarginalForward<Self::Node, Self::Forward, Self::Estimate>, Report>;
 
   /// Count posterior-weighted state transitions over the tree, the input GTR inference reads.
   fn count_transitions(
@@ -73,9 +58,13 @@ pub trait PartitionMarginalOps {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: BTreeMap<GraphNodeKey, Self::Node>,
   ) -> Result<MarginalUpdate<Self::Node, Self::Backward, Self::Forward, Self::Estimate>, Report> {
-    let (node_states, backward) = self.marginal_backward(graph, branch_lengths, &node_states)?;
+    let MarginalBackward { node_states, backward } = self.marginal_backward(graph, branch_lengths, &node_states)?;
     let log_lh = self.root_log_lh(graph, &node_states)?;
-    let (node_states, forward, estimates) = self.marginal_forward(graph, branch_lengths, &node_states, &backward)?;
+    let MarginalForward {
+      node_states,
+      forward,
+      estimates,
+    } = self.marginal_forward(graph, branch_lengths, &node_states, &backward)?;
     Ok(MarginalUpdate {
       node_states,
       backward,
@@ -128,6 +117,23 @@ pub struct MarginalUpdate<Node, Backward, Forward, Estimate> {
   pub forward: BTreeMap<GraphEdgeKey, Forward>,
   pub estimates: BTreeMap<GraphEdgeKey, Estimate>,
   pub log_lh: LogLh,
+}
+
+/// The result of one marginal backward pass: the refreshed per-node states and the per-edge messages
+/// toward the parent, as distinct owned values.
+#[derive(Clone, Debug, Serialize)]
+pub struct MarginalBackward<Node, Backward> {
+  pub node_states: BTreeMap<GraphNodeKey, Node>,
+  pub backward: BTreeMap<GraphEdgeKey, Backward>,
+}
+
+/// The result of one marginal forward pass: the refreshed per-node states, the per-edge messages
+/// toward the child, and the per-edge estimates, as distinct owned values.
+#[derive(Clone, Debug, Serialize)]
+pub struct MarginalForward<Node, Forward, Estimate> {
+  pub node_states: BTreeMap<GraphNodeKey, Node>,
+  pub forward: BTreeMap<GraphEdgeKey, Forward>,
+  pub estimates: BTreeMap<GraphEdgeKey, Estimate>,
 }
 
 /// A per-node marginal state that carries the node's profile log likelihood, so the shared update can

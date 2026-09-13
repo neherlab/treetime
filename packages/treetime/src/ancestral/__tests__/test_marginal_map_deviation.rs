@@ -145,14 +145,14 @@ mod tests {
   ) -> Result<BTreeMap<String, String>, Report> {
     let fitch = create_fitch_partition(graph, 0, Alphabet::default(), aln, names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
-    let mut recon = SparseReconstruction {
+    let recon = SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let (mut recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
 
     let mut out = BTreeMap::new();
     let SparseReconstruction {
@@ -182,14 +182,14 @@ mod tests {
     let length = get_common_length(aln)?;
     let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::default(), length);
     let node_states = partition.attach_sequences(graph, aln, names)?;
-    let mut recon = DenseReconstruction {
+    let recon = DenseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let (mut recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
 
     let mut out = BTreeMap::new();
     let DenseReconstruction {

@@ -62,7 +62,7 @@ pub mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(graph, aln, names)?;
-    let mut partitions = vec![DenseReconstruction {
+    let partitions = vec![DenseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
@@ -70,7 +70,7 @@ pub mod tests {
       estimates: BTreeMap::new(),
     }];
 
-    marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?.value();
+    let (partitions, _) = marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), partitions)?;
 
     Ok(partitions)
   }
@@ -84,14 +84,14 @@ pub mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
-    let mut partitions = vec![SparseReconstruction {
+    let partitions = vec![SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     }];
-    marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), &mut partitions)?.value();
+    let (partitions, _) = marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), partitions)?;
 
     Ok(partitions)
   }

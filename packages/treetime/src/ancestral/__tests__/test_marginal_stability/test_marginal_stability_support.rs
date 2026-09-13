@@ -74,16 +74,15 @@ pub mod tests {
 
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-    let mut recon = DenseReconstruction {
+    let recon = DenseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    let log_lh = recon
-      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
-      .value();
+    let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }
 
@@ -105,16 +104,15 @@ pub mod tests {
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let mut recon = SparseReconstruction {
+    let recon = SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    let log_lh = recon
-      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
-      .value();
+    let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }
 }

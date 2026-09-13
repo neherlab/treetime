@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::marginal::shared::normalize::{forward_log_lh_add_normalization, forward_log_lh_remove_child};
+use crate::partition::marginal::shared::update::MarginalForward;
 use crate::partition::marginal::sparse::message::{
   combine_messages, normalize_1d_inplace, propagate_raw, propagate_raw_per_site,
 };
@@ -30,14 +31,7 @@ pub fn process_forward_indexed(
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
   backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
-) -> Result<
-  (
-    BTreeMap<GraphNodeKey, SparseNodeState>,
-    BTreeMap<GraphEdgeKey, SparseEdgeForward>,
-    BTreeMap<GraphEdgeKey, Vec<Sub>>,
-  ),
-  Report,
-> {
+) -> Result<MarginalForward<SparseNodeState, SparseEdgeForward, Vec<Sub>>, Report> {
   let pass = GraphPass::new(graph)?;
   let outputs = pass.map_forward(
     node_states,
@@ -58,7 +52,11 @@ pub fn process_forward_indexed(
     );
     estimates.insert(edge_key, out.subs_ml);
   }
-  Ok((outputs.nodes, forward, estimates))
+  Ok(MarginalForward {
+    node_states: outputs.nodes,
+    forward,
+    estimates,
+  })
 }
 
 /// Combined per-edge output of the forward node visit, split by the driver into the distinct

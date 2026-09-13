@@ -137,14 +137,14 @@ mod tests {
         get_common_length(&aln)?,
       );
       let node_states = partition.attach_sequences(&graph, &aln, &names)?;
-      let mut recon = DenseReconstruction {
+      let recon = DenseReconstruction {
         partition,
         node_states,
         backward: BTreeMap::new(),
         forward: BTreeMap::new(),
         estimates: BTreeMap::new(),
       };
-      recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+      let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
       let counts = recon.partition.count_transitions(
         &graph,
         &branch_lengths,

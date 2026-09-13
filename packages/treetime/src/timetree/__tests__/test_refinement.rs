@@ -47,15 +47,15 @@ mod tests {
   #[test]
   #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_refinement_rebuilds_complete_coalescent_state_after_topology_change() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
+    let (mut graph, names, partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
       create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
 
-    let outcome = refine(
+    let (partitions, outcome) = refine(
       &mut graph,
       &names,
       &constraints,
-      &mut partitions,
+      partitions,
       &mut clock_model,
       Some(&tc),
       &mut state,
@@ -98,11 +98,11 @@ mod tests {
     // Kingman's node and edge factorizations telescope to the same objective.
     pretty_assert_abs_diff_eq!(node_lh, edge_lh.value(), epsilon = 1e-10);
 
-    let outcome = refine(
+    let (partitions, outcome) = refine(
       &mut graph,
       &names,
       &constraints,
-      &mut partitions,
+      partitions,
       &mut clock_model,
       Some(&tc),
       &mut state,
@@ -115,7 +115,7 @@ mod tests {
 
   #[test]
   fn test_refinement_missing_time_preserves_inference_state() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
+    let (mut graph, names, partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
       create_polytomy_state()?;
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     state.node_mut(root_key).time = None;
@@ -129,7 +129,9 @@ mod tests {
         &mut graph,
         &names,
         &constraints,
-        &mut partitions,
+        // Clone for the failing call: the round consumes the partitions it is given, so the caller's
+        // copy is what the preservation assertion reads afterwards.
+        partitions.clone(),
         &mut clock_model,
         Some(&Distribution::constant(10.0)),
         &mut state,
@@ -146,7 +148,7 @@ mod tests {
 
   #[test]
   fn test_refinement_non_finite_time_preserves_inference_state() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
+    let (mut graph, names, partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
       create_polytomy_state()?;
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     state.node_mut(root_key).time = Some(f64::NAN);
@@ -157,7 +159,9 @@ mod tests {
         &mut graph,
         &names,
         &constraints,
-        &mut partitions,
+        // Clone for the failing call: the round consumes the partitions it is given, so the caller's
+        // copy is what the preservation assertion reads afterwards.
+        partitions.clone(),
         &mut clock_model,
         Some(&Distribution::constant(10.0)),
         &mut state,
@@ -185,14 +189,14 @@ mod tests {
   #[test]
   #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_refinement_unchanged_topology_recomputes_missing_time() -> Result<(), Report> {
-    let (mut graph, names, mut partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
+    let (mut graph, names, partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
       create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
-    refine(
+    let (partitions, _) = refine(
       &mut graph,
       &names,
       &constraints,
-      &mut partitions,
+      partitions,
       &mut clock_model,
       Some(&tc),
       &mut state,
@@ -201,11 +205,11 @@ mod tests {
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
     state.node_mut(root_key).time = None;
 
-    let outcome = refine(
+    let (partitions, outcome) = refine(
       &mut graph,
       &names,
       &constraints,
-      &mut partitions,
+      partitions,
       &mut clock_model,
       None,
       &mut state,
@@ -248,17 +252,17 @@ mod tests {
       "#},
       &alphabet,
     )?;
-    let mut partitions = vec![PartitionTimetree::Dense(DenseReconstruction {
+    let partitions = vec![PartitionTimetree::Dense(DenseReconstruction {
       partition: PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?),
       node_states: BTreeMap::new(),
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     })];
-    initialize_marginal_timetree(
+    let (partitions, _) = initialize_marginal_timetree(
       &graph,
       &profile_branch_lengths(&branch_lengths),
-      &mut partitions,
+      partitions,
       &aln,
       &names,
     )?;
@@ -347,12 +351,12 @@ mod tests {
     graph: &mut Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     constraints: &DateConstraints,
-    partitions: &mut [PartitionTimetree],
+    partitions: Vec<PartitionTimetree>,
     clock_model: &mut ClockModel,
     coalescent_tc: Option<&Distribution>,
     state: &mut TimetreeState,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<RefinementOutcome, Report> {
+  ) -> Result<(Vec<PartitionTimetree>, RefinementOutcome), Report> {
     let pinned_tc = Distribution::constant(REFINEMENT_TEST_TC);
     let coalescent = CoalescentModel::new(
       &compute_lineage_counts(graph, &state.coalescent_node_times())?,
@@ -365,7 +369,7 @@ mod tests {
     let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = BTreeMap::new();
     let mut names = names.clone();
 
-    let (new_state, outcome) = Refinement {
+    let (new_state, partitions, outcome) = Refinement {
       graph,
       partitions,
       clock_model,
@@ -386,7 +390,7 @@ mod tests {
     }
     .run()?;
     *state = new_state;
-    Ok(outcome)
+    Ok((partitions, outcome))
   }
 
   fn refinement_options() -> RefinementOptions {

@@ -32,24 +32,25 @@ mod tests {
     // rather than to a hand-chosen LH range that would silently drift.
     let lh_ref = {
       let NwkParse { graph: graph_ref, names: graph_ref_names, branch_lengths: mut branch_lengths_ref, .. } = nwk_read_str(TREE_NEWICK)?;
-      let (mut dp_ref, mut sp_ref) = setup_partitions(&graph_ref, &graph_ref_names, &aln, &mut branch_lengths_ref)?;
+      let (dp_ref, sp_ref) = setup_partitions(&graph_ref, &graph_ref_names, &aln, &mut branch_lengths_ref)?;
       let ro_ref = OptimizeReadouts::new(&dp_ref, &sp_ref);
       let mp_ref = ro_ref.view();
       for _ in 0..max_iter {
         run_optimize_mixed(&graph_ref, &mp_ref, BranchOptMethod::BrentSqrt, &mut branch_lengths_ref)?;
       }
-      compute_total_lh(&graph_ref, &mut dp_ref, &mut sp_ref, &branch_lengths_ref)?
+      let (_, _, lh) = compute_total_lh(&graph_ref, dp_ref, sp_ref, &branch_lengths_ref)?;
+      lh
     };
 
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
 
     let graph: Graph = graph;
-    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     for _ in 0..max_iter {
       run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
     }
-    let final_lh = compute_total_lh(&graph, &mut dense_partitions, &mut sparse_partitions, &branch_lengths)?;
+    let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
 
     // The undamped alternating optimization produces a stable 2-cycle. Each
     // method must converge to within 1e-2 of the BrentSqrt reference's final
@@ -78,9 +79,9 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: Graph = graph;
 
-    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let initial_lh = compute_total_lh(&graph, &mut dense_partitions, &mut sparse_partitions, &branch_lengths)?;
+    let (dense_partitions, sparse_partitions, initial_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
     // Initial log-lh should be negative (log of probability < 1)
     assert!(initial_lh < 0.0, "Initial log-LH should be negative: {initial_lh}");
 
@@ -89,7 +90,7 @@ mod tests {
       run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
     }
 
-    let final_lh = compute_total_lh(&graph, &mut dense_partitions, &mut sparse_partitions, &branch_lengths)?;
+    let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
 
     // Strict non-regression: optimization must not degrade likelihood.
     // This test runs pure branch length optimization without marginal reconstruction
@@ -132,8 +133,8 @@ mod tests {
     // Run several optimization iterations
     for _ in 0..10 {
       run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
-      marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?.value();
-      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
+      (dense_partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
+      (sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
     }
 
     // Verify all branch lengths are in valid range

@@ -3,7 +3,7 @@ use crate::ancestral::sample::SampleMode;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::make_error;
-use crate::partition::marginal::shared::update::PartitionMarginalOps;
+use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, PartitionMarginalOps};
 use crate::partition::marginal::sparse::count::count_transitions_sparse;
 use crate::partition::marginal::sparse::reconstruct::{map_seq, map_seq_sampled, reconstruct_leaf_sequence};
 use crate::partition::marginal::sparse::{backward, forward};
@@ -212,13 +212,7 @@ impl PartitionMarginalOps for PartitionMarginalSparse {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
-  ) -> Result<
-    (
-      BTreeMap<GraphNodeKey, SparseNodeState>,
-      BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
-    ),
-    Report,
-  > {
+  ) -> Result<MarginalBackward<SparseNodeState, SparseEdgeBackward>, Report> {
     backward::process_backward_indexed(self, graph, branch_lengths, node_states)
   }
 
@@ -228,14 +222,7 @@ impl PartitionMarginalOps for PartitionMarginalSparse {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
     backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
-  ) -> Result<
-    (
-      BTreeMap<GraphNodeKey, SparseNodeState>,
-      BTreeMap<GraphEdgeKey, SparseEdgeForward>,
-      BTreeMap<GraphEdgeKey, Vec<Sub>>,
-    ),
-    Report,
-  > {
+  ) -> Result<MarginalForward<SparseNodeState, SparseEdgeForward, Vec<Sub>>, Report> {
     forward::process_forward_indexed(self, graph, branch_lengths, node_states, backward)
   }
 

@@ -52,7 +52,7 @@ pub mod tests {
     let dense_partition =
       PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet_dense, get_common_length(aln)?);
     let dense_node_states = dense_partition.attach_sequences(graph, aln, names)?;
-    let mut dense_partitions = vec![DenseReconstruction {
+    let dense_partitions = vec![DenseReconstruction {
       partition: dense_partition,
       node_states: dense_node_states,
       backward: BTreeMap::new(),
@@ -62,7 +62,7 @@ pub mod tests {
 
     let fitch = create_fitch_partition(graph, 1, alphabet_sparse, aln, names)?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
-    let mut sparse_partitions = vec![SparseReconstruction {
+    let sparse_partitions = vec![SparseReconstruction {
       partition: sparse_partition,
       node_states: sparse_node_states,
       backward: BTreeMap::new(),
@@ -70,8 +70,10 @@ pub mod tests {
       estimates: BTreeMap::new(),
     }];
 
-    marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), &mut dense_partitions)?.value();
-    marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), &mut sparse_partitions)?.value();
+    let (dense_partitions, _) =
+      marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;
+    let (sparse_partitions, _) =
+      marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?;
 
     {
       let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
@@ -83,12 +85,18 @@ pub mod tests {
 
   pub fn compute_total_lh(
     graph: &Graph,
-    dense_partitions: &mut [DenseReconstruction],
-    sparse_partitions: &mut [SparseReconstruction],
+    dense_partitions: Vec<DenseReconstruction>,
+    sparse_partitions: Vec<SparseReconstruction>,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<f64, Report> {
-    let dense_lh = marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?.value();
-    let sparse_lh = marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?.value();
-    Ok(dense_lh + sparse_lh)
+  ) -> Result<(Vec<DenseReconstruction>, Vec<SparseReconstruction>, f64), Report> {
+    let (dense_partitions, dense_lh) =
+      marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;
+    let (sparse_partitions, sparse_lh) =
+      marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?;
+    Ok((
+      dense_partitions,
+      sparse_partitions,
+      dense_lh.value() + sparse_lh.value(),
+    ))
   }
 }

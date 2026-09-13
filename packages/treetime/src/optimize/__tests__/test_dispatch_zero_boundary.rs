@@ -9,8 +9,8 @@ mod tests {
   use crate::optimize::likelihood::{evaluate_mixed, evaluate_mixed_log_lh_only};
   use crate::optimize::method_newton::{newton_inner, newton_sqrt_inner};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::OptimizeReadouts;
   use crate::optimize::run_loop::find_zero_optimal_internal_edges;
+  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
   use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::optimize;
@@ -69,7 +69,7 @@ mod tests {
       get_common_length(&aln)?,
     );
     let dense_node_states = dense_partition.attach_sequences(graph, &aln, names)?;
-    let mut dense_partitions = vec![DenseReconstruction {
+    let dense_partitions = vec![DenseReconstruction {
       partition: dense_partition,
       node_states: dense_node_states,
       backward: BTreeMap::new(),
@@ -79,7 +79,7 @@ mod tests {
 
     let fitch = create_fitch_partition(graph, 1, Alphabet::new(AlphabetName::Nuc)?, &aln, names)?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(get_gtr_by_name(model)?, graph)?;
-    let mut sparse_partitions = vec![SparseReconstruction {
+    let sparse_partitions = vec![SparseReconstruction {
       partition: sparse_partition,
       node_states: sparse_node_states,
       backward: BTreeMap::new(),
@@ -87,12 +87,10 @@ mod tests {
       estimates: BTreeMap::new(),
     }];
 
-    for family in &mut dense_partitions {
-      family.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
-    }
-    for family in &mut sparse_partitions {
-      family.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
-    }
+    let (dense_partitions, _) =
+      marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;
+    let (sparse_partitions, _) =
+      marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?;
 
     let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
     let mixed_partitions = readouts.view();

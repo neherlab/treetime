@@ -274,26 +274,26 @@ pub fn run(
   if let Some(aln) = input.sequences.as_deref() {
     if params.branch_length_mode == BranchLengthMode::Marginal && !partitions.is_empty() {
       info!("### ML branch-length optimization (pre-reroot)");
-      initialize_marginal_timetree(
+      (partitions, _) = initialize_marginal_timetree(
         &input.graph,
         &profile_branch_lengths(&branch_lengths),
-        &mut partitions,
+        partitions,
         aln,
         names,
       )?;
-      optimize_branch_lengths_pre_step(&input.graph, &mut partitions, params.no_indels, &mut branch_lengths)
+      partitions = optimize_branch_lengths_pre_step(&input.graph, partitions, params.no_indels, &mut branch_lengths)
         .wrap_err("ML branch-length optimization (pre-reroot) failed")?;
     }
   }
 
   if !params.keep_root {
     info!("First reroot (pre-ancestral)");
-    clock_model = reroot_tree(
+    (clock_model, partitions) = reroot_tree(
       &mut input.graph,
       &date_constraints,
       &mut clock_state,
       &timetree_state,
-      &mut partitions,
+      partitions,
       &ClockParams::default(),
       params.clock_rate,
       &branch_params,
@@ -345,8 +345,8 @@ pub fn run(
       },
       BranchLengthMode::Marginal => {
         info!("### ML branch-length optimization (post-reroot)");
-        marginal_update_timetree(&input.graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?;
-        optimize_branch_lengths_pre_step(&input.graph, &mut partitions, params.no_indels, &mut branch_lengths)
+        (partitions, _) = marginal_update_timetree(&input.graph, &profile_branch_lengths(&branch_lengths), partitions)?;
+        partitions = optimize_branch_lengths_pre_step(&input.graph, partitions, params.no_indels, &mut branch_lengths)
           .wrap_err("ML branch-length optimization (post-reroot) failed")?;
       },
     }
@@ -361,12 +361,12 @@ pub fn run(
 
   if !params.keep_root {
     info!("Reroot (post-ancestral)");
-    clock_model = reroot_tree(
+    (clock_model, partitions) = reroot_tree(
       &mut input.graph,
       &date_constraints,
       &mut clock_state,
       &timetree_state,
-      &mut partitions,
+      partitions,
       reroot_clock_params,
       params.clock_rate,
       &branch_params,
@@ -527,9 +527,9 @@ pub fn run(
     // Preserve every k(t) and Tc(t) discontinuity for event-sampler boundaries.
     let merger_rate = coalescent_model.branch_merger_rate_schedule(&coalescent_tc.schedule)?;
 
-    let (new_timetree_state, outcome) = Refinement {
+    let (new_timetree_state, new_partitions, outcome) = Refinement {
       graph: &mut input.graph,
-      partitions: &mut partitions,
+      partitions,
       clock_model: &mut clock_model,
       clock_params: reroot_clock_params,
       branch_params: &branch_params,
@@ -547,6 +547,7 @@ pub fn run(
     .run()
     .wrap_err_with(|| format!("When running round {i}"))?;
     timetree_state = new_timetree_state;
+    partitions = new_partitions;
 
     optimizer
       .record(
@@ -645,10 +646,10 @@ pub fn run(
     );
 
     if !partitions.is_empty() {
-      marginal_update_timetree(
+      (partitions, _) = marginal_update_timetree(
         &input.graph,
         &timetree_branch_lengths(&input.graph, &branch_lengths, &clock_branch_lengths),
-        &mut partitions,
+        partitions,
       )?;
     }
   }
@@ -978,10 +979,10 @@ fn initialize_partitions_from_params(
 
 fn optimize_branch_lengths_pre_step(
   graph: &Graph,
-  partitions: &mut [PartitionTimetree],
+  partitions: Vec<PartitionTimetree>,
   no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<(), Report> {
+) -> Result<Vec<PartitionTimetree>, Report> {
   let old_branch_lengths = branch_lengths.clone();
 
   {
@@ -996,9 +997,9 @@ fn optimize_branch_lengths_pre_step(
   }
 
   apply_damping(branch_lengths, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
-  marginal_update_timetree(graph, &profile_branch_lengths(branch_lengths), partitions)?;
+  let (partitions, _) = marginal_update_timetree(graph, &profile_branch_lengths(branch_lengths), partitions)?;
 
-  Ok(())
+  Ok(partitions)
 }
 
 #[cfg(test)]

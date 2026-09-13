@@ -75,14 +75,14 @@ mod tests {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let mut recon = SparseReconstruction {
+    let recon = SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (mut recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
     let seqs = reconstruct_named_sparse(&graph, &names, &mut recon, false)?;
 
@@ -235,14 +235,14 @@ mod tests {
   ) -> Result<BTreeMap<String, String>, Report> {
     let fitch = create_fitch_partition(graph, 0, Alphabet::default(), aln, names)?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
-    let mut recon = SparseReconstruction {
+    let recon = SparseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let (mut recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
     Ok(to_strings(reconstruct_named_sparse(graph, names, &mut recon, impute)?))
   }
 
@@ -260,14 +260,14 @@ mod tests {
       get_common_length(aln)?,
     );
     let node_states = partition.attach_sequences(graph, aln, names)?;
-    let mut recon = DenseReconstruction {
+    let recon = DenseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    recon.run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let (mut recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
     Ok(to_strings(reconstruct_named_dense(graph, names, &mut recon, impute)?))
   }
 

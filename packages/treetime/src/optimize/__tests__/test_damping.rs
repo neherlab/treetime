@@ -156,7 +156,7 @@ mod tests {
     let aln = simple_alignment()?;
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: Graph = graph;
-    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
     let max_iter = 10;
     let damping = 0.75;
@@ -165,8 +165,8 @@ mod tests {
     let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &mut sparse_partitions,
-      &mut dense_partitions,
+      sparse_partitions,
+      dense_partitions,
       max_iter,
       dp,
       damping,
@@ -174,6 +174,8 @@ mod tests {
       false,
       TopologyOps::default(), branch_lengths, &names_tt_2
     )?;
+    let sparse_partitions = result.sparse_partitions;
+    let dense_partitions = result.dense_partitions;
 
     assert!(
       result.stopped_at.is_some(),
@@ -184,7 +186,7 @@ mod tests {
     // The toy tree (4 leaves, 16 sites, JC69) converges near -72.41. Measure the likelihood from
     // the loop's final branch-length map so `final_lh` reflects the state after the last
     // branch-length update, not the pre-update measurement recorded in `lh_history`.
-    let final_lh = compute_total_lh(&graph, &mut dense_partitions, &mut sparse_partitions, &result.branch_lengths)?;
+    let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &result.branch_lengths)?;
     assert!(
       final_lh > -73.0 && final_lh < -72.0,
       "Final log-lh {final_lh:.6} outside expected range (-73.0, -72.0)"
@@ -210,9 +212,9 @@ mod tests {
     let aln = simple_alignment()?;
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let mut graph: Graph = graph;
-    let (mut dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
+    let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let initial_lh = compute_total_lh(&graph, &mut dense_partitions, &mut sparse_partitions, &branch_lengths)?;
+    let (dense_partitions, sparse_partitions, initial_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
 
     // Force all 10 iterations (never break on convergence) so the non-regression check
     // exercises the full damping trajectory rather than possibly stopping after two
@@ -221,8 +223,8 @@ mod tests {
     let names_tt_1 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      &mut sparse_partitions,
-      &mut dense_partitions,
+      sparse_partitions,
+      dense_partitions,
       10,
       dp,
       0.75,
@@ -230,11 +232,13 @@ mod tests {
       false,
       TopologyOps::default(), branch_lengths, &names_tt_1
     )?;
+    let sparse_partitions = result.sparse_partitions;
+    let dense_partitions = result.dense_partitions;
 
     // Strict non-regression: damped optimization must not degrade likelihood.
     // Damping blends new and old branch lengths as a convex combination,
     // so overall likelihood should improve or hold steady.
-    let final_lh = compute_total_lh(&graph, &mut dense_partitions, &mut sparse_partitions, &result.branch_lengths)?;
+    let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &result.branch_lengths)?;
     assert!(
       final_lh >= initial_lh,
       "Damped optimization regressed: {initial_lh:.6} -> {final_lh:.6}"

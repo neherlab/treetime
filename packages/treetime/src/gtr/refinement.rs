@@ -3,7 +3,7 @@ use crate::gtr::brent_bracketed::BrentBracketed;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
 use crate::make_internal_report;
-use crate::partition::marginal::shared::update::{MarginalUpdate, PartitionMarginalOps};
+use crate::partition::marginal::shared::update::{MarginalBackward, MarginalUpdate, PartitionMarginalOps};
 use crate::partition::traits::HasGtr;
 use argmin::core::{CostFunction, Error, Executor};
 use eyre::Report;
@@ -63,7 +63,7 @@ where
   debug!("GTR refinement: initial inference, mu = {:.6}", partition.gtr().mu);
 
   if optimize_rate {
-    (partition, nodes, backward) = optimize_gtr_rate(graph, partition, branch_lengths, nodes)?;
+    (partition, nodes, backward) = optimize_gtr_rate(graph, partition, branch_lengths, &nodes)?;
     debug!(
       "GTR refinement: initial rate optimization, mu = {:.6}",
       partition.gtr().mu
@@ -76,7 +76,7 @@ where
     *partition.gtr_mut() = build_gtr_from_inference(n_states, &result)?;
 
     if optimize_rate {
-      (partition, nodes, backward) = optimize_gtr_rate(graph, partition, branch_lengths, nodes)?;
+      (partition, nodes, backward) = optimize_gtr_rate(graph, partition, branch_lengths, &nodes)?;
     }
     debug!("GTR refinement: iteration {i}, mu = {:.6}", partition.gtr().mu);
   }
@@ -123,7 +123,7 @@ fn optimize_gtr_rate<P>(
   graph: &Graph,
   partition: P,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  nodes: BTreeMap<GraphNodeKey, P::Node>,
+  nodes: &BTreeMap<GraphNodeKey, P::Node>,
 ) -> Result<(P, BTreeMap<GraphNodeKey, P::Node>, BTreeMap<GraphEdgeKey, P::Backward>), Report>
 where
   P: PartitionMarginalOps + HasGtr + Clone,
@@ -143,7 +143,7 @@ where
     graph,
     partition: &partition,
     branch_lengths: &branch_lengths,
-    nodes: &nodes,
+    nodes,
   };
 
   let (cost_lo, _) = cost_fn.evaluate(lo);
@@ -168,28 +168,44 @@ where
       .ok_or_else(|| make_internal_report!("GTR rate optimization: solver succeeded but reported no best_param"))?;
 
     let (_, at_opt) = cost_fn.evaluate(optimal_sqrt_mu);
-    let (opt_partition, opt_nodes, opt_backward) =
-      at_opt.ok_or_else(|| make_internal_report!("GTR rate optimization: selected candidate failed to evaluate"))?;
+    let GtrRateCandidate {
+      partition,
+      nodes,
+      backward,
+    } = at_opt.ok_or_else(|| make_internal_report!("GTR rate optimization: selected candidate failed to evaluate"))?;
     debug!(
       "GTR rate optimization: optimized mu = {:.6} (from {:.6})",
-      opt_partition.gtr().mu,
+      partition.gtr().mu,
       old_mu
     );
-    Ok((opt_partition, opt_nodes, opt_backward))
+    Ok((partition, nodes, backward))
   } else {
     // No interior bracket: keep the node states and backward messages from the last (`hi`) evaluation
     // but restore the rate, exactly as before. A failed `hi` evaluation leaves the input observations
     // untouched, so fall back to the input node states with the rate restored.
-    let (mut restored_partition, restored_nodes, restored_backward) = if let Some((p, n, b)) = at_hi {
-      (p, n, b)
+    let (mut restored_partition, restored_nodes, restored_backward) = if let Some(GtrRateCandidate {
+      partition,
+      nodes,
+      backward,
+    }) = at_hi
+    {
+      (partition, nodes, backward)
     } else {
-      let (n, b) = partition.marginal_backward(graph, &branch_lengths, &nodes)?;
-      (partition, n, b)
+      let MarginalBackward { node_states, backward } = partition.marginal_backward(graph, &branch_lengths, nodes)?;
+      (partition, node_states, backward)
     };
     restored_partition.gtr_mut().mu = old_mu;
     debug!("GTR rate optimization: skipped (no bracket), keeping mu = {old_mu:.6}");
     Ok((restored_partition, restored_nodes, restored_backward))
   }
+}
+
+/// One evaluated rate candidate: the partition at that rate together with the node states and backward
+/// messages its backward pass produced.
+struct GtrRateCandidate<P: PartitionMarginalOps> {
+  partition: P,
+  nodes: BTreeMap<GraphNodeKey, P::Node>,
+  backward: BTreeMap<GraphEdgeKey, P::Backward>,
 }
 
 struct GtrRateCostFn<'a, P: PartitionMarginalOps> {
@@ -210,20 +226,24 @@ where
   /// messages. Clearing the log likelihoods keeps the cost the backward likelihood alone, so a forward
   /// pass's posterior log likelihood does not enter the rate search. A failed backward pass yields an
   /// infinite cost and no state, leaving the borrowed base observations intact for the next candidate.
-  fn evaluate(
-    &self,
-    sqrt_mu: f64,
-  ) -> (
-    f64,
-    Option<(P, BTreeMap<GraphNodeKey, P::Node>, BTreeMap<GraphEdgeKey, P::Backward>)>,
-  ) {
+  fn evaluate(&self, sqrt_mu: f64) -> (f64, Option<GtrRateCandidate<P>>) {
     let mut partition = self.partition.clone();
     partition.gtr_mut().mu = sqrt_mu * sqrt_mu;
     let mut nodes = self.nodes.clone();
     partition.reset_node_log_lh(&mut nodes);
     match partition.marginal_backward(self.graph, self.branch_lengths, &nodes) {
-      Ok((nodes, backward)) => match partition.root_log_lh(self.graph, &nodes) {
-        Ok(log_lh) => (-log_lh.value(), Some((partition, nodes, backward))),
+      Ok(MarginalBackward {
+        node_states: nodes,
+        backward,
+      }) => match partition.root_log_lh(self.graph, &nodes) {
+        Ok(log_lh) => (
+          -log_lh.value(),
+          Some(GtrRateCandidate {
+            partition,
+            nodes,
+            backward,
+          }),
+        ),
         Err(e) => {
           warn!(
             "GTR rate optimization: root likelihood failed at mu={:.6}: {e}",

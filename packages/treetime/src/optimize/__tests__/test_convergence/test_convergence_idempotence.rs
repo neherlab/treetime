@@ -35,7 +35,13 @@ mod tests {
     // Run optimization iterations
     for i in 0..20 {
       run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
-      let lh = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?.value() + marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?.value();
+      let (dense_partitions_updated, dense_lh) =
+        marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
+      let (sparse_partitions_updated, sparse_lh) =
+        marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      dense_partitions = dense_partitions_updated;
+      sparse_partitions = sparse_partitions_updated;
+      let lh = dense_lh.value() + sparse_lh.value();
 
       lh_history.push(lh);
 
@@ -84,11 +90,11 @@ mod tests {
 
     for _ in 0..10 {
       run_optimize_mixed(&graph1, &OptimizeReadouts::new(&dense_partitions1, &sparse_partitions1).view(), method, &mut branch_lengths1)?;
-      marginal_update_dense(&graph1, &profile_branch_lengths(&branch_lengths1), &mut dense_partitions1)?.value();
-      marginal_update_sparse(&graph1, &profile_branch_lengths(&branch_lengths1), &mut sparse_partitions1)?.value();
+      (dense_partitions1, _) = marginal_update_dense(&graph1, &profile_branch_lengths(&branch_lengths1), dense_partitions1)?;
+      (sparse_partitions1, _) = marginal_update_sparse(&graph1, &profile_branch_lengths(&branch_lengths1), sparse_partitions1)?;
     }
 
-    let lh1 = compute_total_lh(&graph1, &mut dense_partitions1, &mut sparse_partitions1, &branch_lengths1)?;
+    let (dense_partitions1, sparse_partitions1, lh1) = compute_total_lh(&graph1, dense_partitions1, sparse_partitions1, &branch_lengths1)?;
 
     // Run optimization on second independent graph
     let NwkParse { graph: graph2, names: graph2_names, branch_lengths: mut branch_lengths2, .. } = nwk_read_str(TREE_NEWICK)?;
@@ -96,11 +102,11 @@ mod tests {
 
     for _ in 0..10 {
       run_optimize_mixed(&graph2, &OptimizeReadouts::new(&dense_partitions2, &sparse_partitions2).view(), method, &mut branch_lengths2)?;
-      marginal_update_dense(&graph2, &profile_branch_lengths(&branch_lengths2), &mut dense_partitions2)?.value();
-      marginal_update_sparse(&graph2, &profile_branch_lengths(&branch_lengths2), &mut sparse_partitions2)?.value();
+      (dense_partitions2, _) = marginal_update_dense(&graph2, &profile_branch_lengths(&branch_lengths2), dense_partitions2)?;
+      (sparse_partitions2, _) = marginal_update_sparse(&graph2, &profile_branch_lengths(&branch_lengths2), sparse_partitions2)?;
     }
 
-    let lh2 = compute_total_lh(&graph2, &mut dense_partitions2, &mut sparse_partitions2, &branch_lengths2)?;
+    let (dense_partitions2, sparse_partitions2, lh2) = compute_total_lh(&graph2, dense_partitions2, sparse_partitions2, &branch_lengths2)?;
 
     // Both runs should converge to same likelihood
     pretty_assert_ulps_eq!(lh1, lh2, max_ulps = 100);

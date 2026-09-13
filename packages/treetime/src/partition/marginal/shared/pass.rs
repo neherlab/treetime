@@ -6,6 +6,7 @@ use crate::partition::marginal::shared::data::DenseInputs;
 use crate::partition::marginal::shared::normalize::{
   forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_from_log, normalize_inplace,
 };
+use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward};
 use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution, DenseSeqInfo,
 };
@@ -39,13 +40,7 @@ pub fn indexed_backward(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-) -> Result<
-  (
-    BTreeMap<GraphNodeKey, DenseNodeState>,
-    BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
-  ),
-  Report,
-> {
+) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
   let gtr = &inputs.gtr;
   let min_branch_length = inputs.min_branch_length;
   let pass = GraphPass::new(graph)?;
@@ -55,7 +50,10 @@ pub fn indexed_backward(
     |_| Ok(DenseNodeState::empty()),
     |context| indexed_node_backward(gtr, min_branch_length, alphabet, length, kind, &context),
   )?;
-  Ok((outputs.nodes, outputs.edges))
+  Ok(MarginalBackward {
+    node_states: outputs.nodes,
+    backward: outputs.edges,
+  })
 }
 
 fn indexed_node_backward(
@@ -161,14 +159,7 @@ pub fn indexed_forward(
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
   backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
-) -> Result<
-  (
-    BTreeMap<GraphNodeKey, DenseNodeState>,
-    BTreeMap<GraphEdgeKey, DenseEdgeForward>,
-    BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
-  ),
-  Report,
-> {
+) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
   let gtr = &inputs.gtr;
   let min_branch_length = inputs.min_branch_length;
   let pass = GraphPass::new(graph)?;
@@ -190,7 +181,11 @@ pub fn indexed_forward(
     );
     estimates.insert(edge_key, DenseEdgeEstimate { indels: out.indels });
   }
-  Ok((outputs.nodes, forward, estimates))
+  Ok(MarginalForward {
+    node_states: outputs.nodes,
+    forward,
+    estimates,
+  })
 }
 
 /// Combined per-edge output of the forward node visit, split by the driver into the distinct

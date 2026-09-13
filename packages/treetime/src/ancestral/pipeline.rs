@@ -77,26 +77,36 @@ impl SparseReconstruction {
     }
   }
 
-  /// Run a full marginal update in place, replacing the result maps and returning the substitution
-  /// log likelihood. The node states are consumed and refreshed.
-  pub fn run_marginal_update(
-    &mut self,
+  /// Run a full marginal update, returning the reconstruction at the refreshed node states, messages,
+  /// and estimates together with the substitution log likelihood.
+  ///
+  /// The reconstruction is consumed and a new one returned, so a failed pass produces no reconstruction
+  /// at all rather than one whose maps come from different passes.
+  pub fn marginal_update(
+    self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  ) -> Result<LogLh, Report> {
-    let node_states = std::mem::take(&mut self.node_states);
+  ) -> Result<(Self, LogLh), Report> {
+    let Self {
+      partition, node_states, ..
+    } = self;
     let MarginalUpdate {
       node_states,
       backward,
       forward,
       estimates,
       log_lh,
-    } = self.partition.marginal_update(graph, branch_lengths, node_states)?;
-    self.node_states = node_states;
-    self.backward = backward;
-    self.forward = forward;
-    self.estimates = estimates;
-    Ok(log_lh)
+    } = partition.marginal_update(graph, branch_lengths, node_states)?;
+    Ok((
+      Self {
+        partition,
+        node_states,
+        backward,
+        forward,
+        estimates,
+      },
+      log_lh,
+    ))
   }
 }
 
@@ -123,26 +133,36 @@ impl DenseReconstruction {
     }
   }
 
-  /// Run a full marginal update in place, replacing the result maps and returning the substitution
-  /// log likelihood. The node states are consumed and refreshed.
-  pub fn run_marginal_update(
-    &mut self,
+  /// Run a full marginal update, returning the reconstruction at the refreshed node states, messages,
+  /// and estimates together with the substitution log likelihood.
+  ///
+  /// The reconstruction is consumed and a new one returned, so a failed pass produces no reconstruction
+  /// at all rather than one whose maps come from different passes.
+  pub fn marginal_update(
+    self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  ) -> Result<LogLh, Report> {
-    let node_states = std::mem::take(&mut self.node_states);
+  ) -> Result<(Self, LogLh), Report> {
+    let Self {
+      partition, node_states, ..
+    } = self;
     let MarginalUpdate {
       node_states,
       backward,
       forward,
       estimates,
       log_lh,
-    } = self.partition.marginal_update(graph, branch_lengths, node_states)?;
-    self.node_states = node_states;
-    self.backward = backward;
-    self.forward = forward;
-    self.estimates = estimates;
-    Ok(log_lh)
+    } = partition.marginal_update(graph, branch_lengths, node_states)?;
+    Ok((
+      Self {
+        partition,
+        node_states,
+        backward,
+        forward,
+        estimates,
+      },
+      log_lh,
+    ))
   }
 }
 

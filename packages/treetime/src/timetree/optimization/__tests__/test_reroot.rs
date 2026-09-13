@@ -136,7 +136,7 @@ mod tests {
       None,
     )?;
 
-    let mut partitions = vec![sparse_partition];
+    let partitions = vec![sparse_partition];
 
     // Record initial state
     let initial_leaf_count = graph.get_leaves().len();
@@ -144,12 +144,12 @@ mod tests {
 
     // Should complete without error - edge split and trivial root removal are now always enabled
     let names_tt_3 = names;
-    let clock_model = reroot_tree(
+    let (clock_model, partitions) = reroot_tree(
       &mut graph,
       &constraints,
       &mut clock_state,
       &timetree_state,
-      &mut partitions,
+      partitions,
       &clock_params,
       None,
       &BranchPointOptimizationParams::default(),
@@ -592,22 +592,22 @@ mod tests {
       None,
     )?;
 
-    let mut partitions = vec![sparse_partition];
+    let partitions = vec![sparse_partition];
 
     // Record initial state
     let initial_leaf_count = graph.get_leaves().len();
 
     // Initialize marginal for the sparse partition
-    marginal_update_timetree(&graph, &profile_branch_lengths(&branch_lengths), &mut partitions)?.value();
+    let (partitions, _) = marginal_update_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
 
     // First reroot call (simulating keep_root=false flow)
     let names_tt_2 = names.clone();
-    let clock_model_1 = reroot_tree(
+    let (clock_model_1, partitions) = reroot_tree(
       &mut graph,
       &constraints,
       &mut clock_state,
       &timetree_state_1,
-      &mut partitions,
+      partitions,
       &clock_params,
       None,
       &BranchPointOptimizationParams::default(),
@@ -632,12 +632,12 @@ mod tests {
     // split node the reroot introduced gets no constraint entry, matching a fresh seed.
     let timetree_state_2 = TimetreeState::seed_from_values(&graph, &constraints);
     let names_tt_1 = names;
-    let clock_model_2 = reroot_tree(
+    let (clock_model_2, partitions) = reroot_tree(
       &mut graph,
       &constraints,
       &mut clock_state,
       &timetree_state_2,
-      &mut partitions,
+      partitions,
       &clock_params,
       Some(clock_model_1.clock_rate()),
       &BranchPointOptimizationParams::default(),

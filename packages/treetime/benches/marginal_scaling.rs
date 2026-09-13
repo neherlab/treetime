@@ -26,23 +26,27 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
   group.throughput(Throughput::Elements(200));
 
   for threads in [1, 2, 4, 8] {
-    let (graph, mut partitions, branch_lengths) = setup();
+    let (graph, recon, branch_lengths) = setup();
+    // The update consumes the reconstruction and returns the next one, so the bench carries it from
+    // iteration to iteration in a slot rather than updating one value in place.
+    let mut slot = Some(recon);
     let pool = ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
     group.bench_with_input(BenchmarkId::new("sparse", threads), &threads, |bencher, _| {
       bencher.iter(|| {
-        pool
-          .install(|| {
-            black_box(&mut partitions)[0]
-              .run_marginal_update(black_box(&graph), &profile_branch_lengths(black_box(&branch_lengths)))
-          })
+        let recon = slot
+          .take()
+          .expect("reconstruction is present at the start of an iteration");
+        let (recon, _) = pool
+          .install(|| recon.marginal_update(black_box(&graph), &profile_branch_lengths(black_box(&branch_lengths))))
           .unwrap();
+        slot = Some(black_box(recon));
       });
     });
   }
   group.finish();
 }
 
-fn setup() -> (Graph, [SparseReconstruction; 1], BTreeMap<GraphEdgeKey, Option<f64>>) {
+fn setup() -> (Graph, SparseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>) {
   ThreadPoolBuilder::new()
     .num_threads(1)
     .build()
@@ -50,7 +54,7 @@ fn setup() -> (Graph, [SparseReconstruction; 1], BTreeMap<GraphEdgeKey, Option<f
     .install(setup_inner)
 }
 
-fn setup_inner() -> (Graph, [SparseReconstruction; 1], BTreeMap<GraphEdgeKey, Option<f64>>) {
+fn setup_inner() -> (Graph, SparseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>) {
   let alphabet = Alphabet::default();
   let project_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
   let NwkParse {
@@ -63,18 +67,17 @@ fn setup_inner() -> (Graph, [SparseReconstruction; 1], BTreeMap<GraphEdgeKey, Op
   let fitch = create_fitch_partition(&graph, 0, alphabet, &alignment, &names).unwrap();
   let gtr = jc69(JC69Params::default()).unwrap();
   let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph).unwrap();
-  let mut recon = SparseReconstruction {
+  let recon = SparseReconstruction {
     partition,
     node_states,
     backward: BTreeMap::new(),
     forward: BTreeMap::new(),
     estimates: BTreeMap::new(),
   };
-  recon
-    .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
+  let (recon, _) = recon
+    .marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
     .unwrap();
-  let partitions = [recon];
-  (graph, partitions, branch_lengths)
+  (graph, recon, branch_lengths)
 }
 
 criterion_group!(benches, benchmark_marginal_scaling);

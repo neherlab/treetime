@@ -76,7 +76,7 @@ pub mod tests {
       get_common_length(&aln)?,
     );
     let dense_node_states = dense_partition.attach_sequences(graph, &aln, names)?;
-    let mut dense_partitions = vec![DenseReconstruction {
+    let dense_partitions = vec![DenseReconstruction {
       partition: dense_partition,
       node_states: dense_node_states,
       backward: BTreeMap::new(),
@@ -86,15 +86,17 @@ pub mod tests {
 
     let fitch = create_fitch_partition(graph, 1, alphabet_sparse, &aln, names)?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
-    let mut sparse_partitions = vec![SparseReconstruction {
+    let sparse_partitions = vec![SparseReconstruction {
       partition: sparse_partition,
       node_states: sparse_node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     }];
-    marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), &mut dense_partitions)?;
-    marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), &mut sparse_partitions)?;
+    let (dense_partitions, _) =
+      marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;
+    let (sparse_partitions, _) =
+      marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?;
 
     initial_guess_mixed(
       graph,
@@ -495,7 +497,7 @@ pub mod tests {
   fn test_optimize_indel_zero_bl_pipeline_escapes_zero(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: Graph = graph;
-    let (mut dense_partitions, mut sparse_partitions) = setup_identical_partitions(&graph, &names, &mut branch_lengths)?;
+    let (dense_partitions, mut sparse_partitions) = setup_identical_partitions(&graph, &names, &mut branch_lengths)?;
 
     // Zero all branch lengths
     for edge_ref in graph.get_edges() {
@@ -522,8 +524,8 @@ pub mod tests {
     );
 
     // Run marginal + optimize
-    marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?;
-    marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?;
+    let (dense_partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
+    let (sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
     run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
 
     let bl_final = branch_lengths[&graph.get_edges()[0].read_arc().key()].unwrap();
@@ -767,8 +769,8 @@ pub mod tests {
     let edge_ref = &graph.get_edges()[0];
     branch_lengths.insert(edge_ref.read_arc().key(), Some(1e-15));
 
-    marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), &mut dense_partitions)?;
-    marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), &mut sparse_partitions)?;
+    let (dense_partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
+    let (sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
     run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
 
     let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap();

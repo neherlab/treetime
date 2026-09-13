@@ -88,16 +88,15 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(graph, aln, names)?;
-    let mut recon = DenseReconstruction {
+    let recon = DenseReconstruction {
       partition,
       node_states,
       backward: BTreeMap::new(),
       forward: BTreeMap::new(),
       estimates: BTreeMap::new(),
     };
-    let log_lh = recon
-      .run_marginal_update(graph, &profile_branch_lengths(branch_lengths))?
-      .value();
+    let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }
 
@@ -295,14 +294,12 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (log_lh_init, mut recon) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
+    let (log_lh_init, recon) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
-    let log_lh_first = recon
-      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
-      .value();
-    let log_lh_second = recon
-      .run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?
-      .value();
+    let (recon, log_lh_first) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let log_lh_first = log_lh_first.value();
+    let (recon, log_lh_second) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let log_lh_second = log_lh_second.value();
 
     // Repeated updates must produce identical log-likelihood to initialization
     pretty_assert_ulps_eq!(log_lh_init, log_lh_first, epsilon = 1e-10);

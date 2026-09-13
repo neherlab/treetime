@@ -46,14 +46,12 @@ mod tests {
     fn test_prop_marginal_idempotency_dense(input in arb_marginal_input_small()) {
       let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
       let graph: Graph = graph;
-      let (_, mut recon) = run_dense_marginal(&input).unwrap();
+      let (_, recon) = run_dense_marginal(&input).unwrap();
 
-      let log_lh_first = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
-        .unwrap()
-        .value();
-      let log_lh_second = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
-        .unwrap()
-        .value();
+      let (recon, log_lh_first) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths)).unwrap();
+      let log_lh_first = log_lh_first.value();
+      let (recon, log_lh_second) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths)).unwrap();
+      let log_lh_second = log_lh_second.value();
 
       prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
     }
@@ -81,14 +79,12 @@ mod tests {
     fn test_prop_marginal_idempotency_sparse(input in arb_marginal_input_small()) {
       let NwkParse { graph, branch_lengths, .. } = nwk_read_str(&input.newick).unwrap();
       let graph: Graph = graph;
-      let (_, mut recon) = run_sparse_marginal(&input).unwrap();
+      let (_, recon) = run_sparse_marginal(&input).unwrap();
 
-      let log_lh_first = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
-        .unwrap()
-        .value();
-      let log_lh_second = recon.run_marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
-        .unwrap()
-        .value();
+      let (recon, log_lh_first) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths)).unwrap();
+      let log_lh_first = log_lh_first.value();
+      let (recon, log_lh_second) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths)).unwrap();
+      let log_lh_second = log_lh_second.value();
 
       prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
     }
