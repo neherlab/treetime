@@ -229,11 +229,12 @@ Preserving behavior is an acceptance requirement, not a consequence of calling t
 
 - Index scheme for messages: keying per node versus per directed edge. Marginal up-and-down messages fit per-directed-edge storage, as IQ-TREE does; deciding this precedes moving the message buffers
 - Buffer reuse across rerooting and optimization: a persistent index-addressed pool that recomputes only the changed path (as libpll and IQ-TREE do) versus allocate-fresh per pass. Compare reuse and invalidation costs with allocation cost
-- Graph and partition storage: whether to unify graph payloads and partition maps into one per-stage type or keep them separate with a typed handoff, given multi-partition analysis needs per-partition data over shared topology
+- Graph and partition storage: resolved. The graph carries topology only; per-node, per-edge, and graph-level inference data live outside the graph in value maps keyed by node and edge identity and in per-command result values. See [kb/decisions/graph-topology-only-value-pipeline.md](../decisions/graph-topology-only-value-pipeline.md)
 
 ## Related documents
 
-- [kb/decisions/graph-based-phylogenetic-representation.md](../decisions/graph-based-phylogenetic-representation.md): the current `Graph<N, E, D>` design, `Arc<RwLock<>>` storage, and DAG-support rationale
+- [kb/decisions/graph-based-phylogenetic-representation.md](../decisions/graph-based-phylogenetic-representation.md): the directed-graph topology model and DAG-support rationale
+- [kb/decisions/graph-topology-only-value-pipeline.md](../decisions/graph-topology-only-value-pipeline.md): topology-only graph, inference data in key-addressed value maps
 - [kb/decisions/partition-system-architecture.md](../decisions/partition-system-architecture.md): separation of topology from per-partition state and trait-based dispatch
 - [kb/decisions/sequence-representation-dense-sparse.md](../decisions/sequence-representation-dense-sparse.md): dense and sparse duality and trait-object interchangeability
 - [kb/algo/graph.md](../algo/graph.md): traversal algorithms, path finding, edge contraction

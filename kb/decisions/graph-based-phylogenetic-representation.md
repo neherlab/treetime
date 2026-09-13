@@ -16,13 +16,13 @@ Phylogenetic-network methods distinguish explicit evolutionary histories from vi
 
 ## Representation alternatives
 
-| Representation | What it expresses | Fit for TreeTime |
-| :--- | :--- | :--- |
-| Rooted tree | One directed ancestry path from the root to each sample | Matches current inference algorithms, but cannot represent reticulation |
-| Collection of local or <a id="gloss-use-2"></a>displayed trees <sup>[2](#gloss-2)</sup> | A different tree for each locus, segment, or parent-edge selection | Represents locus-specific outcomes, but does not preserve reticulation events as shared entities |
-| <a id="gloss-use-3"></a>Split network <sup>[3](#gloss-3)</sup> | Incompatible splits or distances in an unrooted graph | Useful for exploratory signal visualization, but does not necessarily describe directed evolutionary history |
-| Rooted phylogenetic network | Divergence and reticulation in a rooted <a id="gloss-use-4"></a>directed acyclic graph (DAG) <sup>[4](#gloss-4)</sup> | Directly generalizes a rooted tree and preserves explicit ancestry paths |
-| <a id="gloss-use-5"></a>Ancestral recombination graph (ARG) <sup>[5](#gloss-5)</sup> or <a id="gloss-use-6"></a>tree sequence <sup>[6](#gloss-6)</sup> | Changing genealogies along a genome, including the intervals inherited through each edge | Appropriate when genomic coordinates are intrinsic to the model; requires semantics beyond generic topology |
+| Representation                                                                                                                                         | What it expresses                                                                                                     | Fit for TreeTime                                                                                             |
+| :----------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------- |
+| Rooted tree                                                                                                                                            | One directed ancestry path from the root to each sample                                                               | Matches current inference algorithms, but cannot represent reticulation                                      |
+| Collection of local or <a id="gloss-use-2"></a>displayed trees <sup>[2](#gloss-2)</sup>                                                                | A different tree for each locus, segment, or parent-edge selection                                                    | Represents locus-specific outcomes, but does not preserve reticulation events as shared entities             |
+| <a id="gloss-use-3"></a>Split network <sup>[3](#gloss-3)</sup>                                                                                         | Incompatible splits or distances in an unrooted graph                                                                 | Useful for exploratory signal visualization, but does not necessarily describe directed evolutionary history |
+| Rooted phylogenetic network                                                                                                                            | Divergence and reticulation in a rooted <a id="gloss-use-4"></a>directed acyclic graph (DAG) <sup>[4](#gloss-4)</sup> | Directly generalizes a rooted tree and preserves explicit ancestry paths                                     |
+| <a id="gloss-use-5"></a>Ancestral recombination graph (ARG) <sup>[5](#gloss-5)</sup> or <a id="gloss-use-6"></a>tree sequence <sup>[6](#gloss-6)</sup> | Changing genealogies along a genome, including the intervals inherited through each edge                              | Appropriate when genomic coordinates are intrinsic to the model; requires semantics beyond generic topology  |
 
 ARG work makes the additional requirement explicit: adjacent nucleotides can follow different inheritance paths, so a complete recombination representation associates genomes and genomic intervals with ancestry <a id="cite-2"></a>[Wong et al. 2024](https://doi.org/10.1093/genetics/iyae100) [[2](#ref-2)]. A generic directed graph can host those annotations, but does not define their meaning by itself.
 
@@ -34,7 +34,7 @@ Use a rooted directed graph as TreeTime's common phylogenetic representation:
 - Directed edges represent ancestry from parent to child and own branch-specific data.
 - Trees remain a first-class restricted topology rather than a separate data model.
 - Multiple parents and multiple roots are representable when an input format and algorithm define their semantics.
-- Node, edge, and graph payloads are typed so algorithms declare the biological data they require.
+- The graph carries topology only. Per-node, per-edge, and graph-level inference data live outside the graph in value maps keyed by node and edge identity and in per-command result values, so each stage declares the data it reads and writes; see [graph-topology-only-value-pipeline.md](graph-topology-only-value-pipeline.md).
 
 This choice captures the common topology shared by trees and explicit rooted phylogenetic networks. It also lets tree algorithms state their one-parent and one-root preconditions at the algorithm boundary.
 
