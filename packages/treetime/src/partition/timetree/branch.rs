@@ -1,10 +1,11 @@
 use crate::gtr::gtr::GTR;
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::partition::traits::{BranchTopology, HasGtr, PartitionBranchOps};
+use crate::partition::traits::{HasGtr, PartitionBranchOps};
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 
@@ -39,7 +40,7 @@ impl PartitionBranchOps for PartitionTimetree {
     }
   }
 
-  fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     match self {
       Self::Dense(family) => family.readout().edge_subs(graph, edge_key),
       Self::Sparse(family) => family.readout().edge_subs(graph, edge_key),
@@ -53,7 +54,7 @@ impl PartitionBranchOps for PartitionTimetree {
     }
   }
 
-  fn root_sequence(&self, graph: &dyn BranchTopology) -> Result<Seq, Report> {
+  fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
     match self {
       Self::Dense(family) => family.readout().root_sequence(graph),
       Self::Sparse(family) => family.readout().root_sequence(graph),
@@ -67,7 +68,7 @@ impl PartitionBranchOps for PartitionTimetree {
     }
   }
 
-  fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+  fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     match self {
       Self::Dense(family) => family.readout().edge_effective_length(graph, edge_key),
       Self::Sparse(family) => family.readout().edge_effective_length(graph, edge_key),

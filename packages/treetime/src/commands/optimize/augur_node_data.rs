@@ -1,5 +1,4 @@
 use crate::commands::optimize::result::OptimizeNodeOut;
-use crate::partition::traits::BranchTopology;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;

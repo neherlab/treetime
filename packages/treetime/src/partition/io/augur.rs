@@ -1,10 +1,11 @@
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::partition::fitch::partition::PartitionFitch;
-use crate::partition::traits::{BranchTopology, PartitionBranchOps};
+use crate::partition::traits::PartitionBranchOps;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AsciiChar, Seq};
 
@@ -27,7 +28,7 @@ pub trait AugurNodeDataJsonAncestralPartition {
   fn node_sequence(&self, node_key: GraphNodeKey) -> Seq;
 
   /// Substitutions on the parent edge of one node (parent -> child).
-  fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report>;
+  fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report>;
 
   fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel>;
 
@@ -36,7 +37,7 @@ pub trait AugurNodeDataJsonAncestralPartition {
   fn ambiguous_char(&self) -> AsciiChar;
 
   /// Reconstructed root sequence, used as the JSON reference.
-  fn root_sequence(&self, graph: &dyn BranchTopology) -> Result<Seq, Report> {
+  fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
     Ok(self.node_sequence(graph.root_key()?))
   }
 }
@@ -50,7 +51,7 @@ impl AugurNodeDataJsonAncestralPartition for PartitionFitch {
     self.nodes[&node_key].seq.sequence.clone()
   }
 
-  fn edge_subs(&self, _graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  fn edge_subs(&self, _graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     Ok(self.edges[&edge_key].fitch_subs().to_vec())
   }
 
@@ -75,7 +76,7 @@ impl AugurNodeDataJsonAncestralPartition for SparseReconstruction {
     PartitionBranchOps::node_sequence(&self.readout(), node_key)
   }
 
-  fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     PartitionBranchOps::edge_subs(&self.readout(), graph, edge_key)
   }
 
@@ -101,7 +102,7 @@ impl AugurNodeDataJsonAncestralPartition for DenseReconstruction {
     self.node_states[&node_key].seq.sequence.clone()
   }
 
-  fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     PartitionBranchOps::edge_subs(&self.readout(), graph, edge_key)
   }
 

@@ -12,7 +12,6 @@ mod tests {
   };
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
-  use crate::partition::traits::BranchTopology;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
   use approx::assert_ulps_eq;

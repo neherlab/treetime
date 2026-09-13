@@ -1,10 +1,10 @@
-use crate::partition::traits::BranchTopology;
 use crate::seq::mutation::{Mutation, MutationEvent, mutation_event_strings};
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::nwk::NodeCommentProvider;
 
@@ -16,11 +16,11 @@ use treetime_io::nwk::NodeCommentProvider;
 /// mutations, has no comment. Shared by the ancestral, optimize, and timetree tree writers.
 pub struct EdgeMutationCommentProvider<'a> {
   edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  graph: &'a dyn BranchTopology,
+  graph: &'a Graph,
 }
 
 impl<'a> EdgeMutationCommentProvider<'a> {
-  pub fn new(edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>, graph: &'a dyn BranchTopology) -> Self {
+  pub fn new(edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>, graph: &'a Graph) -> Self {
     Self { edge_mutations, graph }
   }
 }

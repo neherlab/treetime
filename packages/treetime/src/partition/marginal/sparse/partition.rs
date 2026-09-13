@@ -13,7 +13,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{
   SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
 };
-use crate::partition::traits::{BranchTopology, HasGtr, PartitionBranchOps, PartitionOptimizeOps};
+use crate::partition::traits::{HasGtr, PartitionBranchOps, PartitionOptimizeOps};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
@@ -88,7 +88,7 @@ impl PartitionMarginalSparse {
     }
   }
 
-  pub fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+  pub fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
     let parent_non_char = &self.obs_nodes[&parent_key].non_char;
     let child_non_char = &self.obs_nodes[&child_key].non_char;
@@ -265,7 +265,7 @@ impl PartitionBranchOps for SparseReadout<'_> {
     self.partition.length
   }
 
-  fn edge_subs(&self, _graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  fn edge_subs(&self, _graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     self.partition.edge_subs(&self.edges.estimates, edge_key)
   }
 
@@ -273,7 +273,7 @@ impl PartitionBranchOps for SparseReadout<'_> {
     self.partition.edge_indels(edge_key)
   }
 
-  fn root_sequence(&self, _graph: &dyn BranchTopology) -> Result<Seq, Report> {
+  fn root_sequence(&self, _graph: &Graph) -> Result<Seq, Report> {
     Ok(self.partition.root_sequence())
   }
 
@@ -281,7 +281,7 @@ impl PartitionBranchOps for SparseReadout<'_> {
     self.partition.node_sequence(self.node_states, node_key)
   }
 
-  fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+  fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     self.partition.edge_effective_length(graph, edge_key)
   }
 }

@@ -6,7 +6,6 @@ use crate::commands::optimize::result::{OptimizeNodeOut, OptimizeOutputMaps};
 use crate::commands::prune::result::{PruneNodeOut, PruneOutputMaps};
 use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 use crate::mugration::result::{MugrationNodeOut, MugrationOutputMaps};
-use crate::partition::traits::BranchTopology;
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, mutation_event_strings};
 use crate::timetree::confidence::NodeConfidenceInterval;
 use chrono::Utc;

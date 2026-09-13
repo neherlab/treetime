@@ -13,7 +13,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
 };
-use crate::partition::traits::{BranchTopology, HasGtr, PartitionBranchOps, PartitionOptimizeOps};
+use crate::partition::traits::{HasGtr, PartitionBranchOps, PartitionOptimizeOps};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::izip;
@@ -110,7 +110,7 @@ impl PartitionMarginalDense {
   pub fn edge_subs(
     &self,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-    graph: &dyn BranchTopology,
+    graph: &Graph,
     edge_key: GraphEdgeKey,
   ) -> Result<Vec<Sub>, Report> {
     let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
@@ -151,7 +151,7 @@ impl PartitionMarginalDense {
   pub fn root_sequence(
     &self,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-    graph: &dyn BranchTopology,
+    graph: &Graph,
   ) -> Result<Seq, Report> {
     Ok(assign_sequence(&node_states[&graph.root_key()?], &self.alphabet))
   }
@@ -163,7 +163,7 @@ impl PartitionMarginalDense {
   pub fn edge_effective_length(
     &self,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-    graph: &dyn BranchTopology,
+    graph: &Graph,
     edge_key: GraphEdgeKey,
   ) -> Result<usize, Report> {
     let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
@@ -368,7 +368,7 @@ impl PartitionBranchOps for DenseReadout<'_> {
     self.partition.length
   }
 
-  fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     self.partition.edge_subs(self.node_states, graph, edge_key)
   }
 
@@ -376,7 +376,7 @@ impl PartitionBranchOps for DenseReadout<'_> {
     self.partition.edge_indels(&self.edges.estimates, edge_key)
   }
 
-  fn root_sequence(&self, graph: &dyn BranchTopology) -> Result<Seq, Report> {
+  fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
     self.partition.root_sequence(self.node_states, graph)
   }
 
@@ -384,7 +384,7 @@ impl PartitionBranchOps for DenseReadout<'_> {
     self.partition.node_sequence(self.node_states, node_key)
   }
 
-  fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+  fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     self.partition.edge_effective_length(self.node_states, graph, edge_key)
   }
 }

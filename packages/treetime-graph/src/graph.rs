@@ -372,6 +372,39 @@ impl Graph {
       .ok_or_else(|| make_internal_report!("Node not found: {key}"))?;
     Ok(node.read_arc().inbound().first().copied())
   }
+
+  /// Return `(parent_node_key, child_node_key)` for one edge.
+  pub fn edge_endpoints(&self, edge_key: GraphEdgeKey) -> Result<(GraphNodeKey, GraphNodeKey), Report> {
+    let edge = self
+      .get_edge(edge_key)
+      .ok_or_else(|| make_internal_report!("Edge {edge_key} not found"))?;
+    let edge = edge.read_arc();
+    Ok((edge.source(), edge.target()))
+  }
+
+  /// Return `Some((parent_node_key, parent_edge_key))` for a non-root node, or `None` when the node is
+  /// the root. Errors when the node has more than one parent (the algorithm only supports trees).
+  pub fn node_parent(&self, node_key: GraphNodeKey) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report> {
+    let node = self
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} not found"))?;
+    let node = node.read_arc();
+    let inbound = node.inbound();
+    match inbound.len() {
+      0 => Ok(None),
+      1 => {
+        let parent_edge_key = inbound[0];
+        let parent_node_key = self.get_source_node_key(parent_edge_key)?;
+        Ok(Some((parent_node_key, parent_edge_key)))
+      },
+      n => make_internal_error!("Node {node_key} has {n} parents; only trees are supported"),
+    }
+  }
+
+  /// Return the key of the single root node. Errors when the graph has zero or more than one root.
+  pub fn root_key(&self) -> Result<GraphNodeKey, Report> {
+    Ok(self.get_exactly_one_root()?.read_arc().key())
+  }
 }
 
 impl Default for Graph {

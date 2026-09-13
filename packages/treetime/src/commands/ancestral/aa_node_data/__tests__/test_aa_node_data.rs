@@ -221,7 +221,7 @@ mod tests {
         self.sequences[&node_key].clone()
       }
 
-      fn edge_subs(&self, _graph: &dyn BranchTopology, _edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+      fn edge_subs(&self, _graph: &Graph, _edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
         Ok(vec![])
       }
 

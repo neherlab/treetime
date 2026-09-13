@@ -1,7 +1,6 @@
 use crate::ancestral::mask::mask_to_string;
 use crate::commands::ancestral::aa_node_data::AaNodeData;
 use crate::commands::ancestral::result::AugurOutputMaps;
-use crate::partition::traits::BranchTopology;
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;

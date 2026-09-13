@@ -5,7 +5,6 @@ use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::{
   FitchNodeData, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution,
 };
-use crate::partition::traits::BranchTopology;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
@@ -82,7 +81,7 @@ impl PartitionFitch {
     self.length
   }
 
-  pub fn edge_subs(&self, _graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  pub fn edge_subs(&self, _graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     Ok(self.edges[&edge_key].fitch_subs().to_vec())
   }
 
@@ -90,7 +89,7 @@ impl PartitionFitch {
     self.edges[&edge_key].indels.clone()
   }
 
-  pub fn root_sequence(&self, graph: &dyn BranchTopology) -> Result<Seq, Report> {
+  pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
     Ok(self.nodes[&graph.root_key()?].seq.sequence.clone())
   }
 
@@ -98,7 +97,7 @@ impl PartitionFitch {
     self.nodes[&node_key].seq.sequence.clone()
   }
 
-  pub fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+  pub fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
     Ok(
       self.nodes[&parent_key]
@@ -117,7 +116,7 @@ impl crate::partition::traits::PartitionBranchOps for PartitionFitch {
     self.length
   }
 
-  fn edge_subs(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     self.edge_subs(graph, edge_key)
   }
 
@@ -125,7 +124,7 @@ impl crate::partition::traits::PartitionBranchOps for PartitionFitch {
     self.edge_indels(edge_key)
   }
 
-  fn root_sequence(&self, graph: &dyn BranchTopology) -> Result<Seq, Report> {
+  fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
     self.root_sequence(graph)
   }
 
@@ -133,7 +132,7 @@ impl crate::partition::traits::PartitionBranchOps for PartitionFitch {
     self.node_sequence(node_key)
   }
 
-  fn edge_effective_length(&self, graph: &dyn BranchTopology, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+  fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     self.edge_effective_length(graph, edge_key)
   }
 }
