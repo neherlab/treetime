@@ -60,7 +60,7 @@ mod tests {
 
     let p = &partitions[0];
     for edge_ref in graph.get_edges() {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let sub_count = p.edge_subs(edge_key)?.len();
       let effective_length = p.edge_effective_length(&graph, edge_key)?;
       let actual_bl = branch_lengths[&edge_key].unwrap_or(0.0);
@@ -107,7 +107,7 @@ mod tests {
 
     let p = &partitions[0];
     for edge_ref in graph.get_edges() {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let sub_count = p.edge_subs(&graph, edge_key)?.len();
       let effective_length = p.edge_effective_length(&graph, edge_key)?;
       let actual_bl = branch_lengths[&edge_key].unwrap_or(0.0);
@@ -301,9 +301,7 @@ mod tests {
   ) -> Result<BTreeMap<String, f64>, Report> {
     graph
       .get_edges()
-      .iter()
       .map(|edge_ref| {
-        let edge_ref = edge_ref.read_arc();
         let child_key = edge_ref.target();
         let child_name = names[&child_key].clone().unwrap();
         let branch_length = branch_lengths[&edge_ref.key()].unwrap_or(0.0);
@@ -320,9 +318,7 @@ mod tests {
   ) -> Result<BTreeMap<String, (f64, f64, f64)>, Report> {
     graph
       .get_edges()
-      .iter()
       .map(|edge_ref| {
-        let edge_ref = edge_ref.read_arc();
         let child_key = edge_ref.target();
         let child_name = names[&child_key].clone().unwrap();
         let metrics = contribution(edge_ref.key())?

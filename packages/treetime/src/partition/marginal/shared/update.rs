@@ -183,7 +183,7 @@ pub trait MarginalPasses {
 
   /// The profile log likelihood recorded at the tree root, or zero when the root has no state.
   fn root_log_lh(&self, graph: &Graph, node_states: &BTreeMap<GraphNodeKey, Self::Node>) -> Result<LogLh, Report> {
-    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let root_key = graph.get_exactly_one_root()?.key();
     Ok(self.get_log_lh(node_states, root_key))
   }
 

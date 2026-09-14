@@ -39,7 +39,7 @@ pub fn complete_alignment_for_leaves(
   let mut n_leaves = 0_usize;
   for leaf in graph.get_leaves() {
     n_leaves += 1;
-    let name = names[&leaf.read_arc().key()]
+    let name = names[&leaf.key()]
       .clone()
       .ok_or_else(|| {
         make_report!("Expected all leaf nodes to have names, so they can be matched to their sequences. Found a leaf node with no name.")

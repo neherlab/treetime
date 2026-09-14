@@ -39,7 +39,7 @@ mod tests {
       partition.root_sequence = ref_seq;
     }
     for node in graph.get_nodes() {
-      let key = node.read_arc().key();
+      let key = node.key();
       partition
         .obs_nodes
         .entry(key)
@@ -80,8 +80,8 @@ mod tests {
       populate_test_nodes(&mut partition, &graph);
 
       for (edge_index, num_muts) in edge_mutations {
-        if let Some(edge) = graph.get_edges().get(*edge_index) {
-          let edge_key = edge.read_arc().key();
+        if let Some(edge) = graph.get_edges().collect::<Vec<_>>().get(*edge_index) {
+          let edge_key = edge.key();
           if let Some(num_muts) = num_muts {
             partition.obs_edges.insert(
               edge_key,
@@ -226,7 +226,7 @@ mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    assert!(graph.get_nodes().is_empty());
+    assert!(graph.get_nodes().collect::<Vec<_>>().is_empty());
     Ok(())
   }
 
@@ -307,8 +307,8 @@ mod tests {
     )?;
 
     // Both leaves should be preserved even if edge to A has no mutations
-    assert_eq!(graph.get_nodes().len(), 3); // root, A, B
-    assert_eq!(graph.get_edges().len(), 2); // root->A, root->B
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, A, B
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2); // root->A, root->B
 
     Ok(())
   }
@@ -338,8 +338,8 @@ mod tests {
     )?;
 
     // Internal node should be collapsed, but leaves preserved
-    assert_eq!(graph.get_nodes().len(), 3); // root, A, B
-    assert_eq!(graph.get_edges().len(), 2); // root->A, root->B
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, A, B
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2); // root->A, root->B
 
     Ok(())
   }
@@ -362,8 +362,8 @@ mod tests {
     )?;
 
     // Internal node should be preserved when mutations is None (unknown)
-    assert_eq!(graph.get_nodes().len(), 3); // root, internal, A
-    assert_eq!(graph.get_edges().len(), 2); // root->internal, internal->A
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, internal, A
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2); // root->internal, internal->A
 
     Ok(())
   }
@@ -384,8 +384,8 @@ mod tests {
     )?;
 
     // Leaf should be preserved even with no mutations
-    assert_eq!(graph.get_nodes().len(), 2); // root and A
-    assert_eq!(graph.get_edges().len(), 1); // root->A
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 2); // root and A
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 1); // root->A
 
     Ok(())
   }
@@ -415,8 +415,8 @@ mod tests {
     )?;
 
     // Both internal nodes should be collapsed, leaves preserved
-    assert_eq!(graph.get_nodes().len(), 3); // root, A, B
-    assert_eq!(graph.get_edges().len(), 2); // root->A, root->B
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, A, B
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2); // root->A, root->B
 
     Ok(())
   }
@@ -487,8 +487,8 @@ mod tests {
 
     // internal2 and internal3 should be collapsed (empty internal edges), leaves preserved
     // Result: root -> internal1 -> A, C, D and root -> B
-    assert_eq!(graph.get_nodes().len(), 6); // root, internal1, A, B, C, D
-    assert_eq!(graph.get_edges().len(), 5); // root->internal1, internal1->A, internal1->C, internal1->D, root->B
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 6); // root, internal1, A, B, C, D
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 5); // root->internal1, internal1->A, internal1->C, internal1->D, root->B
 
     Ok(())
   }
@@ -511,8 +511,8 @@ mod tests {
     )?;
 
     // Nothing should be collapsed
-    assert_eq!(graph.get_nodes().len(), 3); // root, internal, A
-    assert_eq!(graph.get_edges().len(), 2); // root->internal, internal->A
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, internal, A
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2); // root->internal, internal->A
 
     Ok(())
   }
@@ -538,8 +538,8 @@ mod tests {
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
 
     // The result should be: root -> B, root -> C (internal1 and internal2 should be removed)
-    assert_eq!(graph.get_nodes().len(), 3); // root, B, C
-    assert_eq!(graph.get_edges().len(), 2); // root->B, root->C
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, B, C
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2); // root->B, root->C
 
     // Verify the remaining nodes by name
     assert!(find_node_key_by_name(&graph, &names, "root").is_some());
@@ -574,8 +574,8 @@ mod tests {
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
 
     // The result should be: root -> B (internal1 collapsed)
-    assert_eq!(graph.get_nodes().len(), 2); // root, B
-    assert_eq!(graph.get_edges().len(), 1); // root->B
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 2); // root, B
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 1); // root->B
 
     // Verify the remaining nodes by name
     assert!(find_node_key_by_name(&graph, &names, "root").is_some());
@@ -603,10 +603,10 @@ mod tests {
     collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
 
     // Only root should remain
-    assert_eq!(graph.get_nodes().len(), 1);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 1);
     assert!(find_node_key_by_name(&graph, &names, "root").is_some());
     assert!(find_node_key_by_name(&graph, &names, "A").is_none());
-    assert_eq!(graph.get_edges().len(), 0);
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 0);
 
     Ok(())
   }
@@ -636,11 +636,11 @@ mod tests {
   fn test_create_test_edge_num_muts_none_vs_some_zero() -> Result<(), Report> {
     // Test that we can distinguish between unknown mutations (None) and zero mutations (Some(0))
     let (graph, names, partitions, _branch_lengths) = create_test_graph_with_partitions("(A:0.1)root;", &[(0, None)])?;
-    let edge_unknown_key = graph.get_edges()[0].read_arc().key();
+    let edge_unknown_key = graph.get_edges().collect::<Vec<_>>()[0].key();
 
     let (graph2, names2, partitions2, _branch_lengths2) =
       create_test_graph_with_partitions("(A:0.1)root;", &[(0, Some(0))])?;
-    let edge_zero_key = graph2.get_edges()[0].read_arc().key();
+    let edge_zero_key = graph2.get_edges().collect::<Vec<_>>()[0].key();
 
     assert_eq!(get_edge_num_muts(&partitions, edge_unknown_key)?, None);
     assert_eq!(get_edge_num_muts(&partitions2, edge_zero_key)?, Some(0));
@@ -772,7 +772,7 @@ mod tests {
       &mut branch_lengths,
     )?;
     // Root should remain
-    assert_eq!(graph.get_nodes().len(), 1);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 1);
     Ok(())
   }
 
@@ -792,14 +792,13 @@ mod tests {
 
     // A removed, i1 becomes unary and collapses
     // Verify structure: root has 2 children (i2, D), i2 has 2 children (B, C)
-    assert_eq!(graph.get_nodes().len(), 5); // root, i2, B, C, D
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 5); // root, i2, B, C, D
 
     // Verify the leaf names are preserved
     let leaf_names: BTreeSet<_> = graph
       .get_nodes()
-      .iter()
-      .filter(|n| graph.is_leaf(n.read_arc().key()))
-      .filter_map(|n| names.get(&n.read_arc().key()).cloned().flatten())
+      .filter(|n| graph.is_leaf(n.key()))
+      .filter_map(|n| names.get(&n.key()).cloned().flatten())
       .collect();
     assert_eq!(leaf_names, btreeset! { "B".to_owned(), "C".to_owned(), "D".to_owned() });
 
@@ -864,19 +863,19 @@ mod tests {
     )?;
 
     // After collapse: root -> A should have all 4 mutations, root -> B should have 2 mutations
-    assert_eq!(graph.get_nodes().len(), 3); // root, A, B
-    assert_eq!(graph.get_edges().len(), 2);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, A, B
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2);
 
     // Find new edge keys after collapse
     let partition = &partitions[0];
     let mut a_muts_count = 0;
     let mut b_muts_count = 0;
     for edge in graph.get_edges() {
-      let edge_key = edge.read_arc().key();
-      let target_key = edge.read_arc().target();
+      let edge_key = edge.key();
+      let target_key = edge.target();
       let target_name = graph
         .get_node(target_key)
-        .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
+        .and_then(|n| names.get(&n.key()).cloned().flatten());
 
       if let Some(edge_partition) = partition.obs_edges.get(&edge_key) {
         if target_name.as_deref() == Some("A") {
@@ -944,11 +943,11 @@ mod tests {
     // After collapse: net A->T at pos 0 (1 composed sub)
     let partition = &partitions[0];
     for edge in graph.get_edges() {
-      let edge_key = edge.read_arc().key();
-      let target_key = edge.read_arc().target();
+      let edge_key = edge.key();
+      let target_key = edge.target();
       let target_name = graph
         .get_node(target_key)
-        .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
+        .and_then(|n| names.get(&n.key()).cloned().flatten());
 
       if target_name.as_deref() == Some("A") {
         let edge_partition = &partition.obs_edges[&edge_key];
@@ -1012,11 +1011,11 @@ mod tests {
     // After collapse: mutations cancel, edge to A has 0 subs
     let partition = &partitions[0];
     for edge in graph.get_edges() {
-      let edge_key = edge.read_arc().key();
-      let target_key = edge.read_arc().target();
+      let edge_key = edge.key();
+      let target_key = edge.target();
       let target_name = graph
         .get_node(target_key)
-        .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
+        .and_then(|n| names.get(&n.key()).cloned().flatten());
 
       if target_name.as_deref() == Some("A") {
         let edge_partition = &partition.obs_edges[&edge_key];
@@ -1103,11 +1102,11 @@ mod tests {
     let p2 = &partitions[1];
 
     for edge in graph.get_edges() {
-      let edge_key = edge.read_arc().key();
-      let target_key = edge.read_arc().target();
+      let edge_key = edge.key();
+      let target_key = edge.target();
       let target_name = graph
         .get_node(target_key)
-        .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
+        .and_then(|n| names.get(&n.key()).cloned().flatten());
 
       if target_name.as_deref() == Some("A") {
         assert_eq!(p1.obs_edges[&edge_key].fitch_subs().len(), 2); // 1 + 1
@@ -1143,11 +1142,10 @@ mod tests {
 
     // After collapse: root -> A should have 0.3 + 0.2 = 0.5
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target_key = edge.target();
       let target_name = graph
         .get_node(target_key)
-        .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
+        .and_then(|n| names.get(&n.key()).cloned().flatten());
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
@@ -1184,11 +1182,10 @@ mod tests {
     )?;
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target_key = edge.target();
       let target_name = graph
         .get_node(target_key)
-        .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
+        .and_then(|n| names.get(&n.key()).cloned().flatten());
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
@@ -1240,11 +1237,10 @@ mod tests {
     )?;
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target_key = edge.target();
       let target_name = graph
         .get_node(target_key)
-        .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
+        .and_then(|n| names.get(&n.key()).cloned().flatten());
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
@@ -1296,11 +1292,10 @@ mod tests {
     )?;
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target_key = edge.target();
       let target_name = graph
         .get_node(target_key)
-        .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
+        .and_then(|n| names.get(&n.key()).cloned().flatten());
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
@@ -1350,7 +1345,6 @@ mod tests {
     )?;
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
       // Both None -> stays None
       assert!(branch_length.is_none());
@@ -1450,7 +1444,7 @@ mod tests {
     // Root should have exactly 2 children: the merged subtree and D
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
-    assert_eq!(root_node.read_arc().degree_out(), 2);
+    assert_eq!(root_node.degree_out(), 2);
 
     // D should remain directly under root
     assert!(find_node_key_by_name(&graph, &names, "D").is_some());
@@ -1508,11 +1502,11 @@ mod tests {
 
     let partition = &partitions[0];
     for edge in graph.get_edges() {
-      let edge_key = edge.read_arc().key();
-      let target_key = edge.read_arc().target();
+      let edge_key = edge.key();
+      let target_key = edge.target();
       let target_name = graph
         .get_node(target_key)
-        .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
+        .and_then(|n| names.get(&n.key()).cloned().flatten());
 
       if target_name.as_deref() == Some("A") {
         let edge_partition = &partition.obs_edges[&edge_key];

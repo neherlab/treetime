@@ -50,7 +50,7 @@ pub fn count_transitions_dense(
   let mut Ti = Array1::zeros(n_states);
 
   for edge in graph.get_edges() {
-    let edge_arc = edge.read_arc();
+    let edge_arc = edge;
     let edge_key = edge_arc.key();
     let branch_length = inputs.effective_branch_length(branch_lengths[&edge_key]);
 
@@ -63,7 +63,7 @@ pub fn count_transitions_dense(
   }
 
   let root = graph.get_exactly_one_root()?;
-  let root_key = root.read_arc().key();
+  let root_key = root.key();
   let root_profile = &node_states[&root_key].profile.dis;
   let mut root_state = Array1::zeros(n_states);
   for row in root_profile.rows() {

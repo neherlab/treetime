@@ -52,9 +52,7 @@ pub fn gather_clock_regression_results(
   // One result per node, in node order.
   graph
     .get_nodes()
-    .iter()
     .map(|node| {
-      let node = node.read_arc();
       let is_leaf = node.is_leaf();
       let name = names[&node.key()].clone();
       let node_state = state.node(node.key());

@@ -9,7 +9,7 @@ pub fn find_node_key_by_name(
   name: &str,
 ) -> Option<GraphNodeKey> {
   for node in graph.get_nodes() {
-    let key = node.read_arc().key();
+    let key = node.key();
     if names.get(&key).and_then(|n| n.as_deref()) == Some(name) {
       return Some(key);
     }
@@ -27,7 +27,6 @@ pub fn find_edge_key(
   let target_key = find_node_key_by_name(graph, names, target_name)?;
 
   for edge in graph.get_edges() {
-    let edge = edge.read_arc();
     if edge.source() == source_key && edge.target() == target_key {
       return Some(edge.key());
     }

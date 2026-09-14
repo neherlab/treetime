@@ -2,12 +2,9 @@
 mod __tests__;
 
 use crate::edge::{Edge, GraphEdgeKey};
-use crate::graph::{Graph, SafeEdge};
+use crate::graph::Graph;
 use crate::node::{GraphNodeKey, Node};
-use eyre::{Report, WrapErr};
-use parking_lot::RwLock;
-use std::sync::Arc;
-use treetime_utils::sync::mutex::unwrap_arc_rwlock;
+use eyre::Report;
 use treetime_utils::{make_error, make_internal_report, make_report};
 
 #[allow(
@@ -17,35 +14,30 @@ use treetime_utils::{make_error, make_internal_report, make_report};
 impl Graph {
   pub fn add_node(&mut self) -> GraphNodeKey {
     let node_key = GraphNodeKey(self.nodes.len());
-    let node = Arc::new(RwLock::new(Node::new(node_key)));
-    self.nodes.push(Some(node));
+    self.nodes.push(Some(Node::new(node_key)));
     node_key
   }
 
-  #[allow(clippy::needless_collect)]
   pub fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<(Node, Vec<Edge>), Report> {
     let edges_to_remove: Vec<GraphEdgeKey> = self
       .edges
       .iter()
-      .filter_map(|e| {
-        e.as_ref().and_then(|e| {
-          let e = e.read();
-          (e.source() == node_key || e.target() == node_key).then_some(e.key())
-        })
+      .filter_map(|edge| {
+        edge
+          .as_ref()
+          .and_then(|edge| (edge.source() == node_key || edge.target() == node_key).then_some(edge.key()))
       })
       .collect();
 
     let removed_edges = edges_to_remove
       .into_iter()
-      .map(|edge_key| -> Result<Edge, Report> { self.remove_edge(edge_key) })
+      .map(|edge_key| self.remove_edge(edge_key))
       .collect::<Result<Vec<_>, _>>()?;
 
     let removed_node = self
       .nodes
       .get_mut(node_key.as_usize())
-      .and_then(|node| node.take().map(unwrap_arc_rwlock))
-      .transpose()
-      .wrap_err_with(|| format!("When removing node: {node_key}"))?
+      .and_then(Option::take)
       .ok_or_else(|| make_internal_report!("Attempted to remove non-existent node: {node_key}"))?;
 
     Ok((removed_node, removed_edges))
@@ -59,39 +51,37 @@ impl Graph {
       );
     }
 
-    let source_lock = self.get_node(source_key).ok_or_else(|| {
+    let source = self.get_node(source_key).ok_or_else(|| {
       make_report!("When adding a graph edge {source_key}->{target_key}: Node {source_key} not found.")
     })?;
 
-    let target_lock = self.get_node(target_key).ok_or_else(|| {
-      make_report!("When adding a graph edge {source_key}->{target_key}: Node {target_key} not found.")
-    })?;
+    if self.get_node(target_key).is_none() {
+      return make_error!("When adding a graph edge {source_key}->{target_key}: Node {target_key} not found.");
+    }
+
+    let already_connected = source
+      .outbound()
+      .iter()
+      .any(|edge| self.get_edge(*edge).is_some_and(|e| e.target() == target_key));
+
+    if already_connected {
+      return make_error!(
+        "When adding a graph edge {source_key}->{target_key}: Nodes {source_key} and {target_key} are already connected."
+      );
+    }
 
     let edge_key = GraphEdgeKey(self.edges.len());
-    let new_edge = Arc::new(RwLock::new(Edge::new(edge_key, source_key, target_key)));
-
-    {
-      let (source, target) = (source_lock.read(), target_lock.read());
-
-      let already_connected = source
-        .outbound()
-        .iter()
-        .any(|edge| self.get_edge(*edge).is_some_and(|e| e.read().target() == target.key()));
-
-      if already_connected {
-        return make_error!(
-          "When adding a graph edge {source_key}->{target_key}: Nodes {source_key} and {target_key} are already connected."
-        );
-      }
-
-      self.edges.push(Some(Arc::clone(&new_edge)));
-    }
-
-    {
-      let (mut source, mut target) = (source_lock.write(), target_lock.write());
-      source.outbound_mut().push(edge_key);
-      target.inbound_mut().push(edge_key);
-    }
+    self.edges.push(Some(Edge::new(edge_key, source_key, target_key)));
+    self
+      .get_node_mut(source_key)
+      .expect("Edge source node must exist")
+      .outbound_mut()
+      .push(edge_key);
+    self
+      .get_node_mut(target_key)
+      .expect("Edge target node must exist")
+      .inbound_mut()
+      .push(edge_key);
 
     Ok(edge_key)
   }
@@ -111,12 +101,10 @@ impl Graph {
   /// onto a node already connected to the target, is an error: both would break the tree
   /// invariants the graph traversals rely on.
   pub fn reparent_edge(&mut self, edge_key: GraphEdgeKey, new_source_key: GraphNodeKey) -> Result<(), Report> {
-    let edge_lock = self
-      .get_edge(edge_key)
-      .ok_or_else(|| make_internal_report!("When reparenting edge {edge_key}: edge not found"))?;
-
     let (old_source_key, target_key) = {
-      let edge = edge_lock.read_arc();
+      let edge = self
+        .get_edge(edge_key)
+        .ok_or_else(|| make_internal_report!("When reparenting edge {edge_key}: edge not found"))?;
       (edge.source(), edge.target())
     };
 
@@ -130,16 +118,14 @@ impl Graph {
       );
     }
 
-    let new_source_lock = self.get_node(new_source_key).ok_or_else(|| {
-      make_report!("When reparenting edge {edge_key} to {new_source_key}: Node {new_source_key} not found.")
-    })?;
-
     {
-      let new_source = new_source_lock.read_arc();
+      let new_source = self.get_node(new_source_key).ok_or_else(|| {
+        make_report!("When reparenting edge {edge_key} to {new_source_key}: Node {new_source_key} not found.")
+      })?;
       let already_connected = new_source
         .outbound()
         .iter()
-        .any(|edge| self.get_edge(*edge).is_some_and(|e| e.read().target() == target_key));
+        .any(|edge| self.get_edge(*edge).is_some_and(|e| e.target() == target_key));
 
       if already_connected {
         return make_error!(
@@ -148,85 +134,73 @@ impl Graph {
       }
     }
 
-    if let Some(old_source_lock) = self.get_node(old_source_key) {
-      old_source_lock.write_arc().outbound_mut().retain(|&e| e != edge_key);
+    if let Some(old_source) = self.get_node_mut(old_source_key) {
+      old_source.outbound_mut().retain(|&e| e != edge_key);
     }
-    new_source_lock.write_arc().outbound_mut().push(edge_key);
-    edge_lock.write_arc().set_source(new_source_key);
+    self
+      .get_node_mut(new_source_key)
+      .expect("New source node must exist")
+      .outbound_mut()
+      .push(edge_key);
+    self
+      .get_edge_mut(edge_key)
+      .expect("Edge must exist")
+      .set_source(new_source_key);
 
     Ok(())
   }
 
   pub fn remove_edge(&mut self, edge_key: GraphEdgeKey) -> Result<Edge, Report> {
     // Remove the edge key from inbound/outbound lists of nodes
-    self.nodes.iter_mut().for_each(|node| {
-      if let Some(node) = node {
-        let mut node_locked = node.write_arc();
-        node_locked.outbound_mut().retain(|&e| e != edge_key);
-        node_locked.inbound_mut().retain(|&e| e != edge_key);
-      }
-    });
+    for node in self.nodes.iter_mut().flatten() {
+      node.outbound_mut().retain(|&e| e != edge_key);
+      node.inbound_mut().retain(|&e| e != edge_key);
+    }
 
     // Remove the edge itself
     self
       .edges
       .get_mut(edge_key.as_usize())
-      .and_then(|edge_slot| edge_slot.take().map(unwrap_arc_rwlock))
-      .transpose()
-      .wrap_err_with(|| format!("When removing edge: {edge_key}"))?
+      .and_then(Option::take)
       .ok_or_else(|| make_internal_report!("Attempted to remove non-existent edge: {edge_key}"))
   }
 
   pub fn build(&mut self) -> Result<(), Report> {
-    self.roots = self
-      .nodes
-      .iter()
-      .filter_map(|node_option| {
-        node_option
-          .as_ref()
-          .and_then(|node| node.read().is_root().then(|| node.read().key()))
-      })
-      .collect();
-
-    self.leaves = self
-      .nodes
-      .iter()
-      .filter_map(|node_option| {
-        node_option
-          .as_ref()
-          .and_then(|node| node.read().is_leaf().then(|| node.read().key()))
-      })
-      .collect();
-
+    self.roots = self.get_nodes().filter(|node| node.is_root()).map(Node::key).collect();
+    self.leaves = self.get_nodes().filter(|node| node.is_leaf()).map(Node::key).collect();
     Ok(())
   }
-  #[allow(clippy::type_complexity)]
-  pub fn collapse_edge(&mut self, edge_key: GraphEdgeKey) -> Result<(Node, Edge, Vec<SafeEdge>), Report> {
+
+  /// Collapse an edge, merging its target node into its source and returning the removed node, the
+  /// removed edge, and the keys of the edges rerouted from the target onto the source.
+  pub fn collapse_edge(&mut self, edge_key: GraphEdgeKey) -> Result<(Node, Edge, Vec<GraphEdgeKey>), Report> {
     let (source_key, target_key) = {
       let edge = self
         .get_edge(edge_key)
-        .ok_or_else(|| make_internal_report!("Edge {} not found", edge_key))?;
-      let edge = edge.read_arc();
+        .ok_or_else(|| make_internal_report!("Edge {edge_key} not found"))?;
       (edge.source(), edge.target())
     };
 
     let (target_inbound, target_outbound) = {
       let target_node = self
         .get_node(target_key)
-        .ok_or_else(|| make_internal_report!("Target node {} not found", target_key))?;
-      let target_node = target_node.read_arc();
+        .ok_or_else(|| make_internal_report!("Target node {target_key} not found"))?;
       (target_node.inbound().to_vec(), target_node.outbound().to_vec())
     };
 
     for &inbound_edge_key in &target_inbound {
-      if inbound_edge_key != edge_key {
-        if let Some(inbound_edge) = self.get_edge(inbound_edge_key) {
-          inbound_edge.write_arc().set_target(source_key);
-          if let Some(source_node) = self.get_node(source_key) {
-            let mut source_node = source_node.write_arc();
-            if !source_node.inbound().contains(&inbound_edge_key) {
-              source_node.inbound_mut().push(inbound_edge_key);
-            }
+      if inbound_edge_key != edge_key && self.get_edge(inbound_edge_key).is_some() {
+        self
+          .get_edge_mut(inbound_edge_key)
+          .expect("Inbound edge must exist")
+          .set_target(source_key);
+        if let Some(source_node) = self.get_node(source_key) {
+          if !source_node.inbound().contains(&inbound_edge_key) {
+            self
+              .get_node_mut(source_key)
+              .expect("Source node must exist")
+              .inbound_mut()
+              .push(inbound_edge_key);
           }
         }
       }
@@ -234,22 +208,25 @@ impl Graph {
 
     let mut new_edges = Vec::with_capacity(target_outbound.len());
     for &outbound_edge_key in &target_outbound {
-      if outbound_edge_key != edge_key {
-        if let Some(outbound_edge) = self.get_edge(outbound_edge_key) {
-          new_edges.push(Arc::clone(&outbound_edge));
-          outbound_edge.write_arc().set_source(source_key);
-          if let Some(source_node) = self.get_node(source_key) {
-            let mut source_node = source_node.write_arc();
-            if !source_node.outbound().contains(&outbound_edge_key) {
-              source_node.outbound_mut().push(outbound_edge_key);
-            }
+      if outbound_edge_key != edge_key && self.get_edge(outbound_edge_key).is_some() {
+        new_edges.push(outbound_edge_key);
+        self
+          .get_edge_mut(outbound_edge_key)
+          .expect("Outbound edge must exist")
+          .set_source(source_key);
+        if let Some(source_node) = self.get_node(source_key) {
+          if !source_node.outbound().contains(&outbound_edge_key) {
+            self
+              .get_node_mut(source_key)
+              .expect("Source node must exist")
+              .outbound_mut()
+              .push(outbound_edge_key);
           }
         }
       }
     }
 
-    if let Some(source_node) = self.get_node(source_key) {
-      let mut source_node = source_node.write_arc();
+    if let Some(source_node) = self.get_node_mut(source_key) {
       source_node.outbound_mut().retain(|&e| e != edge_key);
     }
 

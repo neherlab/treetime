@@ -61,7 +61,7 @@ pub mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let nan_edge_key = graph.get_edges()[0].read_arc().key();
+    let nan_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths.insert(nan_edge_key, Some(f64::NAN));
     assert!(!invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
     Ok(())
@@ -146,7 +146,7 @@ pub mod tests {
 
     // Before: all edges have None (pest parser returns None for missing branch lengths)
     for edge_ref in graph.get_edges() {
-      let bl = branch_lengths[&edge_ref.read_arc().key()];
+      let bl = branch_lengths[&edge_ref.key()];
       assert!(
         bl.is_none(),
         "Expected None from newick parser for missing branch lengths"
@@ -170,7 +170,7 @@ pub mod tests {
 
     // After: all edges have finite non-negative values
     for edge_ref in graph.get_edges() {
-      let bl = branch_lengths[&edge_ref.read_arc().key()];
+      let bl = branch_lengths[&edge_ref.key()];
       assert!(
         bl.is_some_and(|v| v.is_finite() && v >= 0.0),
         "Expected finite non-negative branch length, got {bl:?}"
@@ -185,7 +185,7 @@ pub mod tests {
     let original_lengths = get_branch_lengths(&graph, &branch_lengths);
 
     // Set one edge to NaN (simulating a missing branch length)
-    let nan_edge_key = graph.get_edges()[0].read_arc().key();
+    let nan_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths.insert(nan_edge_key, Some(f64::NAN));
 
     let total_length = total_sequence_length(&partitions, &[]);
@@ -474,8 +474,7 @@ pub mod tests {
     pub fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
       graph
         .get_edges()
-        .iter()
-        .map(|e| branch_lengths[&e.read_arc().key()].unwrap_or(f64::NAN))
+        .map(|e| branch_lengths[&e.key()].unwrap_or(f64::NAN))
         .collect()
     }
 
@@ -484,7 +483,7 @@ pub mod tests {
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
       branch_length: f64,
     ) {
-      let edge_key = graph.get_edges()[0].read_arc().key();
+      let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       branch_lengths.insert(edge_key, Some(branch_length));
     }
 
@@ -499,13 +498,13 @@ pub mod tests {
         .get_edges()
         .into_iter()
         .find(|edge_ref| {
-          let target = edge_ref.read_arc().target();
+          let target = edge_ref.target();
           graph
             .get_node(target)
-            .is_some_and(|node| names.get(&node.read_arc().key()).and_then(|x| x.as_deref()) == Some(target_name))
+            .is_some_and(|node| names.get(&node.key()).and_then(|x| x.as_deref()) == Some(target_name))
         })
         .expect("target node must have an incoming edge");
-      let edge_key = edge.read_arc().key();
+      let edge_key = edge.key();
       branch_lengths.insert(edge_key, Some(branch_length));
     }
 
@@ -513,7 +512,7 @@ pub mod tests {
     /// the first graph edge. Marginal initialization populates the edge
     /// map, so the entry always exists by the time this helper is called.
     pub fn inject_indel_on_first_edge(graph: &Graph, partitions: &mut [DenseReconstruction]) -> Result<(), Report> {
-      let edge_key = graph.get_edges()[0].read_arc().key();
+      let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       for partition in partitions.iter_mut() {
         partition.edges.estimates.get_mut(&edge_key).unwrap().indels =
           vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)?];

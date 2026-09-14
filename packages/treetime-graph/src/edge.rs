@@ -2,12 +2,9 @@ use crate::graph::Graph;
 use crate::node::GraphNodeKey;
 use derive_more::Display;
 use getset::{CopyGetters, Getters, MutGetters, Setters};
-use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::mem::swap;
-use std::sync::Arc;
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphEdgeKey(pub usize);
@@ -44,32 +41,30 @@ impl Edge {
 }
 
 /// Invert direction of an edge.
-pub fn invert_edge(graph: &mut Graph, edge: &Arc<RwLock<Edge>>) {
-  let (this_edge_key, source, target) = {
-    let edge = edge.read();
-
-    let this_edge_key = edge.key();
-
-    let source = graph
-      .get_node(edge.source())
-      .expect("Edge is not attached to this graph");
-
-    let target = graph.get_node(edge.target()).expect("edge must have a target node");
-
-    (this_edge_key, source, target)
+pub fn invert_edge(graph: &mut Graph, edge_key: GraphEdgeKey) {
+  let (source_key, target_key) = {
+    let edge = graph.get_edge(edge_key).expect("Edge is not attached to this graph");
+    (edge.source(), edge.target())
   };
 
   // Move this edge from outbound edges to inbound edges of the source node
-  source.write().outbound_mut().retain(|edge| *edge != this_edge_key);
-  source.write().inbound_mut().push(this_edge_key);
+  {
+    let source = graph.get_node_mut(source_key).expect("Edge source node must exist");
+    source.outbound_mut().retain(|edge| *edge != edge_key);
+    source.inbound_mut().push(edge_key);
+  }
 
   // Move this edge from inbound edges to outbound edges of the target node
-  target.write().inbound_mut().retain(|edge| *edge != this_edge_key);
-  target.write().outbound_mut().push(this_edge_key);
+  {
+    let target = graph.get_node_mut(target_key).expect("Edge target node must exist");
+    target.inbound_mut().retain(|edge| *edge != edge_key);
+    target.outbound_mut().push(edge_key);
+  }
 
   // Swap source and target nodes inside the edge itself
   {
-    let edge: &mut Edge = &mut edge.write();
-    swap(&mut edge.source, &mut edge.target);
+    let edge = graph.get_edge_mut(edge_key).expect("Edge must exist");
+    edge.set_source(target_key);
+    edge.set_target(source_key);
   }
 }

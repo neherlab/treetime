@@ -48,7 +48,11 @@ pub fn capture_ancestral_states(graph: &Graph, partitions: &[PartitionTimetree])
     return vec![];
   }
 
-  let internal_keys: Vec<GraphNodeKey> = graph.filter_map(|node| if node.is_leaf { None } else { Some(node.key) });
+  let internal_keys: Vec<GraphNodeKey> = graph
+    .get_nodes()
+    .filter(|node| !node.is_leaf())
+    .map(|node| node.key())
+    .collect();
 
   partitions
     .iter()

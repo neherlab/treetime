@@ -1,30 +1,15 @@
 use crate::edge::{Edge, GraphEdgeKey};
-use crate::graph_traverse::GraphNodeSafe;
 use crate::node::{GraphNodeKey, Node};
 use eyre::Report;
-use itertools::Itertools;
-use parking_lot::lock_api::{ArcRwLockReadGuard, ArcRwLockWriteGuard};
-use parking_lot::{RawRwLock, RwLock};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use std::sync::Arc;
 use treetime_utils::{make_internal_error, make_internal_report};
-
-pub type SafeNode = Arc<RwLock<Node>>;
-pub type SafeNodeRef = ArcRwLockReadGuard<RawRwLock, Node>;
-pub type SafeNodeRefMut = ArcRwLockWriteGuard<RawRwLock, Node>;
-
-pub type SafeEdge = Arc<RwLock<Edge>>;
-pub type SafeEdgeRef = ArcRwLockReadGuard<RawRwLock, Edge>;
-pub type SafeEdgeRefMut = ArcRwLockWriteGuard<RawRwLock, Edge>;
-
-pub type NodeEdgePair = (Arc<RwLock<Node>>, Arc<RwLock<Edge>>);
 
 #[allow(clippy::field_scoped_visibility_modifiers)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Graph {
-  pub(crate) nodes: Vec<Option<Arc<RwLock<Node>>>>,
-  pub(crate) edges: Vec<Option<Arc<RwLock<Edge>>>>,
+  pub(crate) nodes: Vec<Option<Node>>,
+  pub(crate) edges: Vec<Option<Edge>>,
   pub(crate) roots: Vec<GraphNodeKey>,
   pub(crate) leaves: Vec<GraphNodeKey>,
 }
@@ -39,35 +24,52 @@ impl Graph {
     }
   }
 
-  /// Retrieve parent nodes of a given node and the corresponding edges.
+  /// Borrow the node with the given key, or `None` when the slot is empty.
+  pub fn get_node(&self, key: GraphNodeKey) -> Option<&Node> {
+    self.nodes.get(key.as_usize())?.as_ref()
+  }
+
+  /// Mutably borrow the node with the given key, or `None` when the slot is empty.
+  pub fn get_node_mut(&mut self, key: GraphNodeKey) -> Option<&mut Node> {
+    self.nodes.get_mut(key.as_usize())?.as_mut()
+  }
+
+  /// Borrow the edge with the given key, or `None` when the slot is empty.
+  pub fn get_edge(&self, key: GraphEdgeKey) -> Option<&Edge> {
+    self.edges.get(key.as_usize())?.as_ref()
+  }
+
+  /// Mutably borrow the edge with the given key, or `None` when the slot is empty.
+  pub fn get_edge_mut(&mut self, key: GraphEdgeKey) -> Option<&mut Edge> {
+    self.edges.get_mut(key.as_usize())?.as_mut()
+  }
+
+  /// Parent nodes of a node and the inbound edges connecting them, in inbound-edge order.
   ///
-  /// **Returns**: list of pairs `(parent, edge)`, where `parent` is the parent node,
-  /// and `edge` is the inbound edge connecting the parent node with the given node.
-  pub fn parents_of(&self, node: &Node) -> Vec<NodeEdgePair> {
-    // Parents are the source nodes of inbound edges
+  /// Yields `(parent, edge)` pairs borrowed from the graph. Prefer [`Graph::parents_keys_of`] when the
+  /// result must outlive the borrow or survive a later mutation.
+  pub fn parents_of<'a>(&'a self, node: &'a Node) -> impl DoubleEndedIterator<Item = (&'a Node, &'a Edge)> + 'a {
+    node.inbound().iter().filter_map(move |&edge_key| {
+      let edge = self.get_edge(edge_key)?;
+      Some((self.get_node(edge.source())?, edge))
+    })
+  }
+
+  /// Keys of a node's parents and the inbound edges connecting them, in inbound-edge order.
+  ///
+  /// Yields `Copy` `(parent_key, edge_key)` pairs that hold no borrow of the graph beyond the node's
+  /// edge slice, so they can be collected and used across a later mutation.
+  pub fn parents_keys_of<'a>(
+    &'a self,
+    node: &'a Node,
+  ) -> impl DoubleEndedIterator<Item = (GraphNodeKey, GraphEdgeKey)> + 'a {
     node
       .inbound()
       .iter()
-      .filter_map(|edge_key| self.get_edge(*edge_key))
-      .filter_map(|edge| {
-        let parent_key = edge.read().source();
-        self.get_node(parent_key).map(|parent| (parent, edge))
-      })
-      .collect_vec()
+      .filter_map(move |&edge_key| self.get_edge(edge_key).map(|edge| (edge.source(), edge_key)))
   }
 
-  /// Retrieve keys of parent nodes of a given node.
-  pub fn parent_keys_of(&self, node: &Node) -> Vec<GraphNodeKey> {
-    // Parents are the source nodes of inbound edges
-    node
-      .inbound()
-      .iter()
-      .filter_map(|edge_key| self.get_edge(*edge_key))
-      .map(|edge| edge.read().source())
-      .collect_vec()
-  }
-
-  pub fn exactly_one_parent_of(&self, node: &Node) -> Result<NodeEdgePair, Report> {
+  pub fn exactly_one_parent_of(&self, node: &Node) -> Result<(GraphNodeKey, GraphEdgeKey), Report> {
     self.one_parent_of(node)?.ok_or_else(|| {
       make_internal_report!(
         "No parents found for node {} (context: is_root={} is_leaf={})",
@@ -78,107 +80,57 @@ impl Graph {
     })
   }
 
-  pub fn one_parent_of(&self, node: &Node) -> Result<Option<NodeEdgePair>, Report> {
-    let parents = self.parents_of(node).into_iter().collect_vec();
-
-    if parents.is_empty() {
-      return Ok(None);
+  pub fn one_parent_of(&self, node: &Node) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report> {
+    match node.inbound().len() {
+      0 => Ok(None),
+      1 => {
+        let edge_key = node.inbound()[0];
+        Ok(Some((self.get_source_node_key(edge_key)?, edge_key)))
+      },
+      n => make_internal_error!(
+        "Only trees with exactly one parent per node are currently supported, but node '{}' has {n} parents",
+        node.key()
+      ),
     }
-
-    if parents.len() > 1 {
-      return make_internal_error!(
-        "Only trees with exactly one parent per node are currently supported, but node '{}' has {} parents",
-        node.key(),
-        parents.len()
-      );
-    }
-
-    Ok(Some(parents[0].clone()))
   }
 
-  /// Retrieve child nodes of a given node and the corresponding edges.
+  /// Child nodes of a node and the outbound edges connecting them, in outbound-edge order.
   ///
-  /// **Returns**: list of pairs `(child, edge)`, where `child` is the child node,
-  /// and `edge` is the outbound edge connecting the given node with the child node.
-  pub fn children_of(&self, node: &Node) -> Vec<NodeEdgePair> {
-    // Children are the target nodes of outbound edges
+  /// Yields `(child, edge)` pairs borrowed from the graph. Prefer [`Graph::children_keys_of`] when the
+  /// result must outlive the borrow or survive a later mutation.
+  pub fn children_of<'a>(&'a self, node: &'a Node) -> impl DoubleEndedIterator<Item = (&'a Node, &'a Edge)> + 'a {
+    node.outbound().iter().filter_map(move |&edge_key| {
+      let edge = self.get_edge(edge_key)?;
+      Some((self.get_node(edge.target())?, edge))
+    })
+  }
+
+  /// Keys of a node's children and the outbound edges connecting them, in outbound-edge order.
+  ///
+  /// Yields `Copy` `(child_key, edge_key)` pairs that hold no borrow of the graph beyond the node's
+  /// edge slice, so they can be collected and used across a later mutation.
+  pub fn children_keys_of<'a>(
+    &'a self,
+    node: &'a Node,
+  ) -> impl DoubleEndedIterator<Item = (GraphNodeKey, GraphEdgeKey)> + 'a {
     node
       .outbound()
       .iter()
-      .filter_map(|edge_key| self.get_edge(*edge_key))
-      .filter_map(|edge| {
-        let child_key = edge.read().target();
-        self.get_node(child_key).map(|child| (child, edge))
-      })
-      .collect_vec()
-  }
-
-  /// Retrieve keys of parent nodes of a given node.
-  pub fn child_keys_of(&self, node: &Node) -> Vec<GraphNodeKey> {
-    // Children are the target nodes of outbound edges
-    node
-      .outbound()
-      .iter()
-      .filter_map(|edge_key| self.get_edge(*edge_key))
-      .map(|edge| edge.read().target())
-      .collect_vec()
-  }
-
-  pub fn get_node(&self, index: GraphNodeKey) -> Option<Arc<RwLock<Node>>> {
-    self.nodes.get(index.as_usize())?.as_ref().map(Arc::clone)
-  }
-
-  pub fn get_edge(&self, index: GraphEdgeKey) -> Option<Arc<RwLock<Edge>>> {
-    self.edges.get(index.as_usize())?.as_ref().map(Arc::clone)
+      .filter_map(move |&edge_key| self.get_edge(edge_key).map(|edge| (edge.target(), edge_key)))
   }
 
   pub fn get_source_node_key(&self, edge_key: GraphEdgeKey) -> Result<GraphNodeKey, Report> {
     let edge = self
       .get_edge(edge_key)
       .ok_or_else(|| make_internal_report!("Edge {edge_key} not found"))?;
-    Ok(edge.read_arc().source())
+    Ok(edge.source())
   }
 
   pub fn get_target_node_key(&self, edge_key: GraphEdgeKey) -> Result<GraphNodeKey, Report> {
     let edge = self
       .get_edge(edge_key)
       .ok_or_else(|| make_internal_report!("Edge {edge_key} not found"))?;
-    Ok(edge.read_arc().target())
-  }
-
-  /// Iterates nodes synchronously and in unspecified order
-  pub fn for_each<T, F>(&self, f: &mut dyn FnMut(GraphNodeSafe)) {
-    self
-      .nodes
-      .iter()
-      .filter_map(Option::as_ref)
-      .for_each(|node| f(GraphNodeSafe::from_node(node)));
-  }
-
-  /// Iterates nodes synchronously and in unspecified order
-  pub fn map<T, F>(&self, mut f: F) -> Vec<T>
-  where
-    F: FnMut(GraphNodeSafe) -> T,
-  {
-    self
-      .nodes
-      .iter()
-      .filter_map(Option::as_ref)
-      .map(|node| f(GraphNodeSafe::from_node(node)))
-      .collect_vec()
-  }
-
-  /// Iterates nodes synchronously and in unspecified order
-  pub fn filter_map<T, F>(&self, mut f: F) -> Vec<T>
-  where
-    F: FnMut(GraphNodeSafe) -> Option<T>,
-  {
-    self
-      .nodes
-      .iter()
-      .filter_map(Option::as_ref)
-      .filter_map(|node| f(GraphNodeSafe::from_node(node)))
-      .collect_vec()
+    Ok(edge.target())
   }
 
   pub fn num_nodes(&self) -> usize {
@@ -193,107 +145,117 @@ impl Graph {
     self.leaves.len()
   }
 
-  // All nodes
-  pub fn get_nodes(&self) -> Vec<SafeNode> {
-    self.nodes.iter().filter_map(Option::as_ref).cloned().collect()
+  /// All nodes, in storage order.
+  pub fn get_nodes(&self) -> impl DoubleEndedIterator<Item = &Node> {
+    self.nodes.iter().filter_map(Option::as_ref)
   }
 
-  pub fn get_exactly_one_root(&self) -> Result<Arc<RwLock<Node>>, Report> {
-    let roots = self.get_roots();
-    if roots.len() != 1 {
-      make_internal_error!(
+  /// Keys of all nodes, in storage order.
+  pub fn node_keys(&self) -> impl DoubleEndedIterator<Item = GraphNodeKey> + '_ {
+    self.get_nodes().map(Node::key)
+  }
+
+  pub fn get_exactly_one_root(&self) -> Result<&Node, Report> {
+    if self.roots.len() != 1 {
+      return make_internal_error!(
         "Only trees with exactly one root are currently supported, but found {} roots",
         self.roots.len()
-      )
-    } else {
-      Ok(Arc::clone(&roots[0]))
+      );
     }
-  }
-
-  // All nodes having no parents
-  pub fn get_roots(&self) -> Vec<Arc<RwLock<Node>>> {
-    self.roots.iter().filter_map(|idx| self.get_node(*idx)).collect_vec()
-  }
-
-  // All nodes having no children
-  pub fn get_leaves(&self) -> Vec<Arc<RwLock<Node>>> {
-    self.leaves.iter().filter_map(|idx| self.get_node(*idx)).collect_vec()
-  }
-
-  // All nodes which are not leaves
-  pub fn get_internal_nodes(&self) -> Vec<Arc<RwLock<Node>>> {
     self
-      .get_nodes()
-      .iter()
-      .filter(|node| !node.read_arc().is_leaf())
-      .map(Arc::clone)
-      .collect_vec()
+      .get_node(self.roots[0])
+      .ok_or_else(|| make_internal_report!("Root node {} not found", self.roots[0]))
   }
 
-  // All nodes which are neither leaves nor roots (i.e. internal which are not roots)
-  pub fn get_inner_nodes(&self) -> Vec<Arc<RwLock<Node>>> {
-    self
-      .get_nodes()
-      .iter()
-      .filter(|node| !node.read_arc().is_leaf() && !node.read_arc().is_root())
-      .map(Arc::clone)
-      .collect_vec()
+  /// All nodes having no parents.
+  pub fn get_roots(&self) -> impl Iterator<Item = &Node> + '_ {
+    self.roots.iter().filter_map(|key| self.get_node(*key))
   }
 
-  pub fn get_edges(&self) -> Vec<Arc<RwLock<Edge>>> {
-    self.edges.iter().filter_map(Option::as_ref).cloned().collect()
+  /// Keys of all root nodes.
+  pub fn root_keys(&self) -> impl Iterator<Item = GraphNodeKey> + '_ {
+    self.roots.iter().copied()
   }
 
-  /// Find nodes on the path from root to a given node
-  pub fn path_from_root_to_node(&self, node_key: GraphNodeKey) -> Result<Vec<SafeNode>, Report> {
+  /// All nodes having no children.
+  pub fn get_leaves(&self) -> impl Iterator<Item = &Node> + '_ {
+    self.leaves.iter().filter_map(|key| self.get_node(*key))
+  }
+
+  /// Keys of all leaf nodes.
+  pub fn leaf_keys(&self) -> impl Iterator<Item = GraphNodeKey> + '_ {
+    self.leaves.iter().copied()
+  }
+
+  /// All nodes which are not leaves.
+  pub fn get_internal_nodes(&self) -> impl DoubleEndedIterator<Item = &Node> {
+    self.get_nodes().filter(|node| !node.is_leaf())
+  }
+
+  /// All nodes which are neither leaves nor roots (i.e. internal which are not roots).
+  pub fn get_inner_nodes(&self) -> impl DoubleEndedIterator<Item = &Node> {
+    self.get_nodes().filter(|node| !node.is_leaf() && !node.is_root())
+  }
+
+  /// All edges, in storage order.
+  pub fn get_edges(&self) -> impl DoubleEndedIterator<Item = &Edge> {
+    self.edges.iter().filter_map(Option::as_ref)
+  }
+
+  /// Keys of all edges, in storage order.
+  pub fn edge_keys(&self) -> impl DoubleEndedIterator<Item = GraphEdgeKey> + '_ {
+    self.get_edges().map(Edge::key)
+  }
+
+  /// Keys of nodes on the path from the root to a given node (root first, target last).
+  pub fn path_from_root_to_node(&self, node_key: GraphNodeKey) -> Result<Vec<GraphNodeKey>, Report> {
     let mut node = self
       .get_node(node_key)
       .ok_or_else(|| make_internal_report!("Node not found on the graph: {node_key}"))?;
 
-    let mut path = vec![Arc::clone(&node)];
-    loop {
-      match self.one_parent_of(&node.read_arc())? {
-        None => break,
-        Some((parent, _)) => {
-          path.push(Arc::clone(&parent));
-          node = parent;
-        },
-      }
+    let mut path = vec![node.key()];
+    while let Some((parent_key, _)) = self.one_parent_of(node)? {
+      path.push(parent_key);
+      node = self
+        .get_node(parent_key)
+        .ok_or_else(|| make_internal_report!("Parent node not found on the graph: {parent_key}"))?;
     }
 
-    let path = path.into_iter().rev().collect_vec();
+    path.reverse();
     Ok(path)
   }
 
+  /// Keys of nodes on the path from `start` up to `finish`, each paired with the inbound edge that
+  /// leads to its parent (`None` for the starting node's own entry).
   #[allow(clippy::type_complexity)]
   pub fn path_from_node_to_node(
     &self,
     start: GraphNodeKey,
     finish: GraphNodeKey,
-  ) -> Result<Vec<(SafeNode, Option<SafeEdge>)>, Report> {
+  ) -> Result<Vec<(GraphNodeKey, Option<GraphEdgeKey>)>, Report> {
     let mut node = self
       .get_node(start)
       .ok_or_else(|| make_internal_report!("Node not found on the graph: {start}"))?;
 
-    let mut path = vec![(Arc::clone(&node), None)];
+    let mut path = vec![(node.key(), None)];
     loop {
-      let parent = self.one_parent_of(&node.read_arc())?;
-
-      match parent {
+      match self.one_parent_of(node)? {
         None => {
           return make_internal_error!(
             "When searching path from starting node {start} to destination node {finish}: reached root node without finding the destination"
           );
         },
 
-        Some((parent, edge)) => {
-          path.push((Arc::clone(&node), Some(Arc::clone(&edge))));
+        Some((parent_key, edge_key)) => {
+          path.push((node.key(), Some(edge_key)));
 
-          if parent.read_arc().key() == finish {
+          if parent_key == finish {
             break;
           }
 
-          node = parent;
+          node = self
+            .get_node(parent_key)
+            .ok_or_else(|| make_internal_report!("Parent node not found on the graph: {parent_key}"))?;
         },
       }
     }
@@ -317,7 +279,7 @@ impl Graph {
   pub fn degree_out(&self, key: GraphNodeKey) -> Result<usize, Report> {
     self
       .get_node(key)
-      .map(|node| node.read_arc().degree_out())
+      .map(Node::degree_out)
       .ok_or_else(|| make_internal_report!("Node not found: {key}"))
   }
 
@@ -325,44 +287,32 @@ impl Graph {
   pub fn degree_in(&self, key: GraphNodeKey) -> Result<usize, Report> {
     self
       .get_node(key)
-      .map(|node| node.read_arc().degree_in())
+      .map(Node::degree_in)
       .ok_or_else(|| make_internal_report!("Node not found: {key}"))
   }
 
   pub fn has_parents(&self, node_key: GraphNodeKey) -> bool {
-    self
-      .get_node(node_key)
-      .is_some_and(|node| node.read_arc().has_parents())
+    self.get_node(node_key).is_some_and(Node::has_parents)
   }
 
   pub fn has_one_parent(&self, node_key: GraphNodeKey) -> bool {
-    self
-      .get_node(node_key)
-      .is_some_and(|node| node.read_arc().has_one_parent())
+    self.get_node(node_key).is_some_and(Node::has_one_parent)
   }
 
   pub fn has_at_most_one_parent(&self, node_key: GraphNodeKey) -> bool {
-    self
-      .get_node(node_key)
-      .is_some_and(|node| node.read_arc().has_at_most_one_parent())
+    self.get_node(node_key).is_some_and(Node::has_at_most_one_parent)
   }
 
   pub fn has_children(&self, node_key: GraphNodeKey) -> bool {
-    self
-      .get_node(node_key)
-      .is_some_and(|node| node.read_arc().has_children())
+    self.get_node(node_key).is_some_and(Node::has_children)
   }
 
   pub fn has_one_child(&self, node_key: GraphNodeKey) -> bool {
-    self
-      .get_node(node_key)
-      .is_some_and(|node| node.read_arc().has_one_child())
+    self.get_node(node_key).is_some_and(Node::has_one_child)
   }
 
   pub fn has_at_most_one_child(&self, node_key: GraphNodeKey) -> bool {
-    self
-      .get_node(node_key)
-      .is_some_and(|node| node.read_arc().has_at_most_one_child())
+    self.get_node(node_key).is_some_and(Node::has_at_most_one_child)
   }
 
   /// Returns the inbound edge from this node's parent, if any (None for roots).
@@ -370,7 +320,7 @@ impl Graph {
     let node = self
       .get_node(key)
       .ok_or_else(|| make_internal_report!("Node not found: {key}"))?;
-    Ok(node.read_arc().inbound().first().copied())
+    Ok(node.inbound().first().copied())
   }
 
   /// Return `(parent_node_key, child_node_key)` for one edge.
@@ -378,7 +328,6 @@ impl Graph {
     let edge = self
       .get_edge(edge_key)
       .ok_or_else(|| make_internal_report!("Edge {edge_key} not found"))?;
-    let edge = edge.read_arc();
     Ok((edge.source(), edge.target()))
   }
 
@@ -388,22 +337,12 @@ impl Graph {
     let node = self
       .get_node(node_key)
       .ok_or_else(|| make_internal_report!("Node {node_key} not found"))?;
-    let node = node.read_arc();
-    let inbound = node.inbound();
-    match inbound.len() {
-      0 => Ok(None),
-      1 => {
-        let parent_edge_key = inbound[0];
-        let parent_node_key = self.get_source_node_key(parent_edge_key)?;
-        Ok(Some((parent_node_key, parent_edge_key)))
-      },
-      n => make_internal_error!("Node {node_key} has {n} parents; only trees are supported"),
-    }
+    self.one_parent_of(node)
   }
 
   /// Return the key of the single root node. Errors when the graph has zero or more than one root.
   pub fn root_key(&self) -> Result<GraphNodeKey, Report> {
-    Ok(self.get_exactly_one_root()?.read_arc().key())
+    Ok(self.get_exactly_one_root()?.key())
   }
 }
 

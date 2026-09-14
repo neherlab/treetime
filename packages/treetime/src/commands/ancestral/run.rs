@@ -329,17 +329,15 @@ pub(crate) fn gather_ancestral_output_maps(
   let root_sequence = Some(partition.root_sequence(graph)?);
   let node_sequences = graph
     .get_nodes()
-    .iter()
     .map(|node| {
-      let key = node.read_arc().key();
+      let key = node.key();
       (key, partition.node_sequence(key))
     })
     .collect();
   let edge_mutations = graph
     .get_edges()
-    .iter()
     .map(|edge| {
-      let key = edge.read_arc().key();
+      let key = edge.key();
       Ok((key, partition.edge_mutations(graph, key, &MutationTrack::Nucleotide)?))
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
@@ -372,17 +370,15 @@ pub(crate) fn gather_augur_output_maps(
   let root_sequence = partition.augur_root_sequence(graph)?;
   let node_sequences = graph
     .get_nodes()
-    .iter()
     .map(|node| {
-      let key = node.read_arc().key();
+      let key = node.key();
       (key, partition.augur_node_sequence(key))
     })
     .collect();
   let edge_subs = graph
     .get_edges()
-    .iter()
     .map(|edge| {
-      let key = edge.read_arc().key();
+      let key = edge.key();
       Ok((key, partition.edge_subs(graph, key)?))
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
@@ -524,7 +520,7 @@ fn write_aa_partition_sequences(
   let mut writer = FastaWriter::new(file);
 
   for node in graph.get_nodes() {
-    let node_key = node.read_arc().key();
+    let node_key = node.key();
     let node_name = names[&node_key]
       .as_deref()
       .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);

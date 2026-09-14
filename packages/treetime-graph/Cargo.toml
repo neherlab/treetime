@@ -25,7 +25,6 @@ ordered-float = { workspace = true }
 parking_lot = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
-traversal = { workspace = true }
 
 [dev-dependencies]
 ctor = { workspace = true }

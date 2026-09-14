@@ -91,9 +91,8 @@ pub fn run(
   let names: BTreeMap<GraphNodeKey, Option<String>> = input
     .graph
     .get_nodes()
-    .iter()
     .map(|node| {
-      let key = node.read_arc().key();
+      let key = node.key();
       (key, names.get(&key).cloned().flatten())
     })
     .collect();

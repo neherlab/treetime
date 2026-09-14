@@ -49,9 +49,7 @@ mod tests {
   ) -> BTreeMap<String, Vec<String>> {
     graph
       .get_edges()
-      .iter()
       .map(|edge| {
-        let edge = edge.read_arc();
         let parent_name = get_node_name(names, edge.source());
         let child_name = get_node_name(names, edge.target());
         let edge_name = format!("{parent_name}->{child_name}");
@@ -73,7 +71,7 @@ mod tests {
   /// immediately and do not appear as variable.
   fn get_root_variable_positions(graph: &Graph, partition: &PartitionFitch) -> Vec<usize> {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
-    let root_key = root.read_arc().key();
+    let root_key = root.key();
     partition.nodes[&root_key]
       .seq
       .fitch
@@ -92,7 +90,7 @@ mod tests {
   /// do not appear in this map.
   fn get_root_state_sets(graph: &Graph, partition: &PartitionFitch) -> BTreeMap<usize, String> {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
-    let root_key = root.read_arc().key();
+    let root_key = root.key();
     partition.nodes[&root_key]
       .seq
       .fitch
@@ -111,7 +109,6 @@ mod tests {
     name: &str,
   ) -> Vec<usize> {
     for node in graph.get_nodes() {
-      let node = node.read_arc();
       let node_name = names[&node.key()].clone();
       if node_name.as_deref() == Some(name) {
         return partition.nodes[&node.key()]
@@ -132,7 +129,7 @@ mod tests {
   /// After the forward pass, all positions are resolved to concrete nucleotides.
   fn get_root_seq(graph: &Graph, partition: &PartitionFitch) -> String {
     let root = graph.get_exactly_one_root().expect("graph has exactly one root");
-    let root_key = root.read_arc().key();
+    let root_key = root.key();
     partition.nodes[&root_key].seq.sequence.as_str().to_owned()
   }
 
@@ -143,9 +140,7 @@ mod tests {
   ) -> BTreeMap<String, String> {
     graph
       .get_internal_nodes()
-      .iter()
       .map(|node| {
-        let node = node.read_arc();
         let node_name = names[&node.key()].clone().unwrap();
         let sequence = partition.nodes[&node.key()].seq.sequence.as_str().to_owned();
         (node_name, sequence)
@@ -165,9 +160,7 @@ mod tests {
   ) -> BTreeMap<String, Vec<String>> {
     graph
       .get_edges()
-      .iter()
       .map(|edge| {
-        let edge = edge.read_arc();
         let parent_name = get_node_name(names, edge.source());
         let child_name = get_node_name(names, edge.target());
         let edge_name = format!("{parent_name}->{child_name}");
@@ -781,18 +774,14 @@ mod tests {
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
 
     // Find relevant node keys and the AB->A edge key
-    let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let old_root_key = graph.get_exactly_one_root()?.key();
     let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB node not found");
     let a_key = find_node_key_by_name(&graph, &names, "A").expect("A node not found");
 
     let edge_ab_a_key = graph
       .get_edges()
-      .iter()
-      .find(|e| {
-        let e = e.read_arc();
-        e.source() == ab_key && e.target() == a_key
-      })
-      .map(|e| e.read_arc().key())
+      .find(|e| e.source() == ab_key && e.target() == a_key)
+      .map(|e| e.key())
       .expect("AB->A edge not found");
 
     // Record original AB->A subs and indels before the split
@@ -810,12 +799,8 @@ mod tests {
     // Find the root->AB edge key (for verifying inversion)
     let edge_root_ab_key = graph
       .get_edges()
-      .iter()
-      .find(|e| {
-        let e = e.read_arc();
-        e.source() == old_root_key && e.target() == ab_key
-      })
-      .map(|e| e.read_arc().key())
+      .find(|e| e.source() == old_root_key && e.target() == ab_key)
+      .map(|e| e.key())
       .expect("root->AB edge not found");
 
     let orig_root_ab_subs: Vec<String> = recon.partition.obs_edges[&edge_root_ab_key]
@@ -1023,30 +1008,24 @@ mod tests {
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
 
-    let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let old_root_key = graph.get_exactly_one_root()?.key();
     let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB node not found");
     let a_key = find_node_key_by_name(&graph, &names, "A").expect("A node not found");
 
     let edge_ab_a_key = graph
       .get_edges()
-      .iter()
-      .find(|e| {
-        let e = e.read_arc();
-        e.source() == ab_key && e.target() == a_key
-      })
-      .map(|e| e.read_arc().key())
+      .find(|e| e.source() == ab_key && e.target() == a_key)
+      .map(|e| e.key())
       .expect("AB->A edge not found");
 
     // Record original root->CD subs (will appear in merged edge)
     let edge_root_cd_key = graph
       .get_edges()
-      .iter()
       .find(|e| {
-        let e = e.read_arc();
         let cd_key = find_node_key_by_name(&graph, &names, "CD").unwrap();
         e.source() == old_root_key && e.target() == cd_key
       })
-      .map(|e| e.read_arc().key())
+      .map(|e| e.key())
       .expect("root->CD edge not found");
 
     let orig_root_cd_subs: Vec<String> = recon.partition.obs_edges[&edge_root_cd_key]
@@ -1058,12 +1037,8 @@ mod tests {
     let orig_root_ab_subs: Vec<String> = {
       let edge_root_ab_key = graph
         .get_edges()
-        .iter()
-        .find(|e| {
-          let e = e.read_arc();
-          e.source() == old_root_key && e.target() == ab_key
-        })
-        .map(|e| e.read_arc().key())
+        .find(|e| e.source() == old_root_key && e.target() == ab_key)
+        .map(|e| e.key())
         .expect("root->AB edge not found");
       recon.partition.obs_edges[&edge_root_ab_key]
         .fitch_subs()
@@ -1179,18 +1154,14 @@ mod tests {
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     // Reroot on AB->A
-    let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let old_root_key = graph.get_exactly_one_root()?.key();
     let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB node not found");
     let a_key = find_node_key_by_name(&graph, &names, "A").expect("A node not found");
 
     let edge_ab_a_key = graph
       .get_edges()
-      .iter()
-      .find(|e| {
-        let e = e.read_arc();
-        e.source() == ab_key && e.target() == a_key
-      })
-      .map(|e| e.read_arc().key())
+      .find(|e| e.source() == ab_key && e.target() == a_key)
+      .map(|e| e.key())
       .expect("AB->A edge not found");
 
     let mut branch_lengths = branch_lengths;
@@ -1212,9 +1183,8 @@ mod tests {
 
     let root_edge_totals: Vec<(_, usize)> = graph
       .get_edges()
-      .iter()
       .filter_map(|edge_ref| {
-        let edge = edge_ref.read_arc();
+        let edge = edge_ref;
         (edge.source() == new_root_key).then(|| {
           let edge_data = &recon.edges.forward[&edge.key()];
           let total: usize = edge_data.msg_to_child.fixed_counts.counts().values().sum();

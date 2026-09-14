@@ -48,7 +48,7 @@ pub fn build_augur_node_data_json(
 ) -> Result<AugurNodeDataJsonRefine, Report> {
   let mut nodes = BTreeMap::new();
   for node in graph.get_nodes() {
-    let node_guard = node.read_arc();
+    let node_guard = node;
     let node_key = node_guard.key();
     let out = &node_outputs[&node_key];
     let node_name = out

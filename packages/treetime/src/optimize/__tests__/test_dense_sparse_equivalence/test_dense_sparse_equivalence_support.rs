@@ -97,8 +97,7 @@ pub mod tests {
   pub fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
-      .iter()
-      .map(|edge| branch_lengths[&edge.read_arc().key()].unwrap_or(0.0))
+      .map(|edge| branch_lengths[&edge.key()].unwrap_or(0.0))
       .collect()
   }
 }

@@ -213,9 +213,8 @@ pub fn run_timetree_estimation(
       let edge_subs = output
         .graph
         .get_edges()
-        .iter()
         .map(|edge| {
-          let edge_key = edge.read_arc().key();
+          let edge_key = edge.key();
           Ok((edge_key, partition.edge_subs(&output.graph, edge_key)?))
         })
         .collect::<Result<BTreeMap<_, _>, Report>>()?;
@@ -429,9 +428,7 @@ fn gather_timetree_outputs(
 ) {
   let nodes = graph
     .get_nodes()
-    .iter()
     .map(|node| {
-      let node = node.read_arc();
       let key = node.key();
       let clock = clock_state.node(key);
       let out = TimetreeNodeOut {
@@ -450,9 +447,8 @@ fn gather_timetree_outputs(
 
   let edges = graph
     .get_edges()
-    .iter()
     .map(|edge| {
-      let key = edge.read_arc().key();
+      let key = edge.key();
       let edge_state = timetree_state.edge(key);
       let out = TimetreeEdgeOut {
         branch_length: branch_lengths[&key],
@@ -479,17 +475,15 @@ pub(crate) fn gather_timetree_output_maps(
   let root_sequence = Some(partition.root_sequence(graph)?);
   let node_sequences = graph
     .get_nodes()
-    .iter()
     .map(|node| {
-      let key = node.read_arc().key();
+      let key = node.key();
       (key, partition.node_sequence(key))
     })
     .collect();
   let edge_mutations = graph
     .get_edges()
-    .iter()
     .map(|edge| {
-      let key = edge.read_arc().key();
+      let key = edge.key();
       Ok((key, partition.edge_mutations(graph, key, &MutationTrack::Nucleotide)?))
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;

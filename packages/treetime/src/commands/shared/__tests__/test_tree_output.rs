@@ -644,9 +644,7 @@ mod tests {
     ) -> BTreeMap<GraphNodeKey, AncestralNodeOut> {
       graph
         .get_nodes()
-        .iter()
         .map(|node| {
-          let node = node.read_arc();
           let key = node.key();
           (
             key,
@@ -668,9 +666,7 @@ mod tests {
     ) -> BTreeMap<GraphNodeKey, Option<f64>> {
       graph
         .get_nodes()
-        .iter()
         .filter_map(|node| {
-          let node = node.read_arc();
           (names.get(&node.key()).and_then(|x| x.as_deref()) == Some("A")).then(|| (node.key(), Some(0.9)))
         })
         .collect()
@@ -910,10 +906,7 @@ mod tests {
       graph
         .get_nodes()
         .into_iter()
-        .find_map(|node| {
-          let node = node.read_arc();
-          (names.get(&node.key()).and_then(|x| x.as_deref()) == Some(name)).then(|| node.key())
-        })
+        .find_map(|node| (names.get(&node.key()).and_then(|x| x.as_deref()) == Some(name)).then(|| node.key()))
         .expect("fixture node must exist")
     }
 
@@ -928,9 +921,7 @@ mod tests {
     ) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
       graph
         .get_nodes()
-        .iter()
         .map(|node| {
-          let node = node.read_arc();
           let key = node.key();
           (
             key,
@@ -965,9 +956,7 @@ mod tests {
     ) -> BTreeMap<GraphNodeKey, PruneNodeOut> {
       graph
         .get_nodes()
-        .iter()
         .map(|node| {
-          let node = node.read_arc();
           let key = node.key();
           (
             key,
@@ -1016,10 +1005,8 @@ mod tests {
     ) -> BTreeMap<GraphNodeKey, ClockNodeOut> {
       graph
         .get_nodes()
-        .iter()
         .enumerate()
         .map(|(index, node)| {
-          let node = node.read_arc();
           let key = node.key();
           (
             key,
@@ -1042,9 +1029,7 @@ mod tests {
     ) -> BTreeMap<GraphNodeKey, MugrationNodeOut> {
       graph
         .get_nodes()
-        .iter()
         .map(|node| {
-          let node = node.read_arc();
           let key = node.key();
           (
             key,
@@ -1086,7 +1071,7 @@ mod tests {
         .into_iter()
         .enumerate()
         .map(|(index, node)| {
-          let key = node.read_arc().key();
+          let key = node.key();
           let profile = if index % 2 == 0 {
             array![[1.0, 0.0]]
           } else {
@@ -1135,10 +1120,8 @@ mod tests {
     ) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
       graph
         .get_nodes()
-        .iter()
         .enumerate()
         .map(|(index, node)| {
-          let node = node.read_arc();
           let key = node.key();
           (
             key,
@@ -1165,9 +1148,8 @@ mod tests {
     ) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
       graph
         .get_edges()
-        .iter()
         .map(|edge| {
-          let key = edge.read_arc().key();
+          let key = edge.key();
           (
             key,
             TimetreeEdgeOut {
@@ -1203,10 +1185,7 @@ mod tests {
       let key = graph
         .get_nodes()
         .into_iter()
-        .find_map(|node| {
-          let node = node.read_arc();
-          (names.get(&node.key()).and_then(|x| x.as_deref()) == Some(name)).then(|| node.key())
-        })
+        .find_map(|node| (names.get(&node.key()).and_then(|x| x.as_deref()) == Some(name)).then(|| node.key()))
         .expect("fixture node must exist");
       let edge_key = graph.node_parent(key)?.expect("fixture node must have a parent").1;
       branch_lengths.insert(edge_key, length);
@@ -1217,19 +1196,12 @@ mod tests {
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
     ) -> Result<BTreeMap<GraphEdgeKey, Option<f64>>, Report> {
-      let mut weights: BTreeMap<GraphEdgeKey, Option<f64>> = graph
-        .get_edges()
-        .iter()
-        .map(|edge| (edge.read_arc().key(), None))
-        .collect();
+      let mut weights: BTreeMap<GraphEdgeKey, Option<f64>> = graph.get_edges().map(|edge| (edge.key(), None)).collect();
       for (name, length) in [("A", None), ("B", Some(0.0)), ("C", Some(0.5))] {
         let key = graph
           .get_nodes()
           .into_iter()
-          .find_map(|node| {
-            let node = node.read_arc();
-            (names.get(&node.key()).and_then(|x| x.as_deref()) == Some(name)).then(|| node.key())
-          })
+          .find_map(|node| (names.get(&node.key()).and_then(|x| x.as_deref()) == Some(name)).then(|| node.key()))
           .expect("fixture node must exist");
         let edge_key = graph.node_parent(key)?.expect("fixture node must have a parent").1;
         weights.insert(edge_key, length);

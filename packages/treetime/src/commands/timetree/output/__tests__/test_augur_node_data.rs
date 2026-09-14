@@ -201,10 +201,10 @@ mod tests {
       }
 
       pub fn write_and_read_with_mutations(&self, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
-        let edges = self.graph.get_edges();
+        let edges = self.graph.get_edges().collect::<Vec<_>>();
         let counts: BTreeMap<GraphEdgeKey, usize> = edge_counts
           .iter()
-          .map(|&(idx, count)| (edges[idx].read_arc().key(), count))
+          .map(|&(idx, count)| (edges[idx].key(), count))
           .collect();
         let data = build_augur_node_data_json(
           &self.graph,
@@ -300,9 +300,8 @@ mod tests {
     ) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
       graph
         .get_nodes()
-        .iter()
         .map(|node| {
-          let key = node.read_arc().key();
+          let key = node.key();
           (
             key,
             TimetreeNodeOut {
@@ -330,9 +329,8 @@ mod tests {
     ) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
       graph
         .get_edges()
-        .iter()
         .map(|edge| {
-          let key = edge.read_arc().key();
+          let key = edge.key();
           (
             key,
             TimetreeEdgeOut {

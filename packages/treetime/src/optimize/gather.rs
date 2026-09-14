@@ -28,10 +28,11 @@ pub fn gather_edge_contributions(
 ) -> Result<BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>, Report> {
   graph
     .get_edges()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .map(
       |edge_ref| -> Result<(GraphEdgeKey, Vec<OptimizationContribution>), Report> {
-        let edge_key = edge_ref.read_arc().key();
+        let edge_key = edge_ref.key();
         let mut contributions = Vec::with_capacity(dense.len() + sparse.len());
         for family in dense {
           contributions.push(family.create_edge_contribution(edge_key));
@@ -53,9 +54,10 @@ pub fn gather_edge_indel_counts(
 ) -> BTreeMap<GraphEdgeKey, usize> {
   graph
     .get_edges()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .map(|edge_ref| {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let count = dense
         .iter()
         .map(|family| family.edge_indel_count(edge_key))
@@ -77,9 +79,10 @@ pub fn gather_edge_sub_counts(
 ) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {
   graph
     .get_edges()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .map(|edge_ref| -> Result<(GraphEdgeKey, usize), Report> {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let mut count = 0;
       for family in dense {
         count += family.edge_subs(graph, edge_key)?.len();
@@ -100,9 +103,10 @@ pub fn gather_edge_effective_lengths(
 ) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {
   graph
     .get_edges()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .map(|edge_ref| -> Result<(GraphEdgeKey, usize), Report> {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let mut total = 0;
       for family in dense {
         total += family.edge_effective_length(graph, edge_key)?;
@@ -128,10 +132,11 @@ pub fn gather_timetree_edge_contributions(
 ) -> Result<BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>, Report> {
   graph
     .get_edges()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .map(
       |edge_ref| -> Result<(GraphEdgeKey, Vec<OptimizationContribution>), Report> {
-        let edge_key = edge_ref.read_arc().key();
+        let edge_key = edge_ref.key();
         let contributions = partitions
           .iter()
           .map(|partition| partition.create_edge_contribution(edge_key))
@@ -149,9 +154,10 @@ pub fn gather_timetree_edge_indel_counts(
 ) -> BTreeMap<GraphEdgeKey, usize> {
   graph
     .get_edges()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .map(|edge_ref| {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       (
         edge_key,
         partitions

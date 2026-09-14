@@ -43,11 +43,11 @@ mod tests {
       let node_key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
       let node = graph.get_node(node_key).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
       let (_, edge) = graph
-        .parents_of(&node.read_arc())
+        .parents_of(&node)
         .into_iter()
         .next()
         .ok_or_else(|| eyre::eyre!("Parent edge for {name} not found"))?;
-      state.edge_mut(edge.read_arc().key()).time_length = Some(branch.clock_length / input.clock_rate);
+      state.edge_mut(edge.key()).time_length = Some(branch.clock_length / input.clock_rate);
     }
 
     apply_relaxed_clock(
@@ -66,11 +66,11 @@ mod tests {
         let node_key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
         let node = graph.get_node(node_key).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
         let (_, edge) = graph
-          .parents_of(&node.read_arc())
+          .parents_of(&node)
           .into_iter()
           .next()
           .ok_or_else(|| eyre::eyre!("Parent edge for {name} not found"))?;
-        let gamma = state.edge(edge.read_arc().key()).gamma;
+        let gamma = state.edge(edge.key()).gamma;
         Ok((name.to_owned(), gamma))
       })
       .collect::<Result<BTreeMap<_, _>, Report>>()?;
@@ -89,7 +89,7 @@ mod tests {
     apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
-      let gamma = state.edge(edge.read_arc().key()).gamma;
+      let gamma = state.edge(edge.key()).gamma;
 
       assert!(gamma >= 0.1, "gamma={gamma} should be >= 0.1 (minimum bound)");
       assert!(gamma < 10.0, "gamma={gamma} should be reasonable (< 10.0)");
@@ -108,7 +108,7 @@ mod tests {
     apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
-      let gamma = state.edge(edge.read_arc().key()).gamma;
+      let gamma = state.edge(edge.key()).gamma;
       assert!(gamma >= 0.1, "gamma={gamma} must be >= 0.1 (algorithm minimum bound)");
     }
 
@@ -128,15 +128,11 @@ mod tests {
     let params = [1.0, 1.0];
     let mut state = TimetreeState::new(&graph);
     for edge in graph.get_edges() {
-      state.edge_mut(edge.read_arc().key()).time_length = Some(10.0);
+      state.edge_mut(edge.key()).time_length = Some(10.0);
     }
     apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &mut state)?;
 
-    let gammas: Vec<f64> = graph
-      .get_edges()
-      .iter()
-      .map(|e| state.edge(e.read_arc().key()).gamma)
-      .collect();
+    let gammas: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
 
     let mean_gamma: f64 = gammas.iter().sum::<f64>() / gammas.len() as f64;
     for gamma in &gammas {
@@ -155,7 +151,7 @@ mod tests {
     apply_relaxed_clock(&graph, &branch_lengths, &[], one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
-      let gamma = state.edge(edge.read_arc().key()).gamma;
+      let gamma = state.edge(edge.key()).gamma;
       assert!(gamma >= 0.1, "gamma should be >= minimum bound");
     }
 
@@ -172,7 +168,7 @@ mod tests {
 
     // Before: gamma should be default 1.0
     for edge in graph.get_edges() {
-      let gamma = state.edge(edge.read_arc().key()).gamma;
+      let gamma = state.edge(edge.key()).gamma;
       pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 4);
     }
 
@@ -181,7 +177,7 @@ mod tests {
     // After: gamma values should be computed (may differ from 1.0)
     let mut any_changed = false;
     for edge in graph.get_edges() {
-      let gamma = state.edge(edge.read_arc().key()).gamma;
+      let gamma = state.edge(edge.key()).gamma;
       if (gamma - 1.0).abs() > 1e-6 {
         any_changed = true;
       }
@@ -202,21 +198,13 @@ mod tests {
     let mut state = seed_state_scaled(&graph, &branch_lengths, 100.0);
     apply_relaxed_clock(&graph, &branch_lengths, &params_low, one_mutation, 1.0, &mut state)?;
 
-    let gammas_low: Vec<f64> = graph
-      .get_edges()
-      .iter()
-      .map(|e| state.edge(e.read_arc().key()).gamma)
-      .collect();
+    let gammas_low: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
     let deviation_low: f64 = gammas_low.iter().map(|g| (g - 1.0).abs()).sum();
 
     let params_high = [100.0, 1.0];
     apply_relaxed_clock(&graph, &branch_lengths, &params_high, one_mutation, 1.0, &mut state)?;
 
-    let gammas_high: Vec<f64> = graph
-      .get_edges()
-      .iter()
-      .map(|e| state.edge(e.read_arc().key()).gamma)
-      .collect();
+    let gammas_high: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
     let deviation_high: f64 = gammas_high.iter().map(|g| (g - 1.0).abs()).sum();
 
     // High slack should reduce total deviation from 1.0
@@ -238,22 +226,14 @@ mod tests {
     let mut state = seed_state_scaled(&graph, &branch_lengths, 100.0);
     apply_relaxed_clock(&graph, &branch_lengths, &params_low, one_mutation, 1.0, &mut state)?;
 
-    let gammas_low: Vec<f64> = graph
-      .get_edges()
-      .iter()
-      .map(|e| state.edge(e.read_arc().key()).gamma)
-      .collect();
+    let gammas_low: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
     let variance_low = compute_variance(&gammas_low);
 
     // Run with high coupling
     let params_high = [1.0, 10.0];
     apply_relaxed_clock(&graph, &branch_lengths, &params_high, one_mutation, 1.0, &mut state)?;
 
-    let gammas_high: Vec<f64> = graph
-      .get_edges()
-      .iter()
-      .map(|e| state.edge(e.read_arc().key()).gamma)
-      .collect();
+    let gammas_high: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
     let variance_high = compute_variance(&gammas_high);
 
     assert!(
@@ -286,22 +266,14 @@ mod tests {
     let mut state = seed_state_scaled(&graph, &branch_lengths, 0.8);
     apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation_single, 1.0, &mut state)?;
 
-    let gammas_single: Vec<f64> = graph
-      .get_edges()
-      .iter()
-      .map(|e| state.edge(e.read_arc().key()).gamma)
-      .collect();
+    let gammas_single: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
 
     // Simulate two partitions with lengths 1000 + 9000: one_mutation = 1/10000 = 0.0001
     // Using a 10x difference to ensure visible effect
     let one_mutation_multi = 0.0001;
     apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation_multi, 1.0, &mut state)?;
 
-    let gammas_multi: Vec<f64> = graph
-      .get_edges()
-      .iter()
-      .map(|e| state.edge(e.read_arc().key()).gamma)
-      .collect();
+    let gammas_multi: Vec<f64> = graph.get_edges().map(|e| state.edge(e.key()).gamma).collect();
 
     // Gamma values should differ between single and multi-partition scenarios
     let any_differ = gammas_single
@@ -333,7 +305,7 @@ mod tests {
     apply_relaxed_clock(&graph, &branch_lengths, &params, tiny_one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
-      let gamma = state.edge(edge.read_arc().key()).gamma;
+      let gamma = state.edge(edge.key()).gamma;
       assert!(gamma.is_finite(), "gamma must be finite, got {gamma}");
       assert!(gamma >= 0.1, "gamma must respect minimum bound, got {gamma}");
     }
@@ -359,7 +331,11 @@ mod tests {
     apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &mut state)?;
 
     // Get root gamma via the edge (gamma is stored on child's parent edge)
-    let root_edge_gamma = graph.get_edges().first().map(|e| state.edge(e.read_arc().key()).gamma);
+    let root_edge_gamma = graph
+      .get_edges()
+      .collect::<Vec<_>>()
+      .first()
+      .map(|e| state.edge(e.key()).gamma);
 
     // Root's gamma is computed from k1/k2 which includes branch penalty.
     // With one_mutation = 0.01, root uses opt_len = act_len = 0.01.
@@ -400,7 +376,7 @@ mod tests {
     apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &mut state)?;
 
     for edge in graph.get_edges() {
-      let gamma = state.edge(edge.read_arc().key()).gamma;
+      let gamma = state.edge(edge.key()).gamma;
       pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 4);
     }
 
@@ -424,8 +400,9 @@ mod tests {
 
     let gamma = graph
       .get_edges()
+      .collect::<Vec<_>>()
       .first()
-      .map_or(1.0, |e| state.edge(e.read_arc().key()).gamma);
+      .map_or(1.0, |e| state.edge(e.key()).gamma);
 
     pretty_assert_ulps_eq!(gamma, 1.0, max_ulps = 100);
 

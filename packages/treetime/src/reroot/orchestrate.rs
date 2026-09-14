@@ -82,7 +82,7 @@ fn apply_root_at_edge<F>(
 where
   F: FnMut(&mut Graph, &[GraphEdgeKey]) -> Result<(), Report>,
 {
-  let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
+  let old_root_key = graph.get_exactly_one_root()?.key();
 
   let Some(edge_key) = edge else {
     return Ok(RerootResult {
@@ -97,7 +97,6 @@ where
     let edge = graph
       .get_edge(edge_key)
       .ok_or_else(|| make_report!("Edge not found: {edge_key}"))?;
-    let edge = edge.read_arc();
     (edge.source(), edge.target())
   };
 

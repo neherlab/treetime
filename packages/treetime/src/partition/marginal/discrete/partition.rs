@@ -59,7 +59,7 @@ impl PartitionMarginalDiscrete {
 
     let mut node_states = BTreeMap::new();
     for leaf in graph.get_leaves() {
-      let leaf_key = leaf.read_arc().key();
+      let leaf_key = leaf.key();
       let leaf_name = names[&leaf_key].clone().unwrap_or_default();
 
       let profile = if let Some(trait_value) = traits.get(&leaf_name) {

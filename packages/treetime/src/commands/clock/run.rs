@@ -71,9 +71,8 @@ fn gather_clock_outputs(
 ) -> (BTreeMap<GraphNodeKey, ClockNodeOut>, BTreeMap<GraphEdgeKey, EdgeOut>) {
   let nodes = graph
     .get_nodes()
-    .iter()
     .map(|node| {
-      let key = node.read_arc().key();
+      let key = node.key();
       // Name comes from the post-reroot name map the pipeline returns; the fitted clock results
       // (divergence, outlier flag) come from the clock state value, while the observed date and
       // bad-branch flag come from the clock inputs value the pipeline routed through estimation and
@@ -94,9 +93,8 @@ fn gather_clock_outputs(
 
   let edges = graph
     .get_edges()
-    .iter()
     .map(|edge| {
-      let key = edge.read_arc().key();
+      let key = edge.key();
       (
         key,
         EdgeOut {
@@ -230,7 +228,7 @@ fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> 
     .get_leaves()
     .into_iter()
     .map(|leaf| {
-      let key = leaf.read_arc().key();
+      let key = leaf.key();
       names[&key]
         .clone()
         .ok_or_else(|| make_report!("Leaf node {key} has no name"))

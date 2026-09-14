@@ -240,7 +240,6 @@ mod tests {
         .get_nodes()
         .into_iter()
         .map(|node| {
-          let node = node.read_arc();
           let key = node.key();
           let name = names[&node.key()].clone().unwrap();
           (name, key)
@@ -260,7 +259,7 @@ mod tests {
       let mut key_to_name = BTreeMap::new();
       let mut nodes = BTreeMap::new();
       for node in graph.get_nodes() {
-        let node_guard = node.read_arc();
+        let node_guard = node;
         let key = node_guard.key();
         let name = names[&key].clone().unwrap();
         let seq = Seq::try_from_str(&seqs[&name]).unwrap();
@@ -270,7 +269,7 @@ mod tests {
 
       let mut edges = BTreeMap::new();
       for edge in graph.get_edges() {
-        let edge_guard = edge.read_arc();
+        let edge_guard = edge;
         let edge_key = edge_guard.key();
         let child_name = &key_to_name[&edge_guard.target()];
         let subs = edge_subs_by_child.get(child_name).cloned().unwrap_or_default();

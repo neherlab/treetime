@@ -66,21 +66,18 @@ mod tests {
 
     assert_eq!(0, outcome.sequence_changes);
     assert_eq!(TopologyOutcome::Changed { resolved_nodes: 1 }, outcome.topology);
-    assert_eq!(5, graph.get_nodes().len());
+    assert_eq!(5, graph.get_nodes().collect::<Vec<_>>().len());
     assert!(
       graph
         .get_nodes()
-        .iter()
-        .all(|node| { state.node(node.read_arc().key()).time_distribution.is_some() })
+        .all(|node| { state.node(node.key()).time_distribution.is_some() })
     );
 
     let edge_lh = compute_coalescent_total_lh(&graph, &tc, &state.coalescent_node_times())?;
     let model = CoalescentModel::new(&compute_lineage_counts(&graph, &state.coalescent_node_times())?, &tc)?;
     let node_lh = -graph
       .get_nodes()
-      .iter()
       .map(|node| {
-        let node = node.read_arc();
         let time = state
           .node(node.key())
           .time_distribution
@@ -119,7 +116,7 @@ mod tests {
   fn test_refinement_missing_time_preserves_inference_state() -> Result<(), Report> {
     let (mut graph, names, partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
       create_polytomy_state()?;
-    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let root_key = graph.get_exactly_one_root()?.key();
     state.node_mut(root_key).time = None;
     let expected_error = format!(
       "Polytomy resolution failed: Polytomy resolution requires an inferred time for node {root_key}, but it has none"
@@ -150,7 +147,7 @@ mod tests {
   fn test_refinement_non_finite_time_preserves_inference_state() -> Result<(), Report> {
     let (mut graph, names, partitions, mut clock_model, mut state, mut branch_lengths, constraints) =
       create_polytomy_state()?;
-    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let root_key = graph.get_exactly_one_root()?.key();
     state.node_mut(root_key).time = Some(f64::NAN);
     let before = serialize_state(&graph, &clock_model)?;
 
@@ -200,7 +197,7 @@ mod tests {
       &mut state,
       &mut branch_lengths,
     )?;
-    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let root_key = graph.get_exactly_one_root()?.key();
     state.node_mut(root_key).time = None;
 
     let (partitions, outcome) = refine(

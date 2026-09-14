@@ -512,9 +512,9 @@ mod tests {
       .ok_or_else(|| make_report!("Node {parent_key} not found"))?;
     Ok(
       graph
-        .children_of(&parent.read_arc())
+        .children_of(&parent)
         .into_iter()
-        .map(|(node, _)| node_name(names, node.read_arc().key()))
+        .map(|(node, _)| node_name(names, node.key()))
         .collect_vec(),
     )
   }
@@ -545,10 +545,6 @@ mod tests {
 
   /// The edge branch-length value map for a graph whose edges carry no length (all `None`).
   fn edge_branch_lengths(graph: &Graph) -> BTreeMap<GraphEdgeKey, Option<f64>> {
-    graph
-      .get_edges()
-      .iter()
-      .map(|edge| (edge.read_arc().key(), None))
-      .collect()
+    graph.get_edges().map(|edge| (edge.key(), None)).collect()
   }
 }

@@ -96,11 +96,7 @@ pub fn nex_write_with(
   providers: &CommentProviders,
 ) -> Result<(), Report> {
   let n_leaves = graph.num_leaves();
-  let leaf_names = graph
-    .get_leaves()
-    .iter()
-    .filter_map(|n| names[&n.read_arc().key()].clone())
-    .join(" ");
+  let leaf_names = graph.get_leaves().filter_map(|n| names[&n.key()].clone()).join(" ");
   let mut nwk = Vec::new();
   nwk_write_with(
     &mut nwk,

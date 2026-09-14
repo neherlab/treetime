@@ -200,9 +200,7 @@ mod tests {
     ) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
       graph
         .get_nodes()
-        .iter()
         .map(|node| {
-          let node = node.read_arc();
           let key = node.key();
           (
             key,
@@ -243,10 +241,10 @@ mod tests {
       let confidences = parse.confidences();
       let graph: Graph = parse.graph;
       let branch_lengths = parse.branch_lengths;
-      let edges = graph.get_edges();
+      let edges = graph.get_edges().collect::<Vec<_>>();
       let counts: BTreeMap<GraphEdgeKey, usize> = edge_counts
         .iter()
-        .map(|&(idx, count)| (edges[idx].read_arc().key(), count))
+        .map(|&(idx, count)| (edges[idx].key(), count))
         .collect();
       let data = build_augur_node_data_json(
         &graph,
@@ -280,9 +278,7 @@ mod tests {
       let node_outputs: BTreeMap<GraphNodeKey, OptimizeNodeOut> = output
         .graph
         .get_nodes()
-        .iter()
         .map(|node| {
-          let node = node.read_arc();
           let key = node.key();
           (
             key,

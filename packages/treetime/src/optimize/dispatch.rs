@@ -90,7 +90,7 @@ pub fn run_optimize_mixed_inner(
   // two root edges; after the per-edge loop, redistribute the optimized total in this ratio.
   // See kb/issues/M-optimize-root-bifurcating-independent-vs-joint.md
   for edge_ref in graph.get_edges() {
-    let edge_key = edge_ref.read_arc().key();
+    let edge_key = edge_ref.key();
     let branch_length = branch_lengths[&edge_key]
       .ok_or_else(|| make_report!("Cannot optimize edge {edge_key} with a missing branch length"))?;
     validate_branch_length_value(branch_length).wrap_err_with(|| format!("Cannot optimize edge {edge_key}"))?;
@@ -105,9 +105,10 @@ pub fn run_optimize_mixed_inner(
   let branch_lengths_in = &*branch_lengths;
   let optimized: Vec<(GraphEdgeKey, f64)> = graph
     .get_edges()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .map(|edge_ref| -> Result<(GraphEdgeKey, f64), Report> {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let mut branch_length = branch_lengths_in[&edge_key]
         .ok_or_else(|| make_internal_report!("Validated edge {edge_key} lost its branch length"))?;
 
@@ -250,10 +251,10 @@ struct BifurcatingRootState {
 impl BifurcatingRootState {
   fn capture(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Result<Option<Self>, Report> {
     let root = graph.get_exactly_one_root()?;
-    let children = graph.children_of(&root.read_arc());
+    let children = graph.children_of(root).collect::<Vec<_>>();
     if children.len() == 2 {
-      let edge0 = children[0].1.read_arc().key();
-      let edge1 = children[1].1.read_arc().key();
+      let edge0 = children[0].1.key();
+      let edge1 = children[1].1.key();
       let bl0 = branch_lengths[&edge0].unwrap_or(0.0);
       let bl1 = branch_lengths[&edge1].unwrap_or(0.0);
       let total = bl0 + bl1;
@@ -314,7 +315,7 @@ pub fn initial_guess_mixed(
   };
 
   for edge_ref in graph.get_edges() {
-    let edge_key = edge_ref.read_arc().key();
+    let edge_key = edge_ref.key();
 
     let indel_count: usize = if no_indels { 0 } else { indel_counts[&edge_key] };
 

@@ -65,7 +65,7 @@ mod tests {
 
     // Branch lengths should be valid and bounded
     for edge in graph.get_edges() {
-      let bl = branch_lengths[&edge.read_arc().key()].expect("branch length must be set on every edge after optimization");
+      let bl = branch_lengths[&edge.key()].expect("branch length must be set on every edge after optimization");
       assert!(bl.is_finite(), "Branch length should be finite");
       assert!(bl >= 0.0, "Branch length should be non-negative");
       assert!(bl < 10.0, "Branch length {bl} should be reasonable (< 10)");
@@ -125,7 +125,7 @@ mod tests {
 
     // Branch lengths should be valid and bounded
     for edge in graph.get_edges() {
-      let bl = branch_lengths[&edge.read_arc().key()].expect("branch length must be set on every edge after optimization");
+      let bl = branch_lengths[&edge.key()].expect("branch length must be set on every edge after optimization");
       assert!(bl.is_finite(), "Branch length should be finite");
       assert!(bl >= 0.0, "Branch length should be non-negative");
       assert!(bl < 10.0, "Branch length {bl} should be reasonable (< 10)");

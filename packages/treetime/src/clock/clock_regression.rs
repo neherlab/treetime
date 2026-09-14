@@ -251,7 +251,7 @@ pub fn estimate_clock_model_with_reroot_policy(
   };
 
   info!("### Extracting clock model from root");
-  let root_key = graph.get_exactly_one_root()?.read_arc().key();
+  let root_key = graph.get_exactly_one_root()?.key();
   let root_clock_set = state.node(root_key).clock_set.clone();
 
   let (regression, clock_model) = if let Some(rate) = clock_rate {

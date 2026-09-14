@@ -2,15 +2,13 @@ use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, mutation_even
 use chrono::Utc;
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
-use parking_lot::RwLock;
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
-use std::sync::Arc;
-use treetime_graph::edge::{Edge, GraphEdgeKey};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::{GraphNodeKey, Node};
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice::auspice_write_file;
 use treetime_io::auspice_types::{
   AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotations, AuspiceNumDate, AuspiceTree,
@@ -251,16 +249,13 @@ pub(crate) fn auspice_from_graph<F>(graph: &Graph, data: AuspiceTreeData, mut co
 where
   F: FnMut(&GraphNodeContext) -> Result<AuspiceTreeNode, Report>,
 {
-  let root = graph
+  let root_key = graph
     .get_exactly_one_root()
-    .wrap_err("When converting graph to Auspice v2 JSON")?;
+    .wrap_err("When converting graph to Auspice v2 JSON")?
+    .key();
   let mut node_map = btreemap! {};
-  let mut queue = VecDeque::from([(Arc::clone(&root), None)]);
-  while let Some((current_node, current_edge)) = queue.pop_front() {
-    let node_key = current_node.read_arc().key();
-    let edge_key = current_edge
-      .as_ref()
-      .map(|edge: &Arc<RwLock<Edge>>| edge.read_arc().key());
+  let mut queue = VecDeque::from([(root_key, None)]);
+  while let Some((node_key, edge_key)) = queue.pop_front() {
     let converted = convert(&GraphNodeContext { node_key, edge_key })?;
     if converted.node_attrs.div.is_none() && converted.node_attrs.num_date.is_none() {
       return make_error!(
@@ -269,12 +264,14 @@ where
       );
     }
     node_map.insert(node_key, converted);
-    for (child, edge) in graph.children_of(&current_node.read_arc()) {
-      queue.push_back((child, Some(edge)));
+    let node = graph
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} not found in graph"))?;
+    for (child_key, child_edge_key) in graph.children_keys_of(node) {
+      queue.push_back((child_key, Some(child_edge_key)));
     }
   }
-  attach_auspice_children(graph, &root, &mut node_map)?;
-  let root_key = root.read_arc().key();
+  attach_auspice_children(graph, root_key, &mut node_map)?;
   let tree = node_map
     .remove(&root_key)
     .ok_or_else(|| make_internal_report!("Auspice root node {root_key} was not converted"))?;
@@ -283,19 +280,19 @@ where
 
 fn attach_auspice_children(
   graph: &Graph,
-  root: &Arc<RwLock<Node>>,
+  root_key: GraphNodeKey,
   node_map: &mut BTreeMap<GraphNodeKey, AuspiceTreeNode>,
 ) -> Result<(), Report> {
   let mut visited = btreeset! {};
-  let mut stack = vec![Arc::clone(root)];
-  while let Some(node) = stack.pop() {
-    let key = node.read_arc().key();
+  let mut stack = vec![root_key];
+  while let Some(key) = stack.pop() {
+    let node = graph
+      .get_node(key)
+      .ok_or_else(|| make_internal_report!("Node {key} not found in graph"))?;
     if visited.contains(&key) {
       let children = graph
-        .children_of(&node.read_arc())
-        .into_iter()
-        .map(|(child, _)| {
-          let child_key = child.read_arc().key();
+        .children_keys_of(node)
+        .map(|(child_key, _)| {
           node_map
             .remove(&child_key)
             .ok_or_else(|| make_internal_report!("Auspice child node {child_key} was not converted"))
@@ -307,8 +304,8 @@ fn attach_auspice_children(
         .children = children;
     } else {
       visited.insert(key);
-      stack.push(Arc::clone(&node));
-      stack.extend(graph.children_of(&node.read_arc()).into_iter().map(|(child, _)| child));
+      stack.push(key);
+      stack.extend(graph.children_keys_of(node).map(|(child_key, _)| child_key));
     }
   }
   Ok(())
@@ -346,23 +343,22 @@ pub(crate) fn phyloxml_from_graph<F>(graph: &Graph, title: &str, mut convert: F)
 where
   F: FnMut(&GraphNodeContext) -> Result<PhyloxmlClade, Report>,
 {
-  let root = graph
+  let root_key = graph
     .get_exactly_one_root()
-    .wrap_err("When converting graph to PhyloXML")?;
+    .wrap_err("When converting graph to PhyloXML")?
+    .key();
   let mut node_map = btreemap! {};
-  let mut queue = VecDeque::from([(Arc::clone(&root), None)]);
-  while let Some((current_node, current_edge)) = queue.pop_front() {
-    let node_key = current_node.read_arc().key();
-    let edge_key = current_edge
-      .as_ref()
-      .map(|edge: &Arc<RwLock<Edge>>| edge.read_arc().key());
+  let mut queue = VecDeque::from([(root_key, None)]);
+  while let Some((node_key, edge_key)) = queue.pop_front() {
     node_map.insert(node_key, convert(&GraphNodeContext { node_key, edge_key })?);
-    for (child, edge) in graph.children_of(&current_node.read_arc()) {
-      queue.push_back((child, Some(edge)));
+    let node = graph
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} not found in graph"))?;
+    for (child_key, child_edge_key) in graph.children_keys_of(node) {
+      queue.push_back((child_key, Some(child_edge_key)));
     }
   }
-  attach_phyloxml_children(graph, &root, &mut node_map)?;
-  let root_key = root.read_arc().key();
+  attach_phyloxml_children(graph, root_key, &mut node_map)?;
   let clade = node_map
     .remove(&root_key)
     .ok_or_else(|| make_internal_report!("PhyloXML root node {root_key} was not converted"))?;
@@ -389,19 +385,19 @@ where
 
 fn attach_phyloxml_children(
   graph: &Graph,
-  root: &Arc<RwLock<Node>>,
+  root_key: GraphNodeKey,
   node_map: &mut BTreeMap<GraphNodeKey, PhyloxmlClade>,
 ) -> Result<(), Report> {
   let mut visited = BTreeSet::new();
-  let mut stack = vec![Arc::clone(root)];
-  while let Some(node) = stack.pop() {
-    let key = node.read_arc().key();
+  let mut stack = vec![root_key];
+  while let Some(key) = stack.pop() {
+    let node = graph
+      .get_node(key)
+      .ok_or_else(|| make_internal_report!("Node {key} not found in graph"))?;
     if visited.contains(&key) {
       let children = graph
-        .children_of(&node.read_arc())
-        .into_iter()
-        .map(|(child, _)| {
-          let child_key = child.read_arc().key();
+        .children_keys_of(node)
+        .map(|(child_key, _)| {
           node_map
             .remove(&child_key)
             .ok_or_else(|| make_internal_report!("PhyloXML child node {child_key} was not converted"))
@@ -413,8 +409,8 @@ fn attach_phyloxml_children(
         .clade = children;
     } else {
       visited.insert(key);
-      stack.push(Arc::clone(&node));
-      stack.extend(graph.children_of(&node.read_arc()).into_iter().map(|(child, _)| child));
+      stack.push(key);
+      stack.extend(graph.children_keys_of(node).map(|(child_key, _)| child_key));
     }
   }
   Ok(())

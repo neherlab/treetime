@@ -375,21 +375,13 @@ mod tests {
     BTreeMap<crate::edge::GraphEdgeKey, usize>,
   ) {
     (
-      graph
-        .get_nodes()
-        .iter()
-        .map(|node| (node.read_arc().key(), 0))
-        .collect(),
+      graph.get_nodes().map(|node| (node.key(), 0)).collect(),
       zero_edges(graph),
     )
   }
 
   fn zero_edges(graph: &Graph) -> BTreeMap<crate::edge::GraphEdgeKey, usize> {
-    graph
-      .get_edges()
-      .iter()
-      .map(|edge| (edge.read_arc().key(), 0))
-      .collect()
+    graph.get_edges().map(|edge| (edge.key(), 0)).collect()
   }
 
   fn key_indices(
@@ -400,17 +392,15 @@ mod tests {
   ) {
     let nodes = graph
       .get_nodes()
-      .iter()
       .map(|node| {
-        let key = node.read_arc().key();
+        let key = node.key();
         (key, key.as_usize())
       })
       .collect();
     let edges = graph
       .get_edges()
-      .iter()
       .map(|edge| {
-        let key = edge.read_arc().key();
+        let key = edge.key();
         (key, key.as_usize())
       })
       .collect();
@@ -488,11 +478,7 @@ mod tests {
     /// The child node keys of `parent` in the graph's `children_of` (outbound-edge) order.
     pub fn child_order_by_parent(graph: &Graph, parent: GraphNodeKey) -> Vec<GraphNodeKey> {
       let node = graph.get_node(parent).expect("Parent must exist");
-      graph
-        .children_of(&node.read_arc())
-        .iter()
-        .map(|(child, _)| child.read_arc().key())
-        .collect()
+      graph.children_of(&node).map(|(child, _)| child.key()).collect()
     }
 
     /// Pass inputs with a distinct own-value per node (by name) and zero edge inputs.
@@ -509,17 +495,12 @@ mod tests {
       };
       let nodes = graph
         .get_nodes()
-        .iter()
         .map(|node| {
-          let key = node.read_arc().key();
+          let key = node.key();
           (key, by_name[&names[&key]])
         })
         .collect();
-      let edges = graph
-        .get_edges()
-        .iter()
-        .map(|edge| (edge.read_arc().key(), 0))
-        .collect();
+      let edges = graph.get_edges().map(|edge| (edge.key(), 0)).collect();
       (nodes, edges)
     }
 

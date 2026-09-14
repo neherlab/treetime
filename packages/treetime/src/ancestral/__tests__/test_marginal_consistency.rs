@@ -407,9 +407,8 @@ mod tests {
   ) -> Result<BTreeMap<String, Vec<Sub>>, Report> {
     graph
       .get_edges()
-      .iter()
       .map(|edge_ref| {
-        let edge = edge_ref.read_arc();
+        let edge = edge_ref;
         let parent_name = names.get(&edge.source()).cloned().flatten().expect("named parent");
         let child_name = names.get(&edge.target()).cloned().flatten().expect("named child");
         let edge_name = format!("{parent_name}->{child_name}");

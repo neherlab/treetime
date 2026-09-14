@@ -150,7 +150,7 @@ impl PartitionTimetree {
 
 /// Sum of per-partition root log-likelihoods after marginal reconstruction.
 pub fn graph_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Result<LogLh, Report> {
-  let root_key = graph.get_exactly_one_root()?.read_arc().key();
+  let root_key = graph.get_exactly_one_root()?.key();
   let log_lh = partitions
     .par_iter()
     .map(|partition| partition.get_log_lh(root_key))

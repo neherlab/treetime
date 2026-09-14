@@ -83,7 +83,7 @@ pub fn reroot_in_place(
     names,
   )?;
 
-  let old_root_key = { graph.get_exactly_one_root()?.read_arc().key() };
+  let old_root_key = { graph.get_exactly_one_root()?.key() };
   let Some(edge_key) = edge else {
     // Already at the best root
     return Ok((
@@ -100,7 +100,7 @@ pub fn reroot_in_place(
   // Extract edge endpoints before the edge is removed by split_edge
   let (source_key, target_key) = {
     let edge = graph.get_edge(edge_key).expect("Edge not found");
-    (edge.read_arc().source(), edge.read_arc().target())
+    (edge.source(), edge.target())
   };
 
   // split = 0 roots at the source (parent), split = 1 at the target (child).
@@ -263,7 +263,7 @@ fn find_oldest_root(
     .get_leaves()
     .into_iter()
     .filter_map(|node| {
-      let key = node.read_arc().key();
+      let key = node.key();
       let time = inputs.likely_time(key)?;
       Some((time, key))
     })
@@ -315,7 +315,7 @@ fn find_named_root_point(
 ) -> Result<FindRootResult, Report> {
   let Some(edge) = graph.parent_inbound_edge(node_key)? else {
     let root = graph.get_exactly_one_root()?;
-    let clock_set = state.node(root.read_arc().key()).clock_set.clone();
+    let clock_set = state.node(root.key()).clock_set.clone();
     return Ok(FindRootResult {
       edge: None,
       split: 0.0,

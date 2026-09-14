@@ -54,7 +54,7 @@ mod tests {
 
       // After each iteration, all branch lengths should be non-negative and bounded
       for edge in graph.get_edges() {
-        let branch_length = branch_lengths[&edge.read_arc().key()];
+        let branch_length = branch_lengths[&edge.key()];
         if let Some(bl) = branch_length {
           assert!(bl >= 0.0, "Branch length should be non-negative at iter {i}: {bl}");
           assert!(bl < 10.0, "Branch length too large at iter {i}: {bl}");

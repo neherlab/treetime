@@ -55,7 +55,6 @@ mod tests {
 
     let mut time_distributions = BTreeMap::new();
     for n in graph.get_leaves() {
-      let n = n.read_arc();
       let name = names.get(&n.key()).cloned().flatten();
       if let Some(name) = name {
         let date = dates[&name];
@@ -130,8 +129,8 @@ mod tests {
     let partitions = vec![sparse_partition];
 
     // Record initial state
-    let initial_leaf_count = graph.get_leaves().len();
-    let initial_node_count = graph.get_nodes().len();
+    let initial_leaf_count = graph.get_leaves().collect::<Vec<_>>().len();
+    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
 
     // Should complete without error - edge split and trivial root removal are now always enabled
     let names_tt_3 = names;
@@ -154,21 +153,18 @@ mod tests {
     let root = graph.get_exactly_one_root()?;
 
     // Root should have no parent edges (it's the true root)
-    assert!(
-      root.read_arc().inbound().is_empty(),
-      "Root should have no inbound edges"
-    );
+    assert!(root.inbound().is_empty(), "Root should have no inbound edges");
 
     // Leaf count must be preserved
     assert_eq!(
-      graph.get_leaves().len(),
+      graph.get_leaves().collect::<Vec<_>>().len(),
       initial_leaf_count,
       "Leaf count should be unchanged"
     );
 
     // Node count may increase by 1 if edge was split, but never decrease
     assert!(
-      graph.get_nodes().len() >= initial_node_count,
+      graph.get_nodes().collect::<Vec<_>>().len() >= initial_node_count,
       "Node count should not decrease after reroot"
     );
 
@@ -205,14 +201,12 @@ mod tests {
     // Find edge from root to A
     let edge_to_a_key = graph
       .get_edges()
-      .iter()
       .find(|e| {
-        let e = e.read_arc();
         let src = e.source();
         let tgt = e.target();
         (src == root_key && tgt == a_key) || (src == a_key && tgt == root_key)
       })
-      .map(|e| e.read_arc().key())
+      .map(|e| e.key())
       .ok_or_else(|| make_report!("Edge to A not found"))?;
 
     // Create sparse partition with manually seeded edge data
@@ -292,14 +286,12 @@ mod tests {
     // Find edge from root to A
     let edge_to_a_key = graph
       .get_edges()
-      .iter()
       .find(|e| {
-        let e = e.read_arc();
         let src = e.source();
         let tgt = e.target();
         (src == root_key && tgt == a_key) || (src == a_key && tgt == root_key)
       })
-      .map(|e| e.read_arc().key())
+      .map(|e| e.key())
       .ok_or_else(|| make_report!("Edge to A not found"))?;
 
     // Create root sequence with specific characters
@@ -378,12 +370,8 @@ mod tests {
     let a_key = find_node_key_by_name(&graph, &names, "A").ok_or_else(|| make_report!("A not found"))?;
     let edge_to_a_key = graph
       .get_edges()
-      .iter()
-      .find(|e| {
-        let e = e.read_arc();
-        e.source() == root_key && e.target() == a_key
-      })
-      .map(|e| e.read_arc().key())
+      .find(|e| e.source() == root_key && e.target() == a_key)
+      .map(|e| e.key())
       .ok_or_else(|| make_report!("Edge to A not found"))?;
 
     let root_seq = Seq::try_from_slice(b"ACGTACGT")?;
@@ -443,21 +431,13 @@ mod tests {
 
     let edge_root_ab = graph
       .get_edges()
-      .iter()
-      .find(|e| {
-        let e = e.read_arc();
-        e.source() == root_key && e.target() == ab_key
-      })
-      .map(|e| e.read_arc().key())
+      .find(|e| e.source() == root_key && e.target() == ab_key)
+      .map(|e| e.key())
       .ok_or_else(|| make_report!("Edge root->AB not found"))?;
     let edge_ab_a = graph
       .get_edges()
-      .iter()
-      .find(|e| {
-        let e = e.read_arc();
-        e.source() == ab_key && e.target() == a_key
-      })
-      .map(|e| e.read_arc().key())
+      .find(|e| e.source() == ab_key && e.target() == a_key)
+      .map(|e| e.key())
       .ok_or_else(|| make_report!("Edge AB->A not found"))?;
 
     let root_seq = Seq::try_from_slice(b"ACGTACGT")?;
@@ -553,7 +533,7 @@ mod tests {
     let partitions = vec![sparse_partition];
 
     // Record initial state
-    let initial_leaf_count = graph.get_leaves().len();
+    let initial_leaf_count = graph.get_leaves().collect::<Vec<_>>().len();
 
     // Initialize marginal for the sparse partition
     let (partitions, _) = marginal_update_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
@@ -578,7 +558,7 @@ mod tests {
     // Verify tree validity after first reroot
     drop(graph.get_exactly_one_root()?);
     assert_eq!(
-      graph.get_leaves().len(),
+      graph.get_leaves().collect::<Vec<_>>().len(),
       initial_leaf_count,
       "Leaf count should be unchanged after first reroot"
     );
@@ -608,7 +588,7 @@ mod tests {
     // Verify tree validity after second reroot
     drop(graph.get_exactly_one_root()?);
     assert_eq!(
-      graph.get_leaves().len(),
+      graph.get_leaves().collect::<Vec<_>>().len(),
       initial_leaf_count,
       "Leaf count should be unchanged after second reroot"
     );

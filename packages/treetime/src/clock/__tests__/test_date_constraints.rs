@@ -43,9 +43,7 @@ mod tests {
   ) -> Vec<TestNode> {
     graph
       .get_nodes()
-      .iter()
       .map(|node| {
-        let node = node.read_arc();
         let key = node.key();
         let name = names.get(&node.key()).cloned().flatten();
         let date_constraint = constraints.date_constraints[&key].clone();

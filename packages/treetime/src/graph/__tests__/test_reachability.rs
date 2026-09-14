@@ -8,12 +8,12 @@ mod tests {
 
   #[test]
   fn test_reachability_follows_directed_chain() -> Result<(), Report> {
-    let (graph, nodes) = graph_with_edges(3, &[(0, 1), (1, 2)])?;
+    let (graph, keys) = graph_with_edges(3, &[(0, 1), (1, 2)])?;
 
-    let root_to_leaf = exists_forward_path_between(&graph, &nodes[0], &nodes[2]);
-    let root_to_internal = exists_forward_path_between(&graph, &nodes[0], &nodes[1]);
-    let internal_to_leaf = exists_forward_path_between(&graph, &nodes[1], &nodes[2]);
-    let leaf_to_root = exists_forward_path_between(&graph, &nodes[2], &nodes[0]);
+    let root_to_leaf = exists_forward_path_between(&graph, keys[0], keys[2]);
+    let root_to_internal = exists_forward_path_between(&graph, keys[0], keys[1]);
+    let internal_to_leaf = exists_forward_path_between(&graph, keys[1], keys[2]);
+    let leaf_to_root = exists_forward_path_between(&graph, keys[2], keys[0]);
 
     // Forward reachability follows edge directions; the reverse direction is not reachable.
     assert_eq!(
@@ -26,9 +26,10 @@ mod tests {
 
   mod helpers {
     use eyre::Report;
-    use treetime_graph::graph::{Graph, SafeNode};
+    use treetime_graph::graph::Graph;
+    use treetime_graph::node::GraphNodeKey;
 
-    pub fn graph_with_edges(node_count: usize, edges: &[(usize, usize)]) -> Result<(Graph, Vec<SafeNode>), Report> {
+    pub fn graph_with_edges(node_count: usize, edges: &[(usize, usize)]) -> Result<(Graph, Vec<GraphNodeKey>), Report> {
       let mut graph = Graph::new();
       let keys = std::iter::repeat_with(|| graph.add_node())
         .take(node_count)
@@ -37,8 +38,7 @@ mod tests {
         .iter()
         .try_for_each(|(source, target)| graph.add_edge(keys[*source], keys[*target]).map(|_| ()))?;
       graph.build()?;
-      let nodes = keys.iter().map(|key| graph.get_node(*key).unwrap()).collect::<Vec<_>>();
-      Ok((graph, nodes))
+      Ok((graph, keys))
     }
   }
 }

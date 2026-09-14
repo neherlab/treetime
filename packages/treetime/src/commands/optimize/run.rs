@@ -94,9 +94,7 @@ pub fn run_optimize(
   // from the loop result (`branch_lengths`); the writers read sequences from the gathered maps.
   let nodes: BTreeMap<GraphNodeKey, OptimizeNodeOut> = graph
     .get_nodes()
-    .iter()
     .map(|node| {
-      let node = node.read_arc();
       let key = node.key();
       (
         key,
@@ -219,25 +217,22 @@ fn gather_optimize_partition_maps(
   let root_sequence = Some(root_sequence);
   let node_sequences = graph
     .get_nodes()
-    .iter()
     .map(|node| {
-      let key = node.read_arc().key();
+      let key = node.key();
       (key, node_sequence(key))
     })
     .collect();
   let edge_mutations = graph
     .get_edges()
-    .iter()
     .map(|edge| {
-      let key = edge.read_arc().key();
+      let key = edge.key();
       Ok((key, edge_mutations(key)?))
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   let edge_subs = graph
     .get_edges()
-    .iter()
     .map(|edge| {
-      let key = edge.read_arc().key();
+      let key = edge.key();
       Ok((key, edge_subs(key)?))
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;

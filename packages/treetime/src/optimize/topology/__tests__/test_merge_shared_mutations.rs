@@ -54,7 +54,7 @@ mod tests {
     let mut obs_nodes = btreemap! {};
     let mut node_states = btreemap! {};
     for node in graph.get_nodes() {
-      let key = node.read_arc().key();
+      let key = node.key();
       obs_nodes.insert(key, SparseNodeObs::new(&ref_seq, &alphabet));
       node_states.insert(key, SparseNodeState::leaf(&ref_seq));
     }
@@ -82,9 +82,7 @@ mod tests {
   fn find_unnamed_internal_nodes(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Vec<GraphNodeKey> {
     graph
       .get_nodes()
-      .iter()
       .filter_map(|node| {
-        let node = node.read_arc();
         let is_unnamed = names.get(&node.key()).and_then(|n| n.as_ref()).is_none();
         let is_internal = !node.is_leaf() && !node.is_root();
         (is_unnamed && is_internal).then_some(node.key())
@@ -115,7 +113,7 @@ mod tests {
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 0);
-    assert_eq!(graph.get_nodes().len(), 4); // root, internal, A, B
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 4); // root, internal, A, B
     Ok(())
   }
 
@@ -142,7 +140,7 @@ mod tests {
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 0);
-    assert_eq!(graph.get_nodes().len(), 4); // root, A, B, C
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 4); // root, A, B, C
     Ok(())
   }
 
@@ -177,8 +175,8 @@ mod tests {
 
     graph.build()?;
     // New topology: root -> N, N -> A, N -> B, root -> C
-    assert_eq!(graph.get_nodes().len(), 5); // root, N, A, B, C
-    assert_eq!(graph.get_edges().len(), 4);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 5); // root, N, A, B, C
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 4);
 
     // The new internal node should exist
     let unnamed = find_unnamed_internal_nodes(&graph, &names);
@@ -188,9 +186,8 @@ mod tests {
     let p = &partitions[0];
     // A and B should have no remaining mutations
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       if let Some(edge_data) = p.obs_edges.get(&edge.key()) {
         match target_name.as_deref() {
           Some("A" | "B") => assert_eq!(
@@ -247,9 +244,8 @@ mod tests {
 
     // Check that B retains only its unique mutation
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       if let Some(edge_data) = p.obs_edges.get(&edge.key()) {
         match target_name.as_deref() {
           Some("A") => assert_eq!(edge_data.fitch_subs().len(), 0),
@@ -308,14 +304,13 @@ mod tests {
 
     graph.build()?;
     // Topology: root -> N -> {A, B}, root -> C, root -> D
-    assert_eq!(graph.get_nodes().len(), 6); // root, N, A, B, C, D
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 6); // root, N, A, B, C, D
 
     let p = &partitions[0];
     // The new internal edge carries all 3 shared mutations
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       if target_name.is_none() {
         if let Some(edge_data) = p.obs_edges.get(&edge.key()) {
           assert_eq!(edge_data.fitch_subs().len(), 3);
@@ -355,9 +350,8 @@ mod tests {
 
     let d = -0.75 * f64::ln(1.0 - 4.0 * 0.02 / 3.0);
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       let bl = branch_lengths[&edge.key()];
 
       match target_name.as_deref() {
@@ -399,9 +393,8 @@ mod tests {
     graph.build()?;
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       let bl = branch_lengths[&edge.key()];
 
       if target_name.as_deref() == Some("A") {
@@ -439,7 +432,7 @@ mod tests {
     let mut p2_obs_nodes = btreemap! {};
     let mut p2_node_states = btreemap! {};
     for node in graph.get_nodes() {
-      let key = node.read_arc().key();
+      let key = node.key();
       p2_obs_nodes.insert(key, SparseNodeObs::empty(&p2_alphabet));
       p2_node_states.insert(key, SparseNodeState::leaf(&p2_ref_seq));
     }
@@ -475,9 +468,8 @@ mod tests {
     let p_pooled = 2.0 / 300.0;
     let d_expected = -0.75 * f64::ln(1.0 - 4.0 * p_pooled / 3.0);
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       let bl = branch_lengths[&edge.key()];
 
       if target_name.is_none() {
@@ -489,9 +481,8 @@ mod tests {
     let p1 = &partitions[0];
     let p2 = &partitions[1];
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       if target_name.as_deref() == Some("B") {
         // P1: B had {A0T, G5C}, shared = {A0T}, remaining = {G5C}
         assert_eq!(p1.obs_edges[&edge.key()].fitch_subs().len(), 1);
@@ -536,8 +527,8 @@ mod tests {
 
     graph.build()?;
     // root -> N1 -> {A, B}, root -> N2 -> {C, D}, root -> E
-    assert_eq!(graph.get_nodes().len(), 8); // root, N1, N2, A, B, C, D, E
-    assert_eq!(graph.get_edges().len(), 7);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 8); // root, N1, N2, A, B, C, D, E
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 7);
 
     Ok(())
   }
@@ -588,7 +579,7 @@ mod tests {
 
     graph.build()?;
     // internal1 -> N -> {A, B}, internal1 -> C
-    assert_eq!(graph.get_nodes().len(), 7); // root, internal1, N, A, B, C, D
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 7); // root, internal1, N, A, B, C, D
 
     // D should be unaffected
     assert!(find_node_key_by_name(&graph, &names, "D").is_some());
@@ -627,9 +618,8 @@ mod tests {
     // At small p the correction is a few parts per thousand above raw p.
     let d_expected = -0.75 * f64::ln(1.0 - 4.0 * 0.001 / 3.0);
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       let bl = branch_lengths[&edge.key()];
 
       if target_name.is_none() {
@@ -671,9 +661,8 @@ mod tests {
     let d = -0.75 * f64::ln(1.0 - 4.0 * p / 3.0);
     assert!(d > p * 1.05, "JC correction must exceed raw p by >5%: d={d} p={p}");
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       let bl = branch_lengths[&edge.key()];
 
       match target_name.as_deref() {
@@ -847,7 +836,7 @@ mod tests {
     assert_eq!(unnamed.len(), 1);
 
     let new_node = graph.get_node(unnamed[0]).expect("new internal node");
-    assert_eq!(new_node.read_arc().degree_out(), 3);
+    assert_eq!(new_node.degree_out(), 3);
 
     Ok(())
   }
@@ -946,11 +935,9 @@ mod tests {
     ) -> BTreeMap<String, f64> {
       graph
         .get_edges()
-        .iter()
         .filter_map(|edge| {
-          let edge = edge.read_arc();
           let target = graph.get_node(edge.target())?;
-          let name = names.get(&target.read_arc().key()).cloned().flatten()?;
+          let name = names.get(&target.key()).cloned().flatten()?;
           let bl = branch_lengths[&edge.key()]?;
           Some((name, bl))
         })
@@ -965,9 +952,8 @@ mod tests {
       let p = &partition;
       let mut result = BTreeMap::new();
       for edge in graph.get_edges() {
-        let edge = edge.read_arc();
         let target = graph.get_node(edge.target()).expect("target node");
-        let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+        let target_name = names.get(&target.key()).cloned().flatten();
         if let Some(edge_data) = p.obs_edges.get(&edge.key()) {
           let key: Option<&'a str> = match target_name.as_deref() {
             Some("A") => Some("A"),
@@ -1033,7 +1019,7 @@ mod tests {
       let mut obs_nodes = btreemap! {};
       let mut node_states = btreemap! {};
       for node in graph.get_nodes() {
-        let key = node.read_arc().key();
+        let key = node.key();
         obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
         node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }

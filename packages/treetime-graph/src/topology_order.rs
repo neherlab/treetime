@@ -2,7 +2,7 @@
 mod __tests__;
 
 use crate::edge::GraphEdgeKey;
-use crate::graph::{Graph, SafeNode};
+use crate::graph::Graph;
 use crate::node::GraphNodeKey;
 use eyre::Report;
 use itertools::Itertools;
@@ -88,19 +88,18 @@ impl TopologyOrderSpec {
       }
     }?;
 
-    let ordered_nodes: Vec<(SafeNode, Vec<GraphEdgeKey>)> = order
-      .outbound_edges
-      .into_iter()
-      .map(|(node_key, outbound_edges)| {
-        graph
-          .get_node(node_key)
-          .map(|node| (node, outbound_edges))
-          .ok_or_else(|| make_report!("Node {node_key} disappeared while applying topology order"))
-      })
-      .try_collect()?;
+    // Validate every target node still exists before any mutation; keys and slot storage are unchanged.
+    for &node_key in order.outbound_edges.keys() {
+      if graph.get_node(node_key).is_none() {
+        return make_error!("Node {node_key} disappeared while applying topology order");
+      }
+    }
 
-    for (node, outbound_edges) in ordered_nodes {
-      *node.write_arc().outbound_mut() = outbound_edges;
+    for (node_key, outbound_edges) in order.outbound_edges {
+      *graph
+        .get_node_mut(node_key)
+        .expect("Node presence validated above")
+        .outbound_mut() = outbound_edges;
     }
     graph.roots = order.roots;
     graph.leaves = order.leaves;
@@ -162,13 +161,8 @@ fn build_order_unmodified(graph: &Graph) -> Result<TopologyOrder, Report> {
     roots: graph.roots.clone(),
     leaves: graph.leaves.clone(),
     outbound_edges: graph
-      .nodes
-      .iter()
-      .filter_map(Option::as_ref)
-      .map(|node| {
-        let node = node.read_arc();
-        (node.key(), node.outbound().to_vec())
-      })
+      .get_nodes()
+      .map(|node| (node.key(), node.outbound().to_vec()))
       .collect(),
   })
 }
@@ -214,13 +208,8 @@ fn build_order<K: Ord>(
     roots: sort_node_keys(&graph.roots),
     leaves: sort_node_keys(&graph.leaves),
     outbound_edges: graph
-      .nodes
-      .iter()
-      .filter_map(Option::as_ref)
-      .map(|node| {
-        let node = node.read_arc();
-        (node.key(), sort_edge_keys(node.outbound()))
-      })
+      .get_nodes()
+      .map(|node| (node.key(), sort_edge_keys(node.outbound())))
       .collect(),
   })
 }
@@ -248,7 +237,7 @@ fn compute_descendant_counts(graph: &Graph, postorder: &[GraphNodeKey]) -> BTree
   let mut counts = BTreeMap::new();
   for &node_key in postorder {
     let node = graph.get_node(node_key).unwrap();
-    let child_keys = graph.child_keys_of(&node.read_arc());
+    let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
     let count = if child_keys.is_empty() {
       1
     } else {
@@ -263,7 +252,7 @@ fn compute_heights(graph: &Graph, postorder: &[GraphNodeKey]) -> BTreeMap<GraphN
   let mut heights = BTreeMap::new();
   for &node_key in postorder {
     let node = graph.get_node(node_key).unwrap();
-    let child_keys = graph.child_keys_of(&node.read_arc());
+    let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
     let height = child_keys.iter().map(|ck| heights[ck] + 1).max().unwrap_or(0);
     heights.insert(node_key, height);
   }
@@ -278,13 +267,11 @@ fn compute_divergences(
   let mut divergences: BTreeMap<GraphNodeKey, OrderedFloat<f64>> = BTreeMap::new();
   for &node_key in postorder {
     let node = graph.get_node(node_key).unwrap();
-    let node = node.read_arc();
     let divergence = graph
-      .children_of(&node)
-      .iter()
+      .children_of(node)
       .map(|(child, edge)| {
-        let child_key = child.read_arc().key();
-        let edge_len = branch_lengths[&edge.read_arc().key()].unwrap_or(0.0);
+        let child_key = child.key();
+        let edge_len = branch_lengths[&edge.key()].unwrap_or(0.0);
         divergences[&child_key].0 + edge_len
       })
       .reduce(f64::max)
@@ -302,8 +289,7 @@ fn compute_labels(
   let mut labels: BTreeMap<GraphNodeKey, String> = BTreeMap::new();
   for &node_key in postorder {
     let node = graph.get_node(node_key).unwrap();
-    let node = node.read_arc();
-    let child_keys = graph.child_keys_of(&node);
+    let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
     let label = if child_keys.is_empty() {
       names[&node_key]
         .clone()
@@ -359,8 +345,7 @@ fn compute_target_scores_mean(
   let mut scores: BTreeMap<GraphNodeKey, TargetScore> = BTreeMap::new();
   for &node_key in postorder {
     let node = graph.get_node(node_key).unwrap();
-    let node = node.read_arc();
-    let child_keys = graph.child_keys_of(&node);
+    let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
     let score = if child_keys.is_empty() {
       let name = names[&node_key]
         .clone()
@@ -393,8 +378,7 @@ fn compute_target_scores_median(
   let mut scores = BTreeMap::new();
   for &node_key in postorder {
     let node = graph.get_node(node_key).unwrap();
-    let node = node.read_arc();
-    let child_keys = graph.child_keys_of(&node);
+    let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
     let pos = if child_keys.is_empty() {
       let name = names[&node_key]
         .clone()
@@ -440,7 +424,6 @@ fn validate_target_order(
 ) -> Result<(), Report> {
   let mut final_labels = BTreeMap::new();
   for leaf in graph.get_leaves() {
-    let leaf = leaf.read_arc();
     let label = names[&leaf.key()]
       .clone()
       .ok_or_else(|| make_report!("When validating target order: leaf node {} has no name", leaf.key()))?;
@@ -458,11 +441,7 @@ fn validate_target_order(
 }
 
 fn postorder_keys(graph: &Graph) -> Result<Vec<GraphNodeKey>, Report> {
-  let node_keys = graph
-    .nodes
-    .iter()
-    .filter_map(|node| node.as_ref().map(|node| node.read_arc().key()))
-    .collect_vec();
+  let node_keys = graph.node_keys().collect_vec();
 
   let mut remaining_inbound = node_keys
     .iter()
@@ -480,7 +459,7 @@ fn postorder_keys(graph: &Graph) -> Result<Vec<GraphNodeKey>, Report> {
     let node = graph
       .get_node(node_key)
       .ok_or_else(|| make_report!("When computing topology order: Node {node_key} not found"))?;
-    for child_key in graph.child_keys_of(&node.read_arc()) {
+    for (child_key, _) in graph.children_keys_of(node) {
       let count = remaining_inbound
         .get_mut(&child_key)
         .ok_or_else(|| make_report!("When computing topology order: Node {child_key} not found"))?;

@@ -169,7 +169,7 @@ mod tests {
   #[test]
   fn test_reroot_policy_allow_edge_split_false_no_new_nodes() -> Result<(), Report> {
     let (mut graph, names, options, mut inputs, state, mut branch_lengths) = setup_reroot_test_graph()?;
-    let node_count_before = graph.get_nodes().len();
+    let node_count_before = graph.get_nodes().collect::<Vec<_>>().len();
 
     // Both flags false: don't split edges AND don't remove old root
     // This guarantees no new nodes created and no nodes removed
@@ -191,7 +191,7 @@ mod tests {
       &names_tt_6,
     )?;
 
-    let node_count_after = graph.get_nodes().len();
+    let node_count_after = graph.get_nodes().collect::<Vec<_>>().len();
     assert_eq!(
       node_count_before, node_count_after,
       "Node count should be unchanged when edge split is disabled and old root is preserved"
@@ -203,7 +203,7 @@ mod tests {
   #[test]
   fn test_reroot_policy_remove_old_root_if_trivial_false_preserves_old_root() -> Result<(), Report> {
     let (mut graph, names, options, mut inputs, state, mut branch_lengths) = setup_reroot_test_graph()?;
-    let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let old_root_key = graph.get_exactly_one_root()?.key();
 
     let reroot_params = RerootParams {
       split_edge: true,
@@ -236,7 +236,7 @@ mod tests {
   #[test]
   fn test_reroot_policy_default_allows_edge_split() -> Result<(), Report> {
     let (mut graph, names, options, mut inputs, state, mut branch_lengths) = setup_reroot_test_graph()?;
-    let node_count_before = graph.get_nodes().len();
+    let node_count_before = graph.get_nodes().collect::<Vec<_>>().len();
 
     let reroot_params = RerootParams::default();
 
@@ -252,7 +252,7 @@ mod tests {
       &names_tt_4,
     )?;
 
-    let node_count_after = graph.get_nodes().len();
+    let node_count_after = graph.get_nodes().collect::<Vec<_>>().len();
     // With default policy, a new node may be created by edge split (count increases)
     // or old trivial root may be removed (count stays same or decreases by 1 if split created one)
     // The key is it should not crash and should complete successfully
@@ -288,7 +288,6 @@ mod tests {
       .get_node(reroot_result.new_root_key)
       .expect("new root should exist");
     let child_names = root
-      .read_arc()
       .outbound()
       .iter()
       .map(|edge_key| {
@@ -354,7 +353,6 @@ mod tests {
       .get_node(reroot_result.new_root_key)
       .expect("new root should exist");
     let child_names = root
-      .read_arc()
       .outbound()
       .iter()
       .map(|edge_key| {
@@ -391,9 +389,7 @@ mod tests {
     ) -> BTreeMap<GraphNodeKey, Option<f64>> {
       graph
         .get_leaves()
-        .iter()
         .map(|node| {
-          let node = node.read_arc();
           let name = names[&node.key()].clone().expect("Leaf has name");
           (node.key(), dates.get(&name).copied())
         })

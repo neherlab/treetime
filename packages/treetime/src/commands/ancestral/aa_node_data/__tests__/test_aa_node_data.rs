@@ -172,7 +172,6 @@ mod tests {
         .get_nodes()
         .into_iter()
         .map(|node| {
-          let node = node.read_arc();
           let key = node.key();
           let name = names[&node.key()].clone().unwrap();
           (name, key)
@@ -197,7 +196,7 @@ mod tests {
       let alphabet = Alphabet::default();
       let mut fasta = String::new();
       for (leaf, seq) in graph.get_leaves().into_iter().zip(leaf_sequences) {
-        let name = names[&leaf.read_arc().key()].clone().unwrap();
+        let name = names[&leaf.key()].clone().unwrap();
         writeln!(fasta, ">{name}").unwrap();
         writeln!(fasta, "{seq}").unwrap();
       }

@@ -32,7 +32,7 @@ mod tests {
     }
     let alphabet = recon.alphabet.clone();
     for node in graph.get_nodes() {
-      let key = node.read_arc().key();
+      let key = node.key();
       recon
         .obs_nodes
         .entry(key)
@@ -86,14 +86,13 @@ mod tests {
     collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
-    assert_eq!(graph.get_nodes().len(), 3); // root, A, B
-    assert_eq!(graph.get_edges().len(), 2);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, A, B
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2);
 
     let p = &sparse[0];
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       let edge_data = &p.obs_edges[&edge.key()];
       match target_name.as_deref() {
         Some("A") => {
@@ -164,9 +163,8 @@ mod tests {
     graph.build()?;
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       let bl = branch_lengths[&edge.key()];
 
       match target_name.as_deref() {
@@ -197,9 +195,8 @@ mod tests {
     graph.build()?;
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       let bl = branch_lengths[&edge.key()];
 
       match target_name.as_deref() {
@@ -233,9 +230,8 @@ mod tests {
     graph.build()?;
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       match target_name.as_deref() {
         Some("A") => assert_eq!(branch_lengths[&edge.key()], None),
         Some("B") => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.5, epsilon = 1e-7),
@@ -265,9 +261,8 @@ mod tests {
     graph.build()?;
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       match target_name.as_deref() {
         Some("A") => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.1, epsilon = 1e-7),
         Some("B") => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.2, epsilon = 1e-7),
@@ -319,9 +314,8 @@ mod tests {
 
     let p = &sparse[0];
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.read_arc().key()).cloned().flatten();
+      let target_name = names.get(&target.key()).cloned().flatten();
       let edge_data = &p.obs_edges[&edge.key()];
       match target_name.as_deref() {
         Some("A") => {
@@ -368,18 +362,17 @@ mod tests {
     let p = &sparse[0];
     let root_to_a_edge = graph
       .get_edges()
-      .iter()
       .find(|e| {
-        let t = e.read_arc().target();
+        let t = e.target();
         graph
           .get_node(t)
-          .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten())
+          .and_then(|n| names.get(&n.key()).cloned().flatten())
           .as_deref()
           == Some("A")
       })
       .cloned()
       .unwrap();
-    let edge_data = &p.obs_edges[&root_to_a_edge.read_arc().key()];
+    let edge_data = &p.obs_edges[&root_to_a_edge.key()];
     let expected: &[Sub] = &[];
     assert_eq!(edge_data.fitch_subs(), expected);
 
@@ -404,8 +397,8 @@ mod tests {
     graph.build()?;
 
     assert!(graph.get_node(i_node_key).is_none());
-    assert_eq!(graph.get_nodes().len(), 3); // root, A, B
-    assert_eq!(graph.get_edges().len(), 2);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3); // root, A, B
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2);
 
     Ok(())
   }
@@ -448,7 +441,6 @@ mod tests {
 
     let p0 = &sparse[0];
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let data = &p0.obs_edges[&edge.key()];
       assert_eq!(
         data.fitch_subs(),
@@ -459,7 +451,6 @@ mod tests {
 
     let p1 = &sparse[1];
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let data = &p1.obs_edges[&edge.key()];
       assert_eq!(
         data.fitch_subs(),

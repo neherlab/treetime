@@ -345,7 +345,6 @@ mod tests {
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
-    let root_node = root_node.read_arc();
 
     let outbound_edges = root_node.outbound();
     let unique_outbound: BTreeSet<_> = outbound_edges.iter().collect();
@@ -402,12 +401,12 @@ mod tests {
     graph.collapse_edge(edge_to_collapse)?;
 
     let source1_ref = graph.get_node(source1_node).unwrap();
-    let source1_binding = source1_ref.read_arc();
+    let source1_binding = source1_ref;
     let source1_outbound = source1_binding.outbound();
     assert_eq!(source1_outbound.len(), 1);
 
     if let Some(edge) = graph.get_edge(source1_outbound[0]) {
-      let edge_ref = edge.read_arc();
+      let edge_ref = edge;
       assert_eq!(edge_ref.source(), source1_node);
       assert_eq!(edge_ref.target(), leaf_node);
     }
@@ -416,7 +415,7 @@ mod tests {
     assert_eq!(source1_inbound.len(), 1);
 
     if let Some(edge) = graph.get_edge(source1_inbound[0]) {
-      let edge_ref = edge.read_arc();
+      let edge_ref = edge;
       assert_eq!(edge_ref.source(), source2_node);
       assert_eq!(edge_ref.target(), source1_node);
     }
@@ -437,17 +436,17 @@ mod tests {
     graph.collapse_edge(root_to_internal)?;
 
     for node in graph.get_nodes() {
-      let node_ref = node.read_arc();
+      let node_ref = node;
 
       for &edge_key in node_ref.outbound() {
         let edge = graph.get_edge(edge_key).expect("Outbound edge should exist");
-        let edge_ref = edge.read_arc();
+        let edge_ref = edge;
         assert_eq!(edge_ref.source(), node_ref.key(), "Edge source should match node");
       }
 
       for &edge_key in node_ref.inbound() {
         let edge = graph.get_edge(edge_key).expect("Inbound edge should exist");
-        let edge_ref = edge.read_arc();
+        let edge_ref = edge;
         assert_eq!(edge_ref.target(), node_ref.key(), "Edge target should match node");
       }
     }

@@ -35,7 +35,7 @@ pub fn get_mutation_counts_fitch(
 
   let root_state = {
     let root = graph.get_exactly_one_root()?;
-    let root_key = root.read_arc().key();
+    let root_key = root.key();
     let root_composition = &partition.nodes[&root_key].seq.composition;
     Array1::<f64>::from_iter(
       alphabet
@@ -49,7 +49,7 @@ pub fn get_mutation_counts_fitch(
   let mut Ti = Array1::zeros(N);
 
   for edge in graph.get_edges() {
-    let edge_arc = edge.read_arc();
+    let edge_arc = edge;
     let target_key = edge_arc.target();
     let edge_key = edge_arc.key();
     let branch_length = branch_lengths[&edge_key];

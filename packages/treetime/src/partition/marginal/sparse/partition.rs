@@ -115,8 +115,8 @@ impl PartitionMarginalSparse {
   /// Ensure the observation maps have entries for all nodes and edges in the graph, dropping stale
   /// entries. Placeholder observations are created for nodes and edges introduced by topology edits.
   pub fn reconcile_topology(&mut self, graph: &Graph) {
-    let graph_node_keys: BTreeSet<GraphNodeKey> = graph.get_nodes().into_iter().map(|n| n.read_arc().key()).collect();
-    let graph_edge_keys: BTreeSet<GraphEdgeKey> = graph.get_edges().into_iter().map(|e| e.read_arc().key()).collect();
+    let graph_node_keys: BTreeSet<GraphNodeKey> = graph.get_nodes().into_iter().map(|n| n.key()).collect();
+    let graph_edge_keys: BTreeSet<GraphEdgeKey> = graph.get_edges().into_iter().map(|e| e.key()).collect();
 
     for &key in &graph_node_keys {
       self

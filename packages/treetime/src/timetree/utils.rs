@@ -29,7 +29,7 @@ pub fn initialize_node_divergences(
 ) -> Result<(), Report> {
   let divs = compute_divs(graph, OnlyLeaves(false), branch_lengths, names)?;
   for node_ref in graph.get_nodes() {
-    let node = node_ref.read_arc();
+    let node = node_ref;
     let key = node.key();
     if let Some(name) = &names[&key] {
       if let Some(&div) = divs.get(name) {
@@ -49,7 +49,7 @@ pub fn extract_node_times(
     .get_nodes()
     .into_iter()
     .filter_map(|node_ref| {
-      let key = node_ref.read_arc().key();
+      let key = node_ref.key();
       let name = names[&key].clone()?;
       let time = state.nodes.get(&key).and_then(|node| node.time)?;
       Some((name, time))
@@ -77,7 +77,7 @@ pub fn create_poisson_branch_distributions(
 
   let mut distributions = BTreeMap::new();
   for edge_ref in graph.get_edges() {
-    let edge_key = edge_ref.read_arc().key();
+    let edge_key = edge_ref.key();
 
     if let Some(branch_length) = branch_lengths[&edge_key] {
       let expected_time = branch_length / mu;

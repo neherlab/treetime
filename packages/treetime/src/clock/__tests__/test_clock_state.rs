@@ -38,8 +38,7 @@ mod tests {
 
     let expected_edges: BTreeMap<_, _> = graph
       .get_edges()
-      .iter()
-      .map(|edge| (edge.read_arc().key(), ClockEdgeInput::default()))
+      .map(|edge| (edge.key(), ClockEdgeInput::default()))
       .collect();
     assert_eq!(expected_edges, inputs.edges);
 
@@ -55,9 +54,7 @@ mod tests {
     ) -> BTreeMap<String, GraphNodeKey> {
       graph
         .get_nodes()
-        .iter()
         .map(|node| {
-          let node = node.read_arc();
           let name = names.get(&node.key()).cloned().flatten().expect("node has a name");
           (name, node.key())
         })

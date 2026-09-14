@@ -400,9 +400,8 @@ pub fn find_zero_optimal_internal_edges(
 ) -> Vec<GraphEdgeKey> {
   graph
     .get_edges()
-    .iter()
     .filter_map(|edge_ref| {
-      let edge = edge_ref.read_arc();
+      let edge = edge_ref;
       let bl = branch_lengths[&edge.key()].unwrap_or(f64::NAN);
       let target_is_leaf = graph.is_leaf(edge.target());
       if bl != 0.0 || target_is_leaf {
@@ -610,8 +609,8 @@ pub fn any_indel_edge_has_zero_branch_length(
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> bool {
-  graph.get_edges().iter().any(|edge_ref| {
-    let edge = edge_ref.read_arc();
+  graph.get_edges().any(|edge_ref| {
+    let edge = edge_ref;
     let edge_key = edge.key();
     let bl = branch_lengths[&edge_key].unwrap_or(0.0);
     if bl != 0.0 {

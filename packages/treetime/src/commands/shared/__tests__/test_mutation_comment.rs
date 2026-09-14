@@ -35,7 +35,7 @@ mod tests {
         ],
       )],
     )?;
-    let edge_key = graph.get_edges()[0].read_arc().key();
+    let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     partition
       .partition
       .obs_edges
@@ -57,7 +57,7 @@ mod tests {
     let partition = make_test_partition(&graph, 100, &[(0, vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?])])?;
     let edge_mutations = edge_mutation_map(&graph, &partition)?;
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
-    let root_key = graph.get_roots()[0].read_arc().key();
+    let root_key = graph.get_roots().collect::<Vec<_>>()[0].key();
     let comments = provider.node_comments(root_key)?;
     assert!(comments.is_empty());
     Ok(())
@@ -112,9 +112,8 @@ mod tests {
   ) -> Result<BTreeMap<GraphEdgeKey, Vec<Mutation>>, Report> {
     graph
       .get_edges()
-      .iter()
       .map(|edge| {
-        let key = edge.read_arc().key();
+        let key = edge.key();
         Ok((key, partition.edge_mutations(key, &MutationTrack::Nucleotide)?))
       })
       .collect()
@@ -138,7 +137,7 @@ mod tests {
     let mut obs_nodes = btreemap! {};
     let mut node_states = btreemap! {};
     for node in graph.get_nodes() {
-      let key = node.read_arc().key();
+      let key = node.key();
       obs_nodes.insert(key, SparseNodeObs::new(&ref_seq, &alphabet));
       node_states.insert(key, SparseNodeState::leaf(&ref_seq));
     }
@@ -147,10 +146,10 @@ mod tests {
     // The MAP substitutions the comment provider reports come from the estimates map; the fixture seeds
     // it directly (comment tests do not run a marginal pass).
     let mut estimates = btreemap! {};
-    let edges = graph.get_edges();
+    let edges = graph.get_edges().collect::<Vec<_>>();
     for (idx, subs) in edge_subs {
       if let Some(edge) = edges.get(*idx) {
-        let edge_key = edge.read_arc().key();
+        let edge_key = edge.key();
         obs_edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs.clone()));
         estimates.insert(edge_key, subs.clone());
       }
@@ -177,6 +176,6 @@ mod tests {
   }
 
   fn leaf_key(graph: &Graph) -> GraphNodeKey {
-    graph.get_leaves()[0].read_arc().key()
+    graph.get_leaves().collect::<Vec<_>>()[0].key()
   }
 }

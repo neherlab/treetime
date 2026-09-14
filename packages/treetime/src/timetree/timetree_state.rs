@@ -62,13 +62,11 @@ impl TimetreeState {
   pub fn new(graph: &Graph) -> Self {
     let nodes = graph
       .get_nodes()
-      .iter()
-      .map(|node| (node.read_arc().key(), DateNodeState::default()))
+      .map(|node| (node.key(), DateNodeState::default()))
       .collect();
     let edges = graph
       .get_edges()
-      .iter()
-      .map(|edge| (edge.read_arc().key(), DateEdgeState::default()))
+      .map(|edge| (edge.key(), DateEdgeState::default()))
       .collect();
     Self { nodes, edges }
   }
@@ -84,9 +82,8 @@ impl TimetreeState {
   pub fn seed_from_values(graph: &Graph, constraints: &DateConstraints) -> Self {
     let nodes = graph
       .get_nodes()
-      .iter()
       .map(|node| {
-        let key = node.read_arc().key();
+        let key = node.key();
         let state = DateNodeState {
           time_distribution: constraints.time_distributions.get(&key).cloned().flatten(),
           time: None,
@@ -98,8 +95,7 @@ impl TimetreeState {
       .collect();
     let edges = graph
       .get_edges()
-      .iter()
-      .map(|edge| (edge.read_arc().key(), DateEdgeState::default()))
+      .map(|edge| (edge.key(), DateEdgeState::default()))
       .collect();
     Self { nodes, edges }
   }
@@ -124,9 +120,8 @@ impl TimetreeState {
   pub fn reseed_from_values(&mut self, graph: &Graph) {
     let nodes = graph
       .get_nodes()
-      .iter()
       .map(|node| {
-        let key = node.read_arc().key();
+        let key = node.key();
         let state = self
           .nodes
           .get(&key)
@@ -141,9 +136,8 @@ impl TimetreeState {
       .collect();
     let edges = graph
       .get_edges()
-      .iter()
       .map(|edge| {
-        let key = edge.read_arc().key();
+        let key = edge.key();
         let state = self
           .edges
           .get(&key)
@@ -172,14 +166,14 @@ impl TimetreeState {
   /// these blanked values, so the branch-distribution builders start each surviving edge from `None`.
   pub fn reset_date_edges_for_topology_change(&mut self, graph: &Graph) {
     for edge_ref in graph.get_edges() {
-      let key = edge_ref.read_arc().key();
+      let key = edge_ref.key();
       let entry = self.edges.entry(key).or_default();
       entry.branch_length_distribution = None;
       entry.msg_to_parent = None;
       entry.gamma = 1.0;
     }
     for node_ref in graph.get_nodes() {
-      let key = node_ref.read_arc().key();
+      let key = node_ref.key();
       self.nodes.entry(key).or_default();
     }
   }
@@ -315,7 +309,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut state = TimetreeState::new(&graph);
     for edge_ref in graph.get_edges() {
-      let key = edge_ref.read_arc().key();
+      let key = edge_ref.key();
       let entry = state.edge_mut(key);
       entry.branch_length_distribution = Some(Arc::new(Distribution::point(1.0, 0.0)));
       entry.msg_to_parent = Some(Arc::new(Distribution::point(2.0, 0.0)));
@@ -324,7 +318,7 @@ mod tests {
     state.reset_date_edges_for_topology_change(&graph);
 
     for edge_ref in graph.get_edges() {
-      let key = edge_ref.read_arc().key();
+      let key = edge_ref.key();
       let entry = state.edge(key);
       assert_eq!(None, entry.branch_length_distribution);
       assert_eq!(None, entry.msg_to_parent);
@@ -343,9 +337,9 @@ mod tests {
     let mut state = TimetreeState::new(&graph);
     let key = graph
       .get_edges()
+      .collect::<Vec<_>>()
       .first()
       .expect("tree has at least one edge")
-      .read_arc()
       .key();
     let dist = Arc::new(Distribution::point(3.0, 0.0));
     let msg = Arc::new(Distribution::point(4.0, 0.0));

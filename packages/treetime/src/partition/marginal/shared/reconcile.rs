@@ -4,7 +4,7 @@ use treetime_graph::node::GraphNodeKey;
 
 /// The keys of every node the graph currently holds.
 pub fn live_node_keys(graph: &Graph) -> BTreeSet<GraphNodeKey> {
-  graph.get_nodes().iter().map(|node| node.read_arc().key()).collect()
+  graph.get_nodes().map(|node| node.key()).collect()
 }
 
 /// Reconcile a node-state map to a node set after a structural change: seed a placeholder state for

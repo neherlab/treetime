@@ -44,7 +44,7 @@ mod tests {
     let times = helpers::leaf_times(&names, &graph, &dates);
     let inputs = ClockInputs::seed_from_times(&graph, &times);
     let mut state = ClockState::new(&graph);
-    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let root_key = graph.get_exactly_one_root()?.key();
 
     clock_regression_backward(
       &graph,
@@ -98,9 +98,7 @@ mod tests {
     ) -> BTreeMap<GraphNodeKey, Option<f64>> {
       graph
         .get_leaves()
-        .iter()
         .map(|node| {
-          let node = node.read_arc();
           let name = names[&node.key()].clone().unwrap();
           (node.key(), dates.get(&name).copied())
         })
@@ -124,7 +122,7 @@ mod tests {
         &branch_lengths,
         None,
       )?;
-      let root_key = graph.get_exactly_one_root()?.read_arc().key();
+      let root_key = graph.get_exactly_one_root()?.key();
       let clock_set = state.node(root_key).clock_set.clone();
       Ok(clock_set)
     }

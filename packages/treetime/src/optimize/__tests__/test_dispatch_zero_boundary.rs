@@ -153,8 +153,8 @@ mod tests {
     // Sanity check: every edge must start with a positive branch length so
     // that the optimizer has real work to do. If this fails, the test
     // collapses to a trivial pass-through of the initial guess.
-    for (i, edge_ref) in graph.get_edges().iter().enumerate() {
-      let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap();
+    for (i, edge_ref) in graph.get_edges().enumerate() {
+      let bl = branch_lengths[&edge_ref.key()].unwrap();
       assert!(
         bl > 0.0,
         "precondition: edge {i} must start with positive BL, got {bl}"
@@ -163,8 +163,8 @@ mod tests {
 
     run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
-    for (i, edge_ref) in graph.get_edges().iter().enumerate() {
-      let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap();
+    for (i, edge_ref) in graph.get_edges().enumerate() {
+      let bl = branch_lengths[&edge_ref.key()].unwrap();
       assert!(
         bl == 0.0,
         "{method:?}: edge {i} branch length must be exactly 0 after optimization, got {bl}"
@@ -221,8 +221,8 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    for (i, edge_ref) in graph.get_edges().iter().enumerate() {
-      let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap();
+    for (i, edge_ref) in graph.get_edges().enumerate() {
+      let bl = branch_lengths[&edge_ref.key()].unwrap();
       assert!(
         bl == 0.0,
         "{model:?}: edge {i} branch length must be exactly 0 after optimization, got {bl}"
@@ -265,7 +265,7 @@ mod tests {
     // pre-dispatch derivative shortcut fires. Identical sequences produce
     // a strictly negative derivative at $t = 0$ for any unimodal model,
     // so the shortcut must return true.
-    let first_edge_key = graph.get_edges()[0].read_arc().key();
+    let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     assert!(
       is_zero_branch_optimal(&contributions[&first_edge_key]),
       "precondition: JC69 identical-sequence contributions must trigger the pre-dispatch shortcut"
@@ -280,8 +280,8 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       &mut branch_lengths,
     )?;
-    for (i, edge_ref) in graph.get_edges().iter().enumerate() {
-      let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap();
+    for (i, edge_ref) in graph.get_edges().enumerate() {
+      let bl = branch_lengths[&edge_ref.key()].unwrap();
       assert!(
         bl == 0.0,
         "JC69: edge {i} branch length must be exactly 0 after optimization, got {bl}"

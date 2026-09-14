@@ -4880,7 +4880,6 @@ dependencies = [
  "pretty_assertions",
  "rayon",
  "serde",
- "traversal",
  "treetime-utils",
 ]
 

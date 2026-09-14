@@ -55,9 +55,8 @@ pub fn compute_edge_mutation_counts(
 ) -> BTreeMap<GraphEdgeKey, usize> {
   graph
     .get_edges()
-    .iter()
     .map(|edge| {
-      let edge_key = edge.read_arc().key();
+      let edge_key = edge.key();
       (edge_key, edge_subs[&edge_key].len())
     })
     .collect()

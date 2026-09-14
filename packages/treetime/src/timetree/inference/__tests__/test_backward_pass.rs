@@ -246,7 +246,7 @@ mod tests {
 
     // Check edge from I to A has msg_to_parent set
     for edge in graph.get_edges() {
-      let edge_read = edge.read_arc();
+      let edge_read = edge;
       if edge_read.target() == leaf_key {
         let msg = state
           .edge(edge_read.key())
@@ -522,7 +522,7 @@ mod tests {
 
     pub(super) fn set_edge_branch_dist(graph: &Graph, state: &mut TimetreeState, target_key: GraphNodeKey, bl: f64) {
       for edge in graph.get_edges() {
-        let edge_read = edge.read_arc();
+        let edge_read = edge;
         if edge_read.target() == target_key {
           state.edge_mut(edge_read.key()).branch_length_distribution = Some(Arc::new(Distribution::point(bl, 0.0)));
         }

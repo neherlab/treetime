@@ -94,9 +94,7 @@ fn prune_internal_nodes(
   #[allow(clippy::needless_collect)]
   let edges_to_collapse: Vec<_> = graph
     .get_edges()
-    .iter()
     .map(|edge| -> Result<Option<GraphEdgeKey>, Report> {
-      let edge = edge.read_arc();
       let target_is_leaf = graph.is_leaf(edge.target());
 
       if target_is_leaf {
@@ -136,9 +134,7 @@ fn prune_leaves(
   #[allow(clippy::needless_collect)]
   let edges_to_collapse = graph
     .get_edges()
-    .iter()
     .filter_map(|edge| {
-      let edge = edge.read_arc();
       let target_is_leaf = graph.is_leaf(edge.target());
 
       if !target_is_leaf {

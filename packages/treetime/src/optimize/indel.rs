@@ -72,9 +72,10 @@ pub fn estimate_indel_rate(
 ) -> f64 {
   let per_edge = graph
     .get_edges()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .map(|edge_ref| {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let branch_length = branch_lengths[&edge_key].unwrap_or(0.0);
       let edge_indels = indel_counts[&edge_key];
       (edge_indels, branch_length)
@@ -104,9 +105,10 @@ pub fn total_indel_log_lh(
 ) -> Result<LogLh, Report> {
   graph
     .get_edges()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .map(|edge_ref| -> Result<LogLh, Report> {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let branch_length = branch_lengths[&edge_key].ok_or_else(|| {
         make_report!("Cannot evaluate indel likelihood for edge {edge_key} with a missing branch length")
       })?;

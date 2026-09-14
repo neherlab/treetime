@@ -37,9 +37,7 @@ mod tests {
     Ok(
       graph
         .get_edges()
-        .iter()
         .map(|edge| {
-          let edge = edge.read_arc();
           let data = &partition.edges[&edge.key()];
           (
             format!("{}->{}", name(edge.source()), name(edge.target())),

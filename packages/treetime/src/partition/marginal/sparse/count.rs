@@ -29,7 +29,7 @@ pub fn count_transitions_sparse(
   let mut Ti = Array1::zeros(n_states);
 
   for edge in graph.get_edges() {
-    let edge_arc = edge.read_arc();
+    let edge_arc = edge;
     let edge_key = edge_arc.key();
     let branch_length = branch_lengths[&edge_key].max(min_bl);
     let msg_to_child = &forward[&edge_key].msg_to_child;
@@ -49,7 +49,7 @@ pub fn count_transitions_sparse(
   }
 
   let root = graph.get_exactly_one_root()?;
-  let root_key = root.read_arc().key();
+  let root_key = root.key();
   let root_profile = &node_states[&root_key].profile;
   let mut root_state = Array1::zeros(n_states);
   let root_dis = aggregate_sparse_profile(root_profile, n_states);

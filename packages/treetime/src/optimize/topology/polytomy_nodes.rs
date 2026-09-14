@@ -7,9 +7,6 @@ pub fn find_polytomy_nodes(graph: &Graph) -> Vec<GraphNodeKey> {
   graph
     .get_nodes()
     .into_iter()
-    .filter_map(|node| {
-      let node = node.read_arc();
-      (node.degree_out() > 2).then_some(node.key())
-    })
+    .filter_map(|node| (node.degree_out() > 2).then_some(node.key()))
     .collect_vec()
 }

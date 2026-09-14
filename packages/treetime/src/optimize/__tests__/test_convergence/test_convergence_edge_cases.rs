@@ -47,7 +47,7 @@ mod tests {
 
     // Branch lengths should be non-negative and bounded
     for edge in graph.get_edges() {
-      let bl = branch_lengths[&edge.read_arc().key()];
+      let bl = branch_lengths[&edge.key()];
       if let Some(bl) = bl {
         assert!(bl >= 0.0, "Branch length should be non-negative: {bl}");
         assert!(bl < 10.0, "Branch length unreasonably large: {bl}");
@@ -94,7 +94,7 @@ mod tests {
 
     // Branch lengths should be non-negative and bounded
     for edge in graph.get_edges() {
-      let bl = branch_lengths[&edge.read_arc().key()];
+      let bl = branch_lengths[&edge.key()];
       if let Some(bl) = bl {
         assert!(bl >= 0.0, "Branch length should be non-negative: {bl}");
         assert!(bl < 10.0, "Branch length unreasonably large: {bl}");
@@ -141,7 +141,7 @@ mod tests {
 
     // Branch lengths should be non-negative and bounded
     for edge in graph.get_edges() {
-      let bl = branch_lengths[&edge.read_arc().key()];
+      let bl = branch_lengths[&edge.key()];
       if let Some(bl) = bl {
         assert!(bl >= 0.0, "Branch length should be non-negative: {bl}");
         assert!(bl < 20.0, "Branch length unreasonably large: {bl}");

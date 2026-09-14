@@ -240,7 +240,7 @@ mod tests {
     );
     let mut sparse = vec![partition];
     let mut node_states = vec![node_states];
-    let nodes_before = graph.get_nodes().len();
+    let nodes_before = graph.get_nodes().collect::<Vec<_>>().len();
 
     let mut branch_lengths = branch_lengths;
     let changed = resolve_polytomies(
@@ -252,7 +252,7 @@ mod tests {
     )?;
 
     assert_eq!(changed, 0);
-    assert_eq!(graph.get_nodes().len(), nodes_before);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), nodes_before);
     assert_eq!(total_subs(&graph, &sparse[0]), 3);
     Ok(())
   }
@@ -279,7 +279,7 @@ mod tests {
     );
     let mut sparse = vec![partition];
     let mut node_states = vec![node_states];
-    let nodes_before = graph.get_nodes().len();
+    let nodes_before = graph.get_nodes().collect::<Vec<_>>().len();
 
     let mut branch_lengths = branch_lengths;
     let changed = resolve_polytomies(
@@ -291,7 +291,7 @@ mod tests {
     )?;
 
     assert_eq!(changed, 0);
-    assert_eq!(graph.get_nodes().len(), nodes_before);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), nodes_before);
     assert_eq!(total_subs(&graph, &sparse[0]), 4);
     Ok(())
   }
@@ -316,8 +316,7 @@ mod tests {
     pub fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
-        .iter()
-        .filter_map(|e| recon.obs_edges.get(&e.read_arc().key()))
+        .filter_map(|e| recon.obs_edges.get(&e.key()))
         .map(|e| e.fitch_subs().len())
         .sum()
     }
@@ -325,8 +324,7 @@ mod tests {
     pub fn reversion_present(graph: &Graph, recon: &PartitionMarginalSparse, needle: &Sub) -> bool {
       graph
         .get_edges()
-        .iter()
-        .filter_map(|e| recon.obs_edges.get(&e.read_arc().key()))
+        .filter_map(|e| recon.obs_edges.get(&e.key()))
         .any(|e| e.fitch_subs().contains(needle))
     }
 
@@ -351,7 +349,7 @@ mod tests {
       let mut obs_nodes = btreemap! {};
       let mut node_states = btreemap! {};
       for node in graph.get_nodes() {
-        let key = node.read_arc().key();
+        let key = node.key();
         obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
         node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }

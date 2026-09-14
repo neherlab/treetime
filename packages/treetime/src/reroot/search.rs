@@ -33,7 +33,7 @@ where
   };
 
   for edge_obj in graph.get_edges() {
-    let edge_key = edge_obj.read_arc().key();
+    let edge_key = edge_obj.key();
     let res = find_best_split(graph, edge_key, edge_stats, branch_lengths, variance, params)?;
     if res.score < best.score {
       best = res;

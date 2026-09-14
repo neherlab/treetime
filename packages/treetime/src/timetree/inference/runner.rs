@@ -139,9 +139,9 @@ pub fn commit_clock_branch_lengths(
   let previous_lengths: &BTreeMap<GraphEdgeKey, f64> = clock_branch_lengths;
   let committed: Vec<(GraphEdgeKey, f64, bool)> = graph
     .get_edges()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .filter_map(|edge_ref| {
-      let edge_ref = edge_ref.read_arc();
       let key = edge_ref.key();
       let (Some(parent_time), Some(child_time)) = (node_time(edge_ref.source()), node_time(edge_ref.target())) else {
         return None;
@@ -208,10 +208,11 @@ fn compute_branch_distributions_marginal_mode(
   let edge_states: &TimetreeState = state;
   let distributions: Vec<(GraphEdgeKey, Option<f64>, Arc<Distribution<NegLog>>)> = graph
     .get_edges()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .map(
       |edge_ref| -> Result<(GraphEdgeKey, Option<f64>, Arc<Distribution<NegLog>>), Report> {
-        let edge_key = edge_ref.read_arc().key();
+        let edge_key = edge_ref.key();
         let branch_length = branch_lengths[&edge_key].unwrap_or(one_mutation);
         let gamma = edge_states.edge(edge_key).gamma;
 
@@ -262,9 +263,10 @@ pub(super) fn create_branch_distributions_input_mode(
   let edge_states: &TimetreeState = state;
   let distributions: Vec<(GraphEdgeKey, f64, Arc<Distribution<NegLog>>)> = graph
     .get_edges()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .filter_map(|edge_ref| {
-      let key = edge_ref.read_arc().key();
+      let key = edge_ref.key();
       // TODO: this is wrong. The branch length distribution should be a gamma distribution with branch_length/one_mutation
       // as the shape parameter. n_mut = branch_length/one_mutation --> P(dt) = (mu*dt)^n_mut * exp(-mu*dt) / n_mut!
       let time_duration = if let Some(branch_length) = branch_lengths[&key] {
@@ -307,9 +309,8 @@ pub fn timetree_branch_lengths(
 ) -> BTreeMap<GraphEdgeKey, f64> {
   graph
     .get_edges()
-    .iter()
     .map(|edge| {
-      let key = edge.read_arc().key();
+      let key = edge.key();
       let branch_length = clock_branch_lengths
         .get(&key)
         .copied()

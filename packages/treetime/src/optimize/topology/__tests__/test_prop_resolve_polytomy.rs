@@ -60,7 +60,7 @@ mod tests {
 
       let mut roots = 0;
       for node in graph.get_nodes() {
-        let inbound = node.read_arc().inbound().len();
+        let inbound = node.inbound().len();
         if inbound == 0 {
           roots += 1;
         } else {
@@ -118,17 +118,15 @@ mod tests {
     pub fn leaf_names(names: &BTreeMap<GraphNodeKey, Option<String>>, graph: &Graph) -> BTreeSet<String> {
       graph
         .get_nodes()
-        .iter()
-        .filter(|n| n.read_arc().is_leaf())
-        .filter_map(|n| names.get(&n.read_arc().key()).cloned().flatten())
+        .filter(|n| n.is_leaf())
+        .filter_map(|n| names.get(&n.key()).cloned().flatten())
         .collect()
     }
 
     pub fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
-        .iter()
-        .filter_map(|e| recon.obs_edges.get(&e.read_arc().key()))
+        .filter_map(|e| recon.obs_edges.get(&e.key()))
         .map(|e| e.fitch_subs().len())
         .sum()
     }
@@ -264,7 +262,7 @@ mod tests {
       let mut obs_nodes = btreemap! {};
       let mut node_states = btreemap! {};
       for node in graph.get_nodes() {
-        let key = node.read_arc().key();
+        let key = node.key();
         obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
         node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }

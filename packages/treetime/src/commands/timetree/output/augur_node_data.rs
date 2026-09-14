@@ -63,7 +63,7 @@ pub fn build_augur_node_data_json(
 
   let mut nodes = BTreeMap::new();
   for node in graph.get_nodes() {
-    let node_guard = node.read_arc();
+    let node_guard = node;
     let node_key = node_guard.key();
     let out = &outputs[&node_key];
     let is_leaf = node_guard.is_leaf();

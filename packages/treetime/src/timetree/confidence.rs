@@ -154,7 +154,7 @@ pub fn compute_rate_susceptibility(
   // rate produced which date (deeper nodes may have inverted rate-date relationship).
   let mut rate_susceptibility_dates = BTreeMap::new();
   for node_ref in graph.get_nodes() {
-    let key = node_ref.read_arc().key();
+    let key = node_ref.key();
 
     let central_date = state.node(key).time;
     let upper_date = upper_dates.get(&key).copied();
@@ -234,7 +234,7 @@ pub fn extract_confidence_intervals(
     .get_nodes()
     .into_iter()
     .filter_map(|node_ref| {
-      let node = node_ref.read_arc();
+      let node = node_ref;
       let key = node.key();
       let node_state = state.node(key);
       let name = names[&key].clone().unwrap_or_default();

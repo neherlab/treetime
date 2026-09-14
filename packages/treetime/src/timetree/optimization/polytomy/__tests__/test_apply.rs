@@ -42,14 +42,13 @@ mod tests {
 
   fn child_edge_of(graph: &Graph, node_key: GraphNodeKey) -> GraphEdgeKey {
     let node = graph.get_node(node_key).expect("Node must exist");
-    let node = node.read_arc();
     assert_eq!(node.inbound().len(), 1, "a tree node has exactly one parent edge");
     node.inbound()[0]
   }
 
   fn parent_of(graph: &Graph, node_key: GraphNodeKey) -> GraphNodeKey {
     let edge_key = child_edge_of(graph, node_key);
-    graph.get_edge(edge_key).expect("Edge must exist").read_arc().source()
+    graph.get_edge(edge_key).expect("Edge must exist").source()
   }
 
   #[test]
@@ -139,11 +138,7 @@ mod tests {
     );
     assert_eq!(parent_of(&graph, merger_key), parent_key);
 
-    let parent_degree = graph
-      .get_node(parent_key)
-      .expect("Node must exist")
-      .read_arc()
-      .degree_out();
+    let parent_degree = graph.get_node(parent_key).expect("Node must exist").degree_out();
     assert_eq!(
       parent_degree, 2,
       "a 3-way polytomy with one merger becomes a bifurcation"
@@ -271,11 +266,7 @@ mod tests {
     assert_eq!(parent_of(&graph, children[2].node_key), outer);
     assert_eq!(parent_of(&graph, outer), parent_key);
 
-    let parent_degree = graph
-      .get_node(parent_key)
-      .expect("Node must exist")
-      .read_arc()
-      .degree_out();
+    let parent_degree = graph.get_node(parent_key).expect("Node must exist").degree_out();
     assert_eq!(
       parent_degree, 1,
       "a fully consumed polytomy leaves one child for cleanup"

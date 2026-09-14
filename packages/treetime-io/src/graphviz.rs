@@ -5,8 +5,8 @@ use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::graph::{Graph, SafeNode};
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::graph::Graph;
+use treetime_graph::node::{GraphNodeKey, Node};
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::make_internal_report;
 
@@ -57,11 +57,11 @@ digraph Phylogeny {{
   Ok(())
 }
 
-fn print_node<W>(mut writer: W, node: &SafeNode, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<(), Report>
+fn print_node<W>(mut writer: W, node: &Node, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<(), Report>
 where
   W: Write,
 {
-  let key = node.read_arc().key();
+  let key = node.key();
   let label = names[&key].clone();
 
   if let Some(label) = label {
@@ -77,24 +77,23 @@ where
   W: Write,
 {
   writeln!(writer, "\n  subgraph roots {{")?;
-  let roots = graph.get_roots();
-  for node in &roots {
+  let roots = graph.get_roots().collect::<Vec<_>>();
+  for &node in &roots {
     print_node(&mut writer, node, names)?;
   }
-  print_fake_edges(&mut writer, &roots)?;
+  print_fake_edges(&mut writer, &roots.iter().map(|node| node.key()).collect_vec())?;
 
   writeln!(writer, "  }}\n\n  subgraph internals {{")?;
-  let internal = graph.get_internal_nodes();
-  for node in internal {
-    print_node(&mut writer, &node, names)?;
+  for node in graph.get_internal_nodes() {
+    print_node(&mut writer, node, names)?;
   }
 
   writeln!(writer, "  }}\n\n  subgraph leaves {{")?;
-  let leaves = graph.get_leaves();
-  for node in &leaves {
+  let leaves = graph.get_leaves().collect::<Vec<_>>();
+  for &node in &leaves {
     print_node(&mut writer, node, names)?;
   }
-  print_fake_edges(&mut writer, &leaves)?;
+  print_fake_edges(&mut writer, &leaves.iter().map(|node| node.key()).collect_vec())?;
 
   writeln!(writer, "  }}")?;
   Ok(())
@@ -105,12 +104,12 @@ where
   W: Write,
 {
   for node in graph.get_nodes() {
-    for edge_key in node.read().outbound() {
+    for edge_key in node.outbound() {
       let edge = graph
         .get_edge(*edge_key)
         .ok_or_else(|| make_internal_report!("Outbound edge {edge_key} not found in graph"))?;
-      let source = edge.read_arc().source();
-      let target = edge.read_arc().target();
+      let source = edge.source();
+      let target = edge.target();
 
       let weight = weights[edge_key];
       let label = weight.map(|weight| format_weight(weight, &NwkWriteOptions::default()));
@@ -134,14 +133,12 @@ where
   Ok(())
 }
 
-fn print_fake_edges<W>(mut writer: W, nodes: &[SafeNode]) -> Result<(), Report>
+fn print_fake_edges<W>(mut writer: W, node_keys: &[GraphNodeKey]) -> Result<(), Report>
 where
   W: Write,
 {
   // Fake edges needed to align a set of nodes beautifully
-  let node_keys = nodes.iter().map(|node| node.read().key()).collect_vec();
-
-  let fake_edges = iproduct!(&node_keys, &node_keys)
+  let fake_edges = iproduct!(node_keys, node_keys)
     .enumerate()
     .map(|(i, (left, right))| {
       let weight = 1000 + i * 100;

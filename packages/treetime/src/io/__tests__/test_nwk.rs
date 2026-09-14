@@ -17,13 +17,13 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
 
     // Verify graph structure
-    assert_eq!(graph.get_nodes().len(), 7, "Should have 7 nodes");
-    assert_eq!(graph.get_edges().len(), 6, "Should have 6 edges");
-    assert_eq!(graph.get_leaves().len(), 4, "Should have 4 leaves");
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 7, "Should have 7 nodes");
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 6, "Should have 6 edges");
+    assert_eq!(graph.get_leaves().collect::<Vec<_>>().len(), 4, "Should have 4 leaves");
 
     // Verify root
     let root = graph.get_exactly_one_root()?;
-    let root_name = names[&root.read_arc().key()].clone();
+    let root_name = names[&root.key()].clone();
     assert_eq!(root_name.as_deref(), Some("root"));
 
     // Verify roundtrip
@@ -41,12 +41,12 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
 
     // Verify structure is correct
-    assert_eq!(graph.get_nodes().len(), 7);
-    assert_eq!(graph.get_edges().len(), 6);
-    assert_eq!(graph.get_leaves().len(), 4);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 7);
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 6);
+    assert_eq!(graph.get_leaves().collect::<Vec<_>>().len(), 4);
 
     for edge in graph.get_edges() {
-      let branch_len = branch_lengths[&edge.read_arc().key()];
+      let branch_len = branch_lengths[&edge.key()];
       assert!(branch_len.is_none(), "Missing branch length should be parsed as None");
     }
 
@@ -61,12 +61,12 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    assert_eq!(graph.get_nodes().len(), 1, "Should have 1 node");
-    assert_eq!(graph.get_edges().len(), 0, "Should have 0 edges");
-    assert_eq!(graph.get_leaves().len(), 1, "Should have 1 leaf");
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 1, "Should have 1 node");
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 0, "Should have 0 edges");
+    assert_eq!(graph.get_leaves().collect::<Vec<_>>().len(), 1, "Should have 1 leaf");
 
     let root = graph.get_exactly_one_root()?;
-    let root_name = names[&root.read_arc().key()].clone();
+    let root_name = names[&root.key()].clone();
     assert_eq!(root_name.as_deref(), Some("A"));
 
     let output = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
@@ -83,13 +83,13 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    assert_eq!(graph.get_nodes().len(), 4, "Should have 4 nodes");
-    assert_eq!(graph.get_edges().len(), 3, "Should have 3 edges");
-    assert_eq!(graph.get_leaves().len(), 3, "Should have 3 leaves");
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 4, "Should have 4 nodes");
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 3, "Should have 3 edges");
+    assert_eq!(graph.get_leaves().collect::<Vec<_>>().len(), 3, "Should have 3 leaves");
 
     // Verify root has 3 children (polytomy)
     let root = graph.get_exactly_one_root()?;
-    let root_outbound = root.read_arc().outbound().len();
+    let root_outbound = root.outbound().len();
     assert_eq!(root_outbound, 3, "Root should have 3 children (polytomy)");
 
     let output = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
@@ -106,9 +106,9 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    assert_eq!(graph.get_nodes().len(), 7, "Should have 7 nodes");
-    assert_eq!(graph.get_edges().len(), 6, "Should have 6 edges");
-    assert_eq!(graph.get_leaves().len(), 5, "Should have 5 leaves");
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 7, "Should have 7 nodes");
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 6, "Should have 6 edges");
+    assert_eq!(graph.get_leaves().collect::<Vec<_>>().len(), 5, "Should have 5 leaves");
 
     let output = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
     assert_eq!(input, output);
@@ -123,14 +123,13 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    assert_eq!(graph.get_nodes().len(), 7);
-    assert_eq!(graph.get_edges().len(), 6);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 7);
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 6);
 
     // Count zero-length branches
     let zero_branches: usize = graph
       .get_edges()
-      .iter()
-      .filter(|e| branch_lengths[&e.read_arc().key()] == Some(0.0))
+      .filter(|e| branch_lengths[&e.key()] == Some(0.0))
       .count();
     assert_eq!(zero_branches, 3, "Should have 3 zero-length branches");
 
@@ -150,7 +149,7 @@ mod tests {
     // Collect branch lengths by finding edges to specific nodes
     let mut branch_lengths = BTreeMap::new();
     for edge in graph.get_edges() {
-      let edge_ref = edge.read_arc();
+      let edge_ref = edge;
       let target_key = edge_ref.target();
       let target_name = names[&target_key].clone();
       if let Some(name) = target_name {
@@ -193,8 +192,7 @@ mod tests {
 
     let leaf_names: Vec<String> = graph
       .get_leaves()
-      .iter()
-      .map(|n| names[&n.read_arc().key()].clone().unwrap_or_default())
+      .map(|n| names[&n.key()].clone().unwrap_or_default())
       .collect();
 
     assert!(leaf_names.contains(&"leaf_A".to_owned()));
@@ -235,12 +233,12 @@ mod tests {
     let graph = nwk_parsed.graph;
     let edge_lengths = nwk_parsed.branch_lengths;
 
-    assert_eq!(graph.get_nodes().len(), 3);
-    assert_eq!(graph.get_edges().len(), 2);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3);
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2);
 
     let mut branch_lengths = BTreeMap::new();
     for edge in graph.get_edges() {
-      let edge_ref = edge.read_arc();
+      let edge_ref = edge;
       let name = names[&edge_ref.target()].clone();
       if let Some(name) = name {
         branch_lengths.insert(name, edge_lengths[&edge_ref.key()]);
@@ -264,8 +262,8 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    assert_eq!(graph.get_nodes().len(), 3);
-    assert_eq!(graph.get_edges().len(), 2);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 3);
+    assert_eq!(graph.get_edges().collect::<Vec<_>>().len(), 2);
 
     let output = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
     assert_eq!(input, output);
@@ -284,8 +282,14 @@ mod tests {
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let graph: Graph = graph;
-      assert!(!graph.get_nodes().is_empty(), "Tree {path:?} should have nodes");
-      assert!(!graph.get_edges().is_empty(), "Tree {path:?} should have edges");
+      assert!(
+        !graph.get_nodes().collect::<Vec<_>>().is_empty(),
+        "Tree {path:?} should have nodes"
+      );
+      assert!(
+        !graph.get_edges().collect::<Vec<_>>().is_empty(),
+        "Tree {path:?} should have edges"
+      );
     }
 
     Ok(())

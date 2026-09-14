@@ -53,19 +53,11 @@ mod tests {
   ) -> f64 {
     let total_indels: usize = graph
       .get_edges()
-      .iter()
-      .map(|edge_ref| manual_indel_count_on_edge(sparse_partitions, edge_ref.read_arc().key()))
+      .map(|edge_ref| manual_indel_count_on_edge(sparse_partitions, edge_ref.key()))
       .sum();
     let total_branch_length: f64 = graph
       .get_edges()
-      .iter()
-      .map(|edge_ref| {
-        branch_lengths
-          .get(&edge_ref.read_arc().key())
-          .copied()
-          .flatten()
-          .unwrap_or(0.0)
-      })
+      .map(|edge_ref| branch_lengths.get(&edge_ref.key()).copied().flatten().unwrap_or(0.0))
       .sum();
     let indel_rate = if total_indels > 0 && total_branch_length > 0.0 {
       total_indels as f64 / total_branch_length
@@ -75,9 +67,8 @@ mod tests {
 
     graph
       .get_edges()
-      .iter()
       .map(|edge_ref| {
-        let edge_key = edge_ref.read_arc().key();
+        let edge_key = edge_ref.key();
         let branch_length = branch_lengths.get(&edge_key).copied().flatten().unwrap_or(0.0);
         let indel_count = manual_indel_count_on_edge(sparse_partitions, edge_key);
         manual_poisson_indel_log_lh(indel_count, indel_rate, branch_length)
@@ -133,7 +124,7 @@ mod tests {
     let mut graph: Graph = graph;
     let (dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let first_edge_key = graph.get_edges()[0].read_arc().key();
+    let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths.insert(first_edge_key, Some(0.1));
     sparse_partitions[0]
       .partition
@@ -297,7 +288,7 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
     let (dense_partitions, mut sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let first_edge_key = graph.get_edges()[0].read_arc().key();
+    let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths.insert(first_edge_key, Some(0.1));
     sparse_partitions[0]
       .partition

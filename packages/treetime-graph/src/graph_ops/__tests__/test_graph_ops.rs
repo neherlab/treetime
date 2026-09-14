@@ -23,21 +23,11 @@ mod tests {
   }
 
   fn outbound(graph: &TestGraph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
-    graph
-      .get_node(node_key)
-      .expect("node exists")
-      .read_arc()
-      .outbound()
-      .to_vec()
+    graph.get_node(node_key).expect("node exists").outbound().to_vec()
   }
 
   fn inbound(graph: &TestGraph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
-    graph
-      .get_node(node_key)
-      .expect("node exists")
-      .read_arc()
-      .inbound()
-      .to_vec()
+    graph.get_node(node_key).expect("node exists").inbound().to_vec()
   }
 
   #[test]
@@ -47,9 +37,9 @@ mod tests {
     graph.reparent_edge(a_to_c, b)?;
 
     let edge = graph.get_edge(a_to_c).expect("edge survives reparenting");
-    assert_eq!(edge.read_arc().key(), a_to_c, "the edge keeps its key (not rebuilt)");
-    assert_eq!(edge.read_arc().source(), b);
-    assert_eq!(edge.read_arc().target(), c);
+    assert_eq!(edge.key(), a_to_c, "the edge keeps its key (not rebuilt)");
+    assert_eq!(edge.source(), b);
+    assert_eq!(edge.target(), c);
 
     assert!(!outbound(&graph, a).contains(&a_to_c), "old source must drop the edge");
     assert!(outbound(&graph, b).contains(&a_to_c), "new source must gain the edge");
@@ -92,11 +82,7 @@ mod tests {
     let edge = graph
       .get_edge(a_to_c)
       .expect("a rejected reparent must leave the edge in place");
-    assert_eq!(
-      edge.read_arc().source(),
-      fixture()?.1[1],
-      "the edge must not have moved"
-    );
+    assert_eq!(edge.source(), fixture()?.1[1], "the edge must not have moved");
     Ok(())
   }
 

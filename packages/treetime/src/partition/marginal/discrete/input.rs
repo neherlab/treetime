@@ -25,8 +25,7 @@ pub(crate) fn validate_trait_names(
 ) -> Result<(), Report> {
   let leaf_names: IndexSet<String> = graph
     .get_leaves()
-    .iter()
-    .map(|leaf| names[&leaf.read_arc().key()].clone().unwrap_or_default())
+    .map(|leaf| names[&leaf.key()].clone().unwrap_or_default())
     .collect();
   let trait_names: IndexSet<String> = traits.keys().cloned().collect();
 

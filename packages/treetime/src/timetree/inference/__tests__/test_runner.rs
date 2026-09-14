@@ -26,7 +26,7 @@ mod tests {
 
     // Verify each edge has time_length = branch_length / clock_rate
     for edge_ref in graph.get_edges() {
-      let edge_read = edge_ref.read_arc();
+      let edge_read = edge_ref;
       let key = edge_read.key();
       let branch_length = branch_lengths.get(&key).copied().flatten();
       let time_length = state.edge(key).time_length;
@@ -55,9 +55,8 @@ mod tests {
     // Write each edge's value-state time length as its Newick weight, so the output shows time values.
     let time_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = graph
       .get_edges()
-      .iter()
       .map(|edge| {
-        let key = edge.read_arc().key();
+        let key = edge.key();
         (key, state.edge(key).time_length)
       })
       .collect();
@@ -110,12 +109,12 @@ mod tests {
 
     // Set gamma=2.0 on the value-state entry for the edge to A
     for edge_ref in graph.get_edges() {
-      let edge_read = edge_ref.read_arc();
+      let edge_read = edge_ref;
       let key = edge_read.key();
       let target = edge_read.target();
       let target_name = graph
         .get_node(target)
-        .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
+        .and_then(|n| names.get(&n.key()).cloned().flatten());
       if target_name.as_deref() == Some("A") {
         state.edge_mut(key).gamma = 2.0;
       }
@@ -124,12 +123,12 @@ mod tests {
     create_branch_distributions_input_mode(&graph, &branch_lengths, clock_rate, &mut state)?;
 
     for edge_ref in graph.get_edges() {
-      let edge_read = edge_ref.read_arc();
+      let edge_read = edge_ref;
       let key = edge_read.key();
       let target = edge_read.target();
       let target_name = graph
         .get_node(target)
-        .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
+        .and_then(|n| names.get(&n.key()).cloned().flatten());
       let time_length = state.edge(key).time_length;
 
       match target_name.as_deref() {
@@ -168,7 +167,7 @@ mod tests {
     create_branch_distributions_input_mode(&graph, &branch_lengths, clock_rate, &mut state)?;
 
     for edge_ref in graph.get_edges() {
-      let edge_read = edge_ref.read_arc();
+      let edge_read = edge_ref;
       let key = edge_read.key();
       if let Some(bl) = branch_lengths.get(&key).copied().flatten() {
         // With gamma=1.0, time = bl / clock_rate (same as without gamma)
@@ -187,8 +186,12 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let edge = graph.get_edges().pop().expect("tree must contain one edge");
-    let edge_key = edge.read_arc().key();
+    let edge = graph
+      .get_edges()
+      .collect::<Vec<_>>()
+      .pop()
+      .expect("tree must contain one edge");
+    let edge_key = edge.key();
     branch_lengths.insert(edge_key, None);
 
     let mut state = TimetreeState::new(&graph);

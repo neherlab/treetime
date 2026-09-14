@@ -43,7 +43,6 @@ use treetime_utils::make_error;
 /// input leaves the complete previous inference state untouched.
 pub fn validate_tree_before_topology_change(graph: &Graph, state: &TimetreeState) -> Result<(), Report> {
   for node in graph.get_nodes() {
-    let node = node.read_arc();
     if node.is_leaf() {
       continue;
     }
@@ -211,7 +210,6 @@ fn collect_children(
 ) -> Result<Vec<ChildInfo>, Report> {
   let edge_keys = {
     let node = graph.get_node(node_key).expect("Node must exist");
-    let node = node.read_arc();
     node.outbound().to_vec()
   };
 
@@ -219,7 +217,6 @@ fn collect_children(
     .into_iter()
     .map(|edge_key| {
       let edge = graph.get_edge(edge_key).expect("Edge must exist");
-      let edge = edge.read_arc();
       let child_key = edge.target();
 
       let time = inferred_time(state, child_key)?;
@@ -287,7 +284,6 @@ fn remove_single_child_nodes(
 
   loop {
     let obsolete_key = graph.get_nodes().into_iter().find_map(|node| {
-      let node = node.read_arc();
       let is_trivial = node.inbound().len() == 1 && node.outbound().len() == 1;
       is_trivial.then_some(node.key())
     });
@@ -317,7 +313,6 @@ pub fn prepare_tree_after_topology_change(graph: &Graph, state: &mut TimetreeSta
   validate_tree_before_topology_change(graph, state)?;
 
   for node in graph.get_nodes() {
-    let node = node.read_arc();
     if node.is_leaf() {
       continue;
     }

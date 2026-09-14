@@ -72,7 +72,7 @@ mod tests {
     }
     let alphabet = recon.partition.alphabet.clone();
     for node in graph.get_nodes() {
-      let key = node.read_arc().key();
+      let key = node.key();
       recon
         .partition
         .obs_nodes
@@ -134,10 +134,10 @@ mod tests {
     assert_eq!(edges.len(), 1);
     let edge_key = edges[0];
     let edge = graph.get_edge(edge_key).unwrap();
-    let target = edge.read_arc().target();
+    let target = edge.target();
     let target_name = graph
       .get_node(target)
-      .and_then(|n| names.get(&n.read_arc().key()).cloned().flatten());
+      .and_then(|n| names.get(&n.key()).cloned().flatten());
     assert_eq!(target_name.as_deref(), Some("I"));
     Ok(())
   }
@@ -180,7 +180,7 @@ mod tests {
     let dense = cleanup.dense_partitions;
     let changed = cleanup.topology_changed;
     assert!(!changed);
-    assert_eq!(graph.get_nodes().len(), 4);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), 4);
     Ok(())
   }
 
@@ -258,7 +258,7 @@ mod tests {
     // Root should have 2 children after merging A, B, C into a new subtree
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
-    assert_eq!(root_node.read_arc().degree_out(), 2);
+    assert_eq!(root_node.degree_out(), 2);
 
     Ok(())
   }
@@ -311,7 +311,7 @@ mod tests {
     let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
     initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, true, false, &mut branch_lengths)?;
 
-    let initial_node_count = graph.get_nodes().len();
+    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
 
     // Run optimize loop with topology cleanup
     let mut lh_prev = f64::MIN;
@@ -342,7 +342,7 @@ mod tests {
 
     // A and B are identical sequences: the AB internal edge should have been
     // collapsed, reducing the node count
-    let final_node_count = graph.get_nodes().len();
+    let final_node_count = graph.get_nodes().collect::<Vec<_>>().len();
     assert!(
       final_node_count < initial_node_count,
       "Expected topology simplification: {initial_node_count} nodes -> {final_node_count} nodes"
@@ -350,7 +350,7 @@ mod tests {
 
     // All remaining branch lengths should be non-negative
     for edge in graph.get_edges() {
-      let bl = branch_lengths.get(&edge.read_arc().key()).copied().flatten().unwrap_or(0.0);
+      let bl = branch_lengths.get(&edge.key()).copied().flatten().unwrap_or(0.0);
       assert!(bl >= 0.0, "Negative branch length after optimization: {bl}");
     }
 
@@ -403,7 +403,7 @@ mod tests {
     let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
     initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, true, false, &mut branch_lengths)?;
 
-    let initial_node_count = graph.get_nodes().len();
+    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
 
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
@@ -430,7 +430,7 @@ mod tests {
     }
 
     // No edges should have been collapsed - all branches carry genuine signal
-    assert_eq!(graph.get_nodes().len(), initial_node_count);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), initial_node_count);
 
     Ok(())
   }
@@ -480,7 +480,7 @@ mod tests {
     let (sparse_partitions, _) =
       marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
 
-    let initial_node_count = graph.get_nodes().len();
+    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
 
     // A and B share mutation A->T at pos 0 (root MAP = A due to 3-vs-2 majority). The merge rewrites
     // the durable observations alone, so the reconstructions are split around it.
@@ -493,7 +493,7 @@ mod tests {
     graph.build()?;
 
     assert!(
-      graph.get_nodes().len() > initial_node_count,
+      graph.get_nodes().collect::<Vec<_>>().len() > initial_node_count,
       "merge should have created new internal nodes"
     );
 
@@ -579,16 +579,14 @@ mod tests {
     let p = &sparse[0];
     let total_subs: usize = graph
       .get_edges()
-      .iter()
-      .filter_map(|e| p.partition.obs_edges.get(&e.read_arc().key()))
+      .filter_map(|e| p.partition.obs_edges.get(&e.key()))
       .map(|e| e.fitch_subs().len())
       .sum();
     assert_eq!(total_subs, 2, "reaches the parsimony optimum");
 
     let reversion_remains = graph
       .get_edges()
-      .iter()
-      .filter_map(|e| p.partition.obs_edges.get(&e.read_arc().key()))
+      .filter_map(|e| p.partition.obs_edges.get(&e.key()))
       .any(|e| e.fitch_subs().contains(&sub(b'T', 0, b'A')));
     assert!(!reversion_remains, "reversion must be removed");
 
@@ -637,7 +635,7 @@ mod tests {
     // root should have 3 children: A, B, C
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
-    assert_eq!(root_node.read_arc().degree_out(), 3);
+    assert_eq!(root_node.degree_out(), 3);
 
     Ok(())
   }
@@ -690,7 +688,7 @@ mod tests {
     let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
     initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, true, false, &mut branch_lengths)?;
 
-    let initial_node_count = graph.get_nodes().len();
+    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
 
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
@@ -717,7 +715,7 @@ mod tests {
     }
 
     // A and B are identical: AB edge should have been collapsed
-    let final_node_count = graph.get_nodes().len();
+    let final_node_count = graph.get_nodes().collect::<Vec<_>>().len();
     assert!(
       final_node_count < initial_node_count,
       "Expected topology simplification: {initial_node_count} nodes -> {final_node_count} nodes"
@@ -725,7 +723,7 @@ mod tests {
 
     // All remaining branch lengths should be non-negative
     for edge in graph.get_edges() {
-      let bl = branch_lengths.get(&edge.read_arc().key()).copied().flatten().unwrap_or(0.0);
+      let bl = branch_lengths.get(&edge.key()).copied().flatten().unwrap_or(0.0);
       assert!(bl >= 0.0, "Negative branch length after optimization: {bl}");
     }
 
@@ -794,8 +792,7 @@ mod tests {
 
     let mut names: Vec<String> = graph
       .get_nodes()
-      .iter()
-      .filter_map(|n| names_tt_6.get(&n.read_arc().key()).cloned().flatten())
+      .filter_map(|n| names_tt_6.get(&n.key()).cloned().flatten())
       .collect();
     names.sort();
 
@@ -873,7 +870,7 @@ mod tests {
     // Without merge, root keeps all four children A, B, C, D (no grouping under a new node).
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_node = graph.get_node(root_key).unwrap();
-    assert_eq!(root_node.read_arc().degree_out(), 4);
+    assert_eq!(root_node.degree_out(), 4);
 
     Ok(())
   }
@@ -934,8 +931,7 @@ mod tests {
     let p = &sparse[0];
     let reversion_remains = graph
       .get_edges()
-      .iter()
-      .filter_map(|e| p.partition.obs_edges.get(&e.read_arc().key()))
+      .filter_map(|e| p.partition.obs_edges.get(&e.key()))
       .any(|e| e.fitch_subs().contains(&sub(b'T', 0, b'A')));
     assert!(
       reversion_remains,
@@ -979,7 +975,7 @@ mod tests {
     let sparse = vec![partition];
     let dense: Vec<DenseReconstruction> = vec![];
 
-    let node_count_before = graph.get_nodes().len();
+    let node_count_before = graph.get_nodes().collect::<Vec<_>>().len();
     let ops = TopologyOps {
       collapse_short_branches: false,
       merge_siblings: false,
@@ -999,13 +995,12 @@ mod tests {
     let dense = cleanup.dense_partitions;
     let changed = cleanup.topology_changed;
     assert!(!changed, "no topology step runs when all are disabled");
-    assert_eq!(graph.get_nodes().len(), node_count_before);
+    assert_eq!(graph.get_nodes().collect::<Vec<_>>().len(), node_count_before);
 
     let p = &sparse[0];
     let total_subs: usize = graph
       .get_edges()
-      .iter()
-      .filter_map(|e| p.partition.obs_edges.get(&e.read_arc().key()))
+      .filter_map(|e| p.partition.obs_edges.get(&e.key()))
       .map(|e| e.fitch_subs().len())
       .sum();
     assert_eq!(total_subs, 4, "mutation content is unchanged");
@@ -1055,7 +1050,7 @@ mod tests {
     let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
     initial_guess_mixed(&graph, total_length, &indel_counts, &sub_counts, &effective_lengths, true, false, &mut branch_lengths)?;
 
-    let initial_node_count = graph.get_nodes().len();
+    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
 
     let ops = TopologyOps {
       collapse_short_branches: false,
@@ -1077,7 +1072,7 @@ mod tests {
     )?;
 
     assert_eq!(
-      graph.get_nodes().len(),
+      graph.get_nodes().collect::<Vec<_>>().len(),
       initial_node_count,
       "no collapse when collapse_short_branches is disabled"
     );
@@ -1141,7 +1136,7 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    let initial_node_count = graph.get_nodes().len();
+    let initial_node_count = graph.get_nodes().collect::<Vec<_>>().len();
 
     let names_tt_1 = names;
     let result = run_optimize_loop(
@@ -1162,13 +1157,13 @@ mod tests {
 
     // A and B are identical, so the AB internal edge collapses: topology changed.
     assert!(
-      graph.get_nodes().len() < initial_node_count,
+      graph.get_nodes().collect::<Vec<_>>().len() < initial_node_count,
       "expected a collapse (topology change) with collapse enabled"
     );
 
     // The returned map is keyed exactly by the post-change edge set: no stale keys, no gaps.
     let map_keys: Vec<_> = result.branch_lengths.keys().copied().collect();
-    let mut edge_keys: Vec<_> = graph.get_edges().iter().map(|edge| edge.read_arc().key()).collect();
+    let mut edge_keys: Vec<_> = graph.get_edges().map(|edge| edge.key()).collect();
     edge_keys.sort_unstable();
     assert_eq!(map_keys, edge_keys);
 

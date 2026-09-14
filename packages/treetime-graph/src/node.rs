@@ -111,7 +111,7 @@ impl Node {
     self.outbound_edges.as_slice()
   }
 
-  /// Get read and write access to the outbound edges of the node. Will block other threads.
+  /// Get mutable access to the outbound edges of the node.
   #[inline]
   pub fn outbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
     &mut self.outbound_edges
@@ -123,7 +123,7 @@ impl Node {
     self.inbound_edges.as_slice()
   }
 
-  /// Get read and write access to the outbound edges of the node. Will block other threads.
+  /// Get mutable access to the inbound edges of the node.
   #[inline]
   pub fn inbound_mut(&mut self) -> &mut Vec<GraphEdgeKey> {
     &mut self.inbound_edges

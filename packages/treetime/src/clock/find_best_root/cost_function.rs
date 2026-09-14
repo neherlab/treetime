@@ -34,11 +34,11 @@ impl<'a> BranchPointCostFunction<'a> {
     let edge_obj = graph
       .get_edge(edge)
       .ok_or_else(|| make_report!("Edge not found: {edge}"))?;
-    let target_key = edge_obj.read_arc().target();
+    let target_key = edge_obj.target();
     let target_node = graph
       .get_node(target_key)
       .ok_or_else(|| make_report!("Target node not found for edge: {edge}"))?;
-    let is_leaf = target_node.read_arc().is_leaf();
+    let is_leaf = target_node.is_leaf();
     let node_time = inputs.likely_time(target_key);
     let branch_length = branch_lengths[&edge].ok_or_else(|| make_report!("Edge {edge} has no weight"))?;
     let branch_variance = options.variance_factor * branch_length + options.variance_offset;

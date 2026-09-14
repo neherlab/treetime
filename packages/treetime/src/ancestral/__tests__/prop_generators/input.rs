@@ -191,7 +191,6 @@ mod tests {
 
       let mut leaf_names = Vec::new();
       for leaf in graph.get_leaves() {
-        let leaf = leaf.read_arc();
         let maybe_name = names.get(&leaf.key()).cloned().flatten();
         prop_assert!(
           maybe_name.is_some(),

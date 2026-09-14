@@ -1003,7 +1003,7 @@ fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> 
     .get_leaves()
     .into_iter()
     .map(|leaf| {
-      let key = leaf.read_arc().key();
+      let key = leaf.key();
       names[&key]
         .clone()
         .ok_or_else(|| make_report!("Leaf node {key} has no name"))

@@ -93,7 +93,7 @@ mod tests {
 
     // All branch lengths must be finite after optimization
     for edge_ref in graph.get_edges() {
-      let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap();
+      let bl = branch_lengths[&edge_ref.key()].unwrap();
       assert!(
         bl.is_finite(),
         "Branch length must be finite after optimization, got {bl}"

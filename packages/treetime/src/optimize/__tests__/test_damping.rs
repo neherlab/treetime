@@ -22,10 +22,10 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let saved = branch_lengths;
-    let edges = graph.get_edges();
+    let edges = graph.get_edges().collect::<Vec<_>>();
     assert_eq!(saved.len(), edges.len());
     for edge_ref in &edges {
-      let edge = edge_ref.read_arc();
+      let edge = edge_ref;
       assert!(saved.contains_key(&edge.key()));
     }
     Ok(())

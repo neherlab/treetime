@@ -95,7 +95,7 @@ pub fn collect_coalescent_edges(
 
     let n_siblings = graph
       .get_node(parent_node_key)
-      .map_or(2.0, |parent| parent.read_arc().outbound().len() as f64);
+      .map_or(2.0, |parent| parent.outbound().len() as f64);
     edges.push(CoalescentEdgeData::new(
       CalendarTime::new(child_time),
       CalendarTime::new(parent_time),

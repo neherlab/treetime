@@ -31,7 +31,7 @@ impl PartitionFitch {
     self,
     graph: &Graph,
   ) -> Result<(PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>), Report> {
-    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let root_key = graph.get_exactly_one_root()?.key();
     let root_sequence = self.nodes[&root_key].seq.sequence.clone();
 
     let mut obs_nodes = BTreeMap::new();

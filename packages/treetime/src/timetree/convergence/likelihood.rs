@@ -35,7 +35,7 @@ pub fn compute_positional_log_lh(graph: &Graph, state: &TimetreeState) -> Option
   let mut count = 0_usize;
 
   for edge_ref in graph.get_edges() {
-    let edge = edge_ref.read_arc();
+    let edge = edge_ref;
     let parent_key = edge.source();
     let child_key = edge.target();
 

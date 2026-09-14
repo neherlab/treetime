@@ -40,9 +40,8 @@ impl MugrationConfidenceOutput {
 
     let rows: Vec<ConfidenceRow> = graph
       .get_nodes()
-      .iter()
       .filter_map(|node| {
-        let node_key = node.read_arc().key();
+        let node_key = node.key();
         let node_name = node_name_or_fallback(names, node_key);
 
         partition
@@ -183,9 +182,8 @@ impl MugrationResult {
     // the post-order writers read.
     let nodes: BTreeMap<GraphNodeKey, MugrationNodeOut> = graph
       .get_nodes()
-      .iter()
       .map(|node| {
-        let key = node.read_arc().key();
+        let key = node.key();
         (
           key,
           MugrationNodeOut {
@@ -201,9 +199,8 @@ impl MugrationResult {
 
     let edges: BTreeMap<GraphEdgeKey, EdgeOut> = graph
       .get_edges()
-      .iter()
       .map(|edge| {
-        let key = edge.read_arc().key();
+        let key = edge.key();
         let branch_length = branch_lengths.get(&key).copied().flatten();
         (key, EdgeOut { branch_length })
       })
@@ -238,17 +235,15 @@ pub(crate) fn gather_mugration_output_maps(
 ) -> MugrationOutputMaps {
   let reconstructed_traits = graph
     .get_nodes()
-    .iter()
     .map(|node| {
-      let key = node.read_arc().key();
+      let key = node.key();
       (key, partition.get_reconstructed_trait(node_states, key))
     })
     .collect();
   let confidences = graph
     .get_nodes()
-    .iter()
     .map(|node| {
-      let key = node.read_arc().key();
+      let key = node.key();
       (key, partition.get_confidence(node_states, key))
     })
     .collect();
@@ -269,9 +264,8 @@ fn extract_trait_assignments(
 ) -> IndexMap<String, String> {
   graph
     .get_nodes()
-    .iter()
     .filter_map(|node| {
-      let node_key = node.read_arc().key();
+      let node_key = node.key();
       let node_name = node_name_or_fallback(names, node_key);
 
       partition

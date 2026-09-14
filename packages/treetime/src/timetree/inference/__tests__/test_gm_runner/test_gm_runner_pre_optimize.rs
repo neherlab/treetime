@@ -38,8 +38,7 @@ mod tests {
   fn extract_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
-      .iter()
-      .map(|e| branch_lengths[&e.read_arc().key()].unwrap_or(0.0))
+      .map(|e| branch_lengths[&e.key()].unwrap_or(0.0))
       .collect_vec()
   }
 

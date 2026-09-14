@@ -280,9 +280,6 @@ fn ancestral_all_mutations(
   graph
     .get_nodes()
     .into_iter()
-    .flat_map(|node| {
-      let node = node.read_arc();
-      ancestral_node_mutations(graph, maps, node.key(), node.inbound().first().copied(), aa_node_data)
-    })
+    .flat_map(|node| ancestral_node_mutations(graph, maps, node.key(), node.inbound().first().copied(), aa_node_data))
     .collect()
 }

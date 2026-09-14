@@ -36,10 +36,9 @@ impl GraphPass {
   /// Freeze the topology of `graph` into a reusable pass view and validate that it forms an acyclic
   /// dependency graph (each node has at most one parent, no cycles, no duplicate readiness).
   pub fn new(graph: &Graph) -> Result<Self, Report> {
-    let safe_nodes = graph.get_nodes();
-    let mut nodes = Vec::with_capacity(safe_nodes.len());
-    for safe in &safe_nodes {
-      let node = safe.read_arc();
+    let graph_nodes = graph.get_nodes().collect::<Vec<_>>();
+    let mut nodes = Vec::with_capacity(graph_nodes.len());
+    for &node in &graph_nodes {
       let key = node.key();
       let parent_edge = if let Some(edge_key) = graph.parent_inbound_edge(key)? {
         Some((graph.get_source_node_key(edge_key)?, edge_key))
@@ -63,11 +62,10 @@ impl GraphPass {
     // Children in `children_of` (outbound) order, so the value the backward pass hands each visitor
     // already folds in the same canonical order the graph exposes, without any per-node graph read.
     let mut children = vec![Vec::new(); nodes.len()];
-    for safe in &safe_nodes {
-      let node = safe.read_arc();
+    for &node in &graph_nodes {
       let parent_index = node_index[&node.key()];
-      for (child, _edge) in graph.children_of(&node) {
-        let child_key = child.read_arc().key();
+      for (child, _edge) in graph.children_of(node) {
+        let child_key = child.key();
         children[parent_index].push(node_index[&child_key]);
       }
     }

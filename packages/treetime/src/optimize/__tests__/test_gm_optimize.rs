@@ -39,15 +39,7 @@ mod tests {
     let v1_total_bl: f64 = result
       .graph
       .get_edges()
-      .iter()
-      .map(|e| {
-        result
-          .branch_lengths
-          .get(&e.read_arc().key())
-          .copied()
-          .flatten()
-          .unwrap_or(0.0)
-      })
+      .map(|e| result.branch_lengths.get(&e.key()).copied().flatten().unwrap_or(0.0))
       .sum();
 
     assert_relative_eq!(v1_total_bl, expected.final_total_branch_length, max_relative = 0.05);
@@ -92,13 +84,12 @@ mod tests {
     let v1_branch_lengths: BTreeMap<String, f64> = result
       .graph
       .get_edges()
-      .iter()
       .filter_map(|e| {
-        let edge = e.read_arc();
+        let edge = e;
         let bl = result.branch_lengths.get(&edge.key()).copied().flatten()?;
         let target_key = edge.target();
         let node = result.graph.get_node(target_key)?;
-        let name = result.names.get(&node.read_arc().key()).cloned().flatten()?;
+        let name = result.names.get(&node.key()).cloned().flatten()?;
         Some((name, bl))
       })
       .collect();

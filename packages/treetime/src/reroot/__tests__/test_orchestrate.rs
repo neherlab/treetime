@@ -14,7 +14,7 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
 
   fn root_to_tip_distances(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
-    let root_key = graph.get_exactly_one_root().unwrap().read_arc().key();
+    let root_key = graph.get_exactly_one_root().unwrap().key();
     let mut distances = Vec::new();
     collect_distances(graph, root_key, 0.0, &mut distances, branch_lengths);
     distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -29,14 +29,12 @@ mod tests {
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) {
     let node = graph.get_node(node_key).unwrap();
-    let node = node.read_arc();
     if node.is_leaf() {
       out.push(dist);
       return;
     }
     for &edge_key in node.outbound() {
       let edge = graph.get_edge(edge_key).unwrap();
-      let edge = edge.read_arc();
       let bl = branch_lengths[&edge.key()].unwrap_or(0.0);
       collect_distances(graph, edge.target(), dist + bl, out, branch_lengths);
     }
@@ -136,7 +134,7 @@ mod tests {
     let mut graph: Graph = graph;
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
-    let root_before = graph.get_exactly_one_root().unwrap().read_arc().key();
+    let root_before = graph.get_exactly_one_root().unwrap().key();
 
     reroot_in_place::<DivStats, _>(
       &mut graph,
@@ -152,7 +150,7 @@ mod tests {
       |_graph, _inverted| Ok(()),
     )?;
 
-    let root_after = graph.get_exactly_one_root().unwrap().read_arc().key();
+    let root_after = graph.get_exactly_one_root().unwrap().key();
     assert_ne!(
       root_before, root_after,
       "split_edge=false should reroot to the nearer endpoint"

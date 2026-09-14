@@ -23,9 +23,8 @@ pub fn invalid_branch_length_descriptions(
 ) -> Result<Vec<String>, Report> {
   graph
     .get_edges()
-    .iter()
     .filter_map(|edge_ref| {
-      let edge = edge_ref.read_arc();
+      let edge = edge_ref;
       let branch_length = branch_lengths[&edge.key()];
       (!is_valid_branch_length(branch_length)).then_some((edge.source(), edge.target(), branch_length))
     })

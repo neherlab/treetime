@@ -146,8 +146,7 @@ mod tests {
     // Collect initial branch lengths
     let initial_total: f64 = graph
       .get_edges()
-      .iter()
-      .filter_map(|e| branch_lengths[&e.read_arc().key()])
+      .filter_map(|e| branch_lengths[&e.key()])
       .sum();
 
     // Run several optimization iterations
@@ -163,7 +162,6 @@ mod tests {
     // Verify all branch lengths are in valid range
     let mut final_total = 0.0;
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let branch_length = branch_lengths[&edge.key()];
       if let Some(bl) = branch_length {
         // Branch lengths should be non-negative and reasonable (< 10 subs/site)

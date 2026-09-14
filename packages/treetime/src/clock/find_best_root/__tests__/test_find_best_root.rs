@@ -24,9 +24,7 @@ mod tests {
   ) -> BTreeMap<GraphNodeKey, Option<f64>> {
     graph
       .get_leaves()
-      .iter()
       .map(|node| {
-        let node = node.read_arc();
         let name = names[&node.key()].clone().unwrap();
         (node.key(), dates.get(&name).copied())
       })
@@ -89,7 +87,6 @@ mod tests {
   ) -> (String, String) {
     let edge_key = result.edge.expect("result should have an edge");
     let edge = graph.get_edge(edge_key).expect("edge should exist");
-    let edge = edge.read_arc();
     let source_name = names
       .get(&edge.source())
       .cloned()

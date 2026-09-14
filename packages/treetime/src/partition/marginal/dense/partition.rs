@@ -66,7 +66,7 @@ impl PartitionMarginalDense {
   ) -> Result<BTreeMap<GraphNodeKey, DenseNodeState>, Report> {
     let mut node_states = BTreeMap::new();
     for leaf in graph.get_leaves() {
-      let leaf_key = leaf.read_arc().key();
+      let leaf_key = leaf.key();
       let node = &node_inputs[&leaf_key];
 
       let seq = node

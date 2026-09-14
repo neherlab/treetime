@@ -123,8 +123,7 @@ mod tests {
   fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
-      .iter()
-      .map(|edge| branch_lengths[&edge.read_arc().key()].unwrap_or(0.0))
+      .map(|edge| branch_lengths[&edge.key()].unwrap_or(0.0))
       .collect()
   }
 
@@ -139,7 +138,7 @@ mod tests {
     let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let effective = partitions[0].edge_effective_length(&graph, edge_key)?;
       assert_eq!(16, effective);
     }
@@ -158,7 +157,7 @@ mod tests {
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let effective = partitions[0].edge_effective_length(&graph, edge_key)?;
       assert_eq!(16, effective);
     }
@@ -177,7 +176,7 @@ mod tests {
     let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let effective = partitions[0].edge_effective_length(&graph, edge_key)?;
       // All nodes share gaps at positions 4-7, so effective = 16 - 4 = 12
       assert_eq!(12, effective);
@@ -197,7 +196,7 @@ mod tests {
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let effective = partitions[0].edge_effective_length(&graph, edge_key)?;
       // All nodes share gaps at positions 4-7, so effective = 16 - 4 = 12
       assert_eq!(12, effective);
@@ -218,7 +217,7 @@ mod tests {
 
     let mut found_reduced = false;
     for edge_ref in graph.get_edges() {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let effective = partitions[0].edge_effective_length(&graph, edge_key)?;
       // At least one edge (B→AB) should have reduced effective length
       if effective < 16 {
@@ -241,7 +240,7 @@ mod tests {
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let subs = partitions[0].edge_subs(&graph, edge_key)?;
       // No substitution should involve a gap position (4-7)
       for sub in &subs {

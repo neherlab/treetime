@@ -97,7 +97,7 @@ pub fn collect_tree_events(
     return make_error!("Cannot determine present time for coalescent events");
   }
 
-  let expected_nodes = graph.get_nodes().len();
+  let expected_nodes = graph.get_nodes().count();
   let expected_leaves = graph.num_leaves();
   let Some(expected_internal) = expected_nodes.checked_sub(expected_leaves) else {
     return make_error!(

@@ -448,7 +448,7 @@ mod tests {
     pretty_assert_ulps_eq!(-56.76471324493305, log_lh, epsilon = 1e-6);
 
     // test variable position distribution at the root (pos 0)
-    let root_key = graph.get_exactly_one_root()?.read_arc().key();
+    let root_key = graph.get_exactly_one_root()?.key();
     let root_profile = &recon.node_states[&root_key].profile;
     let pos_zero_root = array![0.28212327, 0.21643546, 0.13800802, 0.36343326];
     pretty_assert_ulps_eq!(&root_profile.variable[&0].dis, &pos_zero_root, epsilon = 1e-6);
@@ -577,9 +577,8 @@ mod tests {
     let actual_by_edge = {
       graph
         .get_edges()
-        .iter()
         .map(|edge| {
-          let edge_key = edge.read_arc().key();
+          let edge_key = edge.key();
           let actual = recon.edge_subs(edge_key)?;
           Ok((edge_key, actual))
         })
@@ -668,7 +667,7 @@ mod tests {
           jc69(JC69Params::default())?,
         )?;
         Ok((
-          recon.node_states[&graph.get_exactly_one_root()?.read_arc().key()]
+          recon.node_states[&graph.get_exactly_one_root()?.key()]
             .profile
             .log_lh
             .value()
@@ -710,9 +709,7 @@ mod tests {
     ) -> Result<BTreeMap<GraphEdgeKey, Vec<Sub>>, Report> {
       graph
         .get_edges()
-        .iter()
         .map(|edge| {
-          let edge = edge.read_arc();
           let edge_key = edge.key();
           let expected = diff_canonical_subs(
             &partition.alphabet,

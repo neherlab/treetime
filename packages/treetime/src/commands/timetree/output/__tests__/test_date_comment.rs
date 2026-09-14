@@ -33,9 +33,8 @@ mod tests {
   ) -> Result<BTreeMap<GraphEdgeKey, Vec<Mutation>>, Report> {
     graph
       .get_edges()
-      .iter()
       .map(|edge| {
-        let key = edge.read_arc().key();
+        let key = edge.key();
         Ok((key, partition.edge_mutations(key, &MutationTrack::Nucleotide)?))
       })
       .collect()
@@ -59,7 +58,7 @@ mod tests {
     let mut obs_nodes = btreemap! {};
     let mut node_states = btreemap! {};
     for node in graph.get_nodes() {
-      let key = node.read_arc().key();
+      let key = node.key();
       obs_nodes.insert(key, SparseNodeObs::new(&ref_seq, &alphabet));
       node_states.insert(key, SparseNodeState::leaf(&ref_seq));
     }
@@ -68,10 +67,10 @@ mod tests {
     // MAP substitutions the comment provider reports come from the estimates map; the fixture seeds it
     // directly since these output tests run no marginal pass.
     let mut estimates = btreemap! {};
-    let edges = graph.get_edges();
+    let edges = graph.get_edges().collect::<Vec<_>>();
     for (idx, subs) in edge_subs {
       if let Some(edge) = edges.get(*idx) {
-        let edge_key = edge.read_arc().key();
+        let edge_key = edge.key();
         obs_edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs.clone()));
         estimates.insert(edge_key, subs.clone());
       }
@@ -116,7 +115,7 @@ mod tests {
     )?;
     let edge_mutations = edge_mutation_map(&graph, &partition)?;
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
-    let leaf_key = graph.get_leaves()[0].read_arc().key();
+    let leaf_key = graph.get_leaves().collect::<Vec<_>>()[0].key();
     let comments = provider.node_comments(leaf_key)?;
     assert_eq!(comments.get("mutations").map(String::as_str), Some("A55G,T93C"));
     Ok(())
@@ -140,11 +139,7 @@ mod tests {
       )],
     )?;
 
-    let date_times: BTreeMap<GraphNodeKey, f64> = graph
-      .get_leaves()
-      .iter()
-      .map(|leaf| (leaf.read_arc().key(), 2003.84))
-      .collect();
+    let date_times: BTreeMap<GraphNodeKey, f64> = graph.get_leaves().map(|leaf| (leaf.key(), 2003.84)).collect();
 
     let edge_mutations = edge_mutation_map(&graph, &partition)?;
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
@@ -154,11 +149,7 @@ mod tests {
       style: NwkStyle::Beast,
       ..NexWriteOptions::default()
     };
-    let time_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = graph
-      .get_edges()
-      .iter()
-      .map(|edge| (edge.read_arc().key(), None))
-      .collect();
+    let time_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = graph.get_edges().map(|edge| (edge.key(), None)).collect();
     let nexus = nex_write_str_with(&graph, &names, &time_lengths, &options, &providers)?;
     let expected = concat!(
       indoc! {r#"

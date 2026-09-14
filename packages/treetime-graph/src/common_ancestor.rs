@@ -11,11 +11,7 @@ use itertools::Itertools;
 pub fn common_ancestor(graph: &Graph, node_keys: &[GraphNodeKey]) -> Result<GraphNodeKey, Report> {
   let paths = node_keys
     .iter()
-    .map(|key| {
-      graph
-        .path_from_root_to_node(*key)
-        .map(|path| path.into_iter().map(|node| node.read_arc().key()).collect_vec())
-    })
+    .map(|key| graph.path_from_root_to_node(*key))
     .try_collect::<_, Vec<_>, _>()?;
 
   let first_path = paths

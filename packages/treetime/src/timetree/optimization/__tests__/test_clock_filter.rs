@@ -26,7 +26,6 @@ mod tests {
   ) -> DateConstraints {
     let mut time_distributions = BTreeMap::new();
     for n in graph.get_leaves() {
-      let n = n.read_arc();
       let name = names.get(&n.key()).cloned().flatten();
       if let Some(name) = name {
         if let Some(&date) = dates.get(&name) {
@@ -52,8 +51,7 @@ mod tests {
   fn count_outliers(graph: &Graph, state: &ClockState) -> usize {
     graph
       .get_leaves()
-      .iter()
-      .filter(|leaf| state.node(leaf.read_arc().key()).is_outlier)
+      .filter(|leaf| state.node(leaf.key()).is_outlier)
       .count()
   }
 
@@ -133,8 +131,8 @@ mod tests {
     assert!(new_outliers >= 1, "At least one status change expected");
 
     // Verify A is marked as outlier
-    let a_is_outlier = graph.get_leaves().iter().any(|leaf| {
-      let node = leaf.read_arc();
+    let a_is_outlier = graph.get_leaves().any(|leaf| {
+      let node = leaf;
       state.node(node.key()).is_outlier
         && names
           .get(&node.key())
@@ -229,7 +227,6 @@ mod tests {
     let graph: Graph = graph;
     let mut state = TimetreeState::new(&graph);
     for node in graph.get_leaves() {
-      let node = node.read_arc();
       let is_bad = names
         .get(&node.key())
         .and_then(|x| x.as_deref())
@@ -241,9 +238,7 @@ mod tests {
 
     let actual = graph
       .get_nodes()
-      .iter()
       .map(|node| {
-        let node = node.read_arc();
         let name = names[&node.key()].clone().expect("Every fixture node must be named");
         (name, state.node(node.key()).bad_branch)
       })

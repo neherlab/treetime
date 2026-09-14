@@ -44,7 +44,7 @@ pub fn collapse_edge(
   let (_, _removed_edge, new_edges) = graph.collapse_edge(edge_key)?;
 
   for new_edge in &new_edges {
-    let new_edge_key = new_edge.read_arc().key();
+    let new_edge_key = *new_edge;
 
     // Sum branch lengths: net edge length = collapsed-edge length + child-edge length.
     // Both must be present for a sum; a missing weight (`None`) on either side is preserved.

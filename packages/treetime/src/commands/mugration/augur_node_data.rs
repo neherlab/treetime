@@ -98,7 +98,7 @@ fn build_nodes(
   let mut nodes = BTreeMap::new();
 
   for node in graph.get_nodes() {
-    let node_guard = node.read_arc();
+    let node_guard = node;
     let node_key = node_guard.key();
     let node_name = names[&node_key]
       .as_deref()
@@ -149,13 +149,13 @@ fn build_branches(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   maps: &MugrationOutputMaps,
 ) -> BTreeMap<String, AugurNodeDataJsonTraitsBranches> {
-  let root_key = graph.get_exactly_one_root().ok().map(|r| r.read_arc().key());
+  let root_key = graph.get_exactly_one_root().ok().map(|r| r.key());
   let mut branches = BTreeMap::new();
 
   let parent_traits = build_parent_trait_map(graph, maps);
 
   for node in graph.get_nodes() {
-    let node_guard = node.read_arc();
+    let node_guard = node;
     let node_key = node_guard.key();
     let node_name = names[&node_key]
       .as_deref()
@@ -193,7 +193,7 @@ fn build_branches(
 fn build_parent_trait_map(graph: &Graph, maps: &MugrationOutputMaps) -> BTreeMap<GraphNodeKey, Option<String>> {
   let mut map = BTreeMap::new();
   for node in graph.get_nodes() {
-    let node_guard = node.read_arc();
+    let node_guard = node;
     let node_key = node_guard.key();
     let inbound = node_guard.inbound().to_vec();
     if let Some(parent_edge_key) = inbound.first() {

@@ -77,7 +77,6 @@ mod tests {
     let seqs = reconstruct_named_sparse(&graph, &names, &mut recon, false)?;
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let parent = node_name(&names, edge.source());
       let child = node_name(&names, edge.target());
       let mut expected = seqs[&parent].clone();

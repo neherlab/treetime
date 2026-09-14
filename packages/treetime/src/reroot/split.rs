@@ -42,13 +42,12 @@ where
   let edge_obj = graph
     .get_edge(edge)
     .ok_or_else(|| make_report!("Edge not found: {edge}"))?;
-  let target_key = edge_obj.read_arc().target();
+  let target_key = edge_obj.target();
   let branch_length = branch_lengths[&edge].ok_or_else(|| make_report!("Edge {edge} has no branch length"))?;
 
   let is_leaf = graph
     .get_node(target_key)
     .ok_or_else(|| make_report!("Target node not found for edge {edge}"))?
-    .read_arc()
     .is_leaf();
 
   let (to_parent, to_child) = edge_stats

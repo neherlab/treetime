@@ -59,7 +59,7 @@ mod tests {
     assert_eq!(edge_subs(p, h.nc), Vec::<Sub>::new());
 
     // V keeps its other children B and Z.
-    assert_eq!(graph.get_node(h.v).unwrap().read_arc().degree_out(), 2);
+    assert_eq!(graph.get_node(h.v).unwrap().degree_out(), 2);
     Ok(())
   }
 
@@ -482,7 +482,6 @@ mod tests {
 
     fn single_inbound(graph: &Graph, node_key: GraphNodeKey) -> GraphEdgeKey {
       let node = graph.get_node(node_key).unwrap();
-      let node = node.read_arc();
       match node.inbound() {
         [edge_key] => *edge_key,
         other => panic!("expected exactly one inbound edge, found {}", other.len()),
@@ -500,8 +499,7 @@ mod tests {
     pub fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
-        .iter()
-        .filter_map(|e| recon.obs_edges.get(&e.read_arc().key()))
+        .filter_map(|e| recon.obs_edges.get(&e.key()))
         .map(|e| e.fitch_subs().len())
         .sum()
     }
@@ -527,7 +525,7 @@ mod tests {
       let mut obs_nodes = btreemap! {};
       let mut node_states = btreemap! {};
       for node in graph.get_nodes() {
-        let key = node.read_arc().key();
+        let key = node.key();
         obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
         node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }

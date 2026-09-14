@@ -80,15 +80,11 @@ mod tests {
       let mut branch_lengths = nwk_parsed.branch_lengths;
       let mut graph: Graph = graph;
 
-      let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
+      let old_root_key = graph.get_exactly_one_root()?.key();
 
       let internal_keys: Vec<GraphNodeKey> = graph
         .get_nodes()
-        .iter()
-        .filter_map(|node| {
-          let node = node.read_arc();
-          (!node.is_root() && !node.is_leaf()).then_some(node.key())
-        })
+        .filter_map(|node| (!node.is_root() && !node.is_leaf()).then_some(node.key()))
         .sorted()
         .collect();
 
@@ -132,7 +128,7 @@ mod tests {
         let branch_lengths = nwk_parsed.branch_lengths;
 
         let graph: Graph = graph;
-        let leaves = graph.get_leaves();
+        let leaves = graph.get_leaves().collect::<Vec<_>>();
         assert_eq!(leaves.len(), 4, "Must have 4 leaves: {rerooted}");
 
         Ok(())

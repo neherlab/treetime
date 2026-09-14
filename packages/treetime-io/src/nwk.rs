@@ -6,16 +6,16 @@ use smart_default::SmartDefault;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Write};
 use std::path::Path;
-use std::sync::Arc;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::graph::{Graph, SafeEdge, SafeNode};
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::make_error;
+use treetime_utils::make_internal_report;
 use treetime_utils::make_report;
 pub use util_newick::NwkStyle;
 use util_newick::{
@@ -139,7 +139,7 @@ fn build_node_inputs(
     records_by_name.entry(record.seq_name.clone()).or_insert(record);
   }
 
-  let leaf_keys: BTreeSet<GraphNodeKey> = graph.get_leaves().iter().map(|leaf| leaf.read_arc().key()).collect();
+  let leaf_keys: BTreeSet<GraphNodeKey> = graph.get_leaves().map(|leaf| leaf.key()).collect();
 
   metas
     .into_iter()
@@ -363,22 +363,24 @@ pub fn nwk_write_with(
   options: &NwkWriteOptions,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
-  let roots = graph.get_roots();
-  if roots.is_empty() {
+  if graph.num_roots() == 0 {
     return make_error!("When converting graph to Newick format: No roots found.");
   }
 
-  if roots.len() > 1 {
-    return make_error!("Multiple roots are not supported. Found {} roots", roots.len());
+  if graph.num_roots() > 1 {
+    return make_error!("Multiple roots are not supported. Found {} roots", graph.num_roots());
   }
-  let root = &roots[0];
+  let root_key = graph.root_key()?;
 
-  let mut stack: Vec<(SafeNode, Option<SafeEdge>, usize)> = vec![(Arc::clone(root), None, 0)];
-  while let Some((node, edge, child_visit)) = stack.pop() {
-    let children: Vec<_> = graph.children_of(&node.read()).into_iter().collect();
+  let mut stack: Vec<(GraphNodeKey, Option<GraphEdgeKey>, usize)> = vec![(root_key, None, 0)];
+  while let Some((node_key, edge_key, child_visit)) = stack.pop() {
+    let node = graph
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} not found in graph"))?;
+    let children: Vec<_> = graph.children_keys_of(node).collect();
 
     if child_visit < children.len() {
-      stack.push((node, edge, child_visit + 1));
+      stack.push((node_key, edge_key, child_visit + 1));
 
       if child_visit == 0 {
         write!(writer, "(")?;
@@ -386,20 +388,17 @@ pub fn nwk_write_with(
         write!(writer, ",")?;
       }
 
-      let (child, child_edge) = &children[child_visit];
-      stack.push((Arc::clone(child), Some(Arc::clone(child_edge)), 0));
+      let (child_key, child_edge_key) = children[child_visit];
+      stack.push((child_key, Some(child_edge_key), 0));
     } else {
       if child_visit > 0 {
         write!(writer, ")")?;
       }
 
-      let node_key = node.read_arc().key();
       let name = names[&node_key].clone();
       let comments = providers.merged_comments(node_key)?;
 
-      let weight = edge
-        .map(|edge| edge.read_arc().key())
-        .and_then(|edge_key| weights[&edge_key]);
+      let weight = edge_key.and_then(|edge_key| weights[&edge_key]);
 
       if let Some(name) = &name {
         write_label(writer, name)?;

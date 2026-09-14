@@ -49,9 +49,7 @@ mod tests {
 
     let times = graph
       .get_leaves()
-      .iter()
       .map(|node| {
-        let node = node.read_arc();
         let name = names[&node.key()].clone().unwrap();
         (node.key(), dates.get(&name).copied())
       })
@@ -67,9 +65,8 @@ mod tests {
   ) -> Vec<String> {
     let mut result: Vec<String> = graph
       .get_leaves()
-      .iter()
       .filter_map(|leaf| {
-        let node = leaf.read_arc();
+        let node = leaf;
         if state.node(node.key()).is_outlier {
           names.get(&node.key()).cloned().flatten()
         } else {
@@ -175,10 +172,9 @@ mod tests {
 
       let times = graph
         .get_leaves()
-        .iter()
         .take(dated_leaf_count)
         .enumerate()
-        .map(|(index, leaf)| (leaf.read_arc().key(), Some(2000.0 + index as f64)))
+        .map(|(index, leaf)| (leaf.key(), Some(2000.0 + index as f64)))
         .collect();
 
       Ok((graph, times, branch_lengths))

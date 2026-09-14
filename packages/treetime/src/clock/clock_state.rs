@@ -72,13 +72,11 @@ impl ClockInputs {
   pub fn new(graph: &Graph) -> Self {
     let nodes = graph
       .get_nodes()
-      .iter()
-      .map(|node| (node.read_arc().key(), ClockNodeInput::default()))
+      .map(|node| (node.key(), ClockNodeInput::default()))
       .collect();
     let edges = graph
       .get_edges()
-      .iter()
-      .map(|edge| (edge.read_arc().key(), ClockEdgeInput::default()))
+      .map(|edge| (edge.key(), ClockEdgeInput::default()))
       .collect();
     Self { nodes, edges }
   }
@@ -89,7 +87,7 @@ impl ClockInputs {
   pub fn seed_from_times(graph: &Graph, times: &BTreeMap<GraphNodeKey, Option<f64>>) -> Self {
     let mut inputs = Self::new(graph);
     for node in graph.get_nodes() {
-      let key = node.read_arc().key();
+      let key = node.key();
       inputs.nodes.entry(key).or_default().time = times.get(&key).copied().flatten();
     }
     inputs
@@ -111,9 +109,8 @@ impl ClockInputs {
   ) {
     let nodes = graph
       .get_nodes()
-      .iter()
       .map(|node| {
-        let key = node.read_arc().key();
+        let key = node.key();
         (
           key,
           ClockNodeInput {
@@ -125,9 +122,8 @@ impl ClockInputs {
       .collect();
     let edges = graph
       .get_edges()
-      .iter()
       .map(|edge| {
-        let key = edge.read_arc().key();
+        let key = edge.key();
         let (time_length, gamma) = edge_inputs.get(&key).copied().unwrap_or((None, 1.0));
         (key, ClockEdgeInput { time_length, gamma })
       })
@@ -184,13 +180,11 @@ impl ClockState {
   pub fn new(graph: &Graph) -> Self {
     let nodes = graph
       .get_nodes()
-      .iter()
-      .map(|node| (node.read_arc().key(), ClockNodeState::default()))
+      .map(|node| (node.key(), ClockNodeState::default()))
       .collect();
     let edges = graph
       .get_edges()
-      .iter()
-      .map(|edge| (edge.read_arc().key(), ClockEdgeState::default()))
+      .map(|edge| (edge.key(), ClockEdgeState::default()))
       .collect();
     Self { nodes, edges }
   }
@@ -209,9 +203,8 @@ impl ClockState {
   pub fn reseed_transitional(&mut self, graph: &Graph) {
     let nodes = graph
       .get_nodes()
-      .iter()
       .map(|node| {
-        let key = node.read_arc().key();
+        let key = node.key();
         let (div, is_outlier) = self
           .nodes
           .get(&key)
@@ -228,8 +221,7 @@ impl ClockState {
       .collect();
     let edges = graph
       .get_edges()
-      .iter()
-      .map(|edge| (edge.read_arc().key(), ClockEdgeState::default()))
+      .map(|edge| (edge.key(), ClockEdgeState::default()))
       .collect();
     self.nodes = nodes;
     self.edges = edges;

@@ -3,10 +3,8 @@ use crate::graph::Graph;
 use crate::node::{GraphNodeKey, Node};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use parking_lot::RwLock;
 use std::collections::{BTreeSet, VecDeque};
-use std::sync::Arc;
-use traversal::Bft;
+use treetime_utils::make_internal_report;
 
 /// Represents graph node during forward traversal
 #[must_use]
@@ -25,17 +23,8 @@ impl GraphNodeForward {
     let is_root = node.is_root();
     let key = node.key();
 
-    let parent_keys = graph
-      .parents_of(node)
-      .iter()
-      .map(|(node, edge)| (node.read_arc().key(), edge.read_arc().key()))
-      .collect_vec();
-
-    let child_edge_keys = graph
-      .children_of(node)
-      .iter()
-      .map(|(_, edge)| edge.read_arc().key())
-      .collect_vec();
+    let parent_keys = graph.parents_keys_of(node).collect_vec();
+    let child_edge_keys = graph.children_keys_of(node).map(|(_, edge_key)| edge_key).collect_vec();
 
     Self {
       is_root,
@@ -64,17 +53,8 @@ impl GraphNodeBackward {
     let is_root = node.is_root();
     let key = node.key();
 
-    let child_keys = graph
-      .children_of(node)
-      .iter()
-      .map(|(node, edge)| (node.read_arc().key(), edge.read_arc().key()))
-      .collect_vec();
-
-    let parent_edge_keys = graph
-      .parents_of(node)
-      .iter()
-      .map(|(_, edge)| edge.read_arc().key())
-      .collect_vec();
+    let child_keys = graph.children_keys_of(node).collect_vec();
+    let parent_edge_keys = graph.parents_keys_of(node).map(|(_, edge_key)| edge_key).collect_vec();
 
     Self {
       is_root,
@@ -83,24 +63,6 @@ impl GraphNodeBackward {
       child_keys,
       parent_edge_keys,
     }
-  }
-}
-
-/// Represents graph node during safe traversal
-#[derive(Debug)]
-pub struct GraphNodeSafe {
-  pub is_root: bool,
-  pub is_leaf: bool,
-  pub key: GraphNodeKey,
-}
-
-impl GraphNodeSafe {
-  pub fn from_node(node: &Arc<RwLock<Node>>) -> Self {
-    let node = node.read();
-    let is_leaf = node.is_leaf();
-    let is_root = node.is_root();
-    let key = node.key();
-    Self { is_root, is_leaf, key }
   }
 }
 
@@ -114,15 +76,18 @@ impl Graph {
   where
     F: FnMut(GraphNodeForward) -> Result<(), Report>,
   {
-    let root = self
+    let root_key = self
       .get_exactly_one_root()
-      .wrap_err("Graph must have exactly one root")?;
-    let mut stack = Vec::from([(Arc::clone(&root), None)]);
-    while let Some((current_node, _current_edge)) = stack.pop() {
-      let current_node = current_node.read_arc();
-      explorer(GraphNodeForward::new(self, &current_node))?;
-      for (child, edge) in self.children_of(&current_node).into_iter().rev() {
-        stack.push((child, Some(edge)));
+      .wrap_err("Graph must have exactly one root")?
+      .key();
+    let mut stack = vec![root_key];
+    while let Some(node_key) = stack.pop() {
+      let node = self
+        .get_node(node_key)
+        .ok_or_else(|| make_internal_report!("Node not found on the graph: {node_key}"))?;
+      explorer(GraphNodeForward::new(self, node))?;
+      for (child_key, _) in self.children_keys_of(node).rev() {
+        stack.push(child_key);
       }
     }
     Ok(())
@@ -133,25 +98,28 @@ impl Graph {
   where
     F: FnMut(GraphNodeBackward) -> Result<(), Report>,
   {
-    let root = self
+    let root_key = self
       .get_exactly_one_root()
-      .wrap_err("Graph must have exactly one root")?;
-    let mut stack = Vec::new();
+      .wrap_err("Graph must have exactly one root")?
+      .key();
+    let mut stack = vec![root_key];
     let mut visited = BTreeSet::new();
-    stack.push((Arc::clone(&root), None));
-    while let Some((current_node, _)) = stack.pop() {
-      let node_key = current_node.read_arc().key();
+    while let Some(node_key) = stack.pop() {
       if visited.insert(node_key) {
-        stack.push((Arc::clone(&current_node), None));
-        let children = self.children_of(&current_node.read_arc()).into_iter().rev();
-        for (child, edge) in children {
-          let child_key = child.read_arc().key();
+        stack.push(node_key);
+        let node = self
+          .get_node(node_key)
+          .ok_or_else(|| make_internal_report!("Node not found on the graph: {node_key}"))?;
+        for (child_key, _) in self.children_keys_of(node).rev() {
           if !visited.contains(&child_key) {
-            stack.push((child, Some(edge)));
+            stack.push(child_key);
           }
         }
       } else {
-        explorer(GraphNodeBackward::new(self, &current_node.read_arc()))?;
+        let node = self
+          .get_node(node_key)
+          .ok_or_else(|| make_internal_report!("Node not found on the graph: {node_key}"))?;
+        explorer(GraphNodeBackward::new(self, node))?;
       }
     }
     Ok(())
@@ -165,43 +133,56 @@ impl Graph {
   where
     F: FnMut(GraphNodeForward) -> Result<(), Report>,
   {
-    let root = self
+    let root_key = self
       .get_exactly_one_root()
-      .wrap_err("Graph must have exactly one root")?;
-    let mut queue = VecDeque::new();
-    queue.push_back(Arc::clone(&root));
+      .wrap_err("Graph must have exactly one root")?
+      .key();
+    let mut queue = VecDeque::from([root_key]);
 
-    while let Some(current_node) = queue.pop_front() {
-      explorer(GraphNodeForward::new(self, &current_node.read_arc()))?;
-      let children = self.children_of(&current_node.read_arc());
-      for (child, _) in children {
-        queue.push_back(child);
+    while let Some(node_key) = queue.pop_front() {
+      let node = self
+        .get_node(node_key)
+        .ok_or_else(|| make_internal_report!("Node not found on the graph: {node_key}"))?;
+      explorer(GraphNodeForward::new(self, node))?;
+      for (child_key, _) in self.children_keys_of(node) {
+        queue.push_back(child_key);
       }
     }
     Ok(())
   }
 
   /// Serial breadth-first backward traversal (leaves to roots, against edge directions).
+  ///
+  /// Children are expanded in ascending node-key order, so a node's descendants precede it in the
+  /// visited order once reversed.
   pub fn iter_breadth_first_backward<F>(&self, mut explorer: F) -> Result<(), Report>
   where
     F: FnMut(GraphNodeBackward) -> Result<(), Report>,
   {
-    let root = self
+    let root_key = self
       .get_exactly_one_root()
-      .wrap_err("Graph must have exactly one root")?;
-    let nodes = Bft::new(&root, |node| self.iter_children_arc(node)).collect_vec();
-    for (_, node) in nodes.into_iter().rev() {
-      explorer(GraphNodeBackward::new(self, &node.write()))?;
+      .wrap_err("Graph must have exactly one root")?
+      .key();
+    let mut queue = VecDeque::from([root_key]);
+    let mut order = Vec::new();
+    while let Some(node_key) = queue.pop_front() {
+      order.push(node_key);
+      let node = self
+        .get_node(node_key)
+        .ok_or_else(|| make_internal_report!("Node not found on the graph: {node_key}"))?;
+      let mut child_keys = self
+        .children_keys_of(node)
+        .map(|(child_key, _)| child_key)
+        .collect_vec();
+      child_keys.sort_unstable();
+      queue.extend(child_keys);
+    }
+    for node_key in order.into_iter().rev() {
+      let node = self
+        .get_node(node_key)
+        .ok_or_else(|| make_internal_report!("Node not found on the graph: {node_key}"))?;
+      explorer(GraphNodeBackward::new(self, node))?;
     }
     Ok(())
-  }
-
-  fn iter_children_arc(&self, node: &Arc<RwLock<Node>>) -> impl Iterator<Item = &Arc<RwLock<Node>>> {
-    let child_keys = self.child_keys_of(&node.read());
-    self.nodes.iter().filter_map(move |node| {
-      node
-        .as_ref()
-        .and_then(|node| child_keys.contains(&node.read_arc().key()).then_some(node))
-    })
   }
 }

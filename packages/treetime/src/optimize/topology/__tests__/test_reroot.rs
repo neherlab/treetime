@@ -23,12 +23,8 @@ mod tests {
 
     let edge_key = graph
       .get_edges()
-      .iter()
-      .find(|e| {
-        let e = e.read_arc();
-        e.source() == root_key && e.target() == a_key
-      })
-      .map(|e| e.read_arc().key())
+      .find(|e| e.source() == root_key && e.target() == a_key)
+      .map(|e| e.key())
       .unwrap();
 
     let info = split_edge(&mut graph, edge_key, 0.25, branch_lengths[&edge_key])?;
@@ -66,12 +62,8 @@ mod tests {
 
     let edge_key = graph
       .get_edges()
-      .iter()
-      .find(|e| {
-        let e = e.read_arc();
-        e.source() == root_key && e.target() == b_key
-      })
-      .map(|e| e.read_arc().key())
+      .find(|e| e.source() == root_key && e.target() == b_key)
+      .map(|e| e.key())
       .unwrap();
 
     let info = split_edge(&mut graph, edge_key, 0.5, branch_lengths[&edge_key])?;
@@ -102,11 +94,11 @@ mod tests {
 
     // AB is now the root (no inbound edges)
     let ab_node = graph.get_node(ab_key).unwrap();
-    assert!(ab_node.read_arc().inbound().is_empty());
+    assert!(ab_node.inbound().is_empty());
 
     // Old root is no longer root (has inbound edge)
     let old_root = graph.get_node(root_key).unwrap();
-    assert!(!old_root.read_arc().inbound().is_empty());
+    assert!(!old_root.inbound().is_empty());
 
     Ok(())
   }
@@ -128,7 +120,7 @@ mod tests {
 
     // A is now root
     let a_node = graph.get_node(a_key).unwrap();
-    assert!(a_node.read_arc().inbound().is_empty());
+    assert!(a_node.inbound().is_empty());
 
     Ok(())
   }
@@ -140,13 +132,13 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut graph: Graph = graph;
 
-    let initial_leaves = graph.get_leaves().len();
+    let initial_leaves = graph.get_leaves().collect::<Vec<_>>().len();
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let cd_key = find_node_key_by_name(&graph, &names, "CD").unwrap();
 
     apply_reroot_topology(&mut graph, root_key, cd_key)?;
 
-    assert_eq!(graph.get_leaves().len(), initial_leaves);
+    assert_eq!(graph.get_leaves().collect::<Vec<_>>().len(), initial_leaves);
 
     Ok(())
   }
@@ -233,10 +225,10 @@ mod tests {
 
     // CD is root
     let cd_node = graph.get_node(cd_key).unwrap();
-    assert!(cd_node.read_arc().inbound().is_empty());
+    assert!(cd_node.inbound().is_empty());
 
     // All 4 leaves preserved
-    assert_eq!(graph.get_leaves().len(), 4);
+    assert_eq!(graph.get_leaves().collect::<Vec<_>>().len(), 4);
 
     // Check total branch length conservation (unrooted tree property)
     let newick = nwk_write_str(
@@ -288,8 +280,7 @@ mod tests {
     // Compute total branch length before reroot
     let total_bl_before: f64 = graph
       .get_edges()
-      .iter()
-      .filter_map(|e| branch_lengths.get(&e.read_arc().key()).copied().flatten())
+      .filter_map(|e| branch_lengths.get(&e.key()).copied().flatten())
       .sum();
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
@@ -304,8 +295,7 @@ mod tests {
     // Compute total branch length after reroot + trivial removal
     let total_bl_after: f64 = graph
       .get_edges()
-      .iter()
-      .filter_map(|e| branch_lengths.get(&e.read_arc().key()).copied().flatten())
+      .filter_map(|e| branch_lengths.get(&e.key()).copied().flatten())
       .sum();
 
     // Total branch length on an unrooted tree is conserved under rerooting

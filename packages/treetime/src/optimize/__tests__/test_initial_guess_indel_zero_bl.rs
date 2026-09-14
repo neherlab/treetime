@@ -48,7 +48,7 @@ mod tests {
 
     // All edges should remain zero: no indels, zero is valid
     for edge_ref in graph.get_edges() {
-      let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap_or(f64::NAN);
+      let bl = branch_lengths[&edge_ref.key()].unwrap_or(f64::NAN);
       assert!(bl == 0.0, "Without indels, Auto mode should preserve zero BL, got {bl}");
     }
     Ok(())
@@ -59,7 +59,7 @@ mod tests {
     let (graph, mut partitions, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
 
     // Inject an indel on the first edge
-    let edge_key = graph.get_edges()[0].read_arc().key();
+    let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     {
       let partition = &mut partitions[0];
       partition
@@ -91,15 +91,15 @@ mod tests {
     )?;
 
     // The indel-bearing edge should now have a positive BL
-    let bl = branch_lengths[&graph.get_edges()[0].read_arc().key()].unwrap_or(0.0);
+    let bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap_or(0.0);
     assert!(
       bl > 0.0,
       "Auto mode should override zero BL on indel-bearing edge, got {bl}"
     );
 
     // Non-indel edges should remain zero
-    for edge_ref in graph.get_edges().iter().skip(1) {
-      let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap_or(f64::NAN);
+    for edge_ref in graph.get_edges().skip(1) {
+      let bl = branch_lengths[&edge_ref.key()].unwrap_or(f64::NAN);
       assert!(bl == 0.0, "Non-indel edge should remain zero, got {bl}");
     }
     Ok(())

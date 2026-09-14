@@ -71,7 +71,7 @@ mod tests {
       set_time(&graph, &names, &mut state, name, time)?;
     }
     for edge in graph.get_edges() {
-      branch_lengths.insert(edge.read_arc().key(), Some(0.0));
+      branch_lengths.insert(edge.key(), Some(0.0));
     }
     Ok((graph, names, state, branch_lengths))
   }
@@ -105,7 +105,7 @@ mod tests {
       set_time(&graph, &names, &mut state, name, time)?;
     }
     for edge in graph.get_edges() {
-      branch_lengths.insert(edge.read_arc().key(), Some(0.0));
+      branch_lengths.insert(edge.key(), Some(0.0));
     }
     Ok((graph, names, state, branch_lengths))
   }
@@ -178,7 +178,6 @@ mod tests {
     let mut stack = vec![node_key];
     while let Some(key) = stack.pop() {
       let node = graph.get_node(key).expect("Node must exist");
-      let node = node.read_arc();
       if node.is_leaf() {
         if let Some(name) = names.get(&node.key()).cloned().flatten() {
           result.insert(name);
@@ -186,7 +185,7 @@ mod tests {
         continue;
       }
       for &edge_key in node.outbound() {
-        stack.push(graph.get_edge(edge_key).expect("Edge must exist").read_arc().target());
+        stack.push(graph.get_edge(edge_key).expect("Edge must exist").target());
       }
     }
     result
@@ -212,11 +211,7 @@ mod tests {
     let created = resolve(&mut graph, &mut state, &mut branch_lengths, &mut rng)?;
 
     assert_eq!(created, 1, "a 3-way polytomy needs one merger to become a bifurcation");
-    let degree = graph
-      .get_node(abc_key)
-      .expect("Node must exist")
-      .read_arc()
-      .degree_out();
+    let degree = graph.get_node(abc_key).expect("Node must exist").degree_out();
     assert_eq!(degree, 2);
     Ok(())
   }
@@ -242,7 +237,6 @@ mod tests {
       resolve(&mut graph, &mut state, &mut branch_lengths, &mut rng).unwrap();
 
       let has_single_child_node = graph.get_nodes().into_iter().any(|node| {
-        let node = node.read_arc();
         node.inbound().len() == 1 && node.outbound().len() == 1
       });
       prop_assert!(!has_single_child_node);
@@ -262,7 +256,7 @@ mod tests {
           .get_nodes()
           .into_iter()
           .map(|node| {
-            let key = node.read_arc().key();
+            let key = node.key();
             leaf_names_under(&graph, &names, key).into_iter().collect::<Vec<_>>()
           })
           .collect(),
@@ -288,7 +282,7 @@ mod tests {
           .get_nodes()
           .into_iter()
           .map(|node| {
-            let key = node.read_arc().key();
+            let key = node.key();
             leaf_names_under(&graph, &names, key).into_iter().collect::<Vec<_>>()
           })
           .collect(),
@@ -328,11 +322,7 @@ mod tests {
 
     assert_eq!(created, 0, "no window above the polytomy means no resolution");
     let abc_key = find_node_key_by_name(&graph, &names, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
-    let degree = graph
-      .get_node(abc_key)
-      .expect("Node must exist")
-      .read_arc()
-      .degree_out();
+    let degree = graph.get_node(abc_key).expect("Node must exist").degree_out();
     assert_eq!(degree, 3, "the multifurcation must survive intact");
     Ok(())
   }
@@ -347,7 +337,6 @@ mod tests {
     resolve(&mut graph, &mut state, &mut branch_lengths, &mut rng)?;
 
     for node in graph.get_nodes() {
-      let node = node.read_arc();
       if node.is_leaf() || names.get(&node.key()).and_then(|x| x.as_ref()).is_some() {
         continue;
       }
@@ -362,11 +351,10 @@ mod tests {
     let mut stack = vec![parent_key];
     while let Some(key) = stack.pop() {
       let node = graph.get_node(key).expect("Node must exist");
-      let node = node.read_arc();
       let time = state.node(key).time.expect("node must be dated");
       for &edge_key in node.outbound() {
         let edge = graph.get_edge(edge_key).expect("Edge must exist");
-        let target = edge.read_arc().target();
+        let target = edge.target();
         let time_length = state.edge(edge_key).time_length;
         let child_time = state.node(target).time.expect("node must be dated");
         assert!(child_time > time, "edge must run forward in time");
@@ -404,7 +392,7 @@ mod tests {
     let (graph, names, mut state, mut branch_lengths) = polytomy_tree()?;
 
     for edge in graph.get_edges() {
-      let key = edge.read_arc().key();
+      let key = edge.key();
       branch_lengths.insert(key, Some(0.25));
       state.edge_mut(key).time_length = Some(3.0);
     }
@@ -456,7 +444,6 @@ mod tests {
     );
 
     for edge in graph.get_edges() {
-      let edge = edge.read_arc();
       let key = edge.key();
       // The branch-length distribution, backward message, and relaxed-clock rate multiplier live in the
       // date-state value now, reset by `TimetreeState::reset_date_edges_for_topology_change`;

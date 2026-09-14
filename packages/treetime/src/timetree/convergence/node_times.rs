@@ -18,9 +18,8 @@ pub struct NodeTimeChange {
 pub fn capture_node_times(graph: &Graph, state: &TimetreeState) -> NodeTimeSnapshot {
   graph
     .get_nodes()
-    .iter()
     .filter_map(|node| {
-      let key = node.read_arc().key();
+      let key = node.key();
       let time = state.node(key).time?;
       time.is_finite().then_some((key, time))
     })

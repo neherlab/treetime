@@ -33,9 +33,8 @@ pub fn collect_outliers(
 ) -> Vec<OutlierRecord> {
   graph
     .get_leaves()
-    .iter()
     .filter_map(|leaf| {
-      let node = leaf.read_arc();
+      let node = leaf;
       let state = clock_state.node(node.key());
       if !state.is_outlier {
         return None;
@@ -102,7 +101,7 @@ pub fn apply_outlier_bad_branches(
   state: &mut TimetreeState,
 ) -> Result<(), Report> {
   for leaf in graph.get_leaves() {
-    let node = leaf.read_arc();
+    let node = leaf;
     if clock_state.node(node.key()).is_outlier {
       state.node_mut(node.key()).bad_branch = true;
     }

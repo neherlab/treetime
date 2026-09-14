@@ -55,8 +55,7 @@ mod tests {
       let p = &partitions[0];
       let total_after: usize = graph
         .get_edges()
-        .iter()
-        .filter_map(|e| p.obs_edges.get(&e.read_arc().key()))
+        .filter_map(|e| p.obs_edges.get(&e.key()))
         .map(|e| e.fitch_subs().len())
         .sum();
 
@@ -131,8 +130,7 @@ mod tests {
 
       let leaves_before: BTreeSet<String> = graph
         .get_leaves()
-        .iter()
-        .filter_map(|n| names.get(&n.read_arc().key()).cloned().flatten())
+        .filter_map(|n| names.get(&n.key()).cloned().flatten())
         .collect();
 
       let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
@@ -143,8 +141,7 @@ mod tests {
 
       let leaves_after: BTreeSet<String> = graph
         .get_leaves()
-        .iter()
-        .filter_map(|n| names.get(&n.read_arc().key()).cloned().flatten())
+        .filter_map(|n| names.get(&n.key()).cloned().flatten())
         .collect();
 
       prop_assert_eq!(leaves_before, leaves_after);
@@ -171,7 +168,7 @@ mod tests {
 
       let p = &partitions[0];
       for node_ref in graph.get_nodes() {
-        let node = node_ref.read_arc();
+        let node = node_ref;
         let outbound = node.outbound();
         if outbound.len() <= 1 { continue; }
 
@@ -227,12 +224,12 @@ mod tests {
 
     // Root has 1 child (the new node), which has all 5 original children.
     let root = graph.get_roots().into_iter().next().expect("root");
-    assert_eq!(root.read_arc().degree_out(), 1);
+    assert_eq!(root.degree_out(), 1);
 
-    let internal_edge = root.read_arc().outbound()[0];
+    let internal_edge = root.outbound()[0];
     let internal_key = graph.get_target_node_key(internal_edge)?;
     let internal = graph.get_node(internal_key).expect("internal node");
-    assert_eq!(internal.read_arc().degree_out(), 5);
+    assert_eq!(internal.degree_out(), 5);
 
     Ok(())
   }
@@ -292,7 +289,7 @@ mod tests {
     graph.build()?;
 
     let root = graph.get_roots().into_iter().next().expect("root");
-    assert_eq!(root.read_arc().degree_out(), 2);
+    assert_eq!(root.degree_out(), 2);
 
     Ok(())
   }
@@ -413,8 +410,7 @@ mod tests {
     // A must be in exactly one merged group, not both.
     let leaf_count = graph
       .get_leaves()
-      .iter()
-      .filter(|n| names.get(&n.read_arc().key()).and_then(|x| x.as_ref()).is_some())
+      .filter(|n| names.get(&n.key()).and_then(|x| x.as_ref()).is_some())
       .count();
     assert_eq!(leaf_count, 4);
 
@@ -510,7 +506,7 @@ mod tests {
       let mut obs_nodes = btreemap! {};
       let mut node_states = btreemap! {};
       for node in graph.get_nodes() {
-        let key = node.read_arc().key();
+        let key = node.key();
         obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
         node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }

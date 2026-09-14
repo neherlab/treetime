@@ -148,7 +148,6 @@ fn node_topology(graph: &Graph, node_key: GraphNodeKey) -> Result<NodeTopology, 
   let node = graph
     .get_node(node_key)
     .ok_or_else(|| make_report!("Node not found: {node_key}"))?;
-  let node = node.read_arc();
   Ok(NodeTopology {
     is_leaf: node.is_leaf(),
     is_root: node.is_root(),

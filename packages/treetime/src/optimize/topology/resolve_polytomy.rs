@@ -87,7 +87,7 @@ fn resolve_one(
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<bool, Report> {
-  let preexisting: BTreeSet<GraphNodeKey> = graph.get_nodes().iter().map(|node| node.read_arc().key()).collect();
+  let preexisting: BTreeSet<GraphNodeKey> = graph.get_nodes().map(|node| node.key()).collect();
 
   let mut any_changed = false;
   loop {
@@ -126,7 +126,7 @@ fn try_hoist_reverting_child(
   let Some(parent_edge_key) = single_inbound_edge(graph, node_key) else {
     return Ok(false);
   };
-  let degree_out = graph.get_node(node_key).map_or(0, |node| node.read_arc().degree_out());
+  let degree_out = graph.get_node(node_key).map_or(0, |node| node.degree_out());
   if degree_out < 2 {
     return Ok(false);
   }
@@ -164,7 +164,6 @@ fn try_hoist_reverting_child(
 fn bifurcating_root_sibling_edge(graph: &Graph, parent_edge_key: GraphEdgeKey) -> Option<(GraphNodeKey, GraphEdgeKey)> {
   let root_key = graph.get_source_node_key(parent_edge_key).ok()?;
   let root = graph.get_node(root_key)?;
-  let root = root.read_arc();
   if !root.is_root() || root.degree_out() != 2 {
     return None;
   }
@@ -188,7 +187,7 @@ fn best_reverting_child(
   parent_edge_key: GraphEdgeKey,
   sibling_edge_key: Option<GraphEdgeKey>,
 ) -> Option<GraphEdgeKey> {
-  let child_edges = graph.get_node(node_key)?.read_arc().outbound().to_vec();
+  let child_edges = graph.get_node(node_key)?.outbound().to_vec();
 
   let mut best: Option<(usize, GraphEdgeKey)> = None;
   for child_edge_key in child_edges {
@@ -231,13 +230,12 @@ fn retire_created_helpers(
 ) -> Result<bool, Report> {
   let mut retired = false;
   loop {
-    let candidate = graph.get_edges().iter().find_map(|edge| {
-      let edge = edge.read_arc();
+    let candidate = graph.get_edges().find_map(|edge| {
       let target_key = edge.target();
       if preexisting.contains(&target_key) {
         return None;
       }
-      let target_is_leaf = graph.get_node(target_key).is_some_and(|node| node.read_arc().is_leaf());
+      let target_is_leaf = graph.get_node(target_key).is_some_and(|node| node.is_leaf());
       if target_is_leaf {
         return None;
       }
@@ -263,7 +261,6 @@ fn retire_created_helpers(
 /// The single parent edge of a node, or `None` for the root.
 fn single_inbound_edge(graph: &Graph, node_key: GraphNodeKey) -> Option<GraphEdgeKey> {
   let node = graph.get_node(node_key)?;
-  let node = node.read_arc();
   match node.inbound() {
     [edge_key] => Some(*edge_key),
     _ => None,

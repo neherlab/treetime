@@ -48,9 +48,10 @@ pub(crate) fn attach_seqs_to_graph(
 ) -> Result<(), Report> {
   let leaf_records = graph
     .get_leaves()
+    .collect::<Vec<_>>()
     .into_par_iter()
     .map(|leaf| -> Result<_, Report> {
-      let leaf_key = leaf.read_arc().key();
+      let leaf_key = leaf.key();
       let node = &node_inputs[&leaf_key];
       let seq = node
         .aln
@@ -74,7 +75,7 @@ pub(crate) fn attach_seqs_to_graph(
   partition.nodes.extend(nodes);
 
   for edge in graph.get_edges() {
-    let edge_key = edge.read_arc().key();
+    let edge_key = edge.key();
     partition.edges.insert(edge_key, SparseEdgeObs::default());
   }
 

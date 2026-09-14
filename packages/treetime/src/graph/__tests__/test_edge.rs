@@ -10,15 +10,18 @@ mod tests {
   fn test_edge_inverts() -> Result<(), Report> {
     let mut graph = nwk_read_str("((((h:0.7)e:0.6)d:0.4)b:0.,((g:0.5)c:0.2,(i:0.8)f:0.3)a:0.1)r1;")?.graph;
 
-    let edge = graph.get_edge(GraphEdgeKey(3)).unwrap();
-    let input_source = edge.read().source();
-    let input_target = edge.read().target();
+    let edge_key = GraphEdgeKey(3);
+    let (input_source, input_target) = {
+      let edge = graph.get_edge(edge_key).unwrap();
+      (edge.source(), edge.target())
+    };
 
-    invert_edge(&mut graph, &edge);
+    invert_edge(&mut graph, edge_key);
 
-    let edge = graph.get_edge(GraphEdgeKey(3)).unwrap();
-    let output_source = edge.read().source();
-    let output_target = edge.read().target();
+    let (output_source, output_target) = {
+      let edge = graph.get_edge(edge_key).unwrap();
+      (edge.source(), edge.target())
+    };
 
     assert_eq!(input_source, output_target);
     assert_eq!(input_target, output_source);

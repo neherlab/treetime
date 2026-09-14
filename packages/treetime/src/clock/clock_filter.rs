@@ -57,9 +57,10 @@ pub fn clock_filter_inplace(
   // collect clock_deviation of leaf nodes into a vector
   let leaf_clock_deviations: Vec<f64> = graph
     .get_leaves()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .filter_map(|leaf| {
-      let key = leaf.read_arc().key();
+      let key = leaf.key();
       let div = state.node(key).div;
       let time = inputs.likely_time(key);
       time.map(|time| clock_line.clock_deviation(time, div))
@@ -86,9 +87,10 @@ pub fn clock_filter_inplace(
   // to a serial per-node write.
   let outlier_updates: Vec<(GraphNodeKey, bool, i32)> = graph
     .get_leaves()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .filter_map(|leaf| {
-      let key = leaf.read_arc().key();
+      let key = leaf.key();
       let node = state.node(key);
       let div = node.div;
       let was_outlier = node.is_outlier;

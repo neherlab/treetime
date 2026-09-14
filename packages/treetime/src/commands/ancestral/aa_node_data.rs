@@ -248,7 +248,7 @@ pub fn collect_aa_cds_node_data(
   let mut node_muts = BTreeMap::new();
   let mut node_mutations = BTreeMap::new();
   for node in graph.get_nodes() {
-    let node_guard = node.read_arc();
+    let node_guard = node;
     let node_key = node_guard.key();
     let node_name = names[&node_key]
       .as_deref()

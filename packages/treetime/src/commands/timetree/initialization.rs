@@ -55,7 +55,7 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
     .get_leaves()
     .into_iter()
     .map(|leaf| {
-      let key = leaf.read_arc().key();
+      let key = leaf.key();
       names[&key]
         .clone()
         .ok_or_else(|| make_report!("Leaf node {key} has no name"))

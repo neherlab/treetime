@@ -59,9 +59,7 @@ mod tests {
 
     let actual: IndexMap<String, Array1<f64>> = graph
       .get_nodes()
-      .iter()
       .filter_map(|node| {
-        let node = node.read_arc();
         let name = names.get(&node.key()).cloned().flatten()?;
         let n_children = node.outbound().len();
         Some((name, n_children))

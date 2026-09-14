@@ -15,7 +15,6 @@ use log::warn;
 use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
-use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -111,9 +110,7 @@ pub fn run_prune(
   // which holds `None` for any node the pipeline created after the parse.
   let nodes: BTreeMap<GraphNodeKey, PruneNodeOut> = graph
     .get_nodes()
-    .iter()
     .map(|node| {
-      let node = node.read_arc();
       let key = node.key();
       let confidence = confidences.get(&key).copied().flatten();
       (
@@ -127,9 +124,8 @@ pub fn run_prune(
     .collect();
   let edges: BTreeMap<GraphEdgeKey, EdgeOut> = graph
     .get_edges()
-    .iter()
     .map(|edge| {
-      let key = edge.read_arc().key();
+      let key = edge.key();
       (
         key,
         EdgeOut {
@@ -205,25 +201,25 @@ pub(crate) fn gather_prune_output_maps(
   let root_sequence = Some(partition.root_sequence(graph)?);
   let node_sequences = graph
     .get_nodes()
-    .iter()
     .map(|node| {
-      let key = node.read_arc().key();
+      let key = node.key();
       (key, partition.node_sequence(key))
     })
     .collect();
   let mut edge_mutations = BTreeMap::new();
-  let root = graph
+  let root_key = graph
     .get_exactly_one_root()
-    .wrap_err("When gathering prune tree mutations")?;
-  let mut queue = VecDeque::from([Arc::clone(&root)]);
-  while let Some(node) = queue.pop_front() {
-    for (child, edge) in graph.children_of(&node.read_arc()) {
-      let edge_key = edge.read_arc().key();
+    .wrap_err("When gathering prune tree mutations")?
+    .key();
+  let mut queue = VecDeque::from([root_key]);
+  while let Some(node_key) = queue.pop_front() {
+    let node = graph.get_node(node_key).expect("Node from graph traversal must exist");
+    for (child_key, edge_key) in graph.children_keys_of(node) {
       edge_mutations.insert(
         edge_key,
         partition.edge_mutations(edge_key, &MutationTrack::Nucleotide)?,
       );
-      queue.push_back(child);
+      queue.push_back(child_key);
     }
   }
   Ok(PruneOutputMaps {
@@ -254,7 +250,7 @@ fn leaf_order(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> 
     .get_leaves()
     .into_iter()
     .map(|leaf| {
-      let key = leaf.read_arc().key();
+      let key = leaf.key();
       names[&key]
         .clone()
         .ok_or_else(|| crate::make_report!("Leaf node {key} has no name"))

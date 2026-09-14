@@ -21,7 +21,7 @@ pub fn assign_node_names(
   let mut result: BTreeMap<GraphNodeKey, Option<String>> = BTreeMap::new();
   let mut used: BTreeSet<String> = BTreeSet::new();
   for node in graph.get_nodes() {
-    let key = node.read_arc().key();
+    let key = node.key();
     let name = names.remove(&key).flatten().filter(|name| !name.is_empty());
     if let Some(name) = &name {
       used.insert(name.clone());

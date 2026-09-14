@@ -41,10 +41,10 @@ mod tests {
 
   fn root_edge_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> (f64, f64) {
     let root = graph.get_exactly_one_root().unwrap();
-    let children = graph.children_of(&root.read_arc());
+    let children = graph.children_of(&root).collect::<Vec<_>>();
     assert_eq!(children.len(), 2);
-    let bl0 = branch_lengths[&children[0].1.read_arc().key()].unwrap_or(0.0);
-    let bl1 = branch_lengths[&children[1].1.read_arc().key()].unwrap_or(0.0);
+    let bl0 = branch_lengths[&children[0].1.key()].unwrap_or(0.0);
+    let bl1 = branch_lengths[&children[1].1.key()].unwrap_or(0.0);
     (bl0, bl1)
   }
 
@@ -146,7 +146,7 @@ mod tests {
 
     {
       let root = graph.get_exactly_one_root()?;
-      let children = graph.children_of(&root.read_arc());
+      let children = graph.children_of(&root).collect::<Vec<_>>();
       assert_eq!(children.len(), 3);
     }
 

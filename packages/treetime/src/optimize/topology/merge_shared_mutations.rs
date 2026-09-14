@@ -102,7 +102,6 @@ pub(crate) fn merge_single_polytomy(
 /// Collect outbound edge keys for a node.
 fn collect_child_edge_keys(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
   let node = graph.get_node(node_key).expect("Node must exist");
-  let node = node.read_arc();
   node.outbound().to_vec()
 }
 

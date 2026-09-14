@@ -35,8 +35,8 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let edge_ref = &graph.get_edges()[0];
-    let edge_key = edge_ref.read_arc().key();
+    let edge_ref = &graph.get_edges().collect::<Vec<_>>()[0];
+    let edge_key = edge_ref.key();
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
 
@@ -78,8 +78,8 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let edge_ref = &graph.get_edges()[0];
-    let edge_key = edge_ref.read_arc().key();
+    let edge_ref = &graph.get_edges().collect::<Vec<_>>()[0];
+    let edge_key = edge_ref.key();
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
 
@@ -141,9 +141,8 @@ mod tests {
     // Collect edge_subs() results from all edges.
     let actual_by_edge: BTreeMap<_, _> = graph
       .get_edges()
-      .iter()
       .map(|edge_ref| {
-        let edge_key = edge_ref.read_arc().key();
+        let edge_key = edge_ref.key();
         let subs = recon.partition.edge_subs(&recon.node_states, &graph, edge_key).unwrap();
         (edge_key, subs)
       })
@@ -153,9 +152,7 @@ mod tests {
     // directly. This is independent of edge_subs() and serves as the oracle.
     let expected_by_edge: BTreeMap<_, _> = graph
       .get_edges()
-      .iter()
       .map(|edge_ref| {
-        let edge_ref = edge_ref.read_arc();
         let edge_key = edge_ref.key();
         let parent_key = edge_ref.source();
         let child_key = edge_ref.target();
@@ -185,8 +182,8 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let edge_ref = &graph.get_edges()[0];
-    let edge_key = edge_ref.read_arc().key();
+    let edge_ref = &graph.get_edges().collect::<Vec<_>>()[0];
+    let edge_key = edge_ref.key();
     let parent_key = graph.get_source_node_key(edge_key)?;
     let child_key = graph.get_target_node_key(edge_key)?;
 
@@ -251,7 +248,7 @@ mod tests {
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     for edge_ref in graph.get_edges() {
-      let edge_key = edge_ref.read_arc().key();
+      let edge_key = edge_ref.key();
       let subs = recon.partition.edge_subs(&recon.node_states, &graph, edge_key)?;
       // Every reported substitution must involve canonical states only.
       // This validates the is_canonical filter is present and active.

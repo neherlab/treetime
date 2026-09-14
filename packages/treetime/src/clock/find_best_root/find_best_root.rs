@@ -8,7 +8,6 @@ use eyre::Report;
 use log::{debug, info};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_utils::collections::container::get_exactly_one;
@@ -30,11 +29,11 @@ pub fn find_best_root(
   info!("Starting root optimization with method: {params:?}, force_positive={force_positive}");
 
   let root = graph.get_exactly_one_root()?;
-  let mut best_root_node = Arc::clone(&root);
+  let mut best_root_node = root;
 
   // Initialize with the current root, only accepting it if it has a positive clock rate
   // (or if force_positive is false)
-  let root_clock_set = state.node(root.read_arc().key()).clock_set.clone();
+  let root_clock_set = state.node(root.key()).clock_set.clone();
   let root_acceptable = !force_positive || has_positive_clock_rate(&root_clock_set);
   let mut best_chisq = if root_acceptable {
     objective.score(&root_clock_set)
@@ -59,11 +58,12 @@ pub fn find_best_root(
   let mut rejected_negative_rate = 0;
   let candidates = graph
     .get_nodes()
-    .par_iter()
+    .collect::<Vec<_>>()
+    .into_par_iter()
     .map(|node| {
-      let clock_set = &state.node(node.read_arc().key()).clock_set;
+      let clock_set = &state.node(node.key()).clock_set;
       let acceptable = !force_positive || has_positive_clock_rate(clock_set);
-      (Arc::clone(node), acceptable.then(|| objective.score(clock_set)))
+      (node, acceptable.then(|| objective.score(clock_set)))
     })
     .collect::<Vec<_>>();
   for (n, score) in candidates {
@@ -84,7 +84,6 @@ pub fn find_best_root(
     "Evaluated {node_count} nodes, found {improvements} improvements, \
      rejected {rejected_negative_rate} with negative rate, best chi-squared: {best_chisq:.6e}"
   );
-  let best_root_node = best_root_node.read_arc();
 
   // Check if some intermediate place on the parent branch is better
   if !best_root_node.is_root() {

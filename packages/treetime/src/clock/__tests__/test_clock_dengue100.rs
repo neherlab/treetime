@@ -119,9 +119,8 @@ mod tests {
   ) -> Vec<String> {
     graph
       .get_leaves()
-      .iter()
       .filter_map(|leaf| {
-        let node = leaf.read_arc();
+        let node = leaf;
         if state.node(node.key()).is_outlier {
           names.get(&node.key()).cloned().flatten()
         } else {

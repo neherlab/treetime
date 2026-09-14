@@ -99,7 +99,7 @@ NNGTACGTAC
     // still have effective length 10 if children's unknown positions don't overlap.
     let mut any_reduced = false;
     for edge in graph.get_edges() {
-      let edge_key = edge.read_arc().key();
+      let edge_key = edge.key();
       let eff_len = recon
         .partition
         .edge_effective_length(&recon.node_states, &graph, edge_key)?;
@@ -124,13 +124,13 @@ NNGTACGTAC
     let (graph_s, recon_s) = setup_sparse_with_unknowns()?;
 
     // Both graphs have same topology, edges in same order
-    let dense_edges = graph_d.get_edges();
-    let sparse_edges = graph_s.get_edges();
+    let dense_edges = graph_d.get_edges().collect::<Vec<_>>();
+    let sparse_edges = graph_s.get_edges().collect::<Vec<_>>();
     assert_eq!(dense_edges.len(), sparse_edges.len());
 
     for (de, se) in dense_edges.iter().zip(sparse_edges.iter()) {
-      let dk = de.read_arc().key();
-      let sk = se.read_arc().key();
+      let dk = de.key();
+      let sk = se.key();
 
       let dense_eff = recon_d
         .partition
@@ -206,12 +206,7 @@ ACGTACGTAC
 
     let total: usize = graph
       .get_edges()
-      .iter()
-      .map(|e| {
-        recon
-          .partition
-          .edge_indel_count(&recon.edges.estimates, e.read_arc().key())
-      })
+      .map(|e| recon.partition.edge_indel_count(&recon.edges.estimates, e.key()))
       .sum();
 
     assert!(
@@ -256,18 +251,12 @@ ACGTACGTAC
 
     let dense_total: usize = graph_d
       .get_edges()
-      .iter()
-      .map(|e| {
-        recon_d
-          .partition
-          .edge_indel_count(&recon_d.edges.estimates, e.read_arc().key())
-      })
+      .map(|e| recon_d.partition.edge_indel_count(&recon_d.edges.estimates, e.key()))
       .sum();
 
     let sparse_total: usize = graph_s
       .get_edges()
-      .iter()
-      .map(|e| recon_s.partition.edge_indel_count(e.read_arc().key()))
+      .map(|e| recon_s.partition.edge_indel_count(e.key()))
       .sum();
 
     assert_eq!(

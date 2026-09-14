@@ -88,9 +88,7 @@ pub fn split_edge(
 
   let (source_key, target_key) = {
     let edge = graph.get_edge(edge_key).expect("Edge not found");
-    let source_key = edge.read_arc().source();
-    let target_key = edge.read_arc().target();
-    (source_key, target_key)
+    (edge.source(), edge.target())
   };
 
   let length = branch_length.unwrap_or_default();
@@ -127,9 +125,9 @@ pub fn apply_reroot_topology(
 
   let mut inverted_edge_keys = Vec::new();
   for (_, edge) in &paths {
-    if let Some(edge) = edge {
-      inverted_edge_keys.push(edge.read_arc().key());
-      invert_edge(graph, edge);
+    if let Some(edge_key) = edge {
+      inverted_edge_keys.push(*edge_key);
+      invert_edge(graph, *edge_key);
     }
   }
 
@@ -153,22 +151,14 @@ pub fn remove_node_if_trivial(
 ) -> Result<Option<EdgeMergeInfo>, Report> {
   let (parent_edge_key, child_edge_key) = {
     let node = graph.get_node(node_key).expect("Node not found");
-    let node = node.read_arc();
     if node.inbound().len() != 1 || node.outbound().len() != 1 {
       return Ok(None);
     }
     (node.inbound()[0], node.outbound()[0])
   };
 
-  let parent_key = {
-    let parent_edge = graph.get_edge(parent_edge_key).expect("Parent edge not found");
-    parent_edge.read_arc().source()
-  };
-
-  let child_key = {
-    let child_edge = graph.get_edge(child_edge_key).expect("Child edge not found");
-    child_edge.read_arc().target()
-  };
+  let parent_key = graph.get_edge(parent_edge_key).expect("Parent edge not found").source();
+  let child_key = graph.get_edge(child_edge_key).expect("Child edge not found").target();
 
   let merged_branch_length = match (parent_branch, child_branch) {
     (Some(a), Some(b)) => Some(a + b),
@@ -201,7 +191,6 @@ pub fn trivial_node_branch_lengths(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> (Option<f64>, Option<f64>) {
   let node = graph.get_node(node_key).expect("Node not found");
-  let node = node.read_arc();
   if node.inbound().len() != 1 || node.outbound().len() != 1 {
     return (None, None);
   }
