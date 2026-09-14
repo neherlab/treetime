@@ -1,11 +1,11 @@
 use crate::ancestral::marginal::profile_branch_lengths;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::refinement::refine_gtr_iterative;
+use crate::gtr::refinement::refine_gtr_model_and_rate;
 use crate::make_error;
 use crate::mugration::result::{MugrationOutputMaps, MugrationResult, gather_mugration_output_maps};
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
-use crate::partition::marginal::shared::update::MarginalUpdate;
+use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::storage::discrete::DiscreteStates;
 use eyre::Report;
 use indexmap::IndexSet;
@@ -169,23 +169,16 @@ pub fn execute_mugration(
   // GTR refinement borrows stable inputs and returns the refined model with its own reconstruction
   // result maps; each rate candidate evaluates on an independent clone. Mugration optimizes the rate.
   let profile_lengths = profile_branch_lengths(branch_lengths);
-  let (partition, MarginalUpdate { node_states, .. }) = refine_gtr_iterative(
+  let (partition, MarginalUpdate { node_states, .. }) = refine_gtr_model_and_rate(
     partition,
     update,
     iterations,
     fixed_pi.as_ref(),
     pc.unwrap_or(1.0),
     sampling_bias_correction,
-    true,
-    PartitionMarginalDiscrete::gtr,
-    |partition: &mut PartitionMarginalDiscrete, model| partition.inputs.gtr = model,
-    |partition: &PartitionMarginalDiscrete, nodes, backward, forward| {
-      partition.count_transitions(&graph, branch_lengths, nodes, backward, forward)
-    },
-    |partition: &PartitionMarginalDiscrete, nodes| partition.marginal_update(&graph, &profile_lengths, nodes),
-    |partition: &PartitionMarginalDiscrete, nodes| partition.marginal_backward(&graph, &profile_lengths, nodes),
-    |partition: &PartitionMarginalDiscrete, nodes| partition.root_log_lh(&graph, nodes),
-    |partition: &PartitionMarginalDiscrete, nodes| partition.reset_node_log_lh(nodes),
+    &graph,
+    branch_lengths,
+    &profile_lengths,
   )?;
 
   // Gather the output value maps off the pipeline-local partition and its node states before they leave

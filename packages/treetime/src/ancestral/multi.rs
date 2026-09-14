@@ -5,7 +5,7 @@ use crate::ancestral::pipeline::{AncestralPartition, DenseReconstruction, Sparse
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
-use crate::partition::marginal::shared::update::MarginalUpdate;
+use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;

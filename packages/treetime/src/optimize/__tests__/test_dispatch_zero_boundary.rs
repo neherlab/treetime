@@ -17,6 +17,7 @@ mod tests {
   use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+  use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::seq::alignment::get_common_length;

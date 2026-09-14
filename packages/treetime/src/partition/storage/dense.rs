@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::partition::marginal::shared::update::MarginalNodeState;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
 use eyre::Report;
@@ -52,6 +53,16 @@ impl DenseNodeState {
       seq: DenseSeqInfo::default(),
       profile: DenseSeqDistribution::default(),
     }
+  }
+}
+
+impl MarginalNodeState for DenseNodeState {
+  fn log_lh(&self) -> LogLh {
+    self.profile.log_lh
+  }
+
+  fn set_log_lh(&mut self, log_lh: LogLh) {
+    self.profile.log_lh = log_lh;
   }
 }
 

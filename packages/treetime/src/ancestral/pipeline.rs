@@ -7,11 +7,11 @@ use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
-use crate::gtr::refinement::refine_gtr_iterative;
+use crate::gtr::refinement::refine_gtr_model;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
-use crate::partition::marginal::shared::update::{MarginalStates, MarginalUpdate};
+use crate::partition::marginal::shared::update::{MarginalPasses, MarginalStates, MarginalUpdate};
 use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges};
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
@@ -490,23 +490,14 @@ where
           let update = partition.marginal_update(&graph, &profile_lengths, node_states)?;
 
           let (partition, update) = if refine {
-            refine_gtr_iterative(
+            refine_gtr_model(
               partition,
               update,
               params.gtr_iterations,
-              None,
               1.0,
-              None,
-              false,
-              PartitionMarginalSparse::gtr,
-              |partition: &mut PartitionMarginalSparse, model| partition.gtr = model,
-              |partition: &PartitionMarginalSparse, nodes, backward, forward| {
-                partition.count_transitions(&graph, branch_lengths, nodes, backward, forward)
-              },
-              |partition: &PartitionMarginalSparse, nodes| partition.marginal_update(&graph, &profile_lengths, nodes),
-              |partition: &PartitionMarginalSparse, nodes| partition.marginal_backward(&graph, &profile_lengths, nodes),
-              |partition: &PartitionMarginalSparse, nodes| partition.root_log_lh(&graph, nodes),
-              |partition: &PartitionMarginalSparse, nodes| partition.reset_node_log_lh(nodes),
+              &graph,
+              branch_lengths,
+              &profile_lengths,
             )?
           } else {
             (partition, update)
@@ -562,23 +553,14 @@ where
           let update = partition.marginal_update(&graph, &profile_lengths, node_states)?;
 
           let (partition, update) = if refine {
-            refine_gtr_iterative(
+            refine_gtr_model(
               partition,
               update,
               params.gtr_iterations,
-              None,
               1.0,
-              None,
-              false,
-              PartitionMarginalDense::gtr,
-              |partition: &mut PartitionMarginalDense, model| partition.inputs.gtr = model,
-              |partition: &PartitionMarginalDense, nodes, backward, forward| {
-                partition.count_transitions(&graph, branch_lengths, nodes, backward, forward)
-              },
-              |partition: &PartitionMarginalDense, nodes| partition.marginal_update(&graph, &profile_lengths, nodes),
-              |partition: &PartitionMarginalDense, nodes| partition.marginal_backward(&graph, &profile_lengths, nodes),
-              |partition: &PartitionMarginalDense, nodes| partition.root_log_lh(&graph, nodes),
-              |partition: &PartitionMarginalDense, nodes| partition.reset_node_log_lh(nodes),
+              &graph,
+              branch_lengths,
+              &profile_lengths,
             )?
           } else {
             (partition, update)

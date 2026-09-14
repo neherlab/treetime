@@ -16,6 +16,7 @@ use crate::optimize::run_loop::{
 };
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::dense::reroot::reroot_dense;
+use crate::partition::marginal::shared::update::MarginalPasses;
 use crate::partition::marginal::sparse::reroot::reroot_sparse;
 use crate::progress::ProgressSink;
 use crate::reroot::div_stats::DivStats;

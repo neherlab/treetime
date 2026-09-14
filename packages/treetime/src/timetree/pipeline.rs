@@ -26,6 +26,7 @@ use crate::optimize::gather::{
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchLengthMode, BranchOptMethod};
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
+use crate::partition::marginal::shared::update::MarginalPasses;
 use crate::partition::timetree::marginal::{initialize_marginal_timetree, marginal_update_timetree};
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;

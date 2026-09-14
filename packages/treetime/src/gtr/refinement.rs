@@ -1,121 +1,141 @@
 use crate::gtr::brent_bracketed::BrentBracketed;
 use crate::gtr::gtr::{GTR, GTRParams};
-use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
+use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
 use crate::make_internal_report;
-use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalUpdate};
+use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalPasses, MarginalUpdate};
 use argmin::core::{CostFunction, Error, Executor};
 use eyre::Report;
 use log::{debug, info, warn};
 use ndarray::Array1;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::LogLh;
-/// Refine the GTR model by alternating inference from posterior-weighted transition counts with
-/// optional substitution-rate optimization, returning the refined partition together with the marginal
-/// update its final model produces.
+
+/// Refine the GTR model at a fixed substitution rate: iterate model inference from posterior-weighted
+/// transition counts, then return the refined partition together with the marginal update its final
+/// model produces. This is the ancestral-reconstruction refinement, which does not optimize the rate.
 ///
-/// The backend-invariant estimation core (transition-count inference, model construction, and the
-/// bracketed rate search) is shared here; the representation supplies its passes and its model access
-/// as closures. Each rate candidate builds its own model and reconstruction on an independent clone, so
-/// no candidate observes state left behind by an earlier one.
-///
-/// Closures: `gtr`/`set_gtr` read and replace the partition's substitution model; `count_transitions`,
-/// `run_update`, `run_backward`, and `root_log_lh` run the representation's marginal passes and read the
-/// root likelihood; `reset` zeros the per-node profile log likelihoods before a rate-search backward
-/// pass.
-#[allow(clippy::too_many_arguments)]
-pub fn refine_gtr_iterative<P, N, B, F, E>(
+/// The backward and forward messages from the caller's initial update stay frozen and feed every count;
+/// only the model iterates. Each count still recomputes because [`MarginalPasses::count_transitions`]
+/// reads the current model's `expQt`. The final update refreshes the messages under the converged model.
+pub fn refine_gtr_model<P: MarginalPasses>(
   mut partition: P,
-  update: MarginalUpdate<N, B, F, E>,
+  update: MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>,
+  iterations: usize,
+  pc: f64,
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  profile_lengths: &BTreeMap<GraphEdgeKey, f64>,
+) -> Result<(P, MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>), Report> {
+  let MarginalUpdate {
+    node_states,
+    edges: MarginalEdges { backward, forward, .. },
+    ..
+  } = update;
+  let options = InferGtrOptions {
+    pc,
+    ..InferGtrOptions::default()
+  };
+
+  for i in 0..=iterations {
+    infer_and_set_gtr(
+      &mut partition,
+      graph,
+      branch_lengths,
+      &node_states,
+      &backward,
+      &forward,
+      &options,
+    )?;
+    debug!("GTR refinement: iteration {i}, mu = {:.6}", partition.gtr().mu);
+  }
+
+  let update = partition.marginal_update(graph, profile_lengths, node_states)?;
+  log_final(&partition, &update);
+  Ok((partition, update))
+}
+
+/// Refine the GTR model and optimize the substitution rate: after each model inference, run a bracketed
+/// Brent search over the rate on independent per-candidate reconstructions. This is the mugration
+/// refinement.
+///
+/// The forward messages from the caller's initial update stay frozen and feed every count; the node
+/// states and backward messages are refreshed by each rate search. `fixed_pi` pins the equilibrium
+/// frequencies, and `sampling_bias_correction` scales the final rate.
+pub fn refine_gtr_model_and_rate<P: MarginalPasses + Clone>(
+  mut partition: P,
+  update: MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>,
   iterations: usize,
   fixed_pi: Option<&Array1<f64>>,
   pc: f64,
   sampling_bias_correction: Option<f64>,
-  optimize_rate: bool,
-  gtr: impl Fn(&P) -> &GTR,
-  set_gtr: impl Fn(&mut P, GTR),
-  count_transitions: impl Fn(
-    &P,
-    &BTreeMap<GraphNodeKey, N>,
-    &BTreeMap<GraphEdgeKey, B>,
-    &BTreeMap<GraphEdgeKey, F>,
-  ) -> Result<MutationCounts, Report>,
-  run_update: impl Fn(&P, BTreeMap<GraphNodeKey, N>) -> Result<MarginalUpdate<N, B, F, E>, Report>,
-  run_backward: impl Fn(&P, &BTreeMap<GraphNodeKey, N>) -> Result<MarginalBackward<N, B>, Report>,
-  root_log_lh: impl Fn(&P, &BTreeMap<GraphNodeKey, N>) -> Result<LogLh, Report>,
-  reset: impl Fn(&P, &mut BTreeMap<GraphNodeKey, N>),
-) -> Result<(P, MarginalUpdate<N, B, F, E>), Report>
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  profile_lengths: &BTreeMap<GraphEdgeKey, f64>,
+) -> Result<(P, MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>), Report>
 where
-  P: Clone,
-  N: Clone,
+  P::Node: Clone,
 {
   let MarginalUpdate {
-    node_states: nodes,
+    node_states,
     edges: MarginalEdges { backward, forward, .. },
     ..
   } = update;
-  let n_states = gtr(&partition).pi.len();
   let options = InferGtrOptions {
     fixed_pi: fixed_pi.cloned(),
     pc,
     ..InferGtrOptions::default()
   };
 
-  // The loop's transition counts read the message maps left by the previous step. With rate
-  // optimization off (ancestral), no pass runs inside the loop, so backward/forward stay the values the
-  // caller's initial update produced and only the model iterates; the final update refreshes them. With
-  // rate optimization on (mugration), each candidate's backward pass refreshes the backward messages.
-  let mut nodes = nodes;
+  // The count reads the frozen forward messages and the node states and backward messages from the
+  // previous rate search; the final update refreshes them under the converged model.
+  let mut nodes = node_states;
   let mut backward = backward;
-
-  let counts = count_transitions(&partition, &nodes, &backward, &forward)?;
-  let result = infer_gtr_impl(&counts, &options)?;
-  set_gtr(&mut partition, build_gtr_from_inference(n_states, &result)?);
-  debug!("GTR refinement: initial inference, mu = {:.6}", gtr(&partition).mu);
-
-  if optimize_rate {
-    (partition, nodes, backward) =
-      optimize_gtr_rate(partition, &nodes, &gtr, &set_gtr, &run_backward, &root_log_lh, &reset)?;
-    debug!(
-      "GTR refinement: initial rate optimization, mu = {:.6}",
-      gtr(&partition).mu
-    );
-  }
-
-  for i in 0..iterations {
-    let counts = count_transitions(&partition, &nodes, &backward, &forward)?;
-    let result = infer_gtr_impl(&counts, &options)?;
-    set_gtr(&mut partition, build_gtr_from_inference(n_states, &result)?);
-
-    if optimize_rate {
-      (partition, nodes, backward) =
-        optimize_gtr_rate(partition, &nodes, &gtr, &set_gtr, &run_backward, &root_log_lh, &reset)?;
-    }
-    debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr(&partition).mu);
+  for i in 0..=iterations {
+    infer_and_set_gtr(
+      &mut partition,
+      graph,
+      branch_lengths,
+      &nodes,
+      &backward,
+      &forward,
+      &options,
+    )?;
+    (partition, nodes, backward) = optimize_gtr_rate(partition, &nodes, graph, profile_lengths)?;
+    debug!("GTR refinement: iteration {i}, mu = {:.6}", partition.gtr().mu);
   }
 
   if let Some(correction) = sampling_bias_correction {
-    let mut model = gtr(&partition).clone();
+    let mut model = partition.gtr().clone();
     model.mu *= correction;
-    set_gtr(&mut partition, model);
+    partition.set_gtr(model);
     info!(
       "Applied sampling bias correction {correction:.4}, mu = {:.6}",
-      gtr(&partition).mu
+      partition.gtr().mu
     );
   }
 
-  let update = run_update(&partition, nodes)?;
-
-  let model = gtr(&partition);
-  info!(
-    "GTR refinement: final log likelihood = {:.4}, mu = {:.6}, pi = {:?}",
-    update.log_lh.value(),
-    model.mu,
-    model.pi
-  );
-
+  let update = partition.marginal_update(graph, profile_lengths, nodes)?;
+  log_final(&partition, &update);
   Ok((partition, update))
+}
+
+/// Count transitions under the current model, infer a new model from the counts, and install it.
+fn infer_and_set_gtr<P: MarginalPasses>(
+  partition: &mut P,
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  node_states: &BTreeMap<GraphNodeKey, P::Node>,
+  backward: &BTreeMap<GraphEdgeKey, P::Backward>,
+  forward: &BTreeMap<GraphEdgeKey, P::Forward>,
+  options: &InferGtrOptions,
+) -> Result<(), Report> {
+  let counts = partition.count_transitions(graph, branch_lengths, node_states, backward, forward)?;
+  let n_states = partition.gtr().pi.len();
+  let result = infer_gtr_impl(&counts, options)?;
+  partition.set_gtr(build_gtr_from_inference(n_states, &result)?);
+  Ok(())
 }
 
 fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<GTR, Report> {
@@ -127,6 +147,16 @@ fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<
   })
 }
 
+fn log_final<P: MarginalPasses>(partition: &P, update: &MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>) {
+  let model = partition.gtr();
+  info!(
+    "GTR refinement: final log likelihood = {:.4}, mu = {:.6}, pi = {:?}",
+    update.log_lh.value(),
+    model.mu,
+    model.pi
+  );
+}
+
 /// Optimize only the substitution rate `mu` by a bracketed Brent search over `sqrt(mu)`, returning the
 /// partition at the selected rate together with the node states and backward messages at that rate.
 ///
@@ -135,21 +165,16 @@ fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<
 /// restored to its original value while the node states and backward messages from the last (`hi`)
 /// evaluation are kept, matching the established behavior; when a bracket is found, the selected
 /// candidate's evaluation supplies both the rate and the reconstruction.
-#[allow(clippy::too_many_arguments)]
-fn optimize_gtr_rate<P, N, B>(
+fn optimize_gtr_rate<P: MarginalPasses + Clone>(
   partition: P,
-  nodes: &BTreeMap<GraphNodeKey, N>,
-  gtr: impl Fn(&P) -> &GTR,
-  set_gtr: impl Fn(&mut P, GTR),
-  run_backward: impl Fn(&P, &BTreeMap<GraphNodeKey, N>) -> Result<MarginalBackward<N, B>, Report>,
-  root_log_lh: impl Fn(&P, &BTreeMap<GraphNodeKey, N>) -> Result<LogLh, Report>,
-  reset: impl Fn(&P, &mut BTreeMap<GraphNodeKey, N>),
-) -> Result<(P, BTreeMap<GraphNodeKey, N>, BTreeMap<GraphEdgeKey, B>), Report>
+  nodes: &BTreeMap<GraphNodeKey, P::Node>,
+  graph: &Graph,
+  profile_lengths: &BTreeMap<GraphEdgeKey, f64>,
+) -> Result<(P, BTreeMap<GraphNodeKey, P::Node>, BTreeMap<GraphEdgeKey, P::Backward>), Report>
 where
-  P: Clone,
-  N: Clone,
+  P::Node: Clone,
 {
-  let old_mu = gtr(&partition).mu;
+  let old_mu = partition.gtr().mu;
   let sqrt_old_mu = old_mu.sqrt();
 
   let lo = 0.01 * sqrt_old_mu;
@@ -161,18 +186,18 @@ where
   // Clearing the log likelihoods keeps the cost the backward likelihood alone, so a forward pass's
   // posterior log likelihood does not enter the rate search. A failed backward pass yields an infinite
   // cost and no state, leaving the borrowed base observations intact for the next candidate.
-  let evaluate = |sqrt_mu: f64| -> (f64, Option<GtrRateCandidate<P, N, B>>) {
+  let evaluate = |sqrt_mu: f64| -> (f64, Option<GtrRateCandidate<P>>) {
     let mut candidate = partition.clone();
-    let mut model = gtr(&candidate).clone();
+    let mut model = candidate.gtr().clone();
     model.mu = sqrt_mu * sqrt_mu;
-    set_gtr(&mut candidate, model);
+    candidate.set_gtr(model);
     let mut candidate_nodes = nodes.clone();
-    reset(&candidate, &mut candidate_nodes);
-    match run_backward(&candidate, &candidate_nodes) {
+    candidate.reset_node_log_lh(&mut candidate_nodes);
+    match candidate.marginal_backward(graph, profile_lengths, &candidate_nodes) {
       Ok(MarginalBackward {
         node_states: candidate_nodes,
         backward,
-      }) => match root_log_lh(&candidate, &candidate_nodes) {
+      }) => match candidate.root_log_lh(graph, &candidate_nodes) {
         Ok(log_lh) => (
           -log_lh.value(),
           Some(GtrRateCandidate {
@@ -233,7 +258,7 @@ where
     } = at_opt.ok_or_else(|| make_internal_report!("GTR rate optimization: selected candidate failed to evaluate"))?;
     debug!(
       "GTR rate optimization: optimized mu = {:.6} (from {:.6})",
-      gtr(&partition).mu,
+      partition.gtr().mu,
       old_mu
     );
     Ok((partition, nodes, backward))
@@ -249,12 +274,12 @@ where
     {
       (partition, nodes, backward)
     } else {
-      let MarginalBackward { node_states, backward } = run_backward(&partition, nodes)?;
+      let MarginalBackward { node_states, backward } = partition.marginal_backward(graph, profile_lengths, nodes)?;
       (partition, node_states, backward)
     };
-    let mut model = gtr(&restored_partition).clone();
+    let mut model = restored_partition.gtr().clone();
     model.mu = old_mu;
-    set_gtr(&mut restored_partition, model);
+    restored_partition.set_gtr(model);
     debug!("GTR rate optimization: skipped (no bracket), keeping mu = {old_mu:.6}");
     Ok((restored_partition, restored_nodes, restored_backward))
   }
@@ -262,10 +287,10 @@ where
 
 /// One evaluated rate candidate: the partition at that rate together with the node states and backward
 /// messages its backward pass produced.
-struct GtrRateCandidate<P, N, B> {
+struct GtrRateCandidate<P: MarginalPasses> {
   partition: P,
-  nodes: BTreeMap<GraphNodeKey, N>,
-  backward: BTreeMap<GraphEdgeKey, B>,
+  nodes: BTreeMap<GraphNodeKey, P::Node>,
+  backward: BTreeMap<GraphEdgeKey, P::Backward>,
 }
 
 /// Adapter presenting the rate search's negative-log-likelihood closure to argmin's cost interface.
