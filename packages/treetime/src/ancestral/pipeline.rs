@@ -420,16 +420,12 @@ where
     );
   }
 
-  let AncestralInput {
-    graph,
-    alphabet,
-    aln: sequences,
-  } = input;
+  let AncestralInput { graph, alphabet, aln } = input;
 
   // Tips absent from the alignment become fully-ambiguous sequences here, once, for every
   // partition backend (fitch, sparse, dense) and alphabet (nucleotide, amino acid). After this the
   // attachment step always finds a sequence for each leaf.
-  let sequences = complete_alignment_for_leaves(&graph, sequences, &alphabet, params.ignore_missing_alns, names)?;
+  let sequences = complete_alignment_for_leaves(&graph, aln, &alphabet, params.ignore_missing_alns, names)?;
 
   let alignment_length = get_common_length(&sequences)?;
   let mask = create_mask(&sequences, alignment_length, &alphabet);
