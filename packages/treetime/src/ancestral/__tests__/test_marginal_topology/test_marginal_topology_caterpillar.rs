@@ -13,7 +13,7 @@ mod tests {
     let newick = format!("((((A:{t},B:{t})AB:{t},C:{t})ABC:{t},D:{t})ABCD:{t},E:{t})root;");
     let aln = ">A\nACGT\n>B\nACGT\n>C\nACGT\n>D\nACGT\n>E\nACGT\n";
 
-    let log_lh = run_dense_marginal_with_newick(&newick, aln, gtr)?;
+    let log_lh = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
     assert!(
       log_lh.is_finite(),
       "Caterpillar tree should produce finite log-likelihood"
@@ -31,7 +31,7 @@ mod tests {
     let newick = format!("((((A:{t},B:{t})AB:{t},C:{t})ABC:{t},D:{t})ABCD:{t},E:{t})root;");
     let aln = ">A\nACGT\n>B\nACGT\n>C\nACGT\n>D\nACGT\n>E\nACGT\n";
 
-    let log_lh = run_sparse_marginal_with_newick(&newick, aln, gtr)?;
+    let log_lh = run_sparse_marginal_with_newick(&newick, aln, &gtr)?;
     assert!(
       log_lh.is_finite(),
       "Sparse caterpillar tree should produce finite log-likelihood"
@@ -49,8 +49,8 @@ mod tests {
     let newick = format!("((((A:{t},B:{t})AB:{t},C:{t})ABC:{t},D:{t})ABCD:{t},E:{t})root;");
     let aln = ">A\nACGTACGT\n>B\nTGCATGCA\n>C\nGTACGTAC\n>D\nCATGCATG\n>E\nACGTTGCA\n";
 
-    let dense_log_lh = run_dense_marginal_with_newick(&newick, aln, gtr.clone())?;
-    let sparse_log_lh = run_sparse_marginal_with_newick(&newick, aln, gtr)?;
+    let dense_log_lh = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
+    let sparse_log_lh = run_sparse_marginal_with_newick(&newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);
     Ok(())
@@ -64,7 +64,7 @@ mod tests {
     let newick = format!("((((A:{t},B:{t})AB:{t},C:{t})ABC:{t},D:{t})ABCD:{t},E:{t})root;");
     let aln = ">A\nAAAA\n>B\nCCCC\n>C\nGGGG\n>D\nTTTT\n>E\nACGT\n";
 
-    let log_lh = run_dense_marginal_with_newick(&newick, aln, gtr)?;
+    let log_lh = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
     assert!(
       log_lh.is_finite(),
       "Varied sequences should produce finite log-likelihood"
@@ -80,7 +80,7 @@ mod tests {
     let newick = "((((A:0.01,B:0.02)AB:0.05,C:0.1)ABC:0.2,D:0.3)ABCD:0.5,E:0.8)root;";
     let aln = ">A\nACGT\n>B\nACGT\n>C\nTGCA\n>D\nGTAC\n>E\nCATG\n";
 
-    let log_lh = run_dense_marginal_with_newick(newick, aln, gtr)?;
+    let log_lh = run_dense_marginal_with_newick(newick, aln, &gtr)?;
     assert!(
       log_lh.is_finite(),
       "Asymmetric branches should produce finite log-likelihood"

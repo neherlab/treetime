@@ -14,7 +14,7 @@ mod tests {
     );
     let aln = ">A\nACGT\n>B\nACGT\n>C\nACGT\n>D\nACGT\n>E\nACGT\n>F\nACGT\n>G\nACGT\n>H\nACGT\n>I\nACGT\n>J\nACGT\n";
 
-    let log_lh = run_dense_marginal_with_newick(&newick, aln, gtr)?;
+    let log_lh = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
     assert!(
       log_lh.is_finite(),
       "Deep tree (10 levels) should produce finite log-likelihood"
@@ -33,7 +33,7 @@ mod tests {
     );
     let aln = ">A\nACGT\n>B\nACGT\n>C\nACGT\n>D\nACGT\n>E\nACGT\n>F\nACGT\n>G\nACGT\n>H\nACGT\n>I\nACGT\n>J\nACGT\n";
 
-    let log_lh = run_sparse_marginal_with_newick(&newick, aln, gtr)?;
+    let log_lh = run_sparse_marginal_with_newick(&newick, aln, &gtr)?;
     assert!(
       log_lh.is_finite(),
       "Deep tree (sparse) should produce finite log-likelihood"
@@ -52,8 +52,8 @@ mod tests {
     );
     let aln = ">A\nAAAA\n>B\nCCCC\n>C\nGGGG\n>D\nTTTT\n>E\nACGT\n>F\nTGCA\n>G\nGTAC\n>H\nCATG\n>I\nACTG\n>J\nTGAC\n";
 
-    let dense_log_lh = run_dense_marginal_with_newick(&newick, aln, gtr.clone())?;
-    let sparse_log_lh = run_sparse_marginal_with_newick(&newick, aln, gtr)?;
+    let dense_log_lh = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
+    let sparse_log_lh = run_sparse_marginal_with_newick(&newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);
     Ok(())
@@ -65,7 +65,7 @@ mod tests {
     let newick = "(((((((((A:1e-8,B:1e-8):0.001,C:0.01):0.1,D:1.0):2.0,E:3.0):0.001,F:0.001):5.0,G:0.01):0.1,H:0.5):1.0,I:2.0):0.5,J:0.5)root;";
     let aln = ">A\nACGT\n>B\nACGT\n>C\nTGCA\n>D\nGTAC\n>E\nCATG\n>F\nACTG\n>G\nTGAC\n>H\nGATC\n>I\nCTAG\n>J\nATCG\n";
 
-    let log_lh = run_dense_marginal_with_newick(newick, aln, gtr)?;
+    let log_lh = run_dense_marginal_with_newick(newick, aln, &gtr)?;
     assert!(
       log_lh.is_finite(),
       "Deep tree with extreme branches should produce finite log-likelihood"
