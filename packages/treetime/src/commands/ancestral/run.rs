@@ -27,7 +27,7 @@ use std::path::PathBuf;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::{FastaReader, FastaWriter, read_many_fasta, read_many_fasta_path};
+use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta, read_many_fasta_path};
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -38,9 +38,6 @@ pub fn run_ancestral_reconstruction(
   args: &TreetimeAncestralArgs,
   progress: &dyn ProgressSink,
 ) -> Result<AncestralResult, Report> {
-  let gap_fill_mode = args.gap_fill_args.effective_gap_fill();
-  let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
-
   validate_aa_args(
     &args.translations,
     &args.cdses,
@@ -48,29 +45,16 @@ pub fn run_ancestral_reconstruction(
     &args.aa_root_sequence,
   )?;
 
-  progress.check_cancelled()?;
-  progress.report("Reading input", 0.0, "");
-
-  let mut aln = if args.alignment.alignment.is_empty() {
-    info!("Reading input fasta from standard input");
-    let reader = FastaReader::new(open_stdin()?, &alphabet);
-    read_many_fasta(reader)?
-  } else {
-    read_many_fasta_path(&args.alignment.alignment, &alphabet)?
-  };
-
-  for record in &mut aln {
-    apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
-  }
-
-  progress.check_cancelled()?;
-  progress.report("Parsing tree", 0.1, "");
-  let NwkParse {
+  let parsed = read_nwk_fasta(args, progress)?;
+  let ParsedNwkFasta {
     graph,
-    confidences,
+    alphabet,
+    aln,
     names,
     branch_lengths,
-  } = nwk_read_file(args.tree())?;
+    confidences,
+    leaf_descriptions,
+  } = parsed;
 
   let topology_order = args.topology_order.resolve_topology_order(&graph, &names, None)?;
 
@@ -86,21 +70,6 @@ pub fn run_ancestral_reconstruction(
   };
 
   let params = AncestralParams::new(args);
-
-  // Every reconstruction consumer reads its node label from the `names` map from the parse and its
-  // edge branch length from the parsed `branch_lengths` value map. Ancestral never renames or
-  // re-lengths after parse, so this map stays accurate at any later point. The pipeline and the
-  // amino-acid path derive the `f64` profile map (missing weight resolved to `0.0`) for the marginal
-  // passes from it, while the `Option<f64>` map is read directly by the output writers and gather.
-
-  // Leaf FASTA descriptions, keyed by sequence name, preserved from the loaded records so the
-  // reconstructed-FASTA writer re-emits `>name description` for the leaves it includes. Internal
-  // nodes and records without a description carry none.
-  let leaf_descriptions: BTreeMap<String, Option<String>> = aln
-    .iter()
-    .map(|record| (record.seq_name.clone(), record.desc.clone()))
-    .collect();
-
   let input = AncestralInput { graph, alphabet, aln };
 
   let result = pipeline::run(
@@ -249,6 +218,60 @@ pub fn run_ancestral_reconstruction(
 
   progress.report("Done", 1.0, "");
   Ok(AncestralResult { graph, nodes, edges })
+}
+
+struct ParsedNwkFasta {
+  graph: Graph,
+  alphabet: Alphabet,
+  aln: Vec<FastaRecord>,
+  names: BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  confidences: BTreeMap<GraphNodeKey, Option<f64>>,
+  leaf_descriptions: BTreeMap<String, Option<String>>,
+}
+
+fn read_nwk_fasta(args: &TreetimeAncestralArgs, progress: &dyn ProgressSink) -> Result<ParsedNwkFasta, Report> {
+  let gap_fill_mode = args.gap_fill_args.effective_gap_fill();
+  let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
+
+  progress.check_cancelled()?;
+  progress.report("Reading input", 0.0, "");
+
+  let mut aln = if args.alignment.alignment.is_empty() {
+    info!("Reading input fasta from standard input");
+    let reader = FastaReader::new(open_stdin()?, &alphabet);
+    read_many_fasta(reader)?
+  } else {
+    read_many_fasta_path(&args.alignment.alignment, &alphabet)?
+  };
+
+  for record in &mut aln {
+    apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
+  }
+
+  let leaf_descriptions = aln
+    .iter()
+    .map(|record| (record.seq_name.clone(), record.desc.clone()))
+    .collect();
+
+  progress.check_cancelled()?;
+  progress.report("Parsing tree", 0.1, "");
+  let NwkParse {
+    graph,
+    confidences,
+    names,
+    branch_lengths,
+  } = nwk_read_file(args.tree())?;
+
+  Ok(ParsedNwkFasta {
+    graph,
+    alphabet,
+    aln,
+    names,
+    branch_lengths,
+    confidences,
+    leaf_descriptions,
+  })
 }
 
 fn write_tree_for_partition(
