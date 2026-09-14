@@ -68,15 +68,10 @@ mod tests {
   ) -> Result<(Vec<DenseReconstruction>, Vec<SparseReconstruction>), Report> {
     let aln = read_many_fasta_str(IDENTICAL_ALIGNMENT, &Alphabet::default())?;
 
-    let dense_partition = PartitionMarginalDense::new(
-      0,
-      get_gtr_by_name(model)?,
-      Alphabet::new(AlphabetName::Nuc)?,
-      get_common_length(&aln)?,
-    );
+    let dense_partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?);
     let dense_node_states =
       dense_partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.clone()))?;
-    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, dense_node_states)];
+    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, get_gtr_by_name(model)?, dense_node_states)];
 
     let fitch = create_fitch_partition(
       graph,
@@ -84,8 +79,8 @@ mod tests {
       Alphabet::new(AlphabetName::Nuc)?,
       &nwk_fasta_node_inputs(graph, names, aln),
     )?;
-    let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(get_gtr_by_name(model)?, graph)?;
-    let sparse_partitions = vec![SparseReconstruction::seeded(sparse_partition, sparse_node_states)];
+    let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(graph)?;
+    let sparse_partitions = vec![SparseReconstruction::seeded(sparse_partition, get_gtr_by_name(model)?, sparse_node_states)];
 
     let (dense_partitions, _) =
       marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;
@@ -205,7 +200,7 @@ mod tests {
     // the pre-dispatch shortcut is bypassed and the post-dispatch
     // reconciliation is exercised.
     assert!(
-      !dense_partitions[0].partition.gtr().unimodal_branch_likelihood,
+      !dense_partitions[0].gtr.unimodal_branch_likelihood,
       "precondition: {model:?} must be classified as non-unimodal"
     );
 
@@ -254,7 +249,7 @@ mod tests {
     let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
 
     assert!(
-      dense_partitions[0].partition.gtr().unimodal_branch_likelihood,
+      dense_partitions[0].gtr.unimodal_branch_likelihood,
       "precondition: JC69 must be classified as unimodal"
     );
 

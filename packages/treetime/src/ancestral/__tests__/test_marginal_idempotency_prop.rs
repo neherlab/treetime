@@ -108,6 +108,7 @@ mod tests {
       {
         let SparseReconstruction {
           partition,
+          gtr: _,
           node_states,
           edges,
 

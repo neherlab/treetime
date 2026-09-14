@@ -1,3 +1,4 @@
+use crate::gtr::gtr::GTR;
 use crate::ancestral::pipeline::DenseReconstruction;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::storage::dense::DenseNodeState;
@@ -14,6 +15,7 @@ use treetime_graph::reroot::RerootChanges;
 /// marginal update rebuilds a complete set from the leaf-seeded node states.
 pub fn reroot_dense(
   partition: PartitionMarginalDense,
+  gtr: GTR,
   node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
   changes: &RerootChanges,
 ) -> DenseReconstruction {
@@ -29,5 +31,5 @@ pub fn reroot_dense(
     node_states.remove(&info.removed_node_key);
   }
 
-  DenseReconstruction::seeded(partition, node_states)
+  DenseReconstruction::seeded(partition, gtr, node_states)
 }

@@ -265,13 +265,13 @@ mod tests {
         alphabet_sparse,
         &nwk_fasta_node_inputs(&graph, &names, aln.clone()),
       )?;
-      let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-      let sparse_partitions = vec![SparseReconstruction::seeded(partition, node_states)];
+      let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+      let sparse_partitions = vec![SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states)];
 
       let length = get_common_length(&aln)?;
-      let dense_partition = PartitionMarginalDense::new(1, jc69(JC69Params::default())?, alphabet_dense, length);
+      let dense_partition = PartitionMarginalDense::new(1, alphabet_dense, length);
       let dense_node_states = dense_partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-      let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, dense_node_states)];
+      let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, jc69(JC69Params::default())?, dense_node_states)];
 
       let (sparse_partitions, _) =
         marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;

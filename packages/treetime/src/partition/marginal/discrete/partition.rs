@@ -28,10 +28,9 @@ pub struct PartitionMarginalDiscrete {
 }
 
 impl PartitionMarginalDiscrete {
-  pub fn new(gtr: GTR, states: DiscreteStates, min_branch_length: f64, filter_uninformative_root: bool) -> Self {
+  pub fn new(states: DiscreteStates, min_branch_length: f64, filter_uninformative_root: bool) -> Self {
     Self {
       inputs: DenseInputs {
-        gtr,
         min_branch_length,
         filter_uninformative_root,
       },
@@ -43,20 +42,8 @@ impl PartitionMarginalDiscrete {
     self.states.len()
   }
 
-  pub fn gtr_mut(&mut self) -> &mut GTR {
-    &mut self.inputs.gtr
-  }
-
   pub fn get_sequence_length(&self) -> usize {
     1
-  }
-
-  pub fn weighted_rate(&self) -> f64 {
-    self.inputs.gtr.mu
-  }
-
-  pub fn normalize_rate(&mut self, scale: f64) {
-    self.inputs.gtr.mu /= scale;
   }
 
   /// Build the initial discrete node states by attaching each leaf's trait as a one-hot (or uniform)
@@ -124,22 +111,16 @@ impl MarginalPasses for PartitionMarginalDiscrete {
   type Forward = DenseEdgeForward;
   type Estimate = DenseEdgeEstimate;
 
-  fn gtr(&self) -> &GTR {
-    &self.inputs.gtr
-  }
-
-  fn set_gtr(&mut self, gtr: GTR) {
-    self.inputs.gtr = gtr;
-  }
-
   fn marginal_backward(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
   ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
     indexed_backward(
       &self.inputs,
+      gtr,
       // discrete carries no residue alphabet; the indexed driver only uses the alphabet on the dense
       // leaf-profile branch, which discrete never takes.
       None,
@@ -153,6 +134,7 @@ impl MarginalPasses for PartitionMarginalDiscrete {
 
   fn marginal_forward(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
@@ -160,6 +142,7 @@ impl MarginalPasses for PartitionMarginalDiscrete {
   ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
     indexed_forward(
       &self.inputs,
+      gtr,
       None,
       IndexedKind::Discrete,
       graph,
@@ -171,12 +154,13 @@ impl MarginalPasses for PartitionMarginalDiscrete {
 
   fn count_transitions(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
     forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
   ) -> Result<MutationCounts, Report> {
-    count_transitions_dense(&self.inputs, graph, branch_lengths, node_states, backward, forward)
+    count_transitions_dense(&self.inputs, gtr, graph, branch_lengths, node_states, backward, forward)
   }
 }

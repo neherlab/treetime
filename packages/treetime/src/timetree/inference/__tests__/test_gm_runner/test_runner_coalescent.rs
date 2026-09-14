@@ -106,12 +106,8 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
 
     let aln = load_alignment_for_dataset(dataset)?;
     let dense_partition = PartitionTimetree::Dense(DenseReconstruction {
-      partition: PartitionMarginalDense::new(
-        0,
-        jc69(JC69Params::default())?,
-        ALPHABET.clone(),
-        case.sequence_length(),
-      ),
+      partition: PartitionMarginalDense::new(0, ALPHABET.clone(), case.sequence_length()),
+      gtr: jc69(JC69Params::default())?,
       node_states: BTreeMap::new(),
       edges: MarginalEdges::default(),
     });

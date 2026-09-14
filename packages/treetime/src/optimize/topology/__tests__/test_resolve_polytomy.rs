@@ -365,7 +365,6 @@ mod tests {
 
       let partition = PartitionMarginalSparse {
         index,
-        gtr: jc69(JC69Params::default()).unwrap(),
         alphabet,
         length,
         root_sequence: ref_seq,

@@ -37,8 +37,8 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let recon = SparseReconstruction::seeded(partition, node_states);
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let recon = SparseReconstruction::seeded(partition, gtr, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }
@@ -59,7 +59,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = recon.partition.count_transitions(
+    let counts = recon.partition.count_transitions(&recon.gtr, 
       &graph,
       &branch_lengths,
       &recon.node_states,
@@ -89,7 +89,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = recon.partition.count_transitions(
+    let counts = recon.partition.count_transitions(&recon.gtr, 
       &graph,
       &branch_lengths,
       &recon.node_states,
@@ -118,7 +118,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = recon.partition.count_transitions(
+    let counts = recon.partition.count_transitions(&recon.gtr, 
       &graph,
       &branch_lengths,
       &recon.node_states,
@@ -152,7 +152,7 @@ mod tests {
       "#},
     )?;
 
-    let counts = recon.partition.count_transitions(
+    let counts = recon.partition.count_transitions(&recon.gtr, 
       &graph,
       &branch_lengths,
       &recon.node_states,

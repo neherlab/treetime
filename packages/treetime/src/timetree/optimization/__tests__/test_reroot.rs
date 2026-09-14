@@ -103,8 +103,8 @@ mod tests {
     })?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, node_states));
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 
     let clock_params = ClockParams::default();
     let timetree_state = TimetreeState::seed_from_values(&graph, &constraints);
@@ -227,7 +227,6 @@ mod tests {
 
     let partition = PartitionMarginalSparse {
       index: 0,
-      gtr,
       alphabet: alphabet.clone(),
       length: 16,
       root_sequence: seq![AsciiChar::from_byte_unchecked(b'A'); 16],
@@ -250,7 +249,7 @@ mod tests {
       ..RerootChanges::default()
     };
 
-    let recon = reroot_sparse(partition, node_states, &changes)?;
+    let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
 
     // Verify substitution is inverted
     let edge_data = &recon.partition.obs_edges[&edge_to_a_key];
@@ -311,7 +310,6 @@ mod tests {
 
     let partition = PartitionMarginalSparse {
       index: 0,
-      gtr,
       alphabet: alphabet.clone(),
       length: 8,
       root_sequence: root_seq.clone(),
@@ -334,7 +332,7 @@ mod tests {
       ..RerootChanges::default()
     };
 
-    let recon = reroot_sparse(partition, node_states, &changes)?;
+    let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
 
     // Verify edge mutation is inverted: was G->T, now should be T->G
     let edge_data = &recon.partition.obs_edges[&edge_to_a_key];
@@ -393,7 +391,6 @@ mod tests {
 
     let partition = PartitionMarginalSparse {
       index: 0,
-      gtr,
       alphabet: alphabet.clone(),
       length: 8,
       root_sequence: root_seq.clone(),
@@ -415,7 +412,7 @@ mod tests {
       ..RerootChanges::default()
     };
 
-    let recon = reroot_sparse(partition, node_states, &changes)?;
+    let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
 
     // Original: root has "ACGTACGT", edge to A has deletion at [2,4) (G,T -> gap).
     // After inversion the indel becomes an insertion. Going from old root to new
@@ -470,7 +467,6 @@ mod tests {
 
     let partition = PartitionMarginalSparse {
       index: 0,
-      gtr,
       alphabet: alphabet.clone(),
       length: 8,
       root_sequence: root_seq.clone(),
@@ -496,7 +492,7 @@ mod tests {
       ..RerootChanges::default()
     };
 
-    let recon = reroot_sparse(partition, node_states, &changes)?;
+    let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
 
     // Original path: root(ACGTACGT) -> AB (pos0: A->G) -> A (pos0: G->T, pos1: C->A)
     // New root = A: pos0 = T, pos1 = A, rest unchanged from root
@@ -530,8 +526,8 @@ mod tests {
     })?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, node_states));
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 
     let clock_params = ClockParams::default();
     let timetree_state_1 = TimetreeState::seed_from_values(&graph, &constraints);

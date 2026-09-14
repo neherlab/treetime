@@ -30,7 +30,6 @@ use treetime_utils::interval::range_union::range_union;
 #[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalSparse {
   pub index: usize,
-  pub gtr: GTR,
   pub alphabet: Alphabet,
   pub length: usize,
   pub root_sequence: Seq,
@@ -41,18 +40,6 @@ pub struct PartitionMarginalSparse {
 impl PartitionMarginalSparse {
   pub fn get_sequence_length(&self) -> usize {
     self.length
-  }
-
-  pub fn gtr_mut(&mut self) -> &mut GTR {
-    &mut self.gtr
-  }
-
-  pub fn weighted_rate(&self) -> f64 {
-    self.length as f64 * self.gtr.mu
-  }
-
-  pub fn normalize_rate(&mut self, scale: f64) {
-    self.gtr.mu /= scale;
   }
 
   pub fn edge_subs(
@@ -100,16 +87,12 @@ impl PartitionMarginalSparse {
 
   pub fn create_edge_contribution(
     &self,
+    gtr: &GTR,
     backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
     forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
     edge_key: GraphEdgeKey,
   ) -> Result<OptimizationContribution, Report> {
-    OptimizationContribution::from_sparse(
-      &self.gtr,
-      &backward[&edge_key],
-      &forward[&edge_key],
-      &self.obs_edges[&edge_key],
-    )
+    OptimizationContribution::from_sparse(gtr, &backward[&edge_key], &forward[&edge_key], &self.obs_edges[&edge_key])
   }
 
   pub fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
@@ -202,50 +185,37 @@ impl MarginalPasses for PartitionMarginalSparse {
   type Forward = SparseEdgeForward;
   type Estimate = Vec<Sub>;
 
-  fn gtr(&self) -> &GTR {
-    &self.gtr
-  }
-
-  fn set_gtr(&mut self, gtr: GTR) {
-    self.gtr = gtr;
-  }
-
   fn marginal_backward(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
   ) -> Result<MarginalBackward<SparseNodeState, SparseEdgeBackward>, Report> {
-    backward::process_backward_indexed(self, graph, branch_lengths, node_states)
+    backward::process_backward_indexed(self, gtr, graph, branch_lengths, node_states)
   }
 
   fn marginal_forward(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
     backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
   ) -> Result<MarginalForward<SparseNodeState, SparseEdgeForward, Vec<Sub>>, Report> {
-    forward::process_forward_indexed(self, graph, branch_lengths, node_states, backward)
+    forward::process_forward_indexed(self, gtr, graph, branch_lengths, node_states, backward)
   }
 
   fn count_transitions(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
     backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
     forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
   ) -> Result<MutationCounts, Report> {
-    count_transitions_sparse(
-      &self.gtr,
-      self.length,
-      graph,
-      branch_lengths,
-      node_states,
-      backward,
-      forward,
-    )
+    count_transitions_sparse(gtr, self.length, graph, branch_lengths, node_states, backward, forward)
   }
 }
 

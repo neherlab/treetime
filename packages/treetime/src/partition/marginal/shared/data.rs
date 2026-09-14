@@ -18,7 +18,6 @@ use treetime_utils::array::ndarray::argmax_first;
 /// maps are owned separately by the passes' returned values.
 #[derive(Clone, Debug, Serialize)]
 pub struct DenseInputs {
-  pub gtr: GTR,
   pub min_branch_length: f64,
   /// When `true`, root positions whose posterior profile is essentially uniform
   /// are excluded from the equilibrium-frequency prior in `count_transitions`.
@@ -39,13 +38,14 @@ impl DenseInputs {
 /// Shared by dense and discrete partitions (both store full profile matrices).
 pub fn count_transitions_dense(
   inputs: &DenseInputs,
+  gtr: &GTR,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
   backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
   forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
 ) -> Result<MutationCounts, Report> {
-  let n_states = inputs.gtr.pi.len();
+  let n_states = gtr.pi.len();
   let mut nij = Array2::zeros((n_states, n_states));
   let mut Ti = Array1::zeros(n_states);
 
@@ -57,7 +57,7 @@ pub fn count_transitions_dense(
     let msg_to_child = &forward[&edge_key].msg_to_child;
     let msg_to_parent = &backward[&edge_key].msg_to_parent;
 
-    let exp_qt = inputs.gtr.expQt(branch_length) + SUPERTINY_NUMBER;
+    let exp_qt = gtr.expQt(branch_length) + SUPERTINY_NUMBER;
     let mut_stack = get_branch_mutation_matrix(&msg_to_child.dis, &msg_to_parent.dis, &exp_qt);
     accumulate_mutation_counts(&mut_stack, branch_length, &mut nij, &mut Ti);
   }

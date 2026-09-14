@@ -45,7 +45,7 @@ mod tests {
     let aln = read_many_fasta_str(&fasta_str, &*NUC_ALPHABET)?;
     let (graph, recon, branch_lengths) = setup_dense_partition(&case.tree, &aln)?;
 
-    let counts = recon.partition.count_transitions(
+    let counts = recon.partition.count_transitions(&recon.gtr, 
       &graph,
       &branch_lengths,
       &recon.node_states,
@@ -75,7 +75,7 @@ mod tests {
     let expected = &OUTPUTS.real[case_name];
 
     let (graph, recon, branch_lengths) = setup_dense_partition_from_files(&case.tree_path, &case.alignment_path)?;
-    let counts = recon.partition.count_transitions(
+    let counts = recon.partition.count_transitions(&recon.gtr, 
       &graph,
       &branch_lengths,
       &recon.node_states,
@@ -154,9 +154,9 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
+    let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.to_vec()))?;
-    let recon = DenseReconstruction::seeded(partition, node_states);
+    let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }
@@ -181,9 +181,9 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partition = PartitionMarginalDense::new(0, gtr, NUC_ALPHABET.clone(), get_common_length(&aln)?);
+    let partition = PartitionMarginalDense::new(0, NUC_ALPHABET.clone(), get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, node_states);
+    let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }

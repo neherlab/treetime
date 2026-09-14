@@ -53,6 +53,9 @@ pub struct AncestralParams {
 #[derive(Clone, Debug, Serialize)]
 pub struct SparseReconstruction {
   pub partition: PartitionMarginalSparse,
+  /// The substitution model this reconstruction was produced under, carried as a value alongside the
+  /// immutable partition.
+  pub gtr: GTR,
   pub node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
   pub edges: SparseMarginalEdges,
 }
@@ -60,9 +63,14 @@ pub struct SparseReconstruction {
 impl SparseReconstruction {
   /// A reconstruction seeded from the Fitch handoff, before any marginal pass has run: durable
   /// observations and leaf node states, with no per-edge results yet.
-  pub fn seeded(partition: PartitionMarginalSparse, node_states: BTreeMap<GraphNodeKey, SparseNodeState>) -> Self {
+  pub fn seeded(
+    partition: PartitionMarginalSparse,
+    gtr: GTR,
+    node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
+  ) -> Self {
     Self {
       partition,
+      gtr,
       node_states,
       edges: SparseMarginalEdges::default(),
     }
@@ -87,7 +95,7 @@ impl SparseReconstruction {
   pub fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
     self
       .partition
-      .create_edge_contribution(&self.edges.backward, &self.edges.forward, edge_key)
+      .create_edge_contribution(&self.gtr, &self.edges.backward, &self.edges.forward, edge_key)
   }
 
   /// The number of indel events on one edge.
@@ -138,16 +146,20 @@ impl SparseReconstruction {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   ) -> Result<(Self, LogLh), Report> {
     let Self {
-      partition, node_states, ..
+      partition,
+      gtr,
+      node_states,
+      ..
     } = self;
     let MarginalUpdate {
       node_states,
       edges,
       log_lh,
-    } = partition.marginal_update(graph, branch_lengths, node_states)?;
+    } = partition.marginal_update(&gtr, graph, branch_lengths, node_states)?;
     Ok((
       Self {
         partition,
+        gtr,
         node_states,
         edges,
       },
@@ -161,6 +173,9 @@ impl SparseReconstruction {
 #[derive(Clone, Debug, Serialize)]
 pub struct DenseReconstruction {
   pub partition: PartitionMarginalDense,
+  /// The substitution model this reconstruction was produced under, carried as a value alongside the
+  /// immutable partition.
+  pub gtr: GTR,
   pub node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
   pub edges: DenseMarginalEdges,
 }
@@ -168,9 +183,14 @@ pub struct DenseReconstruction {
 impl DenseReconstruction {
   /// A reconstruction seeded from the alignment, before any marginal pass has run: durable inputs and
   /// leaf node states, with no per-edge results yet.
-  pub fn seeded(partition: PartitionMarginalDense, node_states: BTreeMap<GraphNodeKey, DenseNodeState>) -> Self {
+  pub fn seeded(
+    partition: PartitionMarginalDense,
+    gtr: GTR,
+    node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
+  ) -> Self {
     Self {
       partition,
+      gtr,
       node_states,
       edges: DenseMarginalEdges::default(),
     }
@@ -195,7 +215,7 @@ impl DenseReconstruction {
   pub fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> OptimizationContribution {
     self
       .partition
-      .create_edge_contribution(&self.edges.backward, &self.edges.forward, edge_key)
+      .create_edge_contribution(&self.gtr, &self.edges.backward, &self.edges.forward, edge_key)
   }
 
   /// The number of indel events on one edge.
@@ -252,16 +272,20 @@ impl DenseReconstruction {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   ) -> Result<(Self, LogLh), Report> {
     let Self {
-      partition, node_states, ..
+      partition,
+      gtr,
+      node_states,
+      ..
     } = self;
     let MarginalUpdate {
       node_states,
       edges,
       log_lh,
-    } = partition.marginal_update(graph, branch_lengths, node_states)?;
+    } = partition.marginal_update(&gtr, graph, branch_lengths, node_states)?;
     Ok((
       Self {
         partition,
+        gtr,
         node_states,
         edges,
       },
@@ -465,17 +489,19 @@ where
         &branch_lengths,
       )?;
       let model_name = created.model_name;
+      let gtr = created.gtr;
       let refine = params.gtr_iterations > 0 && params.model == GtrModelName::Infer;
 
       match created.partition {
         MarginalPartition::Sparse(partition, node_states) => {
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          let update = partition.marginal_update(graph, &profile_lengths, node_states)?;
+          let update = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
 
-          let (partition, update) = if refine {
+          let (gtr, update) = if refine {
             refine_gtr_model(
-              partition,
+              &partition,
+              gtr,
               update,
               params.gtr_iterations,
               1.0,
@@ -484,7 +510,7 @@ where
               &profile_lengths,
             )?
           } else {
-            (partition, update)
+            (gtr, update)
           };
           let MarginalUpdate {
             mut node_states, edges, ..
@@ -508,17 +534,17 @@ where
             |key, seq| on_sequence(key, seq),
           )?;
 
-          let gtr = partition.gtr().clone();
           progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
             output: AncestralOutput {
-              gtr: Some(gtr),
+              gtr: Some(gtr.clone()),
               model_name,
               mask,
               node_sequences,
             },
             partition: Some(AncestralPartition::Sparse(SparseReconstruction {
               partition,
+              gtr,
               node_states,
               edges,
             })),
@@ -532,12 +558,13 @@ where
           // after attachment (its `initialize_marginal` attached and updated once, then a separate
           // `marginal_update` ran again) before GTR refinement. Pass the node states through both
           // passes so internal-node gap states settle exactly as they did before.
-          let MarginalStates { node_states, .. } = partition.marginal_states(graph, &profile_lengths, node_states)?;
-          let update = partition.marginal_update(graph, &profile_lengths, node_states)?;
+          let MarginalStates { node_states, .. } = partition.marginal_states(&gtr, graph, &profile_lengths, node_states)?;
+          let update = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
 
-          let (partition, update) = if refine {
+          let (gtr, update) = if refine {
             refine_gtr_model(
-              partition,
+              &partition,
+              gtr,
               update,
               params.gtr_iterations,
               1.0,
@@ -546,7 +573,7 @@ where
               &profile_lengths,
             )?
           } else {
-            (partition, update)
+            (gtr, update)
           };
           let MarginalUpdate {
             mut node_states, edges, ..
@@ -569,17 +596,17 @@ where
             |key, seq| on_sequence(key, seq),
           )?;
 
-          let gtr = partition.gtr().clone();
           progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
             output: AncestralOutput {
-              gtr: Some(gtr),
+              gtr: Some(gtr.clone()),
               model_name,
               mask,
               node_sequences,
             },
             partition: Some(AncestralPartition::Dense(DenseReconstruction {
               partition,
+              gtr,
               node_states,
               edges,
             })),

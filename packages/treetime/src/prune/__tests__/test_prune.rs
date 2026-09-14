@@ -70,7 +70,6 @@ mod tests {
     } else {
       let mut partition = PartitionMarginalSparse {
         index: 0,
-        gtr: jc69(JC69Params::default())?,
         alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
         length: 100, // dummy length
         root_sequence: seq![],
@@ -127,7 +126,6 @@ mod tests {
     } else {
       let mut partition = PartitionMarginalSparse {
         index: 0,
-        gtr: jc69(JC69Params::default())?,
         alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
         length: 100,
         root_sequence: seq![],
@@ -824,7 +822,6 @@ mod tests {
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
-      gtr: jc69(JC69Params::default())?,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],
@@ -912,7 +909,6 @@ mod tests {
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
-      gtr: jc69(JC69Params::default())?,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],
@@ -981,7 +977,6 @@ mod tests {
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
-      gtr: jc69(JC69Params::default())?,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],
@@ -1049,7 +1044,6 @@ mod tests {
     // Create two partitions with different mutations
     let mut partition1 = PartitionMarginalSparse {
       index: 0,
-      gtr: jc69(JC69Params::default())?,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],
@@ -1070,7 +1064,6 @@ mod tests {
 
     let mut partition2 = PartitionMarginalSparse {
       index: 1,
-      gtr: jc69(JC69Params::default())?,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],
@@ -1391,7 +1384,6 @@ mod tests {
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
-      gtr: jc69(JC69Params::default())?,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],
@@ -1481,7 +1473,6 @@ mod tests {
 
     let mut partition = PartitionMarginalSparse {
       index: 0,
-      gtr: jc69(JC69Params::default())?,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],

@@ -57,7 +57,8 @@ mod tests {
 
     let aln = load_alignment_for_dataset(dataset)?;
     let dense_partition = PartitionTimetree::Dense(DenseReconstruction::seeded(
-      PartitionMarginalDense::new(0, jc69(JC69Params::default())?, ALPHABET.clone(), case.sequence_length()),
+      PartitionMarginalDense::new(0, ALPHABET.clone(), case.sequence_length()),
+      jc69(JC69Params::default())?,
       std::collections::BTreeMap::new(),
     ));
 

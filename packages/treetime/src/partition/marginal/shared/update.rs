@@ -85,26 +85,22 @@ pub trait MarginalNodeState {
 /// The marginal pass surface every sequence representation provides, over its own role-typed per-node
 /// and per-edge element types.
 ///
-/// A representation supplies model access, the two marginal passes, and transition counting. The full
-/// update, the per-node likelihood reads, and the log-likelihood reset derive from those here, so the
-/// four-step update and the likelihood plumbing exist once rather than once per representation. Stable
-/// inputs (`graph`, branch lengths) are borrowed and every pass returns new owned maps, so a failed pass
-/// leaves its inputs intact.
+/// A representation supplies the two marginal passes and transition counting; the model is passed in
+/// as a value so the partition stays an immutable source. The full update, the per-node likelihood
+/// reads, and the log-likelihood reset derive from those here, so the four-step update and the
+/// likelihood plumbing exist once rather than once per representation. Stable inputs (`graph`, branch
+/// lengths) are borrowed and every pass returns new owned maps, so a failed pass leaves its inputs
+/// intact.
 pub trait MarginalPasses {
   type Node: MarginalNodeState;
   type Backward;
   type Forward;
   type Estimate;
 
-  /// The current substitution model.
-  fn gtr(&self) -> &GTR;
-
-  /// Replace the substitution model.
-  fn set_gtr(&mut self, gtr: GTR);
-
-  /// Run the marginal backward pass (children before parent).
+  /// Run the marginal backward pass (children before parent) under the given model.
   fn marginal_backward(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, Self::Node>,
@@ -113,6 +109,7 @@ pub trait MarginalPasses {
   /// Run the marginal forward pass (parent before children) over the backward messages.
   fn marginal_forward(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, Self::Node>,
@@ -122,6 +119,7 @@ pub trait MarginalPasses {
   /// Count posterior-weighted state transitions over the tree, the input GTR inference reads.
   fn count_transitions(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     node_states: &BTreeMap<GraphNodeKey, Self::Node>,
@@ -129,7 +127,7 @@ pub trait MarginalPasses {
     forward: &BTreeMap<GraphEdgeKey, Self::Forward>,
   ) -> Result<MutationCounts, Report>;
 
-  /// Run a full marginal update (backward, then forward) over the given node states.
+  /// Run a full marginal update (backward, then forward) over the given node states under the model.
   ///
   /// The substitution log likelihood is read at the root between the two passes: after the backward
   /// pass the root profile holds the likelihood of the observed data under the model, while the forward
@@ -137,17 +135,18 @@ pub trait MarginalPasses {
   #[allow(clippy::needless_pass_by_value)]
   fn marginal_update(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: BTreeMap<GraphNodeKey, Self::Node>,
   ) -> Result<MarginalUpdate<Self::Node, Self::Backward, Self::Forward, Self::Estimate>, Report> {
-    let MarginalBackward { node_states, backward } = self.marginal_backward(graph, branch_lengths, &node_states)?;
+    let MarginalBackward { node_states, backward } = self.marginal_backward(gtr, graph, branch_lengths, &node_states)?;
     let log_lh = self.root_log_lh(graph, &node_states)?;
     let MarginalForward {
       node_states,
       forward,
       estimates,
-    } = self.marginal_forward(graph, branch_lengths, &node_states, &backward)?;
+    } = self.marginal_forward(gtr, graph, branch_lengths, &node_states, &backward)?;
     Ok(MarginalUpdate {
       node_states,
       edges: MarginalEdges {
@@ -163,13 +162,14 @@ pub trait MarginalPasses {
   /// likelihood, dropping the per-edge messages and estimates.
   fn marginal_states(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: BTreeMap<GraphNodeKey, Self::Node>,
   ) -> Result<MarginalStates<Self::Node>, Report> {
     let MarginalUpdate {
       node_states, log_lh, ..
-    } = self.marginal_update(graph, branch_lengths, node_states)?;
+    } = self.marginal_update(gtr, graph, branch_lengths, node_states)?;
     Ok(MarginalStates { node_states, log_lh })
   }
 

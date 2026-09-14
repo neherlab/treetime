@@ -113,19 +113,20 @@ pub fn run(
     &branch_lengths,
   )?;
   let model_name = created.model_name;
+  let gtr = created.gtr;
 
   let mut sparse_partitions: Vec<SparseReconstruction>;
   let mut dense_partitions: Vec<DenseReconstruction>;
 
   match created.partition {
     MarginalPartition::Sparse(partition, node_states) => {
-      sparse_partitions = vec![SparseReconstruction::seeded(partition, node_states)];
+      sparse_partitions = vec![SparseReconstruction::seeded(partition, gtr, node_states)];
       dense_partitions = vec![];
     },
     MarginalPartition::Dense(partition) => {
       // Dense leaf states are attached up front; the marginal passes then populate internal states.
       let node_states = partition.attach_sequences(&input.graph, &node_inputs)?;
-      dense_partitions = vec![DenseReconstruction::seeded(partition, node_states)];
+      dense_partitions = vec![DenseReconstruction::seeded(partition, gtr, node_states)];
       sparse_partitions = vec![];
     },
   }
@@ -153,12 +154,12 @@ pub fn run(
   if model_name == GtrModelName::Infer {
     let mut sparse_models: Vec<(usize, &mut GTR)> = sparse_partitions
       .iter_mut()
-      .map(|family| (family.partition.length, family.partition.gtr_mut()))
+      .map(|family| (family.partition.length, &mut family.gtr))
       .collect();
     normalize_partition_rates(&mut sparse_models, &mut branch_lengths);
     let mut dense_models: Vec<(usize, &mut GTR)> = dense_partitions
       .iter_mut()
-      .map(|family| (family.partition.length, family.partition.gtr_mut()))
+      .map(|family| (family.partition.length, &mut family.gtr))
       .collect();
     normalize_partition_rates(&mut dense_models, &mut branch_lengths);
   }
@@ -241,15 +242,15 @@ pub fn run(
   let (sparse_partitions, _) = marginal_update_sparse(&input.graph, &marginal_bl, loop_result.sparse_partitions)?;
   let (dense_partitions, _) = marginal_update_dense(&input.graph, &marginal_bl, loop_result.dense_partitions)?;
 
-  // Read the GTR back from the owning partition, not from a snapshot taken at
-  // creation time. For `--gtr=infer` the partition's `mu` is normalized to 1.0
+  // Read the GTR back from the reconstruction the loop threaded, not from a snapshot taken at
+  // creation time. For `--gtr=infer` the model's `mu` is normalized to 1.0
   // by `normalize_partition_rates` above (rate absorbed into branch lengths);
   // a creation-time clone would still carry the raw inferred `mu` and disagree
   // with the rate-scaled branch lengths shipped alongside it.
   let gtr = if let Some(family) = sparse_partitions.first() {
-    family.partition.gtr().clone()
+    family.gtr.clone()
   } else if let Some(family) = dense_partitions.first() {
-    family.partition.gtr().clone()
+    family.gtr.clone()
   } else {
     return make_error!("optimize produced no partition to read the GTR from");
   };
@@ -361,11 +362,11 @@ fn reroot_optimize(
 
   let sparse_partitions: Vec<_> = sparse_partitions
     .into_iter()
-    .map(|family| reroot_sparse(family.partition, family.node_states, &changes))
+    .map(|family| reroot_sparse(family.partition, family.gtr, family.node_states, &changes))
     .try_collect()?;
   let dense_partitions: Vec<_> = dense_partitions
     .into_iter()
-    .map(|family| reroot_dense(family.partition, family.node_states, &changes))
+    .map(|family| reroot_dense(family.partition, family.gtr, family.node_states, &changes))
     .collect();
 
   let profile_lengths = profile_branch_lengths(branch_lengths);

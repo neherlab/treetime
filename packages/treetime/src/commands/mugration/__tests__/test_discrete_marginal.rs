@@ -17,7 +17,7 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let partition = helpers::make_partition(["usa", "germany"])?;
+    let (partition, gtr) = helpers::make_partition(["usa", "germany"])?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("?"),
@@ -42,7 +42,7 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let partition = helpers::make_partition(["usa", "germany"])?;
+    let (partition, gtr) = helpers::make_partition(["usa", "germany"])?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
     };
@@ -59,7 +59,7 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let partition = helpers::make_partition(["usa", "germany"])?;
+    let (partition, gtr) = helpers::make_partition(["usa", "germany"])?;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
@@ -83,14 +83,14 @@ mod tests {
   #[test]
   fn test_discrete_marginal_passes_normalize_backward_and_forward_profiles() -> Result<(), Report> {
     let (graph, names, raw_branch_lengths) = helpers::make_fixture_graph()?;
-    let partition = helpers::make_partition(["usa", "germany"])?;
+    let (partition, gtr) = helpers::make_partition(["usa", "germany"])?;
     let traits = helpers::make_fixture_traits();
 
     let node_states = partition.attach_traits(&graph, &traits, &names)?;
 
     let branch_lengths = profile_branch_lengths(&raw_branch_lengths);
     let MarginalBackward { node_states, backward } =
-      partition.marginal_backward(&graph, &branch_lengths, &node_states)?;
+      partition.marginal_backward(&gtr, &graph, &branch_lengths, &node_states)?;
 
     let root_profile = helpers::get_node_profile(&graph, &names, &node_states, "root");
     helpers::assert_profile_normalized(&root_profile);
@@ -103,7 +103,7 @@ mod tests {
 
     let MarginalForward {
       node_states, forward, ..
-    } = partition.marginal_forward(&graph, &branch_lengths, &node_states, &backward)?;
+    } = partition.marginal_forward(&gtr, &graph, &branch_lengths, &node_states, &backward)?;
 
     let root_profile = helpers::get_node_profile(&graph, &names, &node_states, "root");
     helpers::assert_profile_normalized(&root_profile);
@@ -123,14 +123,14 @@ mod tests {
   #[test]
   fn test_discrete_marginal_run_returns_finite_log_lh_and_reconstructs_internal_trait() -> Result<(), Report> {
     let (graph, names, raw_branch_lengths) = helpers::make_fixture_graph()?;
-    let partition = helpers::make_partition(["usa", "germany"])?;
+    let (partition, gtr) = helpers::make_partition(["usa", "germany"])?;
     let traits = helpers::make_fixture_traits();
 
     let node_states = partition.attach_traits(&graph, &traits, &names)?;
 
     let MarginalUpdate {
       node_states, log_lh, ..
-    } = partition.marginal_update(&graph, &profile_branch_lengths(&raw_branch_lengths), node_states)?;
+    } = partition.marginal_update(&gtr, &graph, &profile_branch_lengths(&raw_branch_lengths), node_states)?;
     let actual_log_lh = log_lh.value();
 
     assert!(actual_log_lh.is_finite());
@@ -168,7 +168,7 @@ mod tests {
     use treetime_io::nwk::nwk_read_str;
     use treetime_utils::pretty_assert_abs_diff_eq;
 
-    pub(super) fn make_partition(states: [&str; 2]) -> Result<PartitionMarginalDiscrete, Report> {
+    pub(super) fn make_partition(states: [&str; 2]) -> Result<(PartitionMarginalDiscrete, GTR), Report> {
       let discrete_states = DiscreteStates::from_values(states.into_iter(), "?");
       let n_states = discrete_states.len();
       let gtr = GTR::new(GTRParams {
@@ -178,11 +178,9 @@ mod tests {
         pi: Array1::from_elem(n_states, 1.0 / n_states as f64),
       })?;
 
-      Ok(PartitionMarginalDiscrete::new(
+      Ok((
+        PartitionMarginalDiscrete::new(discrete_states, MIN_BRANCH_LENGTH_FRACTION, false),
         gtr,
-        discrete_states,
-        MIN_BRANCH_LENGTH_FRACTION,
-        false,
       ))
     }
 

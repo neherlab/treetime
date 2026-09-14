@@ -42,8 +42,8 @@ impl PartitionTimetree {
   /// states across, and the per-edge results of the previous update do not survive it.
   pub fn apply_reroot(self, changes: &RerootChanges) -> Result<Self, Report> {
     Ok(match self {
-      Self::Dense(family) => Self::Dense(reroot_dense(family.partition, family.node_states, changes)),
-      Self::Sparse(family) => Self::Sparse(reroot_sparse(family.partition, family.node_states, changes)?),
+      Self::Dense(family) => Self::Dense(reroot_dense(family.partition, family.gtr, family.node_states, changes)),
+      Self::Sparse(family) => Self::Sparse(reroot_sparse(family.partition, family.gtr, family.node_states, changes)?),
     })
   }
 
@@ -56,6 +56,7 @@ impl PartitionTimetree {
     match self {
       Self::Dense(family) => Self::Dense(DenseReconstruction::seeded(
         family.partition,
+        family.gtr,
         reconcile_node_states(family.node_states, &live_nodes, DenseNodeState::empty),
       )),
       Self::Sparse(family) => {
@@ -63,6 +64,7 @@ impl PartitionTimetree {
         partition.reconcile_topology(graph);
         Self::Sparse(SparseReconstruction::seeded(
           partition,
+          family.gtr,
           reconcile_node_states(family.node_states, &live_nodes, SparseNodeState::empty),
         ))
       },

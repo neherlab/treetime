@@ -65,8 +65,8 @@ fn setup_inner() -> (Graph, SparseReconstruction, BTreeMap<GraphEdgeKey, Option<
   let alignment = read_many_fasta_path(&[project_root.join("data/flu/h3n2/200/aln.fasta.xz")], &alphabet).unwrap();
   let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, alignment)).unwrap();
   let gtr = jc69(JC69Params::default()).unwrap();
-  let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph).unwrap();
-  let recon = SparseReconstruction::seeded(partition, node_states);
+  let (partition, node_states) = fitch.into_marginal_sparse(&graph).unwrap();
+  let recon = SparseReconstruction::seeded(partition, gtr, node_states);
   let (recon, _) = recon
     .marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
     .unwrap();

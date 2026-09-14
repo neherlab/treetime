@@ -126,19 +126,18 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
-      let partition = PartitionMarginalDense::new(
-        0,
+      let partition = PartitionMarginalDense::new(0, DENSE_NUC_ALPHABET.clone(), get_common_length(&aln)?);
+      let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
+      let recon = DenseReconstruction::seeded(
+        partition,
         jc69(JC69Params {
           alphabet: AlphabetName::Nuc,
           ..JC69Params::default()
         })?,
-        DENSE_NUC_ALPHABET.clone(),
-        get_common_length(&aln)?,
+        node_states,
       );
-      let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
-      let recon = DenseReconstruction::seeded(partition, node_states);
       let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
-      let counts = recon.partition.count_transitions(
+      let counts = recon.partition.count_transitions(&recon.gtr, 
         &graph,
         &branch_lengths,
         &recon.node_states,

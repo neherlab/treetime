@@ -86,6 +86,7 @@ pub fn reconstruct_marginal_partition(
     branch_lengths,
   )?;
   let profile_lengths = profile_branch_lengths(branch_lengths);
+  let gtr = created.gtr;
 
   // Each partition runs its own marginal passes and node reconstruction over its own role-typed result
   // maps, then becomes the reconstruction the augur gather reads. The two representations reconstruct
@@ -95,7 +96,7 @@ pub fn reconstruct_marginal_partition(
     MarginalPartition::Sparse(partition, node_states) => {
       let MarginalUpdate {
         mut node_states, edges, ..
-      } = partition.marginal_update(graph, &profile_lengths, node_states)?;
+      } = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
       ancestral_reconstruction(
         graph,
         |node| {
@@ -113,6 +114,7 @@ pub fn reconstruct_marginal_partition(
       )?;
       AncestralPartition::Sparse(SparseReconstruction {
         partition,
+        gtr,
         node_states,
         edges,
       })
@@ -121,7 +123,7 @@ pub fn reconstruct_marginal_partition(
       let node_states = partition.attach_sequences(graph, &node_inputs)?;
       let MarginalUpdate {
         mut node_states, edges, ..
-      } = partition.marginal_update(graph, &profile_lengths, node_states)?;
+      } = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
       ancestral_reconstruction(
         graph,
         |node| {
@@ -138,6 +140,7 @@ pub fn reconstruct_marginal_partition(
       )?;
       AncestralPartition::Dense(DenseReconstruction {
         partition,
+        gtr,
         node_states,
         edges,
       })

@@ -47,7 +47,7 @@ mod tests {
 
     // `edge_subs` compares node posteriors, not per-edge messages, so a uniform down-message cannot
     // fabricate a substitution: parent argmax = G and child argmax = G give zero subs.
-    let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::new(AlphabetName::Nuc)?, 1);
+    let partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, 1);
     let node_states = btreemap! {
       parent_key => DenseNodeState {
         seq: DenseSeqInfo::default(),
@@ -93,7 +93,7 @@ mod tests {
 
     // `edge_subs` reads node posteriors directly, so the real A->C change is detected regardless of
     // any per-edge message content.
-    let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, 1);
+    let partition = PartitionMarginalDense::new(0, alphabet, 1);
     let node_states = btreemap! {
       parent_key => DenseNodeState {
         seq: DenseSeqInfo::default(),
@@ -132,14 +132,9 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let partition = PartitionMarginalDense::new(
-      0,
-      jc69(JC69Params::default())?,
-      Alphabet::new(AlphabetName::Nuc)?,
-      get_common_length(&aln)?,
-    );
+    let partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, node_states);
+    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
@@ -215,7 +210,7 @@ mod tests {
     ];
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet.clone(), 4);
+    let partition = PartitionMarginalDense::new(0, alphabet.clone(), 4);
     let node_states = btreemap! {
       parent_key => DenseNodeState {
         seq: DenseSeqInfo::default(),
@@ -250,14 +245,9 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let partition = PartitionMarginalDense::new(
-      0,
-      jc69(JC69Params::default())?,
-      Alphabet::new(AlphabetName::Nuc)?,
-      get_common_length(&aln)?,
-    );
+    let partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, node_states);
+    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     for edge_ref in graph.get_edges() {

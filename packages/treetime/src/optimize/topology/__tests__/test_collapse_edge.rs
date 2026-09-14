@@ -43,7 +43,6 @@ mod tests {
   fn make_sparse_reconstruction(length: usize) -> Result<PartitionMarginalSparse, Report> {
     let partition = PartitionMarginalSparse {
       index: 0,
-      gtr: jc69(JC69Params::default())?,
       alphabet: Alphabet::new(AlphabetName::Nuc)?,
       length,
       obs_nodes: btreemap! {},

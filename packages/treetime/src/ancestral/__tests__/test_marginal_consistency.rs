@@ -93,9 +93,9 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, DenseReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
+    let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
-    let recon = DenseReconstruction::seeded(partition, node_states);
+    let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
@@ -123,8 +123,8 @@ mod tests {
   ) -> Result<(f64, SparseReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, 0, alphabet, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(gtr, graph)?;
-    let recon = SparseReconstruction::seeded(partition, node_states);
+    let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
+    let recon = SparseReconstruction::seeded(partition, gtr, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
@@ -374,6 +374,7 @@ mod tests {
     let mut actual = BTreeMap::new();
     let SparseReconstruction {
       partition,
+      gtr: _,
       node_states,
       edges,
     } = recon;
@@ -476,9 +477,9 @@ mod tests {
       &alphabet,
     )?;
 
-    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
+    let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, node_states);
+    let recon = DenseReconstruction::seeded(partition, gtr, node_states);
 
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 

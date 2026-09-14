@@ -87,9 +87,9 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, DenseReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
+    let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
-    let recon = DenseReconstruction::seeded(partition, node_states);
+    let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))

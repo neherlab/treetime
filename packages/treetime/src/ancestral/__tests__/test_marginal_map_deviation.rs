@@ -146,13 +146,14 @@ mod tests {
       Alphabet::default(),
       &nwk_fasta_node_inputs(graph, names, aln.to_vec()),
     )?;
-    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
-    let recon = SparseReconstruction::seeded(partition, node_states);
+    let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
+    let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (mut recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
 
     let mut out = BTreeMap::new();
     let SparseReconstruction {
       partition,
+      gtr: _,
       node_states,
       edges,
     } = &mut recon;
@@ -185,9 +186,9 @@ mod tests {
     aln: &[FastaRecord],
   ) -> Result<BTreeMap<String, String>, Report> {
     let length = get_common_length(aln)?;
-    let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::default(), length);
+    let partition = PartitionMarginalDense::new(0, Alphabet::default(), length);
     let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
-    let recon = DenseReconstruction::seeded(partition, node_states);
+    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (mut recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
 
     let mut out = BTreeMap::new();

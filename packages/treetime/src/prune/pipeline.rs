@@ -64,7 +64,7 @@ pub fn run(
   // pass, so the topology moves take the observations and the node states the Fitch handoff seeded wait
   // beside them until the output reconstructions are assembled.
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
-  let (mut partitions, node_states): (Vec<_>, Vec<_>) = if needs_sequences {
+  let (mut partitions, gtrs, node_states): (Vec<_>, Vec<_>, Vec<_>) = if needs_sequences {
     let sequences = std::mem::take(&mut input.sequences)
       .ok_or_else(|| eyre::eyre!("Sequences required for --prune-empty or --merge-shared-mutations"))?;
     let node_inputs = nwk_fasta_node_inputs(&input.graph, &names, sequences);
@@ -77,19 +77,20 @@ pub fn run(
       None,
       &branch_lengths,
     )?;
-    let (partition, node_states) = match created.partition {
-      MarginalPartition::Sparse(partition, node_states) => (partition, node_states),
+    let (partition, gtr, node_states) = match created.partition {
+      MarginalPartition::Sparse(partition, node_states) => (partition, created.gtr, node_states),
       MarginalPartition::Dense(_) => {
         let gtr = get_gtr_by_name(GtrModelName::JC69)?;
         log_gtr(&gtr, GtrModelName::JC69);
         let fitch =
           crate::ancestral::fitch::create_fitch_partition(&input.graph, 0, input.alphabet.clone(), &node_inputs)?;
-        fitch.into_marginal_sparse(gtr, &input.graph)?
+        let (partition, node_states) = fitch.into_marginal_sparse(&input.graph)?;
+        (partition, gtr, node_states)
       },
     };
-    (vec![partition], vec![node_states])
+    (vec![partition], vec![gtr], vec![node_states])
   } else {
-    (vec![], vec![])
+    (vec![], vec![], vec![])
   };
 
   prune_nodes(
@@ -110,9 +111,9 @@ pub fn run(
     names = assign_node_names(names, &input.graph)?;
   }
 
-  let gtr = partitions.first().map(|partition| partition.gtr.clone());
-  let partitions = izip!(partitions, node_states)
-    .map(|(partition, node_states)| SparseReconstruction::seeded(partition, node_states))
+  let gtr = gtrs.first().cloned();
+  let partitions = izip!(partitions, gtrs, node_states)
+    .map(|(partition, gtr, node_states)| SparseReconstruction::seeded(partition, gtr, node_states))
     .collect_vec();
 
   Ok(PruneOutput {

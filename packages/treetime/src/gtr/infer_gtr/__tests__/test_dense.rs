@@ -48,9 +48,9 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
+    let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.to_vec()))?;
-    let recon = DenseReconstruction::seeded(partition, node_states);
+    let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }
@@ -80,7 +80,7 @@ mod tests {
     let (graph, recon, branch_lengths) =
       setup_dense_partition("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
 
-    let counts = recon.partition.count_transitions(
+    let counts = recon.partition.count_transitions(&recon.gtr, 
       &graph,
       &branch_lengths,
       &recon.node_states,
@@ -116,7 +116,7 @@ mod tests {
 
     let (graph, recon, branch_lengths) = setup_dense_partition("(A:0.1,B:0.1)root:0.0;", &aln)?;
 
-    let counts = recon.partition.count_transitions(
+    let counts = recon.partition.count_transitions(&recon.gtr, 
       &graph,
       &branch_lengths,
       &recon.node_states,
@@ -187,7 +187,7 @@ mod tests {
     let (graph, recon, branch_lengths) =
       setup_dense_partition("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;", &aln)?;
 
-    let counts = recon.partition.count_transitions(
+    let counts = recon.partition.count_transitions(&recon.gtr, 
       &graph,
       &branch_lengths,
       &recon.node_states,
@@ -274,7 +274,7 @@ mod tests {
     let tree_nwk = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
     let (graph, recon, branch_lengths) = setup_dense_partition(tree_nwk, &aln)?;
 
-    let counts = recon.partition.count_transitions(
+    let counts = recon.partition.count_transitions(&recon.gtr, 
       &graph,
       &branch_lengths,
       &recon.node_states,

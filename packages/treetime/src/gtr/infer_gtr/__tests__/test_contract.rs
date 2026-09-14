@@ -63,9 +63,9 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
+    let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.to_vec()))?;
-    let recon = DenseReconstruction::seeded(partition, node_states);
+    let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }
@@ -114,7 +114,7 @@ mod tests {
       "((ref1:0.1,ref2:0.1)R12:0.05,(ref3:0.1,mut1:0.1)R3M:0.05)root:0.0;",
       &aln,
     )?;
-    let counts = partition.partition.count_transitions(
+    let counts = partition.partition.count_transitions(&partition.gtr, 
       &graph,
       &branch_lengths,
       &partition.node_states,
@@ -238,8 +238,8 @@ mod tests {
     let (graph1, partition1, branch_lengths1) = setup_dense(&tree1, &aln)?;
     let (graph2, partition2, branch_lengths2) = setup_dense(&tree2, &aln)?;
 
-    let counts1 = partition1.partition.count_transitions(&graph1, &branch_lengths1, &partition1.node_states, &partition1.edges.backward, &partition1.edges.forward)?;
-    let counts2 = partition2.partition.count_transitions(&graph2, &branch_lengths2, &partition2.node_states, &partition2.edges.backward, &partition2.edges.forward)?;
+    let counts1 = partition1.partition.count_transitions(&partition1.gtr, &graph1, &branch_lengths1, &partition1.node_states, &partition1.edges.backward, &partition1.edges.forward)?;
+    let counts2 = partition2.partition.count_transitions(&partition2.gtr, &graph2, &branch_lengths2, &partition2.node_states, &partition2.edges.backward, &partition2.edges.forward)?;
 
     // Measured max diff: 8.94e-8 (case small_vs_large, Ti[0])
     let ratio = bl2 / bl1;
@@ -277,7 +277,7 @@ mod tests {
     let (graph_d, partition_d, branch_lengths_d) = setup_dense(tree_nwk, &aln)?;
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
-    let dense = partition_d.partition.count_transitions(
+    let dense = partition_d.partition.count_transitions(&partition_d.gtr, 
       &graph_d,
       &branch_lengths_d,
       &partition_d.node_states,
@@ -350,7 +350,7 @@ mod tests {
     )?;
 
     let (graph, partition, branch_lengths) = setup_dense("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;", &aln)?;
-    let counts = partition.partition.count_transitions(
+    let counts = partition.partition.count_transitions(&partition.gtr, 
       &graph,
       &branch_lengths,
       &partition.node_states,
@@ -488,7 +488,7 @@ mod tests {
 
     let tree_nwk = "((a1:0.1,a2:0.1,t1:0.1)left:0.05,(a3:0.1,a4:0.1,t2:0.1)right:0.05)root:0.0;";
     let (graph, partition, branch_lengths) = setup_dense(tree_nwk, &aln)?;
-    let counts = partition.partition.count_transitions(
+    let counts = partition.partition.count_transitions(&partition.gtr, 
       &graph,
       &branch_lengths,
       &partition.node_states,
@@ -576,7 +576,7 @@ mod tests {
     let (graph_d, partition_d, branch_lengths_d) = setup_dense(tree_nwk, &aln)?;
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
-    let dense = partition_d.partition.count_transitions(
+    let dense = partition_d.partition.count_transitions(&partition_d.gtr, 
       &graph_d,
       &branch_lengths_d,
       &partition_d.node_states,
@@ -627,7 +627,7 @@ mod tests {
 
     let (graph, partition, branch_lengths) =
       setup_dense("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &aln)?;
-    let counts = partition.partition.count_transitions(
+    let counts = partition.partition.count_transitions(&partition.gtr, 
       &graph,
       &branch_lengths,
       &partition.node_states,
@@ -666,7 +666,7 @@ mod tests {
     let (graph_d, partition_d, branch_lengths_d) = setup_dense(tree_nwk, &aln)?;
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
-    let dense = partition_d.partition.count_transitions(
+    let dense = partition_d.partition.count_transitions(&partition_d.gtr, 
       &graph_d,
       &branch_lengths_d,
       &partition_d.node_states,
@@ -703,7 +703,7 @@ mod tests {
     let (graph_d, partition_d, branch_lengths_d) = setup_dense(tree_nwk, &aln)?;
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
-    let dense = partition_d.partition.count_transitions(
+    let dense = partition_d.partition.count_transitions(&partition_d.gtr, 
       &graph_d,
       &branch_lengths_d,
       &partition_d.node_states,
@@ -740,7 +740,7 @@ mod tests {
     let (graph_d, partition_d, branch_lengths_d) = setup_dense(tree_nwk, &aln)?;
     let (graph_s, fitch_s, branch_lengths_s) = setup_sparse(tree_nwk, &aln)?;
 
-    let dense = partition_d.partition.count_transitions(
+    let dense = partition_d.partition.count_transitions(&partition_d.gtr, 
       &graph_d,
       &branch_lengths_d,
       &partition_d.node_states,

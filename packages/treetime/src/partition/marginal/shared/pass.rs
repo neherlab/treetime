@@ -34,6 +34,7 @@ pub enum IndexedKind {
 /// node states and the per-edge backward messages as distinct owned values.
 pub fn indexed_backward(
   inputs: &DenseInputs,
+  gtr: &GTR,
   alphabet: Option<&Alphabet>,
   length: usize,
   kind: IndexedKind,
@@ -41,7 +42,6 @@ pub fn indexed_backward(
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
 ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
-  let gtr = &inputs.gtr;
   let min_branch_length = inputs.min_branch_length;
   let pass = GraphPass::new(graph)?;
   let outputs = pass.map_backward(
@@ -153,6 +153,7 @@ fn backward_internal_dense(children: &[&DenseNodeState], length: usize) -> Dense
 /// (indels) as distinct owned values.
 pub fn indexed_forward(
   inputs: &DenseInputs,
+  gtr: &GTR,
   alphabet: Option<&Alphabet>,
   kind: IndexedKind,
   graph: &Graph,
@@ -160,7 +161,6 @@ pub fn indexed_forward(
   node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
   backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
 ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
-  let gtr = &inputs.gtr;
   let min_branch_length = inputs.min_branch_length;
   let pass = GraphPass::new(graph)?;
   let outputs = pass.map_forward(

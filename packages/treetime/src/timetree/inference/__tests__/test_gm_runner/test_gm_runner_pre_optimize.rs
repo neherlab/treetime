@@ -63,8 +63,8 @@ mod tests {
     let graph: Graph = graph;
     let aln = load_alignment_for_dataset(dataset)?;
     let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, node_states));
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states));
 
     let partitions: Vec<PartitionTimetree> = vec![sparse_partition];
     let (partitions, _) = initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions, &nwk_fasta_node_inputs(&graph, &names, aln))?;
@@ -124,8 +124,8 @@ mod tests {
 
     let aln = load_alignment_for_dataset(dataset)?;
     let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, node_states));
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states));
 
     let partitions: Vec<PartitionTimetree> = vec![sparse_partition];
     let (partitions, _) = initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions, &nwk_fasta_node_inputs(&graph, &names, aln))?;

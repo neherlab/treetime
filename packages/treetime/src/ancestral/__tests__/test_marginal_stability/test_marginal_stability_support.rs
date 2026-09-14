@@ -70,9 +70,9 @@ pub mod tests {
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
+    let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, node_states);
+    let recon = DenseReconstruction::seeded(partition, gtr, node_states);
     let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
@@ -93,8 +93,8 @@ pub mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let recon = SparseReconstruction::seeded(partition, node_states);
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let recon = SparseReconstruction::seeded(partition, gtr, node_states);
     let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))

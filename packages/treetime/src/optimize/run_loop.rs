@@ -455,13 +455,14 @@ pub fn prune_and_merge_in_loop(
   // and the per-edge results of the last update, which it does not. With no change both parts go back
   // together unchanged. With a change the node states are reconciled to the new node set and the
   // per-edge results are left behind, because they describe the superseded topology.
-  let (mut sparse_obs, mut sparse_node_states, sparse_edges): (Vec<_>, Vec<_>, Vec<_>) = sparse_partitions
+  let (mut sparse_obs, sparse_gtrs, mut sparse_node_states, sparse_edges): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) =
+    sparse_partitions
+      .into_iter()
+      .map(|family| (family.partition, family.gtr, family.node_states, family.edges))
+      .multiunzip();
+  let (dense_obs, dense_gtrs, dense_node_states, dense_edges): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) = dense_partitions
     .into_iter()
-    .map(|family| (family.partition, family.node_states, family.edges))
-    .multiunzip();
-  let (dense_obs, dense_node_states, dense_edges): (Vec<_>, Vec<_>, Vec<_>) = dense_partitions
-    .into_iter()
-    .map(|family| (family.partition, family.node_states, family.edges))
+    .map(|family| (family.partition, family.gtr, family.node_states, family.edges))
     .multiunzip();
 
   let mut topology_changed = false;
@@ -506,8 +507,8 @@ pub fn prune_and_merge_in_loop(
 
   if !topology_changed {
     return Ok(TopologyCleanup {
-      sparse_partitions: join_sparse(sparse_obs, sparse_node_states, sparse_edges),
-      dense_partitions: join_dense(dense_obs, dense_node_states, dense_edges),
+      sparse_partitions: join_sparse(sparse_obs, sparse_gtrs, sparse_node_states, sparse_edges),
+      dense_partitions: join_dense(dense_obs, dense_gtrs, dense_node_states, dense_edges),
       topology_changed,
     });
   }
@@ -519,18 +520,20 @@ pub fn prune_and_merge_in_loop(
   // to the current node set (dropping removed nodes, seeding placeholders for created ones); the next
   // marginal update rebuilds a complete set of per-edge results over the new topology.
   let live_nodes = live_node_keys(graph);
-  let sparse_partitions = izip!(sparse_obs, sparse_node_states)
-    .map(|(partition, node_states)| {
+  let sparse_partitions = izip!(sparse_obs, sparse_gtrs, sparse_node_states)
+    .map(|(partition, gtr, node_states)| {
       SparseReconstruction::seeded(
         partition,
+        gtr,
         reconcile_node_states(node_states, &live_nodes, SparseNodeState::empty),
       )
     })
     .collect_vec();
-  let dense_partitions = izip!(dense_obs, dense_node_states)
-    .map(|(partition, node_states)| {
+  let dense_partitions = izip!(dense_obs, dense_gtrs, dense_node_states)
+    .map(|(partition, gtr, node_states)| {
       DenseReconstruction::seeded(
         partition,
+        gtr,
         reconcile_node_states(node_states, &live_nodes, DenseNodeState::empty),
       )
     })
@@ -554,12 +557,14 @@ pub struct TopologyCleanup {
 /// moves changed nothing.
 fn join_sparse(
   partitions: Vec<PartitionMarginalSparse>,
+  gtrs: Vec<GTR>,
   node_states: Vec<BTreeMap<GraphNodeKey, SparseNodeState>>,
   edges: Vec<SparseMarginalEdges>,
 ) -> Vec<SparseReconstruction> {
-  izip!(partitions, node_states, edges)
-    .map(|(partition, node_states, edges)| SparseReconstruction {
+  izip!(partitions, gtrs, node_states, edges)
+    .map(|(partition, gtr, node_states, edges)| SparseReconstruction {
       partition,
+      gtr,
       node_states,
       edges,
     })
@@ -570,12 +575,14 @@ fn join_sparse(
 /// changed nothing.
 fn join_dense(
   partitions: Vec<PartitionMarginalDense>,
+  gtrs: Vec<GTR>,
   node_states: Vec<BTreeMap<GraphNodeKey, DenseNodeState>>,
   edges: Vec<DenseMarginalEdges>,
 ) -> Vec<DenseReconstruction> {
-  izip!(partitions, node_states, edges)
-    .map(|(partition, node_states, edges)| DenseReconstruction {
+  izip!(partitions, gtrs, node_states, edges)
+    .map(|(partition, gtr, node_states, edges)| DenseReconstruction {
       partition,
+      gtr,
       node_states,
       edges,
     })

@@ -30,7 +30,6 @@ impl PartitionFitch {
   /// sequences are kept.
   pub fn into_marginal_sparse(
     self,
-    gtr: GTR,
     graph: &Graph,
   ) -> Result<(PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>), Report> {
     let root_key = graph.get_exactly_one_root()?.read_arc().key();
@@ -63,7 +62,6 @@ impl PartitionFitch {
 
     let partition = PartitionMarginalSparse {
       index: self.index,
-      gtr,
       alphabet: self.alphabet,
       length: self.length,
       root_sequence,
@@ -73,8 +71,8 @@ impl PartitionFitch {
     Ok((partition, node_states))
   }
 
-  pub fn into_marginal_dense(self, gtr: GTR) -> PartitionMarginalDense {
-    PartitionMarginalDense::new(self.index, gtr, self.alphabet, self.length)
+  pub fn into_marginal_dense(self) -> PartitionMarginalDense {
+    PartitionMarginalDense::new(self.index, self.alphabet, self.length)
   }
 
   pub fn sequence_length(&self) -> usize {

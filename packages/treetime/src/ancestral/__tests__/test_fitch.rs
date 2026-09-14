@@ -777,8 +777,8 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let recon = SparseReconstruction::seeded(partition, node_states);
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let recon = SparseReconstruction::seeded(partition, gtr, node_states);
 
     // Find relevant node keys and the AB->A edge key
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
@@ -845,7 +845,7 @@ mod tests {
       inverted_edge_keys,
     };
 
-    let recon = reroot_sparse(recon.partition, recon.node_states, &changes)?;
+    let recon = reroot_sparse(recon.partition, recon.gtr, recon.node_states, &changes)?;
 
     // --- Verify root_sequence ---
     // New root sits on AB->A (closer to AB side, split at 0.5 with empty parent-side).
@@ -1020,8 +1020,8 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let recon = SparseReconstruction::seeded(partition, node_states);
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let recon = SparseReconstruction::seeded(partition, gtr, node_states);
 
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
     let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB node not found");
@@ -1090,7 +1090,7 @@ mod tests {
       inverted_edge_keys,
     };
 
-    let recon = reroot_sparse(recon.partition, recon.node_states, &changes)?;
+    let recon = reroot_sparse(recon.partition, recon.gtr, recon.node_states, &changes)?;
 
     // Root sequence should be AB's ancestral state (derived from inverted edges)
     assert_eq!(
@@ -1172,8 +1172,8 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let recon = SparseReconstruction::seeded(partition, node_states);
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let recon = SparseReconstruction::seeded(partition, gtr, node_states);
 
     // Run initial marginal pass before reroot
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
@@ -1205,7 +1205,7 @@ mod tests {
       inverted_edge_keys,
     };
 
-    let recon = reroot_sparse(recon.partition, recon.node_states, &changes)?;
+    let recon = reroot_sparse(recon.partition, recon.gtr, recon.node_states, &changes)?;
 
     // Run marginal pass after reroot
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;

@@ -38,11 +38,10 @@ pub struct PartitionMarginalDense {
 }
 
 impl PartitionMarginalDense {
-  pub fn new(index: usize, gtr: GTR, alphabet: Alphabet, length: usize) -> Self {
+  pub fn new(index: usize, alphabet: Alphabet, length: usize) -> Self {
     let min_branch_length = MIN_BRANCH_LENGTH_FRACTION / length as f64;
     Self {
       inputs: DenseInputs {
-        gtr,
         min_branch_length,
         // Nucleotide ancestral inference filters signal-free (gap-only) root
         // columns out of the equilibrium-frequency prior.
@@ -54,20 +53,8 @@ impl PartitionMarginalDense {
     }
   }
 
-  pub fn gtr_mut(&mut self) -> &mut GTR {
-    &mut self.inputs.gtr
-  }
-
   pub fn get_sequence_length(&self) -> usize {
     self.length
-  }
-
-  pub fn weighted_rate(&self) -> f64 {
-    self.length as f64 * self.inputs.gtr.mu
-  }
-
-  pub fn normalize_rate(&mut self, scale: f64) {
-    self.inputs.gtr.mu /= scale;
   }
 
   /// Build the initial dense node states by attaching each leaf's observed sequence. Internal-node
@@ -165,11 +152,12 @@ impl PartitionMarginalDense {
 
   pub fn create_edge_contribution(
     &self,
+    gtr: &GTR,
     backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
     forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
     edge_key: GraphEdgeKey,
   ) -> OptimizationContribution {
-    OptimizationContribution::from_dense(&self.inputs.gtr, &backward[&edge_key], &forward[&edge_key])
+    OptimizationContribution::from_dense(gtr, &backward[&edge_key], &forward[&edge_key])
   }
 
   pub fn edge_indel_count(
@@ -254,22 +242,16 @@ impl MarginalPasses for PartitionMarginalDense {
   type Forward = DenseEdgeForward;
   type Estimate = DenseEdgeEstimate;
 
-  fn gtr(&self) -> &GTR {
-    &self.inputs.gtr
-  }
-
-  fn set_gtr(&mut self, gtr: GTR) {
-    self.inputs.gtr = gtr;
-  }
-
   fn marginal_backward(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
   ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
     indexed_backward(
       &self.inputs,
+      gtr,
       Some(&self.alphabet),
       self.length,
       IndexedKind::Dense,
@@ -281,6 +263,7 @@ impl MarginalPasses for PartitionMarginalDense {
 
   fn marginal_forward(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
@@ -288,6 +271,7 @@ impl MarginalPasses for PartitionMarginalDense {
   ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
     indexed_forward(
       &self.inputs,
+      gtr,
       Some(&self.alphabet),
       IndexedKind::Dense,
       graph,
@@ -299,13 +283,14 @@ impl MarginalPasses for PartitionMarginalDense {
 
   fn count_transitions(
     &self,
+    gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
     forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
   ) -> Result<MutationCounts, Report> {
-    count_transitions_dense(&self.inputs, graph, branch_lengths, node_states, backward, forward)
+    count_transitions_dense(&self.inputs, gtr, graph, branch_lengths, node_states, backward, forward)
   }
 }
 

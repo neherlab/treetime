@@ -79,7 +79,6 @@ mod tests {
 
     let partition = PartitionMarginalSparse {
       index: 0,
-      gtr: jc69(JC69Params::default())?,
       alphabet,
       length,
       root_sequence: ref_seq,
@@ -89,6 +88,7 @@ mod tests {
 
     Ok(SparseReconstruction {
       partition,
+      gtr: jc69(JC69Params::default())?,
       node_states,
       edges: MarginalEdges {
         estimates,

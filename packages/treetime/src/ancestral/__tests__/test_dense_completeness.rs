@@ -38,9 +38,9 @@ NNGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length);
+    let partition = PartitionMarginalDense::new(0, alphabet, length);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, node_states);
+    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon))
   }
@@ -67,8 +67,8 @@ NNGTACGTAC
     let length = get_common_length(&aln)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let recon = SparseReconstruction::seeded(partition, node_states);
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon))
   }
@@ -167,9 +167,9 @@ ACGTACGTAC
     let aln = read_many_fasta_str(fasta, &alphabet)?;
     let length = get_common_length(&aln)?;
 
-    let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, length);
+    let partition = PartitionMarginalDense::new(0, alphabet, length);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, node_states);
+    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon))
   }
@@ -243,8 +243,8 @@ ACGTACGTAC
     let length = get_common_length(&aln)?;
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let recon = SparseReconstruction::seeded(partition, node_states);
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon))
   }

@@ -155,22 +155,18 @@ pub fn execute_mugration(
     pi,
   })?;
 
-  let partition = PartitionMarginalDiscrete::new(
-    gtr,
-    discrete_states,
-    MIN_BRANCH_LENGTH_FRACTION,
-    filter_uninformative_root,
-  );
+  let partition = PartitionMarginalDiscrete::new(discrete_states, MIN_BRANCH_LENGTH_FRACTION, filter_uninformative_root);
   let node_states = partition.attach_traits(&graph, traits, names)?;
 
-  let update = partition.marginal_update(&graph, &profile_branch_lengths(branch_lengths), node_states)?;
+  let update = partition.marginal_update(&gtr, &graph, &profile_branch_lengths(branch_lengths), node_states)?;
   info!("Mugration: initial log likelihood = {:.4}", update.log_lh.value());
 
-  // GTR refinement borrows stable inputs and returns the refined model with its own reconstruction
-  // result maps; each rate candidate evaluates on an independent clone. Mugration optimizes the rate.
+  // The partition is an immutable source; refinement threads the model through as a value and returns
+  // the refined model with its own reconstruction result maps. Mugration optimizes the rate.
   let profile_lengths = profile_branch_lengths(branch_lengths);
-  let (partition, MarginalUpdate { node_states, .. }) = refine_gtr_model_and_rate(
-    partition,
+  let (gtr, MarginalUpdate { node_states, .. }) = refine_gtr_model_and_rate(
+    &partition,
+    gtr,
     update,
     iterations,
     fixed_pi.as_ref(),
@@ -184,7 +180,7 @@ pub fn execute_mugration(
   // Gather the output value maps off the pipeline-local partition and its node states before they leave
   // scope, taking the partition read out of the serialization path. The maps stay a local the command
   // threads to the writers; the partition and node states are dropped at the end of this function.
-  let maps = gather_mugration_output_maps(&graph, &partition, &node_states);
+  let maps = gather_mugration_output_maps(&graph, &partition, &gtr, &node_states);
   let result = MugrationResult::new(
     graph,
     confidences,

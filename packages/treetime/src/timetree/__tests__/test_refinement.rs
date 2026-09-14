@@ -249,7 +249,8 @@ mod tests {
       &alphabet,
     )?;
     let partitions = vec![PartitionTimetree::Dense(DenseReconstruction {
-      partition: PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(&aln)?),
+      partition: PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?),
+      gtr: jc69(JC69Params::default())?,
       node_states: BTreeMap::new(),
       edges: MarginalEdges::default(),
     })];

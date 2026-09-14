@@ -947,22 +947,16 @@ fn initialize_partitions_from_params(
     branch_lengths,
   )?;
 
-  // Read the GTR from the owning partition (single source of truth), not from a
-  // standalone clone. Timetree does not mutate the GTR after creation, so this
-  // is behavior-preserving; it keeps the contract consistent with the other
-  // pipelines and lets the duplicate `PartitionCreated.gtr` field go away.
-  let gtr = match &created.partition {
-    MarginalPartition::Sparse(p, _) => p.gtr().clone(),
-    MarginalPartition::Dense(p) => p.gtr().clone(),
-  };
+  // The model flows as a value: the reconstruction carries it, and the pipeline result reports a copy.
+  let gtr = created.gtr.clone();
 
   let partition = match created.partition {
     MarginalPartition::Sparse(partition, node_states) => {
-      PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, node_states))
+      PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, created.gtr, node_states))
     },
     // Dense leaf states are attached later by `initialize_marginal_timetree`.
     MarginalPartition::Dense(partition) => {
-      PartitionTimetree::Dense(DenseReconstruction::seeded(partition, BTreeMap::new()))
+      PartitionTimetree::Dense(DenseReconstruction::seeded(partition, created.gtr, BTreeMap::new()))
     },
   };
 

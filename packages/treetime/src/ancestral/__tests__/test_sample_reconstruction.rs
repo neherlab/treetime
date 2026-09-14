@@ -108,8 +108,8 @@ mod tests {
         Alphabet::default(),
         &nwk_fasta_node_inputs(&graph, &names, aln),
       )?;
-      let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-      let recon = SparseReconstruction::seeded(partition, node_states);
+      let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+      let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
 
       let (mut recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
@@ -118,6 +118,7 @@ mod tests {
       {
         let SparseReconstruction {
           partition,
+          gtr: _,
           node_states,
           edges,
         } = &mut recon;

@@ -1,3 +1,4 @@
+use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::marginal::shared::update::MarginalBackward;
 use crate::partition::marginal::sparse::message::{combine_messages, propagate_raw, propagate_raw_per_site};
@@ -19,6 +20,7 @@ use treetime_utils::interval::range::range_contains;
 /// states and the per-edge backward messages as distinct owned values.
 pub fn process_backward_indexed(
   partition: &PartitionMarginalSparse,
+  gtr: &GTR,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
@@ -28,7 +30,7 @@ pub fn process_backward_indexed(
     node_states,
     &partition.obs_edges,
     |key| treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass"),
-    |context| process_node_backward_indexed(partition, branch_lengths, &context),
+    |context| process_node_backward_indexed(partition, gtr, branch_lengths, &context),
   )?;
   Ok(MarginalBackward {
     node_states: outputs.nodes,
@@ -38,11 +40,11 @@ pub fn process_backward_indexed(
 
 fn process_node_backward_indexed(
   partition: &PartitionMarginalSparse,
+  gtr: &GTR,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   context: &GraphPassBackwardContext<'_, SparseNodeState, SparseEdgeObs, SparseNodeState, SparseEdgeBackward>,
 ) -> Result<GraphPassNodeOutput<SparseNodeState, SparseEdgeBackward>, Report> {
   let alphabet = &partition.alphabet;
-  let gtr = &partition.gtr;
   let length = partition.length;
   let obs = &partition.obs_nodes[&context.key];
   let node = context.input.clone();

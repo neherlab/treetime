@@ -68,7 +68,6 @@ mod tests {
 
     let partition = PartitionMarginalSparse {
       index: 0,
-      gtr: jc69(JC69Params::default())?,
       alphabet,
       length,
       root_sequence: ref_seq,
@@ -456,7 +455,6 @@ mod tests {
 
     let p2 = PartitionMarginalSparse {
       index: 1,
-      gtr: jc69(JC69Params::default())?,
       alphabet: p2_alphabet,
       length: 200,
       root_sequence: p2_ref_seq,
@@ -1049,7 +1047,6 @@ mod tests {
 
       let partition = PartitionMarginalSparse {
         index: 1,
-        gtr: jc69(JC69Params::default())?,
         alphabet,
         length,
         root_sequence: ref_seq,

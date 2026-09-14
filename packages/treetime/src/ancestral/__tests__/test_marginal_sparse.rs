@@ -124,8 +124,8 @@ mod tests {
   ) -> Result<(f64, SparseReconstruction), Report> {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(graph, 0, alphabet, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(gtr, graph)?;
-    let recon = SparseReconstruction::seeded(partition, node_states);
+    let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
+    let recon = SparseReconstruction::seeded(partition, gtr, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
@@ -198,8 +198,8 @@ mod tests {
     let alphabet = Alphabet::default();
 
     let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
-    let recon = SparseReconstruction::seeded(partition, node_states);
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
 
     let (mut recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let log_lh = log_lh.value();
@@ -209,6 +209,7 @@ mod tests {
     {
       let SparseReconstruction {
         partition,
+        gtr: _,
         node_states,
         edges,
       } = &mut recon;
@@ -340,8 +341,8 @@ mod tests {
 
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
-    let recon = SparseReconstruction::seeded(partition, node_states);
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let recon = SparseReconstruction::seeded(partition, gtr, node_states);
 
     let (recon, log_lh_first) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let log_lh_first = log_lh_first.value();
@@ -518,8 +519,8 @@ mod tests {
             alphabet.clone(),
             &nwk_fasta_node_inputs(&graph, &names, aln.clone()),
           )?;
-          let (partition, node_states) = fitch.into_marginal_sparse(gtr.clone(), &graph)?;
-          let recon = SparseReconstruction::seeded(partition, node_states);
+          let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+          let recon = SparseReconstruction::seeded(partition, gtr.clone(), node_states);
 
           let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
           let log_lh = log_lh.value();
@@ -569,8 +570,8 @@ mod tests {
       Alphabet::default(),
       &nwk_fasta_node_inputs(&graph, &names, aln),
     )?;
-    let (partition, node_states) = fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?;
-    let recon = SparseReconstruction::seeded(partition, node_states);
+    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+    let recon = SparseReconstruction::seeded(partition, make_nonuniform_gtr()?, node_states);
     let (mut recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
     let actual_by_edge = {
@@ -591,6 +592,7 @@ mod tests {
     {
       let SparseReconstruction {
         partition,
+        gtr: _,
         node_states,
         edges,
       } = &mut recon;

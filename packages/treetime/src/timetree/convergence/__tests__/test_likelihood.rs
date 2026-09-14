@@ -147,7 +147,7 @@ mod tests {
     }
 
     pub fn partition_with_root_log_lh(root_key: GraphNodeKey, log_lh: f64) -> Result<PartitionTimetree, Report> {
-      let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::default(), 1);
+      let partition = PartitionMarginalDense::new(0, Alphabet::default(), 1);
       let mut node_states = BTreeMap::new();
       node_states.insert(
         root_key,
@@ -158,6 +158,7 @@ mod tests {
       );
       Ok(PartitionTimetree::Dense(DenseReconstruction::seeded(
         partition,
+        jc69(JC69Params::default())?,
         node_states,
       )))
     }

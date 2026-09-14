@@ -54,10 +54,10 @@ pub mod tests {
     let alphabet_sparse = Alphabet::new(AlphabetName::Nuc)?;
 
     let dense_partition =
-      PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet_dense, get_common_length(aln)?);
+      PartitionMarginalDense::new(0, alphabet_dense, get_common_length(aln)?);
     let dense_node_states =
       dense_partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
-    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, dense_node_states)];
+    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, jc69(JC69Params::default())?, dense_node_states)];
 
     let fitch = create_fitch_partition(
       graph,
@@ -65,8 +65,8 @@ pub mod tests {
       alphabet_sparse,
       &nwk_fasta_node_inputs(graph, names, aln.to_vec()),
     )?;
-    let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
-    let sparse_partitions = vec![SparseReconstruction::seeded(sparse_partition, sparse_node_states)];
+    let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(graph)?;
+    let sparse_partitions = vec![SparseReconstruction::seeded(sparse_partition, jc69(JC69Params::default())?, sparse_node_states)];
 
     let (dense_partitions, _) =
       marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;

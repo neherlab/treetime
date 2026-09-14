@@ -1,3 +1,4 @@
+use crate::gtr::gtr::GTR;
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::pipeline::SparseReconstruction;
 use crate::make_internal_report;
@@ -19,6 +20,7 @@ use treetime_primitives::Seq;
 /// sequence, so they are reconciled rather than dropped.
 pub fn reroot_sparse(
   partition: PartitionMarginalSparse,
+  gtr: GTR,
   node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
   changes: &RerootChanges,
 ) -> Result<SparseReconstruction, Report> {
@@ -32,7 +34,7 @@ pub fn reroot_sparse(
   }
 
   let node_states = reconcile_node_states(&partition, node_states);
-  Ok(SparseReconstruction::seeded(partition, node_states))
+  Ok(SparseReconstruction::seeded(partition, gtr, node_states))
 }
 
 // Phase 1: topology changes + root_sequence derivation + new node init.

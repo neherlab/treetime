@@ -234,6 +234,7 @@ impl MugrationResult {
 pub(crate) fn gather_mugration_output_maps(
   graph: &Graph,
   partition: &PartitionMarginalDiscrete,
+  gtr: &GTR,
   node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
 ) -> MugrationOutputMaps {
   let reconstructed_traits = graph
@@ -256,7 +257,7 @@ pub(crate) fn gather_mugration_output_maps(
     reconstructed_traits,
     confidences,
     states: partition.states.clone(),
-    gtr: partition.gtr().clone(),
+    gtr: gtr.clone(),
     n_states: partition.n_states(),
   }
 }

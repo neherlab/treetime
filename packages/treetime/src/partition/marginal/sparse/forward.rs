@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::marginal::shared::normalize::{forward_log_lh_add_normalization, forward_log_lh_remove_child};
 use crate::partition::marginal::shared::update::MarginalForward;
@@ -27,6 +28,7 @@ use treetime_utils::interval::range::range_contains;
 /// distinct owned values.
 pub fn process_forward_indexed(
   partition: &PartitionMarginalSparse,
+  gtr: &GTR,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
@@ -37,7 +39,7 @@ pub fn process_forward_indexed(
     node_states,
     backward,
     |key| treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass"),
-    |context| process_node_forward_indexed(partition, branch_lengths, &context),
+    |context| process_node_forward_indexed(partition, gtr, branch_lengths, &context),
   )?;
 
   let mut forward = BTreeMap::new();
@@ -69,11 +71,11 @@ struct SparseEdgeForwardOut {
 
 fn process_node_forward_indexed(
   partition: &PartitionMarginalSparse,
+  gtr: &GTR,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   context: &GraphPassForwardContext<'_, SparseNodeState, SparseEdgeBackward, SparseNodeState>,
 ) -> Result<GraphPassNodeOutput<SparseNodeState, SparseEdgeForwardOut>, Report> {
   let alphabet = &partition.alphabet;
-  let gtr = &partition.gtr;
   let length = partition.length;
   let obs = &partition.obs_nodes[&context.key];
   let mut node = context.input.clone();
