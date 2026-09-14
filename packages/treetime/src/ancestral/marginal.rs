@@ -6,27 +6,16 @@ use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 
-/// The branch length that propagates sequence profiles along an edge: the clock-constrained length
-/// when one has been committed, otherwise the raw ML or input length.
+/// Derive the per-edge branch length map (`f64`) a marginal pass propagates sequence profiles along,
+/// from the raw input-tree branch length value map. An edge with no length resolves to `0.0`.
 ///
-/// This is the domain choice that a timetree edge makes (`clock_branch_length` over the raw length);
-/// every other command has no clock length and falls back to the raw length. Kept as a free function
-/// so the choice stays named and testable where a profile map is derived.
-pub fn profile_branch_length(clock: Option<f64>, raw: Option<f64>) -> Option<f64> {
-  clock.or(raw)
-}
-
-/// Derive the per-edge profile branch length map (`f64`) each marginal pass propagates sequence
-/// profiles along, from the raw input-tree branch length value map.
-///
-/// The value is `raw.unwrap_or(0.0)`: an edge with no length resolves to `0.0` for the passes. For a
-/// timetree the clock-constrained length is combined in separately via
-/// [`timetree_branch_lengths`](crate::timetree::inference::runner::timetree_branch_lengths); this
-/// helper serves the non-timetree marginal passes (ancestral, optimize, clock, mugration).
+/// This is the raw-length collector: it applies no clock constraint. Once a timetree commit exists,
+/// the timetree passes fold the committed clock length in instead via
+/// [`timetree_branch_lengths`](crate::timetree::inference::runner::timetree_branch_lengths).
 pub fn profile_branch_lengths(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> BTreeMap<GraphEdgeKey, f64> {
   branch_lengths
     .iter()
-    .map(|(key, raw)| (*key, profile_branch_length(None, *raw).unwrap_or(0.0)))
+    .map(|(key, raw)| (*key, raw.unwrap_or(0.0)))
     .collect()
 }
 
