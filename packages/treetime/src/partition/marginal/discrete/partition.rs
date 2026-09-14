@@ -8,7 +8,6 @@ use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
 };
 use crate::partition::storage::discrete::DiscreteStates;
-use crate::partition::traits::HasGtr;
 use eyre::Report;
 use ndarray::Array1;
 use serde::Serialize;
@@ -121,15 +120,7 @@ impl PartitionMarginalDiscrete {
     let node = node_states.get(&node_key)?;
     Some(node.profile.dis.row(0).to_owned())
   }
-}
 
-/// The marginal passes and the update built from them, over the discrete role-typed per-node and
-/// per-edge element types (shared with the dense representation). The two passes and the transition
-/// counts are the representation-specific operations; the full update and the log-likelihood reads and
-/// reset are the same four-step skeleton every representation runs. Stable inputs (`graph`,
-/// `branch_lengths`) are borrowed and every pass returns new owned maps, so a failed pass leaves its
-/// inputs intact.
-impl PartitionMarginalDiscrete {
   /// Run the marginal backward pass (children before parent).
   pub fn marginal_backward(
     &self,
@@ -186,6 +177,10 @@ impl PartitionMarginalDiscrete {
   /// The substitution log likelihood is read at the root between the two passes: after the backward
   /// pass the root profile holds the likelihood of the observed data under the model, while the forward
   /// pass overwrites every node profile with its posterior.
+  // The update is a consuming transform: it takes ownership of the pre-update node states, which the
+  // returned update supersedes with the refreshed states. Borrowing instead would force the caller to
+  // clone the map it is about to discard.
+  #[allow(clippy::needless_pass_by_value)]
   pub fn marginal_update(
     &self,
     graph: &Graph,
@@ -236,17 +231,5 @@ impl PartitionMarginalDiscrete {
     for node in node_states.values_mut() {
       node.profile.log_lh = LogLh::ZERO;
     }
-  }
-}
-
-impl HasGtr for PartitionMarginalDiscrete {
-  fn gtr(&self) -> &GTR {
-    &self.inputs.gtr
-  }
-  fn gtr_mut(&mut self) -> &mut GTR {
-    &mut self.inputs.gtr
-  }
-  fn sequence_length(&self) -> usize {
-    1
   }
 }

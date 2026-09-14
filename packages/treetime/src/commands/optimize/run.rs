@@ -194,7 +194,7 @@ pub(crate) fn gather_optimize_output_maps(
       graph,
       family.root_sequence(graph)?,
       |key| family.node_sequence(key),
-      |key| family.edge_mutations(graph, key, MutationTrack::Nucleotide),
+      |key| family.edge_mutations(graph, key, &MutationTrack::Nucleotide),
       |key| family.edge_subs(graph, key),
     )
   } else if let Some(family) = sparse_partitions.first() {
@@ -202,7 +202,7 @@ pub(crate) fn gather_optimize_output_maps(
       graph,
       family.root_sequence(graph)?,
       |key| family.node_sequence(key),
-      |key| family.edge_mutations(key, MutationTrack::Nucleotide),
+      |key| family.edge_mutations(key, &MutationTrack::Nucleotide),
       |key| family.edge_subs(key),
     )
   } else {

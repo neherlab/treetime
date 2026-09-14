@@ -4,7 +4,6 @@ mod tests {
   use crate::gtr::get_gtr::GtrModelName;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
-  use crate::partition::traits::HasGtr;
   use crate::progress::NoopProgress;
   use approx::assert_ulps_eq;
   use eyre::Report;

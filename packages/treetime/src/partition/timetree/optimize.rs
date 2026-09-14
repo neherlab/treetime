@@ -35,9 +35,7 @@ impl PartitionTimetree {
       Self::Sparse(family) => family.edge_indel_count(edge_key),
     }
   }
-}
 
-impl PartitionTimetree {
   /// Apply a reroot at the structural operation, returning the partition over the rerooted topology.
   ///
   /// The partition is consumed: the reroot rewrites the durable observations and carries the node

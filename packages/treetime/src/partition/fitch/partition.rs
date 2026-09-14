@@ -115,29 +115,3 @@ impl PartitionFitch {
     self.alphabet.unknown()
   }
 }
-
-impl crate::partition::traits::PartitionBranchOps for PartitionFitch {
-  fn sequence_length(&self) -> usize {
-    self.length
-  }
-
-  fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    self.edge_subs(graph, edge_key)
-  }
-
-  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
-    self.edge_indels(edge_key)
-  }
-
-  fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
-    self.root_sequence(graph)
-  }
-
-  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    self.node_sequence(node_key)
-  }
-
-  fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
-    self.edge_effective_length(graph, edge_key)
-  }
-}

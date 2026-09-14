@@ -11,8 +11,7 @@ mod tests {
   };
   use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::traits::PartitionBranchOps;
-  use crate::partition::traits::PartitionOptimizeOps;
+  use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::seq::alignment::get_common_length;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -60,10 +59,10 @@ mod tests {
       )?;
     }
 
-    let p = partitions[0].readout();
+    let p = &partitions[0];
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
-      let sub_count = p.edge_subs(&graph, edge_key)?.len();
+      let sub_count = p.edge_subs(edge_key)?.len();
       let effective_length = p.edge_effective_length(&graph, edge_key)?;
       let actual_bl = branch_lengths[&edge_key].unwrap_or(0.0);
 
@@ -109,7 +108,7 @@ mod tests {
       )?;
     }
 
-    let p = partitions[0].readout();
+    let p = &partitions[0];
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
       let sub_count = p.edge_subs(&graph, edge_key)?.len();
@@ -208,10 +207,18 @@ mod tests {
     let partitions_dense = setup_dense(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
     let partitions_sparse = setup_sparse(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
 
-    let dense_metrics =
-      optimization_metrics_by_child_name(&graph_dense, &graph_dense_names, &partitions_dense[0].readout(), 0.1)?;
-    let sparse_metrics =
-      optimization_metrics_by_child_name(&graph_sparse, &graph_sparse_names, &partitions_sparse[0].readout(), 0.1)?;
+    let dense_metrics = optimization_metrics_by_child_name(
+      &graph_dense,
+      &graph_dense_names,
+      |key| Ok(partitions_dense[0].create_edge_contribution(key)),
+      0.1,
+    )?;
+    let sparse_metrics = optimization_metrics_by_child_name(
+      &graph_sparse,
+      &graph_sparse_names,
+      |key| partitions_sparse[0].create_edge_contribution(key),
+      0.1,
+    )?;
 
     assert_eq!(
       dense_metrics.keys().cloned().collect::<Vec<_>>(),
@@ -308,10 +315,10 @@ mod tests {
       .collect()
   }
 
-  fn optimization_metrics_by_child_name<P: PartitionOptimizeOps>(
+  fn optimization_metrics_by_child_name(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    partition: &P,
+    contribution: impl Fn(GraphEdgeKey) -> Result<OptimizationContribution, Report>,
     branch_length: f64,
   ) -> Result<BTreeMap<String, (f64, f64, f64)>, Report> {
     graph
@@ -321,8 +328,7 @@ mod tests {
         let edge_ref = edge_ref.read_arc();
         let child_key = edge_ref.target();
         let child_name = names[&child_key].clone().unwrap();
-        let metrics = partition
-          .create_edge_contribution(edge_ref.key())?
+        let metrics = contribution(edge_ref.key())?
           .evaluate(branch_length)
           .expect("valid branch length");
         Ok((

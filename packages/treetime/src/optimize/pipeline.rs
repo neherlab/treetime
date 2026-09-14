@@ -17,7 +17,6 @@ use crate::optimize::run_loop::{
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::dense::reroot::reroot_dense;
 use crate::partition::marginal::sparse::reroot::reroot_sparse;
-use crate::partition::traits::HasGtr;
 use crate::progress::ProgressSink;
 use crate::reroot::div_stats::DivStats;
 use crate::reroot::div_stats_traversal::compute_div_stats;
@@ -149,14 +148,14 @@ pub fn run(
   (dense_partitions, _) = marginal_update_dense(&input.graph, &profile_lengths, dense_partitions)?;
 
   if model_name == GtrModelName::Infer {
-    let mut sparse_models: Vec<&mut dyn HasGtr> = sparse_partitions
+    let mut sparse_models: Vec<(usize, &mut GTR)> = sparse_partitions
       .iter_mut()
-      .map(|family| &mut family.partition as &mut dyn HasGtr)
+      .map(|family| (family.partition.length, family.partition.gtr_mut()))
       .collect();
     normalize_partition_rates(&mut sparse_models, &mut branch_lengths);
-    let mut dense_models: Vec<&mut dyn HasGtr> = dense_partitions
+    let mut dense_models: Vec<(usize, &mut GTR)> = dense_partitions
       .iter_mut()
-      .map(|family| &mut family.partition as &mut dyn HasGtr)
+      .map(|family| (family.partition.length, family.partition.gtr_mut()))
       .collect();
     normalize_partition_rates(&mut dense_models, &mut branch_lengths);
   }

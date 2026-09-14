@@ -13,7 +13,6 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
 };
-use crate::partition::traits::{HasGtr, PartitionBranchOps, PartitionOptimizeOps};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::izip;
@@ -261,14 +260,7 @@ impl PartitionMarginalDense {
 
     Some(seq)
   }
-}
 
-/// The marginal passes and the update built from them, over the dense role-typed per-node and per-edge
-/// element types. The two passes and the transition counts are the representation-specific operations;
-/// the full update and the log-likelihood reads and reset are the same four-step skeleton every
-/// representation runs. Stable inputs (`graph`, `branch_lengths`) are borrowed and every pass returns
-/// new owned maps, so a failed pass leaves its inputs intact.
-impl PartitionMarginalDense {
   /// Run the marginal backward pass (children before parent).
   pub fn marginal_backward(
     &self,
@@ -323,6 +315,10 @@ impl PartitionMarginalDense {
   /// The substitution log likelihood is read at the root between the two passes: after the backward
   /// pass the root profile holds the likelihood of the observed data under the model, while the forward
   /// pass overwrites every node profile with its posterior.
+  // The update is a consuming transform: it takes ownership of the pre-update node states, which the
+  // returned update supersedes with the refreshed states. Borrowing instead would force the caller to
+  // clone the map it is about to discard.
+  #[allow(clippy::needless_pass_by_value)]
   pub fn marginal_update(
     &self,
     graph: &Graph,
@@ -434,64 +430,3 @@ fn prof2seq_sampled(
 
 /// The per-edge results one dense marginal update returns.
 pub type DenseMarginalEdges = MarginalEdges<DenseEdgeBackward, DenseEdgeForward, DenseEdgeEstimate>;
-
-/// Short-lived read view over a completed dense reconstruction: borrows the durable partition inputs
-/// together with the node states and the per-edge results the passes returned. Assembled at a
-/// consumer boundary purely to read; never stored.
-pub struct DenseReadout<'a> {
-  pub partition: &'a PartitionMarginalDense,
-  pub node_states: &'a BTreeMap<GraphNodeKey, DenseNodeState>,
-  pub edges: &'a DenseMarginalEdges,
-}
-
-impl PartitionBranchOps for DenseReadout<'_> {
-  fn sequence_length(&self) -> usize {
-    self.partition.length
-  }
-
-  fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    self.partition.edge_subs(self.node_states, graph, edge_key)
-  }
-
-  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
-    self.partition.edge_indels(&self.edges.estimates, edge_key)
-  }
-
-  fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
-    self.partition.root_sequence(self.node_states, graph)
-  }
-
-  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    self.partition.node_sequence(self.node_states, node_key)
-  }
-
-  fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
-    self.partition.edge_effective_length(self.node_states, graph, edge_key)
-  }
-}
-
-impl PartitionOptimizeOps for DenseReadout<'_> {
-  fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
-    Ok(
-      self
-        .partition
-        .create_edge_contribution(&self.edges.backward, &self.edges.forward, edge_key),
-    )
-  }
-
-  fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
-    self.partition.edge_indel_count(&self.edges.estimates, edge_key)
-  }
-}
-
-impl HasGtr for PartitionMarginalDense {
-  fn gtr(&self) -> &GTR {
-    &self.inputs.gtr
-  }
-  fn gtr_mut(&mut self) -> &mut GTR {
-    &mut self.inputs.gtr
-  }
-  fn sequence_length(&self) -> usize {
-    self.length
-  }
-}

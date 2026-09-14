@@ -1,5 +1,6 @@
 use crate::ancestral::marginal::profile_branch_lengths;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
+use crate::gtr::gtr::GTR;
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;
 use crate::optimize::dispatch::run_optimize_mixed_inner;
@@ -14,7 +15,6 @@ use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_no
 use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges};
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
-use crate::partition::traits::HasGtr;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use log::{debug, warn};
@@ -705,16 +705,16 @@ pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -
 /// but now the average rate across all partitions equals 1, making branch lengths directly
 /// interpretable as substitutions per site.
 pub fn normalize_partition_rates(
-  partitions: &mut [&mut dyn HasGtr],
+  partitions: &mut [(usize, &mut GTR)],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) {
-  let total_length: usize = partitions.iter().map(|p| p.sequence_length()).sum();
+  let total_length: usize = partitions.iter().map(|(length, _)| *length).sum();
 
   if total_length == 0 {
     return;
   }
 
-  let weighted_rate: f64 = partitions.iter().map(|p| p.weighted_rate()).sum();
+  let weighted_rate: f64 = partitions.iter().map(|(length, gtr)| *length as f64 * gtr.mu).sum();
 
   let total_average = weighted_rate / total_length as f64;
 
@@ -722,8 +722,8 @@ pub fn normalize_partition_rates(
     return;
   }
 
-  for partition in partitions.iter_mut() {
-    partition.normalize_rate(total_average);
+  for (_, gtr) in partitions.iter_mut() {
+    gtr.mu /= total_average;
   }
 
   for value in branch_lengths.values_mut().flatten() {

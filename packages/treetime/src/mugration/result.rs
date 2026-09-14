@@ -2,7 +2,6 @@ use crate::gtr::gtr::GTR;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::discrete::DiscreteStates;
-use crate::partition::traits::HasGtr;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use ndarray::Array1;

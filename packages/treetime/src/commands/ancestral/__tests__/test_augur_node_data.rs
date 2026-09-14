@@ -397,7 +397,7 @@ mod tests {
         }),
       );
 
-      let maps = gather_augur_output_maps(&graph, &AncestralPartition::Fitch(partition.clone())).unwrap();
+      let maps = gather_augur_output_maps(&graph, &AncestralPartition::Fitch(partition)).unwrap();
       build_augur_node_data_json(
         &graph,
         &maps,

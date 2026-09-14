@@ -10,9 +10,9 @@ use crate::gtr::gtr::GTR;
 use crate::gtr::refinement::refine_gtr_iterative;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::fitch::partition::PartitionFitch;
-use crate::partition::marginal::dense::partition::{DenseMarginalEdges, DenseReadout, PartitionMarginalDense};
+use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
 use crate::partition::marginal::shared::update::{MarginalStates, MarginalUpdate};
-use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges, SparseReadout};
+use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges};
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
@@ -77,15 +77,6 @@ impl SparseReconstruction {
     }
   }
 
-  /// Build a short-lived read view over the borrowed inputs and result maps.
-  pub fn readout(&self) -> SparseReadout<'_> {
-    SparseReadout {
-      partition: &self.partition,
-      node_states: &self.node_states,
-      edges: &self.edges,
-    }
-  }
-
   /// The sequence length this reconstruction represents.
   pub fn sequence_length(&self) -> usize {
     self.partition.length
@@ -129,8 +120,8 @@ impl SparseReconstruction {
   }
 
   /// The substitutions and indels on one edge as one mutation list on the given track.
-  pub fn edge_mutations(&self, edge_key: GraphEdgeKey, track: MutationTrack) -> Result<Vec<Mutation>, Report> {
-    combine_edge_mutations(self.edge_subs(edge_key)?, &self.edge_indels(edge_key), &track)
+  pub fn edge_mutations(&self, edge_key: GraphEdgeKey, track: &MutationTrack) -> Result<Vec<Mutation>, Report> {
+    combine_edge_mutations(self.edge_subs(edge_key)?, &self.edge_indels(edge_key), track)
   }
 
   /// The node sequence written into the augur node-data JSON. For the sparse representation this equals
@@ -194,15 +185,6 @@ impl DenseReconstruction {
     }
   }
 
-  /// Build a short-lived read view over the borrowed inputs and result maps.
-  pub fn readout(&self) -> DenseReadout<'_> {
-    DenseReadout {
-      partition: &self.partition,
-      node_states: &self.node_states,
-      edges: &self.edges,
-    }
-  }
-
   /// The sequence length this reconstruction represents.
   pub fn sequence_length(&self) -> usize {
     self.partition.length
@@ -250,9 +232,9 @@ impl DenseReconstruction {
     &self,
     graph: &Graph,
     edge_key: GraphEdgeKey,
-    track: MutationTrack,
+    track: &MutationTrack,
   ) -> Result<Vec<Mutation>, Report> {
-    combine_edge_mutations(self.edge_subs(graph, edge_key)?, &self.edge_indels(edge_key), &track)
+    combine_edge_mutations(self.edge_subs(graph, edge_key)?, &self.edge_indels(edge_key), track)
   }
 
   /// The node sequence written into the augur node-data JSON. Unlike [`Self::node_sequence`] (which
@@ -385,9 +367,9 @@ impl AncestralPartition {
     &self,
     graph: &Graph,
     edge_key: GraphEdgeKey,
-    track: MutationTrack,
+    track: &MutationTrack,
   ) -> Result<Vec<Mutation>, Report> {
-    combine_edge_mutations(self.edge_subs(graph, edge_key)?, &self.edge_indels(edge_key), &track)
+    combine_edge_mutations(self.edge_subs(graph, edge_key)?, &self.edge_indels(edge_key), track)
   }
 }
 

@@ -10,7 +10,6 @@ mod tests {
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::SparseSeqDistribution;
-  use crate::partition::traits::PartitionBranchOps;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::composition::Composition;
   use crate::seq::mutation::Sub;
@@ -578,13 +577,12 @@ mod tests {
     let (mut recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
 
     let actual_by_edge = {
-      let readout = recon.readout();
       graph
         .get_edges()
         .iter()
         .map(|edge| {
           let edge_key = edge.read_arc().key();
-          let actual = readout.edge_subs(&graph, edge_key)?;
+          let actual = recon.edge_subs(edge_key)?;
           Ok((edge_key, actual))
         })
         .collect::<Result<BTreeMap<_, _>, Report>>()?

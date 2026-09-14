@@ -490,7 +490,7 @@ pub(crate) fn gather_timetree_output_maps(
     .iter()
     .map(|edge| {
       let key = edge.read_arc().key();
-      Ok((key, partition.edge_mutations(graph, key, MutationTrack::Nucleotide)?))
+      Ok((key, partition.edge_mutations(graph, key, &MutationTrack::Nucleotide)?))
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   Ok(TimetreeOutputMaps {

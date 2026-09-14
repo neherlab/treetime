@@ -8,7 +8,6 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
-  use crate::partition::traits::PartitionBranchOps;
   use crate::seq::mutation::{Mutation, MutationTrack, Sub};
   use eyre::Report;
   use indoc::indoc;
@@ -32,13 +31,12 @@ mod tests {
     graph: &Graph,
     partition: &SparseReconstruction,
   ) -> Result<BTreeMap<GraphEdgeKey, Vec<Mutation>>, Report> {
-    let readout = partition.readout();
     graph
       .get_edges()
       .iter()
       .map(|edge| {
         let key = edge.read_arc().key();
-        Ok((key, readout.edge_mutations(graph, key, MutationTrack::Nucleotide)?))
+        Ok((key, partition.edge_mutations(key, &MutationTrack::Nucleotide)?))
       })
       .collect()
   }

@@ -8,7 +8,6 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, GTRParams};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::traits::PartitionBranchOps;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use crate::seq::mutation::Sub;
@@ -346,8 +345,8 @@ mod tests {
     let sparse_sequences = reconstruct_named_sequences_sparse(&graph, &names, &mut sparse_partition)?;
     assert_eq!(dense_sequences, sparse_sequences);
 
-    let dense_branch_subs = edge_subs_by_edge_name(&graph, &names, &dense_partition.readout())?;
-    let sparse_branch_subs = edge_subs_by_edge_name(&graph, &names, &sparse_partition.readout())?;
+    let dense_branch_subs = edge_subs_by_edge_name(&graph, &names, |key| dense_partition.edge_subs(&graph, key))?;
+    let sparse_branch_subs = edge_subs_by_edge_name(&graph, &names, |key| sparse_partition.edge_subs(key))?;
     assert_eq!(dense_branch_subs, sparse_branch_subs);
 
     Ok(())
@@ -407,14 +406,11 @@ mod tests {
     Ok(actual)
   }
 
-  fn edge_subs_by_edge_name<P>(
+  fn edge_subs_by_edge_name(
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    partition: &P,
-  ) -> Result<BTreeMap<String, Vec<Sub>>, Report>
-  where
-    P: PartitionBranchOps,
-  {
+    edge_subs: impl Fn(GraphEdgeKey) -> Result<Vec<Sub>, Report>,
+  ) -> Result<BTreeMap<String, Vec<Sub>>, Report> {
     graph
       .get_edges()
       .iter()
@@ -423,7 +419,7 @@ mod tests {
         let parent_name = names.get(&edge.source()).cloned().flatten().expect("named parent");
         let child_name = names.get(&edge.target()).cloned().flatten().expect("named child");
         let edge_name = format!("{parent_name}->{child_name}");
-        let subs = partition.edge_subs(graph, edge.key())?;
+        let subs = edge_subs(edge.key())?;
         Ok((edge_name, subs))
       })
       .collect()

@@ -11,7 +11,6 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{
   SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
 };
-use crate::partition::traits::{HasGtr, PartitionBranchOps, PartitionOptimizeOps};
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
@@ -199,14 +198,7 @@ impl PartitionMarginalSparse {
 
     Some(seq)
   }
-}
 
-/// The marginal passes and the update built from them, over the sparse role-typed per-node and
-/// per-edge element types. The two passes and the transition counts are the representation-specific
-/// operations; the full update and the log-likelihood reads and reset are the same four-step skeleton
-/// every representation runs. Stable inputs (`graph`, `branch_lengths`) are borrowed and every pass
-/// returns new owned maps, so a failed pass leaves its inputs intact.
-impl PartitionMarginalSparse {
   /// Run the marginal backward pass (children before parent).
   pub fn marginal_backward(
     &self,
@@ -253,6 +245,10 @@ impl PartitionMarginalSparse {
   /// The substitution log likelihood is read at the root between the two passes: after the backward
   /// pass the root profile holds the likelihood of the observed data under the model, while the forward
   /// pass overwrites every node profile with its posterior.
+  // The update is a consuming transform: it takes ownership of the pre-update node states, which the
+  // returned update supersedes with the refreshed states. Borrowing instead would force the caller to
+  // clone the map it is about to discard.
+  #[allow(clippy::needless_pass_by_value)]
   pub fn marginal_update(
     &self,
     graph: &Graph,
@@ -311,62 +307,3 @@ impl PartitionMarginalSparse {
 
 /// The per-edge results one sparse marginal update returns.
 pub type SparseMarginalEdges = MarginalEdges<SparseEdgeBackward, SparseEdgeForward, Vec<Sub>>;
-
-/// Short-lived read view over a completed sparse reconstruction: borrows the durable partition inputs
-/// (including the Fitch observations) together with the node states and the per-edge results the
-/// passes returned. Assembled at a consumer boundary purely to read; never stored.
-pub struct SparseReadout<'a> {
-  pub partition: &'a PartitionMarginalSparse,
-  pub node_states: &'a BTreeMap<GraphNodeKey, SparseNodeState>,
-  pub edges: &'a SparseMarginalEdges,
-}
-
-impl PartitionBranchOps for SparseReadout<'_> {
-  fn sequence_length(&self) -> usize {
-    self.partition.length
-  }
-
-  fn edge_subs(&self, _graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-    self.partition.edge_subs(&self.edges.estimates, edge_key)
-  }
-
-  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {
-    self.partition.edge_indels(edge_key)
-  }
-
-  fn root_sequence(&self, _graph: &Graph) -> Result<Seq, Report> {
-    Ok(self.partition.root_sequence())
-  }
-
-  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    self.partition.node_sequence(self.node_states, node_key)
-  }
-
-  fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
-    self.partition.edge_effective_length(graph, edge_key)
-  }
-}
-
-impl PartitionOptimizeOps for SparseReadout<'_> {
-  fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
-    self
-      .partition
-      .create_edge_contribution(&self.edges.backward, &self.edges.forward, edge_key)
-  }
-
-  fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
-    self.partition.edge_indel_count(edge_key)
-  }
-}
-
-impl HasGtr for PartitionMarginalSparse {
-  fn gtr(&self) -> &GTR {
-    &self.gtr
-  }
-  fn gtr_mut(&mut self) -> &mut GTR {
-    &mut self.gtr
-  }
-  fn sequence_length(&self) -> usize {
-    self.length
-  }
-}

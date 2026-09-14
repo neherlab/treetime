@@ -219,7 +219,10 @@ pub(crate) fn gather_prune_output_maps(
   while let Some(node) = queue.pop_front() {
     for (child, edge) in graph.children_of(&node.read_arc()) {
       let edge_key = edge.read_arc().key();
-      edge_mutations.insert(edge_key, partition.edge_mutations(edge_key, MutationTrack::Nucleotide)?);
+      edge_mutations.insert(
+        edge_key,
+        partition.edge_mutations(edge_key, &MutationTrack::Nucleotide)?,
+      );
       queue.push_back(child);
     }
   }

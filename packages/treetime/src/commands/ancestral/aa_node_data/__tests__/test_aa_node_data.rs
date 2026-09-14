@@ -158,6 +158,7 @@ mod tests {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::fitch::create_fitch_partition;
     use crate::ancestral::pipeline::AncestralPartition;
+    use std::fmt::Write;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::fasta::read_many_fasta_str;
     use treetime_io::nwk::{NwkParse, nwk_read_str};
@@ -191,15 +192,12 @@ mod tests {
       leaf_sequences: &[&str],
     ) -> AncestralPartition {
       let alphabet = Alphabet::default();
-      let fasta: String = graph
-        .get_leaves()
-        .into_iter()
-        .zip(leaf_sequences)
-        .map(|(leaf, seq)| {
-          let name = names[&leaf.read_arc().key()].clone().unwrap();
-          format!(">{name}\n{seq}\n")
-        })
-        .collect();
+      let mut fasta = String::new();
+      for (leaf, seq) in graph.get_leaves().into_iter().zip(leaf_sequences) {
+        let name = names[&leaf.read_arc().key()].clone().unwrap();
+        writeln!(fasta, ">{name}").unwrap();
+        writeln!(fasta, "{seq}").unwrap();
+      }
       let sequences = read_many_fasta_str(&fasta, &alphabet).unwrap();
       let partition = create_fitch_partition(graph, 0, alphabet, &sequences, names).unwrap();
       AncestralPartition::Fitch(partition)
