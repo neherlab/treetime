@@ -6,7 +6,7 @@ mod tests {
   use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::{ClockInputs, ClockState};
@@ -67,7 +67,7 @@ mod tests {
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states));
 
     let partitions: Vec<PartitionTimetree> = vec![sparse_partition];
-    let (partitions, _) = initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let (partitions, _) = initialize_marginal_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions, &nwk_fasta_node_inputs(&graph, &names, aln))?;
 
     let before = extract_branch_lengths(&graph, &branch_lengths);
 
@@ -128,7 +128,7 @@ mod tests {
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states));
 
     let partitions: Vec<PartitionTimetree> = vec![sparse_partition];
-    let (partitions, _) = initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions, &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let (partitions, _) = initialize_marginal_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
@@ -144,7 +144,7 @@ mod tests {
       BranchOptMethod::BrentSqrt,
       &mut branch_lengths,
     )?;
-    let (partitions, _) = marginal_update_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
+    let (partitions, _) = marginal_update_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
 
     let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints);
     let mut clock_estimate_inputs = ClockInputs::seed_from_times(&graph, &times);

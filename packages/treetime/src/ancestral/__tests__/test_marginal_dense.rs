@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::alphabet::alphabet::AlphabetName;
-  use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+  use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
   use crate::ancestral::pipeline::DenseReconstruction;
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -90,7 +90,7 @@ mod tests {
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
-    let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }
@@ -283,9 +283,9 @@ mod tests {
 
     let (log_lh_init, recon) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
-    let (recon, log_lh_first) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, log_lh_first) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh_first = log_lh_first.value();
-    let (recon, log_lh_second) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, log_lh_second) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh_second = log_lh_second.value();
 
     // Repeated updates must produce identical log-likelihood to initialization

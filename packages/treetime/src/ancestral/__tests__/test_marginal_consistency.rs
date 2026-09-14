@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+  use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -96,7 +96,7 @@ mod tests {
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
-    let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }
@@ -125,7 +125,7 @@ mod tests {
     let fitch = create_fitch_partition(graph, 0, alphabet, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
-    let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }
@@ -481,7 +481,7 @@ mod tests {
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
 
-    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     // Verify all marginal posterior rows sum to 1.0
     for (node_key, node_data) in &recon.node_states {

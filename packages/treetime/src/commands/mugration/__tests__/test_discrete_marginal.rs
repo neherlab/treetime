@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::o;
   use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses, MarginalUpdate};
   use approx::assert_abs_diff_eq;
@@ -88,7 +88,7 @@ mod tests {
 
     let node_states = partition.attach_traits(&graph, &traits, &names)?;
 
-    let branch_lengths = profile_branch_lengths(&raw_branch_lengths);
+    let branch_lengths = branch_lengths_or_zero(&raw_branch_lengths);
     let MarginalBackward { node_states, backward } =
       partition.marginal_backward(&gtr, &graph, &branch_lengths, &node_states)?;
 
@@ -130,7 +130,7 @@ mod tests {
 
     let MarginalUpdate {
       node_states, log_lh, ..
-    } = partition.marginal_update(&gtr, &graph, &profile_branch_lengths(&raw_branch_lengths), node_states)?;
+    } = partition.marginal_update(&gtr, &graph, &branch_lengths_or_zero(&raw_branch_lengths), node_states)?;
     let actual_log_lh = log_lh.value();
 
     assert!(actual_log_lh.is_finite());

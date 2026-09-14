@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
@@ -124,7 +124,7 @@ mod tests {
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     let (sparse_partitions, _) =
-      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
 
     let bl_before = branch_lengths.clone();
 

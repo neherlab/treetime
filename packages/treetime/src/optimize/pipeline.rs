@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::marginal::profile_branch_lengths;
+use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::gtr::get_gtr::GtrModelName;
@@ -109,7 +109,7 @@ pub fn run(
     &node_inputs,
     params.model,
     params.dense,
-    &branch_lengths,
+    &branch_lengths_or_zero(&branch_lengths),
   )?;
   let model_name = created.model_name;
   let gtr = created.gtr;
@@ -146,7 +146,7 @@ pub fn run(
     }
   }
 
-  let profile_lengths = profile_branch_lengths(&branch_lengths);
+  let profile_lengths = branch_lengths_or_zero(&branch_lengths);
   (sparse_partitions, _) = marginal_update_sparse(&input.graph, &profile_lengths, sparse_partitions)?;
   (dense_partitions, _) = marginal_update_dense(&input.graph, &profile_lengths, dense_partitions)?;
 
@@ -237,7 +237,7 @@ pub fn run(
   let branch_lengths = loop_result.branch_lengths;
 
   info!("Re-running marginal to populate subs_ml after optimization loop");
-  let marginal_bl = profile_branch_lengths(&branch_lengths);
+  let marginal_bl = branch_lengths_or_zero(&branch_lengths);
   let (sparse_partitions, _) = marginal_update_sparse(&input.graph, &marginal_bl, loop_result.sparse_partitions)?;
   let (dense_partitions, _) = marginal_update_dense(&input.graph, &marginal_bl, loop_result.dense_partitions)?;
 
@@ -310,7 +310,7 @@ fn pre_reroot_optimize(
   }
 
   apply_damping(branch_lengths, &old_branch_lengths, PRE_REROOT_DAMPING, 0);
-  let profile_lengths = profile_branch_lengths(branch_lengths);
+  let profile_lengths = branch_lengths_or_zero(branch_lengths);
   let (sparse_partitions, _) = marginal_update_sparse(graph, &profile_lengths, sparse_partitions)?;
   let (dense_partitions, _) = marginal_update_dense(graph, &profile_lengths, dense_partitions)?;
   Ok((sparse_partitions, dense_partitions))
@@ -368,7 +368,7 @@ fn reroot_optimize(
     .map(|family| reroot_dense(family.partition, family.gtr, family.node_states, &changes))
     .collect();
 
-  let profile_lengths = profile_branch_lengths(branch_lengths);
+  let profile_lengths = branch_lengths_or_zero(branch_lengths);
   let (sparse_partitions, _) = marginal_update_sparse(graph, &profile_lengths, sparse_partitions)?;
   let (dense_partitions, _) = marginal_update_dense(graph, &profile_lengths, dense_partitions)?;
   Ok((sparse_partitions, dense_partitions))

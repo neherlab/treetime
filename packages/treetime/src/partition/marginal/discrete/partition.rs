@@ -156,7 +156,7 @@ impl MarginalPasses for PartitionMarginalDiscrete {
     &self,
     gtr: &GTR,
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
     forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,

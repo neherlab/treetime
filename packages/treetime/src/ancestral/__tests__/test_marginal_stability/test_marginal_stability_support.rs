@@ -2,7 +2,7 @@
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::gtr::GTR;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -73,7 +73,7 @@ pub mod tests {
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
-    let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }
@@ -95,7 +95,7 @@ pub mod tests {
     let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
-    let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }

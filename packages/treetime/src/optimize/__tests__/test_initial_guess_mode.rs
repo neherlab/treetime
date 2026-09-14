@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::branch_length::invalid_branch_length_descriptions;
@@ -548,7 +548,7 @@ pub mod tests {
         node_states,
       )];
 
-      let (partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
+      let (partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
 
       Ok((graph, names, partitions, branch_lengths))
     }

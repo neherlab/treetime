@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::SparseReconstruction;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
 use crate::gtr::gtr::GTR;
@@ -75,7 +76,7 @@ pub fn run(
       &node_inputs,
       GtrModelName::JC69,
       None,
-      &branch_lengths,
+      &branch_lengths_or_zero(&branch_lengths),
     )?;
     let (partition, gtr, node_states) = match created.partition {
       MarginalPartition::Sparse(partition, node_states) => (partition, created.gtr, node_states),

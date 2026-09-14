@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
@@ -301,7 +301,7 @@ mod tests {
     let fitch = create_fitch_partition(&graph, 0, nuc, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states)];
-    let (mut sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+    let (mut sparse_partitions, _) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
 
     let mut dense_partitions: Vec<DenseReconstruction> = vec![];
 
@@ -317,7 +317,7 @@ mod tests {
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
       let sparse_lh;
-      (sparse_partitions, sparse_lh) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      (sparse_partitions, sparse_lh) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
       let sparse_lh = sparse_lh.value();
       let total_lh = sparse_lh;
 
@@ -393,7 +393,7 @@ mod tests {
     let fitch = create_fitch_partition(&graph, 0, nuc, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states)];
-    let (mut sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+    let (mut sparse_partitions, _) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
 
     let mut dense_partitions: Vec<DenseReconstruction> = vec![];
 
@@ -408,7 +408,7 @@ mod tests {
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
       let total_lh;
-      (sparse_partitions, total_lh) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      (sparse_partitions, total_lh) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
       let total_lh = total_lh.value();
       if (total_lh - lh_prev).abs() < 1e-2 {
         break;
@@ -478,7 +478,7 @@ mod tests {
       sp_node_states,
     )];
     let (sparse_partitions, _) =
-      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
 
     let initial_node_count = graph.get_nodes().len();
 
@@ -516,7 +516,7 @@ mod tests {
     // Before the composition fix, the merge-created node had zero composition,
     // causing the backward pass to produce incorrect values.
     let (sparse_partitions, lh) =
-      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
     let lh = lh.value();
     assert!(lh.is_finite(), "log-likelihood must be finite after merge: {lh}");
     assert!(lh < 0.0, "log-likelihood must be negative: {lh}");
@@ -680,7 +680,7 @@ mod tests {
     let dense_node_states = dense_partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, jc69(JC69Params::default())?, dense_node_states)];
 
-    let (mut dense_partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
+    let (mut dense_partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
 
     let mut sparse_partitions: Vec<SparseReconstruction> = vec![];
 
@@ -695,7 +695,7 @@ mod tests {
     let mut lh_prev = f64::MIN;
     for i in 0..10 {
       let dense_lh;
-      (dense_partitions, dense_lh) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
+      (dense_partitions, dense_lh) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
       let dense_lh = dense_lh.value();
       if (dense_lh - lh_prev).abs() < 1e-2 {
         break;
@@ -1046,7 +1046,7 @@ mod tests {
     let fitch = create_fitch_partition(&graph, 0, nuc, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states)];
-    let (sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+    let (sparse_partitions, _) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
 
     let dense_partitions: Vec<DenseReconstruction> = vec![];
     let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
@@ -1123,7 +1123,7 @@ mod tests {
       sp_node_states,
     )];
     let (sparse_partitions, _) =
-      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
 
     let dense_partitions: Vec<DenseReconstruction> = vec![];
     let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);

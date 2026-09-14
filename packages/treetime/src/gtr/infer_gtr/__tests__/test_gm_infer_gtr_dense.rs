@@ -9,7 +9,7 @@ mod tests {
   use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
@@ -48,7 +48,7 @@ mod tests {
     let counts = recon.partition.count_transitions(
       &recon.gtr,
       &graph,
-      &branch_lengths,
+      &branch_lengths_or_zero(&branch_lengths),
       &recon.node_states,
       &recon.edges.backward,
       &recon.edges.forward,
@@ -79,7 +79,7 @@ mod tests {
     let counts = recon.partition.count_transitions(
       &recon.gtr,
       &graph,
-      &branch_lengths,
+      &branch_lengths_or_zero(&branch_lengths),
       &recon.node_states,
       &recon.edges.backward,
       &recon.edges.forward,
@@ -159,7 +159,7 @@ mod tests {
     let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
-    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }
 
@@ -186,7 +186,7 @@ mod tests {
     let partition = PartitionMarginalDense::new(0, NUC_ALPHABET.clone(), get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
-    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }
 

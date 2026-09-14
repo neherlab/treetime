@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::marginal::profile_branch_lengths;
+use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::clock::clock_filter::clock_filter_inplace;
 use crate::clock::clock_model::ClockModel;
@@ -280,7 +280,7 @@ pub fn run(
       let node_inputs = nwk_fasta_node_inputs(&input.graph, names, aln.to_vec());
       (partitions, _) = initialize_marginal_timetree(
         &input.graph,
-        &profile_branch_lengths(&branch_lengths),
+        &branch_lengths_or_zero(&branch_lengths),
         partitions,
         &node_inputs,
       )?;
@@ -348,7 +348,7 @@ pub fn run(
       },
       BranchLengthMode::Marginal => {
         info!("### ML branch-length optimization (post-reroot)");
-        (partitions, _) = marginal_update_timetree(&input.graph, &profile_branch_lengths(&branch_lengths), partitions)?;
+        (partitions, _) = marginal_update_timetree(&input.graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
         partitions = optimize_branch_lengths_pre_step(&input.graph, partitions, params.no_indels, &mut branch_lengths)
           .wrap_err("ML branch-length optimization (post-reroot) failed")?;
       },
@@ -943,7 +943,7 @@ fn initialize_partitions_from_params(
     &node_inputs,
     model_name,
     params.dense,
-    branch_lengths,
+    &branch_lengths_or_zero(branch_lengths),
   )?;
 
   // The model flows as a value: the reconstruction carries it, and the pipeline result reports a copy.
@@ -1004,7 +1004,7 @@ fn optimize_branch_lengths_pre_step(
   }
 
   apply_damping(branch_lengths, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
-  let (partitions, _) = marginal_update_timetree(graph, &profile_branch_lengths(branch_lengths), partitions)?;
+  let (partitions, _) = marginal_update_timetree(graph, &branch_lengths_or_zero(branch_lengths), partitions)?;
 
   Ok(partitions)
 }

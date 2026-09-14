@@ -18,7 +18,7 @@ pub fn count_transitions_sparse(
   gtr: &GTR,
   length: usize,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
   backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
   forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
@@ -31,7 +31,7 @@ pub fn count_transitions_sparse(
   for edge in graph.get_edges() {
     let edge_arc = edge.read_arc();
     let edge_key = edge_arc.key();
-    let branch_length = branch_lengths[&edge_key].unwrap_or(0.0).max(min_bl);
+    let branch_length = branch_lengths[&edge_key].max(min_bl);
     let msg_to_child = &forward[&edge_key].msg_to_child;
     let msg_to_parent = &backward[&edge_key].msg_to_parent;
 

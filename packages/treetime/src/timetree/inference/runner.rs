@@ -296,7 +296,7 @@ pub(super) fn create_branch_distributions_input_mode(
 /// The per-edge branch length each post-commit marginal reconstruction propagates sequence profiles
 /// along, keyed by edge, sourcing the clock-constrained length from the routed commit map.
 ///
-/// The timetree counterpart of [`profile_branch_lengths`](crate::ancestral::marginal::profile_branch_lengths):
+/// The timetree counterpart of [`branch_lengths_or_zero`](crate::ancestral::marginal::branch_lengths_or_zero):
 /// the value is the committed clock length held in `clock_branch_lengths` when the edge has one, and
 /// the edge's own branch length otherwise. Used only after a commit, where the clock length has been
 /// established; before the first commit the two collectors agree, because no clock length exists yet.

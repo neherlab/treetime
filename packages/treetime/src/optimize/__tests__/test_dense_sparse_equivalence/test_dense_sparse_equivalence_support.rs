@@ -21,7 +21,7 @@ pub mod tests {
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
@@ -70,7 +70,7 @@ pub mod tests {
       node_states,
     )];
 
-    let (partitions, _) = marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), partitions)?;
+    let (partitions, _) = marginal_update_dense(graph, &branch_lengths_or_zero(branch_lengths), partitions)?;
 
     Ok(partitions)
   }
@@ -89,7 +89,7 @@ pub mod tests {
       jc69(JC69Params::default())?,
       node_states,
     )];
-    let (partitions, _) = marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), partitions)?;
+    let (partitions, _) = marginal_update_sparse(graph, &branch_lengths_or_zero(branch_lengths), partitions)?;
 
     Ok(partitions)
   }

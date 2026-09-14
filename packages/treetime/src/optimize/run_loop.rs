@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::profile_branch_lengths;
+use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::gtr::gtr::GTR;
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
@@ -123,7 +123,7 @@ pub fn run_optimize_loop(
   // missing weight stays `None` end to end. Supplied by the caller (the parsed lengths after any
   // initial guess and reroot), then updated in place by the per-edge optimizer, damping, and topology
   // cleanup (topology producers insert new-edge keys and drop removed ones). The marginal
-  // reconstruction reads the derived per-edge length (see [`profile_branch_lengths`]).
+  // reconstruction reads the derived per-edge length (see [`branch_lengths_or_zero`]).
   let mut branch_lengths = branch_lengths;
   // The loop owns the partitions and returns them: every marginal update consumes the reconstructions
   // and hands back new ones, so no stage observes a half-updated reconstruction.
@@ -176,7 +176,7 @@ pub fn run_optimize_loop(
     if !iteration_lh.total_lh.value().is_finite() {
       if let Some(best) = &best_branch_lengths {
         branch_lengths = best.clone();
-        let marginal_bl = profile_branch_lengths(&branch_lengths);
+        let marginal_bl = branch_lengths_or_zero(&branch_lengths);
         (sparse_partitions, _) = marginal_update_sparse(graph, &marginal_bl, sparse_partitions)?;
         (dense_partitions, _) = marginal_update_dense(graph, &marginal_bl, dense_partitions)?;
       }
@@ -202,7 +202,7 @@ pub fn run_optimize_loop(
     if i >= 2 && iteration_lh.total_lh < lh_prev && lh_prev >= best_lh {
       if let Some(best) = &best_branch_lengths {
         branch_lengths = best.clone();
-        let marginal_bl = profile_branch_lengths(&branch_lengths);
+        let marginal_bl = branch_lengths_or_zero(&branch_lengths);
         (sparse_partitions, _) = marginal_update_sparse(graph, &marginal_bl, sparse_partitions)?;
         (dense_partitions, _) = marginal_update_dense(graph, &marginal_bl, dense_partitions)?;
       }
@@ -336,7 +336,7 @@ fn compute_iteration(
   indel_rate: f64,
   no_indels: bool,
 ) -> Result<OptimizeIteration, Report> {
-  let marginal_bl = profile_branch_lengths(branch_lengths);
+  let marginal_bl = branch_lengths_or_zero(branch_lengths);
   let (sparse_partitions, sparse_lh) = marginal_update_sparse(graph, &marginal_bl, sparse_partitions)?;
   let (dense_partitions, dense_lh) = marginal_update_dense(graph, &marginal_bl, dense_partitions)?;
   let indel_lh = if no_indels {

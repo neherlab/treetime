@@ -5,6 +5,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
@@ -47,7 +48,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
 
-    let counts_actual = get_mutation_counts_fitch(&graph, &fitch, &branch_lengths)?;
+    let counts_actual = get_mutation_counts_fitch(&graph, &fitch, &branch_lengths_or_zero(&branch_lengths))?;
     assert_eq!(
       counts_actual.nij,
       array![[0., 0., 0., 0.], [2., 0., 0., 1.], [3., 2., 0., 0.], [0., 1., 1., 0.]]
@@ -88,7 +89,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
 
-    let counts = get_mutation_counts_fitch(&graph, &fitch, &branch_lengths)?;
+    let counts = get_mutation_counts_fitch(&graph, &fitch, &branch_lengths_or_zero(&branch_lengths))?;
     let actual = infer_gtr_impl(
       &counts,
       &InferGtrOptions {

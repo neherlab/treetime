@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
@@ -143,10 +143,10 @@ mod tests {
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     let (sparse_partitions, sparse_lh) =
-      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
     let sparse_lh = sparse_lh.value();
     let (dense_partitions, dense_lh) =
-      marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
+      marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
     let dense_lh = dense_lh.value();
     let indel_lh = manual_total_indel_log_lh(&graph, &sparse_partitions, &branch_lengths);
     let expected_total_lh = sparse_lh + dense_lh + indel_lh;
@@ -307,10 +307,10 @@ mod tests {
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
     let (sparse_partitions, initial_sparse_lh) =
-      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
     let initial_sparse_lh = initial_sparse_lh.value();
     let (dense_partitions, initial_dense_lh) =
-      marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
+      marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
     let initial_dense_lh = initial_dense_lh.value();
     let initial_lh =
       initial_sparse_lh + initial_dense_lh + manual_total_indel_log_lh(&graph, &sparse_partitions, &branch_lengths);
@@ -334,10 +334,10 @@ mod tests {
     let branch_lengths = result.branch_lengths;
 
     let (sparse_partitions, final_sparse_lh) =
-      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
     let final_sparse_lh = final_sparse_lh.value();
     let (dense_partitions, final_dense_lh) =
-      marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
+      marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
     let final_dense_lh = final_dense_lh.value();
     let final_lh =
       final_sparse_lh + final_dense_lh + manual_total_indel_log_lh(&graph, &sparse_partitions, &branch_lengths);

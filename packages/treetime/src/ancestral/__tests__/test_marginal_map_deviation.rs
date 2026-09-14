@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+  use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -148,7 +148,7 @@ mod tests {
     )?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
-    let (mut recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let (mut recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
     let mut out = BTreeMap::new();
     let SparseReconstruction {
@@ -189,7 +189,7 @@ mod tests {
     let partition = PartitionMarginalDense::new(0, Alphabet::default(), length);
     let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
-    let (mut recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let (mut recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
     let mut out = BTreeMap::new();
     let DenseReconstruction {

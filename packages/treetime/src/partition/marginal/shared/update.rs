@@ -121,7 +121,7 @@ pub trait MarginalPasses {
     &self,
     gtr: &GTR,
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, Self::Node>,
     backward: &BTreeMap<GraphEdgeKey, Self::Backward>,
     forward: &BTreeMap<GraphEdgeKey, Self::Forward>,

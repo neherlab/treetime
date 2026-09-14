@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{F81Params, JC69Params, f81, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
@@ -59,7 +59,7 @@ mod tests {
       jc69(JC69Params::default())?,
       node_states,
     )];
-    let (partitions, _) = marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), partitions)?;
+    let (partitions, _) = marginal_update_dense(graph, &branch_lengths_or_zero(branch_lengths), partitions)?;
     Ok(partitions)
   }
 
@@ -92,7 +92,7 @@ mod tests {
     let partitions_stale = setup_dense_jc69(&graph_stale, &graph_stale_names, &aln, &branch_lengths_stale)?;
     let (mut partitions_stale, _) = marginal_update_dense(
       &graph_stale,
-      &profile_branch_lengths(&branch_lengths_stale),
+      &branch_lengths_or_zero(&branch_lengths_stale),
       partitions_stale,
     )?;
     partitions_stale[0].gtr = f81_gtr.clone();
@@ -123,13 +123,13 @@ mod tests {
     let partitions_fresh = setup_dense_jc69(&graph_fresh, &graph_fresh_names, &aln, &branch_lengths_fresh)?;
     let (mut partitions_fresh, _) = marginal_update_dense(
       &graph_fresh,
-      &profile_branch_lengths(&branch_lengths_fresh),
+      &branch_lengths_or_zero(&branch_lengths_fresh),
       partitions_fresh,
     )?;
     partitions_fresh[0].gtr = f81_gtr;
     let (partitions_fresh, _) = marginal_update_dense(
       &graph_fresh,
-      &profile_branch_lengths(&branch_lengths_fresh),
+      &branch_lengths_or_zero(&branch_lengths_fresh),
       partitions_fresh,
     )?;
     {
@@ -176,9 +176,9 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let partitions = setup_dense_jc69(&graph, &names, &aln, &branch_lengths)?;
-    let (mut partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
+    let (mut partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
     partitions[0].gtr = f81_gtr.clone();
-    let (partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
+    let (partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
     {
       let total_length = total_sequence_length(&partitions, &[]);
       let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
@@ -208,9 +208,9 @@ mod tests {
     let graph2 = nwk_parsed.graph;
     let mut branch_lengths2 = nwk_parsed.branch_lengths;
     let partitions2 = setup_dense_jc69(&graph2, &graph2_names, &aln, &branch_lengths2)?;
-    let (mut partitions2, _) = marginal_update_dense(&graph2, &profile_branch_lengths(&branch_lengths2), partitions2)?;
+    let (mut partitions2, _) = marginal_update_dense(&graph2, &branch_lengths_or_zero(&branch_lengths2), partitions2)?;
     partitions2[0].gtr = f81_gtr;
-    let (partitions2, _) = marginal_update_dense(&graph2, &profile_branch_lengths(&branch_lengths2), partitions2)?;
+    let (partitions2, _) = marginal_update_dense(&graph2, &branch_lengths_or_zero(&branch_lengths2), partitions2)?;
     {
       let total_length = total_sequence_length(&partitions2, &[]);
       let indel_counts = gather_edge_indel_counts(&graph2, &partitions2, &[]);

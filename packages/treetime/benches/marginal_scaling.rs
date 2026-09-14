@@ -6,7 +6,7 @@ use std::hint::black_box;
 use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::fitch::create_fitch_partition;
-use treetime::ancestral::marginal::profile_branch_lengths;
+use treetime::ancestral::marginal::branch_lengths_or_zero;
 use treetime::ancestral::pipeline::SparseReconstruction;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime_graph::edge::GraphEdgeKey;
@@ -38,7 +38,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
           .take()
           .expect("reconstruction is present at the start of an iteration");
         let (recon, _) = pool
-          .install(|| recon.marginal_update(black_box(&graph), &profile_branch_lengths(black_box(&branch_lengths))))
+          .install(|| recon.marginal_update(black_box(&graph), &branch_lengths_or_zero(black_box(&branch_lengths))))
           .unwrap();
         slot = Some(black_box(recon));
       });
@@ -68,7 +68,7 @@ fn setup_inner() -> (Graph, SparseReconstruction, BTreeMap<GraphEdgeKey, Option<
   let (partition, node_states) = fitch.into_marginal_sparse(&graph).unwrap();
   let recon = SparseReconstruction::seeded(partition, gtr, node_states);
   let (recon, _) = recon
-    .marginal_update(&graph, &profile_branch_lengths(&branch_lengths))
+    .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))
     .unwrap();
   (graph, recon, branch_lengths)
 }

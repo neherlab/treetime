@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
   use crate::optimize::params::BranchOptMethod;
@@ -37,10 +37,10 @@ mod tests {
       let contributions = gather_edge_contributions(&graph_dense, &dense_partitions, &[])?;
       let indel_counts = gather_edge_indel_counts(&graph_dense, &dense_partitions, &[]);
       run_optimize_mixed(&graph_dense, total_length, &contributions, &indel_counts, method, &mut bl_dense)?;
-      (dense_partitions, _) = marginal_update_dense(&graph_dense, &profile_branch_lengths(&bl_dense), dense_partitions)?;
+      (dense_partitions, _) = marginal_update_dense(&graph_dense, &branch_lengths_or_zero(&bl_dense), dense_partitions)?;
     }
 
-    let (dense_partitions, log_lh_dense) = marginal_update_dense(&graph_dense, &profile_branch_lengths(&bl_dense), dense_partitions)?;
+    let (dense_partitions, log_lh_dense) = marginal_update_dense(&graph_dense, &branch_lengths_or_zero(&bl_dense), dense_partitions)?;
     let log_lh_dense = log_lh_dense.value();
 
     // Run sparse-only optimization
@@ -55,10 +55,10 @@ mod tests {
       let contributions = gather_edge_contributions(&graph_sparse, &[], &sparse_partitions)?;
       let indel_counts = gather_edge_indel_counts(&graph_sparse, &[], &sparse_partitions);
       run_optimize_mixed(&graph_sparse, total_length, &contributions, &indel_counts, method, &mut bl_sparse)?;
-      (sparse_partitions, _) = marginal_update_sparse(&graph_sparse, &profile_branch_lengths(&bl_sparse), sparse_partitions)?;
+      (sparse_partitions, _) = marginal_update_sparse(&graph_sparse, &branch_lengths_or_zero(&bl_sparse), sparse_partitions)?;
     }
 
-    let (sparse_partitions, log_lh_sparse) = marginal_update_sparse(&graph_sparse, &profile_branch_lengths(&bl_sparse), sparse_partitions)?;
+    let (sparse_partitions, log_lh_sparse) = marginal_update_sparse(&graph_sparse, &branch_lengths_or_zero(&bl_sparse), sparse_partitions)?;
     let log_lh_sparse = log_lh_sparse.value();
 
     // Both modes should produce finite log-LH in expected range
@@ -107,7 +107,7 @@ mod tests {
       let contributions = gather_edge_contributions(&graph_dense, &dense_partitions, &[])?;
       let indel_counts = gather_edge_indel_counts(&graph_dense, &dense_partitions, &[]);
       run_optimize_mixed(&graph_dense, total_length, &contributions, &indel_counts, method, &mut bl_dense)?;
-      (dense_partitions, _) = marginal_update_dense(&graph_dense, &profile_branch_lengths(&bl_dense), dense_partitions)?;
+      (dense_partitions, _) = marginal_update_dense(&graph_dense, &branch_lengths_or_zero(&bl_dense), dense_partitions)?;
     }
 
     let branch_lengths_dense = get_branch_lengths(&graph_dense, &bl_dense);
@@ -124,7 +124,7 @@ mod tests {
       let contributions = gather_edge_contributions(&graph_sparse, &[], &sparse_partitions)?;
       let indel_counts = gather_edge_indel_counts(&graph_sparse, &[], &sparse_partitions);
       run_optimize_mixed(&graph_sparse, total_length, &contributions, &indel_counts, method, &mut bl_sparse)?;
-      (sparse_partitions, _) = marginal_update_sparse(&graph_sparse, &profile_branch_lengths(&bl_sparse), sparse_partitions)?;
+      (sparse_partitions, _) = marginal_update_sparse(&graph_sparse, &branch_lengths_or_zero(&bl_sparse), sparse_partitions)?;
     }
 
     let branch_lengths_sparse = get_branch_lengths(&graph_sparse, &bl_sparse);

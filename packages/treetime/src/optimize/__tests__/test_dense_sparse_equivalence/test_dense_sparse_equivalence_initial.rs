@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
@@ -24,7 +24,7 @@ mod tests {
     let dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
     let (dense_partitions, log_lh_dense) = marginal_update_dense(
       &graph_dense,
-      &profile_branch_lengths(&branch_lengths_dense),
+      &branch_lengths_or_zero(&branch_lengths_dense),
       dense_partitions,
     )?;
     let log_lh_dense = log_lh_dense.value();
@@ -37,7 +37,7 @@ mod tests {
     let sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
     let (sparse_partitions, log_lh_sparse) = marginal_update_sparse(
       &graph_sparse,
-      &profile_branch_lengths(&branch_lengths_sparse),
+      &branch_lengths_or_zero(&branch_lengths_sparse),
       sparse_partitions,
     )?;
     let log_lh_sparse = log_lh_sparse.value();
@@ -73,7 +73,7 @@ mod tests {
     let dense_partitions = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
     let (dense_partitions, log_lh_dense) = marginal_update_dense(
       &graph_dense,
-      &profile_branch_lengths(&branch_lengths_dense),
+      &branch_lengths_or_zero(&branch_lengths_dense),
       dense_partitions,
     )?;
     let log_lh_dense = log_lh_dense.value();
@@ -86,7 +86,7 @@ mod tests {
     let sparse_partitions = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
     let (sparse_partitions, log_lh_sparse) = marginal_update_sparse(
       &graph_sparse,
-      &profile_branch_lengths(&branch_lengths_sparse),
+      &branch_lengths_or_zero(&branch_lengths_sparse),
       sparse_partitions,
     )?;
     let log_lh_sparse = log_lh_sparse.value();

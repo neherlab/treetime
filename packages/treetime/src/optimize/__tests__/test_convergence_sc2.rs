@@ -4,7 +4,7 @@ mod tests {
   use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
@@ -51,7 +51,7 @@ mod tests {
       node_states,
     )];
     let (sparse_partitions, _) =
-      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
 
     let dense_partitions = vec![];
     let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
@@ -124,7 +124,7 @@ mod tests {
       node_states,
     )];
     let (sparse_partitions, _) =
-      marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
 
     let dense_partitions = vec![];
     let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);

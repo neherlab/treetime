@@ -4,7 +4,7 @@ mod tests {
   use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+  use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -126,7 +126,7 @@ mod tests {
     let fitch = create_fitch_partition(graph, 0, alphabet, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
-    let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }
@@ -201,7 +201,7 @@ mod tests {
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
 
-    let (mut recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (mut recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh = log_lh.value();
 
     // generate ancestral reconstruction and test against expectation
@@ -344,9 +344,9 @@ mod tests {
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
 
-    let (recon, log_lh_first) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, log_lh_first) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh_first = log_lh_first.value();
-    let (recon, log_lh_second) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, log_lh_second) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh_second = log_lh_second.value();
 
     // Verify log-likelihood value matches expected (same tree/alignment as normalization test)
@@ -522,7 +522,7 @@ mod tests {
           let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
           let recon = SparseReconstruction::seeded(partition, gtr.clone(), node_states);
 
-          let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+          let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
           let log_lh = log_lh.value();
           total_lh += log_lh.exp();
         }
@@ -572,7 +572,7 @@ mod tests {
     )?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, make_nonuniform_gtr()?, node_states);
-    let (mut recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (mut recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let actual_by_edge = {
       graph

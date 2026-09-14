@@ -2,7 +2,7 @@
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::arb_marginal_input_small;
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
-  use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+  use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::ancestral::sample::SampleMode;
   use crate::seq::composition::Composition;
@@ -50,9 +50,9 @@ mod tests {
       let graph: Graph = graph;
       let (_, recon) = run_dense_marginal(&input).unwrap();
 
-      let (recon, log_lh_first) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths)).unwrap();
+      let (recon, log_lh_first) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths)).unwrap();
       let log_lh_first = log_lh_first.value();
-      let (recon, log_lh_second) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths)).unwrap();
+      let (recon, log_lh_second) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths)).unwrap();
       let log_lh_second = log_lh_second.value();
 
       prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
@@ -85,9 +85,9 @@ mod tests {
       let graph: Graph = graph;
       let (_, recon) = run_sparse_marginal(&input).unwrap();
 
-      let (recon, log_lh_first) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths)).unwrap();
+      let (recon, log_lh_first) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths)).unwrap();
       let log_lh_first = log_lh_first.value();
-      let (recon, log_lh_second) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths)).unwrap();
+      let (recon, log_lh_second) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths)).unwrap();
       let log_lh_second = log_lh_second.value();
 
       prop_assert_abs_diff_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);

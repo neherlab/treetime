@@ -3,7 +3,7 @@ mod tests {
   use super::super::test_gm_runner_support::support::{
     ALPHABET, OUTPUTS, load_alignment_for_dataset, load_dates_for_dataset,
   };
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::DenseReconstruction;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::{ClockParams, estimate_clock_model_with_reroot_policy};
@@ -115,7 +115,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
     let partitions: Vec<PartitionTimetree> = vec![dense_partition];
     let (partitions, _) = initialize_marginal_timetree(
       &graph,
-      &profile_branch_lengths(&branch_lengths),
+      &branch_lengths_or_zero(&branch_lengths),
       partitions,
       &nwk_fasta_node_inputs(&graph, &names, aln),
     )?;

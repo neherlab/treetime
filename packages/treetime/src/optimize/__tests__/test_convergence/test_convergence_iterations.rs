@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
   use crate::optimize::params::BranchOptMethod;
@@ -156,8 +156,8 @@ mod tests {
       let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
       let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
-      (dense_partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
-      (sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+      (dense_partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
+      (sparse_partitions, _) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
     }
 
     // Verify all branch lengths are in valid range

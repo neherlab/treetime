@@ -41,7 +41,7 @@ pub fn create_marginal_partition(
   node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
   model_name: GtrModelName,
   dense: Option<bool>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<PartitionCreated, Report> {
   let dense = dense.unwrap_or_else(infer_dense);
 

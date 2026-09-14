@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
   use crate::optimize::params::BranchOptMethod;
@@ -32,7 +32,7 @@ mod tests {
     let graph: Graph = graph;
     let partitions = setup_dense_only(&graph, &names, &aln, &branch_lengths)?;
 
-    let (mut partitions, initial_lh) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
+    let (mut partitions, initial_lh) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
     let initial_lh = initial_lh.value();
     let mut lh_history = vec![initial_lh];
 
@@ -42,7 +42,7 @@ mod tests {
       let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
       let lh;
-      (partitions, lh) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
+      (partitions, lh) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
       let lh = lh.value();
       lh_history.push(lh);
     }
@@ -94,7 +94,7 @@ mod tests {
     let graph: Graph = graph;
     let partitions = setup_sparse_only(&graph, &names, &aln, &branch_lengths)?;
 
-    let (mut partitions, initial_lh) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
+    let (mut partitions, initial_lh) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
     let initial_lh = initial_lh.value();
     let mut lh_history = vec![initial_lh];
 
@@ -104,7 +104,7 @@ mod tests {
       let indel_counts = gather_edge_indel_counts(&graph, &[], &partitions);
       run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
       let lh;
-      (partitions, lh) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
+      (partitions, lh) = marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
       let lh = lh.value();
       lh_history.push(lh);
     }

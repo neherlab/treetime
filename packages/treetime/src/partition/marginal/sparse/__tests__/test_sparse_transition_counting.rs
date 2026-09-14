@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::shared::update::MarginalPasses;
@@ -39,7 +39,7 @@ mod tests {
     })?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
-    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }
 
@@ -62,7 +62,7 @@ mod tests {
     let counts = recon.partition.count_transitions(
       &recon.gtr,
       &graph,
-      &branch_lengths,
+      &branch_lengths_or_zero(&branch_lengths),
       &recon.node_states,
       &recon.edges.backward,
       &recon.edges.forward,
@@ -93,7 +93,7 @@ mod tests {
     let counts = recon.partition.count_transitions(
       &recon.gtr,
       &graph,
-      &branch_lengths,
+      &branch_lengths_or_zero(&branch_lengths),
       &recon.node_states,
       &recon.edges.backward,
       &recon.edges.forward,
@@ -123,7 +123,7 @@ mod tests {
     let counts = recon.partition.count_transitions(
       &recon.gtr,
       &graph,
-      &branch_lengths,
+      &branch_lengths_or_zero(&branch_lengths),
       &recon.node_states,
       &recon.edges.backward,
       &recon.edges.forward,
@@ -158,7 +158,7 @@ mod tests {
     let counts = recon.partition.count_transitions(
       &recon.gtr,
       &graph,
-      &branch_lengths,
+      &branch_lengths_or_zero(&branch_lengths),
       &recon.node_states,
       &recon.edges.backward,
       &recon.edges.forward,

@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
-use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
 use crate::ancestral::pipeline::{AncestralPartition, DenseReconstruction, SparseReconstruction};
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
@@ -76,6 +76,7 @@ pub fn reconstruct_marginal_partition(
 
   let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns, names)?;
   let node_inputs = nwk_fasta_node_inputs(graph, names, sequences);
+  let profile_lengths = branch_lengths_or_zero(branch_lengths);
   let created = create_marginal_partition(
     graph,
     index,
@@ -83,9 +84,8 @@ pub fn reconstruct_marginal_partition(
     &node_inputs,
     gtr_model,
     params.dense,
-    branch_lengths,
+    &profile_lengths,
   )?;
-  let profile_lengths = profile_branch_lengths(branch_lengths);
   let gtr = created.gtr;
 
   // Each partition runs its own marginal passes and node reconstruction over its own role-typed result

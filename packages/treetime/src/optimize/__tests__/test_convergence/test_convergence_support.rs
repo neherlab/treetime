@@ -2,7 +2,7 @@
 pub mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
@@ -76,9 +76,9 @@ pub mod tests {
     )];
 
     let (dense_partitions, _) =
-      marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;
+      marginal_update_dense(graph, &branch_lengths_or_zero(branch_lengths), dense_partitions)?;
     let (sparse_partitions, _) =
-      marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?;
+      marginal_update_sparse(graph, &branch_lengths_or_zero(branch_lengths), sparse_partitions)?;
 
     {
       let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
@@ -107,9 +107,9 @@ pub mod tests {
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<(Vec<DenseReconstruction>, Vec<SparseReconstruction>, f64), Report> {
     let (dense_partitions, dense_lh) =
-      marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), dense_partitions)?;
+      marginal_update_dense(graph, &branch_lengths_or_zero(branch_lengths), dense_partitions)?;
     let (sparse_partitions, sparse_lh) =
-      marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?;
+      marginal_update_sparse(graph, &branch_lengths_or_zero(branch_lengths), sparse_partitions)?;
     Ok((
       dense_partitions,
       sparse_partitions,

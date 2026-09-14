@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -135,8 +135,8 @@ mod tests {
     let partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
-    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
-    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     // Collect edge_subs() results from all edges.
     let actual_by_edge: BTreeMap<_, _> = graph
@@ -248,8 +248,8 @@ mod tests {
     let partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?);
     let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
-    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
-    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.read_arc().key();
       let subs = recon.partition.edge_subs(&recon.node_states, &graph, edge_key)?;

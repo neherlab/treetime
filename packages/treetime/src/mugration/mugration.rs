@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::profile_branch_lengths;
+use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::{GTR, GTRParams};
 use crate::gtr::refinement::refine_gtr_model_and_rate;
@@ -159,12 +159,12 @@ pub fn execute_mugration(
     PartitionMarginalDiscrete::new(discrete_states, MIN_BRANCH_LENGTH_FRACTION, filter_uninformative_root);
   let node_states = partition.attach_traits(&graph, traits, names)?;
 
-  let update = partition.marginal_update(&gtr, &graph, &profile_branch_lengths(branch_lengths), node_states)?;
+  let profile_lengths = branch_lengths_or_zero(branch_lengths);
+  let update = partition.marginal_update(&gtr, &graph, &profile_lengths, node_states)?;
   info!("Mugration: initial log likelihood = {:.4}", update.log_lh.value());
 
   // The partition is an immutable source; refinement threads the model through as a value and returns
   // the refined model with its own reconstruction result maps. Mugration optimizes the rate.
-  let profile_lengths = profile_branch_lengths(branch_lengths);
   let (gtr, MarginalUpdate { node_states, .. }) = refine_gtr_model_and_rate(
     &partition,
     gtr,
@@ -174,7 +174,6 @@ pub fn execute_mugration(
     pc.unwrap_or(1.0),
     sampling_bias_correction,
     &graph,
-    branch_lengths,
     &profile_lengths,
   )?;
 

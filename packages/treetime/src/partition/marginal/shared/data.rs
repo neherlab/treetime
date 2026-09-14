@@ -40,7 +40,7 @@ pub fn count_transitions_dense(
   inputs: &DenseInputs,
   gtr: &GTR,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
   backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
   forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
@@ -52,7 +52,7 @@ pub fn count_transitions_dense(
   for edge in graph.get_edges() {
     let edge_arc = edge.read_arc();
     let edge_key = edge_arc.key();
-    let branch_length = inputs.effective_branch_length(branch_lengths[&edge_key].unwrap_or(0.0));
+    let branch_length = inputs.effective_branch_length(branch_lengths[&edge_key]);
 
     let msg_to_child = &forward[&edge_key].msg_to_child;
     let msg_to_parent = &backward[&edge_key].msg_to_parent;

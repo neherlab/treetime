@@ -4,7 +4,7 @@ mod tests {
   use crate::ancestral::fitch::{
     ancestral_reconstruction_fitch, attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward,
   };
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
@@ -1176,7 +1176,7 @@ mod tests {
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
 
     // Run initial marginal pass before reroot
-    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     // Reroot on AB->A
     let old_root_key = graph.get_exactly_one_root()?.read_arc().key();
@@ -1208,7 +1208,7 @@ mod tests {
     let recon = reroot_sparse(recon.partition, recon.gtr, recon.node_states, &changes)?;
 
     // Run marginal pass after reroot
-    let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let root_edge_totals: Vec<(_, usize)> = graph
       .get_edges()

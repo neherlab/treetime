@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
@@ -208,7 +208,7 @@ mod tests {
       .fold(f64::NEG_INFINITY, f64::max);
 
     // Recompute the marginal likelihood from the returned (rolled-back) branch-length map.
-    let marginal_bl = profile_branch_lengths(&result.branch_lengths);
+    let marginal_bl = branch_lengths_or_zero(&result.branch_lengths);
     let (sparse_partitions, sparse_lh) = marginal_update_sparse(&graph, &marginal_bl, sparse_partitions)?;
     let sparse_lh = sparse_lh.value();
     let (dense_partitions, dense_lh) = marginal_update_dense(&graph, &marginal_bl, dense_partitions)?;

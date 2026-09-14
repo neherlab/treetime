@@ -6,13 +6,8 @@ use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 
-/// Derive the per-edge branch length map (`f64`) a marginal pass propagates sequence profiles along,
-/// from the raw input-tree branch length value map. An edge with no length resolves to `0.0`.
-///
-/// This is the raw-length collector: it applies no clock constraint. Once a timetree commit exists,
-/// the timetree passes fold the committed clock length in instead via
-/// [`timetree_branch_lengths`](crate::timetree::inference::runner::timetree_branch_lengths).
-pub fn profile_branch_lengths(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> BTreeMap<GraphEdgeKey, f64> {
+/// Resolve a per-edge branch length map to concrete `f64`, replacing a missing length with `0.0`.
+pub fn branch_lengths_or_zero(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> BTreeMap<GraphEdgeKey, f64> {
   branch_lengths
     .iter()
     .map(|(key, raw)| (*key, raw.unwrap_or(0.0)))

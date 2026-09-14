@@ -179,7 +179,7 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::fitch::create_fitch_partition;
-    use crate::ancestral::marginal::profile_branch_lengths;
+    use crate::ancestral::marginal::branch_lengths_or_zero;
     use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::optimize::dispatch::initial_guess_mixed;
@@ -282,9 +282,9 @@ mod tests {
       )];
 
       let (sparse_partitions, _) =
-        marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+        marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
       let (dense_partitions, _) =
-        marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
+        marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
 
       {
         let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
@@ -327,10 +327,10 @@ mod tests {
       // at the START of each iteration, before that iteration's update).
       let mut lh_history = result.lh_history.into_iter().map(LogLh::value).collect_vec();
       let (sparse_partitions, sparse_lh) =
-        marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
+        marginal_update_sparse(&graph, &branch_lengths_or_zero(&branch_lengths), sparse_partitions)?;
       let sparse_lh = sparse_lh.value();
       let (dense_partitions, dense_lh) =
-        marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
+        marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
       let dense_lh = dense_lh.value();
       lh_history.push(sparse_lh + dense_lh);
 

@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch::{ancestral_reconstruction_fitch, create_fitch_partition};
-use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
 use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
@@ -417,7 +417,7 @@ where
   F: FnMut(GraphNodeKey, &Seq) -> Result<(), Report>,
 {
   let branch_lengths = input.branch_lengths();
-  let profile_lengths = profile_branch_lengths(&branch_lengths);
+  let profile_lengths = branch_lengths_or_zero(&branch_lengths);
   if params.site_specific_gtr {
     return make_error!(
       "--site-specific-gtr is not yet integrated into the ancestral reconstruction pipeline. \
@@ -486,7 +486,7 @@ where
         node_inputs,
         params.model,
         params.dense,
-        &branch_lengths,
+        &profile_lengths,
       )?;
       let model_name = created.model_name;
       let gtr = created.gtr;
@@ -506,7 +506,6 @@ where
               params.gtr_iterations,
               1.0,
               graph,
-              &branch_lengths,
               &profile_lengths,
             )?
           } else {
@@ -570,7 +569,6 @@ where
               params.gtr_iterations,
               1.0,
               graph,
-              &branch_lengths,
               &profile_lengths,
             )?
           } else {

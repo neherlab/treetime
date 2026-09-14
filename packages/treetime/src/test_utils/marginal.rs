@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::fitch::create_fitch_partition;
-use crate::ancestral::marginal::profile_branch_lengths;
+use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
@@ -27,7 +27,7 @@ pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: &GTR) ->
 
   let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
   let MarginalUpdate { log_lh, .. } =
-    partition.marginal_update(gtr, &graph, &profile_branch_lengths(&branch_lengths), node_states)?;
+    partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), node_states)?;
   Ok(log_lh.value())
 }
 
@@ -44,6 +44,6 @@ pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: &GTR) -
   let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
 
   let MarginalUpdate { log_lh, .. } =
-    partition.marginal_update(gtr, &graph, &profile_branch_lengths(&branch_lengths), node_states)?;
+    partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), node_states)?;
   Ok(log_lh.value())
 }

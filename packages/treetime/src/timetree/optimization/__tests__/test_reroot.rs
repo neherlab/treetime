@@ -4,7 +4,7 @@ mod tests {
   use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::clock::clock_regression::{ClockParams, clock_regression_backward, clock_regression_forward};
   use crate::clock::clock_state::{ClockInputs, ClockState};
@@ -556,7 +556,7 @@ mod tests {
     let initial_leaf_count = graph.get_leaves().len();
 
     // Initialize marginal for the sparse partition
-    let (partitions, _) = marginal_update_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
+    let (partitions, _) = marginal_update_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
 
     // First reroot call (simulating keep_root=false flow)
     let names_tt_2 = names.clone();

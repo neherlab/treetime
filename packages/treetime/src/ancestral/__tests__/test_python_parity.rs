@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
+  use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -42,7 +42,7 @@ mod tests {
     let partition = PartitionMarginalDense::new(index, alphabet, get_common_length(aln)?);
     let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr, node_states);
-    let (recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
+    let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     Ok(recon)
   }
 
@@ -479,7 +479,7 @@ mod tests {
     let dense_node_states =
       dense_partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
     let dense_recon = DenseReconstruction::seeded(dense_partition, gtr.clone(), dense_node_states);
-    let (dense_recon, dense_log_lh) = dense_recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (dense_recon, dense_log_lh) = dense_recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let dense_log_lh = dense_log_lh.value();
 
     // Sparse partition
@@ -487,7 +487,7 @@ mod tests {
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_recon = SparseReconstruction::seeded(partition, gtr, node_states);
     let (sparse_recon, sparse_log_lh) =
-      sparse_recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+      sparse_recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let sparse_log_lh = sparse_log_lh.value();
 
     // Log-likelihoods should match for clean sequences

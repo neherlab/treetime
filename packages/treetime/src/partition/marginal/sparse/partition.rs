@@ -215,7 +215,7 @@ impl MarginalPasses for PartitionMarginalSparse {
     &self,
     gtr: &GTR,
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
     backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
     forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,

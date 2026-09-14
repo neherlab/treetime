@@ -2,7 +2,7 @@
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
-  use crate::ancestral::marginal::profile_branch_lengths;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
@@ -83,9 +83,9 @@ TCGGCCGTGTRTTG--
     let graph: Graph = graph;
     let (_, recon) = run_dense_marginal(&input)?;
 
-    let (recon, log_lh_first) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, log_lh_first) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh_first = log_lh_first.value();
-    let (recon, log_lh_second) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, log_lh_second) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh_second = log_lh_second.value();
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 
@@ -116,9 +116,9 @@ TCGGCCGTGTRTTG--
     let graph: Graph = graph;
     let (_, recon) = run_sparse_marginal(&input)?;
 
-    let (recon, log_lh_first) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, log_lh_first) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh_first = log_lh_first.value();
-    let (recon, log_lh_second) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
+    let (recon, log_lh_second) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh_second = log_lh_second.value();
     pretty_assert_ulps_eq!(log_lh_first, log_lh_second, epsilon = 1e-10);
 

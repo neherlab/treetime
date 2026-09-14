@@ -3,6 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::infer_gtr_fitch;
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use lazy_static::lazy_static;
@@ -44,7 +45,7 @@ mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
-      infer_gtr_fitch(&fitch, &graph, &branch_lengths)?
+      infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths))?
     };
 
     let gtr_b = {
@@ -54,7 +55,7 @@ mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &nwk_fasta_node_inputs(&graph, &names, aln))?;
-      infer_gtr_fitch(&fitch, &graph, &branch_lengths)?
+      infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths))?
     };
 
     pretty_assert_ulps_eq!(gtr_a.mu, gtr_b.mu, epsilon = 1e-15);

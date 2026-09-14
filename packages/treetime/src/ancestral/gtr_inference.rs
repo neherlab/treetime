@@ -12,7 +12,7 @@ use treetime_graph::graph::Graph;
 pub fn infer_gtr_fitch(
   partition: &PartitionFitch,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<GTR, Report> {
   let counts = get_mutation_counts_fitch(graph, partition, branch_lengths)?;
   let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default())?;
@@ -29,7 +29,7 @@ pub fn infer_gtr_fitch(
 pub fn get_mutation_counts_fitch(
   graph: &Graph,
   partition: &PartitionFitch,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<MutationCounts, Report> {
   let alphabet = &partition.alphabet;
 
@@ -52,7 +52,7 @@ pub fn get_mutation_counts_fitch(
     let edge_arc = edge.read_arc();
     let target_key = edge_arc.target();
     let edge_key = edge_arc.key();
-    let branch_length = branch_lengths[&edge_key].unwrap_or(0.0);
+    let branch_length = branch_lengths[&edge_key];
 
     let node_composition = &partition.nodes[&target_key].seq.composition;
 
