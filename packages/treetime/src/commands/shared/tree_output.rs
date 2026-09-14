@@ -1,13 +1,4 @@
-use crate::commands::ancestral::aa_node_data::AaNodeData;
-use crate::commands::ancestral::result::{AncestralNodeOut, AncestralOutputMaps};
-use crate::commands::clock::run::ClockNodeOut;
-use crate::commands::mugration::augur_node_data::{build_confidence_map, compute_entropy};
-use crate::commands::optimize::result::{OptimizeNodeOut, OptimizeOutputMaps};
-use crate::commands::prune::result::{PruneNodeOut, PruneOutputMaps};
-use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
-use crate::mugration::result::{MugrationNodeOut, MugrationOutputMaps};
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, mutation_event_strings};
-use crate::timetree::confidence::NodeConfidenceInterval;
 use chrono::Utc;
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
@@ -22,11 +13,10 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, Node};
 use treetime_io::auspice::auspice_write_file;
 use treetime_io::auspice_types::{
-  AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotationCds, AuspiceGenomeAnnotationNuc,
-  AuspiceGenomeAnnotations, AuspiceNumDate, AuspiceTree, AuspiceTreeBranchAttrs, AuspiceTreeBranchAttrsLabels,
-  AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode, AuspiceTreeNodeAttr, AuspiceTreeNodeAttrs, Segments, StartEnd,
+  AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotations, AuspiceNumDate, AuspiceTree,
+  AuspiceTreeBranchAttrs, AuspiceTreeBranchAttrsLabels, AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode,
+  AuspiceTreeNodeAttr, AuspiceTreeNodeAttrs,
 };
-use treetime_io::dates_csv::DatesMap;
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::graphviz::graphviz_write_file;
 use treetime_io::nex::{NexWriteOptions, nex_write_file_with};
@@ -41,193 +31,40 @@ use treetime_io::usher_mat::{
 };
 use treetime_primitives::AsciiChar;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
-use treetime_utils::{make_error, make_internal_report, make_report};
-use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
+use treetime_utils::{make_error, make_internal_report};
 
-const APPLIES_BRANCH: &str = "parent_branch";
-const APPLIES_NODE: &str = "node";
+pub(crate) const APPLIES_BRANCH: &str = "parent_branch";
+pub(crate) const APPLIES_NODE: &str = "node";
 const BRANCH_LENGTH_UNIT: &str = "subs/site";
-const COLORING_BAD_BRANCH: &str = "bad_branch";
+pub(crate) const COLORING_BAD_BRANCH: &str = "bad_branch";
 const COLORING_GENOTYPE: &str = "gt";
-const COLORING_NUM_DATE: &str = "num_date";
-const DT_BOOLEAN: &str = "xsd:boolean";
-const DT_DOUBLE: &str = "xsd:double";
-const DT_STRING: &str = "xsd:string";
-const NUC_TRACK: &str = "nuc";
-const REF_BAD_BRANCH: &str = "treetime:bad_branch";
-const REF_DATE_INFERRED: &str = "treetime:date_inferred";
-const REF_DIV: &str = "treetime:divergence";
-const REF_GAMMA: &str = "treetime:gamma";
-const REF_MUTATION: &str = "treetime:mutation";
+pub(crate) const COLORING_NUM_DATE: &str = "num_date";
+pub(crate) const DT_BOOLEAN: &str = "xsd:boolean";
+pub(crate) const DT_DOUBLE: &str = "xsd:double";
+pub(crate) const DT_STRING: &str = "xsd:string";
+pub(crate) const NUC_TRACK: &str = "nuc";
+pub(crate) const REF_BAD_BRANCH: &str = "treetime:bad_branch";
+pub(crate) const REF_DATE_INFERRED: &str = "treetime:date_inferred";
+pub(crate) const REF_DIV: &str = "treetime:divergence";
+pub(crate) const REF_GAMMA: &str = "treetime:gamma";
+pub(crate) const REF_MUTATION: &str = "treetime:mutation";
 const REF_TRAIT_CONFIDENCE_PREFIX: &str = "treetime:trait_confidence:";
 const REF_TRAIT_ENTROPY_PREFIX: &str = "treetime:trait_entropy:";
 const REF_TRAIT_PREFIX: &str = "treetime:trait:";
-const REF_TRAIT_TRANSITION_PREFIX: &str = "treetime:trait_transition:";
+pub(crate) const REF_TRAIT_TRANSITION_PREFIX: &str = "treetime:trait_transition:";
 const TYPE_INPUT_BRANCH_SUPPORT: &str = "treetime:input_branch_support";
 const PROPERTY_TOKEN_ENCODE_SET: &AsciiSet = &NON_ALPHANUMERIC.remove(b'-').remove(b'.').remove(b'_').remove(b'~');
 
-pub fn write_ancestral_tree_outputs(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &AncestralOutputMaps,
-  aa_node_data: Option<&AaNodeData>,
-  outputs: &BTreeMap<TreeWriteKind, PathBuf>,
-  providers: &CommentProviders,
-) -> Result<(), Report> {
-  let updated = generation_date();
-  let names: BTreeMap<GraphNodeKey, Option<String>> =
-    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
-  write_tree_outputs(
-    graph,
-    &names,
-    branch_lengths,
-    branch_lengths,
-    outputs,
-    providers,
-    "ancestral",
-    || ancestral_to_auspice(graph, nodes, branch_lengths, maps, aa_node_data, &updated),
-    || ancestral_to_phyloxml(graph, nodes, branch_lengths, maps, aa_node_data),
-    || ancestral_to_mat(graph, &names, branch_lengths, maps, aa_node_data),
-  )
-}
-
-pub fn write_optimize_tree_outputs(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &OptimizeOutputMaps,
-  outputs: &BTreeMap<TreeWriteKind, PathBuf>,
-  providers: &CommentProviders,
-) -> Result<(), Report> {
-  let updated = generation_date();
-  let names: BTreeMap<GraphNodeKey, Option<String>> =
-    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
-  write_tree_outputs(
-    graph,
-    &names,
-    branch_lengths,
-    branch_lengths,
-    outputs,
-    providers,
-    "optimize",
-    || optimize_to_auspice(graph, nodes, branch_lengths, maps, &updated),
-    || optimize_to_phyloxml(graph, nodes, branch_lengths, maps),
-    || optimize_to_mat(graph, &names, branch_lengths, maps),
-  )
-}
-
-pub fn write_prune_tree_outputs(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, PruneNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &PruneOutputMaps,
-  outputs: &BTreeMap<TreeWriteKind, PathBuf>,
-  providers: &CommentProviders,
-) -> Result<(), Report> {
-  let updated = generation_date();
-  let names: BTreeMap<GraphNodeKey, Option<String>> =
-    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
-  write_tree_outputs(
-    graph,
-    &names,
-    branch_lengths,
-    branch_lengths,
-    outputs,
-    providers,
-    "prune",
-    || prune_to_auspice(graph, nodes, branch_lengths, maps, &updated),
-    || prune_to_phyloxml(graph, nodes, branch_lengths, maps),
-    || prune_to_mat(graph, &names, branch_lengths, maps),
-  )
-}
-
-pub fn write_clock_tree_outputs(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, ClockNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  outputs: &BTreeMap<TreeWriteKind, PathBuf>,
-  providers: &CommentProviders,
-) -> Result<(), Report> {
-  let updated = generation_date();
-  let names: BTreeMap<GraphNodeKey, Option<String>> =
-    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
-  write_tree_outputs(
-    graph,
-    &names,
-    branch_lengths,
-    branch_lengths,
-    outputs,
-    providers,
-    "clock",
-    || clock_to_auspice(graph, nodes, &updated),
-    || clock_to_phyloxml(graph, nodes, branch_lengths),
-    || clock_to_mat(graph, &names, branch_lengths),
-  )
-}
-
-pub fn write_mugration_tree_outputs(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, MugrationNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &MugrationOutputMaps,
-  attribute: &str,
-  outputs: &BTreeMap<TreeWriteKind, PathBuf>,
-  providers: &CommentProviders,
-) -> Result<(), Report> {
-  let updated = generation_date();
-  let names: BTreeMap<GraphNodeKey, Option<String>> =
-    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
-  write_tree_outputs(
-    graph,
-    &names,
-    branch_lengths,
-    branch_lengths,
-    outputs,
-    providers,
-    "mugration",
-    || mugration_to_auspice(graph, nodes, branch_lengths, maps, attribute, &updated),
-    || mugration_to_phyloxml(graph, nodes, branch_lengths, maps, attribute),
-    || mugration_to_mat(graph, &names, branch_lengths),
-  )
-}
-
-pub fn write_timetree_tree_outputs(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
-  edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
-  maps: &TimetreeOutputMaps,
-  confidence_intervals: Option<&[NodeConfidenceInterval]>,
-  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
-  dates: Option<&DatesMap>,
-  outputs: &BTreeMap<TreeWriteKind, PathBuf>,
-  providers: &CommentProviders,
-) -> Result<(), Report> {
-  let updated = generation_date();
-  let names: BTreeMap<GraphNodeKey, Option<String>> =
-    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
-  // R2: the Newick/Nexus weight and the embedded MAT Newick weight are the branch time length, while
-  // the Graphviz weight stays the substitution branch length. These diverge for timetree, so the two
-  // writer paths take distinct edge-weight maps.
-  let nwk_weights: BTreeMap<GraphEdgeKey, Option<f64>> =
-    edges.iter().map(|(key, edge)| (*key, edge.time_length)).collect();
-  let graphviz_weights: BTreeMap<GraphEdgeKey, Option<f64>> =
-    edges.iter().map(|(key, edge)| (*key, edge.branch_length)).collect();
-  write_tree_outputs(
-    graph,
-    &names,
-    &nwk_weights,
-    &graphviz_weights,
-    outputs,
-    providers,
-    "timetree",
-    || timetree_to_auspice(graph, nodes, maps, confidence_intervals, mutation_counts, &updated),
-    || timetree_to_phyloxml(graph, nodes, edges, maps, confidence_intervals, mutation_counts, dates),
-    || timetree_to_mat(graph, &names, &nwk_weights, maps),
-  )
-}
-
-fn write_tree_outputs<A, P, M>(
+/// Write every requested tree output for one command.
+///
+/// The per-command entry points build the node-name and edge-weight maps and supply closures that
+/// convert the graph into the three structured document types. This function owns the file-format
+/// dispatch shared by all commands.
+///
+/// R2: the Newick/Nexus weight and the embedded MAT Newick weight are the branch time length for
+/// timetree, while the Graphviz weight stays the substitution branch length. The two writer paths
+/// therefore take distinct edge-weight maps.
+pub(crate) fn write_tree_outputs<A, P, M>(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -297,245 +134,21 @@ where
   Ok(())
 }
 
-pub(crate) fn ancestral_to_auspice(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &AncestralOutputMaps,
-  aa_node_data: Option<&AaNodeData>,
-  updated: &str,
-) -> Result<AuspiceTree, Report> {
-  let root_sequences = ancestral_root_sequences(graph, maps, aa_node_data);
-  let genome_annotations = ancestral_genome_annotations(graph, &root_sequences, aa_node_data)?;
-  let data = auspice_data(
-    "TreeTime ancestral analysis",
-    updated,
-    vec![],
-    vec![],
-    None,
-    genome_annotations,
-    Some(root_sequences),
-    !ancestral_all_mutations(graph, maps, aa_node_data).is_empty(),
-  );
-  auspice_from_graph(graph, data, |context| {
-    let out = &nodes[&context.node_key];
-    let name = node_name_value(context.node_key, out.name.as_deref());
-    let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
-    let mutations = ancestral_node_mutations(graph, maps, context.node_key, context.edge_key, aa_node_data);
-    ancestral_auspice_node(&name, div, out.confidence, mutations, None, None)
-  })
+/// Per-node conversion context passed to the graph-walk closures.
+pub(crate) struct GraphNodeContext {
+  pub(crate) node_key: GraphNodeKey,
+  pub(crate) edge_key: Option<GraphEdgeKey>,
 }
 
-pub(crate) fn optimize_to_auspice(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &OptimizeOutputMaps,
-  updated: &str,
-) -> Result<AuspiceTree, Report> {
-  let root_sequences = optimize_root_sequences(maps);
-  let data = auspice_data(
-    "TreeTime optimize analysis",
-    updated,
-    vec![],
-    vec![],
-    None,
-    None,
-    Some(root_sequences),
-    maps.root_sequence.is_some(),
-  );
-  auspice_from_graph(graph, data, |context| {
-    let out = &nodes[&context.node_key];
-    let name = node_name_value(context.node_key, out.name.as_deref());
-    let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
-    ancestral_auspice_node(
-      &name,
-      div,
-      out.confidence,
-      optimize_mutations(maps, context.edge_key),
-      None,
-      None,
-    )
-  })
+/// Reconstructed discrete trait for one attribute: the assigned state plus its confidence and entropy.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct TraitValue {
+  pub(crate) value: String,
+  pub(crate) confidence: BTreeMap<String, f64>,
+  pub(crate) entropy: Option<f64>,
 }
 
-pub(crate) fn prune_to_auspice(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, PruneNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &PruneOutputMaps,
-  updated: &str,
-) -> Result<AuspiceTree, Report> {
-  let root_sequences = prune_root_sequences(maps);
-  let data = auspice_data(
-    "TreeTime prune analysis",
-    updated,
-    vec![],
-    vec![],
-    None,
-    None,
-    Some(root_sequences),
-    maps.root_sequence.is_some(),
-  );
-  auspice_from_graph(graph, data, |context| {
-    let out = &nodes[&context.node_key];
-    let name = node_name_value(context.node_key, out.name.as_deref());
-    let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
-    ancestral_auspice_node(
-      &name,
-      div,
-      out.confidence,
-      prune_mutations(maps, context.edge_key),
-      None,
-      None,
-    )
-  })
-}
-
-pub(crate) fn clock_to_auspice(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, ClockNodeOut>,
-  updated: &str,
-) -> Result<AuspiceTree, Report> {
-  let data = auspice_data(
-    "TreeTime clock analysis",
-    updated,
-    vec![
-      coloring(COLORING_NUM_DATE, "Date", "continuous"),
-      coloring(COLORING_BAD_BRANCH, "Excluded", "categorical"),
-    ],
-    vec![COLORING_BAD_BRANCH.to_owned()],
-    Some(COLORING_BAD_BRANCH.to_owned()),
-    None,
-    None,
-    false,
-  );
-  auspice_from_graph(graph, data, |context| {
-    let out = &nodes[&context.node_key];
-    let name = node_name_value(context.node_key, out.name.as_deref());
-    Ok(auspice_node(
-      name.clone(),
-      finite_number(Some(out.div), 6, "clock", &name, "div")?,
-      finite_number(out.time, 3, "clock", &name, "date")?,
-      None,
-      Some(out.bad_branch || out.is_outlier),
-      BTreeMap::new(),
-      BTreeMap::new(),
-      None,
-    ))
-  })
-}
-
-pub(crate) fn mugration_to_auspice(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, MugrationNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &MugrationOutputMaps,
-  attribute: &str,
-  updated: &str,
-) -> Result<AuspiceTree, Report> {
-  let data = auspice_data(
-    "TreeTime mugration analysis",
-    updated,
-    vec![coloring(attribute, attribute, "categorical")],
-    vec![attribute.to_owned()],
-    Some(attribute.to_owned()),
-    None,
-    None,
-    false,
-  );
-  auspice_from_graph(graph, data, |context| {
-    let name = node_name_value(context.node_key, nodes[&context.node_key].name.as_deref());
-    let traits = mugration_traits(graph, maps, context.node_key, &name, attribute)?;
-    Ok(auspice_node(
-      name.clone(),
-      finite_number(
-        cumulative_branch_length_from(graph, branch_lengths, context.node_key)?,
-        6,
-        "mugration",
-        &name,
-        "div",
-      )?,
-      None,
-      None,
-      None,
-      traits,
-      BTreeMap::new(),
-      mugration_transition_label(graph, maps, context.node_key, attribute)?,
-    ))
-  })
-}
-
-pub(crate) fn timetree_to_auspice(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
-  maps: &TimetreeOutputMaps,
-  confidence_intervals: Option<&[NodeConfidenceInterval]>,
-  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
-  updated: &str,
-) -> Result<AuspiceTree, Report> {
-  let root_sequences = timetree_root_sequences(maps);
-  let data = auspice_data(
-    "TreeTime timetree analysis",
-    updated,
-    vec![
-      coloring(COLORING_NUM_DATE, "Date", "continuous"),
-      coloring(COLORING_BAD_BRANCH, "Excluded", "categorical"),
-    ],
-    vec![COLORING_BAD_BRANCH.to_owned()],
-    Some(COLORING_BAD_BRANCH.to_owned()),
-    None,
-    Some(root_sequences),
-    maps.root_sequence.is_some(),
-  );
-  auspice_from_graph(graph, data, |context| {
-    let out = &nodes[&context.node_key];
-    let name = node_name_value(context.node_key, out.name.as_deref());
-    let div = timetree_divergence(graph, context.node_key, out.div, mutation_counts)?;
-    let confidence = timetree_date_confidence(graph, context.node_key, &name, confidence_intervals)?;
-    Ok(auspice_node(
-      name.clone(),
-      finite_number(Some(div), 6, "timetree", &name, "div")?,
-      finite_number(out.time, 3, "timetree", &name, "date")?,
-      confidence,
-      Some(out.bad_branch || out.is_outlier),
-      BTreeMap::new(),
-      group_mutations(timetree_mutations(maps, context.edge_key))?,
-      None,
-    ))
-  })
-}
-
-fn ancestral_auspice_node(
-  name: &str,
-  div: Option<f64>,
-  confidence: Option<f64>,
-  mutations: Vec<Mutation>,
-  date: Option<f64>,
-  bad_branch: Option<bool>,
-) -> Result<AuspiceTreeNode, Report> {
-  let mut other = serde_json::Map::new();
-  if let Some(confidence) = confidence {
-    ensure_finite(confidence, "tree output", name, "input branch support")?;
-    other.insert("confidence".to_owned(), json!({ "value": confidence }));
-  }
-  let mut node = auspice_node(
-    name.to_owned(),
-    finite_number(div, 6, "tree output", name, "div")?,
-    finite_number(date, 3, "tree output", name, "date")?,
-    None,
-    bad_branch,
-    BTreeMap::new(),
-    group_mutations(mutations)?,
-    None,
-  );
-  if let Value::Object(target) = &mut node.node_attrs.other {
-    target.extend(other);
-  }
-  Ok(node)
-}
-
-fn auspice_data(
+pub(crate) fn auspice_data(
   title: &str,
   updated: &str,
   mut colorings: Vec<AuspiceColoring>,
@@ -568,7 +181,7 @@ fn auspice_data(
   }
 }
 
-fn auspice_node(
+pub(crate) fn auspice_node(
   name: String,
   div: Option<f64>,
   date: Option<f64>,
@@ -603,7 +216,38 @@ fn auspice_node(
   }
 }
 
-fn auspice_from_graph<F>(graph: &Graph, data: AuspiceTreeData, mut convert: F) -> Result<AuspiceTree, Report>
+/// Auspice node for the sequence-reconstruction commands (ancestral, optimize, prune): divergence,
+/// input-branch support, and grouped substitution mutations, with no date or trait attributes.
+pub(crate) fn sequence_auspice_node(
+  name: &str,
+  div: Option<f64>,
+  confidence: Option<f64>,
+  mutations: Vec<Mutation>,
+  date: Option<f64>,
+  bad_branch: Option<bool>,
+) -> Result<AuspiceTreeNode, Report> {
+  let mut other = serde_json::Map::new();
+  if let Some(confidence) = confidence {
+    ensure_finite(confidence, "tree output", name, "input branch support")?;
+    other.insert("confidence".to_owned(), json!({ "value": confidence }));
+  }
+  let mut node = auspice_node(
+    name.to_owned(),
+    finite_number(div, 6, "tree output", name, "div")?,
+    finite_number(date, 3, "tree output", name, "date")?,
+    None,
+    bad_branch,
+    BTreeMap::new(),
+    group_mutations(mutations)?,
+    None,
+  );
+  if let Value::Object(target) = &mut node.node_attrs.other {
+    target.extend(other);
+  }
+  Ok(node)
+}
+
+pub(crate) fn auspice_from_graph<F>(graph: &Graph, data: AuspiceTreeData, mut convert: F) -> Result<AuspiceTree, Report>
 where
   F: FnMut(&GraphNodeContext) -> Result<AuspiceTreeNode, Report>,
 {
@@ -670,233 +314,9 @@ fn attach_auspice_children(
   Ok(())
 }
 
-struct GraphNodeContext {
-  node_key: GraphNodeKey,
-  edge_key: Option<GraphEdgeKey>,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-struct TraitValue {
-  value: String,
-  confidence: BTreeMap<String, f64>,
-  entropy: Option<f64>,
-}
-
-pub(crate) fn ancestral_to_phyloxml(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &AncestralOutputMaps,
-  aa_node_data: Option<&AaNodeData>,
-) -> Result<Phyloxml, Report> {
-  phyloxml_from_graph(graph, "TreeTime ancestral analysis", |context| {
-    let out = &nodes[&context.node_key];
-    let name = node_name_value(context.node_key, out.name.as_deref());
-    let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
-    let branch_length = context.edge_key.and_then(|edge_key| branch_lengths[&edge_key]);
-    let mutations = ancestral_node_mutations(graph, maps, context.node_key, context.edge_key, aa_node_data);
-    ancestral_phyloxml_clade(
-      &name,
-      out.name.clone(),
-      div,
-      branch_length,
-      out.confidence,
-      mutations,
-      &ancestral_node_sequences(graph, maps, context.node_key, aa_node_data),
-    )
-  })
-}
-
-pub(crate) fn optimize_to_phyloxml(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, OptimizeNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &OptimizeOutputMaps,
-) -> Result<Phyloxml, Report> {
-  phyloxml_from_graph(graph, "TreeTime optimize analysis", |context| {
-    let out = &nodes[&context.node_key];
-    let name = node_name_value(context.node_key, out.name.as_deref());
-    let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
-    let branch_length = context.edge_key.and_then(|edge_key| branch_lengths[&edge_key]);
-    ancestral_phyloxml_clade(
-      &name,
-      out.name.clone(),
-      div,
-      branch_length,
-      out.confidence,
-      optimize_mutations(maps, context.edge_key),
-      &optimize_node_sequences(maps, context.node_key),
-    )
-  })
-}
-
-pub(crate) fn prune_to_phyloxml(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, PruneNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &PruneOutputMaps,
-) -> Result<Phyloxml, Report> {
-  phyloxml_from_graph(graph, "TreeTime prune analysis", |context| {
-    let out = &nodes[&context.node_key];
-    let name = node_name_value(context.node_key, out.name.as_deref());
-    let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
-    let branch_length = context.edge_key.and_then(|edge_key| branch_lengths[&edge_key]);
-    ancestral_phyloxml_clade(
-      &name,
-      out.name.clone(),
-      div,
-      branch_length,
-      out.confidence,
-      prune_mutations(maps, context.edge_key),
-      &prune_node_sequences(maps, context.node_key),
-    )
-  })
-}
-
-pub(crate) fn clock_to_phyloxml(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, ClockNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<Phyloxml, Report> {
-  phyloxml_from_graph(graph, "TreeTime clock analysis", |context| {
-    let out = &nodes[&context.node_key];
-    let name = node_name_value(context.node_key, out.name.as_deref());
-    ensure_optional_finite(out.time, "clock", &name, "date")?;
-    ensure_finite(out.div, "clock", &name, "divergence")?;
-    let property = vec![
-      property(REF_DIV, DT_DOUBLE, APPLIES_NODE, &out.div.to_string()),
-      property(
-        REF_BAD_BRANCH,
-        DT_BOOLEAN,
-        APPLIES_NODE,
-        if out.bad_branch || out.is_outlier {
-          "true"
-        } else {
-          "false"
-        },
-      ),
-    ];
-    Ok(PhyloxmlClade {
-      name: out.name.clone(),
-      branch_length_elem: context.edge_key.and_then(|edge_key| branch_lengths[&edge_key]),
-      branch_length_attr: None,
-      confidence: vec![],
-      width: None,
-      color: None,
-      node_id: None,
-      taxonomy: vec![],
-      sequence: vec![],
-      events: None,
-      binary_characters: None,
-      distribution: vec![],
-      date: out.time.map(phyloxml_date),
-      reference: vec![],
-      property,
-      clade: vec![],
-      other: BTreeMap::new(),
-    })
-  })
-}
-
-pub(crate) fn mugration_to_phyloxml(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, MugrationNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &MugrationOutputMaps,
-  attribute: &str,
-) -> Result<Phyloxml, Report> {
-  phyloxml_from_graph(graph, "TreeTime mugration analysis", |context| {
-    let out = &nodes[&context.node_key];
-    let name = node_name_value(context.node_key, out.name.as_deref());
-    let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
-    ensure_optional_finite(div, "mugration", &name, "divergence")?;
-    let traits = mugration_traits(graph, maps, context.node_key, &name, attribute)?;
-    let mut properties = div
-      .map(|div| vec![property(REF_DIV, DT_DOUBLE, APPLIES_NODE, &div.to_string())])
-      .unwrap_or_default();
-    properties.extend(trait_properties(&traits, &name)?);
-    if let Some((parent, child)) = mugration_transition(graph, maps, context.node_key)? {
-      let attribute = encode_property_token(attribute);
-      properties.push(property(
-        &format!("{REF_TRAIT_TRANSITION_PREFIX}{attribute}"),
-        DT_STRING,
-        APPLIES_BRANCH,
-        &format!("{}:{}", encode_property_token(&parent), encode_property_token(&child)),
-      ));
-    }
-    let mut clade = empty_phyloxml_clade(
-      out.name.clone(),
-      context.edge_key.and_then(|edge_key| branch_lengths[&edge_key]),
-    );
-    clade.confidence = input_branch_confidence(out.confidence, "mugration", &name)?;
-    clade.property = properties;
-    Ok(clade)
-  })
-}
-
-pub(crate) fn timetree_to_phyloxml(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, TimetreeNodeOut>,
-  edges: &BTreeMap<GraphEdgeKey, TimetreeEdgeOut>,
-  maps: &TimetreeOutputMaps,
-  confidence_intervals: Option<&[NodeConfidenceInterval]>,
-  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
-  dates: Option<&DatesMap>,
-) -> Result<Phyloxml, Report> {
-  phyloxml_from_graph(graph, "TreeTime timetree analysis", |context| {
-    let out = &nodes[&context.node_key];
-    let gamma = context.edge_key.map_or(1.0, |edge_key| edges[&edge_key].gamma);
-    let name = node_name_value(context.node_key, out.name.as_deref());
-    let divergence = timetree_divergence(graph, context.node_key, out.div, mutation_counts)?;
-    ensure_finite(divergence, "timetree", &name, "divergence")?;
-    ensure_optional_finite(out.time, "timetree", &name, "date")?;
-    ensure_finite(gamma, "timetree", &name, "gamma")?;
-    let mut properties = vec![
-      property(REF_DIV, DT_DOUBLE, APPLIES_NODE, &divergence.to_string()),
-      property(
-        REF_BAD_BRANCH,
-        DT_BOOLEAN,
-        APPLIES_NODE,
-        if out.bad_branch || out.is_outlier {
-          "true"
-        } else {
-          "false"
-        },
-      ),
-    ];
-    if timetree_date_is_inferred(graph, context.node_key, out.name.as_deref(), out.time, dates) == Some(true) {
-      properties.push(property(REF_DATE_INFERRED, DT_BOOLEAN, APPLIES_NODE, "true"));
-    }
-    if context.edge_key.is_some() {
-      properties.push(property(REF_GAMMA, DT_DOUBLE, APPLIES_BRANCH, &gamma.to_string()));
-    }
-    for mutation in timetree_mutations(maps, context.edge_key) {
-      properties.push(mutation_property(&mutation)?);
-    }
-    let date = out.time.map(|value| {
-      let confidence =
-        confidence_intervals.and_then(|intervals| intervals.iter().find(|interval| interval.key == context.node_key));
-      PhyloxmlDate {
-        desc: None,
-        value: Some(value),
-        minimum: confidence.map(|interval| interval.lower),
-        maximum: confidence.map(|interval| interval.upper),
-        unit: Some("year".to_owned()),
-      }
-    });
-    let mut clade = empty_phyloxml_clade(
-      out.name.clone(),
-      context.edge_key.and_then(|edge_key| edges[&edge_key].branch_length),
-    );
-    clade.confidence = input_branch_confidence(out.confidence, "timetree", &name)?;
-    clade.date = date;
-    clade.property = properties;
-    clade.sequence = phyloxml_sequences(&timetree_node_sequences(maps, context.node_key));
-    Ok(clade)
-  })
-}
-
-fn ancestral_phyloxml_clade(
+/// PhyloXML clade for the sequence-reconstruction commands (ancestral, optimize, prune): divergence
+/// property, mutation properties, input-branch support, and node sequences.
+pub(crate) fn sequence_phyloxml_clade(
   name: &str,
   clade_name: Option<String>,
   divergence: Option<f64>,
@@ -922,7 +342,7 @@ fn ancestral_phyloxml_clade(
   Ok(clade)
 }
 
-fn phyloxml_from_graph<F>(graph: &Graph, title: &str, mut convert: F) -> Result<Phyloxml, Report>
+pub(crate) fn phyloxml_from_graph<F>(graph: &Graph, title: &str, mut convert: F) -> Result<Phyloxml, Report>
 where
   F: FnMut(&GraphNodeContext) -> Result<PhyloxmlClade, Report>,
 {
@@ -1000,90 +420,8 @@ fn attach_phyloxml_children(
   Ok(())
 }
 
-pub(crate) fn ancestral_to_mat(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &AncestralOutputMaps,
-  aa_node_data: Option<&AaNodeData>,
-) -> Result<UsherTree, Report> {
-  let reference = ancestral_root_sequences(graph, maps, aa_node_data).remove(NUC_TRACK);
-  mat_from_graph(graph, names, nwk_weights, reference.as_deref(), |node_key, edge_key| {
-    Ok(ancestral_node_mutations(
-      graph,
-      maps,
-      node_key,
-      Some(edge_key),
-      aa_node_data,
-    ))
-  })
-}
-
-pub(crate) fn optimize_to_mat(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &OptimizeOutputMaps,
-) -> Result<UsherTree, Report> {
-  let reference = optimize_root_sequences(maps).remove(NUC_TRACK);
-  mat_from_graph(
-    graph,
-    names,
-    nwk_weights,
-    reference.as_deref(),
-    |_node_key, edge_key| Ok(optimize_mutations(maps, Some(edge_key))),
-  )
-}
-
-pub(crate) fn prune_to_mat(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &PruneOutputMaps,
-) -> Result<UsherTree, Report> {
-  let reference = prune_root_sequences(maps).remove(NUC_TRACK);
-  mat_from_graph(
-    graph,
-    names,
-    nwk_weights,
-    reference.as_deref(),
-    |_node_key, edge_key| Ok(prune_mutations(maps, Some(edge_key))),
-  )
-}
-
-pub(crate) fn clock_to_mat(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<UsherTree, Report> {
-  mutation_free_mat(graph, names, nwk_weights)
-}
-
-pub(crate) fn mugration_to_mat(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<UsherTree, Report> {
-  mutation_free_mat(graph, names, nwk_weights)
-}
-
-pub(crate) fn timetree_to_mat(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &TimetreeOutputMaps,
-) -> Result<UsherTree, Report> {
-  let reference = timetree_root_sequences(maps).remove(NUC_TRACK);
-  mat_from_graph(
-    graph,
-    names,
-    nwk_weights,
-    reference.as_deref(),
-    |_node_key, edge_key| Ok(timetree_mutations(maps, Some(edge_key))),
-  )
-}
-
-fn mutation_free_mat(
+/// Build a UShER MAT with no per-node mutations, for commands that do not reconstruct sequences.
+pub(crate) fn mutation_free_mat(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -1091,7 +429,7 @@ fn mutation_free_mat(
   mat_from_graph(graph, names, nwk_weights, None, |_node_key, _edge_key| Ok(vec![]))
 }
 
-fn mat_from_graph<F>(
+pub(crate) fn mat_from_graph<F>(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -1187,358 +525,6 @@ fn mat_nucleotide(nucleotide: AsciiChar, node_name: &str, role: &str) -> Result<
   }
 }
 
-fn ancestral_root_sequences(
-  graph: &Graph,
-  maps: &AncestralOutputMaps,
-  aa_node_data: Option<&AaNodeData>,
-) -> BTreeMap<String, String> {
-  let mut sequences = BTreeMap::new();
-  if let Some(sequence) = maps.root_sequence.as_ref() {
-    sequences.insert(NUC_TRACK.to_owned(), sequence.to_string());
-  }
-  if let Some(aa) = aa_node_data {
-    sequences.extend(aa.root_aa_sequences.clone());
-  }
-  sequences
-}
-
-fn ancestral_node_sequences(
-  graph: &Graph,
-  maps: &AncestralOutputMaps,
-  node_key: GraphNodeKey,
-  aa_node_data: Option<&AaNodeData>,
-) -> BTreeMap<String, String> {
-  let mut sequences = maps
-    .node_sequences
-    .get(&node_key)
-    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
-    .unwrap_or_default();
-  if graph.is_root(node_key)
-    && let Some(aa) = aa_node_data
-  {
-    sequences.extend(aa.root_aa_sequences.clone());
-  }
-  sequences
-}
-
-fn ancestral_genome_annotations(
-  graph: &Graph,
-  root_sequences: &BTreeMap<String, String>,
-  aa_node_data: Option<&AaNodeData>,
-) -> Result<Option<AuspiceGenomeAnnotations>, Report> {
-  let nuc = root_sequences
-    .get(NUC_TRACK)
-    .map(|sequence| -> Result<_, Report> {
-      Ok(AuspiceGenomeAnnotationNuc {
-        start: 1,
-        end: isize::try_from(sequence.len()).wrap_err("Nucleotide sequence length does not fit Auspice coordinates")?,
-        strand: Some("+".to_owned()),
-        r#type: Some("source".to_owned()),
-        other: Value::default(),
-      })
-    })
-    .transpose()?;
-  let cdses = aa_node_data
-    .map(|data| {
-      data
-        .annotations
-        .iter()
-        .map(|(name, annotation)| Ok((name.clone(), auspice_cds_annotation(name, annotation)?)))
-        .collect::<Result<BTreeMap<_, _>, Report>>()
-    })
-    .transpose()?
-    .unwrap_or_default();
-  if nuc.is_none() && cdses.is_empty() {
-    return Ok(None);
-  }
-  Ok(Some(AuspiceGenomeAnnotations {
-    nuc,
-    cdses,
-    other: Value::default(),
-  }))
-}
-
-fn auspice_cds_annotation(
-  name: &str,
-  annotation: &AugurNodeDataJsonAnnotationEntry,
-) -> Result<AuspiceGenomeAnnotationCds, Report> {
-  let strand = annotation
-    .strand
-    .clone()
-    .ok_or_else(|| make_report!("CDS annotation '{name}' has no strand for Auspice output"))?;
-  let other = Value::Object(annotation.other.clone().into_iter().collect());
-  let segments = if let Some(segments) = annotation.segments.as_ref() {
-    if segments.is_empty() {
-      return make_error!("CDS annotation '{name}' has no segments for Auspice output");
-    }
-    Segments::MultipleSegments {
-      segments: segments
-        .iter()
-        .map(|segment| {
-          Ok(StartEnd {
-            start: auspice_coordinate(segment.start, name, "segment start")?,
-            end: auspice_coordinate(segment.end, name, "segment end")?,
-            other: Value::Object(segment.other.clone().into_iter().collect()),
-          })
-        })
-        .collect::<Result<Vec<_>, Report>>()?,
-      other,
-    }
-  } else {
-    Segments::OneSegment(StartEnd {
-      start: auspice_coordinate(
-        annotation
-          .start
-          .ok_or_else(|| make_report!("CDS annotation '{name}' has no start for Auspice output"))?,
-        name,
-        "start",
-      )?,
-      end: auspice_coordinate(
-        annotation
-          .end
-          .ok_or_else(|| make_report!("CDS annotation '{name}' has no end for Auspice output"))?,
-        name,
-        "end",
-      )?,
-      other,
-    })
-  };
-  Ok(AuspiceGenomeAnnotationCds {
-    r#type: annotation.entry_type.clone(),
-    gene: None,
-    color: None,
-    display_name: None,
-    description: None,
-    strand: Some(strand),
-    segments,
-  })
-}
-
-fn auspice_coordinate(coordinate: i64, name: &str, field: &str) -> Result<isize, Report> {
-  isize::try_from(coordinate)
-    .wrap_err_with(|| format!("CDS annotation '{name}' {field} does not fit Auspice coordinates"))
-}
-
-fn optimize_root_sequences(maps: &OptimizeOutputMaps) -> BTreeMap<String, String> {
-  maps
-    .root_sequence
-    .as_ref()
-    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
-    .unwrap_or_default()
-}
-
-fn optimize_node_sequences(maps: &OptimizeOutputMaps, node_key: GraphNodeKey) -> BTreeMap<String, String> {
-  maps
-    .node_sequences
-    .get(&node_key)
-    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
-    .unwrap_or_default()
-}
-
-fn prune_root_sequences(maps: &PruneOutputMaps) -> BTreeMap<String, String> {
-  maps
-    .root_sequence
-    .as_ref()
-    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
-    .unwrap_or_default()
-}
-
-fn prune_node_sequences(maps: &PruneOutputMaps, node_key: GraphNodeKey) -> BTreeMap<String, String> {
-  maps
-    .node_sequences
-    .get(&node_key)
-    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
-    .unwrap_or_default()
-}
-
-fn timetree_root_sequences(maps: &TimetreeOutputMaps) -> BTreeMap<String, String> {
-  maps
-    .root_sequence
-    .as_ref()
-    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
-    .unwrap_or_default()
-}
-
-fn timetree_node_sequences(maps: &TimetreeOutputMaps, node_key: GraphNodeKey) -> BTreeMap<String, String> {
-  maps
-    .node_sequences
-    .get(&node_key)
-    .map(|sequence| btreemap! { NUC_TRACK.to_owned() => sequence.to_string() })
-    .unwrap_or_default()
-}
-
-fn ancestral_node_mutations(
-  graph: &Graph,
-  maps: &AncestralOutputMaps,
-  node_key: GraphNodeKey,
-  edge_key: Option<GraphEdgeKey>,
-  aa_node_data: Option<&AaNodeData>,
-) -> Vec<Mutation> {
-  let mut mutations = edge_key
-    .and_then(|edge_key| maps.edge_mutations.get(&edge_key).cloned())
-    .unwrap_or_default();
-  if let Some(aa) = aa_node_data
-    && let Some(tracks) = aa.node_aa_mutations.get(&node_key)
-  {
-    mutations.extend(tracks.iter().flat_map(|(track, events)| {
-      events.iter().cloned().map(|event| Mutation {
-        track: MutationTrack::AminoAcid(track.clone()),
-        event,
-      })
-    }));
-  }
-  mutations
-}
-
-fn ancestral_all_mutations(
-  graph: &Graph,
-  maps: &AncestralOutputMaps,
-  aa_node_data: Option<&AaNodeData>,
-) -> Vec<Mutation> {
-  graph
-    .get_nodes()
-    .into_iter()
-    .flat_map(|node| {
-      let node = node.read_arc();
-      ancestral_node_mutations(graph, maps, node.key(), node.inbound().first().copied(), aa_node_data)
-    })
-    .collect()
-}
-
-fn optimize_mutations(maps: &OptimizeOutputMaps, edge_key: Option<GraphEdgeKey>) -> Vec<Mutation> {
-  edge_key
-    .and_then(|edge_key| maps.edge_mutations.get(&edge_key).cloned())
-    .unwrap_or_default()
-}
-
-fn prune_mutations(maps: &PruneOutputMaps, edge_key: Option<GraphEdgeKey>) -> Vec<Mutation> {
-  edge_key
-    .and_then(|edge_key| maps.edge_mutations.get(&edge_key).cloned())
-    .unwrap_or_default()
-}
-
-fn timetree_mutations(maps: &TimetreeOutputMaps, edge_key: Option<GraphEdgeKey>) -> Vec<Mutation> {
-  edge_key
-    .and_then(|edge_key| maps.edge_mutations.get(&edge_key).cloned())
-    .unwrap_or_default()
-}
-
-fn mugration_traits(
-  graph: &Graph,
-  maps: &MugrationOutputMaps,
-  node_key: GraphNodeKey,
-  node_name: &str,
-  attribute: &str,
-) -> Result<BTreeMap<String, TraitValue>, Report> {
-  let Some(value) = maps.reconstructed_traits[&node_key].clone() else {
-    return Ok(BTreeMap::new());
-  };
-  let profile = maps.confidences[&node_key].clone();
-  if let Some(profile) = profile.as_ref() {
-    for (state, probability) in maps.states.iter().zip(profile) {
-      ensure_finite(
-        *probability,
-        "mugration",
-        node_name,
-        &format!("trait state '{state}' probability"),
-      )?;
-    }
-  }
-  let confidence = profile
-    .as_ref()
-    .map(|profile| build_confidence_map(&maps.states, profile))
-    .unwrap_or_default();
-  let entropy = profile.as_ref().map(compute_entropy);
-  if let Some(entropy) = entropy {
-    ensure_finite(entropy, "mugration", node_name, "trait entropy")?;
-  }
-  Ok(btreemap! {
-    attribute.to_owned() => TraitValue { value, confidence, entropy },
-  })
-}
-
-fn mugration_transition(
-  graph: &Graph,
-  maps: &MugrationOutputMaps,
-  node_key: GraphNodeKey,
-) -> Result<Option<(String, String)>, Report> {
-  let Some((parent_key, _edge_key)) = graph.node_parent(node_key)? else {
-    return Ok(None);
-  };
-  let parent = maps.reconstructed_traits[&parent_key].clone();
-  let child = maps.reconstructed_traits[&node_key].clone();
-  Ok(match (parent, child) {
-    (Some(parent), Some(child)) if parent != child => Some((parent, child)),
-    _ => None,
-  })
-}
-
-fn mugration_transition_label(
-  graph: &Graph,
-  maps: &MugrationOutputMaps,
-  node_key: GraphNodeKey,
-  attribute: &str,
-) -> Result<Option<AuspiceTreeBranchAttrsLabels>, Report> {
-  let Some((parent, child)) = mugration_transition(graph, maps, node_key)? else {
-    return Ok(None);
-  };
-  Ok(Some(AuspiceTreeBranchAttrsLabels {
-    aa: None,
-    clade: None,
-    other: json!({ attribute.to_owned(): format!("{parent} → {child}") }),
-  }))
-}
-
-fn timetree_divergence(
-  graph: &Graph,
-  node_key: GraphNodeKey,
-  div: f64,
-  mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
-) -> Result<f64, Report> {
-  mutation_counts.map_or(Ok(div), |counts| {
-    let mut key = node_key;
-    let mut count = 0;
-    while let Some((parent, edge)) = graph.node_parent(key)? {
-      count += counts.get(&edge).copied().unwrap_or_default();
-      key = parent;
-    }
-    Ok(count as f64)
-  })
-}
-
-fn timetree_date_confidence(
-  graph: &Graph,
-  node_key: GraphNodeKey,
-  node_name: &str,
-  confidence_intervals: Option<&[NodeConfidenceInterval]>,
-) -> Result<Option<[f64; 2]>, Report> {
-  let confidence = confidence_intervals
-    .and_then(|intervals| intervals.iter().find(|interval| interval.key == node_key))
-    .map(|interval| [interval.lower, interval.upper]);
-  if let Some([lower, upper]) = confidence {
-    ensure_finite(lower, "timetree", node_name, "date confidence lower bound")?;
-    ensure_finite(upper, "timetree", node_name, "date confidence upper bound")?;
-    Ok(Some([format_number(lower, 3), format_number(upper, 3)]))
-  } else {
-    Ok(None)
-  }
-}
-
-fn timetree_date_is_inferred(
-  graph: &Graph,
-  node_key: GraphNodeKey,
-  name: Option<&str>,
-  time: Option<f64>,
-  dates: Option<&DatesMap>,
-) -> Option<bool> {
-  let dates = dates?;
-  Some(
-    name.and_then(|name| dates.get(name)).and_then(Option::as_ref).is_none()
-      && time.is_some()
-      && graph.get_node(node_key).is_some(),
-  )
-}
-
 pub(crate) fn group_mutations(mutations: Vec<Mutation>) -> Result<BTreeMap<String, Vec<String>>, Report> {
   let mut grouped = BTreeMap::new();
   for mutation in mutations {
@@ -1571,7 +557,7 @@ pub(crate) fn group_mutations(mutations: Vec<Mutation>) -> Result<BTreeMap<Strin
   Ok(grouped)
 }
 
-fn mutation_property(mutation: &Mutation) -> Result<PhyloxmlProperty, Report> {
+pub(crate) fn mutation_property(mutation: &Mutation) -> Result<PhyloxmlProperty, Report> {
   let track = match &mutation.track {
     MutationTrack::Nucleotide => NUC_TRACK.to_owned(),
     MutationTrack::AminoAcid(track) => format!("aa:{}", encode_property_token(track)),
@@ -1596,7 +582,10 @@ fn mutation_property(mutation: &Mutation) -> Result<PhyloxmlProperty, Report> {
   Ok(property(REF_MUTATION, DT_STRING, APPLIES_BRANCH, &value))
 }
 
-fn trait_properties(traits: &BTreeMap<String, TraitValue>, node_name: &str) -> Result<Vec<PhyloxmlProperty>, Report> {
+pub(crate) fn trait_properties(
+  traits: &BTreeMap<String, TraitValue>,
+  node_name: &str,
+) -> Result<Vec<PhyloxmlProperty>, Report> {
   let mut properties = vec![];
   for (attribute, value) in traits {
     let attribute = encode_property_token(attribute);
@@ -1636,7 +625,7 @@ fn trait_properties(traits: &BTreeMap<String, TraitValue>, node_name: &str) -> R
   Ok(properties)
 }
 
-fn empty_phyloxml_clade(name: Option<String>, branch_length: Option<f64>) -> PhyloxmlClade {
+pub(crate) fn empty_phyloxml_clade(name: Option<String>, branch_length: Option<f64>) -> PhyloxmlClade {
   PhyloxmlClade {
     name,
     branch_length_elem: branch_length,
@@ -1658,7 +647,7 @@ fn empty_phyloxml_clade(name: Option<String>, branch_length: Option<f64>) -> Phy
   }
 }
 
-fn input_branch_confidence(
+pub(crate) fn input_branch_confidence(
   confidence: Option<f64>,
   command: &str,
   node_name: &str,
@@ -1675,7 +664,7 @@ fn input_branch_confidence(
   )
 }
 
-fn phyloxml_sequences(sequences: &BTreeMap<String, String>) -> Vec<PhyloxmlSequence> {
+pub(crate) fn phyloxml_sequences(sequences: &BTreeMap<String, String>) -> Vec<PhyloxmlSequence> {
   sequences
     .iter()
     .map(|(track, sequence)| PhyloxmlSequence {
@@ -1695,7 +684,7 @@ fn phyloxml_sequences(sequences: &BTreeMap<String, String>) -> Vec<PhyloxmlSeque
     .collect()
 }
 
-fn phyloxml_date(value: f64) -> PhyloxmlDate {
+pub(crate) fn phyloxml_date(value: f64) -> PhyloxmlDate {
   PhyloxmlDate {
     desc: None,
     value: Some(value),
@@ -1705,7 +694,7 @@ fn phyloxml_date(value: f64) -> PhyloxmlDate {
   }
 }
 
-fn property(ref_: &str, datatype: &str, applies_to: &str, value: &str) -> PhyloxmlProperty {
+pub(crate) fn property(ref_: &str, datatype: &str, applies_to: &str, value: &str) -> PhyloxmlProperty {
   PhyloxmlProperty {
     value: value.to_owned(),
     ref_: ref_.to_owned(),
@@ -1716,7 +705,7 @@ fn property(ref_: &str, datatype: &str, applies_to: &str, value: &str) -> Phylox
   }
 }
 
-fn encode_property_token(value: &str) -> String {
+pub(crate) fn encode_property_token(value: &str) -> String {
   utf8_percent_encode(value, PROPERTY_TOKEN_ENCODE_SET).to_string()
 }
 
@@ -1751,7 +740,7 @@ fn build_trait_attrs(traits: BTreeMap<String, TraitValue>) -> Value {
 /// Sum of parent-edge branch lengths from `key` to the root, resolved from a snapshot value map.
 /// Matches `cumulative_branch_length` exactly: a missing (`None`) edge
 /// length short-circuits the whole sum to `None`.
-fn cumulative_branch_length_from(
+pub(crate) fn cumulative_branch_length_from(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   mut key: GraphNodeKey,
@@ -1768,18 +757,23 @@ fn cumulative_branch_length_from(
 }
 
 /// Node display name with the `node_{key}` fallback, resolved from a gathered name-map value.
-fn node_name_value(key: GraphNodeKey, name: Option<&str>) -> String {
+pub(crate) fn node_name_value(key: GraphNodeKey, name: Option<&str>) -> String {
   name.map_or_else(|| format!("node_{}", key.as_usize()), str::to_owned)
 }
 
-fn ensure_optional_finite(value: Option<f64>, command: &str, node_name: &str, field: &str) -> Result<(), Report> {
+pub(crate) fn ensure_optional_finite(
+  value: Option<f64>,
+  command: &str,
+  node_name: &str,
+  field: &str,
+) -> Result<(), Report> {
   if let Some(value) = value {
     ensure_finite(value, command, node_name, field)?;
   }
   Ok(())
 }
 
-fn ensure_finite(value: f64, command: &str, node_name: &str, field: &str) -> Result<(), Report> {
+pub(crate) fn ensure_finite(value: f64, command: &str, node_name: &str, field: &str) -> Result<(), Report> {
   if value.is_finite() {
     Ok(())
   } else {
@@ -1787,7 +781,7 @@ fn ensure_finite(value: f64, command: &str, node_name: &str, field: &str) -> Res
   }
 }
 
-fn finite_number(
+pub(crate) fn finite_number(
   value: Option<f64>,
   precision: i32,
   command: &str,
@@ -1814,7 +808,7 @@ pub(crate) fn format_number(number: f64, precision: i32) -> f64 {
     .expect("a float formatted in scientific notation must parse back")
 }
 
-fn coloring(key: &str, title: &str, type_: &str) -> AuspiceColoring {
+pub(crate) fn coloring(key: &str, title: &str, type_: &str) -> AuspiceColoring {
   AuspiceColoring {
     key: key.to_owned(),
     title: title.to_owned(),
@@ -1823,6 +817,6 @@ fn coloring(key: &str, title: &str, type_: &str) -> AuspiceColoring {
   }
 }
 
-fn generation_date() -> String {
+pub(crate) fn generation_date() -> String {
   Utc::now().format("%Y-%m-%d").to_string()
 }

@@ -4,7 +4,6 @@ use crate::clock::clock_state::ClockState;
 use crate::commands::shared::mutation_comment::EdgeMutationCommentProvider;
 use crate::commands::shared::output::{DivergenceUnits, OutputSelection};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
-use crate::commands::shared::tree_output::write_timetree_tree_outputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::output::augur_node_data::write_augur_node_data_json;
@@ -13,6 +12,7 @@ use crate::commands::timetree::output::coalescent::{
 };
 use crate::commands::timetree::output::date_comment::DateCommentProvider;
 use crate::commands::timetree::result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
+use crate::commands::timetree::tree_output::write_timetree_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::partition::timetree::marginal::{ancestral_reconstruction_timetree, marginal_update_timetree};

@@ -4,12 +4,15 @@ mod tests {
   use crate::ancestral::pipeline::AncestralPartition;
   use crate::commands::ancestral::aa_node_data::AaNodeData;
   use crate::commands::ancestral::result::AncestralNodeOut;
-  use crate::commands::shared::tree_output::{
-    ancestral_to_auspice, ancestral_to_mat, ancestral_to_phyloxml, clock_to_auspice, clock_to_mat, clock_to_phyloxml,
-    format_number, group_mutations, mat_mutation, mugration_to_auspice, mugration_to_mat, mugration_to_phyloxml,
-    optimize_to_auspice, optimize_to_mat, optimize_to_phyloxml, prune_to_auspice, prune_to_mat, prune_to_phyloxml,
-    timetree_to_auspice, timetree_to_mat, timetree_to_phyloxml, write_ancestral_tree_outputs,
+  use crate::commands::ancestral::tree_output::{
+    ancestral_to_auspice, ancestral_to_mat, ancestral_to_phyloxml, write_ancestral_tree_outputs,
   };
+  use crate::commands::clock::tree_output::{clock_to_auspice, clock_to_mat, clock_to_phyloxml};
+  use crate::commands::mugration::tree_output::{mugration_to_auspice, mugration_to_mat, mugration_to_phyloxml};
+  use crate::commands::optimize::tree_output::{optimize_to_auspice, optimize_to_mat, optimize_to_phyloxml};
+  use crate::commands::prune::tree_output::{prune_to_auspice, prune_to_mat, prune_to_phyloxml};
+  use crate::commands::shared::tree_output::{format_number, group_mutations, mat_mutation};
+  use crate::commands::timetree::tree_output::{timetree_to_auspice, timetree_to_mat, timetree_to_phyloxml};
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::storage::sparse::{FitchNodeData, SparseEdgeObs};
   use crate::seq::indel::InDel;

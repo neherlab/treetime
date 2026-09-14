@@ -11,7 +11,6 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
-
 /// Refine the GTR model by alternating inference from posterior-weighted transition counts with
 /// optional substitution-rate optimization, returning the refined partition together with the marginal
 /// update its final model produces.

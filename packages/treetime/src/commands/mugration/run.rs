@@ -1,8 +1,8 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::mugration::augur_node_data::write_augur_node_data_json;
+use crate::commands::mugration::tree_output::write_mugration_tree_outputs;
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
-use crate::commands::shared::tree_output::write_mugration_tree_outputs;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_report;
 use crate::mugration::mugration::execute_mugration;

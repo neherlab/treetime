@@ -6,9 +6,9 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, Optimi
 use crate::clock::pipeline::{self, ClockInput, ClockPipelineParams};
 use crate::clock::rtt::{ClockRegressionResult, write_clock_regression_result_csv};
 use crate::commands::clock::args::{BranchSplitArgs, TreetimeClockArgs};
+use crate::commands::clock::tree_output::write_clock_tree_outputs;
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
-use crate::commands::shared::tree_output::write_clock_tree_outputs;
 use crate::make_error;
 use crate::make_report;
 use eyre::{Report, WrapErr};

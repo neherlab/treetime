@@ -11,10 +11,10 @@ use crate::commands::ancestral::augur_node_data::write_augur_node_data_json_with
 use crate::commands::ancestral::result::{
   AncestralNodeOut, AncestralOutputMaps, AncestralResult, AugurOutputMaps, EdgeOut,
 };
+use crate::commands::ancestral::tree_output::write_ancestral_tree_outputs;
 use crate::commands::shared::mutation_comment::EdgeMutationCommentProvider;
 use crate::commands::shared::output::OutputSelection;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
-use crate::commands::shared::tree_output::write_ancestral_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::progress::ProgressSink;

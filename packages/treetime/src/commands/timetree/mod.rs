@@ -3,6 +3,7 @@ pub mod initialization;
 pub mod output;
 pub mod result;
 pub mod run;
+pub mod tree_output;
 
 #[cfg(test)]
 mod __tests__;
