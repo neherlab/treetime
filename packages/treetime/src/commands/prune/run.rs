@@ -7,7 +7,6 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_output::write_prune_tree_outputs;
 use crate::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use crate::make_error;
-use crate::partition::traits::PartitionBranchOps;
 use crate::prune::pipeline::{self, PruneInput, PruneParams};
 use crate::seq::mutation::MutationTrack;
 use eyre::{Report, WrapErr};
@@ -203,7 +202,6 @@ pub(crate) fn gather_prune_output_maps(
   let Some(partition) = partitions.first() else {
     return Ok(PruneOutputMaps::default());
   };
-  let partition = partition.readout();
   let root_sequence = Some(partition.root_sequence(graph)?);
   let node_sequences = graph
     .get_nodes()
@@ -221,10 +219,7 @@ pub(crate) fn gather_prune_output_maps(
   while let Some(node) = queue.pop_front() {
     for (child, edge) in graph.children_of(&node.read_arc()) {
       let edge_key = edge.read_arc().key();
-      edge_mutations.insert(
-        edge_key,
-        partition.edge_mutations(graph, edge_key, MutationTrack::Nucleotide)?,
-      );
+      edge_mutations.insert(edge_key, partition.edge_mutations(edge_key, MutationTrack::Nucleotide)?);
       queue.push_back(child);
     }
   }

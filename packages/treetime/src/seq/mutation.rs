@@ -41,6 +41,19 @@ impl Mutation {
   }
 }
 
+/// Combine one edge's substitutions and indels into a single mutation list on the given track.
+pub fn combine_edge_mutations(
+  subs: Vec<Sub>,
+  indels: &[InDel],
+  track: &MutationTrack,
+) -> Result<Vec<Mutation>, Report> {
+  subs
+    .into_iter()
+    .map(|substitution| Ok(Mutation::substitution(track.clone(), substitution)))
+    .chain(indels.iter().map(|indel| Mutation::indel(track.clone(), indel)))
+    .collect()
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum MutationTrack {

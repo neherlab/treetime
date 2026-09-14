@@ -1,4 +1,4 @@
-use crate::partition::traits::PartitionBranchOps;
+use crate::seq::mutation::Sub;
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;
@@ -47,17 +47,18 @@ pub fn compute_divs(
 
 /// Count reconstructed substitutions per edge.
 ///
-/// Returns a map from edge key to the number of canonical (non-gap, non-ambiguous)
-/// substitutions on that edge, as determined by `PartitionBranchOps::edge_subs()`.
+/// Returns a map from edge key to the number of canonical (non-gap, non-ambiguous) substitutions on
+/// that edge, read from a pre-gathered per-edge substitution map.
 pub fn compute_edge_mutation_counts(
   graph: &Graph,
-  partition: &dyn PartitionBranchOps,
-) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {
-  let mut counts = BTreeMap::new();
-  for edge in graph.get_edges() {
-    let edge_key = edge.read_arc().key();
-    let subs = partition.edge_subs(graph, edge_key)?;
-    counts.insert(edge_key, subs.len());
-  }
-  Ok(counts)
+  edge_subs: &BTreeMap<GraphEdgeKey, Vec<Sub>>,
+) -> BTreeMap<GraphEdgeKey, usize> {
+  graph
+    .get_edges()
+    .iter()
+    .map(|edge| {
+      let edge_key = edge.read_arc().key();
+      (edge_key, edge_subs[&edge_key].len())
+    })
+    .collect()
 }

@@ -19,7 +19,7 @@ use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::ProgressSink;
 use crate::seq::alignment::get_common_length;
 use crate::seq::indel::InDel;
-use crate::seq::mutation::{Mutation, MutationTrack, Sub};
+use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use eyre::Report;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -126,6 +126,11 @@ impl SparseReconstruction {
   /// Grouped aligned insertions and deletions for one edge.
   pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
     self.partition.edge_indels(edge_key)
+  }
+
+  /// The substitutions and indels on one edge as one mutation list on the given track.
+  pub fn edge_mutations(&self, edge_key: GraphEdgeKey, track: MutationTrack) -> Result<Vec<Mutation>, Report> {
+    combine_edge_mutations(self.edge_subs(edge_key)?, &self.edge_indels(edge_key), &track)
   }
 
   /// The node sequence written into the augur node-data JSON. For the sparse representation this equals
@@ -238,6 +243,16 @@ impl DenseReconstruction {
   /// Grouped aligned insertions and deletions for one edge.
   pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
     self.partition.edge_indels(&self.edges.estimates, edge_key)
+  }
+
+  /// The substitutions and indels on one edge as one mutation list on the given track.
+  pub fn edge_mutations(
+    &self,
+    graph: &Graph,
+    edge_key: GraphEdgeKey,
+    track: MutationTrack,
+  ) -> Result<Vec<Mutation>, Report> {
+    combine_edge_mutations(self.edge_subs(graph, edge_key)?, &self.edge_indels(edge_key), &track)
   }
 
   /// The node sequence written into the augur node-data JSON. Unlike [`Self::node_sequence`] (which
@@ -372,17 +387,7 @@ impl AncestralPartition {
     edge_key: GraphEdgeKey,
     track: MutationTrack,
   ) -> Result<Vec<Mutation>, Report> {
-    self
-      .edge_subs(graph, edge_key)?
-      .into_iter()
-      .map(|substitution| Ok(Mutation::substitution(track.clone(), substitution)))
-      .chain(
-        self
-          .edge_indels(edge_key)
-          .iter()
-          .map(|indel| Mutation::indel(track.clone(), indel)),
-      )
-      .collect()
+    combine_edge_mutations(self.edge_subs(graph, edge_key)?, &self.edge_indels(edge_key), &track)
   }
 }
 

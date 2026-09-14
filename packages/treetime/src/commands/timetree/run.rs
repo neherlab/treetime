@@ -17,7 +17,6 @@ use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::partition::timetree::marginal::{ancestral_reconstruction_timetree, marginal_update_timetree};
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::partition::traits::PartitionBranchOps;
 use crate::seq::div::compute_edge_mutation_counts;
 use crate::seq::mutation::MutationTrack;
 use crate::timetree::confidence::write_confidence_intervals_file;
@@ -210,7 +209,17 @@ pub fn run_timetree_estimation(
            incompatible with --branch-length-mode=input"
         );
       }
-      Some(compute_edge_mutation_counts(&output.graph, &output.partitions[0])?)
+      let partition = &output.partitions[0];
+      let edge_subs = output
+        .graph
+        .get_edges()
+        .iter()
+        .map(|edge| {
+          let edge_key = edge.read_arc().key();
+          Ok((edge_key, partition.edge_subs(&output.graph, edge_key)?))
+        })
+        .collect::<Result<BTreeMap<_, _>, Report>>()?;
+      Some(compute_edge_mutation_counts(&output.graph, &edge_subs))
     },
     DivergenceUnits::MutationsPerSite => None,
   };

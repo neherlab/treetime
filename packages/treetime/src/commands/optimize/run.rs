@@ -10,9 +10,8 @@ use crate::commands::shared::tree_output::write_optimize_tree_outputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
-use crate::partition::traits::PartitionBranchOps;
 use crate::seq::gap_fill::apply_gap_fill;
-use crate::seq::mutation::MutationTrack;
+use crate::seq::mutation::{Mutation, MutationTrack, Sub};
 use eyre::Report;
 use log::info;
 use std::collections::BTreeMap;
@@ -23,6 +22,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::{NwkParse, nwk_read_file};
+use treetime_primitives::Seq;
 
 pub fn run_optimize(
   args: &TreetimeOptimizeArgs,
@@ -190,9 +190,21 @@ pub(crate) fn gather_optimize_output_maps(
   dense_partitions: &[DenseReconstruction],
 ) -> Result<OptimizeOutputMaps, Report> {
   if let Some(family) = dense_partitions.first() {
-    gather_optimize_partition_maps(graph, &family.readout())
+    gather_optimize_partition_maps(
+      graph,
+      family.root_sequence(graph)?,
+      |key| family.node_sequence(key),
+      |key| family.edge_mutations(graph, key, MutationTrack::Nucleotide),
+      |key| family.edge_subs(graph, key),
+    )
   } else if let Some(family) = sparse_partitions.first() {
-    gather_optimize_partition_maps(graph, &family.readout())
+    gather_optimize_partition_maps(
+      graph,
+      family.root_sequence(graph)?,
+      |key| family.node_sequence(key),
+      |key| family.edge_mutations(key, MutationTrack::Nucleotide),
+      |key| family.edge_subs(key),
+    )
   } else {
     Ok(OptimizeOutputMaps::default())
   }
@@ -200,15 +212,18 @@ pub(crate) fn gather_optimize_output_maps(
 
 fn gather_optimize_partition_maps(
   graph: &Graph,
-  partition: &dyn PartitionBranchOps,
+  root_sequence: Seq,
+  node_sequence: impl Fn(GraphNodeKey) -> Seq,
+  edge_mutations: impl Fn(GraphEdgeKey) -> Result<Vec<Mutation>, Report>,
+  edge_subs: impl Fn(GraphEdgeKey) -> Result<Vec<Sub>, Report>,
 ) -> Result<OptimizeOutputMaps, Report> {
-  let root_sequence = Some(partition.root_sequence(graph)?);
+  let root_sequence = Some(root_sequence);
   let node_sequences = graph
     .get_nodes()
     .iter()
     .map(|node| {
       let key = node.read_arc().key();
-      (key, partition.node_sequence(key))
+      (key, node_sequence(key))
     })
     .collect();
   let edge_mutations = graph
@@ -216,7 +231,7 @@ fn gather_optimize_partition_maps(
     .iter()
     .map(|edge| {
       let key = edge.read_arc().key();
-      Ok((key, partition.edge_mutations(graph, key, MutationTrack::Nucleotide)?))
+      Ok((key, edge_mutations(key)?))
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   let edge_subs = graph
@@ -224,7 +239,7 @@ fn gather_optimize_partition_maps(
     .iter()
     .map(|edge| {
       let key = edge.read_arc().key();
-      Ok((key, partition.edge_subs(graph, key)?))
+      Ok((key, edge_subs(key)?))
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   Ok(OptimizeOutputMaps {

@@ -1,8 +1,8 @@
 use crate::gtr::gtr::GTR;
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::partition::traits::{HasGtr, PartitionBranchOps};
+use crate::partition::traits::HasGtr;
 use crate::seq::indel::InDel;
-use crate::seq::mutation::Sub;
+use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use eyre::Report;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -32,46 +32,49 @@ impl HasGtr for PartitionTimetree {
   }
 }
 
-impl PartitionBranchOps for PartitionTimetree {
-  fn sequence_length(&self) -> usize {
+/// Output-side read access over a completed timetree reconstruction, dispatching each operation to the
+/// concrete representation. The timetree tree writers read `node_sequence`/`root_sequence`/
+/// `edge_mutations`, and the divergence reader reads `edge_subs`.
+impl PartitionTimetree {
+  /// MAP-derived nucleotide substitutions on one edge (parent -> child).
+  pub fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     match self {
-      Self::Dense(family) => family.partition.length,
-      Self::Sparse(family) => family.partition.length,
+      Self::Dense(family) => family.edge_subs(graph, edge_key),
+      Self::Sparse(family) => family.edge_subs(edge_key),
     }
   }
 
-  fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  /// Grouped aligned insertions and deletions for one edge.
+  pub fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
     match self {
-      Self::Dense(family) => family.readout().edge_subs(graph, edge_key),
-      Self::Sparse(family) => family.readout().edge_subs(graph, edge_key),
+      Self::Dense(family) => family.edge_indels(edge_key),
+      Self::Sparse(family) => family.edge_indels(edge_key),
     }
   }
 
-  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+  /// The reconstructed root sequence.
+  pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
     match self {
-      Self::Dense(family) => family.readout().edge_indels(edge_key),
-      Self::Sparse(family) => family.readout().edge_indels(edge_key),
+      Self::Dense(family) => family.root_sequence(graph),
+      Self::Sparse(family) => family.root_sequence(graph),
     }
   }
 
-  fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
+  /// The reconstructed sequence for one node.
+  pub fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
     match self {
-      Self::Dense(family) => family.readout().root_sequence(graph),
-      Self::Sparse(family) => family.readout().root_sequence(graph),
+      Self::Dense(family) => family.node_sequence(node_key),
+      Self::Sparse(family) => family.node_sequence(node_key),
     }
   }
 
-  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    match self {
-      Self::Dense(family) => family.readout().node_sequence(node_key),
-      Self::Sparse(family) => family.readout().node_sequence(node_key),
-    }
-  }
-
-  fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
-    match self {
-      Self::Dense(family) => family.readout().edge_effective_length(graph, edge_key),
-      Self::Sparse(family) => family.readout().edge_effective_length(graph, edge_key),
-    }
+  /// The substitutions and indels on one edge as one mutation list on the given track.
+  pub fn edge_mutations(
+    &self,
+    graph: &Graph,
+    edge_key: GraphEdgeKey,
+    track: MutationTrack,
+  ) -> Result<Vec<Mutation>, Report> {
+    combine_edge_mutations(self.edge_subs(graph, edge_key)?, &self.edge_indels(edge_key), &track)
   }
 }

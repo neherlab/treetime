@@ -22,7 +22,6 @@ mod __tests__;
 
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::partition::traits::PartitionBranchOps;
 use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
 use crate::timetree::optimization::polytomy::sweep::{Lineage, simulate_subtree};
 use crate::timetree::timetree_state::TimetreeState;
