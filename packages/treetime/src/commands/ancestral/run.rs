@@ -114,11 +114,7 @@ pub fn run_ancestral_reconstruction(
     .map(|record| (record.seq_name.clone(), record.desc.clone()))
     .collect();
 
-  let input = AncestralInput {
-    graph,
-    alphabet,
-    sequences: aln,
-  };
+  let input = AncestralInput { graph, alphabet, aln };
 
   let result = pipeline::run(
     &params,

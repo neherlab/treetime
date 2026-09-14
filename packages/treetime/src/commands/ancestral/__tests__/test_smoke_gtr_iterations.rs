@@ -46,7 +46,7 @@ mod tests {
     let input = AncestralInput {
       graph,
       alphabet,
-      sequences,
+      aln: sequences,
     };
 
     let result =
@@ -88,7 +88,7 @@ mod tests {
     let input = AncestralInput {
       graph,
       alphabet,
-      sequences,
+      aln: sequences,
     };
 
     let result =

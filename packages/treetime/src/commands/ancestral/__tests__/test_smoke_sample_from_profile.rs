@@ -56,7 +56,7 @@ mod tests {
     let input = AncestralInput {
       graph,
       alphabet,
-      sequences,
+      aln: sequences,
     };
 
     let result = crate::ancestral::pipeline::run(&params, input, &names, &branch_lengths, |_, _| Ok(()), &NoopProgress);
@@ -107,7 +107,7 @@ mod tests {
       let input = AncestralInput {
         graph,
         alphabet,
-        sequences,
+        aln: sequences,
       };
 
       let mut captured: BTreeMap<String, String> = BTreeMap::new();

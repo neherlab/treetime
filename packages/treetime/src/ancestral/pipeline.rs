@@ -53,7 +53,7 @@ pub struct AncestralParams {
 pub struct AncestralInput {
   pub graph: Graph,
   pub alphabet: Alphabet,
-  pub sequences: Vec<FastaRecord>,
+  pub aln: Vec<FastaRecord>,
 }
 
 /// A sparse reconstruction: the durable partition inputs, the node states carried between passes, and
@@ -423,7 +423,7 @@ where
   let AncestralInput {
     graph,
     alphabet,
-    sequences,
+    aln: sequences,
   } = input;
 
   // Tips absent from the alignment become fully-ambiguous sequences here, once, for every
