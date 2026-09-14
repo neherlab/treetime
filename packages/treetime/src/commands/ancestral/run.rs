@@ -257,33 +257,20 @@ fn write_tree_for_partition(
   // Sparse and dense reconstructions annotate Newick/Nexus nodes with their inbound mutations; Fitch
   // parsimony and the partition-less case emit no such comments. The comment provider reads the
   // gathered per-edge mutation map; the partition selects only whether to attach it.
-  match partition {
-    Some(AncestralPartition::Sparse(_) | AncestralPartition::Dense(_)) => {
-      let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, graph);
-      let providers = CommentProviders::new().with(&provider);
-      write_ancestral_tree_outputs(
-        graph,
-        nodes,
-        branch_lengths,
-        maps,
-        aa_node_data,
-        &resolved.tree_outputs,
-        &providers,
-      )?;
-    },
-    Some(AncestralPartition::Fitch(_)) | None => {
-      write_ancestral_tree_outputs(
-        graph,
-        nodes,
-        branch_lengths,
-        maps,
-        aa_node_data,
-        &resolved.tree_outputs,
-        &CommentProviders::new(),
-      )?;
-    },
-  }
-  Ok(())
+  let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, graph);
+  let providers = match partition {
+    Some(AncestralPartition::Sparse(_) | AncestralPartition::Dense(_)) => CommentProviders::new().with(&provider),
+    Some(AncestralPartition::Fitch(_)) | None => CommentProviders::new(),
+  };
+  write_ancestral_tree_outputs(
+    graph,
+    nodes,
+    branch_lengths,
+    maps,
+    aa_node_data,
+    &resolved.tree_outputs,
+    &providers,
+  )
 }
 
 /// Collect the reconstructed sequence and mutation maps once, gated on whether a selected tree writer
