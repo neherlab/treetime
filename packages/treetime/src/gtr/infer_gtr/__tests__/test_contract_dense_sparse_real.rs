@@ -31,6 +31,7 @@
 
 #[cfg(test)]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::infer_gtr_fitch;
@@ -134,7 +135,7 @@ mod tests {
         DENSE_NUC_ALPHABET.clone(),
         get_common_length(&aln)?,
       );
-      let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+      let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
       let recon = DenseReconstruction::seeded(partition, node_states);
       let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
       let counts = recon.partition.count_transitions(
@@ -160,7 +161,7 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
-      let fitch = create_fitch_partition(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &aln, &names)?;
+      let fitch = create_fitch_partition(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &nwk_fasta_node_inputs(&graph, &names, aln))?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths)?
     };
 

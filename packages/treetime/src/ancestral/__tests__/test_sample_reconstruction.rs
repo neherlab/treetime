@@ -58,6 +58,7 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::fitch::create_fitch_partition;
+    use treetime_io::nwk::nwk_fasta_node_inputs;
     use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
     use crate::ancestral::pipeline::SparseReconstruction;
     use crate::ancestral::sample::SampleMode;
@@ -101,7 +102,7 @@ mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
 
       let graph: Graph = graph;
-      let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
+      let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &nwk_fasta_node_inputs(&graph, &names, aln))?;
       let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
       let recon = SparseReconstruction::seeded(partition, node_states);
 

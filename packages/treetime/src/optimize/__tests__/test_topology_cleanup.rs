@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::profile_branch_lengths;
@@ -297,7 +298,7 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, sp_node_states)];
     let (mut sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
@@ -389,7 +390,7 @@ mod tests {
 
     let mut graph: Graph = graph;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, sp_node_states)];
     let (mut sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
@@ -469,7 +470,7 @@ mod tests {
 
     let mut graph: Graph = graph;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, sp_node_states)];
     let (sparse_partitions, _) =
@@ -671,7 +672,7 @@ mod tests {
     let mut graph: Graph = graph;
 
     let dense_partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, nuc, get_common_length(&aln)?);
-    let dense_node_states = dense_partition.attach_sequences(&graph, &aln, &names)?;
+    let dense_node_states = dense_partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, dense_node_states)];
 
     let (mut dense_partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
@@ -1037,7 +1038,7 @@ mod tests {
 
     let mut graph: Graph = graph;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, sp_node_states)];
     let (sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
@@ -1109,7 +1110,7 @@ mod tests {
 
     let mut graph: Graph = graph;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(sp_partition, sp_node_states)];
     let (sparse_partitions, _) =

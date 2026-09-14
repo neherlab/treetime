@@ -54,6 +54,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_io::dates_csv::DatesMap;
 use treetime_io::fasta::FastaRecord;
+use treetime_io::nwk::nwk_fasta_node_inputs;
 use treetime_utils::make_report;
 use treetime_utils::sync::random::get_random_number_generator;
 
@@ -277,12 +278,12 @@ pub fn run(
   if let Some(aln) = input.sequences.as_deref() {
     if params.branch_length_mode == BranchLengthMode::Marginal && !partitions.is_empty() {
       info!("### ML branch-length optimization (pre-reroot)");
+      let node_inputs = nwk_fasta_node_inputs(&input.graph, names, aln.to_vec());
       (partitions, _) = initialize_marginal_timetree(
         &input.graph,
         &profile_branch_lengths(&branch_lengths),
         partitions,
-        aln,
-        names,
+        &node_inputs,
       )?;
       partitions = optimize_branch_lengths_pre_step(&input.graph, partitions, params.no_indels, &mut branch_lengths)
         .wrap_err("ML branch-length optimization (pre-reroot) failed")?;
@@ -935,15 +936,15 @@ fn initialize_partitions_from_params(
   let model_name = params.model;
 
   let aln_data = aln.ok_or_else(|| make_report!("Alignment required for marginal reconstruction"))?;
+  let node_inputs = nwk_fasta_node_inputs(graph, names, aln_data.to_vec());
   let created = create_marginal_partition(
     graph,
     0,
     alphabet,
-    aln_data,
+    &node_inputs,
     model_name,
     params.dense,
     branch_lengths,
-    names,
   )?;
 
   // Read the GTR from the owning partition (single source of truth), not from a

@@ -1,8 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::attach::complete_alignment_for_leaves;
 use crate::ancestral::fitch::{ancestral_reconstruction_fitch, create_fitch_partition};
 use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
-use crate::ancestral::mask::create_mask;
 use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
@@ -17,7 +15,6 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::ProgressSink;
-use crate::seq::alignment::get_common_length;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use eyre::Report;
@@ -27,7 +24,7 @@ use strum::VariantNames;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::FastaRecord;
+use treetime_io::nwk::NwkFastaInput;
 use treetime_primitives::AsciiChar;
 use treetime_primitives::LogLh;
 use treetime_primitives::Seq;
@@ -48,12 +45,6 @@ pub struct AncestralParams {
   pub seed: Option<u64>,
   pub sample_from_profile: SampleMode,
   pub ignore_missing_alns: bool,
-}
-
-pub struct AncestralInput {
-  pub graph: Graph,
-  pub alphabet: Alphabet,
-  pub aln: Vec<FastaRecord>,
 }
 
 /// A sparse reconstruction: the durable partition inputs, the node states carried between passes, and
@@ -376,8 +367,6 @@ impl AncestralPartition {
 #[derive(Debug, Serialize)]
 pub struct AncestralOutput {
   #[serde(skip)]
-  pub graph: Graph,
-  #[serde(skip)]
   pub gtr: Option<GTR>,
   pub model_name: GtrModelName,
   #[serde(skip)]
@@ -394,16 +383,17 @@ pub struct AncestralOutputFull {
 
 pub fn run<F>(
   params: &AncestralParams,
-  input: AncestralInput,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  input: &NwkFastaInput,
+  alphabet: Alphabet,
+  mask: Vec<bool>,
   mut on_sequence: F,
   progress: &dyn ProgressSink,
 ) -> Result<AncestralOutputFull, Report>
 where
   F: FnMut(GraphNodeKey, &Seq) -> Result<(), Report>,
 {
-  let profile_lengths = profile_branch_lengths(branch_lengths);
+  let branch_lengths = input.branch_lengths();
+  let profile_lengths = profile_branch_lengths(&branch_lengths);
   if params.site_specific_gtr {
     return make_error!(
       "--site-specific-gtr is not yet integrated into the ancestral reconstruction pipeline. \
@@ -420,22 +410,18 @@ where
     );
   }
 
-  let AncestralInput { graph, alphabet, aln } = input;
-
-  // Tips absent from the alignment become fully-ambiguous sequences here, once, for every
-  // partition backend (fitch, sparse, dense) and alphabet (nucleotide, amino acid). After this the
-  // attachment step always finds a sequence for each leaf.
-  let sequences = complete_alignment_for_leaves(&graph, aln, &alphabet, params.ignore_missing_alns, names)?;
-
-  let alignment_length = get_common_length(&sequences)?;
-  let mask = create_mask(&sequences, alignment_length, &alphabet);
+  // The caller completes the alignment (fills fully-ambiguous sequences for tips absent from it) and
+  // computes the mask before building the merged input, so every leaf's node input carries a
+  // sequence and attachment always finds one by node key.
+  let graph = &input.graph;
+  let node_inputs = &input.nodes;
   let mut rng = get_random_number_generator(params.seed);
 
   match params.method {
     MethodAncestral::Parsimony => {
       progress.check_cancelled()?;
       progress.report("Fitch parsimony", 0.3, "");
-      let partition = create_fitch_partition(&graph, 0, alphabet, &sequences, names)?;
+      let partition = create_fitch_partition(graph, 0, alphabet, node_inputs)?;
       let mut partitions_parsimony = vec![partition];
 
       if params.impute_missing_data {
@@ -446,7 +432,7 @@ where
       }
 
       let node_sequences =
-        ancestral_reconstruction_fitch(&graph, params.include_leaves, &mut partitions_parsimony, |node, seq| {
+        ancestral_reconstruction_fitch(graph, params.include_leaves, &mut partitions_parsimony, |node, seq| {
           on_sequence(node.key, seq)
         })?;
 
@@ -457,7 +443,6 @@ where
       progress.report("Done", 1.0, "");
       Ok(AncestralOutputFull {
         output: AncestralOutput {
-          graph,
           gtr: None,
           model_name: params.model,
           mask,
@@ -471,14 +456,13 @@ where
       progress.report("Inferring GTR model", 0.2, "");
 
       let created = create_marginal_partition(
-        &graph,
+        graph,
         0,
         alphabet,
-        &sequences,
+        node_inputs,
         params.model,
         params.dense,
-        branch_lengths,
-        names,
+        &branch_lengths,
       )?;
       let model_name = created.model_name;
       let refine = params.gtr_iterations > 0 && params.model == GtrModelName::Infer;
@@ -487,7 +471,7 @@ where
         MarginalPartition::Sparse(partition, node_states) => {
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          let update = partition.marginal_update(&graph, &profile_lengths, node_states)?;
+          let update = partition.marginal_update(graph, &profile_lengths, node_states)?;
 
           let (partition, update) = if refine {
             refine_gtr_model(
@@ -495,8 +479,8 @@ where
               update,
               params.gtr_iterations,
               1.0,
-              &graph,
-              branch_lengths,
+              graph,
+              &branch_lengths,
               &profile_lengths,
             )?
           } else {
@@ -509,7 +493,7 @@ where
           progress.check_cancelled()?;
           progress.report("Reconstructing sequences", 0.6, "");
           let node_sequences = ancestral_reconstruction(
-            &graph,
+            graph,
             |node| {
               partition.reconstruct_node_sequence(
                 &mut node_states,
@@ -528,7 +512,6 @@ where
           progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
             output: AncestralOutput {
-              graph,
               gtr: Some(gtr),
               model_name,
               mask,
@@ -544,13 +527,13 @@ where
         MarginalPartition::Dense(partition) => {
           progress.check_cancelled()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          let node_states = partition.attach_sequences(&graph, &sequences, names)?;
+          let node_states = partition.attach_sequences(graph, node_inputs)?;
           // Dense gap classification is non-idempotent, so the baseline ran two marginal passes
           // after attachment (its `initialize_marginal` attached and updated once, then a separate
           // `marginal_update` ran again) before GTR refinement. Pass the node states through both
           // passes so internal-node gap states settle exactly as they did before.
-          let MarginalStates { node_states, .. } = partition.marginal_states(&graph, &profile_lengths, node_states)?;
-          let update = partition.marginal_update(&graph, &profile_lengths, node_states)?;
+          let MarginalStates { node_states, .. } = partition.marginal_states(graph, &profile_lengths, node_states)?;
+          let update = partition.marginal_update(graph, &profile_lengths, node_states)?;
 
           let (partition, update) = if refine {
             refine_gtr_model(
@@ -558,8 +541,8 @@ where
               update,
               params.gtr_iterations,
               1.0,
-              &graph,
-              branch_lengths,
+              graph,
+              &branch_lengths,
               &profile_lengths,
             )?
           } else {
@@ -572,7 +555,7 @@ where
           progress.check_cancelled()?;
           progress.report("Reconstructing sequences", 0.6, "");
           let node_sequences = ancestral_reconstruction(
-            &graph,
+            graph,
             |node| {
               partition.reconstruct_node_sequence(
                 &mut node_states,
@@ -590,7 +573,6 @@ where
           progress.report("Done", 1.0, "");
           Ok(AncestralOutputFull {
             output: AncestralOutput {
-              graph,
               gtr: Some(gtr),
               model_name,
               mask,

@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::commands::ancestral::aa_node_data::*;
   use crate::seq::mutation::Sub;
   use maplit::btreemap;
@@ -201,7 +202,7 @@ mod tests {
         writeln!(fasta, "{seq}").unwrap();
       }
       let sequences = read_many_fasta_str(&fasta, &alphabet).unwrap();
-      let partition = create_fitch_partition(graph, 0, alphabet, &sequences, names).unwrap();
+      let partition = create_fitch_partition(graph, 0, alphabet, &nwk_fasta_node_inputs(graph, names, sequences)).unwrap();
       AncestralPartition::Fitch(partition)
     }
   }

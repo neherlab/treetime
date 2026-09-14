@@ -12,6 +12,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
+use treetime_io::nwk::nwk_fasta_node_inputs;
 use treetime_primitives::Seq;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
@@ -74,15 +75,15 @@ pub fn reconstruct_marginal_partition(
   } = plan;
 
   let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns, names)?;
+  let node_inputs = nwk_fasta_node_inputs(graph, names, sequences);
   let created = create_marginal_partition(
     graph,
     index,
     alphabet.clone(),
-    &sequences,
+    &node_inputs,
     gtr_model,
     params.dense,
     branch_lengths,
-    names,
   )?;
   let profile_lengths = profile_branch_lengths(branch_lengths);
 
@@ -117,7 +118,7 @@ pub fn reconstruct_marginal_partition(
       })
     },
     MarginalPartition::Dense(partition) => {
-      let node_states = partition.attach_sequences(graph, &sequences, names)?;
+      let node_states = partition.attach_sequences(graph, &node_inputs)?;
       let MarginalUpdate {
         mut node_states, edges, ..
       } = partition.marginal_update(graph, &profile_lengths, node_states)?;

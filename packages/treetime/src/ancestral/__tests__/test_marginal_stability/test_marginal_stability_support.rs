@@ -1,5 +1,6 @@
 #[cfg(test)]
 pub mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::profile_branch_lengths;
@@ -70,7 +71,7 @@ pub mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(&aln)?);
-    let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let log_lh = log_lh.value();
@@ -91,7 +92,7 @@ pub mod tests {
     let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
     let recon = SparseReconstruction::seeded(partition, node_states);
     let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;

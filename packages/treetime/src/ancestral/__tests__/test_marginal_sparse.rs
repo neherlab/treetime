@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 
   use crate::ancestral::fitch::create_fitch_partition;
@@ -122,7 +123,7 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, SparseReconstruction), Report> {
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, graph)?;
     let recon = SparseReconstruction::seeded(partition, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
@@ -196,7 +197,7 @@ mod tests {
 
     let alphabet = Alphabet::default();
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
     let recon = SparseReconstruction::seeded(partition, node_states);
 
@@ -338,7 +339,7 @@ mod tests {
     let gtr = jc69(JC69Params::default())?;
 
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
     let recon = SparseReconstruction::seeded(partition, node_states);
 
@@ -511,7 +512,7 @@ mod tests {
           // Create alignment with single position containing this triplet
           let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?;
 
-          let fitch = create_fitch_partition(&graph, 0, alphabet.clone(), &aln, &names)?;
+          let fitch = create_fitch_partition(&graph, 0, alphabet.clone(), &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
           let (partition, node_states) = fitch.into_marginal_sparse(gtr.clone(), &graph)?;
           let recon = SparseReconstruction::seeded(partition, node_states);
 
@@ -557,7 +558,7 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
-    let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?;
     let recon = SparseReconstruction::seeded(partition, node_states);
     let (mut recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;

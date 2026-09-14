@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::infer_gtr_fitch;
@@ -42,7 +43,7 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
-      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &names)?;
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths)?
     };
 
@@ -52,7 +53,7 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
-      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &aln, &names)?;
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &nwk_fasta_node_inputs(&graph, &names, aln))?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths)?
     };
 

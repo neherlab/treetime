@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::pipeline::DenseReconstruction;
@@ -52,7 +53,7 @@ mod tests {
   ) -> Result<Vec<DenseReconstruction>, Report> {
     let alphabet = Alphabet::default();
     let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(graph, aln, names)?;
+    let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
     let partitions = vec![DenseReconstruction::seeded(partition, node_states)];
     let (partitions, _) = marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), partitions)?;
     Ok(partitions)

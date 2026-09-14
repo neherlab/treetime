@@ -6,6 +6,8 @@ mod tests {
   //!
   //! Golden outputs captured via `gm_infer_gtr_dense_capture` script.
 
+  use treetime_io::nwk::nwk_fasta_node_inputs;
+
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::pipeline::DenseReconstruction;
@@ -153,7 +155,7 @@ mod tests {
     })?;
 
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(&graph, aln, &names)?;
+    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
@@ -180,7 +182,7 @@ mod tests {
     })?;
 
     let partition = PartitionMarginalDense::new(0, gtr, NUC_ALPHABET.clone(), get_common_length(&aln)?);
-    let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))

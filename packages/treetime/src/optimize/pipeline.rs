@@ -35,6 +35,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootChanges;
 use treetime_io::fasta::FastaRecord;
+use treetime_io::nwk::nwk_fasta_node_inputs;
 use treetime_utils::{make_error, make_report};
 
 /// Damping applied to the single pre-reroot branch-length pass, mirroring the
@@ -99,16 +100,17 @@ pub fn run(
   }
 
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
+  let sequences = std::mem::take(&mut input.sequences);
+  let node_inputs = nwk_fasta_node_inputs(&input.graph, names, sequences);
 
   let created = create_marginal_partition(
     &input.graph,
     0,
     input.alphabet,
-    &input.sequences,
+    &node_inputs,
     params.model,
     params.dense,
     &branch_lengths,
-    names,
   )?;
   let model_name = created.model_name;
 
@@ -122,7 +124,7 @@ pub fn run(
     },
     MarginalPartition::Dense(partition) => {
       // Dense leaf states are attached up front; the marginal passes then populate internal states.
-      let node_states = partition.attach_sequences(&input.graph, &input.sequences, names)?;
+      let node_states = partition.attach_sequences(&input.graph, &node_inputs)?;
       dense_partitions = vec![DenseReconstruction::seeded(partition, node_states)];
       sparse_partitions = vec![];
     },

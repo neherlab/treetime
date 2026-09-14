@@ -1,3 +1,4 @@
+use treetime_io::nwk::nwk_fasta_node_inputs;
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::fitch::create_fitch_partition;
 use crate::ancestral::marginal::profile_branch_lengths;
@@ -24,7 +25,7 @@ pub fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) -> 
   let length = get_common_length(&aln)?;
   let partition = PartitionMarginalDense::new(0, gtr, alphabet, length);
 
-  let node_states = partition.attach_sequences(&graph, &aln, &names)?;
+  let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln))?;
   let MarginalUpdate { log_lh, .. } =
     partition.marginal_update(&graph, &profile_branch_lengths(&branch_lengths), node_states)?;
   Ok(log_lh.value())
@@ -39,7 +40,7 @@ pub fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: GTR) ->
   let aln = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?;
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-  let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
+  let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
   let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph)?;
 
   let MarginalUpdate { log_lh, .. } =

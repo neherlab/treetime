@@ -1,3 +1,4 @@
+use treetime_io::nwk::nwk_fasta_node_inputs;
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use ctor::ctor;
 use rayon::ThreadPoolBuilder;
@@ -62,7 +63,7 @@ fn setup_inner() -> (Graph, SparseReconstruction, BTreeMap<GraphEdgeKey, Option<
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
   let alignment = read_many_fasta_path(&[project_root.join("data/flu/h3n2/200/aln.fasta.xz")], &alphabet).unwrap();
-  let fitch = create_fitch_partition(&graph, 0, alphabet, &alignment, &names).unwrap();
+  let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, alignment)).unwrap();
   let gtr = jc69(JC69Params::default()).unwrap();
   let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph).unwrap();
   let recon = SparseReconstruction::seeded(partition, node_states);

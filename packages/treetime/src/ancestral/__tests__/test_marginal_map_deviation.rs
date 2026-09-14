@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
@@ -139,7 +140,7 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[FastaRecord],
   ) -> Result<BTreeMap<String, String>, Report> {
-    let fitch = create_fitch_partition(graph, 0, Alphabet::default(), aln, names)?;
+    let fitch = create_fitch_partition(graph, 0, Alphabet::default(), &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
     let recon = SparseReconstruction::seeded(partition, node_states);
     let (mut recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
@@ -180,7 +181,7 @@ mod tests {
   ) -> Result<BTreeMap<String, String>, Report> {
     let length = get_common_length(aln)?;
     let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, Alphabet::default(), length);
-    let node_states = partition.attach_sequences(graph, aln, names)?;
+    let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, node_states);
     let (mut recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;
 

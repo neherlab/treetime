@@ -2,6 +2,7 @@
 
 #[cfg(test)]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
@@ -44,7 +45,7 @@ mod tests {
     let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
 
     let counts_actual = get_mutation_counts_fitch(&graph, &fitch, &branch_lengths)?;
     assert_eq!(
@@ -85,7 +86,7 @@ mod tests {
     let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
 
     let counts = get_mutation_counts_fitch(&graph, &fitch, &branch_lengths)?;
     let actual = infer_gtr_impl(

@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::pipeline::DenseReconstruction;
@@ -252,13 +253,7 @@ mod tests {
       node_states: BTreeMap::new(),
       edges: MarginalEdges::default(),
     })];
-    let (partitions, _) = initialize_marginal_timetree(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      partitions,
-      &aln,
-      &names,
-    )?;
+    let (partitions, _) = initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions, &nwk_fasta_node_inputs(&graph, &names, aln))?;
 
     let dates: DatesMap = btreemap! {
       "A".to_owned() => Some(DateConstraint::exact(2010.0)),

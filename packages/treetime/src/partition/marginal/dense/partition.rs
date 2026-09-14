@@ -20,7 +20,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::FastaRecord;
+use treetime_io::nwk::NwkFastaNodeInput;
 use treetime_primitives::{Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::interval::range::range_contains;
@@ -75,27 +75,19 @@ impl PartitionMarginalDense {
   pub fn attach_sequences(
     &self,
     graph: &Graph,
-    aln: &[FastaRecord],
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
   ) -> Result<BTreeMap<GraphNodeKey, DenseNodeState>, Report> {
-    let aln_by_name = aln.iter().fold(BTreeMap::new(), |mut records, record| {
-      records.entry(record.seq_name.as_str()).or_insert(record);
-      records
-    });
     let mut node_states = BTreeMap::new();
     for leaf in graph.get_leaves() {
       let leaf_key = leaf.read_arc().key();
+      let node = &node_inputs[&leaf_key];
 
-      let leaf_name = names[&leaf_key].clone().ok_or_else(|| {
-        make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
-      })?;
+      let seq = node
+        .aln
+        .as_ref()
+        .ok_or_else(|| make_report!("Leaf sequence not found: '{}'", node.name.as_deref().unwrap_or("")))?;
 
-      let leaf_fasta = aln_by_name
-        .get(leaf_name.as_str())
-        .copied()
-        .ok_or_else(|| make_report!("Leaf sequence not found: '{leaf_name}'"))?;
-
-      node_states.insert(leaf_key, DenseNodeState::new(&leaf_fasta.seq, &self.alphabet)?);
+      node_states.insert(leaf_key, DenseNodeState::new(seq, &self.alphabet)?);
     }
     Ok(node_states)
   }

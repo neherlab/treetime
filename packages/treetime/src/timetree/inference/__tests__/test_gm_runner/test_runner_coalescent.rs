@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use super::super::test_gm_runner_support::support::{
     ALPHABET, OUTPUTS, load_alignment_for_dataset, load_dates_for_dataset,
   };
@@ -116,13 +117,7 @@ let (graph, names, partitions, clock_model, constraints, branch_lengths) = build
     });
 
     let partitions: Vec<PartitionTimetree> = vec![dense_partition];
-    let (partitions, _) = initialize_marginal_timetree(
-      &graph,
-      &profile_branch_lengths(&branch_lengths),
-      partitions,
-      &aln,
-      &names,
-    )?;
+    let (partitions, _) = initialize_marginal_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 

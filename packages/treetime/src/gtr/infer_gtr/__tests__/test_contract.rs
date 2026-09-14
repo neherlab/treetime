@@ -12,6 +12,7 @@
   reason = "integer-valued f64s from += 1.0 accumulation and explicit = 0.0 assignment"
 )]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
@@ -63,7 +64,7 @@ mod tests {
       ..JC69Params::default()
     })?;
     let partition = PartitionMarginalDense::new(0, gtr, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(&graph, aln, &names)?;
+    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
@@ -79,7 +80,7 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln.to_vec()))?;
     Ok((graph, fitch, branch_lengths))
   }
 

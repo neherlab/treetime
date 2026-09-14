@@ -13,6 +13,8 @@ pub mod tests {
   //! 3. Initial log-LH (before optimization) should be identical
   //! 4. Final log-LH difference should be bounded
 
+  use treetime_io::nwk::nwk_fasta_node_inputs;
+
   use std::collections::BTreeMap;
 
   use treetime_graph::node::GraphNodeKey;
@@ -61,7 +63,7 @@ pub mod tests {
   ) -> Result<Vec<DenseReconstruction>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(graph, aln, names)?;
+    let node_states = partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
     let partitions = vec![DenseReconstruction::seeded(partition, node_states)];
 
     let (partitions, _) = marginal_update_dense(graph, &profile_branch_lengths(branch_lengths), partitions)?;
@@ -76,7 +78,7 @@ pub mod tests {
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<SparseReconstruction>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let fitch = create_fitch_partition(graph, 0, alphabet, aln, names)?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
     let partitions = vec![SparseReconstruction::seeded(partition, node_states)];
     let (partitions, _) = marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), partitions)?;

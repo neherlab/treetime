@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::{
     ancestral_reconstruction_fitch, attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward,
@@ -242,7 +243,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &names)?;
+    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
@@ -318,7 +319,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &names)?;
+    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
@@ -365,7 +366,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &names)?;
+    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let actual = get_internal_sequences(&graph, &names, &partition);
     let expected = btreemap! {
       o!("AB") => o!("GCGTACGT"),
@@ -419,7 +420,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &names)?;
+    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
 
     // Verify substitutions on edges
     let actual_subs = collect_edge_subs(&graph, &names, &partition);
@@ -497,7 +498,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &names)?;
+    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
 
     // Verify substitutions on edges
     let actual_subs = collect_edge_subs(&graph, &names, &partition);
@@ -578,7 +579,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &names)?;
+    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
 
     // Verify substitutions on edges
     //
@@ -670,7 +671,7 @@ mod tests {
     };
 
     // Run backward pass only
-    attach_seqs_to_graph(&graph, &mut partition, &aln, &names)?;
+    attach_seqs_to_graph(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     fitch_backward(&graph, &mut partition)?;
 
     {
@@ -770,7 +771,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, &aln, &names)?;
+    compress_sequences(&graph, &mut fitch, &nwk_fasta_node_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -1013,7 +1014,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, &aln, &names)?;
+    compress_sequences(&graph, &mut fitch, &nwk_fasta_node_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -1165,7 +1166,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, &aln, &names)?;
+    compress_sequences(&graph, &mut fitch, &nwk_fasta_node_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,

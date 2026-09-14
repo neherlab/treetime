@@ -7,7 +7,7 @@ use crate::ancestral::fitch_sub::{
 use crate::make_report;
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::storage::sparse::{FitchNodeData, FitchSeqDistribution, FitchSeqInfo, SparseEdgeObs};
-use crate::seq::alignment::get_common_length;
+use crate::seq::alignment::get_common_length_of_node_inputs;
 use crate::seq::composition::Composition;
 use eyre::Report;
 use itertools::Itertools;
@@ -18,7 +18,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
-use treetime_io::fasta::FastaRecord;
+use treetime_io::nwk::NwkFastaNodeInput;
 use treetime_primitives::{AlphabetLike, Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
 use treetime_utils::interval::range_union::range_union;
@@ -27,10 +27,9 @@ pub fn create_fitch_partition(
   graph: &Graph,
   index: usize,
   alphabet: Alphabet,
-  aln: &[FastaRecord],
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
 ) -> Result<PartitionFitch, Report> {
-  let length = get_common_length(aln)?;
+  let length = get_common_length_of_node_inputs(node_inputs)?;
   let mut partition = PartitionFitch {
     index,
     alphabet,
@@ -38,44 +37,39 @@ pub fn create_fitch_partition(
     nodes: btreemap! {},
     edges: btreemap! {},
   };
-  compress_sequences(graph, &mut partition, aln, names)?;
+  compress_sequences(graph, &mut partition, node_inputs)?;
   Ok(partition)
 }
 
 pub(crate) fn attach_seqs_to_graph(
   graph: &Graph,
   partition: &mut PartitionFitch,
-  aln: &[FastaRecord],
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
 ) -> Result<(), Report> {
-  let aln_by_name = aln.iter().fold(BTreeMap::new(), |mut records, record| {
-    records.entry(record.seq_name.as_str()).or_insert(record);
-    records
-  });
   let leaf_records = graph
     .get_leaves()
     .into_par_iter()
     .map(|leaf| -> Result<_, Report> {
-      let leaf = leaf.read_arc();
-      let leaf_key = leaf.key();
-      let leaf_name = names[&leaf_key]
-        .clone()
+      let leaf_key = leaf.read_arc().key();
+      let node = &node_inputs[&leaf_key];
+      let seq = node
+        .aln
+        .as_ref()
+        // Every leaf has a sequence after alignment completion.
         .ok_or_else(|| {
-          make_report!("Expected all leaf nodes to have names, such that they can be matched to their corresponding sequences. But found a leaf node that has no name.")
+          make_report!(
+            "Leaf sequence not found after alignment completion: '{}'",
+            node.name.as_deref().unwrap_or("")
+          )
         })?;
-      let leaf_fasta = aln_by_name
-        .get(leaf_name.as_str())
-        .copied()
-        // Every leaf has a sequence record after alignment completion.
-        .ok_or_else(|| make_report!("Leaf sequence not found after alignment completion: '{leaf_name}'"))?;
-      Ok((leaf_key, leaf_fasta))
+      Ok((leaf_key, seq))
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
   let alphabet = partition.alphabet.clone();
   let nodes = leaf_records
     .par_iter()
-    .map(|(leaf_key, leaf_fasta)| FitchNodeData::new(&leaf_fasta.seq, &alphabet).map(|node| (*leaf_key, node)))
+    .map(|(leaf_key, seq)| FitchNodeData::new(seq, &alphabet).map(|node| (*leaf_key, node)))
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   partition.nodes.extend(nodes);
 
@@ -295,10 +289,9 @@ fn fitch_cleanup(graph: &Graph, partition: &mut PartitionFitch) -> Result<(), Re
 pub fn compress_sequences(
   graph: &Graph,
   partition: &mut PartitionFitch,
-  aln: &[FastaRecord],
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
 ) -> Result<(), Report> {
-  attach_seqs_to_graph(graph, partition, aln, names)?;
+  attach_seqs_to_graph(graph, partition, node_inputs)?;
   fitch_backward(graph, partition)?;
   fitch_forward(graph, partition)?;
   fitch_cleanup(graph, partition)

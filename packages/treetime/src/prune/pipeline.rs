@@ -14,6 +14,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaRecord;
+use treetime_io::nwk::nwk_fasta_node_inputs;
 
 pub struct PruneParams {
   pub prune_short: Option<f64>,
@@ -64,19 +65,17 @@ pub fn run(
   // beside them until the output reconstructions are assembled.
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
   let (mut partitions, node_states): (Vec<_>, Vec<_>) = if needs_sequences {
-    let sequences = input
-      .sequences
-      .as_ref()
+    let sequences = std::mem::take(&mut input.sequences)
       .ok_or_else(|| eyre::eyre!("Sequences required for --prune-empty or --merge-shared-mutations"))?;
+    let node_inputs = nwk_fasta_node_inputs(&input.graph, &names, sequences);
     let created = create_marginal_partition(
       &input.graph,
       0,
       input.alphabet.clone(),
-      sequences,
+      &node_inputs,
       GtrModelName::JC69,
       None,
       &branch_lengths,
-      &names,
     )?;
     let (partition, node_states) = match created.partition {
       MarginalPartition::Sparse(partition, node_states) => (partition, node_states),
@@ -84,7 +83,7 @@ pub fn run(
         let gtr = get_gtr_by_name(GtrModelName::JC69)?;
         log_gtr(&gtr, GtrModelName::JC69);
         let fitch =
-          crate::ancestral::fitch::create_fitch_partition(&input.graph, 0, input.alphabet.clone(), sequences, &names)?;
+          crate::ancestral::fitch::create_fitch_partition(&input.graph, 0, input.alphabet.clone(), &node_inputs)?;
         fitch.into_marginal_sparse(gtr, &input.graph)?
       },
     };

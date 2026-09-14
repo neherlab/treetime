@@ -1,18 +1,21 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
+  use crate::ancestral::attach::complete_alignment_for_leaves;
+  use crate::ancestral::mask::create_mask;
   use crate::ancestral::params::MethodAncestral;
-  use crate::ancestral::pipeline::{AncestralInput, AncestralParams};
+  use crate::ancestral::pipeline::AncestralParams;
   use crate::ancestral::sample::SampleMode;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::progress::NoopProgress;
+  use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use lazy_static::lazy_static;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::path::PathBuf;
   use treetime_io::fasta::read_many_fasta_path;
-  use treetime_io::nwk::nwk_read_file;
+  use treetime_io::nwk::{NwkFastaInput, nwk_read_file};
 
   lazy_static! {
     static ref PROJECT_ROOT: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -33,10 +36,7 @@ mod tests {
   #[test]
   fn test_sample_from_profile_rejected_for_parsimony() {
     let alphabet = Alphabet::default();
-    let nwk_parsed = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk")).unwrap();
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
+    let parse = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk")).unwrap();
     let sequences = read_many_fasta_path(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet).unwrap();
 
     let params = AncestralParams {
@@ -51,13 +51,13 @@ mod tests {
       sample_from_profile: SampleMode::Root,
       ignore_missing_alns: false,
     };
-    let input = AncestralInput {
-      graph,
-      alphabet,
-      aln: sequences,
-    };
+    let names = parse.names();
+    let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names).unwrap();
+    let alignment_length = get_common_length(&sequences).unwrap();
+    let mask = create_mask(&sequences, alignment_length, &alphabet);
+    let input = NwkFastaInput::from_parse_and_aln(parse, sequences);
 
-    let result = crate::ancestral::pipeline::run(&params, input, &names, &branch_lengths, |_, _| Ok(()), &NoopProgress);
+    let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, |_, _| Ok(()), &NoopProgress);
     assert!(result.is_err(), "parsimony with posterior sampling must be rejected");
     let err = result.err().unwrap().to_string();
     assert!(
@@ -82,10 +82,7 @@ mod tests {
 
     pub fn run_sampled(mode: SampleMode, seed: u64) -> Result<BTreeMap<String, String>, Report> {
       let alphabet = Alphabet::default();
-      let nwk_parsed = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
+      let parse = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
       let sequences = read_many_fasta_path(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
 
       let params = AncestralParams {
@@ -100,20 +97,20 @@ mod tests {
         sample_from_profile: mode,
         ignore_missing_alns: false,
       };
-      let input = AncestralInput {
-        graph,
-        alphabet,
-        aln: sequences,
-      };
+      let names = parse.names();
+      let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names)?;
+      let alignment_length = get_common_length(&sequences)?;
+      let mask = create_mask(&sequences, alignment_length, &alphabet);
+      let input = NwkFastaInput::from_parse_and_aln(parse, sequences);
 
       let mut captured: BTreeMap<String, String> = BTreeMap::new();
       crate::ancestral::pipeline::run(
         &params,
-        input,
-        &names,
-        &branch_lengths,
+        &input,
+        alphabet,
+        mask,
         |key, seq| {
-          let name = names[&key].clone().unwrap_or_default();
+          let name = input.nodes[&key].name.clone().unwrap_or_default();
           captured.insert(name, seq.to_string());
           Ok(())
         },

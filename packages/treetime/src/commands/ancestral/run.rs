@@ -1,7 +1,8 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::ancestral::attach::sanitize_to_alphabet;
+use crate::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
+use crate::ancestral::mask::create_mask;
 use crate::ancestral::multi::{MarginalPartitionParams, PartitionPlan, reconstruct_marginal_partition};
-use crate::ancestral::pipeline::{self, AncestralInput, AncestralParams, AncestralPartition};
+use crate::ancestral::pipeline::{self, AncestralParams, AncestralPartition};
 use crate::commands::ancestral::aa_node_data::{
   AaNodeData, annotation_cds_nuc_length, collect_aa_cds_node_data, read_aa_root_sequences, read_gff3_annotations,
   template_has_cds_placeholder, translation_path, validate_aa_args,
@@ -18,6 +19,7 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use crate::make_error;
 use crate::progress::ProgressSink;
+use crate::seq::alignment::get_common_length;
 use crate::seq::gap_fill::apply_gap_fill;
 use crate::seq::mutation::MutationTrack;
 use eyre::Report;
@@ -27,10 +29,10 @@ use std::path::PathBuf;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta, read_many_fasta_path};
+use treetime_io::fasta::{FastaReader, FastaWriter, read_many_fasta, read_many_fasta_path};
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
-use treetime_io::nwk::nwk_read_file;
+use treetime_io::nwk::{NwkFastaInput, nwk_read_file};
 use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 use treetime_utils::sync::random::get_random_number_generator;
 
@@ -45,18 +47,11 @@ pub fn run_ancestral_reconstruction(
     &args.aa_root_sequence,
   )?;
 
-  let parsed = read_nwk_fasta(args, progress)?;
-  let ParsedNwkFasta {
-    graph,
-    alphabet,
-    aln,
-    names,
-    branch_lengths,
-    confidences,
-    leaf_descriptions,
-  } = parsed;
+  let (mut input, mask, alphabet) = read_nwk_fasta(args, progress)?;
+  let names = input.names();
+  let branch_lengths = input.branch_lengths();
 
-  let topology_order = args.topology_order.resolve_topology_order(&graph, &names, None)?;
+  let topology_order = args.topology_order.resolve_topology_order(&input.graph, &names, None)?;
 
   let resolved = args.resolve_outputs()?;
   let mut output_fasta = if resolved
@@ -70,22 +65,16 @@ pub fn run_ancestral_reconstruction(
   };
 
   let params = AncestralParams::new(args);
-  let input = AncestralInput { graph, alphabet, aln };
 
   let result = pipeline::run(
     &params,
-    input,
-    &names,
-    &branch_lengths,
+    &input,
+    alphabet,
+    mask,
     |key, seq| {
       if let Some(ref mut writer) = output_fasta {
-        let name = names[&key].as_deref().unwrap_or("");
-        let desc = names[&key]
-          .as_deref()
-          .and_then(|name| leaf_descriptions.get(name))
-          .cloned()
-          .flatten();
-        writer.write(name, &desc, seq)
+        let node = &input.nodes[&key];
+        writer.write(node.name.as_deref().unwrap_or(""), &node.desc, seq)
       } else {
         Ok(())
       }
@@ -103,7 +92,7 @@ pub fn run_ancestral_reconstruction(
       args,
       translations,
       aa_fasta_template.as_deref(),
-      &result.output.graph,
+      &input.graph,
       &names,
       &branch_lengths,
       progress,
@@ -122,11 +111,7 @@ pub fn run_ancestral_reconstruction(
 
   let pipeline::AncestralOutputFull { output, partition } = result;
   let pipeline::AncestralOutput {
-    mut graph,
-    gtr,
-    model_name,
-    mask,
-    ..
+    gtr, model_name, mask, ..
   } = output;
 
   // Gather the per-node/per-edge sequence and mutation values off the pipeline-local partition into
@@ -136,37 +121,38 @@ pub fn run_ancestral_reconstruction(
   // bit-identical. The collection runs once and only when a selected tree writer reads sequences, so
   // a Graph-JSON-only, DOT-only, or GTR-only request never expands the sparse sequences.
   let tree_maps = collect_ancestral_tree_maps(&resolved.tree_outputs, || {
-    gather_ancestral_output_maps(&graph, partition.as_ref())
+    gather_ancestral_output_maps(&input.graph, partition.as_ref())
   })?;
   let augur_maps = if resolved.non_tree_outputs.contains_key(&OutputSelection::AugurNodeData) {
-    gather_augur_output_maps_opt(&graph, partition.as_ref())?
+    gather_augur_output_maps_opt(&input.graph, partition.as_ref())?
   } else {
     None
   };
 
-  topology_order.apply(&mut graph, &names, &branch_lengths)?;
+  topology_order.apply(&mut input.graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.9, "");
 
   // Gather the per-node name/confidence and per-edge branch length off the ordered tree into keyed
   // value maps the output writers consume. The writers still read sequences and model metadata from
   // the graph data slot; these maps carry the name, input-branch-support, and branch-length values.
-  let nodes: BTreeMap<GraphNodeKey, AncestralNodeOut> = graph
+  let nodes: BTreeMap<GraphNodeKey, AncestralNodeOut> = input
+    .graph
     .get_nodes()
     .iter()
     .map(|node| {
-      let node = node.read_arc();
-      let key = node.key();
-      let confidence = confidences.get(&key).copied().flatten();
+      let key = node.read_arc().key();
+      let node_input = &input.nodes[&key];
       (
         key,
         AncestralNodeOut {
-          name: names[&key].clone(),
-          confidence,
+          name: node_input.name.clone(),
+          confidence: node_input.confidence,
         },
       )
     })
     .collect();
-  let edges: BTreeMap<GraphEdgeKey, EdgeOut> = graph
+  let edges: BTreeMap<GraphEdgeKey, EdgeOut> = input
+    .graph
     .get_edges()
     .iter()
     .map(|edge| {
@@ -174,7 +160,7 @@ pub fn run_ancestral_reconstruction(
       (
         key,
         EdgeOut {
-          branch_length: branch_lengths[&key],
+          branch_length: input.edges[&key].branch_length,
         },
       )
     })
@@ -186,7 +172,7 @@ pub fn run_ancestral_reconstruction(
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     if let Some(augur_maps) = &augur_maps {
-      write_augur_node_data_json_with_aa(&graph, augur_maps, &mask, &node_names, aa_node_data.as_ref(), path)?;
+      write_augur_node_data_json_with_aa(&input.graph, augur_maps, &mask, &node_names, aa_node_data.as_ref(), path)?;
     }
     info!("Wrote augur node data JSON to {}", path.display());
   }
@@ -206,7 +192,7 @@ pub fn run_ancestral_reconstruction(
 
   if !resolved.tree_outputs.is_empty() {
     write_tree_for_partition(
-      &graph,
+      &input.graph,
       &nodes,
       &branch_lengths,
       &tree_maps,
@@ -217,20 +203,23 @@ pub fn run_ancestral_reconstruction(
   }
 
   progress.report("Done", 1.0, "");
-  Ok(AncestralResult { graph, nodes, edges })
+  Ok(AncestralResult {
+    graph: input.graph,
+    nodes,
+    edges,
+  })
 }
 
-struct ParsedNwkFasta {
-  graph: Graph,
-  alphabet: Alphabet,
-  aln: Vec<FastaRecord>,
-  names: BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  confidences: BTreeMap<GraphNodeKey, Option<f64>>,
-  leaf_descriptions: BTreeMap<String, Option<String>>,
-}
-
-fn read_nwk_fasta(args: &TreetimeAncestralArgs, progress: &dyn ProgressSink) -> Result<ParsedNwkFasta, Report> {
+/// Read and gap-fill the alignment, parse the tree, complete the alignment so every leaf carries a
+/// sequence, compute the alignment mask, and merge everything into the reconstruction input.
+///
+/// The mask is computed over the completed alignment records (matching the reconstruction's view of
+/// the alignment) and returned alongside the merged input and the alphabet the pipeline reconstructs
+/// over.
+fn read_nwk_fasta(
+  args: &TreetimeAncestralArgs,
+  progress: &dyn ProgressSink,
+) -> Result<(NwkFastaInput, Vec<bool>, Alphabet), Report> {
   let gap_fill_mode = args.gap_fill_args.effective_gap_fill();
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 
@@ -249,28 +238,20 @@ fn read_nwk_fasta(args: &TreetimeAncestralArgs, progress: &dyn ProgressSink) -> 
     apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
   }
 
-  let leaf_descriptions = aln
-    .iter()
-    .map(|record| (record.seq_name.clone(), record.desc.clone()))
-    .collect();
-
   progress.check_cancelled()?;
   progress.report("Parsing tree", 0.1, "");
-  let nwk_parsed = nwk_read_file(args.tree())?;
-  let confidences = nwk_parsed.confidences();
-  let names = nwk_parsed.names();
-  let graph = nwk_parsed.graph;
-  let branch_lengths = nwk_parsed.branch_lengths;
+  let parse = nwk_read_file(args.tree())?;
 
-  Ok(ParsedNwkFasta {
-    graph,
-    alphabet,
-    aln,
-    names,
-    branch_lengths,
-    confidences,
-    leaf_descriptions,
-  })
+  // Tips absent from the alignment become fully-ambiguous sequences, once, before the mask and the
+  // merged input are built, so every leaf's node input carries a sequence and attachment finds one by
+  // node key.
+  let names = parse.names();
+  let aln = complete_alignment_for_leaves(&parse.graph, aln, &alphabet, args.ignore_missing_alns, &names)?;
+  let alignment_length = get_common_length(&aln)?;
+  let mask = create_mask(&aln, alignment_length, &alphabet);
+
+  let input = NwkFastaInput::from_parse_and_aln(parse, aln);
+  Ok((input, mask, alphabet))
 }
 
 fn write_tree_for_partition(

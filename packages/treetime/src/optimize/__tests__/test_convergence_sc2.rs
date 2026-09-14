@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::Alphabet;
 
   use crate::ancestral::fitch::create_fitch_partition;
@@ -42,7 +43,7 @@ mod tests {
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(partition, node_states)];
     let (sparse_partitions, _) =
@@ -111,7 +112,7 @@ mod tests {
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &aln, &names)?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(partition, node_states)];
     let (sparse_partitions, _) =

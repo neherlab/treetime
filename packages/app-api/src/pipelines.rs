@@ -1,6 +1,6 @@
 pub mod ancestral {
   pub use treetime::ancestral::pipeline::{
-    AncestralInput, AncestralOutput, AncestralOutputFull, AncestralParams, AncestralPartition, run,
+    AncestralOutput, AncestralOutputFull, AncestralParams, AncestralPartition, run,
   };
 }
 

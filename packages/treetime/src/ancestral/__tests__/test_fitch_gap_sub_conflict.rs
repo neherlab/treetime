@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::compress_sequences;
   use crate::partition::fitch::partition::PartitionFitch;
@@ -29,7 +30,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &aln, &names)?;
+    compress_sequences(&graph, &mut partition, &nwk_fasta_node_inputs(&graph, &names, aln))?;
 
     let name = |key| -> String { names.get(&key).cloned().flatten().unwrap_or_default() };
 

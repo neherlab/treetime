@@ -10,7 +10,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::FastaRecord;
+use treetime_io::nwk::NwkFastaNodeInput;
 use treetime_primitives::{LogLh, Seq, seq};
 
 impl PartitionTimetree {
@@ -35,11 +35,10 @@ impl PartitionTimetree {
   pub fn attach_sequences(
     &mut self,
     graph: &Graph,
-    aln: &[FastaRecord],
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
   ) -> Result<(), Report> {
     if let Self::Dense(family) = self {
-      family.node_states = family.partition.attach_sequences(graph, aln, names)?;
+      family.node_states = family.partition.attach_sequences(graph, node_inputs)?;
     }
     Ok(())
   }
@@ -182,11 +181,10 @@ pub fn initialize_marginal_timetree(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   mut partitions: Vec<PartitionTimetree>,
-  aln: &[FastaRecord],
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  node_inputs: &BTreeMap<GraphNodeKey, NwkFastaNodeInput>,
 ) -> Result<(Vec<PartitionTimetree>, LogLh), Report> {
   for partition in &mut partitions {
-    partition.attach_sequences(graph, aln, names)?;
+    partition.attach_sequences(graph, node_inputs)?;
   }
   marginal_update_timetree(graph, branch_lengths, partitions)
 }
