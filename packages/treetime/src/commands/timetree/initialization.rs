@@ -11,7 +11,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::{DatesMap, read_dates};
-use treetime_io::fasta::{FastaRecord, read_many_fasta};
+use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
 use treetime_io::nwk::{NwkParse, nwk_read_file};
 
 pub struct InputData {
@@ -66,7 +66,7 @@ pub fn load_input_data(args: &TreetimeTimetreeArgs) -> Result<InputData, Report>
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 
   let aln = if !args.alignment.alignment.is_empty() {
-    let mut records = read_many_fasta(&args.alignment.alignment, &alphabet)?;
+    let mut records = read_many_fasta_path(&args.alignment.alignment, &alphabet)?;
     let gap_fill_mode = args.gap_fill_args.effective_gap_fill();
     for record in &mut records {
       apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());

@@ -9,7 +9,7 @@ mod tests {
   use eyre::Report;
   use std::path::Path;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::read_many_fasta;
+  use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
 
   // `optimize --gtr=infer` must serialize the GTR after rate normalization.
@@ -38,7 +38,7 @@ mod tests {
     } = nwk_read_file(&tree_path)?;
 
     let graph: Graph = graph;
-    let sequences = read_many_fasta(&[aln_path.to_str().expect("utf-8 path")], &alphabet)?;
+    let sequences = read_many_fasta_path(&[aln_path.to_str().expect("utf-8 path")], &alphabet)?;
 
     let params = OptimizeParams {
       model: GtrModelName::Infer,

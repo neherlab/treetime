@@ -130,7 +130,7 @@ mod tests {
     use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
     use crate::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
     use crate::progress::NoopProgress;
-    use treetime_io::fasta::read_many_fasta;
+    use treetime_io::fasta::read_many_fasta_path;
     use treetime_io::nwk::{NwkParse, nwk_read_file};
 
     let root = helpers::project_root();
@@ -141,7 +141,7 @@ mod tests {
       names,
       branch_lengths,
     } = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
-    let sequences = read_many_fasta(&[root.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet).unwrap();
+    let sequences = read_many_fasta_path(&[root.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet).unwrap();
 
     let params = OptimizeParams {
       model: GtrModelName::default(),

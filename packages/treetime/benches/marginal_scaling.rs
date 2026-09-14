@@ -11,7 +11,7 @@ use treetime::ancestral::pipeline::SparseReconstruction;
 use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_io::fasta::read_many_fasta;
+use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::nwk::{NwkParse, nwk_read_file};
 use treetime_utils::init::global::global_init;
 
@@ -63,7 +63,7 @@ fn setup_inner() -> (Graph, SparseReconstruction, BTreeMap<GraphEdgeKey, Option<
     branch_lengths,
     ..
   } = nwk_read_file(project_root.join("data/flu/h3n2/200/tree.nwk")).unwrap();
-  let alignment = read_many_fasta(&[project_root.join("data/flu/h3n2/200/aln.fasta.xz")], &alphabet).unwrap();
+  let alignment = read_many_fasta_path(&[project_root.join("data/flu/h3n2/200/aln.fasta.xz")], &alphabet).unwrap();
   let fitch = create_fitch_partition(&graph, 0, alphabet, &alignment, &names).unwrap();
   let gtr = jc69(JC69Params::default()).unwrap();
   let (partition, node_states) = fitch.into_marginal_sparse(gtr, &graph).unwrap();

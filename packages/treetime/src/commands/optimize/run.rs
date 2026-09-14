@@ -19,7 +19,7 @@ use std::path::PathBuf;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::read_many_fasta;
+use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::{NwkParse, nwk_read_file};
 use treetime_primitives::Seq;
@@ -33,7 +33,7 @@ pub fn run_optimize(
 
   let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
   let gap_fill = args.gap_fill_args.effective_gap_fill();
-  let mut aln = read_many_fasta(&args.alignment.alignment, &alphabet)?;
+  let mut aln = read_many_fasta_path(&args.alignment.alignment, &alphabet)?;
   for record in &mut aln {
     apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());
   }

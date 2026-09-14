@@ -19,7 +19,7 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::read_many_fasta;
+use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
@@ -46,7 +46,7 @@ pub fn run_prune(
 
   let needs_sequences = args.prune_empty || args.merge_shared_mutations;
   let sequences = if needs_sequences && !args.alignment.alignment.is_empty() {
-    Some(read_many_fasta(&args.alignment.alignment, &alphabet)?)
+    Some(read_many_fasta_path(&args.alignment.alignment, &alphabet)?)
   } else {
     None
   };

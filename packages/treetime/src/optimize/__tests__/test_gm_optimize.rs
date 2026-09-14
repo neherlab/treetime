@@ -201,7 +201,7 @@ mod tests {
     use std::path::Path;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::fasta::read_many_fasta;
+    use treetime_io::fasta::read_many_fasta_path;
     use treetime_io::nwk::{NwkParse, nwk_read_file};
     use treetime_primitives::LogLh;
 
@@ -251,7 +251,7 @@ mod tests {
 
       let tree_path = workspace_root.join(&case.tree);
       let aln_path = workspace_root.join(&case.aln);
-      let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet_sparse)?;
+      let aln = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet_sparse)?;
       let NwkParse {
         graph,
         names,

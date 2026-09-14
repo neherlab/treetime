@@ -14,7 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::read_many_fasta;
+use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::gff::{GffCdsFeature, read_gff3_cds_features_filtered};
 use treetime_primitives::{AsciiChar, Seq};
 use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
@@ -141,7 +141,7 @@ pub fn read_aa_root_sequences(
   // Read with the stop-inclusive alphabet, then fold out-of-alphabet characters into the unknown
   // state of the reconstruction alphabet so the root sequence shares its alphabet with the partition.
   let read_alphabet = Alphabet::new(AlphabetName::Aa)?;
-  let records = read_many_fasta(&[path], &read_alphabet)?;
+  let records = read_many_fasta_path(&[path], &read_alphabet)?;
   let mut by_cds = BTreeMap::new();
   for record in records {
     let (seq, _changed) = sanitize_to_alphabet(&record.seq, recon_alphabet);

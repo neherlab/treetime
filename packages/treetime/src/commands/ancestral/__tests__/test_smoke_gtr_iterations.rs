@@ -9,7 +9,7 @@ mod tests {
   use eyre::Report;
   use lazy_static::lazy_static;
   use std::path::PathBuf;
-  use treetime_io::fasta::read_many_fasta;
+  use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
 
   lazy_static! {
@@ -29,7 +29,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
-    let sequences = read_many_fasta(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
+    let sequences = read_many_fasta_path(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
 
     let params = AncestralParams {
       method: MethodAncestral::Marginal,
@@ -71,7 +71,7 @@ mod tests {
       branch_lengths,
       ..
     } = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
-    let sequences = read_many_fasta(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
+    let sequences = read_many_fasta_path(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?;
 
     let params = AncestralParams {
       method: MethodAncestral::Marginal,

@@ -22,7 +22,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::path::PathBuf;
   use std::sync::LazyLock;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta, read_many_fasta_str};
+  use treetime_io::fasta::{FastaRecord, read_many_fasta_path, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_file, nwk_read_str};
 
   use treetime_utils::make_report;
@@ -82,7 +82,7 @@ mod tests {
     let aln_path = root.join("data/flu/h3n2/20/aln.fasta.xz");
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let aln = read_many_fasta(&[aln_path], &alphabet)?;
+    let aln = read_many_fasta_path(&[aln_path], &alphabet)?;
 
     let NwkParse {
       graph,

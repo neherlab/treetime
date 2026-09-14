@@ -50,7 +50,7 @@ mod tests {
   use rstest::rstest;
 
   use std::path::PathBuf;
-  use treetime_io::fasta::read_many_fasta;
+  use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
 
   #[rustfmt::skip]
@@ -116,7 +116,7 @@ mod tests {
     let tree_path = PROJECT_ROOT.join(tree_path);
     let alignment_path = PROJECT_ROOT.join(alignment_path);
 
-    let aln = read_many_fasta(&[&alignment_path], &*DENSE_NUC_ALPHABET)?;
+    let aln = read_many_fasta_path(&[&alignment_path], &*DENSE_NUC_ALPHABET)?;
 
     let dense = {
       let NwkParse {

@@ -16,7 +16,7 @@ mod tests {
   use eyre::Report;
 
   use std::path::Path;
-  use treetime_io::fasta::read_many_fasta;
+  use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
 
   /// Regression test: sparse optimize loop converges on sc2/2844 (dataset with indels).
@@ -36,7 +36,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let tree_path = workspace_root.join("data/sc2/2844/tree.nwk");
     let aln_path = workspace_root.join("data/sc2/2844/aln.fasta.xz");
-    let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet)?;
+    let aln = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet)?;
     let NwkParse {
       mut graph,
       names,
@@ -107,7 +107,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let tree_path = workspace_root.join("data/flu/h3n2/20/tree.nwk");
     let aln_path = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
-    let aln = read_many_fasta(&[aln_path.to_str().unwrap()], &alphabet)?;
+    let aln = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet)?;
     let NwkParse {
       mut graph,
       names,

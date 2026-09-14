@@ -110,7 +110,7 @@ mod tests {
     use eyre::Report;
     use std::collections::BTreeMap;
     use std::path::PathBuf;
-    use treetime_io::fasta::{FastaRecord, read_many_fasta};
+    use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
     use treetime_primitives::Seq;
 
     pub fn project_root() -> PathBuf {
@@ -123,7 +123,7 @@ mod tests {
 
     pub fn input_leaves() -> Result<BTreeMap<String, Seq>, Report> {
       let alignment = project_root().join("data/flu/h3n2/20/aln.fasta.xz");
-      let records = read_many_fasta(&[alignment], &Alphabet::default())?;
+      let records = read_many_fasta_path(&[alignment], &Alphabet::default())?;
       Ok(
         records
           .into_iter()
@@ -155,7 +155,7 @@ mod tests {
       configure(&mut args);
 
       run_timetree_estimation(&args, &NoopProgress)?;
-      read_many_fasta(&[fasta], &Alphabet::default())
+      read_many_fasta_path(&[fasta], &Alphabet::default())
     }
   }
 }

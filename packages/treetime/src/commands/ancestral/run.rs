@@ -27,7 +27,7 @@ use std::path::PathBuf;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::{FastaReader, FastaRecord, FastaWriter, read_many_fasta};
+use treetime_io::fasta::{FastaReader, FastaWriter, read_many_fasta, read_many_fasta_path};
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::{NwkParse, nwk_read_file};
@@ -53,19 +53,10 @@ pub fn run_ancestral_reconstruction(
 
   let mut aln = if ancestral_args.alignment.alignment.is_empty() {
     info!("Reading input fasta from standard input");
-    let mut reader = FastaReader::new(open_stdin()?, &alphabet);
-    let mut records = Vec::new();
-    loop {
-      let mut record = FastaRecord::default();
-      reader.read(&mut record)?;
-      if record.is_empty() {
-        break;
-      }
-      records.push(record);
-    }
-    records
+    let reader = FastaReader::new(open_stdin()?, &alphabet);
+    read_many_fasta(reader)?
   } else {
-    read_many_fasta(&ancestral_args.alignment.alignment, &alphabet)?
+    read_many_fasta_path(&ancestral_args.alignment.alignment, &alphabet)?
   };
 
   for record in &mut aln {
@@ -480,7 +471,7 @@ fn run_aa_reconstructions(
   let mut aa_node_data = AaNodeData::default();
   for (index, cds) in cdses.iter().enumerate() {
     let path = translation_path(translations, cds);
-    let mut sequences = read_many_fasta(&[&path], &read_alphabet)?;
+    let mut sequences = read_many_fasta_path(&[&path], &read_alphabet)?;
     let mut sanitized = 0_usize;
     for record in &mut sequences {
       let (seq, changed) = sanitize_to_alphabet(&record.seq, &recon_alphabet);

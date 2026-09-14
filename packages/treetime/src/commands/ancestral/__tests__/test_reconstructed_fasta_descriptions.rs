@@ -12,7 +12,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use tempfile::tempdir;
-  use treetime_io::fasta::read_many_fasta;
+  use treetime_io::fasta::read_many_fasta_path;
 
   /// Run ancestral reconstruction with leaf sequences included and return each emitted record's
   /// description keyed by sequence name. Leaf `A` carries a FASTA description, `B` does not, and the
@@ -47,7 +47,7 @@ mod tests {
     run_ancestral_reconstruction(&args, &NoopProgress)?;
 
     Ok(
-      read_many_fasta(&[out_path], &Alphabet::default())?
+      read_many_fasta_path(&[out_path], &Alphabet::default())?
         .into_iter()
         .map(|record| (record.seq_name, record.desc))
         .collect(),

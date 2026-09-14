@@ -12,7 +12,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta};
+  use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
   use treetime_io::nwk::{NwkParse, nwk_read_file};
 
   fn load() -> Result<
@@ -38,7 +38,7 @@ mod tests {
     } = nwk_read_file(workspace_root.join("data/flu/h3n2/20/tree.nwk"))?;
     let graph: Graph = graph;
     let aln = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
-    let sequences = read_many_fasta(&[aln.to_str().expect("utf-8 path")], &alphabet)?;
+    let sequences = read_many_fasta_path(&[aln.to_str().expect("utf-8 path")], &alphabet)?;
     Ok((graph, names, alphabet, sequences, branch_lengths))
   }
 

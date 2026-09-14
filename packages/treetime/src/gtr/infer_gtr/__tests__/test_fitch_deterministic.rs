@@ -9,7 +9,7 @@ mod tests {
   use rstest::rstest;
   use std::path::PathBuf;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::read_many_fasta;
+  use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::{NwkParse, nwk_read_file};
 
   lazy_static! {
@@ -34,7 +34,7 @@ mod tests {
   ) -> Result<(), Report> {
     let tree_path = PROJECT_ROOT.join(tree_path);
     let alignment_path = PROJECT_ROOT.join(alignment_path);
-    let aln = read_many_fasta(&[&alignment_path], &*NUC_ALPHABET)?;
+    let aln = read_many_fasta_path(&[&alignment_path], &*NUC_ALPHABET)?;
 
     let gtr_a = {
       let NwkParse { graph, names, branch_lengths, .. } = nwk_read_file(&tree_path)?;

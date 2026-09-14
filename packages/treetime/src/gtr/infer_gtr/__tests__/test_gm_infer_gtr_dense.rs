@@ -24,7 +24,7 @@ mod tests {
   use std::fs;
   use std::path::{Path, PathBuf};
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta, read_many_fasta_str};
+  use treetime_io::fasta::{FastaRecord, read_many_fasta_path, read_many_fasta_str};
   use treetime_io::nwk::{NwkParse, nwk_read_file, nwk_read_str};
 
   #[rstest]
@@ -175,7 +175,7 @@ mod tests {
     } = nwk_read_file(&tree_path)?;
 
     let graph: Graph = graph;
-    let aln = read_many_fasta(&[&alignment_path], &*NUC_ALPHABET)?;
+    let aln = read_many_fasta_path(&[&alignment_path], &*NUC_ALPHABET)?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,

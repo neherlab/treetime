@@ -184,12 +184,8 @@ pub fn read_one_fasta<A: AlphabetLike>(filepath: impl AsRef<Path>, alphabet: &A)
   Ok(record)
 }
 
-pub fn read_many_fasta<P: AsRef<Path>, A: AlphabetLike>(
-  filepaths: &[P],
-  alphabet: &A,
-) -> Result<Vec<FastaRecord>, Report> {
-  let mut reader = FastaReader::from_paths(filepaths, alphabet)?;
-  let mut fasta_records = Vec::<FastaRecord>::new();
+pub fn read_many_fasta<A: AlphabetLike>(mut reader: FastaReader<'_, '_, A>) -> Result<Vec<FastaRecord>, Report> {
+  let mut records = Vec::new();
 
   loop {
     let mut record = FastaRecord::default();
@@ -197,10 +193,18 @@ pub fn read_many_fasta<P: AsRef<Path>, A: AlphabetLike>(
     if record.is_empty() {
       break;
     }
-    fasta_records.push(record);
+    records.push(record);
   }
 
-  Ok(fasta_records)
+  Ok(records)
+}
+
+pub fn read_many_fasta_path<P: AsRef<Path>, A: AlphabetLike>(
+  filepaths: &[P],
+  alphabet: &A,
+) -> Result<Vec<FastaRecord>, Report> {
+  let reader = FastaReader::from_paths(filepaths, alphabet)?;
+  read_many_fasta(reader)
 }
 
 pub fn read_one_fasta_str<A: AlphabetLike>(contents: impl AsRef<str>, alphabet: &A) -> Result<FastaRecord, Report> {
@@ -214,19 +218,8 @@ pub fn read_many_fasta_str<A: AlphabetLike>(
   contents: impl AsRef<str>,
   alphabet: &A,
 ) -> Result<Vec<FastaRecord>, Report> {
-  let mut reader = FastaReader::from_str(&contents, alphabet)?;
-  let mut fasta_records = Vec::<FastaRecord>::new();
-
-  loop {
-    let mut record = FastaRecord::default();
-    reader.read(&mut record)?;
-    if record.is_empty() {
-      break;
-    }
-    fasta_records.push(record);
-  }
-
-  Ok(fasta_records)
+  let reader = FastaReader::from_str(&contents, alphabet)?;
+  read_many_fasta(reader)
 }
 
 // Writes sequences into given fasta file

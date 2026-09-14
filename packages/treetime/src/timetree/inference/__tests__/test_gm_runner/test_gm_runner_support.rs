@@ -25,7 +25,7 @@ pub mod support {
   use std::path::{Path, PathBuf};
   use std::sync::LazyLock;
   use treetime_io::dates_csv::{DatesMap, read_dates};
-  use treetime_io::fasta::{FastaRecord, read_many_fasta};
+  use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
 
   // --- Fixture types and loading ---
 
@@ -113,6 +113,6 @@ pub mod support {
   pub fn load_alignment_for_dataset(dataset: &str) -> Result<Vec<FastaRecord>, Report> {
     let input = &INPUTS[dataset];
     let aln_path = PROJECT_ROOT.join(&input.aln_path);
-    read_many_fasta(&[&aln_path], &*ALPHABET)
+    read_many_fasta_path(&[&aln_path], &*ALPHABET)
   }
 }
