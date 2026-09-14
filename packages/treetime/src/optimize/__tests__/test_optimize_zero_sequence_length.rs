@@ -4,8 +4,8 @@ mod tests {
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed, run_optimize_mixed_with_indel_rate};
+  use crate::optimize::gather::total_sequence_length;
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::OptimizeReadouts;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::shared::update::MarginalEdges;
   use std::collections::BTreeMap;
@@ -38,9 +38,15 @@ mod tests {
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap();
     let graph: Graph = graph;
     let (dense, sparse) = zero_length_partitions(&graph);
-    let ro = OptimizeReadouts::new(&dense, &sparse);
-    let partitions = ro.view();
-    let result = run_optimize_mixed(&graph, &partitions, BranchOptMethod::Newton, &mut branch_lengths);
+    let total_length = total_sequence_length(&dense, &sparse);
+    let result = run_optimize_mixed(
+      &graph,
+      total_length,
+      &BTreeMap::new(),
+      &BTreeMap::new(),
+      BranchOptMethod::Newton,
+      &mut branch_lengths,
+    );
     assert_error!(
       result,
       "Total sequence length across all partitions is zero; cannot optimize branch lengths"
@@ -56,9 +62,17 @@ mod tests {
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap();
     let graph: Graph = graph;
     let (dense, sparse) = zero_length_partitions(&graph);
-    let ro = OptimizeReadouts::new(&dense, &sparse);
-    let partitions = ro.view();
-    let result = initial_guess_mixed(&graph, &partitions, true, false, &mut branch_lengths);
+    let total_length = total_sequence_length(&dense, &sparse);
+    let result = initial_guess_mixed(
+      &graph,
+      total_length,
+      &BTreeMap::new(),
+      &BTreeMap::new(),
+      &BTreeMap::new(),
+      true,
+      false,
+      &mut branch_lengths,
+    );
     assert_error!(
       result,
       "Total sequence length across all partitions is zero; cannot compute initial guess"
@@ -74,10 +88,16 @@ mod tests {
     } = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;").unwrap();
     let graph: Graph = graph;
     let (dense, sparse) = zero_length_partitions(&graph);
-    let ro = OptimizeReadouts::new(&dense, &sparse);
-    let partitions = ro.view();
-    let result =
-      run_optimize_mixed_with_indel_rate(&graph, &partitions, BranchOptMethod::Newton, 1.0, &mut branch_lengths);
+    let total_length = total_sequence_length(&dense, &sparse);
+    let result = run_optimize_mixed_with_indel_rate(
+      &graph,
+      total_length,
+      &BTreeMap::new(),
+      &BTreeMap::new(),
+      BranchOptMethod::Newton,
+      1.0,
+      &mut branch_lengths,
+    );
     assert_error!(
       result,
       "Total sequence length across all partitions is zero; cannot optimize branch lengths"

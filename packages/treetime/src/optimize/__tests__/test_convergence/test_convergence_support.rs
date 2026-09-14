@@ -6,7 +6,10 @@ pub mod tests {
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
+  use crate::optimize::gather::{
+    gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts, total_sequence_length,
+  };
+  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
@@ -64,8 +67,20 @@ pub mod tests {
       marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?;
 
     {
-      let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-      initial_guess_mixed(graph, &readouts.view(), true, false, branch_lengths)?;
+      let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+      let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
+      let sub_counts = gather_edge_sub_counts(graph, &dense_partitions, &sparse_partitions)?;
+      let effective_lengths = gather_edge_effective_lengths(graph, &dense_partitions, &sparse_partitions)?;
+      initial_guess_mixed(
+        graph,
+        total_length,
+        &indel_counts,
+        &sub_counts,
+        &effective_lengths,
+        true,
+        false,
+        branch_lengths,
+      )?;
     }
 
     Ok((dense_partitions, sparse_partitions))

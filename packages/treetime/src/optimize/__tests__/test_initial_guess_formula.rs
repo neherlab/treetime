@@ -6,7 +6,10 @@ mod tests {
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
+  use crate::optimize::gather::{
+    gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts, total_sequence_length,
+  };
+  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::traits::PartitionBranchOps;
   use crate::partition::traits::PartitionOptimizeOps;
@@ -41,8 +44,20 @@ mod tests {
     let partitions = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     {
-      let ro = OptimizeReadouts::new(&[], &partitions);
-      initial_guess_mixed(&graph, &ro.view(), true, false, &mut branch_lengths)?;
+      let total_length = total_sequence_length(&[], &partitions);
+      let indel_counts = gather_edge_indel_counts(&graph, &[], &partitions);
+      let sub_counts = gather_edge_sub_counts(&graph, &[], &partitions)?;
+      let effective_lengths = gather_edge_effective_lengths(&graph, &[], &partitions)?;
+      initial_guess_mixed(
+        &graph,
+        total_length,
+        &indel_counts,
+        &sub_counts,
+        &effective_lengths,
+        true,
+        false,
+        &mut branch_lengths,
+      )?;
     }
 
     let p = partitions[0].readout();
@@ -78,8 +93,20 @@ mod tests {
     let partitions = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     {
-      let ro = OptimizeReadouts::new(&partitions, &[]);
-      initial_guess_mixed(&graph, &ro.view(), true, false, &mut branch_lengths)?;
+      let total_length = total_sequence_length(&partitions, &[]);
+      let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+      let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
+      let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+      initial_guess_mixed(
+        &graph,
+        total_length,
+        &indel_counts,
+        &sub_counts,
+        &effective_lengths,
+        true,
+        false,
+        &mut branch_lengths,
+      )?;
     }
 
     let p = partitions[0].readout();
@@ -121,12 +148,36 @@ mod tests {
     let partitions_sparse = setup_sparse(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
 
     {
-      let ro = OptimizeReadouts::new(&partitions_dense, &[]);
-      initial_guess_mixed(&graph_dense, &ro.view(), true, false, &mut branch_lengths_dense)?;
+      let total_length = total_sequence_length(&partitions_dense, &[]);
+      let indel_counts = gather_edge_indel_counts(&graph_dense, &partitions_dense, &[]);
+      let sub_counts = gather_edge_sub_counts(&graph_dense, &partitions_dense, &[])?;
+      let effective_lengths = gather_edge_effective_lengths(&graph_dense, &partitions_dense, &[])?;
+      initial_guess_mixed(
+        &graph_dense,
+        total_length,
+        &indel_counts,
+        &sub_counts,
+        &effective_lengths,
+        true,
+        false,
+        &mut branch_lengths_dense,
+      )?;
     }
     {
-      let ro = OptimizeReadouts::new(&[], &partitions_sparse);
-      initial_guess_mixed(&graph_sparse, &ro.view(), true, false, &mut branch_lengths_sparse)?;
+      let total_length = total_sequence_length(&[], &partitions_sparse);
+      let indel_counts = gather_edge_indel_counts(&graph_sparse, &[], &partitions_sparse);
+      let sub_counts = gather_edge_sub_counts(&graph_sparse, &[], &partitions_sparse)?;
+      let effective_lengths = gather_edge_effective_lengths(&graph_sparse, &[], &partitions_sparse)?;
+      initial_guess_mixed(
+        &graph_sparse,
+        total_length,
+        &indel_counts,
+        &sub_counts,
+        &effective_lengths,
+        true,
+        false,
+        &mut branch_lengths_sparse,
+      )?;
     }
 
     let dense_branch_lengths = branch_lengths_by_child_name(&graph_dense, &graph_dense_names, &branch_lengths_dense)?;

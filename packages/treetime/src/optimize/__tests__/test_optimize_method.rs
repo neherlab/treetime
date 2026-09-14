@@ -6,6 +6,7 @@ mod tests {
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
   use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
   use crate::optimize::indel::{estimate_indel_rate, poisson_indel_log_lh};
   use crate::optimize::likelihood::{
     OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only, evaluate_with_indels_log_lh_only,
@@ -14,11 +15,9 @@ mod tests {
   use crate::optimize::method_newton::newton_tolerance_t;
   use crate::optimize::method_newton::{chain_rule_log, chain_rule_sqrt};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::OptimizeReadouts;
   use crate::optimize::zero_boundary::min_branch_length_for_indels;
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
-  use crate::partition::traits::PartitionOptimizeOps;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -262,10 +261,11 @@ mod tests {
     let graph: Graph = graph;
     let aln = simple_alignment()?;
     let (dense_mixed_partitions, sparse_mixed_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let mixed_partitions_ro = OptimizeReadouts::new(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let mixed_partitions = mixed_partitions_ro.view();
+    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_mixed_partitions, &sparse_mixed_partitions);
 
-    run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
     for (i, edge_ref) in graph.get_edges().iter().enumerate() {
       let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap_or(f64::NAN);
@@ -294,26 +294,27 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
-    let mixed_partitions_ro = OptimizeReadouts::new(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let mixed_partitions = mixed_partitions_ro.view();
+    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_mixed_partitions, &sparse_mixed_partitions);
 
-    run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
     let bl = first_edge_bl(&graph, &branch_lengths);
     assert!(bl > 0.0 && bl.is_finite(), "Optimized BL must be positive and finite, got {bl}");
 
-    let lh_opt = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, bl)?;
+    let lh_opt = eval_combined_first_edge(&graph, &dense_mixed_partitions, &sparse_mixed_partitions, indel_rate, bl)?;
 
     for &frac in &[0.001, 0.01, 0.1] {
       let delta = bl * frac;
       if bl - delta > 0.0 {
-        let lh_below = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, bl - delta)?;
+        let lh_below = eval_combined_first_edge(&graph, &dense_mixed_partitions, &sparse_mixed_partitions, indel_rate, bl - delta)?;
         assert!(
           lh_opt >= lh_below - 1e-10,
           "{method:?}: lh at t*={bl} ({lh_opt}) < lh at t*-{frac}*t ({lh_below})"
         );
       }
-      let lh_above = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, bl + delta)?;
+      let lh_above = eval_combined_first_edge(&graph, &dense_mixed_partitions, &sparse_mixed_partitions, indel_rate, bl + delta)?;
       assert!(
         lh_opt >= lh_above - 1e-10,
         "{method:?}: lh at t*={bl} ({lh_opt}) < lh at t*+{frac}*t ({lh_above})"
@@ -335,13 +336,14 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 2)?;
-    let mixed_partitions_ro = OptimizeReadouts::new(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let mixed_partitions = mixed_partitions_ro.view();
+    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_mixed_partitions, &sparse_mixed_partitions);
 
-    run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
     let bl = first_edge_bl(&graph, &branch_lengths);
-    let metrics = eval_metrics_first_edge(&graph, &mixed_partitions, indel_rate, bl)?;
+    let metrics = eval_metrics_first_edge(&graph, &dense_mixed_partitions, &sparse_mixed_partitions, indel_rate, bl)?;
 
     if metrics.second_derivative < 0.0 {
       let implied_step = (metrics.derivative / metrics.second_derivative).abs();
@@ -372,19 +374,21 @@ mod tests {
   fn test_optimize_method_cross_method_lh_agreement(#[case] n_indels: usize) -> Result<(), Report> {
     let NwkParse { graph: graph_brent, names: graph_brent_names, branch_lengths: mut bl_brent, .. } = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions_brent, sparse_partitions_brent, rate_brent) = setup_with_indels(&graph_brent, &graph_brent_names, &mut bl_brent, n_indels)?;
-    let partitions_brent_ro = OptimizeReadouts::new(&dense_partitions_brent, &sparse_partitions_brent);
-    let partitions_brent = partitions_brent_ro.view();
-    run_optimize_mixed(&graph_brent, &partitions_brent, BranchOptMethod::Brent, &mut bl_brent)?;
+    let total_length_brent = total_sequence_length(&dense_partitions_brent, &sparse_partitions_brent);
+    let contributions_brent = gather_edge_contributions(&graph_brent, &dense_partitions_brent, &sparse_partitions_brent)?;
+    let indel_counts_brent = gather_edge_indel_counts(&graph_brent, &dense_partitions_brent, &sparse_partitions_brent);
+    run_optimize_mixed(&graph_brent, total_length_brent, &contributions_brent, &indel_counts_brent, BranchOptMethod::Brent, &mut bl_brent)?;
     let bl_brent = first_edge_bl(&graph_brent, &bl_brent);
-    let lh_brent = eval_combined_first_edge(&graph_brent, &partitions_brent, rate_brent, bl_brent)?;
+    let lh_brent = eval_combined_first_edge(&graph_brent, &dense_partitions_brent, &sparse_partitions_brent, rate_brent, bl_brent)?;
 
     let NwkParse { graph: graph_sqrt, names: graph_sqrt_names, branch_lengths: mut bl_sqrt, .. } = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions_sqrt, sparse_partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, &graph_sqrt_names, &mut bl_sqrt, n_indels)?;
-    let partitions_sqrt_ro = OptimizeReadouts::new(&dense_partitions_sqrt, &sparse_partitions_sqrt);
-    let partitions_sqrt = partitions_sqrt_ro.view();
-    run_optimize_mixed(&graph_sqrt, &partitions_sqrt, BranchOptMethod::NewtonSqrt, &mut bl_sqrt)?;
+    let total_length_sqrt = total_sequence_length(&dense_partitions_sqrt, &sparse_partitions_sqrt);
+    let contributions_sqrt = gather_edge_contributions(&graph_sqrt, &dense_partitions_sqrt, &sparse_partitions_sqrt)?;
+    let indel_counts_sqrt = gather_edge_indel_counts(&graph_sqrt, &dense_partitions_sqrt, &sparse_partitions_sqrt);
+    run_optimize_mixed(&graph_sqrt, total_length_sqrt, &contributions_sqrt, &indel_counts_sqrt, BranchOptMethod::NewtonSqrt, &mut bl_sqrt)?;
     let bl_sqrt = first_edge_bl(&graph_sqrt, &bl_sqrt);
-    let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &partitions_sqrt, rate_sqrt, bl_sqrt)?;
+    let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &dense_partitions_sqrt, &sparse_partitions_sqrt, rate_sqrt, bl_sqrt)?;
 
     let lh_diff = (lh_brent - lh_sqrt).abs();
     assert!(
@@ -407,19 +411,21 @@ mod tests {
   fn test_optimize_method_cross_method_lh_agreement_newton_log(#[case] n_indels: usize) -> Result<(), Report> {
     let NwkParse { graph: graph_brent, names: graph_brent_names, branch_lengths: mut bl_brent, .. } = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions_brent, sparse_partitions_brent, rate_brent) = setup_with_indels(&graph_brent, &graph_brent_names, &mut bl_brent, n_indels)?;
-    let partitions_brent_ro = OptimizeReadouts::new(&dense_partitions_brent, &sparse_partitions_brent);
-    let partitions_brent = partitions_brent_ro.view();
-    run_optimize_mixed(&graph_brent, &partitions_brent, BranchOptMethod::Brent, &mut bl_brent)?;
+    let total_length_brent = total_sequence_length(&dense_partitions_brent, &sparse_partitions_brent);
+    let contributions_brent = gather_edge_contributions(&graph_brent, &dense_partitions_brent, &sparse_partitions_brent)?;
+    let indel_counts_brent = gather_edge_indel_counts(&graph_brent, &dense_partitions_brent, &sparse_partitions_brent);
+    run_optimize_mixed(&graph_brent, total_length_brent, &contributions_brent, &indel_counts_brent, BranchOptMethod::Brent, &mut bl_brent)?;
     let bl_brent = first_edge_bl(&graph_brent, &bl_brent);
-    let lh_brent = eval_combined_first_edge(&graph_brent, &partitions_brent, rate_brent, bl_brent)?;
+    let lh_brent = eval_combined_first_edge(&graph_brent, &dense_partitions_brent, &sparse_partitions_brent, rate_brent, bl_brent)?;
 
     let NwkParse { graph: graph_log, names: graph_log_names, branch_lengths: mut bl_log, .. } = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions_log, sparse_partitions_log, rate_log) = setup_with_indels(&graph_log, &graph_log_names, &mut bl_log, n_indels)?;
-    let partitions_log_ro = OptimizeReadouts::new(&dense_partitions_log, &sparse_partitions_log);
-    let partitions_log = partitions_log_ro.view();
-    run_optimize_mixed(&graph_log, &partitions_log, BranchOptMethod::NewtonLog, &mut bl_log)?;
+    let total_length_log = total_sequence_length(&dense_partitions_log, &sparse_partitions_log);
+    let contributions_log = gather_edge_contributions(&graph_log, &dense_partitions_log, &sparse_partitions_log)?;
+    let indel_counts_log = gather_edge_indel_counts(&graph_log, &dense_partitions_log, &sparse_partitions_log);
+    run_optimize_mixed(&graph_log, total_length_log, &contributions_log, &indel_counts_log, BranchOptMethod::NewtonLog, &mut bl_log)?;
     let bl_log = first_edge_bl(&graph_log, &bl_log);
-    let lh_log = eval_combined_first_edge(&graph_log, &partitions_log, rate_log, bl_log)?;
+    let lh_log = eval_combined_first_edge(&graph_log, &dense_partitions_log, &sparse_partitions_log, rate_log, bl_log)?;
 
     let lh_diff = (lh_brent - lh_log).abs();
     assert!(
@@ -467,22 +473,24 @@ mod tests {
     let lh_ref = {
       let NwkParse { graph: graph_ref, names: graph_ref_names, branch_lengths: mut bl_ref, .. } = nwk_read_str(TREE_NEWICK)?;
       let (dense_partitions_ref, sparse_partitions_ref, rate_ref) = setup_with_indels(&graph_ref, &graph_ref_names, &mut bl_ref, n_indels)?;
-    let partitions_ref_ro = OptimizeReadouts::new(&dense_partitions_ref, &sparse_partitions_ref);
-    let partitions_ref = partitions_ref_ro.view();
-      run_optimize_mixed(&graph_ref, &partitions_ref, BranchOptMethod::BrentSqrt, &mut bl_ref)?;
+      let total_length_ref = total_sequence_length(&dense_partitions_ref, &sparse_partitions_ref);
+      let contributions_ref = gather_edge_contributions(&graph_ref, &dense_partitions_ref, &sparse_partitions_ref)?;
+      let indel_counts_ref = gather_edge_indel_counts(&graph_ref, &dense_partitions_ref, &sparse_partitions_ref);
+      run_optimize_mixed(&graph_ref, total_length_ref, &contributions_ref, &indel_counts_ref, BranchOptMethod::BrentSqrt, &mut bl_ref)?;
       let bl_ref = first_edge_bl(&graph_ref, &bl_ref);
-      eval_combined_first_edge(&graph_ref, &partitions_ref, rate_ref, bl_ref)?
+      eval_combined_first_edge(&graph_ref, &dense_partitions_ref, &sparse_partitions_ref, rate_ref, bl_ref)?
     };
 
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
 
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions, rate) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
-    let partitions_ro = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    let partitions = partitions_ro.view();
-    run_optimize_mixed(&graph, &partitions, method, &mut branch_lengths)?;
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
     let bl = first_edge_bl(&graph, &branch_lengths);
-    let lh = eval_combined_first_edge(&graph, &partitions, rate, bl)?;
+    let lh = eval_combined_first_edge(&graph, &dense_partitions, &sparse_partitions, rate, bl)?;
 
     let diff = (lh - lh_ref).abs();
     assert!(
@@ -505,16 +513,27 @@ mod tests {
     } = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions_newton, sparse_partitions_newton, rate_newton) =
       setup_with_indels(&graph_newton, &graph_newton_names, &mut bl_newton, 4)?;
-    let partitions_newton_ro = OptimizeReadouts::new(&dense_partitions_newton, &sparse_partitions_newton);
-    let partitions_newton = partitions_newton_ro.view();
+    let total_length_newton = total_sequence_length(&dense_partitions_newton, &sparse_partitions_newton);
+    let contributions_newton =
+      gather_edge_contributions(&graph_newton, &dense_partitions_newton, &sparse_partitions_newton)?;
+    let indel_counts_newton =
+      gather_edge_indel_counts(&graph_newton, &dense_partitions_newton, &sparse_partitions_newton);
     run_optimize_mixed(
       &graph_newton,
-      &partitions_newton,
+      total_length_newton,
+      &contributions_newton,
+      &indel_counts_newton,
       BranchOptMethod::Newton,
       &mut bl_newton,
     )?;
     let bl_newton = first_edge_bl(&graph_newton, &bl_newton);
-    let lh_newton = eval_combined_first_edge(&graph_newton, &partitions_newton, rate_newton, bl_newton)?;
+    let lh_newton = eval_combined_first_edge(
+      &graph_newton,
+      &dense_partitions_newton,
+      &sparse_partitions_newton,
+      rate_newton,
+      bl_newton,
+    )?;
 
     let NwkParse {
       graph: graph_log,
@@ -524,11 +543,25 @@ mod tests {
     } = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions_log, sparse_partitions_log, rate_log) =
       setup_with_indels(&graph_log, &graph_log_names, &mut bl_log, 4)?;
-    let partitions_log_ro = OptimizeReadouts::new(&dense_partitions_log, &sparse_partitions_log);
-    let partitions_log = partitions_log_ro.view();
-    run_optimize_mixed(&graph_log, &partitions_log, BranchOptMethod::NewtonLog, &mut bl_log)?;
+    let total_length_log = total_sequence_length(&dense_partitions_log, &sparse_partitions_log);
+    let contributions_log = gather_edge_contributions(&graph_log, &dense_partitions_log, &sparse_partitions_log)?;
+    let indel_counts_log = gather_edge_indel_counts(&graph_log, &dense_partitions_log, &sparse_partitions_log);
+    run_optimize_mixed(
+      &graph_log,
+      total_length_log,
+      &contributions_log,
+      &indel_counts_log,
+      BranchOptMethod::NewtonLog,
+      &mut bl_log,
+    )?;
     let bl_log = first_edge_bl(&graph_log, &bl_log);
-    let lh_log = eval_combined_first_edge(&graph_log, &partitions_log, rate_log, bl_log)?;
+    let lh_log = eval_combined_first_edge(
+      &graph_log,
+      &dense_partitions_log,
+      &sparse_partitions_log,
+      rate_log,
+      bl_log,
+    )?;
 
     assert!(bl_newton > 0.0 && bl_newton.is_finite());
     assert!(bl_log > 0.0 && bl_log.is_finite());
@@ -554,16 +587,27 @@ mod tests {
     } = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions_newton, sparse_partitions_newton, rate_newton) =
       setup_with_indels(&graph_newton, &graph_newton_names, &mut bl_newton, 4)?;
-    let partitions_newton_ro = OptimizeReadouts::new(&dense_partitions_newton, &sparse_partitions_newton);
-    let partitions_newton = partitions_newton_ro.view();
+    let total_length_newton = total_sequence_length(&dense_partitions_newton, &sparse_partitions_newton);
+    let contributions_newton =
+      gather_edge_contributions(&graph_newton, &dense_partitions_newton, &sparse_partitions_newton)?;
+    let indel_counts_newton =
+      gather_edge_indel_counts(&graph_newton, &dense_partitions_newton, &sparse_partitions_newton);
     run_optimize_mixed(
       &graph_newton,
-      &partitions_newton,
+      total_length_newton,
+      &contributions_newton,
+      &indel_counts_newton,
       BranchOptMethod::Newton,
       &mut bl_newton,
     )?;
     let bl_newton = first_edge_bl(&graph_newton, &bl_newton);
-    let lh_newton = eval_combined_first_edge(&graph_newton, &partitions_newton, rate_newton, bl_newton)?;
+    let lh_newton = eval_combined_first_edge(
+      &graph_newton,
+      &dense_partitions_newton,
+      &sparse_partitions_newton,
+      rate_newton,
+      bl_newton,
+    )?;
 
     let NwkParse {
       graph: graph_sqrt,
@@ -573,11 +617,25 @@ mod tests {
     } = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions_sqrt, sparse_partitions_sqrt, rate_sqrt) =
       setup_with_indels(&graph_sqrt, &graph_sqrt_names, &mut bl_sqrt, 4)?;
-    let partitions_sqrt_ro = OptimizeReadouts::new(&dense_partitions_sqrt, &sparse_partitions_sqrt);
-    let partitions_sqrt = partitions_sqrt_ro.view();
-    run_optimize_mixed(&graph_sqrt, &partitions_sqrt, BranchOptMethod::NewtonSqrt, &mut bl_sqrt)?;
+    let total_length_sqrt = total_sequence_length(&dense_partitions_sqrt, &sparse_partitions_sqrt);
+    let contributions_sqrt = gather_edge_contributions(&graph_sqrt, &dense_partitions_sqrt, &sparse_partitions_sqrt)?;
+    let indel_counts_sqrt = gather_edge_indel_counts(&graph_sqrt, &dense_partitions_sqrt, &sparse_partitions_sqrt);
+    run_optimize_mixed(
+      &graph_sqrt,
+      total_length_sqrt,
+      &contributions_sqrt,
+      &indel_counts_sqrt,
+      BranchOptMethod::NewtonSqrt,
+      &mut bl_sqrt,
+    )?;
     let bl_sqrt = first_edge_bl(&graph_sqrt, &bl_sqrt);
-    let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &partitions_sqrt, rate_sqrt, bl_sqrt)?;
+    let lh_sqrt = eval_combined_first_edge(
+      &graph_sqrt,
+      &dense_partitions_sqrt,
+      &sparse_partitions_sqrt,
+      rate_sqrt,
+      bl_sqrt,
+    )?;
 
     assert!(bl_newton > 0.0 && bl_newton.is_finite());
     assert!(bl_sqrt > 0.0 && bl_sqrt.is_finite());
@@ -608,27 +666,30 @@ mod tests {
   fn test_optimize_method_newton_cross_conditioning_ordering(#[case] n_indels: usize) -> Result<(), Report> {
     let NwkParse { graph: graph_newton, names: graph_newton_names, branch_lengths: mut bl_newton, .. } = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions_newton, sparse_partitions_newton, rate_newton) = setup_with_indels(&graph_newton, &graph_newton_names, &mut bl_newton, n_indels)?;
-    let partitions_newton_ro = OptimizeReadouts::new(&dense_partitions_newton, &sparse_partitions_newton);
-    let partitions_newton = partitions_newton_ro.view();
-    run_optimize_mixed(&graph_newton, &partitions_newton, BranchOptMethod::Newton, &mut bl_newton)?;
+    let total_length_newton = total_sequence_length(&dense_partitions_newton, &sparse_partitions_newton);
+    let contributions_newton = gather_edge_contributions(&graph_newton, &dense_partitions_newton, &sparse_partitions_newton)?;
+    let indel_counts_newton = gather_edge_indel_counts(&graph_newton, &dense_partitions_newton, &sparse_partitions_newton);
+    run_optimize_mixed(&graph_newton, total_length_newton, &contributions_newton, &indel_counts_newton, BranchOptMethod::Newton, &mut bl_newton)?;
     let bl_newton = first_edge_bl(&graph_newton, &bl_newton);
-    let lh_newton = eval_combined_first_edge(&graph_newton, &partitions_newton, rate_newton, bl_newton)?;
+    let lh_newton = eval_combined_first_edge(&graph_newton, &dense_partitions_newton, &sparse_partitions_newton, rate_newton, bl_newton)?;
 
     let NwkParse { graph: graph_sqrt, names: graph_sqrt_names, branch_lengths: mut bl_sqrt, .. } = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions_sqrt, sparse_partitions_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, &graph_sqrt_names, &mut bl_sqrt, n_indels)?;
-    let partitions_sqrt_ro = OptimizeReadouts::new(&dense_partitions_sqrt, &sparse_partitions_sqrt);
-    let partitions_sqrt = partitions_sqrt_ro.view();
-    run_optimize_mixed(&graph_sqrt, &partitions_sqrt, BranchOptMethod::NewtonSqrt, &mut bl_sqrt)?;
+    let total_length_sqrt = total_sequence_length(&dense_partitions_sqrt, &sparse_partitions_sqrt);
+    let contributions_sqrt = gather_edge_contributions(&graph_sqrt, &dense_partitions_sqrt, &sparse_partitions_sqrt)?;
+    let indel_counts_sqrt = gather_edge_indel_counts(&graph_sqrt, &dense_partitions_sqrt, &sparse_partitions_sqrt);
+    run_optimize_mixed(&graph_sqrt, total_length_sqrt, &contributions_sqrt, &indel_counts_sqrt, BranchOptMethod::NewtonSqrt, &mut bl_sqrt)?;
     let bl_sqrt = first_edge_bl(&graph_sqrt, &bl_sqrt);
-    let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &partitions_sqrt, rate_sqrt, bl_sqrt)?;
+    let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &dense_partitions_sqrt, &sparse_partitions_sqrt, rate_sqrt, bl_sqrt)?;
 
     let NwkParse { graph: graph_log, names: graph_log_names, branch_lengths: mut bl_log, .. } = nwk_read_str(TREE_NEWICK)?;
     let (dense_partitions_log, sparse_partitions_log, rate_log) = setup_with_indels(&graph_log, &graph_log_names, &mut bl_log, n_indels)?;
-    let partitions_log_ro = OptimizeReadouts::new(&dense_partitions_log, &sparse_partitions_log);
-    let partitions_log = partitions_log_ro.view();
-    run_optimize_mixed(&graph_log, &partitions_log, BranchOptMethod::NewtonLog, &mut bl_log)?;
+    let total_length_log = total_sequence_length(&dense_partitions_log, &sparse_partitions_log);
+    let contributions_log = gather_edge_contributions(&graph_log, &dense_partitions_log, &sparse_partitions_log)?;
+    let indel_counts_log = gather_edge_indel_counts(&graph_log, &dense_partitions_log, &sparse_partitions_log);
+    run_optimize_mixed(&graph_log, total_length_log, &contributions_log, &indel_counts_log, BranchOptMethod::NewtonLog, &mut bl_log)?;
     let bl_log = first_edge_bl(&graph_log, &bl_log);
-    let lh_log = eval_combined_first_edge(&graph_log, &partitions_log, rate_log, bl_log)?;
+    let lh_log = eval_combined_first_edge(&graph_log, &dense_partitions_log, &sparse_partitions_log, rate_log, bl_log)?;
 
     // Verify ordering: lh_newton_log >= lh_newton_sqrt >= lh_newton
     let tol = 1e-10;
@@ -666,10 +727,11 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
-    let mixed_partitions_ro = OptimizeReadouts::new(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let mixed_partitions = mixed_partitions_ro.view();
+    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_mixed_partitions, &sparse_mixed_partitions);
 
-    run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
     let bl = first_edge_bl(&graph, &branch_lengths);
     assert!(bl > 0.0, "{method:?} BL with {n_indels} indels must be positive, got {bl}");
@@ -688,10 +750,11 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
-    let mixed_partitions_ro = OptimizeReadouts::new(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let mixed_partitions = mixed_partitions_ro.view();
+    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_mixed_partitions, &sparse_mixed_partitions);
 
-    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::NewtonLog, &mut branch_lengths)?;
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, BranchOptMethod::NewtonLog, &mut branch_lengths)?;
 
     let bl = first_edge_bl(&graph, &branch_lengths);
     assert!(bl > 0.0, "NewtonLog BL with {n_indels} indels must be positive, got {bl}");
@@ -710,10 +773,11 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
-    let mixed_partitions_ro = OptimizeReadouts::new(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let mixed_partitions = mixed_partitions_ro.view();
+    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_mixed_partitions, &sparse_mixed_partitions);
 
-    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::NewtonSqrt, &mut branch_lengths)?;
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, BranchOptMethod::NewtonSqrt, &mut branch_lengths)?;
 
     let bl = first_edge_bl(&graph, &branch_lengths);
     assert!(bl > 0.0, "NewtonSqrt BL with {n_indels} indels must be positive, got {bl}");
@@ -732,10 +796,11 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
-    let mixed_partitions_ro = OptimizeReadouts::new(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let mixed_partitions = mixed_partitions_ro.view();
+    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_mixed_partitions, &sparse_mixed_partitions);
 
-    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton, &mut branch_lengths)?;
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, BranchOptMethod::Newton, &mut branch_lengths)?;
 
     let bl = first_edge_bl(&graph, &branch_lengths);
     assert!(bl > 0.0, "Newton BL with {n_indels} indels must be positive, got {bl}");
@@ -755,11 +820,19 @@ mod tests {
       ..
     } = nwk_read_str(TREE_NEWICK)?;
     let (dense_parts_t, sparse_parts_t, rate_t) = setup_with_indels(&graph_t, &graph_t_names, &mut bl_t, n_indels)?;
-    let parts_t_ro = OptimizeReadouts::new(&dense_parts_t, &sparse_parts_t);
-    let parts_t = parts_t_ro.view();
-    run_optimize_mixed(&graph_t, &parts_t, BranchOptMethod::Brent, &mut bl_t)?;
+    let total_length_t = total_sequence_length(&dense_parts_t, &sparse_parts_t);
+    let contributions_t = gather_edge_contributions(&graph_t, &dense_parts_t, &sparse_parts_t)?;
+    let indel_counts_t = gather_edge_indel_counts(&graph_t, &dense_parts_t, &sparse_parts_t);
+    run_optimize_mixed(
+      &graph_t,
+      total_length_t,
+      &contributions_t,
+      &indel_counts_t,
+      BranchOptMethod::Brent,
+      &mut bl_t,
+    )?;
     let bl_t = first_edge_bl(&graph_t, &bl_t);
-    let lh_t = eval_combined_first_edge(&graph_t, &parts_t, rate_t, bl_t)?;
+    let lh_t = eval_combined_first_edge(&graph_t, &dense_parts_t, &sparse_parts_t, rate_t, bl_t)?;
 
     let NwkParse {
       graph: graph_sqrt,
@@ -769,11 +842,19 @@ mod tests {
     } = nwk_read_str(TREE_NEWICK)?;
     let (dense_parts_sqrt, sparse_parts_sqrt, rate_sqrt) =
       setup_with_indels(&graph_sqrt, &graph_sqrt_names, &mut bl_sqrt, n_indels)?;
-    let parts_sqrt_ro = OptimizeReadouts::new(&dense_parts_sqrt, &sparse_parts_sqrt);
-    let parts_sqrt = parts_sqrt_ro.view();
-    run_optimize_mixed(&graph_sqrt, &parts_sqrt, BranchOptMethod::BrentSqrt, &mut bl_sqrt)?;
+    let total_length_sqrt = total_sequence_length(&dense_parts_sqrt, &sparse_parts_sqrt);
+    let contributions_sqrt = gather_edge_contributions(&graph_sqrt, &dense_parts_sqrt, &sparse_parts_sqrt)?;
+    let indel_counts_sqrt = gather_edge_indel_counts(&graph_sqrt, &dense_parts_sqrt, &sparse_parts_sqrt);
+    run_optimize_mixed(
+      &graph_sqrt,
+      total_length_sqrt,
+      &contributions_sqrt,
+      &indel_counts_sqrt,
+      BranchOptMethod::BrentSqrt,
+      &mut bl_sqrt,
+    )?;
     let bl_sqrt = first_edge_bl(&graph_sqrt, &bl_sqrt);
-    let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &parts_sqrt, rate_sqrt, bl_sqrt)?;
+    let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &dense_parts_sqrt, &sparse_parts_sqrt, rate_sqrt, bl_sqrt)?;
 
     let NwkParse {
       graph: graph_log,
@@ -783,11 +864,19 @@ mod tests {
     } = nwk_read_str(TREE_NEWICK)?;
     let (dense_parts_log, sparse_parts_log, rate_log) =
       setup_with_indels(&graph_log, &graph_log_names, &mut bl_log, n_indels)?;
-    let parts_log_ro = OptimizeReadouts::new(&dense_parts_log, &sparse_parts_log);
-    let parts_log = parts_log_ro.view();
-    run_optimize_mixed(&graph_log, &parts_log, BranchOptMethod::BrentLog, &mut bl_log)?;
+    let total_length_log = total_sequence_length(&dense_parts_log, &sparse_parts_log);
+    let contributions_log = gather_edge_contributions(&graph_log, &dense_parts_log, &sparse_parts_log)?;
+    let indel_counts_log = gather_edge_indel_counts(&graph_log, &dense_parts_log, &sparse_parts_log);
+    run_optimize_mixed(
+      &graph_log,
+      total_length_log,
+      &contributions_log,
+      &indel_counts_log,
+      BranchOptMethod::BrentLog,
+      &mut bl_log,
+    )?;
     let bl_log = first_edge_bl(&graph_log, &bl_log);
-    let lh_log = eval_combined_first_edge(&graph_log, &parts_log, rate_log, bl_log)?;
+    let lh_log = eval_combined_first_edge(&graph_log, &dense_parts_log, &sparse_parts_log, rate_log, bl_log)?;
 
     let diff_sqrt = (lh_t - lh_sqrt).abs();
     let diff_log = (lh_t - lh_log).abs();
@@ -818,16 +907,14 @@ mod tests {
     let aln = simple_alignment()?;
     let (dense_mixed_partitions, sparse_mixed_partitions) =
       setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let mixed_partitions_ro = OptimizeReadouts::new(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let mixed_partitions = mixed_partitions_ro.view();
-
     let edge_key = graph.get_edges()[0].read_arc().key();
-    let contributions: Vec<OptimizationContribution> = mixed_partitions
-      .iter()
-      .map(|p| p.create_edge_contribution(edge_key))
-      .collect::<Result<_, _>>()?;
+    let mut contributions_by_edge =
+      gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
+    let contributions = contributions_by_edge
+      .remove(&edge_key)
+      .expect("first edge present in gathered contributions");
 
-    let total_length: usize = mixed_partitions.iter().map(|p| p.sequence_length()).sum();
+    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
     let one_mutation = 1.0 / total_length as f64;
     let branch_length = 0.01;
 
@@ -880,16 +967,14 @@ mod tests {
     let aln = simple_alignment()?;
     let (dense_mixed_partitions, sparse_mixed_partitions) =
       setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let mixed_partitions_ro = OptimizeReadouts::new(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let mixed_partitions = mixed_partitions_ro.view();
-
     let edge_key = graph.get_edges()[0].read_arc().key();
-    let contributions: Vec<OptimizationContribution> = mixed_partitions
-      .iter()
-      .map(|p| p.create_edge_contribution(edge_key))
-      .collect::<Result<_, _>>()?;
+    let mut contributions_by_edge =
+      gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
+    let contributions = contributions_by_edge
+      .remove(&edge_key)
+      .expect("first edge present in gathered contributions");
 
-    let total_length: usize = mixed_partitions.iter().map(|p| p.sequence_length()).sum();
+    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
     let one_mutation = 1.0 / total_length as f64;
     let branch_length = 0.01;
 
@@ -938,26 +1023,26 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(TREE_NEWICK)?;
     let graph: Graph = graph;
     let (dense_mixed_partitions, sparse_mixed_partitions, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
-    let mixed_partitions_ro = OptimizeReadouts::new(&dense_mixed_partitions, &sparse_mixed_partitions);
-    let mixed_partitions = mixed_partitions_ro.view();
+    let total_length = total_sequence_length(&dense_mixed_partitions, &sparse_mixed_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_mixed_partitions, &sparse_mixed_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_mixed_partitions, &sparse_mixed_partitions);
 
     // Capture input branch length and compute bracket BEFORE optimization
     // (production code computes the bracket from the input BL). Calls the
     // production helpers brent_bracket and min_branch_length_for_indels
     // directly to avoid drift if either formula changes.
     let input_bl = branch_lengths[&graph.get_edges()[0].read_arc().key()].unwrap_or(0.0);
-    let total_length: usize = mixed_partitions.iter().map(|p| p.sequence_length()).sum();
     let one_mutation = 1.0 / total_length as f64;
     let min_bl = min_branch_length_for_indels(4, one_mutation);
     let (lower, upper) = brent_bracket(input_bl, min_bl, one_mutation);
 
-    run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
     let bl = first_edge_bl(&graph, &branch_lengths);
-    let lh_opt = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, bl)?;
+    let lh_opt = eval_combined_first_edge(&graph, &dense_mixed_partitions, &sparse_mixed_partitions, indel_rate, bl)?;
 
-    let lh_lower = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, lower)?;
-    let lh_upper = eval_combined_first_edge(&graph, &mixed_partitions, indel_rate, upper)?;
+    let lh_lower = eval_combined_first_edge(&graph, &dense_mixed_partitions, &sparse_mixed_partitions, indel_rate, lower)?;
+    let lh_upper = eval_combined_first_edge(&graph, &dense_mixed_partitions, &sparse_mixed_partitions, indel_rate, upper)?;
 
     assert!(
       lh_opt >= lh_lower - 1e-10,
@@ -1130,9 +1215,8 @@ mod tests {
 
       // Capture indel rate at the same point run_optimize_mixed will
       let indel_rate = {
-        let mixed_partitions_ro = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-        let mixed_partitions = mixed_partitions_ro.view();
-        estimate_indel_rate(graph, &mixed_partitions, branch_lengths)
+        let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
+        estimate_indel_rate(graph, &indel_counts, branch_lengths)
       };
 
       Ok((dense_partitions, sparse_partitions, indel_rate))
@@ -1143,19 +1227,18 @@ mod tests {
     /// the optimizer used, not the post-optimization rate).
     pub(super) fn eval_combined_first_edge(
       graph: &Graph,
-      partitions: &[&dyn PartitionOptimizeOps],
+      dense: &[DenseReconstruction],
+      sparse: &[SparseReconstruction],
       indel_rate: f64,
       t: f64,
     ) -> Result<f64, Report> {
       let edge_key = graph.get_edges()[0].read_arc().key();
-      let contributions: Vec<OptimizationContribution> = partitions
-        .iter()
-        .map(|p| p.create_edge_contribution(edge_key))
-        .collect::<Result<_, _>>()?;
+      let contributions = gather_edge_contributions(graph, dense, sparse)?;
+      let indel_counts = gather_edge_indel_counts(graph, dense, sparse);
+      let edge_contributions = &contributions[&edge_key];
+      let indel_count: usize = indel_counts[&edge_key];
 
-      let indel_count: usize = partitions.iter().map(|p| p.edge_indel_count(edge_key)).sum();
-
-      let sub_lh = evaluate_mixed_log_lh_only(&contributions, t)
+      let sub_lh = evaluate_mixed_log_lh_only(edge_contributions, t)
         .expect("valid branch length")
         .value();
       let indel_lh = poisson_indel_log_lh(indel_count, indel_rate, t)
@@ -1169,19 +1252,18 @@ mod tests {
     /// using a fixed indel rate.
     pub(super) fn eval_metrics_first_edge(
       graph: &Graph,
-      partitions: &[&dyn PartitionOptimizeOps],
+      dense: &[DenseReconstruction],
+      sparse: &[SparseReconstruction],
       indel_rate: f64,
       t: f64,
     ) -> Result<OptimizationMetrics, Report> {
       let edge_key = graph.get_edges()[0].read_arc().key();
-      let contributions: Vec<OptimizationContribution> = partitions
-        .iter()
-        .map(|p| p.create_edge_contribution(edge_key))
-        .collect::<Result<_, _>>()?;
+      let contributions = gather_edge_contributions(graph, dense, sparse)?;
+      let indel_counts = gather_edge_indel_counts(graph, dense, sparse);
+      let edge_contributions = &contributions[&edge_key];
+      let indel_count: usize = indel_counts[&edge_key];
 
-      let indel_count: usize = partitions.iter().map(|p| p.edge_indel_count(edge_key)).sum();
-
-      let mut metrics = evaluate_mixed(&contributions, t).expect("valid branch length");
+      let mut metrics = evaluate_mixed(edge_contributions, t).expect("valid branch length");
       metrics.add(&poisson_indel_log_lh(indel_count, indel_rate, t).expect("valid Poisson parameters"));
       Ok(metrics)
     }

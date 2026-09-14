@@ -5,11 +5,14 @@ use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
+use crate::optimize::gather::{
+  gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
+  total_sequence_length,
+};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::run_loop::{
-  OptimizeReadouts, apply_initial_guess_mode, marginal_update_dense, marginal_update_sparse, normalize_partition_rates,
-  run_optimize_loop,
+  apply_initial_guess_mode, marginal_update_dense, marginal_update_sparse, normalize_partition_rates, run_optimize_loop,
 };
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::dense::reroot::reroot_dense;
@@ -159,10 +162,16 @@ pub fn run(
   }
 
   {
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let indel_counts = gather_edge_indel_counts(&input.graph, &dense_partitions, &sparse_partitions);
+    let sub_counts = gather_edge_sub_counts(&input.graph, &dense_partitions, &sparse_partitions)?;
+    let effective_lengths = gather_edge_effective_lengths(&input.graph, &dense_partitions, &sparse_partitions)?;
     apply_initial_guess_mode(
       &input.graph,
-      &readouts.view(),
+      total_length,
+      &indel_counts,
+      &sub_counts,
+      &effective_lengths,
       params.initial_guess,
       params.no_indels,
       &mut branch_lengths,
@@ -272,11 +281,29 @@ fn pre_reroot_optimize(
   let old_branch_lengths = branch_lengths.clone();
 
   {
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
     if no_indels {
-      run_optimize_mixed_inner(graph, &readouts.view(), opt_method, 0.0, true, branch_lengths)?;
+      run_optimize_mixed_inner(
+        graph,
+        total_length,
+        &contributions,
+        &indel_counts,
+        opt_method,
+        0.0,
+        true,
+        branch_lengths,
+      )?;
     } else {
-      run_optimize_mixed(graph, &readouts.view(), opt_method, branch_lengths)?;
+      run_optimize_mixed(
+        graph,
+        total_length,
+        &contributions,
+        &indel_counts,
+        opt_method,
+        branch_lengths,
+      )?;
     }
   }
 

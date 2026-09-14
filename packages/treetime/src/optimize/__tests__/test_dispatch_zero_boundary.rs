@@ -6,11 +6,15 @@ mod tests {
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_by_name, jc69};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
+  use crate::optimize::gather::{
+    gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
+    total_sequence_length,
+  };
   use crate::optimize::likelihood::{evaluate_mixed, evaluate_mixed_log_lh_only};
   use crate::optimize::method_newton::{newton_inner, newton_sqrt_inner};
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::find_zero_optimal_internal_edges;
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
+  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::optimize;
@@ -80,9 +84,20 @@ mod tests {
     let (sparse_partitions, _) =
       marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?;
 
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    let mixed_partitions = readouts.view();
-    initial_guess_mixed(graph, &mixed_partitions, false, false, branch_lengths)?;
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
+    let sub_counts = gather_edge_sub_counts(graph, &dense_partitions, &sparse_partitions)?;
+    let effective_lengths = gather_edge_effective_lengths(graph, &dense_partitions, &sparse_partitions)?;
+    initial_guess_mixed(
+      graph,
+      total_length,
+      &indel_counts,
+      &sub_counts,
+      &effective_lengths,
+      false,
+      false,
+      branch_lengths,
+    )?;
 
     Ok((dense_partitions, sparse_partitions))
   }
@@ -117,8 +132,9 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    let mixed_partitions = readouts.view();
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
 
     // Sanity check: every edge must start with a positive branch length so
     // that the optimizer has real work to do. If this fails, the test
@@ -131,7 +147,7 @@ mod tests {
       );
     }
 
-    run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
     for (i, edge_ref) in graph.get_edges().iter().enumerate() {
       let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap();
@@ -167,8 +183,9 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, model, &mut branch_lengths)?;
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    let mixed_partitions = readouts.view();
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
 
     // Precondition: the model must be classified as non-unimodal so that
     // the pre-dispatch shortcut is bypassed and the post-dispatch
@@ -178,7 +195,14 @@ mod tests {
       "precondition: {model:?} must be classified as non-unimodal"
     );
 
-    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::BrentSqrt, &mut branch_lengths)?;
+    run_optimize_mixed(
+      &graph,
+      total_length,
+      &contributions,
+      &indel_counts,
+      BranchOptMethod::BrentSqrt,
+      &mut branch_lengths,
+    )?;
 
     for (i, edge_ref) in graph.get_edges().iter().enumerate() {
       let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap();
@@ -213,8 +237,9 @@ mod tests {
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) =
       setup_identical_partitions(&graph, &names, GtrModelName::JC69, &mut branch_lengths)?;
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    let mixed_partitions = readouts.view();
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
 
     assert!(
       dense_partitions[0].partition.gtr().unimodal_branch_likelihood,
@@ -226,19 +251,17 @@ mod tests {
     // a strictly negative derivative at $t = 0$ for any unimodal model,
     // so the shortcut must return true.
     let first_edge_key = graph.get_edges()[0].read_arc().key();
-    let contributions: Vec<OptimizationContribution> = mixed_partitions
-      .iter()
-      .map(|partition| partition.create_edge_contribution(first_edge_key))
-      .collect::<Result<_, _>>()?;
     assert!(
-      is_zero_branch_optimal(&contributions),
+      is_zero_branch_optimal(&contributions[&first_edge_key]),
       "precondition: JC69 identical-sequence contributions must trigger the pre-dispatch shortcut"
     );
 
     // Full dispatch also reaches zero through the shortcut path.
     run_optimize_mixed(
       &graph,
-      &mixed_partitions,
+      total_length,
+      &contributions,
+      &indel_counts,
       BranchOptMethod::BrentSqrt,
       &mut branch_lengths,
     )?;
@@ -481,8 +504,9 @@ mod tests {
     let NwkParse { graph, names, mut branch_lengths, .. } = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_identical_partitions(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    let mixed_partitions = readouts.view();
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
 
     // Before optimization, every edge starts at 0.1 and none are zero.
     assert_eq!(
@@ -491,7 +515,7 @@ mod tests {
       "precondition: no zero-length internal edges before optimization"
     );
 
-    run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
     let zero_edges = find_zero_optimal_internal_edges(&graph, &sparse_partitions, &branch_lengths);
     assert_eq!(

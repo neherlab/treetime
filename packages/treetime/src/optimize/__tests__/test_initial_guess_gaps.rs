@@ -6,7 +6,10 @@ mod tests {
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
+  use crate::optimize::gather::{
+    gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts, total_sequence_length,
+  };
+  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::traits::PartitionBranchOps;
   use crate::seq::alignment::get_common_length;
@@ -274,8 +277,20 @@ mod tests {
     } = nwk_read_str(TREE_NEWICK)?;
     let partitions_clean = setup_sparse(&graph_clean, &graph_clean_names, &aln_clean, &branch_lengths_clean)?;
     {
-      let ro = OptimizeReadouts::new(&[], &partitions_clean);
-      initial_guess_mixed(&graph_clean, &ro.view(), true, false, &mut branch_lengths_clean)?;
+      let total_length = total_sequence_length(&[], &partitions_clean);
+      let indel_counts = gather_edge_indel_counts(&graph_clean, &[], &partitions_clean);
+      let sub_counts = gather_edge_sub_counts(&graph_clean, &[], &partitions_clean)?;
+      let effective_lengths = gather_edge_effective_lengths(&graph_clean, &[], &partitions_clean)?;
+      initial_guess_mixed(
+        &graph_clean,
+        total_length,
+        &indel_counts,
+        &sub_counts,
+        &effective_lengths,
+        true,
+        false,
+        &mut branch_lengths_clean,
+      )?;
     }
     let bl_clean = get_branch_lengths(&graph_clean, &branch_lengths_clean);
 
@@ -288,8 +303,20 @@ mod tests {
     } = nwk_read_str(TREE_NEWICK)?;
     let partitions_gappy = setup_sparse(&graph_gappy, &graph_gappy_names, &aln_gappy, &branch_lengths_gappy)?;
     {
-      let ro = OptimizeReadouts::new(&[], &partitions_gappy);
-      initial_guess_mixed(&graph_gappy, &ro.view(), true, false, &mut branch_lengths_gappy)?;
+      let total_length = total_sequence_length(&[], &partitions_gappy);
+      let indel_counts = gather_edge_indel_counts(&graph_gappy, &[], &partitions_gappy);
+      let sub_counts = gather_edge_sub_counts(&graph_gappy, &[], &partitions_gappy)?;
+      let effective_lengths = gather_edge_effective_lengths(&graph_gappy, &[], &partitions_gappy)?;
+      initial_guess_mixed(
+        &graph_gappy,
+        total_length,
+        &indel_counts,
+        &sub_counts,
+        &effective_lengths,
+        true,
+        false,
+        &mut branch_lengths_gappy,
+      )?;
     }
     let bl_gappy = get_branch_lengths(&graph_gappy, &branch_lengths_gappy);
 

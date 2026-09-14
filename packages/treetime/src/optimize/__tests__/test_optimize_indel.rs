@@ -9,10 +9,14 @@ pub mod tests {
     TREE_NEWICK, setup_partitions, simple_alignment,
   };
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed, run_optimize_mixed_with_indel_rate};
+  use crate::optimize::gather::{
+    gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
+    total_sequence_length,
+  };
   use crate::optimize::indel::{estimate_indel_rate, poisson_indel_log_lh, total_indel_log_lh};
   use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
+  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::optimize::zero_boundary::{is_zero_better_than_grid_best, is_zero_branch_optimal};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::optimize;
@@ -86,9 +90,16 @@ pub mod tests {
     let (sparse_partitions, _) =
       marginal_update_sparse(graph, &profile_branch_lengths(branch_lengths), sparse_partitions)?;
 
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
+    let sub_counts = gather_edge_sub_counts(graph, &dense_partitions, &sparse_partitions)?;
+    let effective_lengths = gather_edge_effective_lengths(graph, &dense_partitions, &sparse_partitions)?;
     initial_guess_mixed(
       graph,
-      &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(),
+      total_length,
+      &indel_counts,
+      &sub_counts,
+      &effective_lengths,
       true,
       false,
       branch_lengths,
@@ -110,11 +121,8 @@ pub mod tests {
     let aln = simple_alignment()?;
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let rate = estimate_indel_rate(
-      &graph,
-      &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(),
-      &branch_lengths,
-    );
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let rate = estimate_indel_rate(&graph, &indel_counts, &branch_lengths);
     assert_abs_diff_eq!(rate, 0.0, epsilon = 1e-15);
     Ok(())
   }
@@ -135,11 +143,8 @@ pub mod tests {
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &mut dense_partitions, &mut sparse_partitions, &indels);
 
-    let rate = estimate_indel_rate(
-      &graph,
-      &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(),
-      &branch_lengths,
-    );
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let rate = estimate_indel_rate(&graph, &indel_counts, &branch_lengths);
 
     // 2 indels total (1 per partition: dense + sparse), divided by total branch length
     let total_bl: f64 = graph
@@ -174,19 +179,11 @@ pub mod tests {
     let first_edge_key = inject_indels_on_first_edge(&graph, &mut dense_partitions, &mut sparse_partitions, &indels);
     branch_lengths.insert(first_edge_key, Some(0.1));
 
-    let indel_rate = estimate_indel_rate(
-      &graph,
-      &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(),
-      &branch_lengths,
-    );
-    let total_lh = total_indel_log_lh(
-      &graph,
-      &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(),
-      &branch_lengths,
-      indel_rate,
-    )
-    .expect("valid branch lengths")
-    .value();
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let indel_rate = estimate_indel_rate(&graph, &indel_counts, &branch_lengths);
+    let total_lh = total_indel_log_lh(&graph, &indel_counts, &branch_lengths, indel_rate)
+      .expect("valid branch lengths")
+      .value();
 
     let expected_total_lh: f64 = graph
       .get_edges()
@@ -222,19 +219,11 @@ pub mod tests {
     inject_indels_on_first_edge(&graph, &mut dense_partitions, &mut sparse_partitions, &indels);
     branch_lengths.insert(graph.get_edges()[0].read_arc().key(), Some(0.0));
 
-    let indel_rate = estimate_indel_rate(
-      &graph,
-      &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(),
-      &branch_lengths,
-    );
-    let total_lh = total_indel_log_lh(
-      &graph,
-      &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(),
-      &branch_lengths,
-      indel_rate,
-    )
-    .expect("valid branch lengths")
-    .value();
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let indel_rate = estimate_indel_rate(&graph, &indel_counts, &branch_lengths);
+    let total_lh = total_indel_log_lh(&graph, &indel_counts, &branch_lengths, indel_rate)
+      .expect("valid branch lengths")
+      .value();
 
     pretty_assert_neg_inf!(total_lh);
     Ok(())
@@ -254,19 +243,11 @@ pub mod tests {
 
     branch_lengths.insert(graph.get_edges()[0].read_arc().key(), Some(0.0));
 
-    let indel_rate = estimate_indel_rate(
-      &graph,
-      &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(),
-      &branch_lengths,
-    );
-    let total_lh = total_indel_log_lh(
-      &graph,
-      &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(),
-      &branch_lengths,
-      indel_rate,
-    )
-    .expect("valid branch lengths")
-    .value();
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let indel_rate = estimate_indel_rate(&graph, &indel_counts, &branch_lengths);
+    let total_lh = total_indel_log_lh(&graph, &indel_counts, &branch_lengths, indel_rate)
+      .expect("valid branch lengths")
+      .value();
 
     assert!(total_lh.is_finite(), "Expected finite total indel LH, got {total_lh}");
     Ok(())
@@ -312,16 +293,26 @@ pub mod tests {
       branch_lengths_high.insert(edge_ref.read_arc().key(), Some(0.0));
     }
 
+    let total_length_low = total_sequence_length(&dense_partitions_low, &sparse_partitions_low);
+    let contributions_low = gather_edge_contributions(&graph_low, &dense_partitions_low, &sparse_partitions_low)?;
+    let indel_counts_low = gather_edge_indel_counts(&graph_low, &dense_partitions_low, &sparse_partitions_low);
     run_optimize_mixed_with_indel_rate(
       &graph_low,
-      &OptimizeReadouts::new(&dense_partitions_low, &sparse_partitions_low).view(),
+      total_length_low,
+      &contributions_low,
+      &indel_counts_low,
       BranchOptMethod::Newton,
       1.0,
       &mut branch_lengths_low,
     )?;
+    let total_length_high = total_sequence_length(&dense_partitions_high, &sparse_partitions_high);
+    let contributions_high = gather_edge_contributions(&graph_high, &dense_partitions_high, &sparse_partitions_high)?;
+    let indel_counts_high = gather_edge_indel_counts(&graph_high, &dense_partitions_high, &sparse_partitions_high);
     run_optimize_mixed_with_indel_rate(
       &graph_high,
-      &OptimizeReadouts::new(&dense_partitions_high, &sparse_partitions_high).view(),
+      total_length_high,
+      &contributions_high,
+      &indel_counts_high,
       BranchOptMethod::Newton,
       8.0,
       &mut branch_lengths_high,
@@ -354,9 +345,16 @@ pub mod tests {
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &mut dense_partitions, &mut sparse_partitions, &indels);
 
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
     initial_guess_mixed(
       &graph,
-      &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(),
+      total_length,
+      &indel_counts,
+      &sub_counts,
+      &effective_lengths,
       true,
       false,
       &mut branch_lengths,
@@ -395,9 +393,16 @@ pub mod tests {
     inject_indels_on_first_edge(&graph, &mut dense_partitions, &mut sparse_partitions, &indels);
 
     // indel_rate is 0 at this point (all BL = 0), but initial_guess should bootstrap
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
     initial_guess_mixed(
       &graph,
-      &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(),
+      total_length,
+      &indel_counts,
+      &sub_counts,
+      &effective_lengths,
       true,
       false,
       &mut branch_lengths,
@@ -436,7 +441,10 @@ pub mod tests {
     ];
     inject_indels_on_first_edge(&graph, &mut dense_partitions, &mut sparse_partitions, &indels);
 
-    run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
     let bl = branch_lengths[&graph.get_edges()[0].read_arc().key()].unwrap();
     assert!(
@@ -464,7 +472,10 @@ pub mod tests {
       inject_indels_on_first_edge(&graph, &mut dense_partitions, &mut sparse_partitions, &indels);
     }
 
-    let error = run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), BranchOptMethod::BrentSqrt, &mut branch_lengths)
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let error = run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, BranchOptMethod::BrentSqrt, &mut branch_lengths)
       .expect_err("negative branch length must return an error");
     let message = format!("{error:?}");
     assert!(message.contains("finite and non-negative"), "Unexpected error: {message}");
@@ -502,7 +513,20 @@ pub mod tests {
       .unwrap()
       .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
 
-    initial_guess_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), true, false, &mut branch_lengths)?;
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
+    initial_guess_mixed(
+      &graph,
+      total_length,
+      &indel_counts,
+      &sub_counts,
+      &effective_lengths,
+      true,
+      false,
+      &mut branch_lengths,
+    )?;
 
     // After initial_guess, the indel-bearing edge should have positive BL (bootstrap)
     let bl_after_guess = branch_lengths[&graph.get_edges()[0].read_arc().key()].unwrap();
@@ -514,7 +538,10 @@ pub mod tests {
     // Run marginal + optimize
     let (dense_partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
     let (sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
-    run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
     let bl_final = branch_lengths[&graph.get_edges()[0].read_arc().key()].unwrap();
     assert!(bl_final > 0.0, "Optimized BL should be positive, got {bl_final}");
@@ -759,7 +786,10 @@ pub mod tests {
 
     let (dense_partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
     let (sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
-    run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
 
     let bl = branch_lengths[&edge_ref.read_arc().key()].unwrap();
 

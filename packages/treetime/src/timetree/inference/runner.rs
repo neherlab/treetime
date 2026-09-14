@@ -2,9 +2,11 @@ use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_state::ClockState;
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
+use crate::optimize::gather::{
+  gather_timetree_edge_contributions, gather_timetree_edge_indel_counts, timetree_total_sequence_length,
+};
 use crate::optimize::indel::estimate_indel_rate;
-use crate::partition::optimize::contribution::OptimizationContribution;
-use crate::partition::traits::PartitionOptimizeOps;
+use crate::partition::timetree::partition::PartitionTimetree;
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::timetree::inference::forward_pass::propagate_distributions_forward;
@@ -50,10 +52,10 @@ pub const EPS: f64 = 5e-4;
 /// `names`. The caller re-snapshots them after any length or
 /// topology change so each pass sees the current tree.
 #[allow(clippy::too_many_arguments)]
-pub fn run_timetree<P>(
+pub fn run_timetree(
   graph: &mut Graph,
   constraints: &DateConstraints,
-  partitions: &[P],
+  partitions: &[PartitionTimetree],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   clock_model: &ClockModel,
@@ -61,10 +63,7 @@ pub fn run_timetree<P>(
   no_indels: bool,
   mut state: TimetreeState,
   clock_state: &mut ClockState,
-) -> Result<TimetreeState, Report>
-where
-  P: PartitionOptimizeOps,
-{
+) -> Result<TimetreeState, Report> {
   info!("# Running timetree inference");
 
   info!("## Calculating divergence distances");
@@ -175,26 +174,24 @@ pub fn commit_clock_branch_lengths(
   }
 }
 
-fn compute_branch_distributions_marginal_mode<P>(
+fn compute_branch_distributions_marginal_mode(
   graph: &Graph,
-  partitions: &[P],
+  partitions: &[PartitionTimetree],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   clock_rate: f64,
   no_indels: bool,
   state: &mut TimetreeState,
-) -> Result<(), Report>
-where
-  P: PartitionOptimizeOps,
-{
-  let one_mutation = calculate_one_mutation(partitions);
-  let total_sites: usize = partitions.iter().map(|p| p.sequence_length()).sum();
+) -> Result<(), Report> {
+  let total_sites = timetree_total_sequence_length(partitions);
+  let one_mutation = 1.0 / total_sites as f64;
 
+  let indel_counts = gather_timetree_edge_indel_counts(graph, partitions);
   let indel_rate = if no_indels {
     0.0
   } else {
-    let mixed: Vec<&dyn PartitionOptimizeOps> = partitions.iter().map(|p| -> &dyn PartitionOptimizeOps { p }).collect();
-    estimate_indel_rate(graph, &mixed, branch_lengths)
+    estimate_indel_rate(graph, &indel_counts, branch_lengths)
   };
+  let contributions = gather_timetree_edge_contributions(graph, partitions)?;
 
   info!(
     "Computing branch distributions from {} partition(s) with {} total sites",
@@ -220,17 +217,10 @@ where
 
         debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
 
-        let contributions = collect_contributions(partitions, edge_key)?;
-        let indel_count: usize = if no_indels {
-          0
-        } else {
-          partitions
-            .iter()
-            .map(|partition| partition.edge_indel_count(edge_key))
-            .sum()
-        };
+        let contributions = &contributions[&edge_key];
+        let indel_count: usize = if no_indels { 0 } else { indel_counts[&edge_key] };
         let distribution = compute_branch_length_distribution(
-          &contributions,
+          contributions,
           indel_count,
           indel_rate,
           branch_length,
@@ -256,24 +246,6 @@ where
     entry.branch_length_distribution = Some(distribution);
   }
   Ok(())
-}
-
-fn calculate_one_mutation<P>(partitions: &[P]) -> f64
-where
-  P: PartitionOptimizeOps,
-{
-  let total_length: usize = partitions.iter().map(|part| part.sequence_length()).sum();
-  1.0 / total_length as f64
-}
-
-fn collect_contributions<P>(partitions: &[P], edge_key: GraphEdgeKey) -> Result<Vec<OptimizationContribution>, Report>
-where
-  P: PartitionOptimizeOps,
-{
-  partitions
-    .iter()
-    .map(|partition| partition.create_edge_contribution(edge_key))
-    .collect()
 }
 
 pub(super) fn create_branch_distributions_input_mode(

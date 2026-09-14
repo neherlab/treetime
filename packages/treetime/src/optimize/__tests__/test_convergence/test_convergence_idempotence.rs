@@ -2,8 +2,9 @@
 mod tests {
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
+  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use rstest::rstest;
@@ -34,7 +35,10 @@ mod tests {
 
     // Run optimization iterations
     for i in 0..20 {
-      run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
+      let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+      let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+      let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
       let (dense_partitions_updated, dense_lh) =
         marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
       let (sparse_partitions_updated, sparse_lh) =
@@ -89,7 +93,10 @@ mod tests {
     let (mut dense_partitions1, mut sparse_partitions1) = setup_partitions(&graph1, &graph1_names, &aln, &mut branch_lengths1)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph1, &OptimizeReadouts::new(&dense_partitions1, &sparse_partitions1).view(), method, &mut branch_lengths1)?;
+      let total_length = total_sequence_length(&dense_partitions1, &sparse_partitions1);
+      let contributions = gather_edge_contributions(&graph1, &dense_partitions1, &sparse_partitions1)?;
+      let indel_counts = gather_edge_indel_counts(&graph1, &dense_partitions1, &sparse_partitions1);
+      run_optimize_mixed(&graph1, total_length, &contributions, &indel_counts, method, &mut branch_lengths1)?;
       (dense_partitions1, _) = marginal_update_dense(&graph1, &profile_branch_lengths(&branch_lengths1), dense_partitions1)?;
       (sparse_partitions1, _) = marginal_update_sparse(&graph1, &profile_branch_lengths(&branch_lengths1), sparse_partitions1)?;
     }
@@ -101,7 +108,10 @@ mod tests {
     let (mut dense_partitions2, mut sparse_partitions2) = setup_partitions(&graph2, &graph2_names, &aln, &mut branch_lengths2)?;
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph2, &OptimizeReadouts::new(&dense_partitions2, &sparse_partitions2).view(), method, &mut branch_lengths2)?;
+      let total_length = total_sequence_length(&dense_partitions2, &sparse_partitions2);
+      let contributions = gather_edge_contributions(&graph2, &dense_partitions2, &sparse_partitions2)?;
+      let indel_counts = gather_edge_indel_counts(&graph2, &dense_partitions2, &sparse_partitions2);
+      run_optimize_mixed(&graph2, total_length, &contributions, &indel_counts, method, &mut branch_lengths2)?;
       (dense_partitions2, _) = marginal_update_dense(&graph2, &profile_branch_lengths(&branch_lengths2), dense_partitions2)?;
       (sparse_partitions2, _) = marginal_update_sparse(&graph2, &profile_branch_lengths(&branch_lengths2), sparse_partitions2)?;
     }

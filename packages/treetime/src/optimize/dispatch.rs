@@ -6,7 +6,6 @@ use crate::optimize::method_newton::{newton_inner, newton_log_inner, newton_sqrt
 use crate::optimize::params::BranchOptMethod;
 use crate::optimize::zero_boundary::{is_zero_branch_optimal, min_branch_length_for_indels, reconcile_zero_boundary};
 use crate::partition::optimize::contribution::OptimizationContribution;
-use crate::partition::traits::PartitionOptimizeOps;
 use crate::{make_error, make_internal_report, make_report};
 use eyre::{Report, WrapErr};
 use rayon::prelude::*;
@@ -16,47 +15,70 @@ use treetime_graph::graph::Graph;
 
 /// Unified optimization function for mixed partition types.
 ///
-/// Main optimization loop that works with both sparse and dense partitions simultaneously.
-/// For each edge, it collects contributions from all partitions and optimizes the branch
+/// Main optimization loop that works with both sparse and dense partitions simultaneously. For each
+/// edge, it reads the pre-gathered per-partition contributions and indel count and optimizes the branch
 /// length using the selected method.
 pub fn run_optimize_mixed(
   graph: &Graph,
-  partitions: &[&dyn PartitionOptimizeOps],
+  total_length: usize,
+  contributions: &BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>,
+  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   method: BranchOptMethod,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  let total_length = total_sequence_length(partitions);
   if total_length == 0 {
     return make_error!("Total sequence length across all partitions is zero; cannot optimize branch lengths");
   }
 
-  let indel_rate = estimate_indel_rate(graph, partitions, branch_lengths);
-  run_optimize_mixed_inner(graph, partitions, method, indel_rate, false, branch_lengths)?;
+  let indel_rate = estimate_indel_rate(graph, indel_counts, branch_lengths);
+  run_optimize_mixed_inner(
+    graph,
+    total_length,
+    contributions,
+    indel_counts,
+    method,
+    indel_rate,
+    false,
+    branch_lengths,
+  )?;
   Ok(())
 }
 
 #[cfg(test)]
+#[allow(clippy::too_many_arguments)]
 pub fn run_optimize_mixed_with_indel_rate(
   graph: &Graph,
-  partitions: &[&dyn PartitionOptimizeOps],
+  total_length: usize,
+  contributions: &BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>,
+  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   method: BranchOptMethod,
   indel_rate: f64,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  run_optimize_mixed_inner(graph, partitions, method, indel_rate, false, branch_lengths)?;
+  run_optimize_mixed_inner(
+    graph,
+    total_length,
+    contributions,
+    indel_counts,
+    method,
+    indel_rate,
+    false,
+    branch_lengths,
+  )?;
   Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_optimize_mixed_inner(
   graph: &Graph,
-  partitions: &[&dyn PartitionOptimizeOps],
+  total_length: usize,
+  contributions: &BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>,
+  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   method: BranchOptMethod,
   indel_rate: f64,
   no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  let total_length = total_sequence_length(partitions);
-
   if total_length == 0 {
     return make_error!("Total sequence length across all partitions is zero; cannot optimize branch lengths");
   }
@@ -89,19 +111,9 @@ pub fn run_optimize_mixed_inner(
       let mut branch_length = branch_lengths_in[&edge_key]
         .ok_or_else(|| make_internal_report!("Validated edge {edge_key} lost its branch length"))?;
 
-      let contributions: Vec<OptimizationContribution> = partitions
-        .iter()
-        .map(|partition| partition.create_edge_contribution(edge_key))
-        .collect::<Result<_, _>>()?;
+      let contributions = &contributions[&edge_key];
 
-      let indel_count: usize = if no_indels {
-        0
-      } else {
-        partitions
-          .iter()
-          .map(|partition| partition.edge_indel_count(edge_key))
-          .sum()
-      };
+      let indel_count: usize = if no_indels { 0 } else { indel_counts[&edge_key] };
 
       // The Poisson log-likelihood derivative diverges at t=0 when k > 0, producing
       // inf/NaN in Newton's method. Use a non-zero starting point for indel-bearing edges.
@@ -124,7 +136,7 @@ pub fn run_optimize_mixed_inner(
       // When indels are present on this edge, the Poisson derivative at t=0 is +infinity,
       // so zero branch length is never optimal. Only check the substitution-based criterion
       // when there are no indels.
-      if indel_count == 0 && is_zero_branch_optimal(&contributions) {
+      if indel_count == 0 && is_zero_branch_optimal(contributions) {
         return Ok((edge_key, 0.0));
       }
 
@@ -135,7 +147,7 @@ pub fn run_optimize_mixed_inner(
       let new_branch_length = match method {
         BranchOptMethod::Brent => brent_inner(
           branch_length,
-          &contributions,
+          contributions,
           indel_count,
           indel_rate,
           min_branch_length,
@@ -143,7 +155,7 @@ pub fn run_optimize_mixed_inner(
         ),
         BranchOptMethod::BrentSqrt => brent_sqrt_inner(
           branch_length,
-          &contributions,
+          contributions,
           indel_count,
           indel_rate,
           min_branch_length,
@@ -151,18 +163,18 @@ pub fn run_optimize_mixed_inner(
         ),
         BranchOptMethod::BrentLog => brent_log_inner(
           branch_length,
-          &contributions,
+          contributions,
           indel_count,
           indel_rate,
           min_branch_length,
           one_mutation,
         ),
         BranchOptMethod::Newton => {
-          let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length)?;
+          let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, branch_length)?;
           newton_inner(
             branch_length,
             &metrics,
-            &contributions,
+            contributions,
             indel_count,
             indel_rate,
             min_branch_length,
@@ -170,11 +182,11 @@ pub fn run_optimize_mixed_inner(
           )
         },
         BranchOptMethod::NewtonSqrt => {
-          let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, branch_length)?;
+          let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, branch_length)?;
           newton_sqrt_inner(
             branch_length,
             &metrics,
-            &contributions,
+            contributions,
             indel_count,
             indel_rate,
             min_branch_length,
@@ -188,11 +200,11 @@ pub fn run_optimize_mixed_inner(
           } else {
             branch_length
           };
-          let metrics = evaluate_with_indels(&contributions, indel_count, indel_rate, bl)?;
+          let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, bl)?;
           newton_log_inner(
             bl,
             &metrics,
-            &contributions,
+            contributions,
             indel_count,
             indel_rate,
             min_branch_length,
@@ -208,7 +220,7 @@ pub fn run_optimize_mixed_inner(
       let new_branch_length = reconcile_zero_boundary(
         new_branch_length,
         branch_length,
-        &contributions,
+        contributions,
         indel_count,
         indel_rate,
         one_mutation,
@@ -279,15 +291,17 @@ impl BifurcatingRootState {
 ///
 /// When `no_indels` is true, indel counts and rates do not affect either
 /// branch validity or the estimated branch length.
+#[allow(clippy::too_many_arguments)]
 pub fn initial_guess_mixed(
   graph: &Graph,
-  partitions: &[&dyn PartitionOptimizeOps],
+  total_length: usize,
+  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
+  sub_counts: &BTreeMap<GraphEdgeKey, usize>,
+  effective_lengths: &BTreeMap<GraphEdgeKey, usize>,
   overwrite_valid: bool,
   no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  let total_length: usize = partitions.iter().map(|partition| partition.sequence_length()).sum();
-
   if total_length == 0 {
     return make_error!("Total sequence length across all partitions is zero; cannot compute initial guess");
   }
@@ -296,20 +310,13 @@ pub fn initial_guess_mixed(
   let indel_rate = if no_indels {
     0.0
   } else {
-    estimate_indel_rate(graph, partitions, branch_lengths)
+    estimate_indel_rate(graph, indel_counts, branch_lengths)
   };
 
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.read_arc().key();
 
-    let indel_count: usize = if no_indels {
-      0
-    } else {
-      partitions
-        .iter()
-        .map(|partition| partition.edge_indel_count(edge_key))
-        .sum()
-    };
+    let indel_count: usize = if no_indels { 0 } else { indel_counts[&edge_key] };
 
     if !overwrite_valid {
       if let Some(bl) = branch_lengths.get(&edge_key).copied().flatten() {
@@ -323,15 +330,9 @@ pub fn initial_guess_mixed(
       }
     }
 
-    let sub_count: usize = partitions
-      .iter()
-      .map(|partition| partition.edge_subs(graph, edge_key).map(|subs| subs.len()))
-      .sum::<Result<_, _>>()?;
+    let sub_count: usize = sub_counts[&edge_key];
 
-    let effective_length: usize = partitions
-      .iter()
-      .map(|partition| partition.edge_effective_length(graph, edge_key))
-      .sum::<Result<_, _>>()?;
+    let effective_length: usize = effective_lengths[&edge_key];
 
     let branch_length = if effective_length > 0 {
       let sub_estimate = sub_count as f64 / effective_length as f64;
@@ -357,8 +358,4 @@ pub fn initial_guess_mixed(
   }
 
   Ok(())
-}
-
-fn total_sequence_length(partitions: &[&dyn PartitionOptimizeOps]) -> usize {
-  partitions.iter().map(|partition| partition.sequence_length()).sum()
 }

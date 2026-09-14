@@ -2,8 +2,9 @@
 mod tests {
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
+  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::graph::Graph;
@@ -33,10 +34,11 @@ mod tests {
     let lh_ref = {
       let NwkParse { graph: graph_ref, names: graph_ref_names, branch_lengths: mut branch_lengths_ref, .. } = nwk_read_str(TREE_NEWICK)?;
       let (dp_ref, sp_ref) = setup_partitions(&graph_ref, &graph_ref_names, &aln, &mut branch_lengths_ref)?;
-      let ro_ref = OptimizeReadouts::new(&dp_ref, &sp_ref);
-      let mp_ref = ro_ref.view();
+      let total_length_ref = total_sequence_length(&dp_ref, &sp_ref);
+      let contributions_ref = gather_edge_contributions(&graph_ref, &dp_ref, &sp_ref)?;
+      let indel_counts_ref = gather_edge_indel_counts(&graph_ref, &dp_ref, &sp_ref);
       for _ in 0..max_iter {
-        run_optimize_mixed(&graph_ref, &mp_ref, BranchOptMethod::BrentSqrt, &mut branch_lengths_ref)?;
+        run_optimize_mixed(&graph_ref, total_length_ref, &contributions_ref, &indel_counts_ref, BranchOptMethod::BrentSqrt, &mut branch_lengths_ref)?;
       }
       let (_, _, lh) = compute_total_lh(&graph_ref, dp_ref, sp_ref, &branch_lengths_ref)?;
       lh
@@ -47,8 +49,11 @@ mod tests {
     let graph: Graph = graph;
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
 
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
     for _ in 0..max_iter {
-      run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
+      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
     }
     let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
 
@@ -86,8 +91,11 @@ mod tests {
     assert!(initial_lh < 0.0, "Initial log-LH should be negative: {initial_lh}");
 
     // Run several optimization steps
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
+      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
     }
 
     let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
@@ -132,7 +140,10 @@ mod tests {
 
     // Run several optimization iterations
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(), method, &mut branch_lengths)?;
+      let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+      let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+      let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
       (dense_partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), dense_partitions)?;
       (sparse_partitions, _) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
     }

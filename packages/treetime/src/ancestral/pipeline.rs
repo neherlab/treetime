@@ -13,10 +13,12 @@ use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::dense::partition::{DenseMarginalEdges, DenseReadout, PartitionMarginalDense};
 use crate::partition::marginal::shared::update::{MarginalStates, MarginalUpdate};
 use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges, SparseReadout};
+use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::ProgressSink;
 use crate::seq::alignment::get_common_length;
+use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -82,6 +84,33 @@ impl SparseReconstruction {
     }
   }
 
+  /// The sequence length this reconstruction represents.
+  pub fn sequence_length(&self) -> usize {
+    self.partition.length
+  }
+
+  /// MAP-derived nucleotide substitutions for one edge, read from the forward-pass estimates.
+  pub fn edge_subs(&self, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    self.partition.edge_subs(&self.edges.estimates, edge_key)
+  }
+
+  /// The number of alignment positions where both endpoints carry canonical states for one edge.
+  pub fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+    self.partition.edge_effective_length(graph, edge_key)
+  }
+
+  /// The per-edge branch-length optimization contribution, built from the last update's messages.
+  pub fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
+    self
+      .partition
+      .create_edge_contribution(&self.edges.backward, &self.edges.forward, edge_key)
+  }
+
+  /// The number of indel events on one edge.
+  pub fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+    self.partition.edge_indel_count(edge_key)
+  }
+
   /// Run a full marginal update, returning the reconstruction at the refreshed node states and per-edge
   /// results together with the substitution log likelihood.
   ///
@@ -138,6 +167,33 @@ impl DenseReconstruction {
       node_states: &self.node_states,
       edges: &self.edges,
     }
+  }
+
+  /// The sequence length this reconstruction represents.
+  pub fn sequence_length(&self) -> usize {
+    self.partition.length
+  }
+
+  /// MAP-derived nucleotide substitutions for one edge, read from the node-state profiles.
+  pub fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    self.partition.edge_subs(&self.node_states, graph, edge_key)
+  }
+
+  /// The number of alignment positions where both endpoints carry canonical states for one edge.
+  pub fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+    self.partition.edge_effective_length(&self.node_states, graph, edge_key)
+  }
+
+  /// The per-edge branch-length optimization contribution, built from the last update's messages.
+  pub fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> OptimizationContribution {
+    self
+      .partition
+      .create_edge_contribution(&self.edges.backward, &self.edges.forward, edge_key)
+  }
+
+  /// The number of indel events on one edge.
+  pub fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+    self.partition.edge_indel_count(&self.edges.estimates, edge_key)
   }
 
   /// Run a full marginal update, returning the reconstruction at the refreshed node states and per-edge

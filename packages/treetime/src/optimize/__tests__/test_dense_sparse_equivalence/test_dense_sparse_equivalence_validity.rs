@@ -2,8 +2,9 @@
 mod tests {
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
+  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::graph::Graph;
@@ -33,7 +34,10 @@ mod tests {
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &OptimizeReadouts::new(&partitions, &[]).view(), method, &mut branch_lengths)?;
+      let total_length = total_sequence_length(&partitions, &[]);
+      let contributions = gather_edge_contributions(&graph, &partitions, &[])?;
+      let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
       let lh;
       (partitions, lh) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
       let lh = lh.value();
@@ -87,7 +91,10 @@ mod tests {
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &OptimizeReadouts::new(&[], &partitions).view(), method, &mut branch_lengths)?;
+      let total_length = total_sequence_length(&[], &partitions);
+      let contributions = gather_edge_contributions(&graph, &[], &partitions)?;
+      let indel_counts = gather_edge_indel_counts(&graph, &[], &partitions);
+      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
       let lh;
       (partitions, lh) = marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
       let lh = lh.value();

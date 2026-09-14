@@ -6,24 +6,33 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::partition::traits::PartitionOptimizeOps;
 use eyre::Report;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::reroot::RerootChanges;
 
-impl PartitionOptimizeOps for PartitionTimetree {
-  fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
+impl PartitionTimetree {
+  /// The sequence length this partition represents.
+  pub fn sequence_length(&self) -> usize {
     match self {
-      Self::Dense(family) => family.readout().create_edge_contribution(edge_key),
-      Self::Sparse(family) => family.readout().create_edge_contribution(edge_key),
+      Self::Dense(family) => family.sequence_length(),
+      Self::Sparse(family) => family.sequence_length(),
     }
   }
 
-  fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+  /// The per-edge branch-length optimization contribution, built from the last update's messages.
+  pub fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
     match self {
-      Self::Dense(family) => family.readout().edge_indel_count(edge_key),
-      Self::Sparse(family) => family.readout().edge_indel_count(edge_key),
+      Self::Dense(family) => Ok(family.create_edge_contribution(edge_key)),
+      Self::Sparse(family) => family.create_edge_contribution(edge_key),
+    }
+  }
+
+  /// The number of indel events on one edge.
+  pub fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+    match self {
+      Self::Dense(family) => family.edge_indel_count(edge_key),
+      Self::Sparse(family) => family.edge_indel_count(edge_key),
     }
   }
 }

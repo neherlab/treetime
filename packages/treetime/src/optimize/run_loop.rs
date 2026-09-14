@@ -3,19 +3,20 @@ use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;
 use crate::optimize::dispatch::run_optimize_mixed_inner;
+use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
 use crate::optimize::indel::{estimate_indel_rate, total_indel_log_lh};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
-use crate::partition::marginal::dense::partition::{DenseMarginalEdges, DenseReadout, PartitionMarginalDense};
+use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
 use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
-use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges, SparseReadout};
+use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges};
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
-use crate::partition::traits::{HasGtr, PartitionOptimizeOps};
+use crate::partition::traits::HasGtr;
 use eyre::Report;
-use itertools::{Itertools, chain, izip};
+use itertools::{Itertools, izip};
 use log::{debug, warn};
 use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::assign_node_names;
@@ -56,38 +57,6 @@ pub fn marginal_update_dense(
       updated.push(family);
       Ok((updated, total + log_lh))
     })
-}
-
-/// Owned per-representation read views over the optimize working state, dense first then sparse, from
-/// which a transient `&dyn PartitionOptimizeOps` view is built for the optimize consumers.
-pub struct OptimizeReadouts<'a> {
-  dense: Vec<DenseReadout<'a>>,
-  sparse: Vec<SparseReadout<'a>>,
-}
-
-impl<'a> OptimizeReadouts<'a> {
-  pub fn new(dense: &'a [DenseReconstruction], sparse: &'a [SparseReconstruction]) -> Self {
-    Self {
-      dense: dense.iter().map(DenseReconstruction::readout).collect(),
-      sparse: sparse.iter().map(SparseReconstruction::readout).collect(),
-    }
-  }
-
-  /// Borrow the readouts as a dyn optimize view, dense entries first then sparse, matching the order
-  /// the optimize passes sum partition contributions.
-  pub fn view(&self) -> Vec<&dyn PartitionOptimizeOps> {
-    chain!(
-      self
-        .dense
-        .iter()
-        .map(|readout| -> &dyn PartitionOptimizeOps { readout }),
-      self
-        .sparse
-        .iter()
-        .map(|readout| -> &dyn PartitionOptimizeOps { readout }),
-    )
-    .collect_vec()
-  }
 }
 
 /// Iterative branch-length optimization with marginal reconstruction and topology cleanup.
@@ -164,8 +133,8 @@ pub fn run_optimize_loop(
   let indel_rate = if no_indels {
     0.0
   } else {
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    estimate_indel_rate(graph, &readouts.view(), &branch_lengths)
+    let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
+    estimate_indel_rate(graph, &indel_counts, &branch_lengths)
   };
 
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter);
@@ -245,10 +214,14 @@ pub fn run_optimize_loop(
     // branch-length map in place; the map is the loop's source of truth.
     let old_branch_lengths = branch_lengths.clone();
     {
-      let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
+      let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+      let contributions = gather_edge_contributions(graph, &dense_partitions, &sparse_partitions)?;
+      let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
       run_optimize_mixed_inner(
         graph,
-        &readouts.view(),
+        total_length,
+        &contributions,
+        &indel_counts,
         opt_method,
         indel_rate,
         no_indels,
@@ -369,8 +342,8 @@ fn compute_iteration(
   let indel_lh = if no_indels {
     LogLh::ZERO
   } else {
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    total_indel_log_lh(graph, &readouts.view(), branch_lengths, indel_rate)?
+    let indel_counts = gather_edge_indel_counts(graph, &dense_partitions, &sparse_partitions);
+    total_indel_log_lh(graph, &indel_counts, branch_lengths, indel_rate)?
   };
   let total_lh = sparse_lh + dense_lh + indel_lh;
 
@@ -627,7 +600,7 @@ fn join_dense(
 /// this configuration at validation time instead.
 pub fn any_indel_edge_has_zero_branch_length(
   graph: &Graph,
-  partitions: &[&dyn PartitionOptimizeOps],
+  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> bool {
   graph.get_edges().iter().any(|edge_ref| {
@@ -637,9 +610,7 @@ pub fn any_indel_edge_has_zero_branch_length(
     if bl != 0.0 {
       return false;
     }
-    partitions
-      .iter()
-      .any(|partition| partition.edge_indel_count(edge_key) > 0)
+    indel_counts[&edge_key] > 0
   })
 }
 
@@ -650,9 +621,13 @@ pub fn any_indel_edge_has_zero_branch_length(
 /// - `Never`: keep input branch lengths; error if any edge lacks a usable
 ///   value (None/NaN) or has zero branch length while carrying indels (the
 ///   Poisson indel log-likelihood diverges at $t = 0$ when $k > 0$).
+#[allow(clippy::too_many_arguments)]
 pub fn apply_initial_guess_mode(
   graph: &Graph,
-  mixed_partitions: &[&dyn PartitionOptimizeOps],
+  total_length: usize,
+  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
+  sub_counts: &BTreeMap<GraphEdgeKey, usize>,
+  effective_lengths: &BTreeMap<GraphEdgeKey, usize>,
   mode: InitialGuessMode,
   no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -664,8 +639,26 @@ pub fn apply_initial_guess_mode(
   }
 
   match mode {
-    InitialGuessMode::Auto => initial_guess_mixed(graph, mixed_partitions, false, no_indels, branch_lengths),
-    InitialGuessMode::Always => initial_guess_mixed(graph, mixed_partitions, true, no_indels, branch_lengths),
+    InitialGuessMode::Auto => initial_guess_mixed(
+      graph,
+      total_length,
+      indel_counts,
+      sub_counts,
+      effective_lengths,
+      false,
+      no_indels,
+      branch_lengths,
+    ),
+    InitialGuessMode::Always => initial_guess_mixed(
+      graph,
+      total_length,
+      indel_counts,
+      sub_counts,
+      effective_lengths,
+      true,
+      no_indels,
+      branch_lengths,
+    ),
     InitialGuessMode::Never => {
       if !invalid_branch_lengths.is_empty() {
         return make_error!(
@@ -676,7 +669,7 @@ pub fn apply_initial_guess_mode(
         );
       }
       // `Never` makes no branch-length writes, so the input tree's lengths are the ones checked.
-      if !no_indels && any_indel_edge_has_zero_branch_length(graph, mixed_partitions, branch_lengths) {
+      if !no_indels && any_indel_edge_has_zero_branch_length(graph, indel_counts, branch_lengths) {
         return make_error!(
           "--branch-length-initial-guess=never requires non-zero branch lengths on edges that carry indels, \
            but some indel-bearing edges have branch length zero. \

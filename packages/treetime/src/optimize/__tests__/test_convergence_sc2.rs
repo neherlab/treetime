@@ -7,8 +7,11 @@ mod tests {
   use crate::ancestral::pipeline::SparseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
+  use crate::optimize::gather::{
+    gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts, total_sequence_length,
+  };
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_sparse, run_optimize_loop};
+  use crate::optimize::run_loop::{marginal_update_sparse, run_optimize_loop};
 
   use eyre::Report;
 
@@ -48,9 +51,20 @@ mod tests {
       marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 
     let dense_partitions = vec![];
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    let mixed_partitions = readouts.view();
-    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
+    initial_guess_mixed(
+      &graph,
+      total_length,
+      &indel_counts,
+      &sub_counts,
+      &effective_lengths,
+      true,
+      false,
+      &mut branch_lengths,
+    )?;
 
     let max_iter = 50;
     let names_tt_2 = names;
@@ -108,9 +122,20 @@ mod tests {
       marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 
     let dense_partitions = vec![];
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    let mixed_partitions = readouts.view();
-    initial_guess_mixed(&graph, &mixed_partitions, true, false, &mut branch_lengths)?;
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
+    let sub_counts = gather_edge_sub_counts(&graph, &dense_partitions, &sparse_partitions)?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &dense_partitions, &sparse_partitions)?;
+    initial_guess_mixed(
+      &graph,
+      total_length,
+      &indel_counts,
+      &sub_counts,
+      &effective_lengths,
+      true,
+      false,
+      &mut branch_lengths,
+    )?;
 
     let names_tt_1 = names;
     let result = run_optimize_loop(

@@ -5,8 +5,9 @@ mod tests {
   use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::run_optimize_mixed_inner;
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense};
+  use crate::optimize::run_loop::marginal_update_dense;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
   use approx::assert_abs_diff_eq;
@@ -72,9 +73,14 @@ mod tests {
     let total_before = bl0_before + bl1_before;
     let ratio_before = bl0_before / total_before;
 
+    let total_length = total_sequence_length(&partitions, &[]);
+    let contributions = gather_edge_contributions(&graph, &partitions, &[])?;
+    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
     run_optimize_mixed_inner(
       &graph,
-      &OptimizeReadouts::new(&partitions, &[]).view(),
+      total_length,
+      &contributions,
+      &indel_counts,
       BranchOptMethod::BrentSqrt,
       0.0,
       true,
@@ -95,9 +101,14 @@ mod tests {
     let tree = "((A:0.1,B:0.2)AB:0.0,(C:0.15,D:0.12)CD:0.0)root:0.0;";
     let (graph, partitions, mut branch_lengths) = setup_dense(tree, ALIGNMENT)?;
 
+    let total_length = total_sequence_length(&partitions, &[]);
+    let contributions = gather_edge_contributions(&graph, &partitions, &[])?;
+    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
     run_optimize_mixed_inner(
       &graph,
-      &OptimizeReadouts::new(&partitions, &[]).view(),
+      total_length,
+      &contributions,
+      &indel_counts,
       BranchOptMethod::BrentSqrt,
       0.0,
       true,
@@ -142,9 +153,14 @@ mod tests {
 
     // Trifurcating root: redistribution is skipped (only applies to len==2).
     // The function should complete without error.
+    let total_length = total_sequence_length(&partitions, &[]);
+    let contributions = gather_edge_contributions(&graph, &partitions, &[])?;
+    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
     run_optimize_mixed_inner(
       &graph,
-      &OptimizeReadouts::new(&partitions, &[]).view(),
+      total_length,
+      &contributions,
+      &indel_counts,
       BranchOptMethod::BrentSqrt,
       0.0,
       true,
@@ -164,9 +180,14 @@ mod tests {
 
     assert!(ratio_before > 0.9, "pre-condition: asymmetric ratio");
 
+    let total_length = total_sequence_length(&partitions, &[]);
+    let contributions = gather_edge_contributions(&graph, &partitions, &[])?;
+    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
     run_optimize_mixed_inner(
       &graph,
-      &OptimizeReadouts::new(&partitions, &[]).view(),
+      total_length,
+      &contributions,
+      &indel_counts,
       BranchOptMethod::BrentSqrt,
       0.0,
       true,

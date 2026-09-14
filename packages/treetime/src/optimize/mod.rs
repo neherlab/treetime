@@ -5,6 +5,7 @@ pub(super) mod branch_length;
 pub(super) mod dense_eval;
 pub mod dispatch;
 pub(super) mod eval;
+pub mod gather;
 pub mod indel;
 pub mod iteration;
 pub mod likelihood;

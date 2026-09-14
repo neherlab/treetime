@@ -20,12 +20,14 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::make_error;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
+use crate::optimize::gather::{
+  gather_timetree_edge_contributions, gather_timetree_edge_indel_counts, timetree_total_sequence_length,
+};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchLengthMode, BranchOptMethod};
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::timetree::marginal::{initialize_marginal_timetree, marginal_update_timetree};
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::partition::traits::{HasGtr, PartitionOptimizeOps};
 use crate::progress::ProgressSink;
 use crate::timetree::confidence::{
   NodeConfidenceInterval, compute_rate_susceptibility, determine_rate_std, extract_confidence_intervals,
@@ -978,13 +980,31 @@ fn optimize_branch_lengths_pre_step(
   let old_branch_lengths = branch_lengths.clone();
 
   {
-    let mixed: Vec<&dyn PartitionOptimizeOps> = partitions.iter().map(|p| -> &dyn PartitionOptimizeOps { p }).collect();
+    let total_length = timetree_total_sequence_length(&partitions);
+    let contributions = gather_timetree_edge_contributions(graph, &partitions)?;
+    let indel_counts = gather_timetree_edge_indel_counts(graph, &partitions);
     if no_indels {
-      run_optimize_mixed_inner(graph, &mixed, BranchOptMethod::BrentSqrt, 0.0, true, branch_lengths)
-        .wrap_err("ML branch-length optimization pre-step failed")?;
+      run_optimize_mixed_inner(
+        graph,
+        total_length,
+        &contributions,
+        &indel_counts,
+        BranchOptMethod::BrentSqrt,
+        0.0,
+        true,
+        branch_lengths,
+      )
+      .wrap_err("ML branch-length optimization pre-step failed")?;
     } else {
-      run_optimize_mixed(graph, &mixed, BranchOptMethod::BrentSqrt, branch_lengths)
-        .wrap_err("ML branch-length optimization pre-step failed")?;
+      run_optimize_mixed(
+        graph,
+        total_length,
+        &contributions,
+        &indel_counts,
+        BranchOptMethod::BrentSqrt,
+        branch_lengths,
+      )
+      .wrap_err("ML branch-length optimization pre-step failed")?;
     }
   }
 

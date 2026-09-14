@@ -14,9 +14,11 @@ mod tests {
   use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::gather::{
+    gather_timetree_edge_contributions, gather_timetree_edge_indel_counts, timetree_total_sequence_length,
+  };
   use crate::optimize::params::BranchOptMethod;
   use crate::partition::timetree::marginal::{initialize_marginal_timetree, marginal_update_timetree};
-  use crate::partition::traits::PartitionOptimizeOps;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::timetree_state::TimetreeState;
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
@@ -66,9 +68,17 @@ mod tests {
     let before = extract_branch_lengths(&graph, &branch_lengths);
 
     // Run one pass of ML optimization (matching v0's optimize_tree(max_iter=1))
-    #[allow(trivial_casts)]
-    let opt_partitions: Vec<&dyn PartitionOptimizeOps> = partitions.iter().map(|p| p as &dyn PartitionOptimizeOps).collect();
-    run_optimize_mixed(&graph, &opt_partitions, BranchOptMethod::BrentSqrt, &mut branch_lengths)?;
+    let total_length = timetree_total_sequence_length(&partitions);
+    let contributions = gather_timetree_edge_contributions(&graph, &partitions)?;
+    let indel_counts = gather_timetree_edge_indel_counts(&graph, &partitions);
+    run_optimize_mixed(
+      &graph,
+      total_length,
+      &contributions,
+      &indel_counts,
+      BranchOptMethod::BrentSqrt,
+      &mut branch_lengths,
+    )?;
 
     let after = extract_branch_lengths(&graph, &branch_lengths);
 
@@ -116,9 +126,17 @@ mod tests {
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 
     // Pre-optimization step (matching v0 flow)
-    #[allow(trivial_casts)]
-    let opt_partitions: Vec<&dyn PartitionOptimizeOps> = partitions.iter().map(|p| p as &dyn PartitionOptimizeOps).collect();
-    run_optimize_mixed(&graph, &opt_partitions, BranchOptMethod::BrentSqrt, &mut branch_lengths)?;
+    let total_length = timetree_total_sequence_length(&partitions);
+    let contributions = gather_timetree_edge_contributions(&graph, &partitions)?;
+    let indel_counts = gather_timetree_edge_indel_counts(&graph, &partitions);
+    run_optimize_mixed(
+      &graph,
+      total_length,
+      &contributions,
+      &indel_counts,
+      BranchOptMethod::BrentSqrt,
+      &mut branch_lengths,
+    )?;
     let (partitions, _) = marginal_update_timetree(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
 
     let times = TimetreeState::seed_from_values(&graph, &constraints).likely_times(&constraints);

@@ -5,7 +5,10 @@ mod tests {
   use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense};
+  use crate::optimize::gather::{
+    gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts, total_sequence_length,
+  };
+  use crate::optimize::run_loop::marginal_update_dense;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
   use crate::seq::indel::InDel;
@@ -27,9 +30,16 @@ mod tests {
   fn test_initial_guess_auto_preserves_zero_bl_without_indels() -> Result<(), Report> {
     let (graph, partitions, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
 
+    let total_length = total_sequence_length(&partitions, &[]);
+    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
     initial_guess_mixed(
       &graph,
-      &OptimizeReadouts::new(&partitions, &[]).view(),
+      total_length,
+      &indel_counts,
+      &sub_counts,
+      &effective_lengths,
       false,
       false,
       &mut branch_lengths,
@@ -64,9 +74,16 @@ mod tests {
         });
     }
 
+    let total_length = total_sequence_length(&partitions, &[]);
+    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
     initial_guess_mixed(
       &graph,
-      &OptimizeReadouts::new(&partitions, &[]).view(),
+      total_length,
+      &indel_counts,
+      &sub_counts,
+      &effective_lengths,
       false,
       false,
       &mut branch_lengths,

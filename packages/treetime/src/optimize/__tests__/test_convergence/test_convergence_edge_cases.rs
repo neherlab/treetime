@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::OptimizeReadouts;
   use eyre::Report;
   use rstest::rstest;
   use treetime_graph::graph::Graph;
@@ -27,12 +27,13 @@ mod tests {
     let graph: Graph = graph;
 
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    let mixed_partitions = readouts.view();
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
 
     // Run multiple optimization iterations
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
     }
 
     let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
@@ -70,12 +71,13 @@ mod tests {
     let graph: Graph = graph;
 
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    let mixed_partitions = readouts.view();
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
 
     // Run optimization iterations
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
     }
 
     let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;
@@ -113,12 +115,13 @@ mod tests {
     let graph: Graph = graph;
 
     let (dense_partitions, sparse_partitions) = setup_partitions(&graph, &names, &aln, &mut branch_lengths)?;
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    let mixed_partitions = readouts.view();
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
 
     // Run optimization iterations
     for _ in 0..10 {
-      run_optimize_mixed(&graph, &mixed_partitions, method, &mut branch_lengths)?;
+      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
     }
 
     let (dense_partitions, sparse_partitions, final_lh) = compute_total_lh(&graph, dense_partitions, sparse_partitions, &branch_lengths)?;

@@ -3,7 +3,6 @@ mod __tests__;
 
 use crate::optimize::branch_length::validate_branch_length_value;
 use crate::optimize::likelihood::OptimizationMetrics;
-use crate::partition::traits::PartitionOptimizeOps;
 use eyre::Report;
 use rayon::prelude::*;
 use statrs::function::factorial::ln_factorial;
@@ -68,7 +67,7 @@ pub fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMet
 /// each edge is supplied by the `branch_lengths` value map (ancestral, timetree, ...).
 pub fn estimate_indel_rate(
   graph: &Graph,
-  partitions: &[&dyn PartitionOptimizeOps],
+  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> f64 {
   let per_edge = graph
@@ -77,7 +76,7 @@ pub fn estimate_indel_rate(
     .map(|edge_ref| {
       let edge_key = edge_ref.read_arc().key();
       let branch_length = branch_lengths[&edge_key].unwrap_or(0.0);
-      let edge_indels = partitions.iter().map(|p| p.edge_indel_count(edge_key)).sum::<usize>();
+      let edge_indels = indel_counts[&edge_key];
       (edge_indels, branch_length)
     })
     .collect::<Vec<_>>();
@@ -99,7 +98,7 @@ pub fn estimate_indel_rate(
 /// length, the Poisson log-likelihood is $-\infty$.
 pub fn total_indel_log_lh(
   graph: &Graph,
-  partitions: &[&dyn PartitionOptimizeOps],
+  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   indel_rate: f64,
 ) -> Result<LogLh, Report> {
@@ -112,7 +111,7 @@ pub fn total_indel_log_lh(
         make_report!("Cannot evaluate indel likelihood for edge {edge_key} with a missing branch length")
       })?;
       validate_branch_length_value(branch_length)?;
-      let indel_count: usize = partitions.iter().map(|p| p.edge_indel_count(edge_key)).sum();
+      let indel_count: usize = indel_counts[&edge_key];
       if indel_count > 0 && branch_length <= 0.0 {
         Ok(LogLh::IMPOSSIBLE)
       } else {

@@ -5,7 +5,10 @@ mod tests {
   use crate::ancestral::pipeline::DenseReconstruction;
   use crate::gtr::get_gtr::{F81Params, JC69Params, f81, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense};
+  use crate::optimize::gather::{
+    gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts, total_sequence_length,
+  };
+  use crate::optimize::run_loop::marginal_update_dense;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
@@ -91,8 +94,20 @@ mod tests {
     )?;
     *partitions_stale[0].partition.gtr_mut() = f81_gtr.clone();
     {
-      let ro = OptimizeReadouts::new(&partitions_stale, &[]);
-      initial_guess_mixed(&graph_stale, &ro.view(), true, false, &mut branch_lengths_stale)?;
+      let total_length = total_sequence_length(&partitions_stale, &[]);
+      let indel_counts = gather_edge_indel_counts(&graph_stale, &partitions_stale, &[]);
+      let sub_counts = gather_edge_sub_counts(&graph_stale, &partitions_stale, &[])?;
+      let effective_lengths = gather_edge_effective_lengths(&graph_stale, &partitions_stale, &[])?;
+      initial_guess_mixed(
+        &graph_stale,
+        total_length,
+        &indel_counts,
+        &sub_counts,
+        &effective_lengths,
+        true,
+        false,
+        &mut branch_lengths_stale,
+      )?;
     }
     let bl_stale = get_branch_lengths(&graph_stale, &branch_lengths_stale);
 
@@ -117,8 +132,20 @@ mod tests {
       partitions_fresh,
     )?;
     {
-      let ro = OptimizeReadouts::new(&partitions_fresh, &[]);
-      initial_guess_mixed(&graph_fresh, &ro.view(), true, false, &mut branch_lengths_fresh)?;
+      let total_length = total_sequence_length(&partitions_fresh, &[]);
+      let indel_counts = gather_edge_indel_counts(&graph_fresh, &partitions_fresh, &[]);
+      let sub_counts = gather_edge_sub_counts(&graph_fresh, &partitions_fresh, &[])?;
+      let effective_lengths = gather_edge_effective_lengths(&graph_fresh, &partitions_fresh, &[])?;
+      initial_guess_mixed(
+        &graph_fresh,
+        total_length,
+        &indel_counts,
+        &sub_counts,
+        &effective_lengths,
+        true,
+        false,
+        &mut branch_lengths_fresh,
+      )?;
     }
     let bl_fresh = get_branch_lengths(&graph_fresh, &branch_lengths_fresh);
 
@@ -154,8 +181,20 @@ mod tests {
     *partitions[0].partition.gtr_mut() = f81_gtr.clone();
     let (partitions, _) = marginal_update_dense(&graph, &profile_branch_lengths(&branch_lengths), partitions)?;
     {
-      let ro = OptimizeReadouts::new(&partitions, &[]);
-      initial_guess_mixed(&graph, &ro.view(), true, false, &mut branch_lengths)?;
+      let total_length = total_sequence_length(&partitions, &[]);
+      let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+      let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
+      let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
+      initial_guess_mixed(
+        &graph,
+        total_length,
+        &indel_counts,
+        &sub_counts,
+        &effective_lengths,
+        true,
+        false,
+        &mut branch_lengths,
+      )?;
     }
     let bl_first = get_branch_lengths(&graph, &branch_lengths);
 
@@ -176,8 +215,20 @@ mod tests {
     *partitions2[0].partition.gtr_mut() = f81_gtr;
     let (partitions2, _) = marginal_update_dense(&graph2, &profile_branch_lengths(&branch_lengths2), partitions2)?;
     {
-      let ro = OptimizeReadouts::new(&partitions2, &[]);
-      initial_guess_mixed(&graph2, &ro.view(), true, false, &mut branch_lengths2)?;
+      let total_length = total_sequence_length(&partitions2, &[]);
+      let indel_counts = gather_edge_indel_counts(&graph2, &partitions2, &[]);
+      let sub_counts = gather_edge_sub_counts(&graph2, &partitions2, &[])?;
+      let effective_lengths = gather_edge_effective_lengths(&graph2, &partitions2, &[])?;
+      initial_guess_mixed(
+        &graph2,
+        total_length,
+        &indel_counts,
+        &sub_counts,
+        &effective_lengths,
+        true,
+        false,
+        &mut branch_lengths2,
+      )?;
     }
     let bl_second = get_branch_lengths(&graph2, &branch_lengths2);
 

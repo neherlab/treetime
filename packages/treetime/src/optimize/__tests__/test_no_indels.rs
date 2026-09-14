@@ -12,10 +12,12 @@ mod tests {
     inject_indels_on_first_edge, setup_identical_partitions,
   };
   use crate::optimize::dispatch::run_optimize_mixed_inner;
-  use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
-  use crate::optimize::run_loop::{
-    OptimizeReadouts, apply_initial_guess_mode, marginal_update_sparse, run_optimize_loop,
+  use crate::optimize::gather::{
+    gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
+    total_sequence_length,
   };
+  use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
+  use crate::optimize::run_loop::{apply_initial_guess_mode, marginal_update_sparse, run_optimize_loop};
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -132,9 +134,14 @@ mod tests {
 
     let bl_before = branch_lengths.clone();
 
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
     run_optimize_mixed_inner(
       &graph,
-      &OptimizeReadouts::new(&dense_partitions, &sparse_partitions).view(),
+      total_length,
+      &contributions,
+      &indel_counts,
       BranchOptMethod::BrentSqrt,
       0.0,
       true,
@@ -218,9 +225,16 @@ mod tests {
   fn test_no_indels_initial_guess_never_accepts_zero_bl_with_indels() -> Result<(), Report> {
     let (graph, names, mut partitions, mut branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     inject_indel_on_first_edge(&graph, &mut partitions)?;
+    let total_length = total_sequence_length(&partitions, &[]);
+    let indel_counts = gather_edge_indel_counts(&graph, &partitions, &[]);
+    let sub_counts = gather_edge_sub_counts(&graph, &partitions, &[])?;
+    let effective_lengths = gather_edge_effective_lengths(&graph, &partitions, &[])?;
     let result = apply_initial_guess_mode(
       &graph,
-      &OptimizeReadouts::new(&partitions, &[]).view(),
+      total_length,
+      &indel_counts,
+      &sub_counts,
+      &effective_lengths,
       InitialGuessMode::Never,
       true,
       &mut branch_lengths,
@@ -251,8 +265,16 @@ mod tests {
     let NwkParse { graph: graph_without_indel, names: graph_without_indel_names, branch_lengths: mut branch_lengths_without_indel, .. } = nwk_read_str(TREE_NEWICK)?;
     let (dense_without_indel, sparse_without_indel) = setup_identical_partitions(&graph_without_indel, &graph_without_indel_names, &mut branch_lengths_without_indel)?;
 
-    apply_initial_guess_mode(&graph_with_indel, &OptimizeReadouts::new(&dense_with_indel, &sparse_with_indel).view(), mode, true, &mut branch_lengths_with_indel, &graph_with_indel_names)?;
-    apply_initial_guess_mode(&graph_without_indel, &OptimizeReadouts::new(&dense_without_indel, &sparse_without_indel).view(), mode, true, &mut branch_lengths_without_indel, &graph_without_indel_names)?;
+    let total_length_with_indel = total_sequence_length(&dense_with_indel, &sparse_with_indel);
+    let indel_counts_with_indel = gather_edge_indel_counts(&graph_with_indel, &dense_with_indel, &sparse_with_indel);
+    let sub_counts_with_indel = gather_edge_sub_counts(&graph_with_indel, &dense_with_indel, &sparse_with_indel)?;
+    let effective_lengths_with_indel = gather_edge_effective_lengths(&graph_with_indel, &dense_with_indel, &sparse_with_indel)?;
+    apply_initial_guess_mode(&graph_with_indel, total_length_with_indel, &indel_counts_with_indel, &sub_counts_with_indel, &effective_lengths_with_indel, mode, true, &mut branch_lengths_with_indel, &graph_with_indel_names)?;
+    let total_length_without_indel = total_sequence_length(&dense_without_indel, &sparse_without_indel);
+    let indel_counts_without_indel = gather_edge_indel_counts(&graph_without_indel, &dense_without_indel, &sparse_without_indel);
+    let sub_counts_without_indel = gather_edge_sub_counts(&graph_without_indel, &dense_without_indel, &sparse_without_indel)?;
+    let effective_lengths_without_indel = gather_edge_effective_lengths(&graph_without_indel, &dense_without_indel, &sparse_without_indel)?;
+    apply_initial_guess_mode(&graph_without_indel, total_length_without_indel, &indel_counts_without_indel, &sub_counts_without_indel, &effective_lengths_without_indel, mode, true, &mut branch_lengths_without_indel, &graph_without_indel_names)?;
 
     let expected = get_branch_lengths(&graph_without_indel, &branch_lengths_without_indel);
     let actual = get_branch_lengths(&graph_with_indel, &branch_lengths_with_indel);

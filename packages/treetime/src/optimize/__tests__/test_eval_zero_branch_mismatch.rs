@@ -6,8 +6,9 @@ mod tests {
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts, total_sequence_length};
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::run_loop::{OptimizeReadouts, marginal_update_dense, marginal_update_sparse};
+  use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
 
@@ -72,12 +73,20 @@ mod tests {
     let (sparse_partitions, _) =
       marginal_update_sparse(&graph, &profile_branch_lengths(&branch_lengths), sparse_partitions)?;
 
-    let readouts = OptimizeReadouts::new(&dense_partitions, &sparse_partitions);
-    let mixed_partitions = readouts.view();
+    let total_length = total_sequence_length(&dense_partitions, &sparse_partitions);
+    let contributions = gather_edge_contributions(&graph, &dense_partitions, &sparse_partitions)?;
+    let indel_counts = gather_edge_indel_counts(&graph, &dense_partitions, &sparse_partitions);
 
     // Do NOT call initial_guess_mixed -- leave branch lengths at 0.0
     // to exercise the zero-branch mismatch code path.
-    run_optimize_mixed(&graph, &mixed_partitions, BranchOptMethod::Newton, &mut branch_lengths)?;
+    run_optimize_mixed(
+      &graph,
+      total_length,
+      &contributions,
+      &indel_counts,
+      BranchOptMethod::Newton,
+      &mut branch_lengths,
+    )?;
 
     // All branch lengths must be finite after optimization
     for edge_ref in graph.get_edges() {
