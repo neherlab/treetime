@@ -69,8 +69,9 @@ pub fn run_ancestral_reconstruction(
     graph,
     confidences,
     names,
-    branch_lengths: branch_lengths_opt,
+    branch_lengths,
   } = nwk_read_file(ancestral_args.tree())?;
+
   let topology_order = ancestral_args
     .topology_order
     .resolve_topology_order(&graph, &names, None)?;
@@ -123,7 +124,7 @@ pub fn run_ancestral_reconstruction(
     &params,
     input,
     &names,
-    &branch_lengths_opt,
+    &branch_lengths,
     |key, seq| {
       if let Some(ref mut writer) = output_fasta {
         let name = names[&key].as_deref().unwrap_or("");
@@ -152,7 +153,7 @@ pub fn run_ancestral_reconstruction(
       aa_fasta_template.as_deref(),
       &result.output.graph,
       &names,
-      &branch_lengths_opt,
+      &branch_lengths,
       progress,
     )?)
   } else {
@@ -191,7 +192,7 @@ pub fn run_ancestral_reconstruction(
     None
   };
 
-  topology_order.apply(&mut graph, &names, &branch_lengths_opt)?;
+  topology_order.apply(&mut graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.9, "");
 
   // Gather the per-node name/confidence and per-edge branch length off the ordered tree into keyed
@@ -221,7 +222,7 @@ pub fn run_ancestral_reconstruction(
       (
         key,
         EdgeOut {
-          branch_length: branch_lengths_opt[&key],
+          branch_length: branch_lengths[&key],
         },
       )
     })
