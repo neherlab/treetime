@@ -56,7 +56,7 @@ pub struct RerootResult {
 
 /// Bundles all topology changes from a reroot operation for partition updates.
 ///
-/// Passed to `PartitionRerootOps::apply_reroot` to update partition state in a single call.
+/// Passed to each partition's reroot pass to update partition state in a single call.
 #[derive(Clone, Debug, Default)]
 pub struct RerootChanges {
   /// Edge split info if a new node was created at the reroot point.
