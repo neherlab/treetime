@@ -35,28 +35,28 @@ use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
 use treetime_utils::sync::random::get_random_number_generator;
 
 pub fn run_ancestral_reconstruction(
-  ancestral_args: &TreetimeAncestralArgs,
+  args: &TreetimeAncestralArgs,
   progress: &dyn ProgressSink,
 ) -> Result<AncestralResult, Report> {
-  let gap_fill_mode = ancestral_args.gap_fill_args.effective_gap_fill();
-  let alphabet = Alphabet::new(ancestral_args.alphabet_args.alphabet.unwrap_or_default())?;
+  let gap_fill_mode = args.gap_fill_args.effective_gap_fill();
+  let alphabet = Alphabet::new(args.alphabet_args.alphabet.unwrap_or_default())?;
 
   validate_aa_args(
-    &ancestral_args.translations,
-    &ancestral_args.cdses,
-    &ancestral_args.annotation,
-    &ancestral_args.aa_root_sequence,
+    &args.translations,
+    &args.cdses,
+    &args.annotation,
+    &args.aa_root_sequence,
   )?;
 
   progress.check_cancelled()?;
   progress.report("Reading input", 0.0, "");
 
-  let mut aln = if ancestral_args.alignment.alignment.is_empty() {
+  let mut aln = if args.alignment.alignment.is_empty() {
     info!("Reading input fasta from standard input");
     let reader = FastaReader::new(open_stdin()?, &alphabet);
     read_many_fasta(reader)?
   } else {
-    read_many_fasta_path(&ancestral_args.alignment.alignment, &alphabet)?
+    read_many_fasta_path(&args.alignment.alignment, &alphabet)?
   };
 
   for record in &mut aln {
@@ -70,13 +70,11 @@ pub fn run_ancestral_reconstruction(
     confidences,
     names,
     branch_lengths,
-  } = nwk_read_file(ancestral_args.tree())?;
+  } = nwk_read_file(args.tree())?;
 
-  let topology_order = ancestral_args
-    .topology_order
-    .resolve_topology_order(&graph, &names, None)?;
+  let topology_order = args.topology_order.resolve_topology_order(&graph, &names, None)?;
 
-  let resolved = ancestral_args.resolve_outputs()?;
+  let resolved = args.resolve_outputs()?;
   let mut output_fasta = if resolved
     .non_tree_outputs
     .contains_key(&OutputSelection::ReconstructedNucFasta)
@@ -87,7 +85,7 @@ pub fn run_ancestral_reconstruction(
     None
   };
 
-  let params = AncestralParams::new(ancestral_args);
+  let params = AncestralParams::new(args);
 
   // Every reconstruction consumer reads its node label from the `names` map from the parse and its
   // edge branch length from the parsed `branch_lengths` value map. Ancestral never renames or
@@ -131,9 +129,9 @@ pub fn run_ancestral_reconstruction(
     .get(&OutputSelection::ReconstructedAaFasta)
     .map(|path| path.to_string_lossy().into_owned());
 
-  let aa_node_data = if let Some(translations) = &ancestral_args.translations {
+  let aa_node_data = if let Some(translations) = &args.translations {
     Some(run_aa_reconstructions(
-      ancestral_args,
+      args,
       translations,
       aa_fasta_template.as_deref(),
       &result.output.graph,
@@ -145,7 +143,7 @@ pub fn run_ancestral_reconstruction(
     // Prerequisite gating: reconstructed AA FASTA needs --translations. An explicit per-file flag
     // is a hard error; the same output reached via selection or `--output-selection=all` is skipped.
     if aa_fasta_template.is_some() {
-      if ancestral_args.output_reconstructed_aa_fasta.is_some() {
+      if args.output_reconstructed_aa_fasta.is_some() {
         return make_error!("--output-reconstructed-aa-fasta requires --translations");
       }
       warn!("Skipping reconstructed amino-acid FASTA output: --translations not provided");
@@ -230,7 +228,7 @@ pub fn run_ancestral_reconstruction(
         let gtr_output = GtrOutput::new(gtr, model_name);
         write_gtr_json(&gtr_output, path)?;
       },
-      None if ancestral_args.output_gtr.is_some() => {
+      None if args.output_gtr.is_some() => {
         return make_error!("GTR output requested but no GTR model was fitted. Use --model=infer or --gtr-iterations.");
       },
       None => warn!("Skipping GTR output: no GTR model was fitted (use --model=infer or --gtr-iterations)"),
