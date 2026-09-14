@@ -1,4 +1,3 @@
-use treetime_io::nwk::nwk_fasta_node_inputs;
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use ctor::ctor;
 use rayon::ThreadPoolBuilder;
@@ -13,6 +12,7 @@ use treetime::gtr::get_gtr::{JC69Params, jc69};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_io::fasta::read_many_fasta_path;
+use treetime_io::nwk::nwk_fasta_node_inputs;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::init::global::global_init;
 

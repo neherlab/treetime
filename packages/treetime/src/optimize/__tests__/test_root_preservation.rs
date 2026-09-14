@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::pipeline::DenseReconstruction;
@@ -18,6 +17,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_io::nwk::nwk_read_str;
 
   fn setup_dense(

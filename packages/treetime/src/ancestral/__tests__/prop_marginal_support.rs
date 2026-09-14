@@ -1,6 +1,5 @@
 #[cfg(test)]
 pub mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
   use crate::ancestral::fitch::create_fitch_partition;
@@ -9,6 +8,7 @@ pub mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use treetime_graph::graph::Graph;
 
@@ -46,7 +46,8 @@ pub mod tests {
     let length = get_common_length(&input.alignment)?;
 
     let partition = PartitionMarginalDense::new(0, input.gtr.clone(), alphabet, length);
-    let node_states = partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, input.alignment.clone()))?;
+    let node_states =
+      partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, input.alignment.clone()))?;
     let recon = DenseReconstruction::seeded(partition, node_states);
     let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let log_lh = log_lh.value();
@@ -80,7 +81,12 @@ pub mod tests {
     let alphabet = Alphabet::default();
     let _ = get_common_length(&input.alignment)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, input.alignment.clone()))?;
+    let fitch = create_fitch_partition(
+      &graph,
+      0,
+      alphabet,
+      &nwk_fasta_node_inputs(&graph, &names, input.alignment.clone()),
+    )?;
     let (partition, node_states) = fitch.into_marginal_sparse(input.gtr.clone(), &graph)?;
     let recon = SparseReconstruction::seeded(partition, node_states);
     let (recon, log_lh) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;

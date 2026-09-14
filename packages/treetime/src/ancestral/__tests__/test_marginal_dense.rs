@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::Alphabet;
   use crate::alphabet::alphabet::AlphabetName;
   use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
@@ -14,6 +13,7 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use treetime_graph::graph::Graph;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use ndarray::prelude::*;
   use pretty_assertions::assert_eq;

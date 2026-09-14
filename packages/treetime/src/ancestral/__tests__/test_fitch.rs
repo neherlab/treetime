@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::{
     ancestral_reconstruction_fitch, attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward,
@@ -27,6 +26,7 @@ mod tests {
     RerootChanges, apply_reroot_topology, record_split, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
   };
   use treetime_io::fasta::read_many_fasta_str;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AsciiChar;
   use treetime_utils::io::json::{JsonPretty, json_write_str};

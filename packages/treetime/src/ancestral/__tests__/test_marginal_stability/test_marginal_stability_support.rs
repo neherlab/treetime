@@ -1,6 +1,5 @@
 #[cfg(test)]
 pub mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::profile_branch_lengths;
@@ -13,6 +12,7 @@ pub mod tests {
   use crate::seq::alignment::get_common_length;
   use eyre::Report;
   use treetime_graph::graph::Graph;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
   use std::sync::LazyLock;

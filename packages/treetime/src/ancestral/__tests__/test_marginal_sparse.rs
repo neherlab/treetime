@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
@@ -512,7 +512,12 @@ mod tests {
           // Create alignment with single position containing this triplet
           let aln = read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?;
 
-          let fitch = create_fitch_partition(&graph, 0, alphabet.clone(), &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
+          let fitch = create_fitch_partition(
+            &graph,
+            0,
+            alphabet.clone(),
+            &nwk_fasta_node_inputs(&graph, &names, aln.clone()),
+          )?;
           let (partition, node_states) = fitch.into_marginal_sparse(gtr.clone(), &graph)?;
           let recon = SparseReconstruction::seeded(partition, node_states);
 
@@ -558,7 +563,12 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
-    let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &nwk_fasta_node_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(
+      &graph,
+      0,
+      Alphabet::default(),
+      &nwk_fasta_node_inputs(&graph, &names, aln),
+    )?;
     let (partition, node_states) = fitch.into_marginal_sparse(make_nonuniform_gtr()?, &graph)?;
     let recon = SparseReconstruction::seeded(partition, node_states);
     let (mut recon, _) = recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;

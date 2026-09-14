@@ -179,7 +179,6 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::fitch::create_fitch_partition;
-    use treetime_io::nwk::nwk_fasta_node_inputs;
     use crate::ancestral::marginal::profile_branch_lengths;
     use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
     use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -191,6 +190,7 @@ mod tests {
     use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse, run_optimize_loop};
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::seq::alignment::get_common_length;
+    use treetime_io::nwk::nwk_fasta_node_inputs;
 
     use eyre::Report;
     use itertools::Itertools;
@@ -259,7 +259,12 @@ mod tests {
       let mut branch_lengths = nwk_parsed.branch_lengths;
       let mut graph: Graph = graph;
 
-      let fitch = create_fitch_partition(&graph, 0, alphabet_sparse, &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
+      let fitch = create_fitch_partition(
+        &graph,
+        0,
+        alphabet_sparse,
+        &nwk_fasta_node_inputs(&graph, &names, aln.clone()),
+      )?;
       let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, &graph)?;
       let sparse_partitions = vec![SparseReconstruction::seeded(partition, node_states)];
 

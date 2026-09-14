@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::profile_branch_lengths;
@@ -19,6 +18,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use pretty_assertions::assert_eq;
   use treetime_graph::edge::GraphEdgeKey;

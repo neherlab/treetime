@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::marginal::profile_branch_lengths;
   use crate::ancestral::pipeline::DenseReconstruction;
@@ -17,6 +16,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use ndarray::array;
   use treetime_graph::edge::GraphEdgeKey;

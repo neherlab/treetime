@@ -1,6 +1,5 @@
 #[cfg(test)]
 pub mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::profile_branch_lengths;
@@ -31,6 +30,7 @@ pub mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use ndarray::array;
   use rstest::rstest;
@@ -80,7 +80,8 @@ pub mod tests {
       alphabet_dense,
       get_common_length(&aln)?,
     );
-    let dense_node_states = dense_partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.clone()))?;
+    let dense_node_states =
+      dense_partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.clone()))?;
     let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, dense_node_states)];
 
     let fitch = create_fitch_partition(graph, 1, alphabet_sparse, &nwk_fasta_node_inputs(graph, names, aln))?;

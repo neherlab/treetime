@@ -12,7 +12,6 @@
   reason = "integer-valued f64s from += 1.0 accumulation and explicit = 0.0 assignment"
 )]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
@@ -24,6 +23,7 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::seq::alignment::get_common_length;
   use pretty_assertions::assert_eq;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use eyre::Report;
   use indoc::indoc;
@@ -80,7 +80,12 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &nwk_fasta_node_inputs(&graph, &names, aln.to_vec()))?;
+    let fitch = create_fitch_partition(
+      &graph,
+      0,
+      alphabet,
+      &nwk_fasta_node_inputs(&graph, &names, aln.to_vec()),
+    )?;
     Ok((graph, fitch, branch_lengths))
   }
 

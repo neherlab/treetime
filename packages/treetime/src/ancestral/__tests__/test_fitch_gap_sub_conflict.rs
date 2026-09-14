@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::compress_sequences;
   use crate::partition::fitch::partition::PartitionFitch;
@@ -11,6 +10,7 @@ mod tests {
   use maplit::btreemap;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_io::nwk::nwk_read_str;
 
   type EdgeReport = (String, Vec<(String, usize)>, Vec<(usize, usize)>);

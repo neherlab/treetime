@@ -2,7 +2,6 @@
 
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
@@ -15,6 +14,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_io::nwk::nwk_read_str;
 
   lazy_static! {

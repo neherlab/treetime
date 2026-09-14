@@ -172,7 +172,14 @@ pub fn run_ancestral_reconstruction(
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     if let Some(augur_maps) = &augur_maps {
-      write_augur_node_data_json_with_aa(&input.graph, augur_maps, &mask, &node_names, aa_node_data.as_ref(), path)?;
+      write_augur_node_data_json_with_aa(
+        &input.graph,
+        augur_maps,
+        &mask,
+        &node_names,
+        aa_node_data.as_ref(),
+        path,
+      )?;
     }
     info!("Wrote augur node data JSON to {}", path.display());
   }

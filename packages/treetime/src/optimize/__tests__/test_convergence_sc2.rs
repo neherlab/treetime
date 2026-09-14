@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::Alphabet;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::profile_branch_lengths;

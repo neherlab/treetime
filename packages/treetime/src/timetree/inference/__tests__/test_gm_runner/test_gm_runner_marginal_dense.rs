@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use super::super::test_gm_runner_support::support::{
     ALPHABET, OUTPUTS, load_alignment_for_dataset, load_dates_for_dataset,
   };
@@ -20,6 +19,7 @@ mod tests {
   use crate::timetree::utils::{extract_node_times, initialize_node_divergences};
   use eyre::Report;
   use treetime_graph::graph::Graph;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;

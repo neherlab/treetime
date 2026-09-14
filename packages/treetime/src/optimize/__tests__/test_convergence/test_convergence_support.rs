@@ -1,6 +1,5 @@
 #[cfg(test)]
 pub mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::profile_branch_lengths;
@@ -19,6 +18,7 @@ pub mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use std::sync::LazyLock;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
@@ -55,10 +55,16 @@ pub mod tests {
 
     let dense_partition =
       PartitionMarginalDense::new(0, jc69(JC69Params::default())?, alphabet_dense, get_common_length(aln)?);
-    let dense_node_states = dense_partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let dense_node_states =
+      dense_partition.attach_sequences(graph, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
     let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, dense_node_states)];
 
-    let fitch = create_fitch_partition(graph, 1, alphabet_sparse, &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let fitch = create_fitch_partition(
+      graph,
+      1,
+      alphabet_sparse,
+      &nwk_fasta_node_inputs(graph, names, aln.to_vec()),
+    )?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
     let sparse_partitions = vec![SparseReconstruction::seeded(sparse_partition, sparse_node_states)];
 

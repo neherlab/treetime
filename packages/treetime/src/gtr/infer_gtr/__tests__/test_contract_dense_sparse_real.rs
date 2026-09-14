@@ -31,7 +31,6 @@
 
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::gtr_inference::infer_gtr_fitch;
@@ -43,6 +42,7 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::seq::alignment::get_common_length;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use eyre::Report;
   use lazy_static::lazy_static;
@@ -161,7 +161,12 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
-      let fitch = create_fitch_partition(&graph, 0, SPARSE_NUC_ALPHABET.clone(), &nwk_fasta_node_inputs(&graph, &names, aln))?;
+      let fitch = create_fitch_partition(
+        &graph,
+        0,
+        SPARSE_NUC_ALPHABET.clone(),
+        &nwk_fasta_node_inputs(&graph, &names, aln),
+      )?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths)?
     };
 

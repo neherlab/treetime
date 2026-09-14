@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
@@ -17,6 +16,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
+  use treetime_io::nwk::nwk_fasta_node_inputs;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
 
@@ -226,7 +226,12 @@ mod tests {
     aln: &[FastaRecord],
     impute: bool,
   ) -> Result<BTreeMap<String, String>, Report> {
-    let fitch = create_fitch_partition(graph, 0, Alphabet::default(), &nwk_fasta_node_inputs(graph, names, aln.to_vec()))?;
+    let fitch = create_fitch_partition(
+      graph,
+      0,
+      Alphabet::default(),
+      &nwk_fasta_node_inputs(graph, names, aln.to_vec()),
+    )?;
     let (partition, node_states) = fitch.into_marginal_sparse(jc69(JC69Params::default())?, graph)?;
     let recon = SparseReconstruction::seeded(partition, node_states);
     let (mut recon, _) = recon.marginal_update(graph, &profile_branch_lengths(branch_lengths))?;

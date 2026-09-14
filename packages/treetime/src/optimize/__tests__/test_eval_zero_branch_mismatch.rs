@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::profile_branch_lengths;
@@ -12,6 +11,7 @@ mod tests {
   use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::seq::alignment::get_common_length;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use eyre::Report;
   use indoc::indoc;
@@ -60,7 +60,8 @@ mod tests {
       alphabet_dense,
       get_common_length(&aln)?,
     );
-    let dense_node_states = dense_partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
+    let dense_node_states =
+      dense_partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
     let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, dense_node_states)];
 
     let fitch = create_fitch_partition(&graph, 1, alphabet_sparse, &nwk_fasta_node_inputs(&graph, &names, aln))?;

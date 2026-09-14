@@ -1,4 +1,3 @@
-use treetime_io::nwk::nwk_fasta_node_inputs;
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::fitch::create_fitch_partition;
 use crate::ancestral::marginal::profile_branch_lengths;
@@ -10,6 +9,7 @@ use eyre::Report;
 use std::sync::LazyLock;
 use treetime_graph::graph::Graph;
 use treetime_io::fasta::read_many_fasta_str;
+use treetime_io::nwk::nwk_fasta_node_inputs;
 use treetime_io::nwk::nwk_read_str;
 
 pub static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);

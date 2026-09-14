@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use treetime_io::nwk::nwk_fasta_node_inputs;
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::{ancestral_reconstruction, profile_branch_lengths};
@@ -11,6 +10,7 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
+  use treetime_io::nwk::nwk_fasta_node_inputs;
 
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
@@ -476,7 +476,8 @@ mod tests {
 
     // Dense partition
     let dense_partition = PartitionMarginalDense::new(0, gtr.clone(), alphabet.clone(), length);
-    let dense_node_states = dense_partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
+    let dense_node_states =
+      dense_partition.attach_sequences(&graph, &nwk_fasta_node_inputs(&graph, &names, aln.clone()))?;
     let dense_recon = DenseReconstruction::seeded(dense_partition, dense_node_states);
     let (dense_recon, dense_log_lh) = dense_recon.marginal_update(&graph, &profile_branch_lengths(&branch_lengths))?;
     let dense_log_lh = dense_log_lh.value();
