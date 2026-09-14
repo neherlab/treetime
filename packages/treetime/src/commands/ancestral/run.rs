@@ -130,54 +130,40 @@ pub fn run_ancestral_reconstruction(
   topology_order.apply(&mut input.graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.9, "");
 
-  // Gather the per-node name/confidence and per-edge branch length off the ordered tree into keyed
-  // value maps the output writers consume. The writers still read sequences and model metadata from
-  // the graph data slot; these maps carry the name, input-branch-support, and branch-length values.
+  // Project the per-node name/confidence and per-edge branch length from the input sidecar maps into
+  // the keyed value maps the tree writer and the result consume. The writers read sequences and model
+  // metadata from the graph data slot; these maps carry only the name, input-branch-support, and
+  // branch-length values. Node and edge keys are stable across topology ordering, so the `names` and
+  // `branch_lengths` maps gathered earlier stay valid and are reused for the augur and tree writers.
   let nodes: BTreeMap<GraphNodeKey, AncestralNodeOut> = input
-    .graph
-    .get_nodes()
+    .nodes
     .iter()
-    .map(|node| {
-      let key = node.read_arc().key();
-      let node_input = &input.nodes[&key];
+    .map(|(key, node)| {
       (
-        key,
+        *key,
         AncestralNodeOut {
-          name: node_input.name.clone(),
-          confidence: node_input.confidence,
+          name: node.name.clone(),
+          confidence: node.confidence,
         },
       )
     })
     .collect();
   let edges: BTreeMap<GraphEdgeKey, EdgeOut> = input
-    .graph
-    .get_edges()
+    .edges
     .iter()
-    .map(|edge| {
-      let key = edge.read_arc().key();
+    .map(|(key, edge)| {
       (
-        key,
+        *key,
         EdgeOut {
-          branch_length: input.edges[&key].branch_length,
+          branch_length: edge.branch_length,
         },
       )
     })
     .collect();
-  let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> =
-    edges.iter().map(|(key, edge)| (*key, edge.branch_length)).collect();
-  let node_names: BTreeMap<GraphNodeKey, Option<String>> =
-    nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect();
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     if let Some(augur_maps) = &augur_maps {
-      write_augur_node_data_json_with_aa(
-        &input.graph,
-        augur_maps,
-        &mask,
-        &node_names,
-        aa_node_data.as_ref(),
-        path,
-      )?;
+      write_augur_node_data_json_with_aa(&input.graph, augur_maps, &mask, &names, aa_node_data.as_ref(), path)?;
     }
     info!("Wrote augur node data JSON to {}", path.display());
   }
